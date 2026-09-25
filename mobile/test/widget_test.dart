@@ -7,5 +7,6 @@ void main() {
     expect(find.text('Treino A - Peito e Tríceps'), findsOneWidget);
     expect(find.text('Salão (Aluno)'), findsOneWidget);
     expect(find.text('Prescrição (Treinador)'), findsOneWidget);
+    expect(find.text('Assistente B2B'), findsOneWidget);
   });
 }
