@@ -11,11 +11,11 @@ class AppConfig {
   // Configurações do Supabase
   static const String supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https://your-project.supabase.co',
+    defaultValue: 'https://rgbyfiulomxpqkuufdtg.supabase.co',
   );
 
   static const String supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: 'your-anon-key',
+    defaultValue: 'sb_publishable_GM85tixsI7l1WTU3jhEmoQ_s_pv_F6C',
   );
 }
