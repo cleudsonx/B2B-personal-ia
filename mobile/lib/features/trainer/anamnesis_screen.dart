@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../models/workout_plan_model.dart';
 import '../../services/api_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/workout_service.dart';
 
 class TrainerAnamnesisScreen extends StatefulWidget {
   const TrainerAnamnesisScreen({super.key});
@@ -25,7 +27,29 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
   );
 
   bool _isLoading = false;
+  bool _isSavingPlan = false;
   WorkoutPlanModel? _generatedPlan;
+
+  List<Map<String, dynamic>> _students = [];
+  String? _selectedStudentId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStudents();
+  }
+
+  Future<void> _loadStudents() async {
+    final list = await WorkoutService.getTrainerStudents();
+    if (mounted) {
+      setState(() {
+        _students = list;
+        if (list.isNotEmpty) {
+          _selectedStudentId = list.first['id'] as String;
+        }
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -131,6 +155,24 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
+          if (_students.isNotEmpty) ...[
+            DropdownButtonFormField<String>(
+              initialValue: _selectedStudentId,
+              decoration: const InputDecoration(
+                labelText: 'Aluno da Consultoria',
+                prefixIcon: Icon(Icons.person_outline),
+                border: OutlineInputBorder(),
+              ),
+              items: _students.map((st) {
+                return DropdownMenuItem<String>(
+                  value: st['id'] as String,
+                  child: Text(st['full_name'] as String? ?? 'Aluno'),
+                );
+              }).toList(),
+              onChanged: (val) => setState(() => _selectedStudentId = val),
+            ),
+            const SizedBox(height: 16),
+          ],
           DropdownButtonFormField<String>(
             initialValue: _objective,
             decoration: const InputDecoration(
@@ -213,6 +255,50 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
     );
   }
 
+  Future<void> _handleApprovePlan() async {
+    if (_generatedPlan == null) return;
+    setState(() => _isSavingPlan = true);
+
+    try {
+      final user = AuthService.currentUser;
+      if (user != null) {
+        final targetClientId = _selectedStudentId ?? user.id;
+        await WorkoutService.saveWorkoutPlan(
+          plan: _generatedPlan!,
+          clientId: targetClientId,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: Colors.green,
+              content: Text('Ficha salva no Supabase e liberada para o aluno!'),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: Colors.blueAccent,
+              content: Text('Modo Demonstração: Ficha aprovada com sucesso!'),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.red,
+            content: Text('Erro ao salvar no Supabase: $e'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSavingPlan = false);
+    }
+  }
+
   Widget _buildPlanReviewer(WorkoutPlanModel plan) {
     return DefaultTabController(
       length: plan.splits.length,
@@ -272,18 +358,20 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('Aprovar e Liberar para o Aluno'),
+                icon: _isSavingPlan
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Icon(Icons.check_circle_outline),
+                label: Text(_isSavingPlan ? 'Gravando no Supabase...' : 'Aprovar e Liberar para o Aluno'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green.shade700,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Ficha aprovada e sincronizada com sucesso!')),
-                  );
-                },
+                onPressed: _isSavingPlan ? null : _handleApprovePlan,
               ),
             ),
           ),

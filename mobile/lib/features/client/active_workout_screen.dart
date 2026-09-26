@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/exercise_model.dart';
 import '../../models/adaptation_model.dart';
 import '../../services/api_service.dart';
+import '../../services/workout_service.dart';
 
 class ActiveWorkoutScreen extends StatefulWidget {
   const ActiveWorkoutScreen({super.key});
@@ -13,6 +14,7 @@ class ActiveWorkoutScreen extends StatefulWidget {
 class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
+  String _workoutTitle = 'Treino A - Peito e Tríceps';
 
   // Lista de exercícios de demonstração inicial
   late List<ExerciseModel> _exercises;
@@ -52,6 +54,18 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         substitutionVector: 'Extensão de cotovelos cabo',
       ),
     ];
+    _loadActiveWorkout();
+  }
+
+  Future<void> _loadActiveWorkout() async {
+    final activePlan = await WorkoutService.getActiveWorkoutForClient();
+    if (activePlan != null && activePlan.splits.isNotEmpty && mounted) {
+      setState(() {
+        final firstSplit = activePlan.splits.first;
+        _workoutTitle = 'Treino ${firstSplit.splitIdentifier} - ${firstSplit.splitName}';
+        _exercises = List.from(firstSplit.exercises);
+      });
+    }
   }
 
   void _showAdaptationModal(int exerciseIndex) {
@@ -150,6 +164,13 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         );
       });
 
+      WorkoutService.logAdaptation(
+        originalExercise: target.name,
+        adaptedExercise: result.adaptedExercise,
+        reason: reason,
+        details: result.toJson(),
+      );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -178,12 +199,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Treino A - Peito e Tríceps'),
+        title: Text(_workoutTitle),
         actions: [
           IconButton(
-            icon: const Icon(Icons.info_outline),
-            tooltip: 'Instruções',
-            onPressed: () {},
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Sincronizar Ficha do Banco',
+            onPressed: _loadActiveWorkout,
           ),
         ],
       ),
