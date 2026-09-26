@@ -1,32 +1,19 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthService {
-  static SupabaseClient? get _clientOrNull {
-    try {
-      return Supabase.instance.client;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  static SupabaseClient get _client {
-    final c = _clientOrNull;
-    if (c == null) throw Exception('Supabase não inicializado.');
-    return c;
-  }
+  static final SupabaseClient _client = Supabase.instance.client;
 
   /// Retorna o usuário logado atualmente (ou null)
-  static User? get currentUser => _clientOrNull?.auth.currentUser;
+  static User? get currentUser => _client.auth.currentUser;
 
   /// Retorna a sessão ativa com o token JWT
-  static Session? get currentSession => _clientOrNull?.auth.currentSession;
+  static Session? get currentSession => _client.auth.currentSession;
 
   /// Retorna o Access Token JWT para enviar nos headers do backend FastAPI
-  static String? get accessToken => _clientOrNull?.auth.currentSession?.accessToken;
+  static String? get accessToken => _client.auth.currentSession?.accessToken;
 
   /// Stream reativo para observar mudanças no estado de login/logout
-  static Stream<AuthState> get onAuthStateChange =>
-      _clientOrNull?.auth.onAuthStateChange ?? const Stream.empty();
+  static Stream<AuthState> get onAuthStateChange => _client.auth.onAuthStateChange;
 
   /// Realiza login com e-mail e senha
   static Future<AuthResponse> signIn({
