@@ -9,9 +9,10 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     PORT: int = 8000
     
-    # Gemini API Models (Flash para trocas instantâneas no salão; Pro para periodização completa)
-    DEFAULT_FAST_MODEL: str = "gemini-2.5-flash"
-    DEFAULT_DEEP_MODEL: str = "gemini-2.5-pro"
+    # Gemini API Models (3.8 Flash é o modelo oficial ativo com cota no Google AI Studio)
+    GEMINI_API_KEY: str = ""
+    DEFAULT_FAST_MODEL: str = "gemini-3.8-flash"
+    DEFAULT_DEEP_MODEL: str = "gemini-3.8-flash"
     AIS_GATEWAY_URL: str = "https://ais-dev-3ey6ymjmlzt5sh4qusmboi-873261240850.us-east1.run.app"
     
     # Supabase & Auth
