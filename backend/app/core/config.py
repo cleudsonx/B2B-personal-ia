@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     
     # Gemini API Models (3.8 Flash é o modelo oficial ativo com cota no Google AI Studio)
     GEMINI_API_KEY: str = ""
-    DEFAULT_FAST_MODEL: str = "gemini-3.8-flash"
+    DEFAULT_FAST_MODEL: str = "gemini-3.5-flash-lite"
     DEFAULT_DEEP_MODEL: str = "gemini-3.8-flash"
     AIS_GATEWAY_URL: str = "https://ais-dev-3ey6ymjmlzt5sh4qusmboi-873261240850.us-east1.run.app"
     
@@ -24,7 +24,10 @@ class Settings(BaseSettings):
     CORS_ORIGINS: List[str] = ["*"]
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=[
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".env"),
+            ".env"
+        ],
         env_file_encoding="utf-8",
         extra="ignore"
     )

@@ -1,22 +1,20 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../core/config/app_config.dart';
 
 /// Serviço para comunicação com o Assistente de Inteligência Artificial B2B
-/// Pode se conectar diretamente ao gateway em nuvem ou ao backend local.
+/// Roteado pelo backend FastAPI oficial que utiliza o modelo Gemini 3.8 Flash
 class GeminiService {
-  // URL padrão do gateway em nuvem fornecido para o projeto
-  static const String _defaultGatewayUrl =
-      'https://ais-dev-3ey6ymjmlzt5sh4qusmboi-873261240850.us-east1.run.app/api/generate';
-
   /// Envia um prompt B2B para o modelo Gemini e retorna o texto gerado
   static Future<String> askB2BAssistant({
     required String prompt,
     String systemInstruction =
         'Você é um assistente de IA pessoal para treinadores, focado em negócios fitness B2B, consultorias e biomecânica.',
+    String model = 'gemini-3.6-flash',
     double temperature = 0.7,
     String? customGatewayUrl,
   }) async {
-    final url = customGatewayUrl ?? _defaultGatewayUrl;
+    final url = customGatewayUrl ?? AppConfig.assistantChatUrl;
 
     try {
       final response = await http
@@ -29,11 +27,11 @@ class GeminiService {
             body: jsonEncode({
               'prompt': prompt,
               'systemInstruction': systemInstruction,
+              'model': model,
               'temperature': temperature,
-              'model': 'gemini-3.8-flash',
             }),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 25));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data =
@@ -43,14 +41,18 @@ class GeminiService {
         String errorMsg = 'Falha HTTP ${response.statusCode}';
         try {
           final errorJson = jsonDecode(utf8.decode(response.bodyBytes));
-          if (errorJson is Map && errorJson.containsKey('error')) {
-            errorMsg = errorJson['error'].toString();
+          if (errorJson is Map) {
+            if (errorJson.containsKey('detail')) {
+              errorMsg = errorJson['detail'].toString();
+            } else if (errorJson.containsKey('error')) {
+              errorMsg = errorJson['error'].toString();
+            }
           }
         } catch (_) {}
         throw Exception(errorMsg);
       }
     } catch (e) {
-      throw Exception('Erro ao conectar ao Gemini Assistant: $e');
+      throw Exception('Erro ao conectar ao Gemini Assistant ($url): $e');
     }
   }
 }

@@ -24,6 +24,14 @@ app.add_middleware(
 # Include API v1 router
 app.include_router(api_router, prefix="/api/v1")
 
+from app.api.v1.endpoints.assistant import chat_with_assistant
+from app.schemas.assistant import AssistantChatRequest, AssistantChatResponse
+
+@app.post("/api/generate", response_model=AssistantChatResponse, tags=["Compatibility"])
+async def legacy_generate(request: AssistantChatRequest):
+    """Rota direta para compatibilidade com o gateway em nuvem"""
+    return await chat_with_assistant(request)
+
 
 @app.get("/health", tags=["Health"])
 async def health_check():

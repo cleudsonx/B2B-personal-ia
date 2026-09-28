@@ -1,0 +1,32 @@
+# Blueprint de Infraestrutura como Código (IaC) para Render.com
+# Conecta ao repositório GitHub cleudsonx/B2B-personal-ia
+services:
+  - type: web
+    name: b2b-personal-ia-backend
+    env: python
+    rootDir: backend
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    region: ohio
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEFAULT_FAST_MODEL
+        value: gemini-3.6-flash
+      - key: DEFAULT_DEEP_MODEL
+        value: gemini-3.6-flash
+      - key: AIS_GATEWAY_URL
+        value: https://ais-dev-3ey6ymjmlzt5sh4qusmboi-873261240850.us-east1.run.app
+      - key: GEMINI_API_KEY
+        sync: false # Preenchido no painel Render (Environment Variables)
+      - key: SUPABASE_URL
+        value: https://rgbyfiulomxpqkuufdtg.supabase.co
+      - key: SUPABASE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: CORS_ORIGINS
+        value: "*"

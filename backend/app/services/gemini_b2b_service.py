@@ -1,3 +1,6 @@
+# app/services/gemini_b2b_service.py
+# Serviço B2B com suporte ao endpoint seguro Cloud Run e modelo gemini-3.6-flash
+
 import os
 import requests
 from typing import List, Optional, Dict, Any
@@ -8,7 +11,33 @@ load_dotenv()
 BASE_URL = os.environ.get(
     "AIS_GATEWAY_URL",
     "https://ais-dev-3ey6ymjmlzt5sh4qusmboi-873261240850.us-east1.run.app"
-)
+).rstrip("/")
+
+
+def generate_content(
+    prompt: str,
+    system_instruction: Optional[str] = None,
+    model: str = "gemini-3.6-flash",
+    temperature: float = 0.7,
+    timeout: int = 30
+) -> Dict[str, Any]:
+    """
+    Executa chamada ao endpoint seguro Cloud Run /api/generate utilizando o modelo gemini-3.6-flash.
+    """
+    endpoint = f"{BASE_URL}/api/generate"
+    headers = {"Content-Type": "application/json"}
+    
+    payload = {
+        "prompt": prompt,
+        "model": model,
+        "temperature": temperature
+    }
+    if system_instruction:
+        payload["systemInstruction"] = system_instruction
+
+    res = requests.post(endpoint, json=payload, headers=headers, timeout=timeout)
+    res.raise_for_status()
+    return res.json()
 
 
 def prescribe_workout_for_student(
@@ -16,72 +45,48 @@ def prescribe_workout_for_student(
     goal: str,
     level: str,
     days: int,
-    restrictions: List[str]
+    restrictions: List[str],
+    model: str = "gemini-3.6-flash"
 ) -> Dict[str, Any]:
-    """
-    Gera periodização completa (Splits A, B, C) respeitando lesões articulares
-    através do gateway B2B hospedado.
-    """
-    endpoint = f"{BASE_URL}/api/b2b/prescribe-workout"
-    payload = {
-        "studentName": student_name,
-        "goal": goal,
-        "experienceLevel": level,
-        "daysPerWeek": days,
-        "restrictions": restrictions
-    }
-    res = requests.post(endpoint, json=payload, timeout=45)
-    res.raise_for_status()
-    data = res.json()
-    return data.get("workoutPlan", data)
+    """Gera periodização completa respeitando restrições articulares."""
+    system_instruction = (
+        "Você é um especialista em fisiologia do exercício e periodização para Personal Trainers B2B. "
+        "Responda estritamente em formato JSON com chaves: studentName, splits, summary."
+    )
+    prompt = (
+        f"Gere um programa de treinamento para o aluno {student_name}.\n"
+        f"Objetivo: {goal}\n"
+        f"Nível: {level}\n"
+        f"Frequência semanal: {days} dias\n"
+        f"Restrições: {', '.join(restrictions) if restrictions else 'Nenhuma'}"
+    )
+    return generate_content(
+        prompt=prompt,
+        system_instruction=system_instruction,
+        model=model,
+        temperature=0.4
+    )
 
 
 def adapt_exercise_in_gym(
     current_exercise: str,
     reason: str,
-    pain_location: Optional[str] = None
+    pain_location: Optional[str] = None,
+    model: str = "gemini-3.6-flash"
 ) -> Dict[str, Any]:
-    """
-    Botão de Emergência do Aluno: Aparelho ocupado ou Dor articular.
-    Substitui em tempo real o exercício no salão de musculação.
-    """
-    endpoint = f"{BASE_URL}/api/b2b/adapt-exercise"
-    payload = {
-        "currentExercise": current_exercise,
-        "reason": reason,  # "aparelho_ocupado" ou "dor_articular"
-        "painLocation": pain_location
-    }
-    res = requests.post(endpoint, json=payload, timeout=20)
-    res.raise_for_status()
-    data = res.json()
-    return data.get("adaptation", data)
-
-
-if __name__ == "__main__":
-    # Teste 1: Aluno com tendinite no ombro
-    print("--- 1. Gerando Treino Personalizado ---")
-    try:
-        treino = prescribe_workout_for_student(
-            student_name="Carlos Silva",
-            goal="Hipertrofia",
-            level="Intermediário",
-            days=4,
-            restrictions=[
-                "Tendinite no manguito rotador direito",
-                "Desconforto na lombar em agachamento livre"
-            ]
-        )
-        print("Treino gerado:", treino.get("summary", treino))
-    except Exception as e:
-        print(f"Nota de teste (Gateway em inicialização): {e}")
-
-    # Teste 2: Aluno no salão com Leg Press ocupado
-    print("\n--- 2. Botão de Emergência (Salão de Musculação) ---")
-    try:
-        substituicao = adapt_exercise_in_gym(
-            current_exercise="Leg Press 45",
-            reason="aparelho_ocupado"
-        )
-        print("Substituto sugerido:", substituicao.get("substitute", {}).get("name", substituicao))
-    except Exception as e:
-        print(f"Nota de teste (Gateway em inicialização): {e}")
+    """Botão de Emergência do Aluno no Salão: Aparelho ocupado ou Dor articular."""
+    system_instruction = (
+        "Você é o assistente biomecânico de salão de musculação. "
+        "Sugira uma substituição imediata que preserve o mesmo vetor motor."
+    )
+    prompt = (
+        f"Substituir exercício: {current_exercise}.\n"
+        f"Motivo: {reason}.\n"
+        f"Local de dor: {pain_location or 'Nenhum'}."
+    )
+    return generate_content(
+        prompt=prompt,
+        system_instruction=system_instruction,
+        model=model,
+        temperature=0.2
+    )

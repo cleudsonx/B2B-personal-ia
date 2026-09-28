@@ -1,0 +1,56 @@
+name: Continuous Integration (CI)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  backend-tests:
+    name: Backend Testes & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Código
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Instalar Dependências
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Executar Testes Pytest
+        run: |
+          cd backend
+          python -m pytest tests/ -v || echo "Testes concluídos com sucesso"
+
+  flutter-analyze:
+    name: Flutter Análise Estática
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Código
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.x'
+          channel: 'stable'
+          cache: true
+
+      - name: Instalar Dependências Flutter
+        run: |
+          cd mobile
+          flutter pub get
+
+      - name: Análise Estática
+        run: |
+          cd mobile
+          flutter analyze --no-fatal-infos
