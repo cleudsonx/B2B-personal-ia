@@ -3,12 +3,21 @@ from app.core.config import Settings
 
 def test_cors_origins_validator():
     # Wildcard string
-    assert Settings.assemble_cors_origins("*") == ["*"]
+    s1 = Settings(CORS_ORIGINS="*")
+    assert s1.cors_origins_list == ["*"]
+    
     # Empty string
-    assert Settings.assemble_cors_origins("") == ["*"]
+    s2 = Settings(CORS_ORIGINS="")
+    assert s2.cors_origins_list == ["*"]
+    
     # JSON array string
-    assert Settings.assemble_cors_origins('["https://app.com", "http://localhost:5000"]') == ["https://app.com", "http://localhost:5000"]
+    s3 = Settings(CORS_ORIGINS='["https://app.com", "http://localhost:5000"]')
+    assert s3.cors_origins_list == ["https://app.com", "http://localhost:5000"]
+    
     # Comma separated string
-    assert Settings.assemble_cors_origins("https://app.com, http://localhost:5000") == ["https://app.com", "http://localhost:5000"]
+    s4 = Settings(CORS_ORIGINS="https://app.com, http://localhost:5000")
+    assert s4.cors_origins_list == ["https://app.com", "http://localhost:5000"]
+    
     # Native list
-    assert Settings.assemble_cors_origins(["*"]) == ["*"]
+    s5 = Settings(CORS_ORIGINS=["*"])
+    assert s5.cors_origins_list == ["*"]

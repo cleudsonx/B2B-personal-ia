@@ -1,7 +1,6 @@
 import os
 import json
 from typing import List, Union
-from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,14 +20,16 @@ class Settings(BaseSettings):
     SUPABASE_KEY: str = ""
     SUPABASE_JWT_SECRET: str = ""
     
-    # CORS (compatível com strings simples "*", JSON '["*"]' ou listas separadas por vírgula)
-    CORS_ORIGINS: List[str] = ["*"]
+    # CORS (aceita string "*", JSON '["*"]' ou listas sem erro no EnvSettingsSource do Pydantic)
+    CORS_ORIGINS: Union[str, List[str]] = "*"
 
-    @field_validator("CORS_ORIGINS", mode="before")
-    @classmethod
-    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
-        if isinstance(v, str):
-            v_clean = v.strip()
+    @property
+    def cors_origins_list(self) -> List[str]:
+        val = self.CORS_ORIGINS
+        if isinstance(val, list):
+            return [str(item) for item in val]
+        if isinstance(val, str):
+            v_clean = val.strip()
             if not v_clean or v_clean == "*":
                 return ["*"]
             if v_clean.startswith("[") and v_clean.endswith("]"):
@@ -39,8 +40,6 @@ class Settings(BaseSettings):
                 except Exception:
                     pass
             return [i.strip() for i in v_clean.split(",") if i.strip()]
-        elif isinstance(v, list):
-            return [str(item) for item in v]
         return ["*"]
 
     model_config = SettingsConfigDict(
@@ -54,4 +53,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-

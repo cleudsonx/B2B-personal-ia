@@ -31,9 +31,12 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Notificar Deploy Hook (Opcional)
-        if: env.RENDER_DEPLOY_HOOK_URL != ''
-        env:
-          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+      - name: Notificar Deploy Hook Render (Opcional)
         run: |
-          curl -X POST "$RENDER_DEPLOY_HOOK_URL"
+          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+            echo "Disparando Deploy Hook no Render..."
+            curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+            echo "Deploy hook enviado com sucesso!"
+          else
+            echo "RENDER_DEPLOY_HOOK_URL não configurado nos Secrets. Deploy gerenciado nativamente pelo Render via GitHub App/AutoDeploy."
+          fi
