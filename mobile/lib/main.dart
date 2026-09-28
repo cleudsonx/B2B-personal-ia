@@ -9,11 +9,24 @@ import 'features/assistant/b2b_assistant_screen.dart';
 import 'features/subscription/subscription_screen.dart';
 import 'services/auth_service.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'core/config/app_config.dart';
 import 'core/theme/theme_controller.dart';
 import 'core/widgets/theme_toggle_button.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  try {
+    await Supabase.initialize(
+      url: AppConfig.supabaseUrl,
+      // ignore: deprecated_member_use
+      anonKey: AppConfig.supabaseAnonKey,
+    );
+  } catch (e) {
+    debugPrint('Supabase inicializado ou offline: $e');
+  }
+
   runApp(const B2BPersonalIaApp());
 }
 
