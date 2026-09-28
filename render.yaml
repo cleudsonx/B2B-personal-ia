@@ -24,8 +24,14 @@ services:
         sync: false # Preenchido no painel Render (Environment Variables)
       - key: SUPABASE_URL
         value: https://rgbyfiulomxpqkuufdtg.supabase.co
+      - key: SUPABASE_PUBLISHABLE_KEY
+        value: sb_publishable_GM85tixsI7l1WTU3jhEmoQ_s_pv_F6C
+      - key: SUPABASE_SECRET_KEY
+        sync: false
       - key: SUPABASE_KEY
         sync: false
+      - key: SUPABASE_JWKS_URL
+        value: https://rgbyfiulomxpqkuufdtg.supabase.co/auth/v1/.well-known/jwks.json
       - key: SUPABASE_JWT_SECRET
         sync: false
       - key: CORS_ORIGINS

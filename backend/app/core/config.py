@@ -16,9 +16,12 @@ class Settings(BaseSettings):
     AIS_GATEWAY_URL: str = "https://ais-dev-3ey6ymjmlzt5sh4qusmboi-873261240850.us-east1.run.app"
     
     # Supabase & Auth
-    SUPABASE_URL: str = ""
-    SUPABASE_KEY: str = ""
+    SUPABASE_URL: str = "https://rgbyfiulomxpqkuufdtg.supabase.co"
+    SUPABASE_PUBLISHABLE_KEY: str = "sb_publishable_GM85tixsI7l1WTU3jhEmoQ_s_pv_F6C"
+    SUPABASE_SECRET_KEY: str = "" # Injetado via .env / Environment Variables
+    SUPABASE_KEY: str = ""        # Alias retrocompatível
     SUPABASE_JWT_SECRET: str = ""
+    SUPABASE_JWKS_URL: str = "https://rgbyfiulomxpqkuufdtg.supabase.co/auth/v1/.well-known/jwks.json"
     
     # CORS (aceita string "*", JSON '["*"]' ou listas sem erro no EnvSettingsSource do Pydantic)
     CORS_ORIGINS: Union[str, List[str]] = "*"
