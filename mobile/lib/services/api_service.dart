@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../core/config/app_config.dart';
 import '../models/workout_plan_model.dart';
 import '../models/adaptation_model.dart';
+import 'auth_service.dart';
 
 class ApiService {
   final String baseUrl;
@@ -19,8 +20,11 @@ class ApiService {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
-    if (token != null && token.isNotEmpty) {
-      headers['Authorization'] = 'Bearer $token';
+    final activeToken = (token != null && token.isNotEmpty)
+        ? token
+        : AuthService.accessToken;
+    if (activeToken != null && activeToken.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $activeToken';
     }
     return headers;
   }

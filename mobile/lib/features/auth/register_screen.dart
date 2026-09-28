@@ -76,11 +76,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             backgroundColor: Colors.red.shade800,
             content: Text(e.toString().replaceAll('Exception: ', '')),
             duration: const Duration(seconds: 5),
-            action: SnackBarAction(
-              label: 'Usar Modo Demo',
-              textColor: Colors.yellow,
-              onPressed: () => _navigateToApp(fullName.isEmpty ? 'Novo Usuário' : fullName, _role),
-            ),
           ),
         );
       }

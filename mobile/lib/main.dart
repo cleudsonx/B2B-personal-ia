@@ -60,7 +60,7 @@ class MainShellScreen extends StatefulWidget {
     super.key,
     this.initialIndex = 0,
     this.activeRole = 'trainer',
-    this.userName = 'Carlos Personal (Demo)',
+    this.userName = 'Personal Trainer',
   });
 
   @override
@@ -129,7 +129,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         _NavDestinationItem(
           icon: Icons.fitness_center_outlined,
           activeIcon: Icons.fitness_center_rounded,
-          label: 'Simular Salão',
+          label: 'Salão de Treino',
           activeColor: AppColors.studentCyan,
         ),
       ];

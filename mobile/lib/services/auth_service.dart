@@ -11,7 +11,7 @@ class AuthService {
 
   static SupabaseClient get _client {
     final c = _clientOrNull;
-    if (c == null) throw Exception('Supabase não configurado ou offline. Use o Modo Demonstração.');
+    if (c == null) throw Exception('Serviço de autenticação temporariamente indisponível.');
     return c;
   }
 
@@ -103,6 +103,8 @@ class AuthService {
     final str = error.toString().toLowerCase();
     if (str.contains('invalid login credentials')) {
       return 'E-mail ou senha incorretos.';
+    } else if (str.contains('email not confirmed')) {
+      return 'E-mail não confirmado. Verifique a confirmação na sua caixa de entrada.';
     } else if (str.contains('email already in use') || str.contains('user already registered')) {
       return 'Este e-mail já está cadastrado.';
     } else if (str.contains('password should be at least')) {

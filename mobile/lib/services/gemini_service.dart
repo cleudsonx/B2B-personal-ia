@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../core/config/app_config.dart';
+import 'auth_service.dart';
 
 /// Serviço para comunicação com o Assistente de Inteligência Artificial B2B
 /// Roteado pelo backend FastAPI oficial que utiliza o modelo Gemini 3.8 Flash
@@ -17,13 +18,19 @@ class GeminiService {
     final url = customGatewayUrl ?? AppConfig.assistantChatUrl;
 
     try {
+      final headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+      final token = AuthService.accessToken;
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
       final response = await http
           .post(
             Uri.parse(url),
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
+            headers: headers,
             body: jsonEncode({
               'prompt': prompt,
               'systemInstruction': systemInstruction,

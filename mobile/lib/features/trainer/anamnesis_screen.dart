@@ -324,7 +324,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               backgroundColor: AppColors.trainerEmerald,
-              content: Text('Modo Demonstração: Ficha aprovada com sucesso!'),
+              content: Text('Ficha aprovada com sucesso!'),
             ),
           );
         }
