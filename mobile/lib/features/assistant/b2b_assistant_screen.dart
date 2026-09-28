@@ -116,9 +116,11 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
     final accentColor = widget.isStudentView ? AppColors.studentCyan : AppColors.trainerIndigo;
 
     return Scaffold(
-      backgroundColor: AppColors.studentBg,
+      backgroundColor: AppColors.bg(context),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF070B12),
+        backgroundColor: AppColors.card(context),
+        elevation: 0,
+        scrolledUnderElevation: 0,
         title: Row(
           children: [
             Container(
@@ -163,7 +165,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppColors.studentSurface,
+                        color: AppColors.card(context),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: accentColor.withValues(alpha: 0.3)),
                         boxShadow: [
@@ -198,8 +200,8 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                                   widget.isStudentView
                                       ? 'Biomecânica & Raio-X Anatômico'
                                       : 'Inteligência Estratégica B2B',
-                                  style: const TextStyle(
-                                    color: AppColors.textPrimary,
+                                  style: TextStyle(
+                                    color: AppColors.text(context),
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -209,7 +211,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                                   widget.isStudentView
                                       ? 'Peça demonstrações de movimentos, ângulos seguros e cadência das fases.'
                                       : 'Pergunte sobre precificação, retenção de alunos e estratégias comerciais.',
-                                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                  style: TextStyle(color: AppColors.subtext(context), fontSize: 12),
                                 ),
                               ],
                             ),
@@ -221,10 +223,10 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
 
                     Text(
                       widget.isStudentView ? 'Dúvidas Frequentes no Salão:' : 'Sugestões de Perguntas B2B:',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+                        color: AppColors.text(context),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -235,9 +237,9 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                       children: _quickPrompts.map((prompt) {
                         final isBiomechanicsPrompt = prompt.contains('Raio-X') || prompt.contains('executar');
                         return ActionChip(
-                          backgroundColor: AppColors.studentSurface,
+                          backgroundColor: AppColors.card(context),
                           side: BorderSide(
-                            color: isBiomechanicsPrompt ? accentColor.withValues(alpha: 0.4) : AppColors.studentBorder,
+                            color: isBiomechanicsPrompt ? accentColor.withValues(alpha: 0.4) : AppColors.cardBorder(context),
                           ),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           avatar: Icon(
@@ -249,7 +251,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                             prompt,
                             style: TextStyle(
                               fontSize: 12,
-                              color: isBiomechanicsPrompt ? AppColors.textPrimary : AppColors.textSecondary,
+                              color: isBiomechanicsPrompt ? AppColors.text(context) : AppColors.subtext(context),
                               fontWeight: isBiomechanicsPrompt ? FontWeight.w600 : FontWeight.normal,
                             ),
                           ),
@@ -281,14 +283,14 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                             ? accentColor.withValues(alpha: 0.18)
                             : msg.isError
                                 ? Colors.red.shade900.withValues(alpha: 0.2)
-                                : AppColors.studentSurface,
+                                : AppColors.card(context),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                           color: msg.isUser
                               ? accentColor.withValues(alpha: 0.4)
                               : msg.isError
                                   ? Colors.red.shade700
-                                  : AppColors.studentBorder,
+                                  : AppColors.cardBorder(context),
                         ),
                       ),
                       child: Column(
@@ -298,7 +300,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                             msg.text,
                             style: TextStyle(
                               fontSize: 13,
-                              color: msg.isError ? Colors.red.shade200 : AppColors.textPrimary,
+                              color: msg.isError ? Colors.red.shade200 : AppColors.text(context),
                               height: 1.4,
                             ),
                           ),
@@ -407,30 +409,30 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
           SafeArea(
             child: Container(
               padding: const EdgeInsets.all(12),
-              decoration: const BoxDecoration(
-                color: Color(0xFF070B12),
-                border: Border(top: BorderSide(color: Color(0xFF161E2E))),
+              decoration: BoxDecoration(
+                color: AppColors.card(context),
+                border: Border(top: BorderSide(color: AppColors.cardBorder(context))),
               ),
               child: Row(
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _promptCtrl,
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                      style: TextStyle(color: AppColors.text(context), fontSize: 13),
                       decoration: InputDecoration(
                         hintText: widget.isStudentView
                             ? 'Dúvida de execução, ângulo ou dor...'
                             : 'Digite sua dúvida de negócio...',
-                        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                        hintStyle: TextStyle(color: AppColors.subtext(context), fontSize: 13),
                         filled: true,
-                        fillColor: AppColors.studentSurface,
+                        fillColor: AppColors.pillBg(context),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
-                          borderSide: const BorderSide(color: AppColors.studentBorder),
+                          borderSide: BorderSide(color: AppColors.pillBorder(context)),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
-                          borderSide: const BorderSide(color: AppColors.studentBorder),
+                          borderSide: BorderSide(color: AppColors.pillBorder(context)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
