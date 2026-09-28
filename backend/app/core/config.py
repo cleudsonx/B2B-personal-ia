@@ -1,18 +1,19 @@
 import os
+import json
 from typing import List, Union
-from pydantic import AnyHttpUrl, field_validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "B2B Personal IA Backend"
-    ENVIRONMENT: str = "development"
+    ENVIRONMENT: str = "production"
     PORT: int = 8000
     
-    # Gemini API Models (3.8 Flash é o modelo oficial ativo com cota no Google AI Studio)
+    # Gemini API Models (gemini-3.6-flash é o modelo oficial ativo)
     GEMINI_API_KEY: str = ""
-    DEFAULT_FAST_MODEL: str = "gemini-3.5-flash-lite"
-    DEFAULT_DEEP_MODEL: str = "gemini-3.8-flash"
+    DEFAULT_FAST_MODEL: str = "gemini-3.6-flash"
+    DEFAULT_DEEP_MODEL: str = "gemini-3.6-flash"
     AIS_GATEWAY_URL: str = "https://ais-dev-3ey6ymjmlzt5sh4qusmboi-873261240850.us-east1.run.app"
     
     # Supabase & Auth
@@ -20,8 +21,27 @@ class Settings(BaseSettings):
     SUPABASE_KEY: str = ""
     SUPABASE_JWT_SECRET: str = ""
     
-    # CORS
+    # CORS (compatível com strings simples "*", JSON '["*"]' ou listas separadas por vírgula)
     CORS_ORIGINS: List[str] = ["*"]
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+        if isinstance(v, str):
+            v_clean = v.strip()
+            if not v_clean or v_clean == "*":
+                return ["*"]
+            if v_clean.startswith("[") and v_clean.endswith("]"):
+                try:
+                    parsed = json.loads(v_clean)
+                    if isinstance(parsed, list):
+                        return [str(item) for item in parsed]
+                except Exception:
+                    pass
+            return [i.strip() for i in v_clean.split(",") if i.strip()]
+        elif isinstance(v, list):
+            return [str(item) for item in v]
+        return ["*"]
 
     model_config = SettingsConfigDict(
         env_file=[
