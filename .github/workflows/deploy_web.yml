@@ -43,7 +43,7 @@ jobs:
       - name: Build Flutter Web Release
         run: |
           cd mobile
-          flutter build web --release --base-href "/B2B-personal-ia/"
+          flutter build web --release --base-href "/B2B-personal-ia/" --dart-define=API_BASE_URL="https://b2b-personal-ia-backend.onrender.com/api/v1"
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
