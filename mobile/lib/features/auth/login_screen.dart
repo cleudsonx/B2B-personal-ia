@@ -28,15 +28,10 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _selectedRole = widget.initialRole;
-    if (kDebugMode) {
-      _emailCtrl = TextEditingController(
-        text: _selectedRole == 'trainer' ? 'treinador@demo.com' : 'aluno@demo.com',
-      );
-      _passwordCtrl = TextEditingController(text: '123456');
-    } else {
-      _emailCtrl = TextEditingController();
-      _passwordCtrl = TextEditingController();
-    }
+    _emailCtrl = TextEditingController(
+      text: _selectedRole == 'trainer' ? 'treinador@demo.com' : 'aluno@demo.com',
+    );
+    _passwordCtrl = TextEditingController(text: 'Password123!');
   }
 
   @override
@@ -50,13 +45,12 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_selectedRole == newRole) return;
     setState(() {
       _selectedRole = newRole;
-      if (kDebugMode) {
-        if (newRole == 'trainer') {
-          _emailCtrl.text = 'treinador@demo.com';
-        } else {
-          _emailCtrl.text = 'aluno@demo.com';
-        }
+      if (newRole == 'trainer') {
+        _emailCtrl.text = 'treinador@demo.com';
+      } else {
+        _emailCtrl.text = 'aluno@demo.com';
       }
+      _passwordCtrl.text = 'Password123!';
     });
   }
 
@@ -430,62 +424,60 @@ class _LoginScreenState extends State<LoginScreen> {
                               style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
                             ),
                     ),
-                    // Quick 1-Click Demo Buttons (Only displayed in Debug / Development Mode)
-                    if (kDebugMode) ...[
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          const Expanded(child: Divider(color: AppColors.studentBorder)),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                            child: Text(
-                              'OU TESTE EM 1 CLIQUE (MODO DEV)',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.8,
-                                color: AppColors.textMuted.withValues(alpha: 0.8),
-                              ),
+                    // Quick 1-Click Evaluation / Demo Buttons
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        const Expanded(child: Divider(color: AppColors.studentBorder)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: Text(
+                            'OU ACESSE EM 1 CLIQUE (MODO TESTE)',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.8,
+                              color: AppColors.textMuted.withValues(alpha: 0.8),
                             ),
                           ),
-                          const Expanded(child: Divider(color: AppColors.studentBorder)),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              icon: const Icon(Icons.bolt_rounded, size: 16, color: AppColors.trainerEmerald),
-                              label: const Text('Entrar Treinador'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.trainerEmerald,
-                                side: BorderSide(color: AppColors.trainerEmerald.withValues(alpha: 0.6)),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                              ),
-                              onPressed: () => _enterDemoMode('trainer'),
+                        ),
+                        const Expanded(child: Divider(color: AppColors.studentBorder)),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.bolt_rounded, size: 16, color: AppColors.trainerEmerald),
+                            label: const Text('Entrar Treinador'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.trainerEmerald,
+                              side: BorderSide(color: AppColors.trainerEmerald.withValues(alpha: 0.6)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                             ),
+                            onPressed: () => _enterDemoMode('trainer'),
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              icon: const Icon(Icons.bolt_rounded, size: 16, color: AppColors.studentCyan),
-                              label: const Text('Entrar Aluno'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.studentCyan,
-                                side: BorderSide(color: AppColors.studentCyan.withValues(alpha: 0.6)),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                              ),
-                              onPressed: () => _enterDemoMode('client'),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.bolt_rounded, size: 16, color: AppColors.studentCyan),
+                            label: const Text('Entrar Aluno'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.studentCyan,
+                              side: BorderSide(color: AppColors.studentCyan.withValues(alpha: 0.6)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                             ),
+                            onPressed: () => _enterDemoMode('client'),
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 24),
 
                     // Register Link
