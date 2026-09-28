@@ -205,15 +205,15 @@ class _MainShellScreenState extends State<MainShellScreen> {
     if (isWideScreen) {
       // Desktop / Web Layout with Left Sidebar
       return Scaffold(
-        backgroundColor: AppColors.studentBg,
+        backgroundColor: AppColors.bg(context),
         body: Row(
           children: [
             // Left Sidebar
             Container(
               width: 250,
-              decoration: const BoxDecoration(
-                color: Color(0xFF070B12),
-                border: Border(right: BorderSide(color: Color(0xFF161E2E), width: 1)),
+              decoration: BoxDecoration(
+                color: AppColors.card(context),
+                border: Border(right: BorderSide(color: AppColors.cardBorder(context), width: 1)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -246,13 +246,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'B2B PERSONAL IA',
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 1.0,
-                                color: AppColors.textPrimary,
+                                color: AppColors.text(context),
                               ),
                             ),
                             Text(
@@ -270,7 +270,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  const Divider(color: Color(0xFF161E2E), height: 1),
+                  Divider(color: AppColors.cardBorder(context), height: 1),
                   const SizedBox(height: 12),
 
                   // Navigation Links
@@ -314,7 +314,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                        color: isSelected ? item.activeColor : AppColors.textSecondary,
+                                        color: isSelected ? item.activeColor : AppColors.subtext(context),
                                       ),
                                     ),
                                   ),
@@ -343,8 +343,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   ),
 
                   // Theme Toggle Pill in Sidebar
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -354,10 +354,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.8,
-                            color: AppColors.textMuted,
+                            color: AppColors.subtext(context),
                           ),
                         ),
-                        ThemeToggleButton(),
+                        const ThemeToggleButton(),
                       ],
                     ),
                   ),
@@ -367,9 +367,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     padding: const EdgeInsets.all(12),
                     margin: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0F172A),
+                      color: AppColors.pillBg(context),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFF1E293B)),
+                      border: Border.all(color: AppColors.pillBorder(context)),
                     ),
                     child: Row(
                       children: [
@@ -392,8 +392,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
                             children: [
                               Text(
                                 widget.userName,
-                                style: const TextStyle(
-                                  color: AppColors.textPrimary,
+                                style: TextStyle(
+                                  color: AppColors.text(context),
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -411,7 +411,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.logout_rounded, size: 18, color: AppColors.textMuted),
+                          icon: Icon(Icons.logout_rounded, size: 18, color: AppColors.subtext(context)),
                           tooltip: 'Sair / Trocar Perfil',
                           onPressed: _logout,
                         ),
@@ -445,9 +445,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 left: 14,
                 right: 14,
               ),
-              decoration: const BoxDecoration(
-                color: Color(0xFF070B12),
-                border: Border(bottom: BorderSide(color: Color(0xFF161E2E))),
+              decoration: BoxDecoration(
+                color: AppColors.card(context),
+                border: Border(bottom: BorderSide(color: AppColors.cardBorder(context))),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -484,8 +484,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
                       const SizedBox(width: 8),
                       Text(
                         widget.userName,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
+                        style: TextStyle(
+                          color: AppColors.text(context),
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
@@ -503,8 +503,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           visualDensity: VisualDensity.compact,
                         ),
-                        icon: const Icon(Icons.logout_rounded, size: 14, color: AppColors.textMuted),
-                        label: const Text('Sair', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                        icon: Icon(Icons.logout_rounded, size: 14, color: AppColors.subtext(context)),
+                        label: Text('Sair', style: TextStyle(color: AppColors.subtext(context), fontSize: 11)),
                         onPressed: _logout,
                       ),
                     ],
@@ -522,9 +522,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
           ],
         ),
         bottomNavigationBar: Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF070B12),
-            border: Border(top: BorderSide(color: Color(0xFF161E2E), width: 1)),
+          decoration: BoxDecoration(
+            color: AppColors.card(context),
+            border: Border(top: BorderSide(color: AppColors.cardBorder(context), width: 1)),
           ),
           child: SafeArea(
             child: Padding(
@@ -597,7 +597,7 @@ class _NavBarItem extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: isSelected ? activeColor : AppColors.textMuted,
+              color: isSelected ? activeColor : AppColors.subtext(context),
               size: 20,
             ),
             const SizedBox(height: 3),
@@ -606,7 +606,7 @@ class _NavBarItem extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                color: isSelected ? activeColor : AppColors.textMuted,
+                color: isSelected ? activeColor : AppColors.subtext(context),
               ),
             ),
           ],
