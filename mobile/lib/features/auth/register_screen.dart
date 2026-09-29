@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../../main.dart';
+import '../client/welcome_onboarding_screen.dart';
 import 'login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -88,11 +89,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
-        builder: (_) => MainShellScreen(
-          initialIndex: role == 'trainer' ? 1 : 0,
-          activeRole: role,
-          userName: name,
-        ),
+        builder: (_) => role == 'client'
+            ? WelcomeOnboardingScreen(studentName: name)
+            : MainShellScreen(
+                initialIndex: 1,
+                activeRole: role,
+                userName: name,
+              ),
       ),
       (route) => false,
     );

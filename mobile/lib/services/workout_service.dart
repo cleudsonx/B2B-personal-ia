@@ -443,5 +443,58 @@ class WorkoutService {
     }
     return true;
   }
+
+  /// Persiste a anamnese detalhada preenchida pelo próprio aluno
+  static Future<bool> saveClientAnamnesis({
+    required String clientId,
+    required Map<String, dynamic> data,
+  }) async {
+    // 1. Atualiza cache de alunos localmente para refletir imediatamente
+    final index = _localStudentsCache.indexWhere((s) => s['id'] == clientId);
+    if (index != -1) {
+      _localStudentsCache[index]['objective'] = data['objective'];
+      _localStudentsCache[index]['injuries_or_restrictions'] = data['injuries_summary'];
+      _localStudentsCache[index]['status'] = 'Ativo';
+    }
+
+    // 2. Persiste na tabela client_anamnesis e profiles no Supabase
+    if (_clientOrNull != null) {
+      try {
+        await _client.from('client_anamnesis').upsert(data);
+      } catch (e) {
+        debugPrint('Aviso Supabase saveClientAnamnesis: $e');
+      }
+
+      try {
+        await _client.from('profiles').update({
+          'objective': data['objective'],
+          'injuries_or_restrictions': data['injuries_summary'],
+          'status': 'Ativo',
+          'has_completed_anamnesis': true,
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', clientId);
+      } catch (e) {
+        debugPrint('Aviso Supabase update profile anamnesis: $e');
+      }
+    }
+
+    // 3. Atualiza no Backend FastAPI
+    try {
+      final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/students/$clientId');
+      await http.put(
+        uri,
+        headers: _apiHeaders,
+        body: jsonEncode({
+          'objective': data['objective'],
+          'injuries_or_restrictions': data['injuries_summary'],
+          'status': 'Ativo',
+        }),
+      ).timeout(const Duration(seconds: 4));
+    } catch (e) {
+      debugPrint('Aviso backend saveClientAnamnesis: $e');
+    }
+
+    return true;
+  }
 }
 

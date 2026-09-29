@@ -111,5 +111,46 @@ class WhatsAppService:
         )
         return await self.send_text_message(trainer_phone, message)
 
+    async def send_welcome_and_onboarding_confirmation(
+        self,
+        student_phone: str,
+        student_name: str,
+        trainer_name: str,
+        objective: str,
+        weekly_days: int = 4,
+    ) -> Dict[str, Any]:
+        """
+        Envia mensagem de boas-vindas e confirmação de anamnese para o aluno no WhatsApp.
+        """
+        message = (
+            f"Bem-vindo(a) ao *Mr. Coach*, {student_name}! 🏅\n\n"
+            f"Sua avaliação biomecânica foi enviada com sucesso para o *Prof. {trainer_name}*.\n"
+            f"• *Objetivo Central:* {objective}\n"
+            f"• *Frequência Planejada:* {weekly_days} dias por semana\n\n"
+            f"Seu treinador já está estruturando sua periodização com diretrizes de proteção articular e máxima eficiência de estímulo muscular.\n"
+            f"Assim que o treino estiver liberado, você poderá acompanhar cada repetição e o mapa muscular 3D no app."
+        )
+        return await self.send_text_message(student_phone, message)
+
+    async def send_anamnesis_completed_to_trainer(
+        self,
+        trainer_phone: str,
+        trainer_name: str,
+        student_name: str,
+        objective: str,
+        injuries_summary: str,
+    ) -> Dict[str, Any]:
+        """
+        Notifica o treinador que um novo aluno completou a anamnese clínica.
+        """
+        message = (
+            f"📋 *[NOVA ANAMNESE CONCLUÍDA - MR. COACH]*\n\n"
+            f"Prof. {trainer_name}, seu aluno *{student_name}* concluiu a avaliação clínica!\n"
+            f"• *Objetivo:* {objective}\n"
+            f"• *Restrições/Articulações:* {injuries_summary}\n\n"
+            f"Acesse o painel do Mr. Coach para gerar ou aprovar a periodização personalizada deste aluno."
+        )
+        return await self.send_text_message(trainer_phone, message)
+
 
 whatsapp_service = WhatsAppService()

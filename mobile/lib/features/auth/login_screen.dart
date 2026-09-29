@@ -4,6 +4,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/server_config_dialog.dart';
 import '../../services/auth_service.dart';
 import '../../main.dart';
+import '../client/welcome_onboarding_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -63,11 +64,22 @@ class _LoginScreenState extends State<LoginScreen> {
               ? user!.userMetadata!['full_name'] as String
               : (_selectedRole == 'trainer' ? 'Personal Trainer' : 'Aluno no Salão');
 
+      final hasCompletedAnamnesis = profile?['has_completed_anamnesis'] == true;
+
       if (mounted) {
-        _navigateToDashboard(
-          role: _selectedRole,
-          name: userName,
-        );
+        if (_selectedRole == 'client' && !hasCompletedAnamnesis) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => WelcomeOnboardingScreen(studentName: userName),
+            ),
+          );
+        } else {
+          _navigateToDashboard(
+            role: _selectedRole,
+            name: userName,
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
