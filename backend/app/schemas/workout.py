@@ -53,7 +53,21 @@ class StudentCreateRequest(BaseModel):
     email: str = Field(..., description="E-mail válido do aluno para confirmação e acesso")
     phone: Optional[str] = Field(None, description="WhatsApp ou telefone")
     goal: str = Field("Hipertrofia Muscular", description="Objetivo principal do aluno")
+    injuries_or_restrictions: Optional[str] = Field(None, description="Histórico ou restrições articulares/lesões")
     trainer_id: Optional[str] = Field(None, description="ID do personal trainer vinculado")
+
+
+class StudentUpdateRequest(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    goal: Optional[str] = None
+    injuries_or_restrictions: Optional[str] = None
+    status: Optional[str] = None
+
+
+class StudentStatusUpdateRequest(BaseModel):
+    status: str = Field(..., description="'Ativo', 'Pendente Confirmação', 'Arquivado'")
 
 
 class StudentResponse(BaseModel):
@@ -62,7 +76,40 @@ class StudentResponse(BaseModel):
     email: str
     phone: Optional[str] = None
     goal: str
-    status: str = Field("Pendente Confirmação", description="'Ativo', 'Pendente Confirmação', 'Inativo'")
+    status: str = Field("Pendente Confirmação", description="'Ativo', 'Pendente Confirmação', 'Arquivado'")
     trainer_id: str
     created_at: str
     has_active_prescription: bool = False
+    last_session: Optional[str] = None
+    active_split: Optional[str] = None
+    injuries_or_restrictions: Optional[str] = None
+
+
+class BiomechanicalAlertCreate(BaseModel):
+    student_id: str
+    student_name: str
+    trainer_id: Optional[str] = None
+    original_exercise: str
+    adapted_exercise: str
+    reason: str
+    pain_location: Optional[str] = None
+    severity: str = "Moderada"
+    workout_id: Optional[str] = None
+    details: Optional[dict] = None
+
+
+class BiomechanicalAlertResponse(BaseModel):
+    id: str
+    student_id: str
+    student_name: str
+    trainer_id: str
+    original_exercise: str
+    adapted_exercise: str
+    reason: str
+    pain_location: Optional[str] = None
+    severity: str = "Moderada"
+    status: str = "active"
+    acknowledged: bool = False
+    created_at: str
+    message: str
+

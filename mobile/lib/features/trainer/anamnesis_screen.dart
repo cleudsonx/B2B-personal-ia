@@ -6,7 +6,6 @@ import '../../core/widgets/server_config_dialog.dart';
 import '../../core/widgets/theme_toggle_button.dart';
 import '../../models/workout_plan_model.dart';
 import '../../services/api_service.dart';
-import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
 
 class TrainerAnamnesisScreen extends StatefulWidget {
@@ -43,14 +42,11 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
   WorkoutPlanModel? _generatedPlan;
 
   List<Map<String, dynamic>> _students = [];
-  String? _selectedStudentId;
+  final Set<String> _selectedStudentIds = {};
 
   @override
   void initState() {
     super.initState();
-    if (widget.initialStudentId != null) {
-      _selectedStudentId = widget.initialStudentId;
-    }
     _loadStudents();
   }
 
@@ -59,10 +55,26 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
     if (mounted) {
       setState(() {
         _students = list;
-        if (widget.initialStudentId != null && list.any((s) => s['id'] == widget.initialStudentId)) {
-          _selectedStudentId = widget.initialStudentId;
-        } else if (list.isNotEmpty && _selectedStudentId == null) {
-          _selectedStudentId = list.first['id'] as String;
+        if (widget.initialStudentId != null) {
+          _selectedStudentIds.add(widget.initialStudentId!);
+          final found = list.firstWhere(
+            (s) => s['id'] == widget.initialStudentId,
+            orElse: () => {},
+          );
+          if (found.isNotEmpty) {
+            if (found['injuries_or_restrictions'] != null &&
+                (found['injuries_or_restrictions'] as String).isNotEmpty) {
+              _restrictionsCtrl.text = found['injuries_or_restrictions'];
+            }
+            if (found['objective'] != null) {
+              final obj = found['objective'] as String;
+              if (['Hipertrofia Muscular', 'Emagrecimento', 'Condicionamento Geral', 'Força Máxima'].contains(obj)) {
+                _objective = obj;
+              }
+            }
+          }
+        } else if (list.isNotEmpty && _selectedStudentIds.isEmpty) {
+          _selectedStudentIds.add(list.first['id'] as String);
         }
       });
     }
@@ -229,18 +241,151 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           ),
           const SizedBox(height: 20),
           if (_students.isNotEmpty) ...[
-            DropdownButtonFormField<String>(
-              initialValue: _selectedStudentId,
-              dropdownColor: AppColors.card(context),
-              style: TextStyle(color: AppColors.text(context)),
-              decoration: _inputDecoration(context, 'Aluno da Consultoria', prefixIcon: Icons.person_outline),
-              items: _students.map((st) {
-                return DropdownMenuItem<String>(
-                  value: st['id'] as String,
-                  child: Text(st['full_name'] as String? ?? 'Aluno'),
-                );
-              }).toList(),
-              onChanged: (val) => setState(() => _selectedStudentId = val),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.card(context),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: _selectedStudentIds.isEmpty ? Colors.amber.shade700 : AppColors.cardBorder(context),
+                  width: _selectedStudentIds.isEmpty ? 1.5 : 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.group_outlined, size: 18, color: AppColors.emerald(context)),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Alunos Destinatários (${_selectedStudentIds.length}/${_students.length})',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.text(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        icon: Icon(
+                          _selectedStudentIds.length == _students.length
+                              ? Icons.check_box_rounded
+                              : Icons.select_all_rounded,
+                          size: 16,
+                          color: AppColors.emerald(context),
+                        ),
+                        label: Text(
+                          _selectedStudentIds.length == _students.length ? 'Desmarcar Todos' : 'Selecionar Todos',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.emerald(context),
+                          ),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            if (_selectedStudentIds.length == _students.length) {
+                              _selectedStudentIds.clear();
+                            } else {
+                              _selectedStudentIds.clear();
+                              _selectedStudentIds.addAll(_students.map((s) => s['id'] as String));
+                            }
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _students.map((st) {
+                      final id = st['id'] as String;
+                      final name = st['full_name'] as String? ?? 'Aluno';
+                      final isSelected = _selectedStudentIds.contains(id);
+                      final hasAlert = st['has_alert'] == true;
+
+                      return FilterChip(
+                        selected: isSelected,
+                        showCheckmark: true,
+                        checkmarkColor: isSelected ? Colors.black : null,
+                        avatar: CircleAvatar(
+                          radius: 10,
+                          backgroundColor: isSelected ? Colors.black26 : AppColors.cardBorder(context),
+                          child: Text(
+                            name.isNotEmpty ? name[0].toUpperCase() : 'A',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? Colors.black : AppColors.text(context),
+                            ),
+                          ),
+                        ),
+                        label: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              name,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                                color: isSelected ? Colors.black : AppColors.text(context),
+                              ),
+                            ),
+                            if (hasAlert) ...[
+                              const SizedBox(width: 4),
+                              Icon(Icons.warning_amber_rounded, size: 14, color: isSelected ? Colors.black : Colors.amber),
+                            ],
+                          ],
+                        ),
+                        backgroundColor: AppColors.pillBg(context),
+                        selectedColor: AppColors.emerald(context),
+                        side: BorderSide(
+                          color: isSelected
+                              ? AppColors.emerald(context)
+                              : (hasAlert ? Colors.amber.shade600 : AppColors.cardBorder(context)),
+                        ),
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedStudentIds.add(id);
+                              // Auto-preenche campos se for o primeiro aluno selecionado
+                              if (st['injuries_or_restrictions'] != null &&
+                                  (st['injuries_or_restrictions'] as String).isNotEmpty) {
+                                _restrictionsCtrl.text = st['injuries_or_restrictions'];
+                              }
+                              if (st['objective'] != null) {
+                                final obj = st['objective'] as String;
+                                if (['Hipertrofia Muscular', 'Emagrecimento', 'Condicionamento Geral', 'Força Máxima'].contains(obj)) {
+                                  _objective = obj;
+                                }
+                              }
+                            } else {
+                              _selectedStudentIds.remove(id);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  if (_selectedStudentIds.isEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Atenção: Selecione ao menos 1 aluno para liberar esta ficha.',
+                      style: TextStyle(fontSize: 11, color: Colors.amber.shade700, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ],
+              ),
             ),
             const SizedBox(height: 16),
           ],
@@ -331,33 +476,40 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
 
   Future<void> _handleApprovePlan() async {
     if (_generatedPlan == null) return;
+    if (_selectedStudentIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Colors.orange,
+          content: Text('Selecione ao menos um aluno para vincular a esta periodização.'),
+        ),
+      );
+      return;
+    }
+
     setState(() => _isSavingPlan = true);
 
     try {
-      final user = AuthService.currentUser;
-      if (user != null) {
-        final targetClientId = _selectedStudentId ?? user.id;
+      int successCount = 0;
+
+      for (final studentId in _selectedStudentIds) {
         await WorkoutService.saveWorkoutPlan(
           plan: _generatedPlan!,
-          clientId: targetClientId,
+          clientId: studentId,
         );
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              backgroundColor: Colors.green,
-              content: Text('Ficha salva no Supabase e liberada para o aluno!'),
+        successCount++;
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.green.shade800,
+            content: Text(
+              successCount == 1
+                  ? '✓ Ficha salva no Supabase e liberada para o aluno!'
+                  : '✓ Ficha salva no Supabase e liberada para $successCount alunos com sucesso!',
             ),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              backgroundColor: AppColors.trainerEmerald,
-              content: Text('Ficha aprovada com sucesso!'),
-            ),
-          );
-        }
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -546,7 +698,11 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                       )
                     : const Icon(Icons.check_circle_outline, color: Colors.black),
                 label: Text(
-                  _isSavingPlan ? 'Gravando no Supabase...' : 'Aprovar e Liberar para o Aluno',
+                  _isSavingPlan
+                      ? 'Gravando no Supabase...'
+                      : (_selectedStudentIds.length > 1
+                          ? 'Aprovar e Liberar para ${_selectedStudentIds.length} Alunos'
+                          : 'Aprovar e Liberar para o Aluno'),
                   style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
                 ),
                 style: ElevatedButton.styleFrom(

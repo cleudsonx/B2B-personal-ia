@@ -138,7 +138,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
             ),
             const SizedBox(width: 10),
             Text(
-              widget.isStudentView ? 'Assistente Biomecânico' : 'Assistente B2B do Personal',
+              widget.isStudentView ? 'Mr. Coach AI • Biomecânica' : 'Mr. Coach AI • Consultoria & Treino',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
           ],

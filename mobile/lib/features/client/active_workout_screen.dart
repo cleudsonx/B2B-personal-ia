@@ -8,6 +8,7 @@ import '../../core/widgets/theme_toggle_button.dart';
 import '../../models/exercise_model.dart';
 import '../../models/adaptation_model.dart';
 import '../../services/api_service.dart';
+import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
 
 class ActiveWorkoutScreen extends StatefulWidget {
@@ -21,7 +22,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
   String _workoutTitle = 'Treino A - Peito e Tríceps';
+  String _trainerName = 'Prof. Roberto Mendes';
+  final String _trainerCref = 'CREF 019284-G/SP';
   final Set<int> _adaptedIndices = {};
+  final Set<int> _expandedAnatomyIndices = {0}; // Primeiro exercício com anatomia aberta por padrão
 
   // Lista de exercícios de demonstração inicial
   late List<ExerciseModel> _exercises;
@@ -73,6 +77,16 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         _exercises = List.from(firstSplit.exercises);
       });
     }
+
+    try {
+      final trainer = await AuthService.getTrainerForStudent();
+      if (trainer != null && mounted) {
+        setState(() {
+          final name = trainer['full_name'] as String?;
+          if (name != null && name.isNotEmpty) _trainerName = name;
+        });
+      }
+    } catch (_) {}
   }
 
   void _showAdaptationModal(int exerciseIndex) {
@@ -108,13 +122,13 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'A IA encontrará uma variação biomecanicamente idêntica ou mais confortável:',
+                  'O Mr. Coach AI encontrará uma variação biomecanicamente equivalente e notificará seu professor:',
                   style: TextStyle(color: Colors.grey, fontSize: 13),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.people_outline),
-                  label: const Text('Aparelho Ocupado / Fila'),
+                  label: const Text('Aparelho Ocupado / Fila no Espaço de Treino'),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     backgroundColor: Colors.blue.shade700,
@@ -130,7 +144,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   icon: const Icon(Icons.health_and_safety_outlined, color: Colors.orange),
                   label: const Text(
                     'Desconforto ou Dor Articular',
-                    style: TextStyle(color: Colors.orange),
+                    style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
                   ),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -138,7 +152,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   ),
                   onPressed: () {
                     Navigator.pop(ctx);
-                    _executeAdaptation(exerciseIndex, 'Desconforto ou Dor Articular');
+                    _showPainLocationSelector(exerciseIndex);
                   },
                 ),
               ],
@@ -149,16 +163,98 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     );
   }
 
-  Future<void> _executeAdaptation(int index, String reason) async {
+  void _showPainLocationSelector(int exerciseIndex) {
+    final currentExercise = _exercises[exerciseIndex];
+    final locations = [
+      {'name': 'Dor no Ombro / Manguito', 'loc': 'Ombro Anterior'},
+      {'name': 'Dor no Joelho / Patela', 'loc': 'Joelho / Patela'},
+      {'name': 'Desconforto na Coluna / Lombar', 'loc': 'Coluna Lombar'},
+      {'name': 'Dor no Cotovelo / Punho', 'loc': 'Cotovelo'},
+      {'name': 'Outro Desconforto Articular', 'loc': 'Articulação Geral'},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 24),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Qual articulação apresenta desconforto?',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.text(context),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Exercício: ${currentExercise.name}',
+                  style: TextStyle(color: AppColors.subtext(context), fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                ...locations.map((item) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        alignment: Alignment.centerLeft,
+                      ),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _executeAdaptation(
+                          exerciseIndex,
+                          'Desconforto ou Dor Articular',
+                          painLocation: item['loc'],
+                        );
+                      },
+                      child: Row(
+                        children: [
+                          const Icon(Icons.radio_button_checked, size: 16, color: Colors.orange),
+                          const SizedBox(width: 10),
+                          Text(item['name']!, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _executeAdaptation(int index, String reason, {String? painLocation}) async {
     setState(() => _isLoading = true);
     final target = _exercises[index];
+    final restrictionsDesc = painLocation != null
+        ? 'Relato de $painLocation. Eliminar compressão e estresse nesta articulação mantendo o estímulo muscular.'
+        : 'Aparelho indisponível no espaço de treino presencial.';
 
     try {
       final AdaptationModel result = await _apiService.adaptExercise(
         currentExercise: target.name,
         reason: reason,
-        workoutLocation: 'Academia completa',
-        injuriesOrRestrictions: 'Histórico de leve desconforto no ombro',
+        workoutLocation: 'Academia completa e espaço de musculação',
+        injuriesOrRestrictions: restrictionsDesc,
       );
 
       setState(() {
@@ -168,14 +264,16 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           sets: result.sets,
           reps: result.reps,
           restSeconds: result.restSeconds,
-          notes: '${result.notes}\n[IA: ${result.biomechanicalRationale}]',
+          notes: '${result.notes}\n[Mr. Coach AI: ${result.biomechanicalRationale}]',
         );
       });
 
+      // Dispara persistência e alerta em tempo real para o professor
       WorkoutService.logAdaptation(
         originalExercise: target.name,
         adaptedExercise: result.adaptedExercise,
         reason: reason,
+        painLocation: painLocation,
         details: result.toJson(),
       );
 
@@ -183,7 +281,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.green.shade800,
-            content: Text('Substituído com sucesso: ${result.adaptedExercise}'),
+            content: Text('✓ Substituído com sucesso: ${result.adaptedExercise} (Treinador notificado em tempo real)'),
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -302,7 +401,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                             children: [
                               Flexible(
                                 child: Text(
-                                  'Prof. Roberto Mendes',
+                                  _trainerName,
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
@@ -317,7 +416,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'CREF 019284-G/SP • Prescrição Biomecânica Ativa',
+                            '$_trainerCref • Prescrição Biomecânica Ativa',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
@@ -457,7 +556,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                         Icon(Icons.auto_awesome, size: 12, color: AppColors.tangerine(context)),
                                         const SizedBox(width: 5),
                                         Text(
-                                          'ADAPTADO NO SALÃO POR IA',
+                                          'ADAPTADO NO ESPAÇO DE TREINO POR MR. COACH AI',
                                           style: TextStyle(
                                             fontSize: 9,
                                             fontWeight: FontWeight.w800,
@@ -570,6 +669,78 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                               ),
                             ],
                           ),
+                        ),
+                      ],
+
+                      // Visualização Anatômica / Músculo Ativo 3D (Inline Preview)
+                      const SizedBox(height: 10),
+                      InkWell(
+                        onTap: () {
+                          setState(() {
+                            if (_expandedAnatomyIndices.contains(index)) {
+                              _expandedAnatomyIndices.remove(index);
+                            } else {
+                              _expandedAnatomyIndices.add(index);
+                            }
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _expandedAnatomyIndices.contains(index)
+                                ? AppColors.emeraldBg(context)
+                                : AppColors.card(context),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: _expandedAnatomyIndices.contains(index)
+                                  ? AppColors.emerald(context).withValues(alpha: 0.4)
+                                  : AppColors.cardBorder(context),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.biotech_rounded,
+                                    size: 15,
+                                    color: _expandedAnatomyIndices.contains(index)
+                                        ? AppColors.emerald(context)
+                                        : AppColors.subtext(context),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Músculo Ativo 3D & Eletromiografia',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: _expandedAnatomyIndices.contains(index)
+                                          ? AppColors.emerald(context)
+                                          : AppColors.subtext(context),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Icon(
+                                _expandedAnatomyIndices.contains(index)
+                                    ? Icons.keyboard_arrow_up_rounded
+                                    : Icons.keyboard_arrow_down_rounded,
+                                size: 18,
+                                color: _expandedAnatomyIndices.contains(index)
+                                    ? AppColors.emerald(context)
+                                    : AppColors.subtext(context),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (_expandedAnatomyIndices.contains(index)) ...[
+                        const SizedBox(height: 8),
+                        _AnatomicalMuscleCard(
+                          exerciseName: item.name,
+                          targetMuscle: item.targetMuscleGroup,
                         ),
                       ],
 
@@ -744,4 +915,416 @@ class _MicroPill extends StatelessWidget {
     return pillWidget;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Card Anatômico 3D com Músculo Alvo em Ação & Eletromiografia
+// ---------------------------------------------------------------------------
+class _AnatomicalMuscleCard extends StatelessWidget {
+  final String exerciseName;
+  final String targetMuscle;
+
+  const _AnatomicalMuscleCard({
+    required this.exerciseName,
+    required this.targetMuscle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final lower = exerciseName.toLowerCase();
+    int emg = 94;
+    String secondary = 'Deltoide Anterior & Tríceps';
+    String stabilizers = 'Manguito Rotador & Core';
+    Color glowColor = const Color(0xFF10B981); // Emerald default
+
+    if (lower.contains('supino') || lower.contains('peito') || lower.contains('crucifixo')) {
+      emg = 94;
+      secondary = 'Deltoide Anterior, Tríceps Braquial';
+      stabilizers = 'Manguito Rotador, Serrátil Anterior';
+      glowColor = const Color(0xFF10B981); // Emerald
+    } else if (lower.contains('desenvolvimento') || lower.contains('elevacao') || lower.contains('ombro')) {
+      emg = 92;
+      secondary = 'Tríceps Braquial, Trapézio Superior';
+      stabilizers = 'Manguito Rotador, Core Abdominal';
+      glowColor = const Color(0xFFF59E0B); // Amber
+    } else if (lower.contains('triceps') || lower.contains('polia') || lower.contains('testa')) {
+      emg = 96;
+      secondary = 'Ancôneo, Extensores do Punho';
+      stabilizers = 'Deltóide Posterior, Core';
+      glowColor = const Color(0xFF06B6D4); // Cyan
+    } else if (lower.contains('agachamento') || lower.contains('leg press') || lower.contains('extensora')) {
+      emg = 95;
+      secondary = 'Glúteo Máximo, Isquiotibiais';
+      stabilizers = 'Core Abdominal, Eretores da Espinha';
+      glowColor = const Color(0xFF10B981); // Emerald
+    } else if (lower.contains('puxada') || lower.contains('remada') || lower.contains('costas')) {
+      emg = 93;
+      secondary = 'Bíceps Braquial, Braquiorradial';
+      stabilizers = 'Trapézio Médio/Inferior, Romboides';
+      glowColor = const Color(0xFF3B82F6); // Blue
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 4, bottom: 6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF070C18), Color(0xFF0B1426)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: glowColor.withValues(alpha: 0.4), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: glowColor.withValues(alpha: 0.12),
+            blurRadius: 16,
+            spreadRadius: 1,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: glowColor.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.biotech_rounded, size: 15, color: glowColor),
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'BIOMECÂNICA & ATIVAÇÃO 3D',
+                        style: TextStyle(
+                          color: glowColor,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      Text(
+                        targetMuscle,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: glowColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: glowColor.withValues(alpha: 0.5)),
+                ),
+                child: Text(
+                  '$emg% EMG',
+                  style: TextStyle(
+                    color: glowColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Anatomical Body Hologram Canvas
+          Center(
+            child: SizedBox(
+              height: 110,
+              width: double.infinity,
+              child: CustomPaint(
+                painter: _AnatomicalBodyPainter(
+                  exerciseType: lower,
+                  glowColor: glowColor,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Muscle Role Breakdown
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.black45,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(width: 6, height: 6, decoration: BoxDecoration(color: glowColor, shape: BoxShape.circle)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Agonista: $targetMuscle',
+                        style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF38BDF8), shape: BoxShape.circle)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Sinergistas: $secondary',
+                        style: const TextStyle(color: Colors.white60, fontSize: 10),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFFA78BFA), shape: BoxShape.circle)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Estabilizadores: $stabilizers',
+                        style: const TextStyle(color: Colors.white60, fontSize: 10),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Custom Painter para Silhueta Anatômica com Músculo Alvo Iluminado
+class _AnatomicalBodyPainter extends CustomPainter {
+  final String exerciseType;
+  final Color glowColor;
+
+  _AnatomicalBodyPainter({
+    required this.exerciseType,
+    required this.glowColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+
+    // Grid lines tecnológicas
+    final gridPaint = Paint()
+      ..color = const Color(0xFF161F33)
+      ..strokeWidth = 0.8;
+    for (double x = cx - 120; x <= cx + 120; x += 30) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
+    }
+    for (double y = 0; y <= size.height; y += 25) {
+      canvas.drawLine(Offset(cx - 120, y), Offset(cx + 120, y), gridPaint);
+    }
+
+    // Contorno da Silhueta Corporal (Cabeça, Ombros, Peito, Braços, Cintura)
+    final bodyOutlinePaint = Paint()
+      ..color = const Color(0xFF2D3748)
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke;
+
+    // Cabeça
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(cx, cy - 36), width: 22, height: 26),
+      bodyOutlinePaint,
+    );
+
+    // Pescoço e Trapézio
+    final trapPath = Path()
+      ..moveTo(cx - 6, cy - 24)
+      ..lineTo(cx - 24, cy - 14)
+      ..lineTo(cx + 24, cy - 14)
+      ..lineTo(cx + 6, cy - 24)
+      ..close();
+    canvas.drawPath(trapPath, bodyOutlinePaint);
+
+    // Tronco e Cintura
+    final torsoPath = Path()
+      ..moveTo(cx - 28, cy - 14)
+      ..lineTo(cx - 36, cy + 2) // Ombro esq
+      ..lineTo(cx - 24, cy + 30) // Costela esq
+      ..lineTo(cx - 18, cy + 50) // Quadril esq
+      ..lineTo(cx + 18, cy + 50) // Quadril dir
+      ..lineTo(cx + 24, cy + 30) // Costela dir
+      ..lineTo(cx + 36, cy + 2) // Ombro dir
+      ..lineTo(cx + 28, cy - 14)
+      ..close();
+    canvas.drawPath(torsoPath, bodyOutlinePaint);
+
+    // Braços
+    final leftArmPath = Path()
+      ..moveTo(cx - 36, cy + 2)
+      ..lineTo(cx - 44, cy + 24)
+      ..lineTo(cx - 38, cy + 48);
+    final rightArmPath = Path()
+      ..moveTo(cx + 36, cy + 2)
+      ..lineTo(cx + 44, cy + 24)
+      ..lineTo(cx + 38, cy + 48);
+    canvas.drawPath(leftArmPath, bodyOutlinePaint);
+    canvas.drawPath(rightArmPath, bodyOutlinePaint);
+
+    // Pintura e Iluminação do Músculo Ativo
+    final muscleGlowPaint = Paint()
+      ..color = glowColor.withValues(alpha: 0.35)
+      ..style = PaintingStyle.fill
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+
+    final muscleSolidPaint = Paint()
+      ..color = glowColor
+      ..style = PaintingStyle.fill;
+
+    final muscleBorderPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.9)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+
+    if (exerciseType.contains('supino') ||
+        exerciseType.contains('peito') ||
+        exerciseType.contains('crucifixo')) {
+      // Peitoral Esquerdo
+      final pecLeft = Path()
+        ..moveTo(cx - 4, cy - 10)
+        ..lineTo(cx - 26, cy - 6)
+        ..quadraticBezierTo(cx - 28, cy + 12, cx - 18, cy + 16)
+        ..quadraticBezierTo(cx - 6, cy + 15, cx - 4, cy + 6)
+        ..close();
+      // Peitoral Direito
+      final pecRight = Path()
+        ..moveTo(cx + 4, cy - 10)
+        ..lineTo(cx + 26, cy - 6)
+        ..quadraticBezierTo(cx + 28, cy + 12, cx + 18, cy + 16)
+        ..quadraticBezierTo(cx + 6, cy + 15, cx + 4, cy + 6)
+        ..close();
+
+      canvas.drawPath(pecLeft, muscleGlowPaint);
+      canvas.drawPath(pecLeft, muscleSolidPaint);
+      canvas.drawPath(pecLeft, muscleBorderPaint);
+
+      canvas.drawPath(pecRight, muscleGlowPaint);
+      canvas.drawPath(pecRight, muscleSolidPaint);
+      canvas.drawPath(pecRight, muscleBorderPaint);
+
+      // Fibras musculares internas do peitoral
+      final fiberPaint = Paint()
+        ..color = Colors.white38
+        ..strokeWidth = 1.0;
+      canvas.drawLine(Offset(cx - 6, cy - 5), Offset(cx - 20, cy - 2), fiberPaint);
+      canvas.drawLine(Offset(cx - 6, cy + 2), Offset(cx - 22, cy + 6), fiberPaint);
+      canvas.drawLine(Offset(cx + 6, cy - 5), Offset(cx + 20, cy - 2), fiberPaint);
+      canvas.drawLine(Offset(cx + 6, cy + 2), Offset(cx + 22, cy + 6), fiberPaint);
+    } else if (exerciseType.contains('desenvolvimento') ||
+        exerciseType.contains('elevacao') ||
+        exerciseType.contains('ombro')) {
+      // Deltoide Esquerdo
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(cx - 32, cy - 4), width: 14, height: 18),
+        muscleGlowPaint,
+      );
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(cx - 32, cy - 4), width: 14, height: 18),
+        muscleSolidPaint,
+      );
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(cx - 32, cy - 4), width: 14, height: 18),
+        muscleBorderPaint,
+      );
+
+      // Deltoide Direito
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(cx + 32, cy - 4), width: 14, height: 18),
+        muscleGlowPaint,
+      );
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(cx + 32, cy - 4), width: 14, height: 18),
+        muscleSolidPaint,
+      );
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(cx + 32, cy - 4), width: 14, height: 18),
+        muscleBorderPaint,
+      );
+    } else if (exerciseType.contains('triceps') ||
+        exerciseType.contains('polia') ||
+        exerciseType.contains('testa')) {
+      // Braço e Tríceps Esquerdo
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(center: Offset(cx - 39, cy + 16), width: 10, height: 22),
+          const Radius.circular(5),
+        ),
+        muscleGlowPaint,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(center: Offset(cx - 39, cy + 16), width: 10, height: 22),
+          const Radius.circular(5),
+        ),
+        muscleSolidPaint,
+      );
+
+      // Braço e Tríceps Direito
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(center: Offset(cx + 39, cy + 16), width: 10, height: 22),
+          const Radius.circular(5),
+        ),
+        muscleGlowPaint,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(center: Offset(cx + 39, cy + 16), width: 10, height: 22),
+          const Radius.circular(5),
+        ),
+        muscleSolidPaint,
+      );
+    } else {
+      // Grande Dorsal ou Core Central
+      final centerCore = Path()
+        ..moveTo(cx - 14, cy - 4)
+        ..lineTo(cx + 14, cy - 4)
+        ..lineTo(cx + 10, cy + 34)
+        ..lineTo(cx - 10, cy + 34)
+        ..close();
+      canvas.drawPath(centerCore, muscleGlowPaint);
+      canvas.drawPath(centerCore, muscleSolidPaint);
+      canvas.drawPath(centerCore, muscleBorderPaint);
+    }
+
+    // Ponto indicador biomecânico com sensor
+    final sensorPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(cx - 16, cy + 4), 3, sensorPaint);
+    canvas.drawCircle(Offset(cx + 16, cy + 4), 3, sensorPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _AnatomicalBodyPainter oldDelegate) {
+    return oldDelegate.exerciseType != exerciseType || oldDelegate.glowColor != glowColor;
+  }
+}
+
 

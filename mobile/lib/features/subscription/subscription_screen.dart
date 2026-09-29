@@ -59,261 +59,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
-  Future<void> _handlePlanSelection(PlanModel plan) async {
-    if (_mySubscription == null) {
-      _openCheckout(plan);
-      return;
-    }
-
-    // Exibir loading modal durante cálculo da pró-rata
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          decoration: BoxDecoration(
-            color: AppColors.card(context),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.cardBorder(context)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: AppColors.emerald(context)),
-              const SizedBox(height: 16),
-              Text(
-                'Calculando pró-rata e limites...',
-                style: TextStyle(
-                  color: AppColors.text(context),
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    final simulation = await SubscriptionService.simulatePlanChange(
-      currentPlanId: _mySubscription!.planId,
-      newPlanId: plan.id,
-      activeStudentsCount: _mySubscription!.currentStudents,
-    );
-
-    if (mounted) {
-      Navigator.of(context, rootNavigator: true).pop(); // fecha loading
-      _showSimulationDialog(plan, simulation);
-    }
-  }
-
-  void _showSimulationDialog(PlanModel plan, PlanChangeSimulationModel sim) {
-    final isUpgrade = sim.changeType == 'upgrade';
-    final isBlocked = sim.isBlocked;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.card(context),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(
-            color: isBlocked
-                ? AppColors.tangerine(context)
-                : (isUpgrade ? AppColors.emerald(context) : AppColors.accentBlue(context)),
-            width: 1.5,
-          ),
-        ),
-        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        actionsPadding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: isBlocked
-                    ? AppColors.tangerineBg(context)
-                    : (isUpgrade ? AppColors.emeraldBg(context) : AppColors.pillBg(context)),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                isBlocked
-                    ? Icons.warning_amber_rounded
-                    : (isUpgrade ? Icons.rocket_launch_rounded : Icons.swap_horiz_rounded),
-                color: isBlocked
-                    ? AppColors.tangerine(context)
-                    : (isUpgrade ? AppColors.emerald(context) : AppColors.accentBlue(context)),
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isBlocked
-                        ? 'Mudança Indisponível'
-                        : (isUpgrade ? 'Confirmação de Upgrade' : 'Mudança de Plano'),
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.text(context),
-                    ),
-                  ),
-                  Text(
-                    '${sim.currentPlanName} ➔ ${sim.newPlanName}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.subtext(context),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (isBlocked) ...[
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.tangerineBg(context),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.tangerine(context).withValues(alpha: 0.4)),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.info_outline, color: AppColors.tangerine(context), size: 18),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        sim.blockReason ?? 'Não foi possível autorizar o downgrade.',
-                        style: TextStyle(
-                          color: AppColors.text(context),
-                          fontSize: 12,
-                          height: 1.35,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ] else ...[
-              // Breakdown financeiro / pró-rata
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.pillBg(context),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.cardBorder(context)),
-                ),
-                child: Column(
-                  children: [
-                    if (sim.unusedCreditCents > 0) ...[
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Crédito Pró-rata do Ciclo:', style: TextStyle(color: AppColors.subtext(context), fontSize: 12)),
-                          Text(
-                            '- R\$ ${sim.unusedCredit.toStringAsFixed(2)}',
-                            style: TextStyle(color: AppColors.emerald(context), fontWeight: FontWeight.bold, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Divider(color: AppColors.cardBorder(context), height: 1),
-                      const SizedBox(height: 8),
-                    ],
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Valor Líquido a Pagar:', style: TextStyle(color: AppColors.text(context), fontWeight: FontWeight.bold, fontSize: 13)),
-                        Text(
-                          sim.netChargeCents == 0 ? 'R\$ 0,00' : 'R\$ ${sim.netCharge.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            color: isUpgrade ? AppColors.emerald(context) : AppColors.text(context),
-                            fontWeight: FontWeight.w900,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Efetivação:', style: TextStyle(color: AppColors.subtext(context), fontSize: 11)),
-                        Text(sim.effectiveDate, style: TextStyle(color: AppColors.subtext(context), fontSize: 11, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Nova Capacidade:', style: TextStyle(color: AppColors.subtext(context), fontSize: 11)),
-                        Text('${sim.newStudentLimit} alunos ativos', style: TextStyle(color: AppColors.accentBlue(context), fontSize: 11, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                sim.summaryMessage,
-                style: TextStyle(color: AppColors.subtext(context), fontSize: 11, fontStyle: FontStyle.italic),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              isBlocked ? 'Fechar' : 'Cancelar',
-              style: TextStyle(color: AppColors.subtext(context), fontWeight: FontWeight.bold),
-            ),
-          ),
-          if (!isBlocked)
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isUpgrade ? AppColors.emerald(context) : AppColors.accentBlue(context),
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              onPressed: () {
-                Navigator.pop(ctx);
-                if (sim.netChargeCents > 0) {
-                  _openCheckout(plan);
-                } else {
-                  _loadData();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      backgroundColor: Colors.green.shade800,
-                      content: Text('✓ Plano atualizado para ${plan.name}!'),
-                    ),
-                  );
-                }
-              },
-              child: Text(
-                sim.netChargeCents > 0
-                    ? 'Prosseguir para Pagamento'
-                    : 'Confirmar Mudança',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -719,7 +464,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 elevation: isPro && !isCurrent ? 4 : 0,
               ),
-              onPressed: isCurrent ? null : () => _handlePlanSelection(plan),
+              onPressed: isCurrent ? null : () => _openCheckout(plan),
               child: Text(
                 isCurrent
                     ? '✓ Seu Plano Atual'
@@ -968,21 +713,21 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? activeColor.withValues(alpha: 0.15) : AppColors.pillBg(context),
+          color: isSelected ? activeColor.withValues(alpha: 0.15) : const Color(0xFF0F172A),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isSelected ? activeColor : AppColors.cardBorder(context)),
+          border: Border.all(color: isSelected ? activeColor : const Color(0xFF1E293B)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 18, color: isSelected ? activeColor : AppColors.subtext(context)),
+            Icon(icon, size: 18, color: isSelected ? activeColor : AppColors.textMuted),
             const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? activeColor : AppColors.text(context),
+                color: isSelected ? activeColor : AppColors.textSecondary,
               ),
             ),
           ],
@@ -1004,10 +749,10 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.accentBlue(context), width: 2),
+            border: Border.all(color: AppColors.studentCyan, width: 2),
             boxShadow: [
               BoxShadow(
-                color: AppColors.accentBlue(context).withValues(alpha: 0.2),
+                color: AppColors.studentCyan.withValues(alpha: 0.2),
                 blurRadius: 16,
               ),
             ],
@@ -1025,9 +770,9 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
           ),
         ),
         const SizedBox(height: 16),
-        Text(
+        const Text(
           'Escaneie o QR Code acima ou use o código Copia e Cola:',
-          style: TextStyle(color: AppColors.subtext(context), fontSize: 12),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 12),
@@ -1036,22 +781,22 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: AppColors.pillBg(context),
+            color: const Color(0xFF111827),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.cardBorder(context)),
+            border: Border.all(color: const Color(0xFF1F2937)),
           ),
           child: Row(
             children: [
               Expanded(
                 child: Text(
                   pixCode,
-                  style: TextStyle(color: AppColors.text(context), fontSize: 11, fontFamily: 'monospace'),
+                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11, fontFamily: 'monospace'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.copy_rounded, color: AppColors.accentBlue(context), size: 18),
+                icon: const Icon(Icons.copy_rounded, color: AppColors.studentCyan, size: 18),
                 tooltip: 'Copiar código Pix',
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: pixCode));
@@ -1068,14 +813,14 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
           ),
         ),
         const SizedBox(height: 12),
-        Row(
+        const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.bolt, color: AppColors.tangerine(context), size: 16),
-            const SizedBox(width: 4),
+            Icon(Icons.bolt, color: AppColors.studentAmber, size: 16),
+            SizedBox(width: 4),
             Text(
               'Aprovação automática em até 10 segundos',
-              style: TextStyle(color: AppColors.tangerine(context), fontSize: 11, fontWeight: FontWeight.bold),
+              style: TextStyle(color: AppColors.studentAmber, fontSize: 11, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -1087,21 +832,14 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
     return Column(
       children: [
         TextField(
-          style: TextStyle(color: AppColors.text(context)),
+          style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             labelText: 'Número do Cartão',
-            labelStyle: TextStyle(color: AppColors.subtext(context)),
-            prefixIcon: Icon(Icons.credit_card, color: AppColors.emerald(context), size: 20),
+            labelStyle: const TextStyle(color: AppColors.textSecondary),
+            prefixIcon: const Icon(Icons.credit_card, color: AppColors.trainerEmerald, size: 20),
             filled: true,
-            fillColor: AppColors.pillBg(context),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.cardBorder(context)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.cardBorder(context)),
-            ),
+            fillColor: const Color(0xFF111827),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
         const SizedBox(height: 12),
@@ -1109,40 +847,26 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
           children: [
             Expanded(
               child: TextField(
-                style: TextStyle(color: AppColors.text(context)),
+                style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   labelText: 'Validade (MM/AA)',
-                  labelStyle: TextStyle(color: AppColors.subtext(context)),
+                  labelStyle: const TextStyle(color: AppColors.textSecondary),
                   filled: true,
-                  fillColor: AppColors.pillBg(context),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.cardBorder(context)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.cardBorder(context)),
-                  ),
+                  fillColor: const Color(0xFF111827),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: TextField(
-                style: TextStyle(color: AppColors.text(context)),
+                style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   labelText: 'CVV',
-                  labelStyle: TextStyle(color: AppColors.subtext(context)),
+                  labelStyle: const TextStyle(color: AppColors.textSecondary),
                   filled: true,
-                  fillColor: AppColors.pillBg(context),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.cardBorder(context)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.cardBorder(context)),
-                  ),
+                  fillColor: const Color(0xFF111827),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ),
@@ -1150,31 +874,24 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
         ),
         const SizedBox(height: 12),
         TextField(
-          style: TextStyle(color: AppColors.text(context)),
+          style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             labelText: 'Nome Impresso no Cartão',
-            labelStyle: TextStyle(color: AppColors.subtext(context)),
-            prefixIcon: Icon(Icons.person_outline, color: AppColors.emerald(context), size: 20),
+            labelStyle: const TextStyle(color: AppColors.textSecondary),
+            prefixIcon: const Icon(Icons.person_outline, color: AppColors.trainerEmerald, size: 20),
             filled: true,
-            fillColor: AppColors.pillBg(context),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.cardBorder(context)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.cardBorder(context)),
-            ),
+            fillColor: const Color(0xFF111827),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
         const SizedBox(height: 12),
-        Row(
+        const Row(
           children: [
-            Icon(Icons.lock_outline, size: 14, color: AppColors.subtext(context)),
-            const SizedBox(width: 6),
+            Icon(Icons.lock_outline, size: 14, color: AppColors.textMuted),
+            SizedBox(width: 6),
             Text(
               'Transação criptografada de ponta a ponta (PCI-DSS)',
-              style: TextStyle(color: AppColors.subtext(context), fontSize: 11),
+              style: TextStyle(color: AppColors.textMuted, fontSize: 11),
             ),
           ],
         ),

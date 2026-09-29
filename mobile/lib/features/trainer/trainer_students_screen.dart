@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/server_config_dialog.dart';
 import '../../core/widgets/theme_toggle_button.dart';
@@ -17,58 +18,74 @@ class TrainerStudentsScreen extends StatefulWidget {
 
 class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
   bool _isLoading = false;
-  String _selectedFilter = 'Todos';
+  String _selectedFilter = 'Todos'; // 'Todos', 'Ativos', 'Convidados', 'Arquivados', 'Com Alerta'
   String _searchQuery = '';
 
-  // Initial demo students when Supabase has no records or offline
+  // Lista demo rica com estados reais do Hub Mr. Coach
   final List<Map<String, dynamic>> _demoStudents = [
     {
       'id': 'st-1',
       'full_name': 'Rodrigo Silveira',
+      'email': 'rodrigo.silveira@email.com',
+      'phone': '(11) 98765-4321',
       'goal': 'Hipertrofia Muscular',
       'level': 'Intermediário',
       'days_per_week': 4,
       'has_alert': true,
-      'alert_message': 'Trocou Supino Reto por Supino Máquina (Ombro)',
+      'alert_id': 'alt-1',
+      'alert_message': 'Relatou dor no Ombro Anterior durante Supino Reto ➔ Adaptado para Supino Máquina',
       'status': 'Ativo',
       'last_session': 'Hoje, 07:45',
       'active_split': 'Treino A - Peito e Tríceps',
+      'injuries_or_restrictions': 'Leve desconforto no manguito rotador direito',
     },
     {
       'id': 'st-2',
       'full_name': 'Camila Vasconcelos',
+      'email': 'camila.vasconcelos@email.com',
+      'phone': '(21) 99876-5432',
       'goal': 'Emagrecimento & Definição',
       'level': 'Iniciante',
       'days_per_week': 3,
       'has_alert': false,
+      'alert_id': null,
       'alert_message': null,
       'status': 'Ativo',
       'last_session': 'Hoje, 09:15',
       'active_split': 'Treino B - Membros Inferiores',
+      'injuries_or_restrictions': 'Condromalácia patelar grau 1',
     },
     {
       'id': 'st-3',
       'full_name': 'Lucas Andrade Mendes',
+      'email': 'lucas.mendes@email.com',
+      'phone': '(11) 91234-5678',
       'goal': 'Condicionamento Geral',
-      'level': 'Avançado',
-      'days_per_week': 5,
-      'has_alert': true,
-      'alert_message': 'Aparelho Ocupado: Leg Press 45° ➔ Agachamento Goblet',
-      'status': 'Ativo',
-      'last_session': 'Ontem, 18:30',
-      'active_split': 'Treino C - Costas e Bíceps',
+      'level': 'Iniciante',
+      'days_per_week': 3,
+      'has_alert': false,
+      'alert_id': null,
+      'alert_message': null,
+      'status': 'Pendente Confirmação',
+      'last_session': 'Convite enviado por e-mail',
+      'active_split': 'Aguardando primeiro acesso',
+      'injuries_or_restrictions': 'Nenhuma restrição articular',
     },
     {
       'id': 'st-4',
-      'full_name': 'Beatriz Fontes',
-      'goal': 'Hipertrofia Glúteos',
+      'full_name': 'Mariana Castro',
+      'email': 'mariana.castro@email.com',
+      'phone': '(31) 97654-3210',
+      'goal': 'Reabilitação Postural',
       'level': 'Intermediário',
-      'days_per_week': 4,
+      'days_per_week': 3,
       'has_alert': false,
+      'alert_id': null,
       'alert_message': null,
-      'status': 'Ativo',
-      'last_session': '2 dias atrás',
-      'active_split': 'Treino A - Inferiores Ênfase Posterior',
+      'status': 'Arquivado',
+      'last_session': 'Ciclo concluído em 15/08',
+      'active_split': 'Contrato pausado',
+      'injuries_or_restrictions': 'Escoliose torácica leve',
     },
   ];
 
@@ -85,48 +102,137 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     setState(() => _isLoading = true);
     try {
       final dbStudents = await WorkoutService.getTrainerStudents();
+      final alerts = await WorkoutService.getTrainerAlerts();
+
       if (dbStudents.isNotEmpty && mounted) {
         setState(() {
           _students = dbStudents.map((st) {
-            final goal = st['goal'] as String? ?? 'Consultoria Ativa';
-            final status = st['status'] as String? ?? 'Ativo';
+            final stId = st['id'] ?? 'db-id';
+            final stName = (st['full_name'] as String? ?? '').toLowerCase();
+
+            // Cruza alertas ativos (não cientes) para este aluno
+            final matchingAlert = alerts.firstWhere(
+              (a) => (a['student_id'] == stId || (a['student_name'] as String? ?? '').toLowerCase() == stName) && a['acknowledged'] == false,
+              orElse: () => <String, dynamic>{},
+            );
+
+            final hasAlert = matchingAlert.isNotEmpty;
+            final alertMsg = hasAlert ? (matchingAlert['message'] ?? 'Adaptação biomecânica no espaço de treino') : null;
+            final alertId = hasAlert ? matchingAlert['id'] : null;
+
             return {
-              'id': st['id'] ?? 'db-id',
+              'id': stId,
               'full_name': st['full_name'] ?? 'Aluno',
               'email': st['email'] ?? '',
               'phone': st['phone'] ?? '',
-              'goal': goal,
-              'level': 'Ativo',
-              'days_per_week': 4,
-              'has_alert': false,
-              'alert_message': null,
-              'status': status,
-              'last_session': status == 'Pendente Confirmação' ? 'Convite enviado' : 'Sincronizado',
-              'active_split': 'Periodização Ativa',
+              'goal': st['goal'] ?? 'Consultoria Mr. Coach',
+              'level': st['level'] ?? 'Ativo',
+              'days_per_week': st['days_per_week'] ?? 4,
+              'has_alert': hasAlert,
+              'alert_id': alertId,
+              'alert_message': alertMsg,
+              'status': st['status'] ?? 'Ativo',
+              'last_session': st['last_session'] ?? 'Sincronizado',
+              'active_split': st['active_split'] ?? 'Periodização Mr. Coach',
+              'injuries_or_restrictions': st['injuries_or_restrictions'] ?? 'Nenhuma observação cadastrada',
             };
           }).toList();
         });
       }
     } catch (_) {
-      // Keep demo list gracefully
+      // Mantém lista em memória com elegância
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  Future<void> _acknowledgeStudentAlert(Map<String, dynamic> student) async {
+    final alertId = student['alert_id'] as String?;
+    if (alertId != null) {
+      await WorkoutService.acknowledgeAlert(alertId);
+    }
+    setState(() {
+      student['has_alert'] = false;
+      student['alert_message'] = null;
+      student['alert_id'] = null;
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.green.shade800,
+          content: Text('✓ Alerta de ${student['full_name']} marcado como ciente.'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Future<void> _openWhatsApp(Map<String, dynamic> student) async {
+    final phone = student['phone'] as String? ?? '';
+    final name = student['full_name'] as String? ?? 'Aluno';
+    final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+
+    final msg = Uri.encodeComponent(
+      'Olá $name! 💪 Aqui é o seu Treinador pelo Mr. Coach. Como estão seus treinos presenciais essa semana?',
+    );
+
+    if (cleanPhone.isNotEmpty) {
+      final finalNumber = cleanPhone.startsWith('55') ? cleanPhone : '55$cleanPhone';
+      final url = Uri.parse('https://wa.me/$finalNumber?text=$msg');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+        return;
+      }
+    }
+
+    if (mounted) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.card(context),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: AppColors.cardBorder(context)),
+          ),
+          title: Row(
+            children: [
+              const Icon(Icons.chat_bubble_outline_rounded, color: Colors.green),
+              const SizedBox(width: 8),
+              Text('WhatsApp do Aluno', style: TextStyle(color: AppColors.text(context), fontSize: 16)),
+            ],
+          ),
+          content: Text(
+            phone.isNotEmpty
+                ? 'Telefone: $phone\n\nMensagem pronta:\n"Olá $name! Como estão seus treinos no Mr. Coach?"'
+                : 'O aluno $name ainda não tem telefone/WhatsApp cadastrado.\nEdite os dados do aluno para incluir o número.',
+            style: TextStyle(color: AppColors.subtext(context), fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Fechar', style: TextStyle(color: AppColors.text(context))),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   void _showAddStudentDialog() {
-    final formKey = GlobalKey<FormState>();
     final nameCtrl = TextEditingController();
     final emailCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
+    final restrictionsCtrl = TextEditingController();
     String goal = 'Hipertrofia Muscular';
+    final formKey = GlobalKey<FormState>();
     bool isSubmitting = false;
 
     showDialog(
       context: context,
       builder: (ctx) {
         return StatefulBuilder(
-          builder: (dialogCtx, setDialogState) {
+          builder: (context, setDialogState) {
             return AlertDialog(
               backgroundColor: AppColors.card(context),
               shape: RoundedRectangleBorder(
@@ -138,8 +244,8 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                   Icon(Icons.person_add_alt_1_outlined, color: AppColors.emerald(context)),
                   const SizedBox(width: 10),
                   Text(
-                    'Novo Aluno',
-                    style: TextStyle(color: AppColors.text(context), fontWeight: FontWeight.bold, fontSize: 18),
+                    'Novo Aluno • Mr. Coach',
+                    style: TextStyle(color: AppColors.text(context), fontWeight: FontWeight.bold, fontSize: 17),
                   ),
                 ],
               ),
@@ -152,56 +258,38 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                       TextFormField(
                         controller: nameCtrl,
                         style: TextStyle(color: AppColors.text(context)),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Informe o nome completo' : null,
                         decoration: InputDecoration(
                           labelText: 'Nome Completo do Aluno',
                           labelStyle: TextStyle(color: AppColors.subtext(context)),
                           filled: true,
                           fillColor: AppColors.pillBg(context),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: AppColors.cardBorder(context)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: AppColors.cardBorder(context)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: AppColors.emerald(context), width: 1.5),
-                          ),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
+                        validator: (val) {
+                          if (val == null || val.trim().length < 2) return 'Informe o nome do aluno';
+                          return null;
+                        },
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 12),
                       TextFormField(
                         controller: emailCtrl,
                         keyboardType: TextInputType.emailAddress,
                         style: TextStyle(color: AppColors.text(context)),
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'Informe o e-mail do aluno';
-                          if (!v.contains('@') || !v.contains('.')) return 'Informe um e-mail válido';
-                          return null;
-                        },
                         decoration: InputDecoration(
-                          labelText: 'E-mail para Acesso e Confirmação',
+                          labelText: 'E-mail para Convite e Acesso',
                           labelStyle: TextStyle(color: AppColors.subtext(context)),
                           filled: true,
                           fillColor: AppColors.pillBg(context),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: AppColors.cardBorder(context)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: AppColors.cardBorder(context)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: AppColors.emerald(context), width: 1.5),
-                          ),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
+                        validator: (val) {
+                          if (val == null || !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(val.trim())) {
+                            return 'Informe um e-mail válido';
+                          }
+                          return null;
+                        },
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 12),
                       TextFormField(
                         controller: phoneCtrl,
                         keyboardType: TextInputType.phone,
@@ -211,43 +299,39 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                           labelStyle: TextStyle(color: AppColors.subtext(context)),
                           filled: true,
                           fillColor: AppColors.pillBg(context),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: AppColors.cardBorder(context)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: AppColors.cardBorder(context)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: AppColors.emerald(context), width: 1.5),
-                          ),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
                         initialValue: goal,
                         dropdownColor: AppColors.card(context),
                         style: TextStyle(color: AppColors.text(context)),
                         decoration: InputDecoration(
-                          labelText: 'Objetivo Inicial',
+                          labelText: 'Objetivo Principal',
                           labelStyle: TextStyle(color: AppColors.subtext(context)),
                           filled: true,
                           fillColor: AppColors.pillBg(context),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: AppColors.cardBorder(context)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: AppColors.cardBorder(context)),
-                          ),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         items: ['Hipertrofia Muscular', 'Emagrecimento & Definição', 'Condicionamento Geral', 'Reabilitação Postural']
                             .map((g) => DropdownMenuItem(value: g, child: Text(g)))
                             .toList(),
                         onChanged: (val) => goal = val ?? goal,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: restrictionsCtrl,
+                        maxLines: 2,
+                        style: TextStyle(color: AppColors.text(context)),
+                        decoration: InputDecoration(
+                          labelText: 'Restrições Articulares / Lesões (IA)',
+                          hintText: 'Ex: Condromalácia, dor no ombro direito',
+                          labelStyle: TextStyle(color: AppColors.subtext(context)),
+                          filled: true,
+                          fillColor: AppColors.pillBg(context),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
                       ),
                     ],
                   ),
@@ -269,8 +353,8 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                       : () async {
                           if (!formKey.currentState!.validate()) return;
                           setDialogState(() => isSubmitting = true);
-
                           final messenger = ScaffoldMessenger.of(context);
+
                           try {
                             final student = await WorkoutService.createStudent(
                               fullName: nameCtrl.text.trim(),
@@ -278,6 +362,10 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                               phone: phoneCtrl.text.trim().isNotEmpty ? phoneCtrl.text.trim() : null,
                               goal: goal,
                             );
+
+                            final restrictions = restrictionsCtrl.text.trim().isNotEmpty
+                                ? restrictionsCtrl.text.trim()
+                                : 'Nenhuma observação cadastrada';
 
                             if (mounted) {
                               setState(() {
@@ -290,22 +378,20 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                   'level': 'Iniciante',
                                   'days_per_week': 3,
                                   'has_alert': false,
+                                  'alert_id': null,
                                   'alert_message': null,
                                   'status': 'Pendente Confirmação',
-                                  'last_session': 'Convite enviado',
-                                  'active_split': 'Sem ficha ativa',
+                                  'last_session': 'Convite enviado por e-mail',
+                                  'active_split': 'Aguardando primeiro acesso',
+                                  'injuries_or_restrictions': restrictions,
                                 });
                               });
 
-                              if (ctx.mounted) {
-                                Navigator.pop(ctx);
-                              }
+                              if (ctx.mounted) Navigator.pop(ctx);
                               messenger.showSnackBar(
                                 SnackBar(
                                   backgroundColor: Colors.green.shade800,
-                                  content: Text(
-                                    'Aluno "${student['full_name']}" cadastrado! Convite e validação enviados para ${student['email']}.',
-                                  ),
+                                  content: Text('✓ Aluno "${student['full_name']}" cadastrado e convite enviado!'),
                                 ),
                               );
                             }
@@ -324,7 +410,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                         },
                   child: isSubmitting
                       ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                      : const Text('Salvar Aluno', style: TextStyle(fontWeight: FontWeight.bold)),
+                      : const Text('Salvar e Convidar', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             );
@@ -334,19 +420,263 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     );
   }
 
+  void _showEditStudentDialog(Map<String, dynamic> student) {
+    final nameCtrl = TextEditingController(text: student['full_name'] as String? ?? '');
+    final emailCtrl = TextEditingController(text: student['email'] as String? ?? '');
+    final phoneCtrl = TextEditingController(text: student['phone'] as String? ?? '');
+    final restrictionsCtrl = TextEditingController(text: student['injuries_or_restrictions'] as String? ?? '');
+    String goal = student['goal'] as String? ?? 'Hipertrofia Muscular';
+    final formKey = GlobalKey<FormState>();
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: AppColors.card(context),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(color: AppColors.cardBorder(context)),
+              ),
+              title: Row(
+                children: [
+                  Icon(Icons.edit_note_rounded, color: AppColors.emerald(context)),
+                  const SizedBox(width: 10),
+                  Text('Editar Aluno', style: TextStyle(color: AppColors.text(context), fontWeight: FontWeight.bold, fontSize: 17)),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: nameCtrl,
+                        style: TextStyle(color: AppColors.text(context)),
+                        decoration: InputDecoration(
+                          labelText: 'Nome do Aluno',
+                          filled: true,
+                          fillColor: AppColors.pillBg(context),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        validator: (v) => (v == null || v.trim().length < 2) ? 'Nome obrigatório' : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: emailCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                        style: TextStyle(color: AppColors.text(context)),
+                        decoration: InputDecoration(
+                          labelText: 'E-mail',
+                          filled: true,
+                          fillColor: AppColors.pillBg(context),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: phoneCtrl,
+                        keyboardType: TextInputType.phone,
+                        style: TextStyle(color: AppColors.text(context)),
+                        decoration: InputDecoration(
+                          labelText: 'WhatsApp / Telefone',
+                          filled: true,
+                          fillColor: AppColors.pillBg(context),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: goal,
+                        dropdownColor: AppColors.card(context),
+                        style: TextStyle(color: AppColors.text(context)),
+                        decoration: InputDecoration(
+                          labelText: 'Objetivo',
+                          filled: true,
+                          fillColor: AppColors.pillBg(context),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        items: ['Hipertrofia Muscular', 'Emagrecimento & Definição', 'Condicionamento Geral', 'Reabilitação Postural']
+                            .map((g) => DropdownMenuItem(value: g, child: Text(g)))
+                            .toList(),
+                        onChanged: (val) => goal = val ?? goal,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: restrictionsCtrl,
+                        maxLines: 2,
+                        style: TextStyle(color: AppColors.text(context)),
+                        decoration: InputDecoration(
+                          labelText: 'Restrições Articulares / Lesões',
+                          filled: true,
+                          fillColor: AppColors.pillBg(context),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSaving ? null : () => Navigator.pop(ctx),
+                  child: Text('Cancelar', style: TextStyle(color: AppColors.subtext(context))),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.emerald(context),
+                    foregroundColor: Colors.black,
+                  ),
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          if (!formKey.currentState!.validate()) return;
+                          setDialogState(() => isSaving = true);
+                          final messenger = ScaffoldMessenger.of(context);
+
+                          final studentId = student['id'] as String;
+                          await WorkoutService.updateStudent(
+                            studentId: studentId,
+                            fullName: nameCtrl.text.trim(),
+                            email: emailCtrl.text.trim(),
+                            phone: phoneCtrl.text.trim().isNotEmpty ? phoneCtrl.text.trim() : null,
+                            goal: goal,
+                            injuriesOrRestrictions: restrictionsCtrl.text.trim(),
+                          );
+
+                          if (mounted) {
+                            setState(() {
+                              student['full_name'] = nameCtrl.text.trim();
+                              student['email'] = emailCtrl.text.trim();
+                              student['phone'] = phoneCtrl.text.trim();
+                              student['goal'] = goal;
+                              student['injuries_or_restrictions'] = restrictionsCtrl.text.trim();
+                            });
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            messenger.showSnackBar(
+                              SnackBar(
+                                backgroundColor: Colors.green.shade800,
+                                content: Text('✓ Dados de ${student['full_name']} atualizados!'),
+                              ),
+                            );
+                          }
+                        },
+                  child: isSaving
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                      : const Text('Salvar Alterações', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _toggleArchiveStudent(Map<String, dynamic> student) async {
+    final currentStatus = student['status'] as String? ?? 'Ativo';
+    final isArchiving = currentStatus.toLowerCase() == 'ativo' || currentStatus.toLowerCase().contains('pendente');
+    final newStatus = isArchiving ? 'Arquivado' : 'Ativo';
+
+    final studentId = student['id'] as String;
+    await WorkoutService.updateStudentStatus(studentId: studentId, status: newStatus);
+
+    setState(() {
+      student['status'] = newStatus;
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: isArchiving ? Colors.orange.shade900 : Colors.green.shade800,
+          content: Text(
+            isArchiving
+                ? '📦 Aluno ${student['full_name']} foi arquivado (vaga liberada no plano).'
+                : '✓ Aluno ${student['full_name']} reativado com sucesso!',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _confirmDeleteStudent(Map<String, dynamic> student) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card(context),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Colors.redAccent),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_forever_rounded, color: Colors.redAccent),
+            SizedBox(width: 8),
+            Text('Excluir Aluno?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: Text(
+          'Tem certeza que deseja excluir ${student['full_name']}?\nEsta ação desvinculará as fichas e histórico.',
+          style: TextStyle(color: AppColors.subtext(context), fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancelar', style: TextStyle(color: AppColors.subtext(context))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Excluir Definitivamente', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final studentId = student['id'] as String;
+      await WorkoutService.deleteStudent(studentId);
+      setState(() {
+        _students.removeWhere((s) => s['id'] == studentId);
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.red.shade900,
+            content: Text('Aluno ${student['full_name']} excluído.'),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Filtragem por status e busca por nome
     final filteredStudents = _students.where((st) {
-      final name = (st['full_name'] as String).toLowerCase();
+      final name = (st['full_name'] as String? ?? '').toLowerCase();
       final matchesSearch = name.contains(_searchQuery.toLowerCase());
       if (!matchesSearch) return false;
 
-      if (_selectedFilter == 'Com Alerta') {
+      final status = (st['status'] as String? ?? 'Ativo').toLowerCase();
+      if (_selectedFilter == 'Ativos') {
+        return status == 'ativo';
+      } else if (_selectedFilter == 'Convidados') {
+        return status.contains('pendente') || status.contains('convidado');
+      } else if (_selectedFilter == 'Arquivados') {
+        return status.contains('arquivado') || status.contains('inativo');
+      } else if (_selectedFilter == 'Com Alerta') {
         return st['has_alert'] == true;
       }
-      return true;
+      return true; // 'Todos'
     }).toList();
 
+    final totalCount = _students.length;
+    final activeCount = _students.where((s) => (s['status'] as String? ?? '').toLowerCase() == 'ativo').length;
+    final pendingCount = _students.where((s) => (s['status'] as String? ?? '').toLowerCase().contains('pendente')).length;
     final alertsCount = _students.where((s) => s['has_alert'] == true).length;
 
     return Scaffold(
@@ -356,7 +686,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         title: Text(
-          'Painel do Treinador',
+          'Mr. Coach • Hub de Alunos',
           style: TextStyle(
             color: AppColors.text(context),
             fontWeight: FontWeight.w800,
@@ -409,28 +739,35 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
               children: [
                 _buildKpiCard(
                   label: 'TOTAL ALUNOS',
-                  value: '${_students.length}',
+                  value: '$totalCount',
                   icon: Icons.people_outline,
                   color: AppColors.emerald(context),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 _buildKpiCard(
-                  label: 'TREINARAM HOJE',
-                  value: '2',
-                  icon: Icons.fitness_center_rounded,
+                  label: 'ATIVOS',
+                  value: '$activeCount',
+                  icon: Icons.check_circle_outline_rounded,
                   color: AppColors.accentBlue(context),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 _buildKpiCard(
-                  label: 'ADAPTAÇÕES IA',
+                  label: 'CONVITES',
+                  value: '$pendingCount',
+                  icon: Icons.mark_email_unread_outlined,
+                  color: AppColors.subtext(context),
+                ),
+                const SizedBox(width: 8),
+                _buildKpiCard(
+                  label: 'ALERTAS',
                   value: '$alertsCount',
-                  icon: Icons.bolt,
+                  icon: Icons.warning_amber_rounded,
                   color: AppColors.tangerine(context),
                   hasAlert: alertsCount > 0,
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
 
             // Search Bar
             TextField(
@@ -457,19 +794,29 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                 contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
 
-            // Filter Chips
-            Row(
-              children: [
-                _buildFilterChip('Todos', isSelected: _selectedFilter == 'Todos'),
-                const SizedBox(width: 8),
-                _buildFilterChip(
-                  'Com Alerta ($alertsCount)',
-                  isSelected: _selectedFilter == 'Com Alerta',
-                  alertDot: alertsCount > 0,
-                ),
-              ],
+            // Filter Chips (Todos, Ativos, Convidados, Arquivados, Com Alerta)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildFilterChip('Todos ($totalCount)', isSelected: _selectedFilter == 'Todos', onTap: () => setState(() => _selectedFilter = 'Todos')),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Ativos ($activeCount)', isSelected: _selectedFilter == 'Ativos', onTap: () => setState(() => _selectedFilter = 'Ativos')),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Convidados ($pendingCount)', isSelected: _selectedFilter == 'Convidados', onTap: () => setState(() => _selectedFilter = 'Convidados')),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Arquivados', isSelected: _selectedFilter == 'Arquivados', onTap: () => setState(() => _selectedFilter = 'Arquivados')),
+                  const SizedBox(width: 8),
+                  _buildFilterChip(
+                    'Com Alerta ($alertsCount)',
+                    isSelected: _selectedFilter == 'Com Alerta',
+                    alertDot: alertsCount > 0,
+                    onTap: () => setState(() => _selectedFilter = 'Com Alerta'),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
 
@@ -483,7 +830,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                     Icon(Icons.search_off, size: 48, color: AppColors.subtext(context)),
                     const SizedBox(height: 12),
                     Text(
-                      'Nenhum aluno encontrado.',
+                      'Nenhum aluno encontrado neste filtro.',
                       style: TextStyle(color: AppColors.subtext(context), fontSize: 14),
                     ),
                   ],
@@ -508,18 +855,18 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     final isDark = AppColors.isDark(context);
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         decoration: BoxDecoration(
           color: AppColors.card(context),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: hasAlert ? color.withValues(alpha: 0.6) : AppColors.cardBorder(context),
+            color: hasAlert ? color.withValues(alpha: 0.7) : AppColors.cardBorder(context),
             width: hasAlert ? 1.5 : 1.0,
           ),
           boxShadow: [
             BoxShadow(
               color: isDark ? Colors.black26 : const Color(0x060F172A),
-              blurRadius: 16,
+              blurRadius: 14,
               offset: const Offset(0, 4),
             ),
           ],
@@ -530,33 +877,34 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(icon, color: color, size: 20),
+                Icon(icon, color: color, size: 18),
                 if (hasAlert)
                   Container(
-                    width: 8,
-                    height: 8,
+                    width: 7,
+                    height: 7,
                     decoration: BoxDecoration(color: color, shape: BoxShape.circle),
                   ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             Text(
               value,
               style: TextStyle(
-                fontSize: 22,
+                fontSize: 18,
                 fontWeight: FontWeight.w900,
-                color: color,
+                color: AppColors.text(context),
               ),
             ),
-            const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(
                 fontSize: 9,
                 fontWeight: FontWeight.w700,
-                letterSpacing: 0.6,
                 color: AppColors.subtext(context),
+                letterSpacing: 0.4,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -564,17 +912,23 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     );
   }
 
-  Widget _buildFilterChip(String label, {required bool isSelected, bool alertDot = false}) {
+  Widget _buildFilterChip(
+    String label, {
+    required bool isSelected,
+    bool alertDot = false,
+    required VoidCallback onTap,
+  }) {
     return InkWell(
-      onTap: () => setState(() => _selectedFilter = isSelected && label != 'Todos' ? 'Todos' : (label.contains('Alerta') ? 'Com Alerta' : 'Todos')),
-      borderRadius: BorderRadius.circular(20),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.emerald(context).withValues(alpha: 0.15) : AppColors.card(context),
-          borderRadius: BorderRadius.circular(20),
+          color: isSelected ? AppColors.emeraldBg(context) : AppColors.card(context),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? AppColors.emerald(context) : AppColors.cardBorder(context),
+            width: isSelected ? 1.5 : 1.0,
           ),
         ),
         child: Row(
@@ -584,7 +938,10 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
               Container(
                 width: 6,
                 height: 6,
-                decoration: BoxDecoration(color: AppColors.tangerine(context), shape: BoxShape.circle),
+                decoration: const BoxDecoration(
+                  color: Colors.orange,
+                  shape: BoxShape.circle,
+                ),
               ),
               const SizedBox(width: 6),
             ],
@@ -593,7 +950,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? AppColors.emerald(context) : AppColors.subtext(context),
+                color: isSelected ? AppColors.emerald(context) : AppColors.text(context),
               ),
             ),
           ],
@@ -604,24 +961,37 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
 
   Widget _buildStudentCard(Map<String, dynamic> student) {
     final isDark = AppColors.isDark(context);
-    final fullName = student['full_name'] as String;
-    final initials = fullName.split(' ').map((n) => n.isNotEmpty ? n[0] : '').take(2).join();
     final hasAlert = student['has_alert'] == true;
+    final fullName = student['full_name'] as String? ?? 'Aluno';
+    final initials = fullName.isNotEmpty ? fullName.split(' ').map((n) => n.isNotEmpty ? n[0] : '').take(2).join() : 'AL';
+    final status = student['status'] as String? ?? 'Ativo';
+    final isPending = status.toLowerCase().contains('pendente');
+    final isArchived = status.toLowerCase().contains('arquivado');
+
+    Color statusBg = AppColors.emeraldBg(context);
+    Color statusColor = AppColors.emerald(context);
+    if (isPending) {
+      statusBg = AppColors.tangerineBg(context);
+      statusColor = AppColors.tangerine(context);
+    } else if (isArchived) {
+      statusBg = AppColors.pillBg(context);
+      statusColor = AppColors.subtext(context);
+    }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: AppColors.card(context),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: hasAlert ? AppColors.tangerine(context).withValues(alpha: 0.6) : AppColors.cardBorder(context),
-          width: hasAlert ? 1.5 : 1.0,
+          color: hasAlert ? AppColors.tangerine(context) : AppColors.cardBorder(context),
+          width: hasAlert ? 1.8 : 1.0,
         ),
         boxShadow: [
           BoxShadow(
             color: isDark ? Colors.black26 : const Color(0x060F172A),
             blurRadius: 18,
-            offset: const Offset(0, 5),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -637,20 +1007,17 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF0F172A), Color(0xFF059669)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    color: isArchived ? AppColors.pillBg(context) : AppColors.emeraldBg(context),
                     borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: statusColor.withValues(alpha: 0.4)),
                   ),
                   child: Center(
                     child: Text(
                       initials.toUpperCase(),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
-                        color: Colors.white,
+                        color: statusColor,
                       ),
                     ),
                   ),
@@ -666,134 +1033,218 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                           color: AppColors.text(context),
+                          decoration: isArchived ? TextDecoration.lineThrough : null,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${student['goal']} • ${student['level']}',
+                        '${student['goal']} • ${student['email']}',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           color: AppColors.subtext(context),
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-                // Status pill (Ativo vs Pendente Confirmação)
-                Builder(
-                  builder: (ctx) {
-                    final isPending = (student['status'] as String? ?? '').contains('Pendente');
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: isPending ? AppColors.tangerineBg(context) : AppColors.emeraldBg(context),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: isPending
-                              ? AppColors.tangerine(context).withValues(alpha: 0.4)
-                              : AppColors.emerald(context).withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Text(
-                        student['status'] as String,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: isPending ? AppColors.tangerine(context) : AppColors.emerald(context),
-                        ),
-                      ),
-                    );
+                // Status Pill
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusBg,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    status,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: statusColor,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                // Menu de Opções (Editar, Arquivar, Excluir)
+                PopupMenuButton<String>(
+                  icon: Icon(Icons.more_vert, size: 20, color: AppColors.subtext(context)),
+                  color: AppColors.card(context),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    side: BorderSide(color: AppColors.cardBorder(context)),
+                  ),
+                  onSelected: (val) {
+                    if (val == 'edit') {
+                      _showEditStudentDialog(student);
+                    } else if (val == 'archive') {
+                      _toggleArchiveStudent(student);
+                    } else if (val == 'delete') {
+                      _confirmDeleteStudent(student);
+                    }
                   },
+                  itemBuilder: (ctx) => [
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit_outlined, size: 16, color: AppColors.text(context)),
+                          const SizedBox(width: 10),
+                          Text('Editar Aluno', style: TextStyle(color: AppColors.text(context), fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'archive',
+                      child: Row(
+                        children: [
+                          Icon(isArchived ? Icons.unarchive_outlined : Icons.archive_outlined, size: 16, color: AppColors.text(context)),
+                          const SizedBox(width: 10),
+                          Text(isArchived ? 'Reativar Aluno' : 'Arquivar Aluno', style: TextStyle(color: AppColors.text(context), fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: const Row(
+                        children: [
+                          Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
+                          SizedBox(width: 10),
+                          Text('Excluir Aluno', style: TextStyle(color: Colors.redAccent, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
 
-            // Alert Box (if student requested exercise adaptation)
+            // Alerta Biomecânico Presencial (Dor Articular ou Troca de Exercício)
             if (hasAlert && student['alert_message'] != null) ...[
               const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: AppColors.tangerineBg(context),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.tangerine(context).withValues(alpha: 0.3)),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.tangerine(context).withValues(alpha: 0.5)),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.bolt_rounded, color: AppColors.tangerine(context), size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        student['alert_message'] as String,
-                        style: TextStyle(
-                          color: AppColors.tangerine(context),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.warning_amber_rounded, color: AppColors.tangerine(context), size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            student['alert_message'] as String,
+                            style: TextStyle(
+                              color: AppColors.tangerine(context),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              height: 1.3,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            backgroundColor: AppColors.card(context),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          icon: Icon(Icons.check_circle_outline, size: 14, color: AppColors.emerald(context)),
+                          label: Text(
+                            'Marcar como Ciente',
+                            style: TextStyle(color: AppColors.emerald(context), fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                          onPressed: () => _acknowledgeStudentAlert(student),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ],
 
-            const SizedBox(height: 12),
-            Divider(color: AppColors.cardBorder(context), height: 1),
             const SizedBox(height: 10),
+            // Linha com Último Treino e Restrições
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.pillBg(context),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.fitness_center_rounded, size: 14, color: AppColors.accentBlue(context)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '${student['active_split']} • ${student['last_session']}',
+                      style: TextStyle(color: AppColors.text(context), fontSize: 11, fontWeight: FontWeight.w500),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
-            // Footer with Active Split & Action Buttons
+            if (student['injuries_or_restrictions'] != null && (student['injuries_or_restrictions'] as String).isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(Icons.medical_information_outlined, size: 13, color: AppColors.subtext(context)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Restrições: ${student['injuries_or_restrictions']}',
+                      style: TextStyle(color: AppColors.subtext(context), fontSize: 11),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+
+            const SizedBox(height: 10),
+            Divider(color: AppColors.cardBorder(context), height: 1),
+            const SizedBox(height: 8),
+
+            // Footer com Botões de Ação Direta
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      Icon(Icons.schedule, size: 14, color: AppColors.subtext(context)),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          student['last_session'] as String,
-                          style: TextStyle(color: AppColors.subtext(context), fontSize: 11),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Se o aluno estiver pendente de confirmação, exibir ação de reenviar convite
-                if ((student['status'] as String? ?? '').contains('Pendente')) ...[
-                  TextButton.icon(
-                    icon: Icon(Icons.send_rounded, size: 13, color: AppColors.tangerine(context)),
-                    label: Text(
-                      'Reenviar',
-                      style: TextStyle(
-                        color: AppColors.tangerine(context),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                    onPressed: () {
-                      final email = student['email'] ?? student['full_name'];
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          backgroundColor: Colors.green.shade800,
-                          content: Text('Convite de confirmação reenviado para $email!'),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 2),
-                ],
-                // Action: Gerar Nova Ficha IA vinculada diretamente ao aluno
+                // Ação: WhatsApp Direto
                 TextButton.icon(
-                  icon: Icon(Icons.auto_awesome, size: 15, color: AppColors.emerald(context)),
-                  label: Text(
-                    'Nova Ficha IA',
-                    style: TextStyle(
-                      color: AppColors.emerald(context),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
+                  icon: const Icon(Icons.chat_rounded, size: 15, color: Colors.green),
+                  label: const Text(
+                    'WhatsApp',
+                    style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                  onPressed: () => _openWhatsApp(student),
+                ),
+                // Ação: Prescrição / Nova Ficha IA
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.emerald(context),
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                  ),
+                  icon: const Icon(Icons.auto_awesome, size: 14),
+                  label: const Text(
+                    'Prescrição IA',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                   onPressed: () {
                     final studentId = student['id'] as String;

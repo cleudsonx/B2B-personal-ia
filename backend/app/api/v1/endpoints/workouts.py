@@ -8,7 +8,11 @@ from app.schemas.workout import (
     PrescriptionSaveRequest,
     PrescriptionSaveResponse,
     StudentCreateRequest,
+    StudentUpdateRequest,
+    StudentStatusUpdateRequest,
     StudentResponse,
+    BiomechanicalAlertCreate,
+    BiomechanicalAlertResponse,
 )
 from app.services.gemini_service import GeminiService
 from app.api.deps import get_gemini_service, get_current_user
@@ -17,6 +21,23 @@ router = APIRouter()
 
 # Armazenamento em memória com integridade referencial para persistência e fallback robusto
 _PRESCRIPTIONS_STORE: Dict[str, Dict[str, Any]] = {}
+_ALERTS_STORE: Dict[str, Dict[str, Any]] = {
+    "alt-1": {
+        "id": "alt-1",
+        "student_id": "st-1",
+        "student_name": "Rodrigo Silveira",
+        "trainer_id": "current-trainer",
+        "original_exercise": "Supino Reto com Barra",
+        "adapted_exercise": "Supino Máquina Articulada",
+        "reason": "Desconforto ou Dor Articular",
+        "pain_location": "Ombro Anterior",
+        "severity": "Moderada",
+        "status": "active",
+        "acknowledged": False,
+        "created_at": "2026-09-29T07:45:00Z",
+        "message": "Trocou Supino Reto por Supino Máquina (Ombro Anterior)",
+    }
+}
 _STUDENTS_STORE: Dict[str, Dict[str, Any]] = {
     "st-1": {
         "id": "st-1",
@@ -28,6 +49,9 @@ _STUDENTS_STORE: Dict[str, Dict[str, Any]] = {
         "trainer_id": "current-trainer",
         "created_at": "2026-09-01T10:00:00Z",
         "has_active_prescription": True,
+        "last_session": "Hoje, 07:45",
+        "active_split": "Treino A - Peito e Tríceps",
+        "injuries_or_restrictions": "Leve histórico de desconforto no manguito rotador",
     },
     "st-2": {
         "id": "st-2",
@@ -39,6 +63,37 @@ _STUDENTS_STORE: Dict[str, Dict[str, Any]] = {
         "trainer_id": "current-trainer",
         "created_at": "2026-09-10T14:30:00Z",
         "has_active_prescription": True,
+        "last_session": "Hoje, 09:15",
+        "active_split": "Treino B - Membros Inferiores",
+        "injuries_or_restrictions": "Condromalácia patelar grau 1",
+    },
+    "st-3": {
+        "id": "st-3",
+        "full_name": "Lucas Andrade Mendes",
+        "email": "lucas.mendes@email.com",
+        "phone": "(11) 91234-5678",
+        "goal": "Condicionamento Geral",
+        "status": "Pendente Confirmação",
+        "trainer_id": "current-trainer",
+        "created_at": "2026-09-28T18:00:00Z",
+        "has_active_prescription": False,
+        "last_session": "Convite enviado",
+        "active_split": "Aguardando confirmação",
+        "injuries_or_restrictions": "Nenhuma",
+    },
+    "st-4": {
+        "id": "st-4",
+        "full_name": "Mariana Castro",
+        "email": "mariana.castro@email.com",
+        "phone": "(31) 97654-3210",
+        "goal": "Reabilitação Postural",
+        "status": "Arquivado",
+        "trainer_id": "current-trainer",
+        "created_at": "2026-07-15T11:00:00Z",
+        "has_active_prescription": False,
+        "last_session": "Ciclo concluído em 15/08",
+        "active_split": "Plano finalizado",
+        "injuries_or_restrictions": "Escoliose torácica leve",
     },
 }
 
@@ -213,3 +268,162 @@ async def list_students(
         if st.get("trainer_id") == trainer_id or trainer_id == "dev-user-0000-0000-000000000001" or trainer_id == "current-trainer"
     ]
     return students
+
+
+@router.put(
+    "/students/{student_id}",
+    response_model=StudentResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Atualizar Dados do Aluno",
+    description="Permite ao treinador editar nome, objetivo, telefone e histórico/restrições articulares."
+)
+async def update_student(
+    student_id: str,
+    data: StudentUpdateRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> StudentResponse:
+    if student_id not in _STUDENTS_STORE:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Aluno com ID '{student_id}' não encontrado."
+        )
+
+    student = _STUDENTS_STORE[student_id]
+    if data.full_name is not None:
+        student["full_name"] = data.full_name.strip()
+    if data.email is not None:
+        student["email"] = data.email.strip().lower()
+    if data.phone is not None:
+        student["phone"] = data.phone.strip()
+    if data.goal is not None:
+        student["goal"] = data.goal
+    if data.injuries_or_restrictions is not None:
+        student["injuries_or_restrictions"] = data.injuries_or_restrictions
+    if data.status is not None:
+        student["status"] = data.status
+
+    return StudentResponse(**student)
+
+
+@router.patch(
+    "/students/{student_id}/status",
+    response_model=StudentResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Alterar Status do Aluno (Ativar / Arquivar)",
+    description="Permite arquivar aluno ao fim do ciclo ou reativar aluno antigo sem perda de dados."
+)
+async def update_student_status(
+    student_id: str,
+    data: StudentStatusUpdateRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> StudentResponse:
+    if student_id not in _STUDENTS_STORE:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Aluno com ID '{student_id}' não encontrado."
+        )
+
+    _STUDENTS_STORE[student_id]["status"] = data.status
+    return StudentResponse(**_STUDENTS_STORE[student_id])
+
+
+@router.delete(
+    "/students/{student_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Excluir Aluno",
+    description="Remove o aluno e desvincula prescrições ativas."
+)
+async def delete_student(
+    student_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
+    if student_id not in _STUDENTS_STORE:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Aluno com ID '{student_id}' não encontrado."
+        )
+
+    deleted = _STUDENTS_STORE.pop(student_id)
+    return {
+        "status": "success",
+        "message": f"Aluno '{deleted['full_name']}' excluído com sucesso.",
+        "student_id": student_id,
+    }
+
+
+@router.post(
+    "/adaptations/alert",
+    response_model=BiomechanicalAlertResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Registrar Alerta Biomecânico do Treino Presencial",
+    description="Disparado quando o aluno relata dor articular ou solicita adaptação no espaço de treino."
+)
+async def register_biomechanical_alert(
+    data: BiomechanicalAlertCreate,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> BiomechanicalAlertResponse:
+    trainer_id = data.trainer_id or "current-trainer"
+    alert_id = f"alt_{uuid.uuid4().hex[:8]}"
+    created_at = datetime.now().isoformat()
+
+    msg = f"Relatou dor em {data.pain_location or 'articulação'} durante {data.original_exercise} ➔ Adaptado para {data.adapted_exercise}"
+    alert_dict = {
+        "id": alert_id,
+        "student_id": data.student_id,
+        "student_name": data.student_name,
+        "trainer_id": trainer_id,
+        "original_exercise": data.original_exercise,
+        "adapted_exercise": data.adapted_exercise,
+        "reason": data.reason,
+        "pain_location": data.pain_location,
+        "severity": data.severity,
+        "status": "active",
+        "acknowledged": False,
+        "created_at": created_at,
+        "message": msg,
+    }
+    _ALERTS_STORE[alert_id] = alert_dict
+
+    return BiomechanicalAlertResponse(**alert_dict)
+
+
+@router.get(
+    "/trainer/{trainer_id}/alerts",
+    response_model=List[BiomechanicalAlertResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Listar Alertas Biomecânicos para o Treinador",
+    description="Retorna alertas de dor e trocas de exercício ocorridos durante treinos presenciais."
+)
+async def list_trainer_alerts(
+    trainer_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> List[BiomechanicalAlertResponse]:
+    alerts = [
+        BiomechanicalAlertResponse(**alt)
+        for alt in reversed(list(_ALERTS_STORE.values()))
+        if alt.get("trainer_id") == trainer_id or trainer_id == "current-trainer" or trainer_id == "dev-user-0000-0000-000000000001"
+    ]
+    return alerts
+
+
+@router.patch(
+    "/alerts/{alert_id}/acknowledge",
+    response_model=BiomechanicalAlertResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Marcar Alerta como Ciente / Revisado",
+    description="Permite ao treinador registrar ciência no card do aluno."
+)
+async def acknowledge_alert(
+    alert_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> BiomechanicalAlertResponse:
+    if alert_id not in _ALERTS_STORE:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Alerta '{alert_id}' não encontrado."
+        )
+
+    _ALERTS_STORE[alert_id]["acknowledged"] = True
+    _ALERTS_STORE[alert_id]["status"] = "acknowledged"
+    return BiomechanicalAlertResponse(**_ALERTS_STORE[alert_id])
+

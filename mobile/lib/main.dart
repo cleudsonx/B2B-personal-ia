@@ -39,7 +39,7 @@ class B2BPersonalIaApp extends StatelessWidget {
       listenable: ThemeController.instance,
       builder: (context, _) {
         return MaterialApp(
-          title: 'B2B Personal IA',
+          title: 'Mr. Coach',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
@@ -117,7 +117,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         _NavDestinationItem(
           icon: Icons.smart_toy_outlined,
           activeIcon: Icons.smart_toy_rounded,
-          label: 'Assistente B2B',
+          label: 'Mr. Coach AI',
           activeColor: AppColors.trainerIndigo,
         ),
         _NavDestinationItem(
@@ -129,7 +129,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         _NavDestinationItem(
           icon: Icons.fitness_center_outlined,
           activeIcon: Icons.fitness_center_rounded,
-          label: 'Salão de Treino',
+          label: 'Treino Presencial',
           activeColor: AppColors.studentCyan,
         ),
       ];
@@ -138,13 +138,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
         _NavDestinationItem(
           icon: Icons.fitness_center_outlined,
           activeIcon: Icons.fitness_center_rounded,
-          label: 'Meu Treino (Salão)',
+          label: 'Meu Treino Presencial',
           activeColor: AppColors.studentCyan,
         ),
         _NavDestinationItem(
           icon: Icons.smart_toy_outlined,
           activeIcon: Icons.smart_toy_rounded,
-          label: 'Assistente IA',
+          label: 'Mr. Coach AI',
           activeColor: AppColors.studentCyan,
         ),
       ];
@@ -260,16 +260,16 @@ class _MainShellScreenState extends State<MainShellScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'B2B PERSONAL IA',
+                              'MR. COACH',
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 1.0,
                                 color: AppColors.text(context),
                               ),
                             ),
                             Text(
-                              _isTrainer ? 'TREINADOR PRO' : 'ALUNO NO SALÃO',
+                              _isTrainer ? 'PROFESSOR / PERSONAL' : 'ALUNO EM TREINO',
                               style: TextStyle(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w700,

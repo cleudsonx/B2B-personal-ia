@@ -241,32 +241,207 @@ class WorkoutService {
     Map<String, dynamic>? details,
     String? trainerId,
     String? workoutId,
+    String? painLocation,
   }) async {
     final client = AuthService.currentUser;
-    if (client == null) return;
+    final clientId = client?.id ?? 'client-demo';
+    final studentName = client?.userMetadata?['full_name'] as String? ?? 'Aluno em Treino';
 
     try {
-      // Se trainerId não for passado, busca no perfil do aluno
       String? actualTrainerId = trainerId;
-      if (actualTrainerId == null) {
+      if (actualTrainerId == null && client != null) {
         final profile = await AuthService.getCurrentProfile();
         actualTrainerId = profile?['trainer_id'] as String?;
       }
+      actualTrainerId ??= 'current-trainer';
 
-      final payload = <String, dynamic>{
-        'client_id': client.id,
-        'original_exercise': originalExercise,
-        'adapted_exercise': adaptedExercise,
-        'reason': reason,
-        'viewed_by_trainer': false,
-      };
-      if (actualTrainerId != null) payload['trainer_id'] = actualTrainerId;
-      if (workoutId != null) payload['workout_id'] = workoutId;
-      if (details != null) payload['adaptation_details'] = details;
+      // 1. Persiste no Supabase se disponível
+      if (_clientOrNull != null) {
+        final payload = <String, dynamic>{
+          'client_id': clientId,
+          'original_exercise': originalExercise,
+          'adapted_exercise': adaptedExercise,
+          'reason': reason,
+          'viewed_by_trainer': false,
+        };
+        payload['trainer_id'] = actualTrainerId;
+        if (workoutId != null) payload['workout_id'] = workoutId;
+        if (details != null) payload['adaptation_details'] = details;
 
-      await _client.from('adaptation_logs').insert(payload);
+        await _client.from('adaptation_logs').insert(payload);
+      }
+
+      // 2. Dispara alerta biomecânico no backend para acionar painel do treinador
+      await registerBiomechanicalAlert(
+        studentId: clientId,
+        studentName: studentName,
+        trainerId: actualTrainerId,
+        originalExercise: originalExercise,
+        adaptedExercise: adaptedExercise,
+        reason: reason,
+        painLocation: painLocation,
+      );
     } catch (e) {
       debugPrint('Erro ao auditar substituição de exercício: $e');
     }
   }
+
+  /// Dispara alerta biomecânico no backend (painel do treinador e WhatsApp)
+  static Future<Map<String, dynamic>?> registerBiomechanicalAlert({
+    required String studentId,
+    required String studentName,
+    String? trainerId,
+    required String originalExercise,
+    required String adaptedExercise,
+    required String reason,
+    String? painLocation,
+    String severity = 'Moderada',
+    Map<String, dynamic>? details,
+  }) async {
+    try {
+      final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/adaptations/alert');
+      final res = await http.post(
+        uri,
+        headers: _apiHeaders,
+        body: jsonEncode({
+          'student_id': studentId,
+          'student_name': studentName,
+          'trainer_id': trainerId ?? 'current-trainer',
+          'original_exercise': originalExercise,
+          'adapted_exercise': adaptedExercise,
+          'reason': reason,
+          'pain_location': painLocation,
+          'severity': severity,
+          'details': details,
+        }),
+      ).timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 201) {
+        return jsonDecode(res.body) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      debugPrint('Aviso backend registerBiomechanicalAlert: $e');
+    }
+    return null;
+  }
+
+  /// Busca os alertas ativos para o painel do treinador
+  static Future<List<Map<String, dynamic>>> getTrainerAlerts({String? trainerId}) async {
+    final tid = trainerId ?? AuthService.currentUser?.id ?? 'current-trainer';
+    try {
+      final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/trainer/$tid/alerts');
+      final res = await http.get(uri, headers: _apiHeaders).timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200) {
+        final list = jsonDecode(res.body) as List<dynamic>;
+        return list.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+      }
+    } catch (e) {
+      debugPrint('Aviso backend getTrainerAlerts: $e');
+    }
+    return [];
+  }
+
+  /// Marca um alerta como ciente pelo treinador
+  static Future<void> acknowledgeAlert(String alertId) async {
+    try {
+      final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/alerts/$alertId/acknowledge');
+      await http.patch(uri, headers: _apiHeaders).timeout(const Duration(seconds: 4));
+    } catch (e) {
+      debugPrint('Aviso backend acknowledgeAlert: $e');
+    }
+  }
+
+  /// Atualiza os dados de um aluno (nome, email, telefone, objetivo, restrições)
+  static Future<bool> updateStudent({
+    required String studentId,
+    String? fullName,
+    String? email,
+    String? phone,
+    String? goal,
+    String? injuriesOrRestrictions,
+    String? status,
+  }) async {
+    // 1. Atualiza no cache local
+    final idx = _localStudentsCache.indexWhere((s) => s['id'] == studentId);
+    if (idx != -1) {
+      if (fullName != null) _localStudentsCache[idx]['full_name'] = fullName;
+      if (email != null) _localStudentsCache[idx]['email'] = email;
+      if (phone != null) _localStudentsCache[idx]['phone'] = phone;
+      if (goal != null) _localStudentsCache[idx]['goal'] = goal;
+      if (injuriesOrRestrictions != null) _localStudentsCache[idx]['injuries_or_restrictions'] = injuriesOrRestrictions;
+      if (status != null) _localStudentsCache[idx]['status'] = status;
+    }
+
+    // 2. Atualiza no Supabase
+    if (_clientOrNull != null) {
+      try {
+        final updateMap = <String, dynamic>{};
+        if (fullName != null) updateMap['full_name'] = fullName;
+        if (email != null) updateMap['email'] = email;
+        if (phone != null) updateMap['phone'] = phone;
+        if (goal != null) updateMap['goal'] = goal;
+        if (status != null) updateMap['status'] = status;
+        if (updateMap.isNotEmpty) {
+          await _client.from('profiles').update(updateMap).eq('id', studentId);
+        }
+      } catch (e) {
+        debugPrint('Aviso Supabase updateStudent: $e');
+      }
+    }
+
+    // 3. Atualiza no Backend FastAPI
+    try {
+      final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/students/$studentId');
+      final res = await http.put(
+        uri,
+        headers: _apiHeaders,
+        body: jsonEncode({
+          if (fullName != null) 'full_name': fullName,
+          if (email != null) 'email': email,
+          if (phone != null) 'phone': phone,
+          if (goal != null) 'goal': goal,
+          if (injuriesOrRestrictions != null) 'injuries_or_restrictions': injuriesOrRestrictions,
+          if (status != null) 'status': status,
+        }),
+      ).timeout(const Duration(seconds: 4));
+      return res.statusCode == 200;
+    } catch (e) {
+      debugPrint('Aviso backend updateStudent: $e');
+    }
+    return true;
+  }
+
+  /// Altera o status do aluno (Ativo, Pendente Confirmação, Arquivado)
+  static Future<bool> updateStudentStatus({
+    required String studentId,
+    required String status,
+  }) async {
+    return updateStudent(studentId: studentId, status: status);
+  }
+
+  /// Exclui um aluno do sistema
+  static Future<bool> deleteStudent(String studentId) async {
+    // 1. Remove do cache local
+    _localStudentsCache.removeWhere((s) => s['id'] == studentId);
+
+    // 2. Remove do Supabase
+    if (_clientOrNull != null) {
+      try {
+        await _client.from('profiles').delete().eq('id', studentId);
+      } catch (e) {
+        debugPrint('Aviso Supabase deleteStudent: $e');
+      }
+    }
+
+    // 3. Remove do Backend FastAPI
+    try {
+      final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/students/$studentId');
+      final res = await http.delete(uri, headers: _apiHeaders).timeout(const Duration(seconds: 4));
+      return res.statusCode == 200;
+    } catch (e) {
+      debugPrint('Aviso backend deleteStudent: $e');
+    }
+    return true;
+  }
 }
+

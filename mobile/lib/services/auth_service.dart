@@ -129,6 +129,23 @@ class AuthService {
     };
   }
 
+  /// Busca os dados do professor vinculado ao aluno atual
+  static Future<Map<String, dynamic>?> getTrainerForStudent() async {
+    try {
+      final profile = await getCurrentProfile();
+      final trainerId = profile?['trainer_id'] as String?;
+      if (trainerId != null && trainerId.isNotEmpty && _clientOrNull != null) {
+        final trainer = await _client
+            .from('profiles')
+            .select('id, full_name, email, phone')
+            .eq('id', trainerId)
+            .maybeSingle();
+        return trainer;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   /// Desconectar a sessão e limpar caches
   static Future<void> signOut() async {
     _cachedProfile = null;

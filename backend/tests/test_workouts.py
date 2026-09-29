@@ -70,3 +70,66 @@ def test_prescription_persistence_flow():
     active_plan = active_res.json()
     assert active_plan["workout_plan_title"] == "Periodização Hipertrofia A/B"
     assert len(active_plan["splits"]) == 1
+
+
+def test_student_update_archive_and_delete():
+    # 1. Cria aluno
+    create_res = client.post("/api/v1/workouts/students", json={
+        "full_name": "Marcos Oliveira",
+        "email": "marcos.oliveira@teste.com",
+        "goal": "Condicionamento Geral"
+    })
+    assert create_res.status_code == 201
+    st_id = create_res.json()["id"]
+
+    # 2. Atualiza dados (editar aluno)
+    update_res = client.put(f"/api/v1/workouts/students/{st_id}", json={
+        "goal": "Hipertrofia Glúteos",
+        "injuries_or_restrictions": "Condromalácia patelar",
+        "phone": "(11) 91111-2222"
+    })
+    assert update_res.status_code == 200
+    assert update_res.json()["goal"] == "Hipertrofia Glúteos"
+    assert update_res.json()["injuries_or_restrictions"] == "Condromalácia patelar"
+
+    # 3. Arquivar aluno
+    archive_res = client.patch(f"/api/v1/workouts/students/{st_id}/status", json={
+        "status": "Arquivado"
+    })
+    assert archive_res.status_code == 200
+    assert archive_res.json()["status"] == "Arquivado"
+
+    # 4. Excluir aluno
+    del_res = client.delete(f"/api/v1/workouts/students/{st_id}")
+    assert del_res.status_code == 200
+    assert del_res.json()["status"] == "success"
+
+
+def test_biomechanical_alert_flow():
+    # 1. Aluno registra alerta de dor articular no salão
+    alert_res = client.post("/api/v1/workouts/adaptations/alert", json={
+        "student_id": "st-1",
+        "student_name": "Rodrigo Silveira",
+        "trainer_id": "current-trainer",
+        "original_exercise": "Supino Reto com Barra",
+        "adapted_exercise": "Supino Máquina",
+        "reason": "Desconforto ou Dor Articular",
+        "pain_location": "Ombro Anterior",
+        "severity": "Moderada"
+    })
+    assert alert_res.status_code == 201
+    alert_data = alert_res.json()
+    alert_id = alert_data["id"]
+    assert alert_data["acknowledged"] is False
+
+    # 2. Treinador lista alertas
+    list_res = client.get("/api/v1/workouts/trainer/current-trainer/alerts")
+    assert list_res.status_code == 200
+    alerts = list_res.json()
+    assert any(a["id"] == alert_id for a in alerts)
+
+    # 3. Treinador marca como ciente
+    ack_res = client.patch(f"/api/v1/workouts/alerts/{alert_id}/acknowledge")
+    assert ack_res.status_code == 200
+    assert ack_res.json()["acknowledged"] is True
+
