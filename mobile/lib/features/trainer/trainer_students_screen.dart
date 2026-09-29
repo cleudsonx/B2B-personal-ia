@@ -624,25 +624,71 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                               });
 
                               if (ctx.mounted) Navigator.pop(ctx);
-                              messenger.showSnackBar(
-                                SnackBar(
-                                  backgroundColor: Colors.green.shade800,
-                                  duration: const Duration(seconds: 5),
-                                  content: Text('✓ Aluno "${student['full_name']}" cadastrado com sucesso!'),
-                                  action: phoneCtrl.text.trim().isNotEmpty
-                                      ? SnackBarAction(
-                                          label: 'Enviar WhatsApp',
-                                          textColor: Colors.yellowAccent,
-                                          onPressed: () => _openWhatsApp({
+                              if (!mounted) return;
+
+                              if (phoneCtrl.text.trim().isNotEmpty) {
+                                showDialog(
+                                  context: this.context,
+                                  builder: (dCtx) => AlertDialog(
+                                    backgroundColor: AppColors.card(context),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      side: BorderSide(color: AppColors.cardBorder(context)),
+                                    ),
+                                    title: Row(
+                                      children: [
+                                        const Icon(Icons.mark_email_read_rounded, color: Colors.green),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'Convite Criado!',
+                                            style: TextStyle(
+                                              color: AppColors.text(context),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    content: Text(
+                                      'O convite oficial do Mr. Coach foi enviado para o e-mail ${student['email']}.\n\nDeseja enviar agora a mensagem com o link de ativação no WhatsApp de ${student['full_name']}?',
+                                      style: TextStyle(color: AppColors.subtext(context), fontSize: 13, height: 1.4),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(dCtx),
+                                        child: Text('Mais Tarde', style: TextStyle(color: AppColors.subtext(context))),
+                                      ),
+                                      ElevatedButton.icon(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF25D366),
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                        icon: const Icon(Icons.chat_rounded, size: 18),
+                                        label: const Text('Enviar WhatsApp Agora', style: TextStyle(fontWeight: FontWeight.bold)),
+                                        onPressed: () {
+                                          Navigator.pop(dCtx);
+                                          _openWhatsApp({
                                             'id': student['id'],
                                             'full_name': student['full_name'],
                                             'phone': student['phone'],
                                             'status': 'Pendente Confirmação',
-                                          }),
-                                        )
-                                      : null,
-                                ),
-                              );
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              } else {
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: Colors.green.shade800,
+                                    content: Text('✓ Aluno "${student['full_name']}" cadastrado e convite enviado por e-mail!'),
+                                  ),
+                                );
+                              }
                             }
                           } catch (e) {
                             if (mounted) {

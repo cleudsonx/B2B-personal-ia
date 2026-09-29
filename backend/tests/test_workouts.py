@@ -134,7 +134,12 @@ def test_biomechanical_alert_flow():
     assert ack_res.json()["acknowledged"] is True
 
 
-def test_student_invitation_flow():
+def test_student_invitation_flow(monkeypatch):
+    from app.services.email_service import email_service
+    async def mock_send(*args, **kwargs):
+        return {"status": "sent", "provider": "mock"}
+    monkeypatch.setattr(email_service, "send_student_invitation_email", mock_send)
+
     # Treinador convida novo aluno com envio de e-mail e URL de WhatsApp
     invite_res = client.post("/api/v1/workouts/students/invite", json={
         "email": "novo.aluno@example.com",

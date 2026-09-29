@@ -82,22 +82,31 @@ class WorkoutService {
       }
     }
 
-    // 3. Sincroniza com a API do Backend
+    // 3. Sincroniza com a API do Backend e dispara convite oficial por e-mail via Resend
     try {
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/students');
-      await http.post(
+      final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/students/invite');
+      final res = await http.post(
         uri,
         headers: _apiHeaders,
         body: jsonEncode({
           'full_name': fullName.trim(),
           'email': email.trim().toLowerCase(),
           'phone': phone?.trim(),
-          'goal': goal ?? 'Hipertrofia Muscular',
-          'trainer_id': trainerId,
+          'objective': goal ?? 'Hipertrofia Muscular',
+          'send_email': true,
+          'send_whatsapp': false,
         }),
-      ).timeout(const Duration(seconds: 4));
+      ).timeout(const Duration(seconds: 8));
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        studentData['id'] = data['id'] ?? studentId;
+        studentData['invitation_link'] = data['invitation_link'];
+        studentData['whatsapp_url'] = data['whatsapp_url'];
+        studentData['email_status'] = data['email_status'];
+      }
     } catch (e) {
-      debugPrint('Aviso Backend createStudent: $e');
+      debugPrint('Aviso Backend inviteStudent: $e');
     }
 
     return studentData;
