@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/server_config_dialog.dart';
 import '../../core/widgets/theme_toggle_button.dart';
+import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
 import 'anamnesis_screen.dart';
 
@@ -172,10 +173,19 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     final phone = student['phone'] as String? ?? '';
     final name = student['full_name'] as String? ?? 'Aluno';
     final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+    final isPending = student['status'] == 'Pendente Confirmação' || student['status'] == 'Pendente';
+    final user = AuthService.currentUser;
+    final trainerName = user?.userMetadata?['full_name'] as String? ?? 'Seu Treinador';
 
-    final msg = Uri.encodeComponent(
-      'Olá $name! 💪 Aqui é o seu Treinador pelo Mr. Coach. Como estão seus treinos presenciais essa semana?',
-    );
+    final String textMessage = isPending
+        ? 'Olá, $name! 💪\n\n'
+            'Aqui é o seu Personal Trainer Prof. $trainerName. Convidei você para o *Mr. Coach* — nossa plataforma de biomecânica e acompanhamento de treinos!\n\n'
+            '🔗 Clique no link para ativar seu acesso e preencher sua avaliação em 3 min:\n'
+            'https://cleudsonx.github.io/B2B-personal-ia/#onboarding?student_id=${student['id']}\n\n'
+            'Bons treinos e foco na técnica!'
+        : 'Olá $name! 💪 Aqui é o Prof. $trainerName pelo Mr. Coach. Como estão seus treinos presenciais essa semana?';
+
+    final msg = Uri.encodeComponent(textMessage);
 
     if (cleanPhone.isNotEmpty) {
       final finalNumber = cleanPhone.startsWith('55') ? cleanPhone : '55$cleanPhone';
@@ -391,7 +401,20 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                               messenger.showSnackBar(
                                 SnackBar(
                                   backgroundColor: Colors.green.shade800,
-                                  content: Text('✓ Aluno "${student['full_name']}" cadastrado e convite enviado!'),
+                                  duration: const Duration(seconds: 5),
+                                  content: Text('✓ Aluno "${student['full_name']}" cadastrado com sucesso!'),
+                                  action: phoneCtrl.text.trim().isNotEmpty
+                                      ? SnackBarAction(
+                                          label: 'Enviar WhatsApp',
+                                          textColor: Colors.yellowAccent,
+                                          onPressed: () => _openWhatsApp({
+                                            'id': student['id'],
+                                            'full_name': student['full_name'],
+                                            'phone': student['phone'],
+                                            'status': 'Pendente Confirmação',
+                                          }),
+                                        )
+                                      : null,
                                 ),
                               );
                             }

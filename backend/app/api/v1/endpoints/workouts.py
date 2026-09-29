@@ -1,5 +1,6 @@
 import uuid
-from datetime import datetime
+import urllib.parse
+from datetime import datetime, timezone
 from typing import Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.schemas.anamnesis import AnamnesisInput
@@ -13,8 +14,13 @@ from app.schemas.workout import (
     StudentResponse,
     BiomechanicalAlertCreate,
     BiomechanicalAlertResponse,
+    StudentInviteRequest,
+    StudentInviteResponse,
 )
 from app.services.gemini_service import GeminiService
+from app.services.email_service import email_service
+from app.services.whatsapp_service import whatsapp_service
+from app.core.config import settings
 from app.api.deps import get_gemini_service, get_current_user
 
 router = APIRouter()
@@ -426,4 +432,84 @@ async def acknowledge_alert(
     _ALERTS_STORE[alert_id]["acknowledged"] = True
     _ALERTS_STORE[alert_id]["status"] = "acknowledged"
     return BiomechanicalAlertResponse(**_ALERTS_STORE[alert_id])
+
+
+@router.post(
+    "/students/invite",
+    response_model=StudentInviteResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Convidar Aluno via E-mail Profissional e WhatsApp",
+    description="Gera convite exclusivo, envia e-mail com template customizado e formata URL de ativação rápida no WhatsApp."
+)
+async def invite_student(
+    payload: StudentInviteRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> StudentInviteResponse:
+    trainer_name = current_user.get("user_metadata", {}).get("full_name") or current_user.get("full_name") or "Roberto Mendes"
+    trainer_id = current_user.get("id") or "current-trainer"
+    student_id = f"st-{uuid.uuid4().hex[:8]}"
+
+    # Salva o aluno na store com status Pendente Confirmação
+    student_record = {
+        "id": student_id,
+        "email": payload.email,
+        "full_name": payload.full_name,
+        "phone": payload.phone,
+        "trainer_id": trainer_id,
+        "status": "Pendente Confirmação",
+        "objective": payload.objective or "Hipertrofia Muscular",
+        "injuries_or_restrictions": payload.injuries_or_restrictions or "Aguardando avaliação clínica",
+        "has_alert": False,
+        "last_session": "Pendente Confirmação",
+        "active_split": "Não configurado",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    _STUDENTS_STORE[student_id] = student_record
+
+    # Gera link seguro de onboarding/convite
+    invitation_link = f"{settings.APP_FRONTEND_URL}/#onboarding?student_id={student_id}&trainer_id={trainer_id}"
+
+    # 1. Envio de E-mail via Resend/Mock
+    email_status = "skipped"
+    if payload.send_email:
+        email_res = await email_service.send_student_invitation_email(
+            student_email=payload.email,
+            student_name=payload.full_name,
+            trainer_name=trainer_name,
+            confirmation_url=invitation_link,
+        )
+        email_status = email_res.get("status", "sent")
+
+    # 2. Formata mensagem e URL de WhatsApp
+    clean_phone = "".join(filter(str.isdigit, payload.phone or ""))
+    if clean_phone and not clean_phone.startswith("55") and len(clean_phone) in (10, 11):
+        clean_phone = f"55{clean_phone}"
+
+    whatsapp_msg = (
+        f"Olá, {payload.full_name}! 💪\n\n"
+        f"Seu Personal Trainer *Prof. {trainer_name}* convidou você para treinar no *Mr. Coach* — a plataforma com biomecânica 3D e acompanhamento exclusivo.\n\n"
+        f"🔗 Clique no link abaixo para ativar sua conta e preencher sua avaliação em 3 minutos:\n"
+        f"{invitation_link}\n\n"
+        f"_Bons treinos e foco na técnica!_"
+    )
+    whatsapp_url = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(whatsapp_msg)}" if clean_phone else ""
+
+    # Se solicitado disparo direto via WhatsApp service
+    whatsapp_status = "ready_url"
+    if payload.send_whatsapp and clean_phone:
+        wa_res = await whatsapp_service.send_text_message(clean_phone, whatsapp_msg)
+        whatsapp_status = wa_res.get("status", "sent")
+
+    return StudentInviteResponse(
+        id=student_id,
+        email=payload.email,
+        full_name=payload.full_name,
+        status="Pendente Confirmação",
+        invitation_link=invitation_link,
+        whatsapp_url=whatsapp_url,
+        email_status=email_status,
+        whatsapp_status=whatsapp_status,
+        message=f"Convite gerado com sucesso para {payload.full_name}."
+    )
+
 

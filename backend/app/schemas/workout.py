@@ -113,3 +113,26 @@ class BiomechanicalAlertResponse(BaseModel):
     created_at: str
     message: str
 
+
+class StudentInviteRequest(BaseModel):
+    email: str
+    full_name: str
+    phone: Optional[str] = None
+    objective: Optional[str] = "Hipertrofia Muscular"
+    injuries_or_restrictions: Optional[str] = None
+    send_email: bool = True
+    send_whatsapp: bool = True
+
+
+class StudentInviteResponse(BaseModel):
+    id: str
+    email: str
+    full_name: str
+    status: str = "Pendente Confirmação"
+    invitation_link: str
+    whatsapp_url: str
+    email_status: str
+    whatsapp_status: str
+    message: str
+
+

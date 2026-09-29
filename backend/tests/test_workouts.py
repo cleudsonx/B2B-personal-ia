@@ -133,3 +133,24 @@ def test_biomechanical_alert_flow():
     assert ack_res.status_code == 200
     assert ack_res.json()["acknowledged"] is True
 
+
+def test_student_invitation_flow():
+    # Treinador convida novo aluno com envio de e-mail e URL de WhatsApp
+    invite_res = client.post("/api/v1/workouts/students/invite", json={
+        "email": "novo.aluno@example.com",
+        "full_name": "Gabriel Vasconcelos",
+        "phone": "11988887777",
+        "objective": "Hipertrofia Muscular",
+        "injuries_or_restrictions": "Desconforto leve no manguito rotador",
+        "send_email": True,
+        "send_whatsapp": True,
+    })
+    assert invite_res.status_code == 201
+    data = invite_res.json()
+    assert data["status"] == "Pendente Confirmação"
+    assert "onboarding" in data["invitation_link"]
+    assert "wa.me/5511988887777" in data["whatsapp_url"]
+    assert data["email_status"] in ("sent", "success")
+    assert data["whatsapp_status"] in ("sent", "success", "ready_url")
+
+
