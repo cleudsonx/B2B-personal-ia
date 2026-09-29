@@ -74,3 +74,67 @@ def test_payment_service_webhooks():
     # Stripe webhook
     wh_stripe = PaymentProviderService.process_webhook("stripe", {"type": "checkout.session.completed", "trainer_id": "tr-3"})
     assert wh_stripe["subscription_status"] == "active"
+
+
+def test_plan_upgrade_calculation_and_proration():
+    # Upgrade Starter (grátis) -> Pro (R$ 89,00)
+    res = PaymentProviderService.calculate_plan_change(
+        current_plan_id="starter",
+        new_plan_id="pro",
+        billing_interval="monthly",
+        days_used_in_cycle=10,
+        total_days_in_cycle=30,
+        active_students_count=2,
+    )
+    assert res["change_type"] == "upgrade"
+    assert res["is_blocked"] is False
+    assert res["unused_credit_cents"] == 0
+    assert res["net_charge_cents"] == 8900
+    assert res["new_student_limit"] == 30
+
+    # Upgrade Pro (R$ 89,00) -> Studio (R$ 199,00) no meio do ciclo (15 dias restantes de 30)
+    res_studio = PaymentProviderService.calculate_plan_change(
+        current_plan_id="pro",
+        new_plan_id="studio",
+        billing_interval="monthly",
+        days_used_in_cycle=15,
+        total_days_in_cycle=30,
+        active_students_count=15,
+    )
+    assert res_studio["change_type"] == "upgrade"
+    assert res_studio["is_blocked"] is False
+    # Crédito de 15 dias de Pro (8900 / 30 * 15 = 4450)
+    assert res_studio["unused_credit_cents"] == 4450
+    # Valor líquido a pagar = 19900 - 4450 = 15450
+    assert res_studio["net_charge_cents"] == 15450
+    assert res_studio["new_student_limit"] == 100
+
+
+def test_plan_downgrade_validation():
+    # Downgrade permitido: Pro -> Starter com apenas 2 alunos ativos (limite Starter é 3)
+    res_allowed = PaymentProviderService.calculate_plan_change(
+        current_plan_id="pro",
+        new_plan_id="starter",
+        billing_interval="monthly",
+        days_used_in_cycle=15,
+        total_days_in_cycle=30,
+        active_students_count=2,
+    )
+    assert res_allowed["change_type"] == "downgrade"
+    assert res_allowed["is_blocked"] is False
+    assert res_allowed["net_charge_cents"] == 0
+    assert "fim do ciclo" in res_allowed["effective_date"].lower()
+
+    # Downgrade bloqueado por integridade: Pro -> Starter com 12 alunos ativos (limite Starter é 3)
+    res_blocked = PaymentProviderService.calculate_plan_change(
+        current_plan_id="pro",
+        new_plan_id="starter",
+        billing_interval="monthly",
+        days_used_in_cycle=10,
+        total_days_in_cycle=30,
+        active_students_count=12,
+    )
+    assert res_blocked["change_type"] == "downgrade"
+    assert res_blocked["is_blocked"] is True
+    assert "Desative ou arquive pelo menos 9" in res_blocked["block_reason"]
+    assert res_blocked["net_charge_cents"] == 0

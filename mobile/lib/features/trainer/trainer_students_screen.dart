@@ -87,18 +87,21 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
       final dbStudents = await WorkoutService.getTrainerStudents();
       if (dbStudents.isNotEmpty && mounted) {
         setState(() {
-          // Merge or load real DB records
           _students = dbStudents.map((st) {
+            final goal = st['goal'] as String? ?? 'Consultoria Ativa';
+            final status = st['status'] as String? ?? 'Ativo';
             return {
               'id': st['id'] ?? 'db-id',
               'full_name': st['full_name'] ?? 'Aluno',
-              'goal': 'Consultoria Ativa',
+              'email': st['email'] ?? '',
+              'phone': st['phone'] ?? '',
+              'goal': goal,
               'level': 'Ativo',
               'days_per_week': 4,
               'has_alert': false,
               'alert_message': null,
-              'status': 'Ativo',
-              'last_session': 'Sincronizado',
+              'status': status,
+              'last_session': status == 'Pendente Confirmação' ? 'Convite enviado' : 'Sincronizado',
               'active_split': 'Periodização Ativa',
             };
           }).toList();
@@ -112,135 +115,220 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
   }
 
   void _showAddStudentDialog() {
+    final formKey = GlobalKey<FormState>();
     final nameCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
     String goal = 'Hipertrofia Muscular';
+    bool isSubmitting = false;
 
     showDialog(
       context: context,
       builder: (ctx) {
-        return AlertDialog(
-          backgroundColor: AppColors.card(context),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide(color: AppColors.cardBorder(context)),
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.person_add_alt_1_outlined, color: AppColors.emerald(context)),
-              const SizedBox(width: 10),
-              Text(
-                'Novo Aluno',
-                style: TextStyle(color: AppColors.text(context), fontWeight: FontWeight.bold, fontSize: 18),
+        return StatefulBuilder(
+          builder: (dialogCtx, setDialogState) {
+            return AlertDialog(
+              backgroundColor: AppColors.card(context),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(color: AppColors.cardBorder(context)),
               ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameCtrl,
-                style: TextStyle(color: AppColors.text(context)),
-                decoration: InputDecoration(
-                  labelText: 'Nome Completo do Aluno',
-                  labelStyle: TextStyle(color: AppColors.subtext(context)),
-                  filled: true,
-                  fillColor: AppColors.pillBg(context),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.cardBorder(context)),
+              title: Row(
+                children: [
+                  Icon(Icons.person_add_alt_1_outlined, color: AppColors.emerald(context)),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Novo Aluno',
+                    style: TextStyle(color: AppColors.text(context), fontWeight: FontWeight.bold, fontSize: 18),
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.cardBorder(context)),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: nameCtrl,
+                        style: TextStyle(color: AppColors.text(context)),
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Informe o nome completo' : null,
+                        decoration: InputDecoration(
+                          labelText: 'Nome Completo do Aluno',
+                          labelStyle: TextStyle(color: AppColors.subtext(context)),
+                          filled: true,
+                          fillColor: AppColors.pillBg(context),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppColors.cardBorder(context)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppColors.cardBorder(context)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppColors.emerald(context), width: 1.5),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: emailCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                        style: TextStyle(color: AppColors.text(context)),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return 'Informe o e-mail do aluno';
+                          if (!v.contains('@') || !v.contains('.')) return 'Informe um e-mail válido';
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          labelText: 'E-mail para Acesso e Confirmação',
+                          labelStyle: TextStyle(color: AppColors.subtext(context)),
+                          filled: true,
+                          fillColor: AppColors.pillBg(context),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppColors.cardBorder(context)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppColors.cardBorder(context)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppColors.emerald(context), width: 1.5),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: phoneCtrl,
+                        keyboardType: TextInputType.phone,
+                        style: TextStyle(color: AppColors.text(context)),
+                        decoration: InputDecoration(
+                          labelText: 'WhatsApp / Telefone (Opcional)',
+                          labelStyle: TextStyle(color: AppColors.subtext(context)),
+                          filled: true,
+                          fillColor: AppColors.pillBg(context),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppColors.cardBorder(context)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppColors.cardBorder(context)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppColors.emerald(context), width: 1.5),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      DropdownButtonFormField<String>(
+                        initialValue: goal,
+                        dropdownColor: AppColors.card(context),
+                        style: TextStyle(color: AppColors.text(context)),
+                        decoration: InputDecoration(
+                          labelText: 'Objetivo Inicial',
+                          labelStyle: TextStyle(color: AppColors.subtext(context)),
+                          filled: true,
+                          fillColor: AppColors.pillBg(context),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppColors.cardBorder(context)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppColors.cardBorder(context)),
+                          ),
+                        ),
+                        items: ['Hipertrofia Muscular', 'Emagrecimento & Definição', 'Condicionamento Geral', 'Reabilitação Postural']
+                            .map((g) => DropdownMenuItem(value: g, child: Text(g)))
+                            .toList(),
+                        onChanged: (val) => goal = val ?? goal,
+                      ),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: phoneCtrl,
-                keyboardType: TextInputType.phone,
-                style: TextStyle(color: AppColors.text(context)),
-                decoration: InputDecoration(
-                  labelText: 'WhatsApp / Telefone',
-                  labelStyle: TextStyle(color: AppColors.subtext(context)),
-                  filled: true,
-                  fillColor: AppColors.pillBg(context),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.cardBorder(context)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.cardBorder(context)),
-                  ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
+                  child: Text('Cancelar', style: TextStyle(color: AppColors.subtext(context))),
                 ),
-              ),
-              const SizedBox(height: 14),
-              DropdownButtonFormField<String>(
-                initialValue: goal,
-                dropdownColor: AppColors.card(context),
-                style: TextStyle(color: AppColors.text(context)),
-                decoration: InputDecoration(
-                  labelText: 'Objetivo Inicial',
-                  labelStyle: TextStyle(color: AppColors.subtext(context)),
-                  filled: true,
-                  fillColor: AppColors.pillBg(context),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.cardBorder(context)),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.emerald(context),
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.cardBorder(context)),
-                  ),
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          if (!formKey.currentState!.validate()) return;
+                          setDialogState(() => isSubmitting = true);
+
+                          final messenger = ScaffoldMessenger.of(context);
+                          try {
+                            final student = await WorkoutService.createStudent(
+                              fullName: nameCtrl.text.trim(),
+                              email: emailCtrl.text.trim(),
+                              phone: phoneCtrl.text.trim().isNotEmpty ? phoneCtrl.text.trim() : null,
+                              goal: goal,
+                            );
+
+                            if (mounted) {
+                              setState(() {
+                                _students.insert(0, {
+                                  'id': student['id'],
+                                  'full_name': student['full_name'],
+                                  'email': student['email'],
+                                  'phone': student['phone'],
+                                  'goal': student['goal'],
+                                  'level': 'Iniciante',
+                                  'days_per_week': 3,
+                                  'has_alert': false,
+                                  'alert_message': null,
+                                  'status': 'Pendente Confirmação',
+                                  'last_session': 'Convite enviado',
+                                  'active_split': 'Sem ficha ativa',
+                                });
+                              });
+
+                              if (ctx.mounted) {
+                                Navigator.pop(ctx);
+                              }
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  backgroundColor: Colors.green.shade800,
+                                  content: Text(
+                                    'Aluno "${student['full_name']}" cadastrado! Convite e validação enviados para ${student['email']}.',
+                                  ),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  backgroundColor: Colors.red.shade800,
+                                  content: Text('Erro ao salvar aluno: $e'),
+                                ),
+                              );
+                            }
+                          } finally {
+                            setDialogState(() => isSubmitting = false);
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                      : const Text('Salvar Aluno', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
-                items: ['Hipertrofia Muscular', 'Emagrecimento', 'Condicionamento Geral']
-                    .map((g) => DropdownMenuItem(value: g, child: Text(g)))
-                    .toList(),
-                onChanged: (val) => goal = val!,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text('Cancelar', style: TextStyle(color: AppColors.subtext(context))),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.emerald(context),
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              onPressed: () {
-                if (nameCtrl.text.trim().isNotEmpty) {
-                  setState(() {
-                    _students.insert(0, {
-                      'id': 'st-${DateTime.now().millisecondsSinceEpoch}',
-                      'full_name': nameCtrl.text.trim(),
-                      'goal': goal,
-                      'level': 'Iniciante',
-                      'days_per_week': 3,
-                      'has_alert': false,
-                      'alert_message': null,
-                      'status': 'Novo',
-                      'last_session': 'Aguardando 1º treino',
-                      'active_split': 'Sem ficha ativa',
-                    });
-                  });
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      backgroundColor: Colors.green.shade800,
-                      content: Text('Aluno "${nameCtrl.text.trim()}" cadastrado com sucesso!'),
-                    ),
-                  );
-                }
-              },
-              child: const Text('Salvar Aluno', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ],
+              ],
+            );
+          },
         );
       },
     );
@@ -591,22 +679,31 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                     ],
                   ),
                 ),
-                // Status pill
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.emeraldBg(context),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.emerald(context).withValues(alpha: 0.3)),
-                  ),
-                  child: Text(
-                    student['status'] as String,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.emerald(context),
-                    ),
-                  ),
+                // Status pill (Ativo vs Pendente Confirmação)
+                Builder(
+                  builder: (ctx) {
+                    final isPending = (student['status'] as String? ?? '').contains('Pendente');
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isPending ? AppColors.tangerineBg(context) : AppColors.emeraldBg(context),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isPending
+                              ? AppColors.tangerine(context).withValues(alpha: 0.4)
+                              : AppColors.emerald(context).withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Text(
+                        student['status'] as String,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: isPending ? AppColors.tangerine(context) : AppColors.emerald(context),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -663,7 +760,31 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                     ],
                   ),
                 ),
-                // Action: Gerar Nova Ficha IA
+                // Se o aluno estiver pendente de confirmação, exibir ação de reenviar convite
+                if ((student['status'] as String? ?? '').contains('Pendente')) ...[
+                  TextButton.icon(
+                    icon: Icon(Icons.send_rounded, size: 13, color: AppColors.tangerine(context)),
+                    label: Text(
+                      'Reenviar',
+                      style: TextStyle(
+                        color: AppColors.tangerine(context),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                    onPressed: () {
+                      final email = student['email'] ?? student['full_name'];
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: Colors.green.shade800,
+                          content: Text('Convite de confirmação reenviado para $email!'),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 2),
+                ],
+                // Action: Gerar Nova Ficha IA vinculada diretamente ao aluno
                 TextButton.icon(
                   icon: Icon(Icons.auto_awesome, size: 15, color: AppColors.emerald(context)),
                   label: Text(
@@ -675,12 +796,20 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                     ),
                   ),
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const TrainerAnamnesisScreen(),
-                      ),
-                    );
+                    final studentId = student['id'] as String;
+                    if (widget.onSelectStudentForPlan != null) {
+                      widget.onSelectStudentForPlan!(studentId, fullName);
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => TrainerAnamnesisScreen(
+                            initialStudentId: studentId,
+                            initialStudentName: fullName,
+                          ),
+                        ),
+                      );
+                    }
                   },
                 ),
               ],

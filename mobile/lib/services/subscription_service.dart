@@ -104,6 +104,88 @@ class SubscriptionService {
     );
   }
 
+  /// Simula e calcula o impacto financeiro (pró-rata) e as regras de transição de plano (Upgrade / Downgrade)
+  static Future<PlanChangeSimulationModel> simulatePlanChange({
+    required String currentPlanId,
+    required String newPlanId,
+    String billingInterval = 'monthly',
+    int daysUsedInCycle = 10,
+    int totalDaysInCycle = 30,
+    int activeStudentsCount = 0,
+  }) async {
+    try {
+      final uri = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/calculate-change');
+      final body = jsonEncode({
+        'current_plan_id': currentPlanId,
+        'new_plan_id': newPlanId,
+        'billing_interval': billingInterval,
+        'days_used_in_cycle': daysUsedInCycle,
+        'total_days_in_cycle': totalDaysInCycle,
+        'active_students_count': activeStudentsCount,
+      });
+
+      final res = await _client.post(uri, headers: _headers, body: body).timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        return PlanChangeSimulationModel.fromJson(data);
+      }
+    } catch (_) {}
+
+    // Fallback local caso a API esteja offline
+    final isYearly = billingInterval == 'yearly';
+    final targetPrice = newPlanId == 'studio'
+        ? (isYearly ? 190800 : 19900)
+        : (newPlanId == 'pro' ? (isYearly ? 85200 : 8900) : 0);
+    final currentPrice = currentPlanId == 'studio'
+        ? (isYearly ? 190800 : 19900)
+        : (currentPlanId == 'pro' ? (isYearly ? 85200 : 8900) : 0);
+
+    final isUpgrade = (newPlanId == 'studio' && currentPlanId != 'studio') ||
+        (newPlanId == 'pro' && currentPlanId == 'starter');
+    final isDowngrade = !isUpgrade && (newPlanId != currentPlanId);
+
+    if (isDowngrade && newPlanId == 'starter' && activeStudentsCount > 3) {
+      return PlanChangeSimulationModel(
+        changeType: 'downgrade',
+        isBlocked: true,
+        blockReason: 'Você possui $activeStudentsCount alunos ativos. O plano Starter permite no máximo 3 alunos. Desative ou arquive alunos antes de mudar.',
+        currentPlanName: currentPlanId == 'pro' ? 'Personal Pro' : 'Studio Scale',
+        newPlanName: 'Starter Trial',
+        currentPlanPriceCents: currentPrice,
+        newPlanPriceCents: targetPrice,
+        unusedCreditCents: 0,
+        netChargeCents: 0,
+        effectiveDate: 'Bloqueado por cota de alunos',
+        newStudentLimit: 3,
+        newAiLimit: 10,
+        summaryMessage: 'Downgrade bloqueado por excesso de alunos ativos.',
+      );
+    }
+
+    final unusedCredit = (isUpgrade && currentPrice > 0)
+        ? ((currentPrice / totalDaysInCycle) * (totalDaysInCycle - daysUsedInCycle)).toInt()
+        : 0;
+    final netCharge = (targetPrice - unusedCredit).clamp(0, 9999999);
+
+    return PlanChangeSimulationModel(
+      changeType: isUpgrade ? 'upgrade' : (isDowngrade ? 'downgrade' : 'same'),
+      isBlocked: false,
+      blockReason: null,
+      currentPlanName: currentPlanId == 'pro' ? 'Personal Pro' : (currentPlanId == 'studio' ? 'Studio Scale' : 'Starter Trial'),
+      newPlanName: newPlanId == 'pro' ? 'Personal Pro' : (newPlanId == 'studio' ? 'Studio Scale' : 'Starter Trial'),
+      currentPlanPriceCents: currentPrice,
+      newPlanPriceCents: targetPrice,
+      unusedCreditCents: unusedCredit,
+      netChargeCents: netCharge,
+      effectiveDate: isUpgrade ? 'Imediato após pagamento' : 'No fim do ciclo atual',
+      newStudentLimit: newPlanId == 'studio' ? 100 : (newPlanId == 'pro' ? 30 : 3),
+      newAiLimit: newPlanId == 'starter' ? 10 : -1,
+      summaryMessage: isUpgrade
+          ? 'Upgrade com crédito pró-rata de R\$ ${(unusedCredit / 100).toStringAsFixed(2)}.'
+          : 'Downgrade agendado para o final do ciclo atual.',
+    );
+  }
+
   static final List<PlanModel> _defaultPlans = [
     PlanModel(
       id: 'starter',

@@ -8,7 +8,10 @@ from app.schemas.subscription import (
     MySubscriptionResponse,
     CheckoutSessionRequest,
     CheckoutSessionResponse,
+    PlanChangeSimulationRequest,
+    PlanChangeSimulationResponse,
 )
+from app.services.payment_service import PaymentProviderService
 
 router = APIRouter()
 
@@ -112,7 +115,28 @@ async def get_my_subscription(trainer_id: str = "current-trainer"):
     )
 
 
-from app.services.payment_service import PaymentProviderService
+@router.post("/calculate-change", response_model=PlanChangeSimulationResponse)
+async def simulate_plan_change(request: PlanChangeSimulationRequest):
+    """
+    Simula e calcula as regras de negócio para Upgrade ou Downgrade de plano:
+    - Pró-rata de saldo não utilizado
+    - Bloqueio de downgrade caso a quantidade de alunos cadastrados exceda o novo limite
+    - Efetivação imediata (upgrade) ou no fim do ciclo (downgrade)
+    """
+    valid_ids = {"starter", "pro", "studio"}
+    if request.current_plan_id not in valid_ids or request.new_plan_id not in valid_ids:
+        raise HTTPException(status_code=400, detail="Plano atual ou novo plano inválido.")
+
+    result = PaymentProviderService.calculate_plan_change(
+        current_plan_id=request.current_plan_id,
+        new_plan_id=request.new_plan_id,
+        billing_interval=request.billing_interval,
+        days_used_in_cycle=request.days_used_in_cycle,
+        total_days_in_cycle=request.total_days_in_cycle,
+        active_students_count=request.active_students_count,
+    )
+    return PlanChangeSimulationResponse(**result)
+
 
 @router.post("/checkout-session", response_model=CheckoutSessionResponse)
 async def create_checkout_session(request: CheckoutSessionRequest):

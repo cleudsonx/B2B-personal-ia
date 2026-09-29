@@ -158,3 +158,56 @@ class CheckoutSessionModel {
     );
   }
 }
+
+class PlanChangeSimulationModel {
+  final String changeType; // 'upgrade', 'downgrade', 'same'
+  final bool isBlocked;
+  final String? blockReason;
+  final String currentPlanName;
+  final String newPlanName;
+  final int currentPlanPriceCents;
+  final int newPlanPriceCents;
+  final int unusedCreditCents;
+  final int netChargeCents;
+  final String effectiveDate;
+  final int newStudentLimit;
+  final int newAiLimit;
+  final String summaryMessage;
+
+  PlanChangeSimulationModel({
+    required this.changeType,
+    required this.isBlocked,
+    this.blockReason,
+    required this.currentPlanName,
+    required this.newPlanName,
+    required this.currentPlanPriceCents,
+    required this.newPlanPriceCents,
+    required this.unusedCreditCents,
+    required this.netChargeCents,
+    required this.effectiveDate,
+    required this.newStudentLimit,
+    required this.newAiLimit,
+    required this.summaryMessage,
+  });
+
+  double get unusedCredit => unusedCreditCents / 100.0;
+  double get netCharge => netChargeCents / 100.0;
+
+  factory PlanChangeSimulationModel.fromJson(Map<String, dynamic> json) {
+    return PlanChangeSimulationModel(
+      changeType: json['change_type'] ?? 'upgrade',
+      isBlocked: json['is_blocked'] ?? false,
+      blockReason: json['block_reason'],
+      currentPlanName: json['current_plan_name'] ?? '',
+      newPlanName: json['new_plan_name'] ?? '',
+      currentPlanPriceCents: json['current_plan_price_cents'] ?? 0,
+      newPlanPriceCents: json['new_plan_price_cents'] ?? 0,
+      unusedCreditCents: json['unused_credit_cents'] ?? 0,
+      netChargeCents: json['net_charge_cents'] ?? 0,
+      effectiveDate: json['effective_date'] ?? 'Imediato',
+      newStudentLimit: json['new_student_limit'] ?? 30,
+      newAiLimit: json['new_ai_limit'] ?? -1,
+      summaryMessage: json['summary_message'] ?? '',
+    );
+  }
+}

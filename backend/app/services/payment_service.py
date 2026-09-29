@@ -188,3 +188,150 @@ class PaymentProviderService:
             "timestamp": datetime.now().isoformat(),
             "message": f"Assinatura do treinador atualizada para '{subscription_status}' via evento {event_name} ({provider_clean})."
         }
+
+    @staticmethod
+    def calculate_plan_change(
+        current_plan_id: str,
+        new_plan_id: str,
+        billing_interval: str = "monthly",
+        days_used_in_cycle: int = 0,
+        total_days_in_cycle: int = 30,
+        active_students_count: int = 0,
+    ) -> Dict[str, Any]:
+        """
+        Calcula as regras e valores de transição entre planos (Upgrade vs Downgrade):
+        - Pró-rata de dias não utilizados do plano anterior
+        - Bloqueio de integridade se o personal tiver mais alunos que o teto do novo plano
+        - Data de efetivação da mudança
+        """
+        PLANS_INFO = {
+            "starter": {
+                "name": "Starter Trial",
+                "monthly_cents": 0,
+                "yearly_cents": 0,
+                "max_students": 3,
+                "max_ai": 10,
+                "tier": 1,
+            },
+            "pro": {
+                "name": "Personal Pro",
+                "monthly_cents": 8900,
+                "yearly_cents": 85200,
+                "max_students": 30,
+                "max_ai": -1,
+                "tier": 2,
+            },
+            "studio": {
+                "name": "Studio Scale",
+                "monthly_cents": 19900,
+                "yearly_cents": 190800,
+                "max_students": 100,
+                "max_ai": -1,
+                "tier": 3,
+            },
+        }
+
+        current = PLANS_INFO.get(current_plan_id, PLANS_INFO["starter"])
+        target = PLANS_INFO.get(new_plan_id, PLANS_INFO["pro"])
+
+        is_yearly = billing_interval.lower() == "yearly"
+        current_price = current["yearly_cents"] if is_yearly else current["monthly_cents"]
+        new_price = target["yearly_cents"] if is_yearly else target["monthly_cents"]
+
+        if target["tier"] > current["tier"]:
+            change_type = "upgrade"
+        elif target["tier"] < current["tier"]:
+            change_type = "downgrade"
+        else:
+            change_type = "same"
+
+        # Tratamento de Downgrade
+        if change_type == "downgrade":
+            if active_students_count > target["max_students"]:
+                excess = active_students_count - target["max_students"]
+                return {
+                    "change_type": "downgrade",
+                    "is_blocked": True,
+                    "block_reason": (
+                        f"Você possui {active_students_count} alunos cadastrados. "
+                        f"O plano {target['name']} permite no máximo {target['max_students']} alunos. "
+                        f"Desative ou arquive pelo menos {excess} aluno(s) antes de confirmar o downgrade."
+                    ),
+                    "current_plan_name": current["name"],
+                    "new_plan_name": target["name"],
+                    "current_plan_price_cents": current_price,
+                    "new_plan_price_cents": new_price,
+                    "unused_credit_cents": 0,
+                    "net_charge_cents": 0,
+                    "effective_date": "Bloqueado por cota de alunos",
+                    "new_student_limit": target["max_students"],
+                    "new_ai_limit": target["max_ai"],
+                    "summary_message": f"Downgrade para {target['name']} indisponível até ajuste do número de alunos.",
+                }
+            else:
+                return {
+                    "change_type": "downgrade",
+                    "is_blocked": False,
+                    "block_reason": None,
+                    "current_plan_name": current["name"],
+                    "new_plan_name": target["name"],
+                    "current_plan_price_cents": current_price,
+                    "new_plan_price_cents": new_price,
+                    "unused_credit_cents": 0,
+                    "net_charge_cents": 0,
+                    "effective_date": "No fim do ciclo de faturamento atual",
+                    "new_student_limit": target["max_students"],
+                    "new_ai_limit": target["max_ai"],
+                    "summary_message": (
+                        f"Seu downgrade para o {target['name']} foi agendado. "
+                        f"Você continuará usufruindo dos benefícios do {current['name']} até o fim do ciclo vigente."
+                    ),
+                }
+
+        # Tratamento de Upgrade
+        if change_type == "upgrade":
+            remaining_days = max(0, total_days_in_cycle - days_used_in_cycle)
+            if current_price > 0 and total_days_in_cycle > 0:
+                daily_rate = current_price / float(total_days_in_cycle)
+                unused_credit = int(daily_rate * remaining_days)
+            else:
+                unused_credit = 0
+
+            net_charge = max(0, new_price - unused_credit)
+
+            return {
+                "change_type": "upgrade",
+                "is_blocked": False,
+                "block_reason": None,
+                "current_plan_name": current["name"],
+                "new_plan_name": target["name"],
+                "current_plan_price_cents": current_price,
+                "new_plan_price_cents": new_price,
+                "unused_credit_cents": unused_credit,
+                "net_charge_cents": net_charge,
+                "effective_date": "Imediato após confirmação do pagamento",
+                "new_student_limit": target["max_students"],
+                "new_ai_limit": target["max_ai"],
+                "summary_message": (
+                    f"Upgrade para {target['name']}: "
+                    f"Crédito pró-rata de R$ {unused_credit / 100:.2f} aplicado. "
+                    f"Total líquido a pagar: R$ {net_charge / 100:.2f}."
+                ),
+            }
+
+        # Mesmo plano
+        return {
+            "change_type": "same",
+            "is_blocked": False,
+            "block_reason": None,
+            "current_plan_name": current["name"],
+            "new_plan_name": target["name"],
+            "current_plan_price_cents": current_price,
+            "new_plan_price_cents": new_price,
+            "unused_credit_cents": 0,
+            "net_charge_cents": 0,
+            "effective_date": "Plano atual já ativo",
+            "new_student_limit": target["max_students"],
+            "new_ai_limit": target["max_ai"],
+            "summary_message": f"Você já está no plano {current['name']}.",
+        }

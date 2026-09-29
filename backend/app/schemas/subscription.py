@@ -61,3 +61,28 @@ class CheckoutSessionResponse(BaseModel):
     status: str = "pending"
     expires_at: str
     notes: Optional[str] = None
+
+
+class PlanChangeSimulationRequest(BaseModel):
+    current_plan_id: str = Field(..., description="ID do plano atual ('starter', 'pro', 'studio')")
+    new_plan_id: str = Field(..., description="ID do novo plano desejado")
+    billing_interval: str = Field("monthly", description="'monthly' ou 'yearly'")
+    days_used_in_cycle: int = Field(0, description="Dias decorridos no ciclo de faturamento atual", ge=0)
+    total_days_in_cycle: int = Field(30, description="Duração total do ciclo (30 ou 365 dias)", gt=0)
+    active_students_count: int = Field(0, description="Quantidade atual de alunos ativos do treinador", ge=0)
+
+
+class PlanChangeSimulationResponse(BaseModel):
+    change_type: str = Field(..., description="'upgrade', 'downgrade' ou 'same'")
+    is_blocked: bool = Field(False, description="True se o downgrade for bloqueado por excesso de alunos ativos")
+    block_reason: Optional[str] = Field(None, description="Motivo do bloqueio se is_blocked=True")
+    current_plan_name: str
+    new_plan_name: str
+    current_plan_price_cents: int
+    new_plan_price_cents: int
+    unused_credit_cents: int = Field(0, description="Crédito residual pró-rata do plano anterior")
+    net_charge_cents: int = Field(0, description="Valor líquido a pagar agora no caso de upgrade")
+    effective_date: str = Field(..., description="Data em que a mudança entra em vigor ('Imediato' ou 'Fim do ciclo')")
+    new_student_limit: int
+    new_ai_limit: int
+    summary_message: str

@@ -15,6 +15,8 @@ class AuthService {
     return c;
   }
 
+  static Map<String, dynamic>? _cachedProfile;
+
   /// Retorna o usuário logado atualmente (ou null)
   static User? get currentUser => _clientOrNull?.auth.currentUser;
 
@@ -28,7 +30,7 @@ class AuthService {
   static Stream<AuthState> get onAuthStateChange =>
       _clientOrNull?.auth.onAuthStateChange ?? const Stream.empty();
 
-  /// Realiza login com e-mail e senha
+  /// Realiza login com e-mail e senha e garante integridade do perfil
   static Future<AuthResponse> signIn({
     required String email,
     required String password,
@@ -38,13 +40,16 @@ class AuthService {
         email: email.trim(),
         password: password,
       );
+      if (response.user != null) {
+        await _ensureProfileUpserted(response.user!);
+      }
       return response;
     } catch (e) {
       throw Exception('Falha ao autenticar: ${_formatAuthError(e)}');
     }
   }
 
-  /// Cadastro de novo usuário (Personal Trainer ou Aluno)
+  /// Cadastro de novo usuário (Personal Trainer ou Aluno) com persistência imediata
   static Future<AuthResponse> signUp({
     required String email,
     required String password,
@@ -64,13 +69,41 @@ class AuthService {
           if (trainerId != null && trainerId.isNotEmpty) 'trainer_id': trainerId,
         },
       );
+      if (response.user != null) {
+        await _ensureProfileUpserted(response.user!);
+      }
       return response;
     } catch (e) {
       throw Exception('Falha ao criar conta: ${_formatAuthError(e)}');
     }
   }
 
-  /// Busca os dados do perfil na tabela 'profiles'
+  /// Garante que o registro na tabela 'profiles' existe e está atualizado
+  static Future<void> _ensureProfileUpserted(User user) async {
+    try {
+      final fullName = user.userMetadata?['full_name'] as String? ?? 'Usuário';
+      final role = user.userMetadata?['role'] as String? ?? 'trainer';
+      final phone = user.userMetadata?['phone'] as String?;
+      final trainerId = user.userMetadata?['trainer_id'] as String?;
+
+      final payload = <String, dynamic>{
+        'id': user.id,
+        'full_name': fullName,
+        'role': role,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      if (user.email != null) payload['email'] = user.email;
+      if (phone != null && phone.isNotEmpty) payload['phone'] = phone;
+      if (trainerId != null && trainerId.isNotEmpty) payload['trainer_id'] = trainerId;
+
+      _cachedProfile = Map<String, dynamic>.from(payload);
+      await _client.from('profiles').upsert(payload);
+    } catch (_) {
+      // Ignora erro se RLS restringir upsert direto sem alterar funcionalidade
+    }
+  }
+
+  /// Busca os dados do perfil na tabela 'profiles' com fallback seguro
   static Future<Map<String, dynamic>?> getCurrentProfile() async {
     final user = currentUser;
     if (user == null) return null;
@@ -81,19 +114,24 @@ class AuthService {
           .select()
           .eq('id', user.id)
           .maybeSingle();
-      return data;
-    } catch (_) {
-      // Fallback para metadados salvos no auth se tabela ainda não tiver sido sincronizada
-      return {
-        'id': user.id,
-        'full_name': user.userMetadata?['full_name'] ?? 'Usuário',
-        'role': user.userMetadata?['role'] ?? 'trainer',
-      };
-    }
+      if (data != null) {
+        _cachedProfile = Map<String, dynamic>.from(data);
+        return data;
+      }
+    } catch (_) {}
+
+    // Fallback para metadados salvos no auth ou cache local
+    return _cachedProfile ?? {
+      'id': user.id,
+      'full_name': user.userMetadata?['full_name'] ?? 'Usuário',
+      'role': user.userMetadata?['role'] ?? 'trainer',
+      'email': user.email,
+    };
   }
 
-  /// Desconectar a sessão
+  /// Desconectar a sessão e limpar caches
   static Future<void> signOut() async {
+    _cachedProfile = null;
     try {
       await _clientOrNull?.auth.signOut();
     } catch (_) {}

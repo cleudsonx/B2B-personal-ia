@@ -10,7 +10,14 @@ import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
 
 class TrainerAnamnesisScreen extends StatefulWidget {
-  const TrainerAnamnesisScreen({super.key});
+  final String? initialStudentId;
+  final String? initialStudentName;
+
+  const TrainerAnamnesisScreen({
+    super.key,
+    this.initialStudentId,
+    this.initialStudentName,
+  });
 
   @override
   State<TrainerAnamnesisScreen> createState() => _TrainerAnamnesisScreenState();
@@ -41,6 +48,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialStudentId != null) {
+      _selectedStudentId = widget.initialStudentId;
+    }
     _loadStudents();
   }
 
@@ -49,7 +59,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
     if (mounted) {
       setState(() {
         _students = list;
-        if (list.isNotEmpty) {
+        if (widget.initialStudentId != null && list.any((s) => s['id'] == widget.initialStudentId)) {
+          _selectedStudentId = widget.initialStudentId;
+        } else if (list.isNotEmpty && _selectedStudentId == null) {
           _selectedStudentId = list.first['id'] as String;
         }
       });
