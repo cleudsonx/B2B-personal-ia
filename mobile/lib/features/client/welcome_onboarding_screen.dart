@@ -169,29 +169,48 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
             children: [
               Row(
                 children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: AppColors.emerald(context),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'MC',
-                        style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 13),
+                  Image.asset(
+                    'assets/images/logo_shaipados.png',
+                    height: 42,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: AppColors.emerald(context),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'S',
+                          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 13),
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Text(
-                    'MR. COACH',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.5,
-                      color: AppColors.text(context),
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'SHAIPADOS',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.8,
+                          color: AppColors.text(context),
+                        ),
+                      ),
+                      Text(
+                        'MR. COACH INTELLIGENCE',
+                        style: TextStyle(
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.6,
+                          color: AppColors.emerald(context),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -257,10 +276,19 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
             ),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 26,
-                  backgroundColor: AppColors.emeraldBg(context),
-                  child: Icon(Icons.person_rounded, color: AppColors.emerald(context), size: 30),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(26),
+                  child: Image.asset(
+                    'assets/images/trainer_roberto_avatar.png',
+                    width: 52,
+                    height: 52,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => CircleAvatar(
+                      radius: 26,
+                      backgroundColor: AppColors.emeraldBg(context),
+                      child: Icon(Icons.person_rounded, color: AppColors.emerald(context), size: 30),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(

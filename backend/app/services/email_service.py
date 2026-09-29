@@ -102,8 +102,23 @@ class EmailService:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 res = await client.post(url, headers=headers, json=payload)
                 if res.status_code in (200, 201):
-                    logger.info(f"E-mail de convite enviado via Resend para {student_email}")
+                    logger.info(f"E-mail de convite enviado via Resend para {student_email} (De: {payload['from']})")
                     return {"status": "sent", "provider": "resend", "data": res.json()}
+                elif res.status_code == 403 and "not verified" in res.text.lower():
+                    logger.warning(f"Domínio em '{self.email_from}' ainda não foi verificado no Resend. Executando fallback temporário com 'onboarding@resend.dev'...")
+                    payload["from"] = "Mr. Coach <onboarding@resend.dev>"
+                    fallback_res = await client.post(url, headers=headers, json=payload)
+                    if fallback_res.status_code in (200, 201):
+                        logger.info(f"E-mail enviado com sucesso via fallback do Resend para {student_email}")
+                        return {
+                            "status": "sent",
+                            "provider": "resend",
+                            "data": fallback_res.json(),
+                            "note": "Enviado via sandbox temporário enquanto o domínio shaipados.com propaga as entradas DNS."
+                        }
+                    else:
+                        logger.warning(f"Fallback Resend retornou {fallback_res.status_code}: {fallback_res.text}")
+                        return {"status": "error", "code": fallback_res.status_code, "detail": fallback_res.text}
                 else:
                     logger.warning(f"Resend retornou status {res.status_code}: {res.text}")
                     return {"status": "error", "code": res.status_code, "detail": res.text}

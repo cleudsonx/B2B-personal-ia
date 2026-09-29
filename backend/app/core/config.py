@@ -25,8 +25,8 @@ class Settings(BaseSettings):
     
     # E-mail & Resend
     RESEND_API_KEY: str = ""
-    EMAIL_FROM: str = "Mr. Coach <onboarding@resend.dev>"
-    APP_FRONTEND_URL: str = "https://cleudsonx.github.io/B2B-personal-ia"
+    EMAIL_FROM: str = "Mr. Coach <contato@shaipados.com>"
+    APP_FRONTEND_URL: str = "https://shaipados.com"
     
     # CORS (aceita string "*", JSON '["*"]' ou listas sem erro no EnvSettingsSource do Pydantic)
     CORS_ORIGINS: Union[str, List[str]] = "*"

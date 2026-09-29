@@ -193,49 +193,39 @@ class _LoginScreenState extends State<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Brand Badge with Neon Glow
+                    // Golden Shaipados Brand Logo
                     Center(
-                      child: Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              primaryAccent.withValues(alpha: 0.25),
-                              primaryAccent.withValues(alpha: 0.05),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                      child: Image.asset(
+                        'assets/images/logo_shaipados.png',
+                        height: 105,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: primaryAccent, width: 2),
                           ),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: primaryAccent, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: primaryAccent.withValues(alpha: 0.35),
-                              blurRadius: 24,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          isTrainer ? Icons.sports_gymnastics : Icons.fitness_center_rounded,
-                          color: primaryAccent,
-                          size: 36,
+                          child: Icon(
+                            isTrainer ? Icons.sports_gymnastics : Icons.fitness_center_rounded,
+                            color: primaryAccent,
+                            size: 36,
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 14),
                     Center(
                       child: Text(
-                        'B2B PERSONAL IA',
+                        'SHAIPADOS',
                         style: TextStyle(
-                          fontSize: 24,
+                          fontSize: 26,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: 1.5,
+                          letterSpacing: 2.2,
                           color: AppColors.textPrimary,
                           shadows: [
                             Shadow(
-                              color: primaryAccent.withValues(alpha: 0.5),
+                              color: primaryAccent.withValues(alpha: 0.4),
                               blurRadius: 18,
                             ),
                           ],
@@ -243,60 +233,87 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Center(
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: primaryAccent.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: primaryAccent.withValues(alpha: 0.35)),
+                        ),
+                        child: Text(
+                          widget.initialRole == 'client'
+                              ? 'ÁREA EXCLUSIVA DO ALUNO'
+                              : (isTrainer ? 'PORTAL DO PERSONAL TRAINER' : 'ÁREA DO ALUNO'),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.0,
+                            color: primaryAccent,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
                       child: Text(
-                        'Prescrição Biomecânica & Adaptação no Salão',
-                        style: TextStyle(
+                        widget.initialRole == 'client'
+                            ? 'Acesse seu treino personalizado prescrito pelo seu treinador.'
+                            : 'Prescrição Biomecânica & Adaptação no Salão com IA',
+                        style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                           color: AppColors.textSecondary,
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-
-                    // Role Selector Toggle (Treinador Pro vs Aluno no Salão)
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: AppColors.studentSurface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.studentBorder),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _buildRoleTab(
-                              title: 'Treinador Pro',
-                              icon: Icons.assignment_ind_outlined,
-                              isSelected: isTrainer,
-                              activeColor: AppColors.trainerEmerald,
-                              onTap: () => _onRoleChanged('trainer'),
-                            ),
-                          ),
-                          Expanded(
-                            child: _buildRoleTab(
-                              title: 'Aluno no Salão',
-                              icon: Icons.fitness_center_rounded,
-                              isSelected: !isTrainer,
-                              activeColor: AppColors.studentCyan,
-                              onTap: () => _onRoleChanged('client'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Center(
-                      child: Text(
-                        isTrainer
-                            ? 'Acesso à gestão de alunos, anamnese clínica e prescrição IA'
-                            : 'Acesso ao treino do dia, timer de descanso e troca rápida',
-                        style: TextStyle(fontSize: 11, color: primaryAccent, fontWeight: FontWeight.w600),
                         textAlign: TextAlign.center,
                       ),
                     ),
                     const SizedBox(height: 24),
+
+                    // Role Selector Toggle (Apenas se não for link exclusivo de aluno)
+                    if (widget.initialRole != 'client') ...[
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: AppColors.studentSurface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.studentBorder),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _buildRoleTab(
+                                title: 'Treinador Pro',
+                                icon: Icons.assignment_ind_outlined,
+                                isSelected: isTrainer,
+                                activeColor: AppColors.trainerEmerald,
+                                onTap: () => _onRoleChanged('trainer'),
+                              ),
+                            ),
+                            Expanded(
+                              child: _buildRoleTab(
+                                title: 'Aluno no Salão',
+                                icon: Icons.fitness_center_rounded,
+                                isSelected: !isTrainer,
+                                activeColor: AppColors.studentCyan,
+                                onTap: () => _onRoleChanged('client'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Center(
+                        child: Text(
+                          isTrainer
+                              ? 'Acesso à gestão de alunos, anamnese clínica e prescrição IA'
+                              : 'Acesso ao treino do dia, timer de descanso e troca rápida',
+                          style: TextStyle(fontSize: 11, color: primaryAccent, fontWeight: FontWeight.w600),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
 
                     // Email Input
                     TextFormField(
