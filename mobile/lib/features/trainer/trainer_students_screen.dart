@@ -6,6 +6,9 @@ import '../../core/widgets/server_config_dialog.dart';
 import '../../core/widgets/theme_toggle_button.dart';
 import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
+import '../../models/subscription_model.dart';
+import '../../services/subscription_service.dart';
+import '../subscription/subscription_screen.dart';
 import 'anamnesis_screen.dart';
 
 class TrainerStudentsScreen extends StatefulWidget {
@@ -21,6 +24,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
   bool _isLoading = false;
   String _selectedFilter = 'Todos'; // 'Todos', 'Ativos', 'Convidados', 'Arquivados', 'Com Alerta'
   String _searchQuery = '';
+  MySubscriptionModel? _mySubscription;
 
   // Lista demo rica com estados reais do Hub Mr. Coach
   final List<Map<String, dynamic>> _demoStudents = [
@@ -104,6 +108,8 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     try {
       final dbStudents = await WorkoutService.getTrainerStudents();
       final alerts = await WorkoutService.getTrainerAlerts();
+      final sub = await SubscriptionService.getMySubscription();
+      if (mounted) _mySubscription = sub;
 
       if (dbStudents.isNotEmpty && mounted) {
         setState(() {
@@ -229,7 +235,227 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     }
   }
 
+  void _showStudentLimitUpgradeSheet(
+    BuildContext context, {
+    required int currentCount,
+    required int maxAllowed,
+  }) {
+    final currentPlanName = _mySubscription?.planName ?? 'Starter Trial';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.card(context),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border.all(color: AppColors.cardBorder(context)),
+          ),
+          padding: EdgeInsets.only(
+            top: 20,
+            left: 24,
+            right: 24,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.cardBorder(context),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Badge
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.workspace_premium_rounded, size: 16, color: Colors.amber),
+                        SizedBox(width: 6),
+                        Text(
+                          'COTA DO PLANO ATINGIDA',
+                          style: TextStyle(
+                            color: Colors.amber,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                Text(
+                  'Limite do Plano $currentPlanName Atingido',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.text(context),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.4,
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                Text(
+                  'Você já possui $currentCount de $maxAllowed alunos ativos simultâneos cadastrados no seu plano atual.\n\nPara cadastrar novos alunos e expandir sua consultoria, faça upgrade para o Personal Pro e atenda até 30 alunos com IA ilimitada.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.subtext(context),
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Benefits Box
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.pillBg(context),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.emerald(context).withValues(alpha: 0.3)),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildUpgradeBenefitRow(context, 'Até 30 alunos ativos na consultoria'),
+                      const SizedBox(height: 8),
+                      _buildUpgradeBenefitRow(context, 'Prescrições IA Mr. Coach Ilimitadas'),
+                      const SizedBox(height: 8),
+                      _buildUpgradeBenefitRow(context, 'Alertas em tempo real de dor e adaptação no salão'),
+                      const SizedBox(height: 8),
+                      _buildUpgradeBenefitRow(context, 'Raio-X Anatômico 3D com EMG e Fases'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Primary CTA: Upgrade to Pro
+                SizedBox(
+                  height: 48,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.emerald(context),
+                      foregroundColor: Colors.black,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+                      );
+                    },
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.bolt_rounded, size: 20, color: Colors.black),
+                        SizedBox(width: 8),
+                        Text(
+                          'Fazer Upgrade para Personal Pro • R\$ 89/mês',
+                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Secondary CTA: Free up space by archiving
+                SizedBox(
+                  height: 44,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: AppColors.cardBorder(context)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      setState(() => _selectedFilter = 'Todos');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Dica: Use o botão de "Arquivar" em alunos antigos para liberar vagas no plano sem apagar os dados.'),
+                          duration: Duration(seconds: 4),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      'Gerenciar / Arquivar Alunos Antigos',
+                      style: TextStyle(color: AppColors.text(context), fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Tertiary: Ver todos os planos
+                Center(
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+                      );
+                    },
+                    child: Text(
+                      'Ver Todos os Planos Disponíveis',
+                      style: TextStyle(color: AppColors.subtext(context), fontSize: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildUpgradeBenefitRow(BuildContext context, String text) {
+    return Row(
+      children: [
+        Icon(Icons.check_circle_rounded, size: 16, color: AppColors.emerald(context)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(color: AppColors.text(context), fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
+    );
+  }
+
   void _showAddStudentDialog() {
+    final activeStudentsCount = _students.where((s) => (s['status'] as String? ?? '').toLowerCase() != 'arquivado').length;
+    final maxStudents = _mySubscription?.maxStudents ?? 3;
+
+    if (activeStudentsCount >= maxStudents) {
+      _showStudentLimitUpgradeSheet(context, currentCount: activeStudentsCount, maxAllowed: maxStudents);
+      return;
+    }
+
     final nameCtrl = TextEditingController();
     final emailCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();

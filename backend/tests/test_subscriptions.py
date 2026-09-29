@@ -4,10 +4,11 @@ from app.api.v1.endpoints.subscriptions import SAAS_PLANS
 
 
 def test_saas_plans_structure():
-    assert len(SAAS_PLANS) == 3
+    assert len(SAAS_PLANS) == 4
     plan_ids = [p.id for p in SAAS_PLANS]
     assert "starter" in plan_ids
     assert "pro" in plan_ids
+    assert "elite" in plan_ids
     assert "studio" in plan_ids
 
     # Pro plan assertions
@@ -15,6 +16,12 @@ def test_saas_plans_structure():
     assert pro.price_monthly_cents == 8900
     assert pro.max_students == 30
     assert pro.max_ai_generations_per_month == -1
+
+    # Elite plan assertions
+    elite = next(p for p in SAAS_PLANS if p.id == "elite")
+    assert elite.price_monthly_cents == 14900
+    assert elite.max_students == 60
+    assert elite.max_ai_generations_per_month == -1
 
 
 def test_payment_service_multi_provider_checkout():

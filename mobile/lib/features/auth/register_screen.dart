@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../services/auth_service.dart';
-import '../../main.dart';
 import '../client/welcome_onboarding_screen.dart';
+import '../trainer/trainer_plan_selection_screen.dart';
 import 'login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -68,7 +68,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             content: Text('Conta criada com sucesso! Redirecionando...'),
           ),
         );
-        _navigateToApp(fullName, _role);
+        _navigateToApp(fullName, _role, email);
       }
     } catch (e) {
       if (mounted) {
@@ -85,16 +85,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  void _navigateToApp(String name, String role) {
+  void _navigateToApp(String name, String role, String email) {
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
         builder: (_) => role == 'client'
             ? WelcomeOnboardingScreen(studentName: name)
-            : MainShellScreen(
-                initialIndex: 1,
-                activeRole: role,
-                userName: name,
+            : TrainerPlanSelectionScreen(
+                trainerName: name,
+                trainerEmail: email,
               ),
       ),
       (route) => false,

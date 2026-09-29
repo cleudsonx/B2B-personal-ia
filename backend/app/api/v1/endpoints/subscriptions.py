@@ -61,6 +61,27 @@ SAAS_PLANS: List[PlanResponse] = [
         ],
     ),
     PlanResponse(
+        id="elite",
+        name="Elite Coach",
+        tagline="Consultoria esportiva de alta escala com canal WhatsApp automatizado",
+        price_monthly_cents=14900,  # R$ 149,00
+        price_yearly_cents=142800,  # R$ 1.428,00 (R$ 119,00/mês - 20% OFF)
+        price_yearly_monthly_equivalent_cents=11900,
+        max_students=60,
+        max_ai_generations_per_month=-1,
+        is_popular=False,
+        badge="ALTA ESCALA",
+        features=[
+            PlanFeature(title="Até 60 alunos ativos na consultoria", included=True, highlight=True),
+            PlanFeature(title="Prescrições IA Ilimitadas (Gemini Flash)", included=True, highlight=True),
+            PlanFeature(title="Automação WhatsApp (Evolution/Z-API): Envio de treinos", included=True, highlight=True),
+            PlanFeature(title="Alertas de dor e faltas recorrentes direto no WhatsApp", included=True, highlight=True),
+            PlanFeature(title="Raio-X Muscular com EMG e Análise de Fases", included=True, highlight=False),
+            PlanFeature(title="Relatórios de assiduidade e retenção de alunos", included=True, highlight=True),
+            PlanFeature(title="Suporte prioritário via WhatsApp", included=True, highlight=False),
+        ],
+    ),
+    PlanResponse(
         id="studio",
         name="Studio Scale",
         tagline="Para assessorias esportivas e estúdios que buscam escala máxima",
@@ -123,7 +144,7 @@ async def simulate_plan_change(request: PlanChangeSimulationRequest):
     - Bloqueio de downgrade caso a quantidade de alunos cadastrados exceda o novo limite
     - Efetivação imediata (upgrade) ou no fim do ciclo (downgrade)
     """
-    valid_ids = {"starter", "pro", "studio"}
+    valid_ids = {"starter", "pro", "elite", "studio"}
     if request.current_plan_id not in valid_ids or request.new_plan_id not in valid_ids:
         raise HTTPException(status_code=400, detail="Plano atual ou novo plano inválido.")
 

@@ -221,13 +221,21 @@ class PaymentProviderService:
                 "max_ai": -1,
                 "tier": 2,
             },
+            "elite": {
+                "name": "Elite Coach",
+                "monthly_cents": 14900,
+                "yearly_cents": 142800,
+                "max_students": 60,
+                "max_ai": -1,
+                "tier": 3,
+            },
             "studio": {
                 "name": "Studio Scale",
                 "monthly_cents": 19900,
                 "yearly_cents": 190800,
                 "max_students": 100,
                 "max_ai": -1,
-                "tier": 3,
+                "tier": 4,
             },
         }
 

@@ -131,33 +131,46 @@ class SubscriptionService {
       }
     } catch (_) {}
 
-    // Fallback local caso a API esteja offline
     final isYearly = billingInterval == 'yearly';
-    final targetPrice = newPlanId == 'studio'
-        ? (isYearly ? 190800 : 19900)
-        : (newPlanId == 'pro' ? (isYearly ? 85200 : 8900) : 0);
-    final currentPrice = currentPlanId == 'studio'
-        ? (isYearly ? 190800 : 19900)
-        : (currentPlanId == 'pro' ? (isYearly ? 85200 : 8900) : 0);
+    final planPrices = {
+      'starter': isYearly ? 0 : 0,
+      'pro': isYearly ? 85200 : 8900,
+      'elite': isYearly ? 142800 : 14900,
+      'studio': isYearly ? 190800 : 19900,
+    };
+    final planTiers = {'starter': 1, 'pro': 2, 'elite': 3, 'studio': 4};
+    final planStudents = {'starter': 3, 'pro': 30, 'elite': 60, 'studio': 100};
+    final planNames = {
+      'starter': 'Starter Trial',
+      'pro': 'Personal Pro',
+      'elite': 'Elite Coach',
+      'studio': 'Studio Scale',
+    };
 
-    final isUpgrade = (newPlanId == 'studio' && currentPlanId != 'studio') ||
-        (newPlanId == 'pro' && currentPlanId == 'starter');
-    final isDowngrade = !isUpgrade && (newPlanId != currentPlanId);
+    final targetPrice = planPrices[newPlanId] ?? 0;
+    final currentPrice = planPrices[currentPlanId] ?? 0;
+    final currentTier = planTiers[currentPlanId] ?? 1;
+    final targetTier = planTiers[newPlanId] ?? 1;
 
-    if (isDowngrade && newPlanId == 'starter' && activeStudentsCount > 3) {
+    final isUpgrade = targetTier > currentTier;
+    final isDowngrade = targetTier < currentTier;
+
+    final targetMaxStudents = planStudents[newPlanId] ?? 3;
+    if (isDowngrade && activeStudentsCount > targetMaxStudents) {
+      final excess = activeStudentsCount - targetMaxStudents;
       return PlanChangeSimulationModel(
         changeType: 'downgrade',
         isBlocked: true,
-        blockReason: 'Você possui $activeStudentsCount alunos ativos. O plano Starter permite no máximo 3 alunos. Desative ou arquive alunos antes de mudar.',
-        currentPlanName: currentPlanId == 'pro' ? 'Personal Pro' : 'Studio Scale',
-        newPlanName: 'Starter Trial',
+        blockReason: 'Você possui $activeStudentsCount alunos ativos. O plano ${planNames[newPlanId]} permite no máximo $targetMaxStudents alunos. Desative ou arquive pelo menos $excess aluno(s) antes de mudar.',
+        currentPlanName: planNames[currentPlanId] ?? 'Plano Atual',
+        newPlanName: planNames[newPlanId] ?? 'Novo Plano',
         currentPlanPriceCents: currentPrice,
         newPlanPriceCents: targetPrice,
         unusedCreditCents: 0,
         netChargeCents: 0,
         effectiveDate: 'Bloqueado por cota de alunos',
-        newStudentLimit: 3,
-        newAiLimit: 10,
+        newStudentLimit: targetMaxStudents,
+        newAiLimit: newPlanId == 'starter' ? 10 : -1,
         summaryMessage: 'Downgrade bloqueado por excesso de alunos ativos.',
       );
     }
@@ -171,14 +184,14 @@ class SubscriptionService {
       changeType: isUpgrade ? 'upgrade' : (isDowngrade ? 'downgrade' : 'same'),
       isBlocked: false,
       blockReason: null,
-      currentPlanName: currentPlanId == 'pro' ? 'Personal Pro' : (currentPlanId == 'studio' ? 'Studio Scale' : 'Starter Trial'),
-      newPlanName: newPlanId == 'pro' ? 'Personal Pro' : (newPlanId == 'studio' ? 'Studio Scale' : 'Starter Trial'),
+      currentPlanName: planNames[currentPlanId] ?? 'Plano Atual',
+      newPlanName: planNames[newPlanId] ?? 'Novo Plano',
       currentPlanPriceCents: currentPrice,
       newPlanPriceCents: targetPrice,
       unusedCreditCents: unusedCredit,
       netChargeCents: netCharge,
       effectiveDate: isUpgrade ? 'Imediato após pagamento' : 'No fim do ciclo atual',
-      newStudentLimit: newPlanId == 'studio' ? 100 : (newPlanId == 'pro' ? 30 : 3),
+      newStudentLimit: targetMaxStudents,
       newAiLimit: newPlanId == 'starter' ? 10 : -1,
       summaryMessage: isUpgrade
           ? 'Upgrade com crédito pró-rata de R\$ ${(unusedCredit / 100).toStringAsFixed(2)}.'
@@ -226,6 +239,26 @@ class SubscriptionService {
         PlanFeatureModel(title: 'Timer de descanso interativo sincronizado', included: true),
         PlanFeatureModel(title: 'Painel de alertas de adaptação em tempo real', included: true, highlight: true),
         PlanFeatureModel(title: 'Suporte prioritário via WhatsApp', included: true),
+      ],
+    ),
+    PlanModel(
+      id: 'elite',
+      name: 'Elite Coach',
+      tagline: 'Consultoria de alta escala com canal WhatsApp automatizado',
+      priceMonthlyCents: 14900,
+      priceYearlyCents: 142800,
+      priceYearlyMonthlyEquivalentCents: 11900,
+      maxStudents: 60,
+      maxAiGenerationsPerMonth: -1,
+      isPopular: false,
+      badge: 'ALTA ESCALA',
+      features: [
+        PlanFeatureModel(title: 'Até 60 alunos ativos na consultoria', included: true, highlight: true),
+        PlanFeatureModel(title: 'Prescrições IA Ilimitadas (Gemini Flash)', included: true, highlight: true),
+        PlanFeatureModel(title: 'Automação WhatsApp (Evolution/Z-API)', included: true, highlight: true),
+        PlanFeatureModel(title: 'Alertas automáticos de dor e faltas no WhatsApp', included: true, highlight: true),
+        PlanFeatureModel(title: 'Relatórios de assiduidade e retenção', included: true, highlight: true),
+        PlanFeatureModel(title: 'Suporte prioritário VIP via WhatsApp', included: true),
       ],
     ),
     PlanModel(
