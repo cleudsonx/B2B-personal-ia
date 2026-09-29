@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/ai_generation_stepper.dart';
 import '../../core/widgets/server_config_dialog.dart';
+import '../../core/widgets/theme_toggle_button.dart';
 import '../../models/workout_plan_model.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
@@ -108,26 +110,26 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
     }
   }
 
-  InputDecoration _inputDecoration(String label, {IconData? prefixIcon, String? hint}) {
+  InputDecoration _inputDecoration(BuildContext context, String label, {IconData? prefixIcon, String? hint}) {
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      prefixIcon: prefixIcon != null ? Icon(prefixIcon, color: AppColors.trainerEmerald, size: 20) : null,
+      prefixIcon: prefixIcon != null ? Icon(prefixIcon, color: AppColors.emerald(context), size: 20) : null,
       filled: true,
-      fillColor: AppColors.trainerSurface,
-      labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-      hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+      fillColor: AppColors.card(context),
+      labelStyle: TextStyle(color: AppColors.subtext(context), fontSize: 13),
+      hintStyle: TextStyle(color: AppColors.subtext(context), fontSize: 12),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.trainerBorder),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: AppColors.cardBorder(context)),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.trainerBorder),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: AppColors.cardBorder(context)),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.trainerEmerald, width: 1.5),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: AppColors.emerald(context), width: 1.5),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
@@ -136,21 +138,35 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.trainerBg,
+      backgroundColor: AppColors.bg(context),
       appBar: AppBar(
-        title: Text(_generatedPlan == null ? 'Nova Anamnese & Ficha' : 'Revisão da Ficha'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_ethernet_rounded),
-            tooltip: 'Configurar IP do Servidor',
-            onPressed: () => ServerConfigDialog.show(context),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: Text(
+          _generatedPlan == null ? 'Nova Anamnese & Ficha' : 'Revisão da Ficha',
+          style: TextStyle(
+            color: AppColors.text(context),
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.4,
           ),
+        ),
+        actions: [
+          const ThemeToggleButton(),
+          const SizedBox(width: 4),
+          if (kDebugMode)
+            IconButton(
+              icon: const Icon(Icons.settings_ethernet_rounded),
+              tooltip: 'Configurar IP do Servidor (Dev)',
+              onPressed: () => ServerConfigDialog.show(context),
+            ),
           if (_generatedPlan != null)
             IconButton(
-              icon: const Icon(Icons.refresh),
+              icon: Icon(Icons.refresh_rounded, color: AppColors.subtext(context)),
               tooltip: 'Recomeçar',
               onPressed: () => setState(() => _generatedPlan = null),
             ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Stack(
@@ -173,13 +189,13 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.trainerEmerald.withValues(alpha: 0.12),
+                  color: AppColors.emeraldBg(context),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.assignment_ind_outlined, color: AppColors.trainerEmerald, size: 22),
+                child: Icon(Icons.assignment_ind_outlined, color: AppColors.emerald(context), size: 22),
               ),
               const SizedBox(width: 12),
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -188,12 +204,12 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                       fontSize: 11,
                       letterSpacing: 1.2,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.trainerEmerald,
+                      color: AppColors.emerald(context),
                     ),
                   ),
                   Text(
                     'Parâmetros da Periodização',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.text(context)),
                   ),
                 ],
               ),
@@ -203,9 +219,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           if (_students.isNotEmpty) ...[
             DropdownButtonFormField<String>(
               initialValue: _selectedStudentId,
-              dropdownColor: AppColors.trainerSurfaceElevated,
-              style: const TextStyle(color: AppColors.textPrimary),
-              decoration: _inputDecoration('Aluno da Consultoria', prefixIcon: Icons.person_outline),
+              dropdownColor: AppColors.card(context),
+              style: TextStyle(color: AppColors.text(context)),
+              decoration: _inputDecoration(context, 'Aluno da Consultoria', prefixIcon: Icons.person_outline),
               items: _students.map((st) {
                 return DropdownMenuItem<String>(
                   value: st['id'] as String,
@@ -218,9 +234,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           ],
           DropdownButtonFormField<String>(
             initialValue: _objective,
-            dropdownColor: AppColors.trainerSurfaceElevated,
-            style: const TextStyle(color: AppColors.textPrimary),
-            decoration: _inputDecoration('Objetivo Principal', prefixIcon: Icons.track_changes_outlined),
+            dropdownColor: AppColors.card(context),
+            style: TextStyle(color: AppColors.text(context)),
+            decoration: _inputDecoration(context, 'Objetivo Principal', prefixIcon: Icons.track_changes_outlined),
             items: ['Hipertrofia Muscular', 'Emagrecimento', 'Condicionamento Geral', 'Força Máxima']
                 .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                 .toList(),
@@ -229,9 +245,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
             initialValue: _trainingLevel,
-            dropdownColor: AppColors.trainerSurfaceElevated,
-            style: const TextStyle(color: AppColors.textPrimary),
-            decoration: _inputDecoration('Nível de Treino', prefixIcon: Icons.signal_cellular_alt_rounded),
+            dropdownColor: AppColors.card(context),
+            style: TextStyle(color: AppColors.text(context)),
+            decoration: _inputDecoration(context, 'Nível de Treino', prefixIcon: Icons.signal_cellular_alt_rounded),
             items: ['Iniciante', 'Intermediário', 'Avançado']
                 .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                 .toList(),
@@ -240,18 +256,18 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           const SizedBox(height: 16),
           DropdownButtonFormField<int>(
             initialValue: _daysPerWeek,
-            dropdownColor: AppColors.trainerSurfaceElevated,
-            style: const TextStyle(color: AppColors.textPrimary),
-            decoration: _inputDecoration('Frequência Semanal', prefixIcon: Icons.calendar_today_outlined),
+            dropdownColor: AppColors.card(context),
+            style: TextStyle(color: AppColors.text(context)),
+            decoration: _inputDecoration(context, 'Frequência Semanal', prefixIcon: Icons.calendar_today_outlined),
             items: [2, 3, 4, 5, 6].map((e) => DropdownMenuItem(value: e, child: Text('$e dias na semana'))).toList(),
             onChanged: (val) => setState(() => _daysPerWeek = val!),
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
             initialValue: _workoutLocation,
-            dropdownColor: AppColors.trainerSurfaceElevated,
-            style: const TextStyle(color: AppColors.textPrimary),
-            decoration: _inputDecoration('Ambiente de Treino', prefixIcon: Icons.location_on_outlined),
+            dropdownColor: AppColors.card(context),
+            style: TextStyle(color: AppColors.text(context)),
+            decoration: _inputDecoration(context, 'Ambiente de Treino', prefixIcon: Icons.location_on_outlined),
             items: ['Academia completa', 'Condomínio', 'Em casa (Halteres/Peso Corporal)']
                 .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                 .toList(),
@@ -261,8 +277,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           TextFormField(
             controller: _restrictionsCtrl,
             maxLines: 2,
-            style: const TextStyle(color: AppColors.textPrimary),
+            style: TextStyle(color: AppColors.text(context)),
             decoration: _inputDecoration(
+              context,
               'Dores, Lesões e Restrições Articulares',
               prefixIcon: Icons.health_and_safety_outlined,
               hint: 'Ex: Evitar supino reto livre devido a impacto no ombro',
@@ -272,8 +289,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           TextFormField(
             controller: _notesCtrl,
             maxLines: 2,
-            style: const TextStyle(color: AppColors.textPrimary),
+            style: TextStyle(color: AppColors.text(context)),
             decoration: _inputDecoration(
+              context,
               'Observações / Foco do Treinador',
               prefixIcon: Icons.edit_note_rounded,
               hint: 'Ex: Dar ênfase a peitoral superior e deltoides',
@@ -285,10 +303,10 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             label: const Text('Gerar Periodização com IA'),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              backgroundColor: AppColors.trainerEmerald,
+              backgroundColor: AppColors.emerald(context),
               foregroundColor: Colors.black,
               elevation: 4,
-              shadowColor: AppColors.trainerEmeraldGlow,
+              shadowColor: AppColors.emerald(context).withValues(alpha: 0.35),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
             ),
@@ -344,15 +362,17 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
   }
 
   Widget _buildPlanReviewer(WorkoutPlanModel plan) {
+    final isDark = AppColors.isDark(context);
+
     return DefaultTabController(
       length: plan.splits.length,
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: AppColors.trainerSurface,
-              border: Border(bottom: BorderSide(color: AppColors.trainerBorder)),
+            decoration: BoxDecoration(
+              color: AppColors.card(context),
+              border: Border(bottom: BorderSide(color: AppColors.cardBorder(context))),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -363,24 +383,24 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                     Expanded(
                       child: Text(
                         plan.workoutPlanTitle,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
+                          color: AppColors.text(context),
                         ),
                       ),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.trainerEmerald.withValues(alpha: 0.15),
+                        color: AppColors.emeraldBg(context),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.trainerEmerald.withValues(alpha: 0.4)),
+                        border: Border.all(color: AppColors.emerald(context).withValues(alpha: 0.4)),
                       ),
                       child: Text(
                         '${plan.splits.length} SPLITS',
-                        style: const TextStyle(
-                          color: AppColors.trainerEmerald,
+                        style: TextStyle(
+                          color: AppColors.emerald(context),
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
                         ),
@@ -391,16 +411,16 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                 const SizedBox(height: 6),
                 Text(
                   'Diretriz Clínica: ${plan.notesForTrainer}',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.3),
+                  style: TextStyle(fontSize: 12, color: AppColors.subtext(context), height: 1.3),
                 ),
               ],
             ),
           ),
           TabBar(
             isScrollable: true,
-            indicatorColor: AppColors.trainerEmerald,
-            labelColor: AppColors.trainerEmerald,
-            unselectedLabelColor: AppColors.textMuted,
+            indicatorColor: AppColors.emerald(context),
+            labelColor: AppColors.emerald(context),
+            unselectedLabelColor: AppColors.subtext(context),
             indicatorWeight: 3,
             tabs: plan.splits
                 .map((s) => Tab(text: 'Treino ${s.splitIdentifier} (${s.splitName})'))
@@ -415,12 +435,19 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                   itemBuilder: (ctx, i) {
                     final ex = split.exercises[i];
                     return Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.all(14),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppColors.trainerSurface,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.trainerBorder),
+                        color: AppColors.card(context),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: AppColors.cardBorder(context)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isDark ? Colors.black26 : const Color(0x060F172A),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -429,15 +456,15 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                             width: 32,
                             height: 32,
                             decoration: BoxDecoration(
-                              color: AppColors.trainerEmerald.withValues(alpha: 0.12),
+                              color: AppColors.emeraldBg(context),
                               shape: BoxShape.circle,
-                              border: Border.all(color: AppColors.trainerEmerald.withValues(alpha: 0.3)),
+                              border: Border.all(color: AppColors.emerald(context).withValues(alpha: 0.3)),
                             ),
                             child: Center(
                               child: Text(
                                 '${ex.order}',
-                                style: const TextStyle(
-                                  color: AppColors.trainerEmerald,
+                                style: TextStyle(
+                                  color: AppColors.emerald(context),
                                   fontWeight: FontWeight.bold,
                                   fontSize: 13,
                                 ),
@@ -451,16 +478,16 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                               children: [
                                 Text(
                                   ex.name,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 15,
-                                    color: AppColors.textPrimary,
+                                    color: AppColors.text(context),
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   ex.targetMuscleGroup,
-                                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                                  style: TextStyle(color: AppColors.subtext(context), fontSize: 12),
                                 ),
                                 const SizedBox(height: 8),
                                 Row(
@@ -476,9 +503,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                   const SizedBox(height: 8),
                                   Text(
                                     ex.notes,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 11,
-                                      color: AppColors.textSecondary,
+                                      color: AppColors.subtext(context),
                                       fontStyle: FontStyle.italic,
                                     ),
                                   ),
@@ -511,10 +538,12 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                   style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.trainerEmerald,
+                  backgroundColor: AppColors.emerald(context),
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 4,
+                  shadowColor: AppColors.emerald(context).withValues(alpha: 0.35),
                 ),
                 onPressed: _isSavingPlan ? null : _handleApprovePlan,
               ),
@@ -527,16 +556,16 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
 
   Widget _buildSplitBadge(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.trainerSurfaceElevated,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppColors.trainerBorder),
+        color: AppColors.pillBg(context),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.pillBorder(context)),
       ),
       child: Text(
         text,
-        style: const TextStyle(
-          color: AppColors.textSecondary,
+        style: TextStyle(
+          color: AppColors.text(context),
           fontSize: 11,
           fontWeight: FontWeight.w600,
         ),

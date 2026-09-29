@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/theme_toggle_button.dart';
 import '../../models/subscription_model.dart';
 import '../../services/subscription_service.dart';
 
@@ -61,24 +62,37 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.trainerBg,
+      backgroundColor: AppColors.bg(context),
       appBar: AppBar(
-        title: const Text('Planos & Assinatura B2B'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: Text(
+          'Planos & Assinatura B2B',
+          style: TextStyle(
+            color: AppColors.text(context),
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.4,
+          ),
+        ),
         actions: [
+          const ThemeToggleButton(),
+          const SizedBox(width: 4),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh_rounded, color: AppColors.subtext(context)),
             tooltip: 'Atualizar Assinatura',
             onPressed: _loadData,
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.trainerEmerald),
+          ? Center(
+              child: CircularProgressIndicator(color: AppColors.emerald(context)),
             )
           : RefreshIndicator(
               onRefresh: _loadData,
-              color: AppColors.trainerEmerald,
+              color: AppColors.emerald(context),
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 children: [
@@ -95,14 +109,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AppColors.trainerEmerald.withValues(alpha: 0.12),
+                            color: AppColors.emeraldBg(context),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: AppColors.trainerEmerald.withValues(alpha: 0.4)),
+                            border: Border.all(color: AppColors.emerald(context).withValues(alpha: 0.4)),
                           ),
-                          child: const Text(
+                          child: Text(
                             '💎 PLANOS COMERCIAIS B2B',
                             style: TextStyle(
-                              color: AppColors.trainerEmerald,
+                              color: AppColors.emerald(context),
                               fontSize: 10,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 0.8,
@@ -110,19 +124,19 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        const Text(
+                        Text(
                           'Escale sua Consultoria de Personal',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w900,
-                            color: AppColors.textPrimary,
+                            color: AppColors.text(context),
                           ),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 6),
-                        const Text(
+                        Text(
                           'Prescrições com IA biomecânica ilimitadas e retenção de alunos no salão.',
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                          style: TextStyle(color: AppColors.subtext(context), fontSize: 13),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -135,9 +149,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: AppColors.trainerSurface,
+                        color: AppColors.card(context),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.trainerBorder),
+                        border: Border.all(color: AppColors.cardBorder(context)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -183,19 +197,19 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
-              ? (isHighlighted ? AppColors.trainerEmerald : AppColors.trainerSurfaceElevated)
+              ? (isHighlighted ? AppColors.emerald(context) : AppColors.pillBg(context))
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: isSelected && !isHighlighted
-              ? Border.all(color: AppColors.trainerBorder)
+              ? Border.all(color: AppColors.pillBorder(context))
               : null,
         ),
         child: Text(
           label,
           style: TextStyle(
             color: isSelected
-                ? (isHighlighted ? Colors.black : Colors.white)
-                : AppColors.textSecondary,
+                ? (isHighlighted ? Colors.black : AppColors.text(context))
+                : AppColors.subtext(context),
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             fontSize: 12,
           ),
@@ -205,25 +219,20 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   Widget _buildActiveSubscriptionCard(MySubscriptionModel sub) {
+    final isDark = AppColors.isDark(context);
     final progress = sub.maxStudents > 0 ? (sub.currentStudents / sub.maxStudents).clamp(0.0, 1.0) : 0.0;
 
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFF0F231D),
-            const Color(0xFF0A121A),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.trainerEmerald.withValues(alpha: 0.5)),
+        border: Border.all(color: AppColors.emerald(context).withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.trainerEmerald.withValues(alpha: 0.12),
+            color: isDark ? Colors.black26 : const Color(0x060F172A),
             blurRadius: 18,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -235,12 +244,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.verified, color: AppColors.trainerEmerald, size: 20),
+                  Icon(Icons.verified, color: AppColors.emerald(context), size: 20),
                   const SizedBox(width: 8),
                   Text(
                     'PLANO ATIVO: ${sub.planName.toUpperCase()}',
-                    style: const TextStyle(
-                      color: AppColors.trainerEmerald,
+                    style: TextStyle(
+                      color: AppColors.emerald(context),
                       fontSize: 12,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0.8,
@@ -251,12 +260,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppColors.trainerEmerald.withValues(alpha: 0.2),
+                  color: AppColors.emeraldBg(context),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   sub.status == 'active' ? 'ATIVO' : 'TRIAL',
-                  style: const TextStyle(color: AppColors.trainerEmerald, fontSize: 10, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: AppColors.emerald(context), fontSize: 10, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -269,11 +278,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             children: [
               Text(
                 'Alunos Cadastrados: ${sub.currentStudents} / ${sub.maxStudents}',
-                style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+                style: TextStyle(color: AppColors.text(context), fontSize: 13, fontWeight: FontWeight.bold),
               ),
               Text(
                 '${(progress * 100).toInt()}%',
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.bold),
+                style: TextStyle(color: AppColors.subtext(context), fontSize: 12, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -283,8 +292,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 8,
-              color: AppColors.trainerEmerald,
-              backgroundColor: const Color(0xFF1E293B),
+              color: AppColors.emerald(context),
+              backgroundColor: AppColors.pillBg(context),
             ),
           ),
           const SizedBox(height: 12),
@@ -294,11 +303,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             children: [
               Text(
                 sub.nextBillingDate != null ? 'Renovação em: ${sub.nextBillingDate}' : 'Período gratuito ativo',
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                style: TextStyle(color: AppColors.subtext(context), fontSize: 11),
               ),
               Text(
                 sub.maxAiGenerations == -1 ? '✨ Fichas IA: Ilimitadas' : 'Fichas IA: ${sub.aiGenerationsUsed}/${sub.maxAiGenerations}',
-                style: const TextStyle(color: AppColors.studentCyan, fontSize: 11, fontWeight: FontWeight.bold),
+                style: TextStyle(color: AppColors.accentBlue(context), fontSize: 11, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -308,29 +317,28 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   Widget _buildPlanCard(PlanModel plan) {
+    final isDark = AppColors.isDark(context);
     final isCurrent = _mySubscription?.planId == plan.id;
     final isPro = plan.isPopular;
-    final borderColor = isPro ? AppColors.trainerEmerald : AppColors.trainerBorder;
+    final borderColor = isPro ? AppColors.emerald(context) : AppColors.cardBorder(context);
     final price = _isYearly ? plan.priceYearlyMonthlyEquivalent : plan.priceMonthly;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: AppColors.trainerSurface,
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: borderColor,
           width: isPro ? 1.8 : 1.0,
         ),
-        boxShadow: isPro
-            ? [
-                BoxShadow(
-                  color: AppColors.trainerEmerald.withValues(alpha: 0.12),
-                  blurRadius: 20,
-                  spreadRadius: 1,
-                ),
-              ]
-            : null,
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black26 : const Color(0x060F172A),
+            blurRadius: 20,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(22),
@@ -343,17 +351,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               children: [
                 Text(
                   plan.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
+                    color: AppColors.text(context),
                   ),
                 ),
                 if (plan.badge != null)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isPro ? AppColors.trainerEmerald : AppColors.trainerIndigo,
+                      color: isPro ? AppColors.emerald(context) : AppColors.accentBlue(context),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -371,7 +379,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             const SizedBox(height: 6),
             Text(
               plan.tagline,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              style: TextStyle(color: AppColors.subtext(context), fontSize: 12),
             ),
             const SizedBox(height: 16),
 
@@ -385,32 +393,32 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.w900,
-                    color: isPro ? AppColors.trainerEmerald : AppColors.textPrimary,
+                    color: isPro ? AppColors.emerald(context) : AppColors.text(context),
                   ),
                 ),
                 if (price > 0)
-                  const Text(
+                  Text(
                     ' /mês',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                    style: TextStyle(color: AppColors.subtext(context), fontSize: 13),
                   ),
                 if (_isYearly && price > 0) ...[
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AppColors.studentAmber.withValues(alpha: 0.2),
+                      color: AppColors.tangerineBg(context),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       'Cobrado R\$ ${plan.priceYearlyTotal.toStringAsFixed(0)}/ano',
-                      style: const TextStyle(color: AppColors.studentAmber, fontSize: 10, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: AppColors.tangerine(context), fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
               ],
             ),
             const SizedBox(height: 18),
-            const Divider(color: AppColors.trainerBorder, height: 1),
+            Divider(color: AppColors.cardBorder(context), height: 1),
             const SizedBox(height: 16),
 
             // Feature Checklist
@@ -423,8 +431,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       f.included ? Icons.check_circle_rounded : Icons.cancel_outlined,
                       size: 16,
                       color: f.included
-                          ? (f.highlight ? AppColors.trainerEmerald : AppColors.studentCyan)
-                          : AppColors.textMuted.withValues(alpha: 0.5),
+                          ? (f.highlight ? AppColors.emerald(context) : AppColors.accentBlue(context))
+                          : AppColors.subtext(context).withValues(alpha: 0.5),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -432,7 +440,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         f.title,
                         style: TextStyle(
                           fontSize: 12,
-                          color: f.included ? AppColors.textPrimary : AppColors.textMuted,
+                          color: f.included ? AppColors.text(context) : AppColors.subtext(context),
                           fontWeight: f.highlight ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),
@@ -447,10 +455,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: isCurrent
-                    ? AppColors.trainerSurfaceElevated
-                    : (isPro ? AppColors.trainerEmerald : AppColors.trainerIndigo),
+                    ? AppColors.pillBg(context)
+                    : (isPro ? AppColors.emerald(context) : AppColors.accentBlue(context)),
                 foregroundColor: isCurrent
-                    ? AppColors.textSecondary
+                    ? AppColors.subtext(context)
                     : (isPro ? Colors.black : Colors.white),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -474,28 +482,28 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.trainerSurface,
+        color: AppColors.card(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.trainerBorder),
+        border: Border.all(color: AppColors.cardBorder(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.help_outline_rounded, color: AppColors.studentCyan, size: 18),
-              SizedBox(width: 8),
+              Icon(Icons.help_outline_rounded, color: AppColors.accentBlue(context), size: 18),
+              const SizedBox(width: 8),
               Text(
                 'Perguntas Frequentes',
-                style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 14),
+                style: TextStyle(color: AppColors.text(context), fontWeight: FontWeight.bold, fontSize: 14),
               ),
             ],
           ),
           const SizedBox(height: 12),
           _buildFaqItem('Posso cancelar quando quiser?', 'Sim. Não há período de carência ou fidelidade. Você pode cancelar sua assinatura mensal ou anual com 1 clique a qualquer momento.'),
-          const Divider(color: AppColors.trainerBorder),
+          Divider(color: AppColors.cardBorder(context)),
           _buildFaqItem('O meu aluno paga para usar?', 'Não. O aplicativo do aluno no salão é 100% gratuito. Todo o custo do motor de inteligência artificial é coberto pela sua assinatura de Personal Trainer.'),
-          const Divider(color: AppColors.trainerBorder),
+          Divider(color: AppColors.cardBorder(context)),
           _buildFaqItem('Quais formas de pagamento são aceitas?', 'Aceitamos Pix com ativação imediata (chave copia e cola / QR Code) e todos os cartões de crédito com renovação automática.'),
         ],
       ),
@@ -508,9 +516,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(question, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 12)),
+          Text(question, style: TextStyle(color: AppColors.text(context), fontWeight: FontWeight.bold, fontSize: 12)),
           const SizedBox(height: 3),
-          Text(answer, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11, height: 1.35)),
+          Text(answer, style: TextStyle(color: AppColors.subtext(context), fontSize: 11, height: 1.35)),
         ],
       ),
     );
@@ -567,15 +575,22 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
-      decoration: const BoxDecoration(
-        color: Color(0xFF090D16),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border(top: BorderSide(color: Color(0xFF1E293B), width: 1.5)),
+      decoration: BoxDecoration(
+        color: AppColors.card(context),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border(top: BorderSide(color: AppColors.cardBorder(context), width: 1.5)),
       ),
       child: Column(
         children: [
           const SizedBox(height: 12),
-          Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.subtext(context).withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
           const SizedBox(height: 12),
 
           // Header
@@ -587,14 +602,28 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Assinar ${widget.plan.name}', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(
+                      'Assinar ${widget.plan.name}',
+                      style: TextStyle(
+                        color: AppColors.text(context),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     Text(
                       'R\$ ${amount.toStringAsFixed(2)} • ${widget.isYearly ? "Cobrança Anual (20% OFF)" : "Mensalidade"}',
-                      style: const TextStyle(color: AppColors.trainerEmerald, fontSize: 13, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: AppColors.emerald(context),
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
-                IconButton(icon: const Icon(Icons.close, color: AppColors.textMuted), onPressed: () => Navigator.pop(context)),
+                IconButton(
+                  icon: Icon(Icons.close, color: AppColors.subtext(context)),
+                  onPressed: () => Navigator.pop(context),
+                ),
               ],
             ),
           ),
@@ -610,7 +639,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                     label: 'PIX Instantâneo',
                     icon: Icons.pix_rounded,
                     isSelected: _paymentMethod == 'pix',
-                    activeColor: AppColors.studentCyan,
+                    activeColor: AppColors.accentBlue(context),
                     onTap: () {
                       setState(() => _paymentMethod = 'pix');
                       _createSession();
@@ -623,7 +652,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                     label: 'Cartão de Crédito',
                     icon: Icons.credit_card_rounded,
                     isSelected: _paymentMethod == 'credit_card',
-                    activeColor: AppColors.trainerEmerald,
+                    activeColor: AppColors.emerald(context),
                     onTap: () {
                       setState(() => _paymentMethod = 'credit_card');
                       _createSession();
@@ -637,7 +666,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
 
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: AppColors.trainerEmerald))
+                ? Center(child: CircularProgressIndicator(color: AppColors.emerald(context)))
                 : SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: _paymentMethod == 'pix' ? _buildPixContent() : _buildCreditCardContent(),
@@ -647,13 +676,13 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
           // Confirm Action
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: Color(0xFF070B12),
-              border: Border(top: BorderSide(color: Color(0xFF161E2E))),
+            decoration: BoxDecoration(
+              color: AppColors.card(context),
+              border: Border(top: BorderSide(color: AppColors.cardBorder(context))),
             ),
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.trainerEmerald,
+                backgroundColor: AppColors.emerald(context),
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

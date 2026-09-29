@@ -120,18 +120,18 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          backgroundColor: AppColors.trainerSurface,
+          backgroundColor: AppColors.card(context),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
-            side: const BorderSide(color: AppColors.trainerBorder),
+            side: BorderSide(color: AppColors.cardBorder(context)),
           ),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.person_add_alt_1_outlined, color: AppColors.trainerEmerald),
-              SizedBox(width: 10),
+              Icon(Icons.person_add_alt_1_outlined, color: AppColors.emerald(context)),
+              const SizedBox(width: 10),
               Text(
                 'Novo Aluno',
-                style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 18),
+                style: TextStyle(color: AppColors.text(context), fontWeight: FontWeight.bold, fontSize: 18),
               ),
             ],
           ),
@@ -140,39 +140,60 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
             children: [
               TextField(
                 controller: nameCtrl,
-                style: const TextStyle(color: AppColors.textPrimary),
+                style: TextStyle(color: AppColors.text(context)),
                 decoration: InputDecoration(
                   labelText: 'Nome Completo do Aluno',
-                  labelStyle: const TextStyle(color: AppColors.textSecondary),
+                  labelStyle: TextStyle(color: AppColors.subtext(context)),
                   filled: true,
-                  fillColor: AppColors.trainerSurfaceElevated,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  fillColor: AppColors.pillBg(context),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.cardBorder(context)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.cardBorder(context)),
+                  ),
                 ),
               ),
               const SizedBox(height: 14),
               TextField(
                 controller: phoneCtrl,
                 keyboardType: TextInputType.phone,
-                style: const TextStyle(color: AppColors.textPrimary),
+                style: TextStyle(color: AppColors.text(context)),
                 decoration: InputDecoration(
                   labelText: 'WhatsApp / Telefone',
-                  labelStyle: const TextStyle(color: AppColors.textSecondary),
+                  labelStyle: TextStyle(color: AppColors.subtext(context)),
                   filled: true,
-                  fillColor: AppColors.trainerSurfaceElevated,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  fillColor: AppColors.pillBg(context),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.cardBorder(context)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.cardBorder(context)),
+                  ),
                 ),
               ),
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
                 initialValue: goal,
-                dropdownColor: AppColors.trainerSurfaceElevated,
-                style: const TextStyle(color: AppColors.textPrimary),
+                dropdownColor: AppColors.card(context),
+                style: TextStyle(color: AppColors.text(context)),
                 decoration: InputDecoration(
                   labelText: 'Objetivo Inicial',
-                  labelStyle: const TextStyle(color: AppColors.textSecondary),
+                  labelStyle: TextStyle(color: AppColors.subtext(context)),
                   filled: true,
-                  fillColor: AppColors.trainerSurfaceElevated,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  fillColor: AppColors.pillBg(context),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.cardBorder(context)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.cardBorder(context)),
+                  ),
                 ),
                 items: ['Hipertrofia Muscular', 'Emagrecimento', 'Condicionamento Geral']
                     .map((g) => DropdownMenuItem(value: g, child: Text(g)))
@@ -184,11 +205,11 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancelar', style: TextStyle(color: AppColors.textMuted)),
+              child: Text('Cancelar', style: TextStyle(color: AppColors.subtext(context))),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.trainerEmerald,
+                backgroundColor: AppColors.emerald(context),
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
@@ -241,15 +262,25 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     final alertsCount = _students.where((s) => s['has_alert'] == true).length;
 
     return Scaffold(
-      backgroundColor: AppColors.trainerBg,
+      backgroundColor: AppColors.bg(context),
       appBar: AppBar(
-        title: const Text('Painel do Treinador'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: Text(
+          'Painel do Treinador',
+          style: TextStyle(
+            color: AppColors.text(context),
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.4,
+          ),
+        ),
         bottom: _isLoading
-            ? const PreferredSize(
-                preferredSize: Size.fromHeight(2),
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(2),
                 child: LinearProgressIndicator(
                   minHeight: 2,
-                  color: AppColors.trainerEmerald,
+                  color: AppColors.emerald(context),
                   backgroundColor: Colors.transparent,
                 ),
               )
@@ -264,14 +295,15 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
               onPressed: () => ServerConfigDialog.show(context),
             ),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh_rounded, color: AppColors.subtext(context)),
             tooltip: 'Recarregar Alunos',
             onPressed: _loadStudentsFromDb,
           ),
+          const SizedBox(width: 8),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.trainerEmerald,
+        backgroundColor: AppColors.emerald(context),
         foregroundColor: Colors.black,
         elevation: 4,
         icon: const Icon(Icons.person_add_alt_1),
@@ -280,9 +312,9 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: _loadStudentsFromDb,
-        color: AppColors.trainerEmerald,
+        color: AppColors.emerald(context),
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           children: [
             // KPI Summary Cards
             Row(
@@ -291,44 +323,48 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                   label: 'TOTAL ALUNOS',
                   value: '${_students.length}',
                   icon: Icons.people_outline,
-                  color: AppColors.trainerEmerald,
+                  color: AppColors.emerald(context),
                 ),
                 const SizedBox(width: 10),
                 _buildKpiCard(
                   label: 'TREINARAM HOJE',
                   value: '2',
                   icon: Icons.fitness_center_rounded,
-                  color: AppColors.trainerIndigo,
+                  color: AppColors.accentBlue(context),
                 ),
                 const SizedBox(width: 10),
                 _buildKpiCard(
                   label: 'ADAPTAÇÕES IA',
                   value: '$alertsCount',
                   icon: Icons.bolt,
-                  color: AppColors.studentAmber,
+                  color: AppColors.tangerine(context),
                   hasAlert: alertsCount > 0,
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
 
             // Search Bar
             TextField(
-              style: const TextStyle(color: AppColors.textPrimary),
+              style: TextStyle(color: AppColors.text(context)),
               onChanged: (val) => setState(() => _searchQuery = val),
               decoration: InputDecoration(
                 hintText: 'Buscar aluno por nome...',
-                hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-                prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary, size: 20),
+                hintStyle: TextStyle(color: AppColors.subtext(context), fontSize: 13),
+                prefixIcon: Icon(Icons.search, color: AppColors.subtext(context), size: 20),
                 filled: true,
-                fillColor: AppColors.trainerSurface,
+                fillColor: AppColors.card(context),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.trainerBorder),
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: AppColors.cardBorder(context)),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.trainerBorder),
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: AppColors.cardBorder(context)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: AppColors.emerald(context), width: 1.5),
                 ),
                 contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
@@ -354,13 +390,13 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
               Container(
                 padding: const EdgeInsets.all(32),
                 alignment: Alignment.center,
-                child: const Column(
+                child: Column(
                   children: [
-                    Icon(Icons.search_off, size: 48, color: AppColors.textMuted),
-                    SizedBox(height: 12),
+                    Icon(Icons.search_off, size: 48, color: AppColors.subtext(context)),
+                    const SizedBox(height: 12),
                     Text(
                       'Nenhum aluno encontrado.',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                      style: TextStyle(color: AppColors.subtext(context), fontSize: 14),
                     ),
                   ],
                 ),
@@ -381,19 +417,24 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     required Color color,
     bool hasAlert = false,
   }) {
+    final isDark = AppColors.isDark(context);
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         decoration: BoxDecoration(
-          color: AppColors.trainerSurface,
+          color: AppColors.card(context),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: hasAlert ? color.withValues(alpha: 0.6) : AppColors.trainerBorder,
+            color: hasAlert ? color.withValues(alpha: 0.6) : AppColors.cardBorder(context),
             width: hasAlert ? 1.5 : 1.0,
           ),
-          boxShadow: hasAlert
-              ? [BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 10)]
-              : null,
+          boxShadow: [
+            BoxShadow(
+              color: isDark ? Colors.black26 : const Color(0x060F172A),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -422,11 +463,11 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
             const SizedBox(height: 2),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 9,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.6,
-                color: AppColors.textMuted,
+                color: AppColors.subtext(context),
               ),
             ),
           ],
@@ -442,10 +483,10 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.trainerEmerald.withValues(alpha: 0.15) : AppColors.trainerSurface,
+          color: isSelected ? AppColors.emerald(context).withValues(alpha: 0.15) : AppColors.card(context),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? AppColors.trainerEmerald : AppColors.trainerBorder,
+            color: isSelected ? AppColors.emerald(context) : AppColors.cardBorder(context),
           ),
         ),
         child: Row(
@@ -455,7 +496,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
               Container(
                 width: 6,
                 height: 6,
-                decoration: const BoxDecoration(color: AppColors.studentAmber, shape: BoxShape.circle),
+                decoration: BoxDecoration(color: AppColors.tangerine(context), shape: BoxShape.circle),
               ),
               const SizedBox(width: 6),
             ],
@@ -464,7 +505,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? AppColors.trainerEmerald : AppColors.textSecondary,
+                color: isSelected ? AppColors.emerald(context) : AppColors.subtext(context),
               ),
             ),
           ],
@@ -474,6 +515,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
   }
 
   Widget _buildStudentCard(Map<String, dynamic> student) {
+    final isDark = AppColors.isDark(context);
     final fullName = student['full_name'] as String;
     final initials = fullName.split(' ').map((n) => n.isNotEmpty ? n[0] : '').take(2).join();
     final hasAlert = student['has_alert'] == true;
@@ -481,15 +523,19 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppColors.trainerSurface,
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.card(context),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: hasAlert ? AppColors.studentAmber.withValues(alpha: 0.5) : AppColors.trainerBorder,
+          color: hasAlert ? AppColors.tangerine(context).withValues(alpha: 0.6) : AppColors.cardBorder(context),
           width: hasAlert ? 1.5 : 1.0,
         ),
-        boxShadow: hasAlert
-            ? [BoxShadow(color: AppColors.studentAmberGlow.withValues(alpha: 0.15), blurRadius: 12)]
-            : null,
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black26 : const Color(0x060F172A),
+            blurRadius: 18,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -504,11 +550,11 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                   height: 44,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF1E3260), Color(0xFF10B981)],
+                      colors: [Color(0xFF0F172A), Color(0xFF059669)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                   child: Center(
                     child: Text(
@@ -528,18 +574,18 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                     children: [
                       Text(
                         fullName,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: 15,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
+                          color: AppColors.text(context),
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         '${student['goal']} • ${student['level']}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.textSecondary,
+                          color: AppColors.subtext(context),
                         ),
                       ),
                     ],
@@ -549,16 +595,16 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppColors.trainerEmerald.withValues(alpha: 0.12),
+                    color: AppColors.emeraldBg(context),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.trainerEmerald.withValues(alpha: 0.3)),
+                    border: Border.all(color: AppColors.emerald(context).withValues(alpha: 0.3)),
                   ),
                   child: Text(
                     student['status'] as String,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.trainerEmerald,
+                      color: AppColors.emerald(context),
                     ),
                   ),
                 ),
@@ -571,19 +617,19 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.studentAmber.withValues(alpha: 0.1),
+                  color: AppColors.tangerineBg(context),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.studentAmber.withValues(alpha: 0.3)),
+                  border: Border.all(color: AppColors.tangerine(context).withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.bolt, color: AppColors.studentAmber, size: 18),
+                    Icon(Icons.bolt_rounded, color: AppColors.tangerine(context), size: 18),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         student['alert_message'] as String,
-                        style: const TextStyle(
-                          color: AppColors.studentAmber,
+                        style: TextStyle(
+                          color: AppColors.tangerine(context),
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
@@ -595,7 +641,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
             ],
 
             const SizedBox(height: 12),
-            const Divider(color: AppColors.trainerBorder, height: 1),
+            Divider(color: AppColors.cardBorder(context), height: 1),
             const SizedBox(height: 10),
 
             // Footer with Active Split & Action Buttons
@@ -605,12 +651,12 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                 Expanded(
                   child: Row(
                     children: [
-                      const Icon(Icons.schedule, size: 14, color: AppColors.textMuted),
+                      Icon(Icons.schedule, size: 14, color: AppColors.subtext(context)),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           student['last_session'] as String,
-                          style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                          style: TextStyle(color: AppColors.subtext(context), fontSize: 11),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -619,11 +665,11 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                 ),
                 // Action: Gerar Nova Ficha IA
                 TextButton.icon(
-                  icon: const Icon(Icons.auto_awesome, size: 15, color: AppColors.trainerEmerald),
-                  label: const Text(
+                  icon: Icon(Icons.auto_awesome, size: 15, color: AppColors.emerald(context)),
+                  label: Text(
                     'Nova Ficha IA',
                     style: TextStyle(
-                      color: AppColors.trainerEmerald,
+                      color: AppColors.emerald(context),
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
