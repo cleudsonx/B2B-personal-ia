@@ -117,6 +117,24 @@ class MySubscriptionModel {
       canGenerateAi: json['can_generate_ai'] ?? true,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'plan_id': planId,
+      'plan_name': planName,
+      'status': status,
+      'billing_interval': billingInterval,
+      'current_students': currentStudents,
+      'max_students': maxStudents,
+      'ai_generations_used': aiGenerationsUsed,
+      'max_ai_generations': maxAiGenerations,
+      'trial_days_remaining': trialDaysRemaining,
+      'next_billing_date': nextBillingDate,
+      'payment_method': paymentMethod,
+      'can_create_student': canCreateStudent,
+      'can_generate_ai': canGenerateAi,
+    };
+  }
 }
 
 class CheckoutSessionModel {

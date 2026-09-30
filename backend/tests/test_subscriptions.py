@@ -175,3 +175,29 @@ def test_activate_plan_endpoint():
     assert data_get["plan_name"] == "Elite Coach"
     assert data_get["max_students"] == 60
 
+    # 3. Consulta my-subscription sem query param (fallback current-trainer) deve refletir o plano ativado
+    res_fallback = client.get("/api/v1/subscriptions/my-subscription")
+    assert res_fallback.status_code == 200
+    data_fb = res_fallback.json()
+    assert data_fb["plan_id"] == "elite"
+    assert data_fb["plan_name"] == "Elite Coach"
+    assert data_fb["max_students"] == 60
+
+    # 4. Ativação do plano Studio Scale para outro ID
+    res_studio = client.post("/api/v1/subscriptions/activate-plan", json={
+        "plan_id": "studio",
+        "billing_interval": "monthly",
+        "payment_method": "credit_card",
+        "trainer_id": "trainer-studio-999"
+    })
+    assert res_studio.status_code == 200
+    assert res_studio.json()["plan_id"] == "studio"
+    assert res_studio.json()["max_students"] == 100
+
+    # 5. Consulta sem parâmetro agora reflete Studio Scale
+    res_studio_fb = client.get("/api/v1/subscriptions/my-subscription")
+    assert res_studio_fb.status_code == 200
+    assert res_studio_fb.json()["plan_id"] == "studio"
+    assert res_studio_fb.json()["max_students"] == 100
+
+

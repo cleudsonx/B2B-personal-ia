@@ -21,7 +21,25 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   @override
   void initState() {
     super.initState();
+    SubscriptionService.activeSubscriptionNotifier.addListener(_onSubscriptionChanged);
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    SubscriptionService.activeSubscriptionNotifier.removeListener(_onSubscriptionChanged);
+    super.dispose();
+  }
+
+  void _onSubscriptionChanged() {
+    if (mounted) {
+      final updated = SubscriptionService.activeSubscriptionNotifier.value;
+      if (updated != null && updated != _mySubscription) {
+        setState(() {
+          _mySubscription = updated;
+        });
+      }
+    }
   }
 
   Future<void> _loadData() async {
@@ -37,6 +55,72 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     }
   }
 
+  void _selectPlan(PlanModel plan) {
+    if (plan.id == 'starter' || plan.priceMonthlyCents == 0) {
+      _activateDirectly(plan);
+    } else {
+      _openCheckout(plan);
+    }
+  }
+
+  Future<void> _activateDirectly(PlanModel plan) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card(context),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: AppColors.cardBorder(context)),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.rocket_launch_rounded, color: AppColors.emerald(context)),
+            const SizedBox(width: 8),
+            Text('Ativar ${plan.name}', style: TextStyle(color: AppColors.text(context), fontSize: 16)),
+          ],
+        ),
+        content: Text(
+          'Deseja ativar o plano gratuito ${plan.name} com limite de até ${plan.maxStudents} alunos e 10 fichas IA mensais?',
+          style: TextStyle(color: AppColors.subtext(context), fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancelar', style: TextStyle(color: AppColors.subtext(context))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.emerald(context),
+              foregroundColor: Colors.black,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Confirmar Ativação', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      setState(() => _isLoading = true);
+      final updated = await SubscriptionService.activatePlan(
+        planId: plan.id,
+        billingInterval: _isYearly ? 'yearly' : 'monthly',
+      );
+      if (mounted) {
+        setState(() {
+          _mySubscription = updated;
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.green.shade800,
+            content: Text('🎉 Plano ${plan.name} ativado com sucesso!'),
+          ),
+        );
+      }
+    }
+  }
+
   void _openCheckout(PlanModel plan) {
     showModalBottomSheet(
       context: context,
@@ -48,12 +132,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         onSuccess: () async {
           Navigator.pop(ctx);
           setState(() => _isLoading = true);
-          await SubscriptionService.activatePlan(
+          final updated = await SubscriptionService.activatePlan(
             planId: plan.id,
             billingInterval: _isYearly ? 'yearly' : 'monthly',
           );
-          await _loadData();
           if (mounted) {
+            setState(() {
+              _mySubscription = updated;
+              _isLoading = false;
+            });
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 backgroundColor: Colors.green.shade800,
@@ -471,7 +558,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 elevation: isPro && !isCurrent ? 4 : 0,
               ),
-              onPressed: isCurrent ? null : () => _openCheckout(plan),
+              onPressed: isCurrent ? null : () => _selectPlan(plan),
               child: Text(
                 isCurrent
                     ? '✓ Seu Plano Atual'

@@ -560,16 +560,66 @@ class _MainShellScreenState extends State<MainShellScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        widget.userName,
-                        style: TextStyle(
-                          color: AppColors.text(context),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                      Flexible(
+                        child: Text(
+                          widget.userName,
+                          style: TextStyle(
+                            color: AppColors.text(context),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
+                      if (_isTrainer) ...[
+                        const SizedBox(width: 8),
+                        ValueListenableBuilder<MySubscriptionModel?>(
+                          valueListenable: SubscriptionService.activeSubscriptionNotifier,
+                          builder: (context, sub, _) {
+                            final planName = sub?.planName ?? 'Personal Pro';
+                            final isPro = sub?.planId != 'starter';
+                            return InkWell(
+                              onTap: () => setState(() => _currentIndex = 3),
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: isPro
+                                      ? AppColors.trainerEmerald.withValues(alpha: 0.15)
+                                      : Colors.orange.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isPro
+                                        ? AppColors.trainerEmerald.withValues(alpha: 0.4)
+                                        : Colors.orange.withValues(alpha: 0.4),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      isPro ? Icons.workspace_premium_rounded : Icons.rocket_launch_rounded,
+                                      size: 13,
+                                      color: isPro ? AppColors.trainerEmerald : Colors.orange,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      planName,
+                                      style: TextStyle(
+                                        color: isPro ? AppColors.trainerEmerald : Colors.orange,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ],
                   ),
                   Row(

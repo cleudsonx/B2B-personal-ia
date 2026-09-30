@@ -120,9 +120,22 @@ async def get_my_subscription(trainer_id: str = "current-trainer"):
     """
     Retorna o plano ativo e consumo de cotas do Personal Trainer autenticado.
     Se o treinador já ativou um plano, retorna a assinatura ativa correspondente.
+    Garante sincronização bidirecional entre ID do usuário autenticado e fallback padrão.
     """
     if trainer_id in ACTIVE_TRAINER_SUBSCRIPTIONS:
         return ACTIVE_TRAINER_SUBSCRIPTIONS[trainer_id]
+
+    if "current-trainer" in ACTIVE_TRAINER_SUBSCRIPTIONS:
+        sub = ACTIVE_TRAINER_SUBSCRIPTIONS["current-trainer"]
+        ACTIVE_TRAINER_SUBSCRIPTIONS[trainer_id] = sub
+        return sub
+
+    # Se houver alguma assinatura ativa em memória no sistema, aproveita a mais recente
+    if ACTIVE_TRAINER_SUBSCRIPTIONS:
+        last_sub = list(ACTIVE_TRAINER_SUBSCRIPTIONS.values())[-1]
+        ACTIVE_TRAINER_SUBSCRIPTIONS[trainer_id] = last_sub
+        ACTIVE_TRAINER_SUBSCRIPTIONS["current-trainer"] = last_sub
+        return last_sub
 
     # Default: Personal Pro ativo
     default_sub = MySubscriptionResponse(
@@ -141,6 +154,7 @@ async def get_my_subscription(trainer_id: str = "current-trainer"):
         can_generate_ai=True,
     )
     ACTIVE_TRAINER_SUBSCRIPTIONS[trainer_id] = default_sub
+    ACTIVE_TRAINER_SUBSCRIPTIONS["current-trainer"] = default_sub
     return default_sub
 
 
@@ -149,6 +163,7 @@ async def activate_subscription_plan(req: PlanActivationRequest):
     """
     Ativa ou troca o plano do Personal Trainer imediatamente.
     Atualiza cotas de alunos, limite de gerações IA e periodicidade.
+    Persiste e reverbera em múltiplos identificadores para garantir consistência total.
     """
     selected_plan = next((p for p in SAAS_PLANS if p.id == req.plan_id), None)
     if not selected_plan:
@@ -164,6 +179,8 @@ async def activate_subscription_plan(req: PlanActivationRequest):
     current_students = 4
     if trainer_id in ACTIVE_TRAINER_SUBSCRIPTIONS:
         current_students = ACTIVE_TRAINER_SUBSCRIPTIONS[trainer_id].current_students
+    elif "current-trainer" in ACTIVE_TRAINER_SUBSCRIPTIONS:
+        current_students = ACTIVE_TRAINER_SUBSCRIPTIONS["current-trainer"].current_students
 
     updated_sub = MySubscriptionResponse(
         plan_id=selected_plan.id,
@@ -182,6 +199,7 @@ async def activate_subscription_plan(req: PlanActivationRequest):
     )
 
     ACTIVE_TRAINER_SUBSCRIPTIONS[trainer_id] = updated_sub
+    ACTIVE_TRAINER_SUBSCRIPTIONS["current-trainer"] = updated_sub
     return updated_sub
 
 

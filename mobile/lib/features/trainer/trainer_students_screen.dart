@@ -99,8 +99,26 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
   @override
   void initState() {
     super.initState();
+    SubscriptionService.activeSubscriptionNotifier.addListener(_onSubscriptionChanged);
     _students = List.from(_demoStudents);
     _loadStudentsFromDb();
+  }
+
+  @override
+  void dispose() {
+    SubscriptionService.activeSubscriptionNotifier.removeListener(_onSubscriptionChanged);
+    super.dispose();
+  }
+
+  void _onSubscriptionChanged() {
+    if (mounted) {
+      final updated = SubscriptionService.activeSubscriptionNotifier.value;
+      if (updated != null && updated != _mySubscription) {
+        setState(() {
+          _mySubscription = updated;
+        });
+      }
+    }
   }
 
   Future<void> _loadStudentsFromDb() async {
@@ -240,7 +258,8 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     required int currentCount,
     required int maxAllowed,
   }) {
-    final currentPlanName = _mySubscription?.planName ?? 'Starter Trial';
+    final currentSub = SubscriptionService.activeSubscriptionNotifier.value ?? _mySubscription;
+    final currentPlanName = currentSub?.planName ?? 'Starter Trial';
 
     showModalBottomSheet(
       context: context,
@@ -449,7 +468,8 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
 
   void _showAddStudentDialog() {
     final activeStudentsCount = _students.where((s) => (s['status'] as String? ?? '').toLowerCase() != 'arquivado').length;
-    final maxStudents = _mySubscription?.maxStudents ?? 3;
+    final currentSub = SubscriptionService.activeSubscriptionNotifier.value ?? _mySubscription;
+    final maxStudents = currentSub?.maxStudents ?? 30;
 
     if (activeStudentsCount >= maxStudents) {
       _showStudentLimitUpgradeSheet(context, currentCount: activeStudentsCount, maxAllowed: maxStudents);

@@ -20,6 +20,7 @@ INSERT INTO public.plans (id, name, tagline, price_monthly_cents, price_yearly_c
 VALUES
     ('starter', 'Starter Trial', 'Degustação para começar sua consultoria com IA', 0, 0, 3, 10),
     ('pro', 'Personal Pro', 'O plano definitivo para o Personal Trainer de alta renda', 8900, 85200, 30, -1),
+    ('elite', 'Elite Coach', 'Consultoria de alta escala com automação WhatsApp', 14900, 142800, 60, -1),
     ('studio', 'Studio Scale', 'Para assessorias esportivas e estúdios que buscam escala', 19900, 190800, 100, -1)
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
@@ -64,6 +65,11 @@ CREATE POLICY "Planos são públicos para leitura" ON public.plans
 DROP POLICY IF EXISTS "Treinadores leem sua própria assinatura" ON public.subscriptions;
 CREATE POLICY "Treinadores leem sua própria assinatura" ON public.subscriptions
     FOR SELECT USING (auth.uid() = trainer_id);
+
+DROP POLICY IF EXISTS "Treinadores modificam sua própria assinatura" ON public.subscriptions;
+CREATE POLICY "Treinadores modificam sua própria assinatura" ON public.subscriptions
+    FOR ALL USING (auth.uid() = trainer_id)
+    WITH CHECK (auth.uid() = trainer_id);
 
 -- 4. Função auxiliar para verificar cota de alunos antes de inserir novo aluno
 CREATE OR REPLACE FUNCTION public.check_trainer_student_quota(p_trainer_id UUID)
