@@ -36,6 +36,8 @@ class ApiService {
     required int daysPerWeek,
     required String workoutLocation,
     required String injuriesOrRestrictions,
+    String splitType = 'Automático (IA Sugere)',
+    String? targetFocus,
     String? additionalNotes,
     String? authToken,
   }) async {
@@ -45,8 +47,12 @@ class ApiService {
       'days_per_week': daysPerWeek,
       'workout_location': workoutLocation,
       'injuries_or_restrictions': injuriesOrRestrictions,
+      'split_type': splitType,
     };
-    if (additionalNotes != null) {
+    if (targetFocus != null && targetFocus.isNotEmpty) {
+      payload['target_focus'] = targetFocus;
+    }
+    if (additionalNotes != null && additionalNotes.isNotEmpty) {
       payload['additional_notes'] = additionalNotes;
     }
     final body = jsonEncode(payload);

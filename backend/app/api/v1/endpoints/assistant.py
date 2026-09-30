@@ -23,7 +23,7 @@ async def chat_with_assistant(request: AssistantChatRequest):
         )
         return AssistantChatResponse(
             text=reply,
-            model=request.model or "gemini-3.6-flash"
+            model=request.model or "gemini-2.5-flash"
         )
     except Exception as e:
         logger.error(f"Erro ao processar mensagem do assistente B2B: {str(e)}")

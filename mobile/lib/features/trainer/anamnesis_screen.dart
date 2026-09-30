@@ -29,6 +29,8 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
   String _objective = 'Hipertrofia Muscular';
   String _trainingLevel = 'Intermediário';
   int _daysPerWeek = 4;
+  String _splitType = 'Automático (IA Sugere o Ideal)';
+  String _targetFocus = 'Geral / Equilibrado';
   String _workoutLocation = 'Academia completa';
   final _restrictionsCtrl = TextEditingController(
     text: 'Leve desconforto no ombro direito (evitar abdução acima de 90° com carga pesada)',
@@ -98,6 +100,8 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
         daysPerWeek: _daysPerWeek,
         workoutLocation: _workoutLocation,
         injuriesOrRestrictions: _restrictionsCtrl.text,
+        splitType: _splitType,
+        targetFocus: _targetFocus == 'Geral / Equilibrado' ? null : _targetFocus,
         additionalNotes: _notesCtrl.text.isNotEmpty ? _notesCtrl.text : null,
       );
 
@@ -418,6 +422,54 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             decoration: _inputDecoration(context, 'Frequência Semanal', prefixIcon: Icons.calendar_today_outlined),
             items: [2, 3, 4, 5, 6].map((e) => DropdownMenuItem(value: e, child: Text('$e dias na semana'))).toList(),
             onChanged: (val) => setState(() => _daysPerWeek = val!),
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            initialValue: _splitType,
+            dropdownColor: AppColors.card(context),
+            style: TextStyle(color: AppColors.text(context), fontSize: 13),
+            isExpanded: true,
+            decoration: _inputDecoration(
+              context,
+              'Estrutura de Divisão / Split',
+              prefixIcon: Icons.alt_route_rounded,
+            ),
+            items: [
+              'Automático (IA Sugere o Ideal)',
+              'Full Body (1 a 3 dias - Corpo Inteiro)',
+              'Upper / Lower (2 ou 4 dias - Superiores / Inferiores)',
+              'Push / Pull / Legs (PPL - 3 a 6 dias)',
+              'Agonista / Antagonista (Superséries eficientes)',
+              'Divisão ABC Tradicional',
+              'Divisão ABCD Clássica (4 dias)',
+              'Divisão ABCDE Avançada (1 grupo/dia)',
+              'Especialização de Ponto Fraco',
+              'Reabilitação / Articularmente Poupadora',
+            ].map((e) => DropdownMenuItem(value: e, child: Text(e, overflow: TextOverflow.ellipsis))).toList(),
+            onChanged: (val) => setState(() => _splitType = val!),
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            initialValue: _targetFocus,
+            dropdownColor: AppColors.card(context),
+            style: TextStyle(color: AppColors.text(context), fontSize: 13),
+            isExpanded: true,
+            decoration: _inputDecoration(
+              context,
+              'Foco Muscular / Ponto Fraco',
+              prefixIcon: Icons.fitness_center_rounded,
+            ),
+            items: [
+              'Geral / Equilibrado',
+              'Glúteos & Posterior de Coxa',
+              'Deltoides & Ombros 3D',
+              'Peitoral Superior (Clavicular)',
+              'Dorsais & V-Taper (Largura)',
+              'Braços (Bíceps e Tríceps)',
+              'Quadríceps & Vasto Medial',
+              'Core & Fortalecimento Postural',
+            ].map((e) => DropdownMenuItem(value: e, child: Text(e, overflow: TextOverflow.ellipsis))).toList(),
+            onChanged: (val) => setState(() => _targetFocus = val!),
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(

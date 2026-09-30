@@ -21,6 +21,14 @@ class AnamnesisInput(BaseModel):
         ...,
         description="Local e infraestrutura onde o treino será realizado (ex: 'Academia completa', 'Condomínio', 'Em casa')"
     )
+    split_type: Optional[str] = Field(
+        default="Automático (IA Sugere)",
+        description="Estrutura de divisão (ex: 'Automático (IA Sugere)', 'Full Body', 'Upper / Lower', 'Push / Pull / Legs', 'Agonista / Antagonista', 'Divisão ABC Tradicional', 'Divisão ABCD', 'Divisão ABCDE', 'Especialização de Ponto Fraco', 'Reabilitação / Articular')"
+    )
+    target_focus: Optional[str] = Field(
+        default=None,
+        description="Foco muscular prioritário ou especialização de ponto fraco (ex: 'Glúteos', 'Deltoides', 'Dorsais', 'Peitoral Superior')"
+    )
     injuries_or_restrictions: Optional[str] = Field(
         default="Nenhuma restrição articular ou dor relatada.",
         description="Histórico de lesões, cirurgias ou dores com contraindicações específicas"

@@ -159,3 +159,48 @@ def test_student_invitation_flow(monkeypatch):
     assert data["whatsapp_status"] in ("sent", "success", "ready_url")
 
 
+def test_generate_workout_plan_multi_split():
+    # 1. Full Body Split
+    res_full_body = client.post("/api/v1/workouts/generate-plan", json={
+        "objective": "Hipertrofia Muscular",
+        "training_level": "Intermediário",
+        "days_per_week": 3,
+        "workout_location": "Academia completa",
+        "split_type": "Full Body (1 a 3 dias - Corpo Inteiro)",
+        "target_focus": "Glúteos & Posterior de Coxa",
+        "injuries_or_restrictions": "Nenhuma dor relatada"
+    })
+    assert res_full_body.status_code == 200
+    plan_fb = res_full_body.json()
+    assert "splits" in plan_fb
+    assert len(plan_fb["splits"]) >= 1
+
+    # 2. Push Pull Legs Split
+    res_ppl = client.post("/api/v1/workouts/generate-plan", json={
+        "objective": "Hipertrofia Muscular",
+        "training_level": "Avançado",
+        "days_per_week": 5,
+        "workout_location": "Academia completa",
+        "split_type": "Push / Pull / Legs (PPL - 3 a 6 dias)",
+        "target_focus": "Deltoides & Ombros 3D",
+        "injuries_or_restrictions": "Leve estalido no ombro direito"
+    })
+    assert res_ppl.status_code == 200
+    plan_ppl = res_ppl.json()
+    assert len(plan_ppl["splits"]) >= 2
+
+
+def test_assistant_chat_specialist_knowledge():
+    # Testa consulta ao assistente com tópico de biomecânica/EMG
+    res = client.post("/api/v1/assistant/chat", json={
+        "prompt": "O que significa deltoide lateral 88% EMG e qual a diferença de torque entre halter e polia?",
+        "model": "gemini-2.5-flash"
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert "text" in data
+    assert len(data["text"]) > 50
+    # Verifica que termos biomecânicos chave estão presentes
+    assert "torque" in data["text"].lower() or "polia" in data["text"].lower() or "emg" in data["text"].lower()
+
+

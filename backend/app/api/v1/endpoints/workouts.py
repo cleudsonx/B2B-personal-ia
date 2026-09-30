@@ -123,6 +123,8 @@ async def generate_workout_plan(
             days_per_week=data.days_per_week,
             workout_location=data.workout_location,
             injuries_or_restrictions=data.injuries_or_restrictions or "Nenhuma restrição articular.",
+            split_type=data.split_type or "Automático (IA Sugere)",
+            target_focus=data.target_focus,
             additional_notes=data.additional_notes
         )
         return plan

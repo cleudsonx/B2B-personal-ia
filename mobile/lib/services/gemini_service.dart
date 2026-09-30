@@ -10,8 +10,8 @@ class GeminiService {
   static Future<String> askB2BAssistant({
     required String prompt,
     String systemInstruction =
-        'Você é um assistente de IA pessoal para treinadores, focado em negócios fitness B2B, consultorias e biomecânica.',
-    String model = 'gemini-3.6-flash',
+        'Você é o Mr. Coach AI, especialista em biomecânica de precisão, fisiologia neuromuscular, musculação avançada e estratégias de negócios fitness B2B.',
+    String model = 'gemini-2.5-flash',
     double temperature = 0.7,
     String? customGatewayUrl,
   }) async {

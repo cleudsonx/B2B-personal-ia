@@ -19,6 +19,8 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
   final List<_ChatMessage> _messages = [];
   bool _isLoading = false;
 
+  String _selectedPillar = 'Todos';
+
   List<String> get _quickPrompts {
     if (widget.isStudentView) {
       return [
@@ -28,14 +30,50 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
         'Como evitar dor nos ombros na Puxada Alta?',
         'Qual a cadência recomendada para hipertrofia máxima?',
       ];
-    } else {
-      return [
-        'Como precificar minha consultoria online para 15 alunos?',
-        'Mensagem educada de cobrança de mensalidade via WhatsApp',
-        'Ideias de post no Instagram sobre substituição de exercícios',
-        'Como reter alunos que faltam 3 semanas seguidas?',
-        'Diferença biomecânica de Supino Halteres vs Supino Barra',
-      ];
+    }
+
+    switch (_selectedPillar) {
+      case 'Biomecânica':
+        return [
+          'Curva de resistência: Elevação Lateral Halter vs Polia',
+          'Diferença biomecânica de Supino Halteres vs Supino Barra',
+          'Ver Raio-X Biomecânico do Agachamento Búlgaro',
+          'O que significa ativação de 92% sEMG no Deltoide?',
+          'Como proteger o manguito rotador no supino pesado?',
+        ];
+      case 'Fisiologia':
+        return [
+          'Como aplicar RPE e RIR (repetições em reserva) na prática?',
+          'Fadiga central vs periférica: quando prescrever deload?',
+          'Intervalo de descanso ideal para hipertrofia: 60s vs 120s',
+          'Estresse mecânico vs estresse metabólico na hipertrofia',
+          'Como calcular volume de séries efetivas semanais por grupo?',
+        ];
+      case 'Treinamento':
+        return [
+          'Como prescrever Rest-Pause e Myo-Reps com segurança?',
+          'Estrutura de treino Upper/Lower 4x por semana',
+          'Divisão Push/Pull/Legs para aluno intermediário',
+          'Periodização ondulatória diária (DUP) para hipertrofia',
+          'Estratégia para corrigir ponto fraco em deltoides e dorsais',
+        ];
+      case 'Negócios B2B':
+        return [
+          r'Como precificar consultoria híbrida recorrente (R$ 180-250/mês)?',
+          'Script de WhatsApp para reengajar aluno ausente há 15 dias',
+          'Mensagem elegante de cobrança e renovação de ciclo',
+          'Como apresentar os relatórios de IA para valorizar meu serviço?',
+          'Como escalar de 15 para 50 alunos sem sobrecarga de horário?',
+        ];
+      default: // 'Todos'
+        return [
+          'Curva de resistência: Elevação Lateral Halter vs Polia',
+          'Como aplicar RIR e RPE para controle de fadiga?',
+          'Como prescrever Rest-Pause e Myo-Reps com segurança?',
+          'Como precificar consultoria online recorrente?',
+          'Script de WhatsApp para reengajar aluno ausente',
+          'Diferença biomecânica de Supino Halteres vs Barra',
+        ];
     }
   }
 
@@ -86,7 +124,12 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
           ? 'Você é um assistente de musculação e biomecânica para alunos na academia. Responda de forma direta, clara, acolhedora e focada em segurança articular e hipertrofia: $text'
           : text;
 
-      final reply = await GeminiService.askB2BAssistant(prompt: promptWithContext);
+      final reply = await GeminiService.askB2BAssistant(
+        prompt: promptWithContext,
+        systemInstruction: widget.isStudentView
+            ? 'Você é o Mr. Coach AI, assistente do aluno focado em biomecânica, execução segura e hipertrofia.'
+            : 'Você é o Mr. Coach AI, autoridade multidisciplinar em Biomecânica de precisão, Fisiologia do Exercício, Treinamento Resistido Avançado e Estratégia B2B Fitness. Forneça respostas técnicas, práticas e de alto nível.',
+      );
       final replyExercise = detectedExercise ?? _detectExerciseInText(reply);
 
       setState(() {
@@ -219,10 +262,41 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
+
+                    if (!widget.isStudentView) ...[
+                      Text(
+                        'Especialidades do Mr. Coach:',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.subtext(context),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _buildPillarChip(context, 'Todos', Icons.auto_awesome, accentColor),
+                            const SizedBox(width: 8),
+                            _buildPillarChip(context, 'Biomecânica', Icons.biotech_rounded, Colors.cyan),
+                            const SizedBox(width: 8),
+                            _buildPillarChip(context, 'Fisiologia', Icons.bolt, Colors.amber),
+                            const SizedBox(width: 8),
+                            _buildPillarChip(context, 'Treinamento', Icons.fitness_center_rounded, Colors.orange),
+                            const SizedBox(width: 8),
+                            _buildPillarChip(context, 'Negócios B2B', Icons.trending_up_rounded, AppColors.emerald(context)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
 
                     Text(
-                      widget.isStudentView ? 'Dúvidas Frequentes no Salão:' : 'Sugestões de Perguntas B2B:',
+                      widget.isStudentView
+                          ? 'Dúvidas Frequentes no Salão:'
+                          : 'Perguntas Sugeridas ($_selectedPillar):',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -458,6 +532,30 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPillarChip(BuildContext context, String title, IconData icon, Color color) {
+    final isSelected = _selectedPillar == title;
+    return ChoiceChip(
+      selected: isSelected,
+      showCheckmark: false,
+      avatar: Icon(icon, size: 14, color: isSelected ? Colors.black : color),
+      label: Text(
+        title,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+          color: isSelected ? Colors.black : AppColors.text(context),
+        ),
+      ),
+      backgroundColor: AppColors.card(context),
+      selectedColor: color,
+      side: BorderSide(
+        color: isSelected ? color : AppColors.cardBorder(context),
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      onSelected: (_) => setState(() => _selectedPillar = title),
     );
   }
 }
