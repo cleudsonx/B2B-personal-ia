@@ -7,7 +7,9 @@ import 'features/trainer/anamnesis_screen.dart';
 import 'features/trainer/trainer_students_screen.dart';
 import 'features/assistant/b2b_assistant_screen.dart';
 import 'features/subscription/subscription_screen.dart';
+import 'models/subscription_model.dart';
 import 'services/auth_service.dart';
+import 'services/subscription_service.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/app_config.dart';
@@ -123,7 +125,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         _NavDestinationItem(
           icon: Icons.workspace_premium_outlined,
           activeIcon: Icons.workspace_premium_rounded,
-          label: 'Planos SaaS',
+          label: 'Assinatura',
           activeColor: AppColors.studentAmber,
         ),
         _NavDestinationItem(
@@ -354,6 +356,69 @@ class _MainShellScreenState extends State<MainShellScreen> {
                       },
                     ),
                   ),
+
+                  // Plan indicator in sidebar for trainers
+                  if (_isTrainer)
+                    ValueListenableBuilder<MySubscriptionModel?>(
+                      valueListenable: SubscriptionService.activeSubscriptionNotifier,
+                      builder: (context, sub, _) {
+                        final planName = sub?.planName ?? 'Personal Pro';
+                        final isPro = sub?.planId != 'starter';
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.pillBg(context),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isPro ? AppColors.trainerEmerald.withValues(alpha: 0.3) : AppColors.cardBorder(context),
+                            ),
+                          ),
+                          child: InkWell(
+                            onTap: () => setState(() => _currentIndex = 3),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    isPro ? Icons.workspace_premium_rounded : Icons.rocket_launch_rounded,
+                                    size: 18,
+                                    color: isPro ? AppColors.trainerEmerald : Colors.orangeAccent,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'PLANO ATIVO',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: 0.5,
+                                            color: AppColors.subtext(context),
+                                          ),
+                                        ),
+                                        Text(
+                                          planName,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.text(context),
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Icon(Icons.chevron_right, size: 16, color: AppColors.subtext(context)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
 
                   // Theme Toggle Pill in Sidebar
                   Padding(

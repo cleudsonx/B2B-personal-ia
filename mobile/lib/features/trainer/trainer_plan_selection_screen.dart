@@ -40,8 +40,13 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
     }
   }
 
-  void _proceedToApp({String? planName}) {
-    if (planName != null && mounted) {
+  Future<void> _proceedToApp({required String planId, required String planName}) async {
+    await SubscriptionService.activatePlan(
+      planId: planId,
+      billingInterval: _isYearly ? 'yearly' : 'monthly',
+    );
+
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.green.shade800,
@@ -50,22 +55,24 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
       );
     }
 
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(
-        builder: (_) => MainShellScreen(
-          initialIndex: 1,
-          activeRole: 'trainer',
-          userName: widget.trainerName,
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MainShellScreen(
+            initialIndex: 0,
+            activeRole: 'trainer',
+            userName: widget.trainerName,
+          ),
         ),
-      ),
-      (route) => false,
-    );
+        (route) => false,
+      );
+    }
   }
 
   void _openCheckout(PlanModel plan) {
     if (plan.id == 'starter') {
-      _proceedToApp(planName: 'Starter Free');
+      _proceedToApp(planId: 'starter', planName: 'Starter Free');
       return;
     }
 
@@ -80,7 +87,7 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
         trainerEmail: widget.trainerEmail ?? 'treinador@demo.com',
         onSuccess: () {
           Navigator.pop(ctx);
-          _proceedToApp(planName: plan.name);
+          _proceedToApp(planId: plan.id, planName: plan.name);
         },
       ),
     );
@@ -96,7 +103,7 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
         scrolledUnderElevation: 0,
         actions: [
           TextButton(
-            onPressed: () => _proceedToApp(planName: 'Starter Free'),
+            onPressed: () => _proceedToApp(planId: 'starter', planName: 'Starter Free'),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

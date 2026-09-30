@@ -86,3 +86,10 @@ class PlanChangeSimulationResponse(BaseModel):
     new_student_limit: int
     new_ai_limit: int
     summary_message: str
+
+
+class PlanActivationRequest(BaseModel):
+    plan_id: str = Field(..., description="ID do plano escolhido ('starter', 'pro', 'elite', 'studio')")
+    billing_interval: str = Field("monthly", description="'monthly' ou 'yearly'")
+    payment_method: Optional[str] = "pix"
+    trainer_id: Optional[str] = "current-trainer"

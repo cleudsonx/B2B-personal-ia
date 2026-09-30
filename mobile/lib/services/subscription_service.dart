@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../core/config/app_config.dart';
 import '../models/subscription_model.dart';
@@ -6,6 +7,10 @@ import 'auth_service.dart';
 
 class SubscriptionService {
   static final http.Client _client = http.Client();
+
+  static MySubscriptionModel? _currentSubscriptionCache;
+  static final ValueNotifier<MySubscriptionModel?> activeSubscriptionNotifier =
+      ValueNotifier<MySubscriptionModel?>(null);
 
   static Map<String, String> get _headers {
     final headers = {
@@ -41,12 +46,20 @@ class SubscriptionService {
       final res = await _client.get(uri, headers: _headers).timeout(const Duration(seconds: 5));
       if (res.statusCode == 200) {
         final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-        return MySubscriptionModel.fromJson(data);
+        final model = MySubscriptionModel.fromJson(data);
+        _currentSubscriptionCache = model;
+        activeSubscriptionNotifier.value = model;
+        return model;
       }
     } catch (_) {
       // Fallback gracioso
     }
-    return MySubscriptionModel(
+
+    if (_currentSubscriptionCache != null) {
+      return _currentSubscriptionCache!;
+    }
+
+    final defaultModel = MySubscriptionModel(
       planId: 'pro',
       planName: 'Personal Pro',
       status: 'active',
@@ -61,6 +74,61 @@ class SubscriptionService {
       canCreateStudent: true,
       canGenerateAi: true,
     );
+    _currentSubscriptionCache = defaultModel;
+    activeSubscriptionNotifier.value = defaultModel;
+    return defaultModel;
+  }
+
+  /// Ativa ou troca o plano do Personal Trainer imediatamente
+  static Future<MySubscriptionModel> activatePlan({
+    required String planId,
+    String billingInterval = 'monthly',
+    String paymentMethod = 'pix',
+  }) async {
+    try {
+      final uri = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/activate-plan');
+      final body = jsonEncode({
+        'plan_id': planId,
+        'billing_interval': billingInterval,
+        'payment_method': paymentMethod,
+        'trainer_id': AuthService.currentUser?.id ?? 'current-trainer',
+      });
+      final res = await _client.post(uri, headers: _headers, body: body).timeout(const Duration(seconds: 5));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        final model = MySubscriptionModel.fromJson(data);
+        _currentSubscriptionCache = model;
+        activeSubscriptionNotifier.value = model;
+        return model;
+      }
+    } catch (_) {}
+
+    // Fallback local se a API estiver offline
+    final plans = await getPlans();
+    final plan = plans.firstWhere((p) => p.id == planId, orElse: () => _defaultPlans[0]);
+    final isTrial = plan.id == 'starter';
+    final now = DateTime.now();
+    final nextDate = '${now.day.toString().padLeft(2, '0')}/${((now.month + 1) > 12 ? 1 : now.month + 1).toString().padLeft(2, '0')}/${now.year}';
+
+    final fallbackModel = MySubscriptionModel(
+      planId: plan.id,
+      planName: plan.name,
+      status: isTrial ? 'trialing' : 'active',
+      billingInterval: billingInterval,
+      currentStudents: _currentSubscriptionCache?.currentStudents ?? 4,
+      maxStudents: plan.maxStudents,
+      aiGenerationsUsed: isTrial ? 3 : 12,
+      maxAiGenerations: plan.maxAiGenerationsPerMonth,
+      trialDaysRemaining: isTrial ? 14 : null,
+      nextBillingDate: nextDate,
+      paymentMethod: paymentMethod,
+      canCreateStudent: (_currentSubscriptionCache?.currentStudents ?? 4) < plan.maxStudents,
+      canGenerateAi: true,
+    );
+
+    _currentSubscriptionCache = fallbackModel;
+    activeSubscriptionNotifier.value = fallbackModel;
+    return fallbackModel;
   }
 
   /// Gera a sessão de pagamento via Pix ou Cartão

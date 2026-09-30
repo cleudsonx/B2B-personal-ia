@@ -45,15 +45,22 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       builder: (ctx) => _CheckoutBottomSheet(
         plan: plan,
         isYearly: _isYearly,
-        onSuccess: () {
+        onSuccess: () async {
           Navigator.pop(ctx);
-          _loadData();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: Colors.green.shade800,
-              content: Text('🎉 Plano ${plan.name} ativado com sucesso!'),
-            ),
+          setState(() => _isLoading = true);
+          await SubscriptionService.activatePlan(
+            planId: plan.id,
+            billingInterval: _isYearly ? 'yearly' : 'monthly',
           );
+          await _loadData();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: Colors.green.shade800,
+                content: Text('🎉 Plano ${plan.name} ativado com sucesso!'),
+              ),
+            );
+          }
         },
       ),
     );

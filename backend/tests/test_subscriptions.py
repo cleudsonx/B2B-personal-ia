@@ -145,3 +145,33 @@ def test_plan_downgrade_validation():
     assert res_blocked["is_blocked"] is True
     assert "Desative ou arquive pelo menos 9" in res_blocked["block_reason"]
     assert res_blocked["net_charge_cents"] == 0
+
+
+def test_activate_plan_endpoint():
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    client = TestClient(app)
+
+    # 1. Ativa plano Elite Coach
+    res = client.post("/api/v1/subscriptions/activate-plan", json={
+        "plan_id": "elite",
+        "billing_interval": "yearly",
+        "payment_method": "pix",
+        "trainer_id": "trainer-test-123"
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["plan_id"] == "elite"
+    assert data["plan_name"] == "Elite Coach"
+    assert data["max_students"] == 60
+    assert data["billing_interval"] == "yearly"
+
+    # 2. Consulta my-subscription para o mesmo trainer_id
+    res_get = client.get("/api/v1/subscriptions/my-subscription?trainer_id=trainer-test-123")
+    assert res_get.status_code == 200
+    data_get = res_get.json()
+    assert data_get["plan_id"] == "elite"
+    assert data_get["plan_name"] == "Elite Coach"
+    assert data_get["max_students"] == 60
+

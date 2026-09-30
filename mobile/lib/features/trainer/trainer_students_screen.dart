@@ -1045,6 +1045,121 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           children: [
+            // Indicador Interativo do Plano Atual do Professor
+            ValueListenableBuilder<MySubscriptionModel?>(
+              valueListenable: SubscriptionService.activeSubscriptionNotifier,
+              builder: (context, sub, _) {
+                final currentSub = sub ?? _mySubscription;
+                final planName = currentSub?.planName ?? 'Personal Pro';
+                final maxStudents = currentSub?.maxStudents ?? 30;
+                final isStarter = currentSub?.planId == 'starter';
+                final isDark = AppColors.isDark(context);
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.card(context),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isStarter
+                              ? Colors.orange.withValues(alpha: 0.5)
+                              : AppColors.emerald(context).withValues(alpha: 0.4),
+                          width: 1.2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isDark ? Colors.black26 : const Color(0x060F172A),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: isStarter
+                                  ? Colors.orange.withValues(alpha: 0.15)
+                                  : AppColors.emeraldBg(context),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              isStarter ? Icons.rocket_launch_rounded : Icons.workspace_premium_rounded,
+                              size: 16,
+                              color: isStarter ? Colors.orange : AppColors.emerald(context),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Text(
+                                  'Plano: ',
+                                  style: TextStyle(color: AppColors.subtext(context), fontSize: 12),
+                                ),
+                                Text(
+                                  planName,
+                                  style: TextStyle(
+                                    color: AppColors.text(context),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: isStarter
+                                        ? Colors.orange.withValues(alpha: 0.15)
+                                        : AppColors.emeraldBg(context),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    '$activeCount / $maxStudents alunos',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: isStarter ? Colors.orange : AppColors.emerald(context),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Planos',
+                                style: TextStyle(
+                                  color: AppColors.emerald(context),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(width: 2),
+                              Icon(Icons.chevron_right, size: 16, color: AppColors.emerald(context)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+
             // KPI Summary Cards
             Row(
               children: [

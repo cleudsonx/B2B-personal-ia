@@ -10,10 +10,14 @@ from app.schemas.subscription import (
     CheckoutSessionResponse,
     PlanChangeSimulationRequest,
     PlanChangeSimulationResponse,
+    PlanActivationRequest,
 )
 from app.services.payment_service import PaymentProviderService
 
 router = APIRouter()
+
+# Armazenamento em memória das assinaturas ativas por treinador (para demo e sincronização em tempo real)
+ACTIVE_TRAINER_SUBSCRIPTIONS = {}
 
 # Tabela estática de planos conforme o Plano de Negócios B2B Personal IA
 SAAS_PLANS: List[PlanResponse] = [
@@ -115,11 +119,13 @@ async def list_subscription_plans():
 async def get_my_subscription(trainer_id: str = "current-trainer"):
     """
     Retorna o plano ativo e consumo de cotas do Personal Trainer autenticado.
-    Em modo de desenvolvimento ou sem banco de produção configurado, retorna
-    o status simulado do Personal Trainer Pro (ou Trial).
+    Se o treinador já ativou um plano, retorna a assinatura ativa correspondente.
     """
-    # Demo/Default subscription state
-    return MySubscriptionResponse(
+    if trainer_id in ACTIVE_TRAINER_SUBSCRIPTIONS:
+        return ACTIVE_TRAINER_SUBSCRIPTIONS[trainer_id]
+
+    # Default: Personal Pro ativo
+    default_sub = MySubscriptionResponse(
         plan_id="pro",
         plan_name="Personal Pro",
         status="active",
@@ -134,6 +140,49 @@ async def get_my_subscription(trainer_id: str = "current-trainer"):
         can_create_student=True,
         can_generate_ai=True,
     )
+    ACTIVE_TRAINER_SUBSCRIPTIONS[trainer_id] = default_sub
+    return default_sub
+
+
+@router.post("/activate-plan", response_model=MySubscriptionResponse)
+async def activate_subscription_plan(req: PlanActivationRequest):
+    """
+    Ativa ou troca o plano do Personal Trainer imediatamente.
+    Atualiza cotas de alunos, limite de gerações IA e periodicidade.
+    """
+    selected_plan = next((p for p in SAAS_PLANS if p.id == req.plan_id), None)
+    if not selected_plan:
+        raise HTTPException(status_code=404, detail=f"Plano '{req.plan_id}' não encontrado.")
+
+    is_trial = selected_plan.id == "starter"
+    status_str = "trialing" if is_trial else "active"
+    trial_days = 14 if is_trial else None
+    days_to_add = 365 if req.billing_interval == "yearly" else 30
+    next_date = (datetime.now() + timedelta(days=days_to_add)).strftime("%d/%m/%Y")
+
+    trainer_id = req.trainer_id or "current-trainer"
+    current_students = 4
+    if trainer_id in ACTIVE_TRAINER_SUBSCRIPTIONS:
+        current_students = ACTIVE_TRAINER_SUBSCRIPTIONS[trainer_id].current_students
+
+    updated_sub = MySubscriptionResponse(
+        plan_id=selected_plan.id,
+        plan_name=selected_plan.name,
+        status=status_str,
+        billing_interval=req.billing_interval,
+        current_students=current_students,
+        max_students=selected_plan.max_students,
+        ai_generations_used=12 if not is_trial else 3,
+        max_ai_generations=selected_plan.max_ai_generations_per_month,
+        trial_days_remaining=trial_days,
+        next_billing_date=next_date,
+        payment_method=req.payment_method or "pix",
+        can_create_student=current_students < selected_plan.max_students,
+        can_generate_ai=True,
+    )
+
+    ACTIVE_TRAINER_SUBSCRIPTIONS[trainer_id] = updated_sub
+    return updated_sub
 
 
 @router.post("/calculate-change", response_model=PlanChangeSimulationResponse)
