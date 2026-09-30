@@ -34,7 +34,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
+    _pageController = PageController(viewportFraction: 0.88);
     _exercises = [
       const ExerciseModel(
         order: 1,
@@ -401,51 +401,27 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                               ),
                             ),
                             Positioned(
-                              top: 1,
-                              right: 1,
+                              bottom: -2,
+                              right: -2,
                               child: Container(
-                                width: 14,
-                                height: 14,
+                                width: 22,
+                                height: 22,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF00B37E),
+                                  color: const Color(0xFF00E5A3),
                                   shape: BoxShape.circle,
                                   border: Border.all(color: AppColors.bg(context), width: 2.2),
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              bottom: -6,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF00B37E),
-                                  borderRadius: BorderRadius.circular(10),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFF00B37E).withValues(alpha: 0.35),
-                                      blurRadius: 4,
+                                      color: const Color(0xFF00E5A3).withValues(alpha: 0.45),
+                                      blurRadius: 6,
                                       offset: const Offset(0, 2),
                                     ),
                                   ],
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      width: 4,
-                                      height: 4,
-                                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                                    ),
-                                    const SizedBox(width: 3),
-                                    const Text(
-                                      'Online',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                  ],
+                                child: const Icon(
+                                  Icons.check_rounded,
+                                  color: Colors.black,
+                                  size: 14,
                                 ),
                               ),
                             ),
@@ -550,7 +526,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
                 // 3. Carousel Hero Card (PageView)
                 SizedBox(
-                  height: 380,
+                  height: 395,
                   child: PageView.builder(
                     controller: _pageController,
                     itemCount: _exercises.length,
@@ -560,22 +536,32 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     itemBuilder: (ctx, index) {
                       final item = _exercises[index];
                       final isAdapted = _adaptedIndices.contains(index);
+                      final isCurrent = index == _currentCarouselIndex;
 
-                      return Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.card(context),
+                          color: isDark ? const Color(0xFF0F172A) : AppColors.card(context),
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
                             color: isAdapted
                                 ? AppColors.tangerine(context)
-                                : (isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0)),
-                            width: isAdapted ? 2.0 : 1.0,
+                                : (isCurrent
+                                    ? const Color(0xFF00E5A3)
+                                    : (isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0))),
+                            width: (isCurrent || isAdapted) ? 2.0 : 1.2,
                           ),
                           boxShadow: [
+                            if (isCurrent)
+                              BoxShadow(
+                                color: const Color(0xFF00E5A3).withValues(alpha: 0.16),
+                                blurRadius: 18,
+                                offset: const Offset(0, 4),
+                              ),
                             BoxShadow(
-                              color: isDark ? Colors.black45 : const Color(0x0C0F172A),
-                              blurRadius: 24,
+                              color: isDark ? Colors.black54 : const Color(0x0C0F172A),
+                              blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),
                           ],
@@ -591,7 +577,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                 children: [
                                   if (isAdapted)
                                     Container(
-                                      margin: const EdgeInsets.only(bottom: 6),
+                                      margin: const EdgeInsets.only(bottom: 8),
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                       decoration: BoxDecoration(
                                         color: AppColors.tangerineBg(context),
@@ -617,69 +603,89 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                   Text(
                                     item.name,
                                     style: TextStyle(
-                                      fontSize: 21,
+                                      fontSize: 22,
                                       fontWeight: FontWeight.w900,
                                       letterSpacing: -0.5,
                                       height: 1.15,
                                       color: AppColors.text(context),
                                     ),
                                   ),
-                                  const SizedBox(height: 12),
-                                  // Micro-Pills
-                                  Wrap(
-                                    spacing: 6,
-                                    runSpacing: 6,
+                                  const SizedBox(height: 14),
+                                  // Micro-Pills fiéis à amostra
+                                  Row(
                                     children: [
-                                      _MicroPill(icon: Icons.repeat_rounded, label: '${item.sets} Séries'),
-                                      _MicroPill(icon: Icons.fitness_center_rounded, label: '${item.reps} reps'),
-                                      _MicroPill(icon: Icons.speed_rounded, label: 'Cadência 3-0-1-0'),
-                                      _MicroPill(
-                                        icon: Icons.timer_outlined,
-                                        label: '${item.restSeconds}s Descanso',
-                                        isTimer: true,
-                                        onTap: () => RestTimerSheet.show(
-                                          context,
-                                          seconds: item.restSeconds,
-                                          exerciseName: item.name,
-                                        ),
-                                      ),
+                                      _StatPill(number: '${item.sets}', label: 'Séries'),
+                                      const SizedBox(width: 8),
+                                      _StatPill(number: item.reps, label: 'reps'),
                                     ],
                                   ),
-                                  const SizedBox(height: 14),
+                                  const SizedBox(height: 8),
+                                  _StatPill(prefix: 'Cadência', number: '3-0-1-0'),
+                                  const SizedBox(height: 8),
+                                  _StatPill(
+                                    number: '${item.restSeconds}s',
+                                    label: 'Descanso',
+                                    isTimer: true,
+                                    onTap: () => RestTimerSheet.show(
+                                      context,
+                                      seconds: item.restSeconds,
+                                      exerciseName: item.name,
+                                    ),
+                                  ),
+                                  const Spacer(),
                                   // Green Activation Capsule
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF00B37E),
-                                      borderRadius: BorderRadius.circular(14),
+                                      color: const Color(0xFF00E5A3).withValues(alpha: 0.10),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: const Color(0xFF00E5A3), width: 1.2),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: const Color(0xFF00B37E).withValues(alpha: 0.3),
+                                          color: const Color(0xFF00E5A3).withValues(alpha: 0.22),
                                           blurRadius: 8,
-                                          offset: const Offset(0, 3),
+                                          offset: const Offset(0, 2),
                                         ),
                                       ],
                                     ),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                    child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Text(
-                                          item.targetMuscleGroup,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w900,
+                                        Container(
+                                          padding: const EdgeInsets.all(5),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF00E5A3).withValues(alpha: 0.2),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.fitness_center_rounded,
+                                            color: Color(0xFF00E5A3),
+                                            size: 15,
                                           ),
                                         ),
-                                        const SizedBox(height: 1),
-                                        Text(
-                                          _getEmgForExercise(item.name),
-                                          style: TextStyle(
-                                            color: Colors.white.withValues(alpha: 0.95),
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w800,
-                                          ),
+                                        const SizedBox(width: 8),
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              item.targetMuscleGroup,
+                                              style: const TextStyle(
+                                                color: Color(0xFF00E5A3),
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 1),
+                                            Text(
+                                              _getEmgForExercise(item.name),
+                                              style: const TextStyle(
+                                                color: Color(0xFFD1FAE5),
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
@@ -687,11 +693,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 10),
                             // Right 3D Model Column
                             SizedBox(
-                              width: 125,
-                              height: 235,
+                              width: 130,
+                              height: 310,
                               child: Image.asset(
                                 _getAnatomicalImage(item.name, item.targetMuscleGroup),
                                 fit: BoxFit.contain,
@@ -729,7 +735,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                         height: 7,
                         decoration: BoxDecoration(
                           color: isCurrent
-                              ? const Color(0xFF00B37E)
+                              ? const Color(0xFF00E5A3)
                               : (isDark ? Colors.white24 : const Color(0xFFCBD5E1)),
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -746,22 +752,23 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          backgroundColor: AppColors.card(context),
-                          side: BorderSide(
-                            color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                          backgroundColor: isDark ? const Color(0xFF161F2E) : Colors.white,
+                          side: const BorderSide(
+                            color: Color(0xFF00BCD4), // cyan / neon teal border
+                            width: 1.6,
                           ),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                           elevation: 0,
                         ),
                         onPressed: () => BiomechanicalAnalysisSheet.show(
                           context,
                           exerciseName: _exercises[_currentCarouselIndex].name,
                         ),
-                        child: Text(
+                        child: const Text(
                           'Raio-X & Fases',
                           style: TextStyle(
-                            color: AppColors.text(context),
-                            fontSize: 13,
+                            color: Color(0xFF38BDF8),
+                            fontSize: 14,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -772,19 +779,20 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          backgroundColor: AppColors.card(context),
+                          backgroundColor: isDark ? const Color(0xFF161F2E) : Colors.white,
                           side: BorderSide(
                             color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                            width: 1.2,
                           ),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                           elevation: 0,
                         ),
                         onPressed: () => _showAdaptationModal(_currentCarouselIndex),
                         child: Text(
                           'Trocar Exercício',
                           style: TextStyle(
-                            color: AppColors.text(context),
-                            fontSize: 13,
+                            color: isDark ? Colors.white : AppColors.text(context),
+                            fontSize: 14,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -844,18 +852,20 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       ),
     ),
   );
-}
+  }
 }
 
-class _MicroPill extends StatelessWidget {
-  final IconData icon;
-  final String label;
+class _StatPill extends StatelessWidget {
+  final String? prefix;
+  final String number;
+  final String? label;
   final bool isTimer;
   final VoidCallback? onTap;
 
-  const _MicroPill({
-    required this.icon,
-    required this.label,
+  const _StatPill({
+    this.prefix,
+    required this.number,
+    this.label,
     this.isTimer = false,
     this.onTap,
   });
@@ -863,36 +873,48 @@ class _MicroPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final pillWidget = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    final pill = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
       decoration: BoxDecoration(
-        color: isTimer
-            ? AppColors.tangerineBg(context)
-            : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
+        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isTimer
-              ? AppColors.tangerine(context).withValues(alpha: 0.3)
-              : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+          color: isDark ? const Color(0xFF334155).withValues(alpha: 0.6) : const Color(0xFFCBD5E1),
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 13,
-            color: isTimer ? AppColors.tangerine(context) : AppColors.subtext(context),
-          ),
-          const SizedBox(width: 5),
+          if (prefix != null) ...[
+            Text(
+              prefix!,
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 4),
+          ],
           Text(
-            label,
+            number,
             style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: isTimer ? AppColors.tangerine(context) : AppColors.text(context),
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: isDark ? Colors.white : Colors.black87,
             ),
           ),
+          if (label != null) ...[
+            const SizedBox(width: 4),
+            Text(
+              label!,
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -901,10 +923,10 @@ class _MicroPill extends StatelessWidget {
       return InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(10),
-        child: pillWidget,
+        child: pill,
       );
     }
-    return pillWidget;
+    return pill;
   }
 }
 
