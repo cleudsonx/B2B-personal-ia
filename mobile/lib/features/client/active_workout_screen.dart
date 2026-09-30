@@ -21,50 +21,106 @@ class ActiveWorkoutScreen extends StatefulWidget {
 class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
-  String _workoutTitle = 'Treino A - Peito e Tríceps';
+  String _workoutTitle = 'Treino A: Membros Superiores (Ênfase Empurrar)';
   String _trainerName = 'Prof. Roberto Mendes';
-  final String _trainerCref = 'CREF 019284-G/SP';
+  String _trainerCref = 'CREF 019284';
   final Set<int> _adaptedIndices = {};
+  int _currentCarouselIndex = 0;
+  late final PageController _pageController;
 
-  // Lista de exercícios de demonstração inicial
+  // Lista de exercícios de demonstração inicial fiel à amostra
   late List<ExerciseModel> _exercises;
 
   @override
   void initState() {
     super.initState();
+    _pageController = PageController();
     _exercises = [
       const ExerciseModel(
         order: 1,
-        name: 'Supino Reto com Barra',
-        targetMuscleGroup: 'Peitoral Maior',
+        name: 'Supino Inclinado com Halteres',
+        targetMuscleGroup: 'Peitoral Clavicular',
         sets: 4,
         reps: '8-10',
         restSeconds: 90,
-        notes: 'Manter escápulas aduzidas e descer até a linha do esterno.',
-        substitutionVector: 'Empurrar horizontal livre',
+        notes: 'Manter escápulas aduzidas e banco regulado a 30°.',
+        substitutionVector: 'Empurrar inclinado livre',
       ),
       const ExerciseModel(
         order: 2,
-        name: 'Desenvolvimento Máquina Articulada',
-        targetMuscleGroup: 'Deltoide Anterior/Lateral',
-        sets: 3,
-        reps: '10-12',
+        name: 'Desenvolvimento com Halteres',
+        targetMuscleGroup: 'Deltoide Anterior',
+        sets: 4,
+        reps: '8-10',
         restSeconds: 60,
-        notes: 'Ajustar altura do banco para que as pegadas fiquem na linha do queixo.',
-        substitutionVector: 'Empurrar vertical guiado',
+        notes: 'Ajustar banco a 75° e cotovelos no plano escapular.',
+        substitutionVector: 'Empurrar vertical livre',
       ),
       const ExerciseModel(
         order: 3,
-        name: 'Tríceps Polia com Barra Reta',
-        targetMuscleGroup: 'Tríceps Braquial',
-        sets: 4,
+        name: 'Elevação Lateral na Polia',
+        targetMuscleGroup: 'Deltoide Lateral',
+        sets: 3,
         reps: '12-15',
         restSeconds: 45,
+        notes: 'Manter ligeira flexão de cotovelos sem impulso do tronco.',
+        substitutionVector: 'Abdução de ombros cabo',
+      ),
+      const ExerciseModel(
+        order: 4,
+        name: 'Tríceps Polia com Barra',
+        targetMuscleGroup: 'Tríceps Braquial',
+        sets: 4,
+        reps: '10-12',
+        restSeconds: 60,
         notes: 'Cotovelos fixos ao lado do tronco durante toda a extensão.',
         substitutionVector: 'Extensão de cotovelos cabo',
       ),
+      const ExerciseModel(
+        order: 5,
+        name: 'Agachamento Livre com Barra',
+        targetMuscleGroup: 'Quadríceps & Glúteo',
+        sets: 4,
+        reps: '8-10',
+        restSeconds: 90,
+        notes: 'Coluna neutra, escápulas travadas e pés na largura dos ombros.',
+        substitutionVector: 'Padrão agachamento bilateral',
+      ),
     ];
     _loadActiveWorkout();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  String _getAnatomicalImage(String exerciseName, String targetMuscle) {
+    final name = exerciseName.toLowerCase();
+    final muscle = targetMuscle.toLowerCase();
+
+    if (name.contains('supino') || name.contains('peito') || name.contains('crucifixo') || muscle.contains('peitor')) {
+      return 'assets/images/anatomical_chest.png';
+    } else if (name.contains('desenvolvimento') || name.contains('elevacao') || name.contains('elevação') || name.contains('ombro') || muscle.contains('deltoid')) {
+      return 'assets/images/anatomical_shoulders.png';
+    } else if (name.contains('triceps') || name.contains('tríceps') || name.contains('biceps') || name.contains('bíceps') || name.contains('rosca') || muscle.contains('braco') || muscle.contains('braquial')) {
+      return 'assets/images/anatomical_triceps.png';
+    } else if (name.contains('agachamento') || name.contains('leg') || name.contains('extensora') || name.contains('quadr') || muscle.contains('perna') || muscle.contains('glúteo') || muscle.contains('gluteo')) {
+      return 'assets/images/anatomical_legs.png';
+    } else if (name.contains('puxada') || name.contains('remada') || name.contains('dorsal') || muscle.contains('costas') || muscle.contains('lat')) {
+      return 'assets/images/anatomical_back.png';
+    }
+    return 'assets/images/anatomical_chest.png';
+  }
+
+  String _getEmgForExercise(String exerciseName) {
+    final lower = exerciseName.toLowerCase();
+    if (lower.contains('triceps') || lower.contains('tríceps')) return '96% EMG';
+    if (lower.contains('elevacao') || lower.contains('elevação') || lower.contains('agachamento')) return '95% EMG';
+    if (lower.contains('supino')) return '94% EMG';
+    if (lower.contains('puxada')) return '93% EMG';
+    return '92% EMG';
   }
 
   Future<void> _loadActiveWorkout() async {
@@ -72,7 +128,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     if (activePlan != null && activePlan.splits.isNotEmpty && mounted) {
       setState(() {
         final firstSplit = activePlan.splits.first;
-        _workoutTitle = 'Treino ${firstSplit.splitIdentifier} - ${firstSplit.splitName}';
+        _workoutTitle = 'Treino ${firstSplit.splitIdentifier}: ${firstSplit.splitName}';
         _exercises = List.from(firstSplit.exercises);
       });
     }
@@ -83,6 +139,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         setState(() {
           final name = trainer['full_name'] as String?;
           if (name != null && name.isNotEmpty) _trainerName = name;
+          final reg = (trainer['cref_or_registry'] ?? trainer['cref']) as String?;
+          if (reg != null && reg.isNotEmpty) _trainerCref = reg;
         });
       }
     } catch (_) {}
@@ -312,522 +370,431 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.bg(context),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: Text(
-          _workoutTitle,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.4,
-            color: AppColors.text(context),
-          ),
-        ),
-        actions: [
-          const ThemeToggleButton(),
-          const SizedBox(width: 4),
-          if (kDebugMode)
-            IconButton(
-              icon: const Icon(Icons.settings_ethernet_rounded),
-              tooltip: 'Configurar IP do Servidor (Dev)',
-              onPressed: () => ServerConfigDialog.show(context),
-            ),
-          IconButton(
-            icon: Icon(Icons.refresh_rounded, color: AppColors.subtext(context)),
-            tooltip: 'Sincronizar Ficha do Banco',
-            onPressed: _loadActiveWorkout,
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Stack(
-        children: [
-          ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            children: [
-              // 1. Humanized Personal Trainer Header Card
-              Container(
-                margin: const EdgeInsets.only(bottom: 14),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.card(context),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.cardBorder(context)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isDark ? Colors.black26 : const Color(0x0A0F172A),
-                      blurRadius: 20,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(24),
-                          child: Image.asset(
-                            'assets/images/trainer_roberto_avatar.png',
-                            width: 48,
-                            height: 48,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => CircleAvatar(
-                              radius: 24,
-                              backgroundColor: AppColors.emerald(context).withValues(alpha: 0.15),
-                              child: Icon(
-                                Icons.person_rounded,
-                                color: AppColors.emerald(context),
-                                size: 28,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: Container(
-                            width: 13,
-                            height: 13,
-                            decoration: BoxDecoration(
-                              color: AppColors.emerald(context),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: AppColors.card(context), width: 2.2),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                'Supervisionado por ',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.subtext(context),
-                                ),
-                              ),
-                              Flexible(
-                                child: Text(
-                                  _trainerName,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.text(context),
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Icon(Icons.verified_rounded, size: 14, color: AppColors.accentBlue(context)),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '$_trainerCref • Prescrição Biomecânica Ativa',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.subtext(context),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.emeraldBg(context),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.emerald(context).withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: AppColors.emerald(context),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'ONLINE',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.6,
-                              color: AppColors.emerald(context),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // 2. Split Duration Hero Banner
-              Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.card(context),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.cardBorder(context)),
-                ),
-                child: Row(
+      body: SafeArea(
+        child: Stack(
+          children: [
+            ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              children: [
+                // 1. Supervisor Header & Theme Switch Row
+                Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.fitness_center_rounded, size: 18, color: AppColors.accentBlue(context)),
-                        const SizedBox(width: 8),
-                        Text(
-                          _workoutTitle,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.text(context),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.pillBg(context),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.pillBorder(context)),
-                      ),
-                      child: Text(
-                        '48 min',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.text(context),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // 3. Exercise Cards List
-              ...List.generate(_exercises.length, (index) {
-                final item = _exercises[index];
-                final isAdapted = _adaptedIndices.contains(index);
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 14),
-                  decoration: BoxDecoration(
-                    color: AppColors.card(context),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isAdapted ? AppColors.tangerine(context) : AppColors.cardBorder(context),
-                      width: isAdapted ? 1.8 : 1.0,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isDark ? Colors.black26 : const Color(0x080F172A),
-                        blurRadius: 20,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Upper Section: Two Columns (Left: specs & cues, Right: 3D Anatomical Model)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Left Details Column
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (isAdapted)
-                                  Container(
-                                    margin: const EdgeInsets.only(bottom: 6),
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.tangerineBg(context),
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: AppColors.tangerine(context).withValues(alpha: 0.4)),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.auto_awesome, size: 12, color: AppColors.tangerine(context)),
-                                        const SizedBox(width: 5),
-                                        Flexible(
-                                          child: Text(
-                                            'ADAPTADO POR MR. COACH',
-                                            style: TextStyle(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w800,
-                                              letterSpacing: 0.5,
-                                              color: AppColors.tangerine(context),
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                Text(
-                                  '${item.order}. ${item.name}',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: -0.3,
-                                    color: AppColors.text(context),
-                                  ),
+                        Stack(
+                          clipBehavior: Clip.none,
+                          alignment: Alignment.center,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(26),
+                              child: Image.asset(
+                                'assets/images/trainer_roberto_avatar.png',
+                                width: 52,
+                                height: 52,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => CircleAvatar(
+                                  radius: 26,
+                                  backgroundColor: AppColors.emerald(context).withValues(alpha: 0.15),
+                                  child: Icon(Icons.person_rounded, color: AppColors.emerald(context), size: 30),
                                 ),
-                                const SizedBox(height: 6),
-                                // Green Capsule: Peitoral Clavicular • 94% EMG
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.emeraldBg(context),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: AppColors.emerald(context).withValues(alpha: 0.35)),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.biotech_rounded, size: 13, color: AppColors.emerald(context)),
-                                      const SizedBox(width: 4),
-                                      Flexible(
-                                        child: Text(
-                                          '${item.targetMuscleGroup} • 94% EMG',
-                                          style: TextStyle(
-                                            color: AppColors.emerald(context),
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 1,
+                              right: 1,
+                              child: Container(
+                                width: 14,
+                                height: 14,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF00B37E),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: AppColors.bg(context), width: 2.2),
                                 ),
-                                const SizedBox(height: 10),
-                                // Micro-Pills Wrap: Séries, Reps, Cadência, Descanso
-                                Wrap(
-                                  spacing: 6,
-                                  runSpacing: 6,
+                              ),
+                            ),
+                            Positioned(
+                              bottom: -6,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF00B37E),
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF00B37E).withValues(alpha: 0.35),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    _MicroPill(
-                                      icon: Icons.repeat_rounded,
-                                      label: '${item.sets} Séries',
+                                    Container(
+                                      width: 4,
+                                      height: 4,
+                                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
                                     ),
-                                    _MicroPill(
-                                      icon: Icons.fitness_center_rounded,
-                                      label: '${item.reps} reps',
-                                    ),
-                                    _MicroPill(
-                                      icon: Icons.speed_rounded,
-                                      label: 'Cadência 3-0-1-0',
-                                    ),
-                                    _MicroPill(
-                                      icon: Icons.timer_outlined,
-                                      label: '${item.restSeconds}s Descanso',
-                                      isTimer: true,
-                                      onTap: () => RestTimerSheet.show(
-                                        context,
-                                        seconds: item.restSeconds,
-                                        exerciseName: item.name,
+                                    const SizedBox(width: 3),
+                                    const Text(
+                                      'Online',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w900,
                                       ),
                                     ),
                                   ],
                                 ),
-                                if (item.notes.isNotEmpty) ...[
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.pillBg(context).withValues(alpha: 0.6),
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: AppColors.pillBorder(context).withValues(alpha: 0.7)),
-                                    ),
-                                    child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Icon(Icons.info_outline_rounded, size: 13, color: AppColors.subtext(context)),
-                                        const SizedBox(width: 5),
-                                        Expanded(
-                                          child: Text(
-                                            item.notes,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 14),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Supervisionado por',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.subtext(context),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              _trainerName,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.text(context),
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              '($_trainerCref)',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.subtext(context),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    // Theme Switcher & Actions
+                    Row(
+                      children: [
+                        if (kDebugMode)
+                          IconButton(
+                            icon: const Icon(Icons.settings_ethernet_rounded, size: 20),
+                            tooltip: 'Configurar IP do Servidor (Dev)',
+                            onPressed: () => ServerConfigDialog.show(context),
+                          ),
+                        IconButton(
+                          icon: Icon(Icons.refresh_rounded, size: 20, color: AppColors.subtext(context)),
+                          tooltip: 'Sincronizar Ficha do Banco',
+                          onPressed: _loadActiveWorkout,
+                        ),
+                        const SizedBox(width: 4),
+                        const ThemeToggleButton(),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+
+                // 2. Workout Split Duration Banner
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFEDF2F7),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _workoutTitle,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.text(context),
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.black26 : Colors.white.withValues(alpha: 0.8),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '48 min',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.text(context),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // 3. Carousel Hero Card (PageView)
+                SizedBox(
+                  height: 380,
+                  child: PageView.builder(
+                    controller: _pageController,
+                    itemCount: _exercises.length,
+                    onPageChanged: (idx) {
+                      setState(() => _currentCarouselIndex = idx);
+                    },
+                    itemBuilder: (ctx, index) {
+                      final item = _exercises[index];
+                      final isAdapted = _adaptedIndices.contains(index);
+
+                      return Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.card(context),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: isAdapted
+                                ? AppColors.tangerine(context)
+                                : (isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0)),
+                            width: isAdapted ? 2.0 : 1.0,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: isDark ? Colors.black45 : const Color(0x0C0F172A),
+                              blurRadius: 24,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Left details column
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (isAdapted)
+                                    Container(
+                                      margin: const EdgeInsets.only(bottom: 6),
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.tangerineBg(context),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: AppColors.tangerine(context).withValues(alpha: 0.4)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.auto_awesome, size: 12, color: AppColors.tangerine(context)),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'ADAPTADO POR MR. COACH',
                                             style: TextStyle(
-                                              fontSize: 11,
-                                              color: AppColors.subtext(context),
-                                              height: 1.3,
+                                              fontSize: 8.5,
+                                              fontWeight: FontWeight.w800,
+                                              color: AppColors.tangerine(context),
                                             ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  Text(
+                                    item.name,
+                                    style: TextStyle(
+                                      fontSize: 21,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -0.5,
+                                      height: 1.15,
+                                      color: AppColors.text(context),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  // Micro-Pills
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 6,
+                                    children: [
+                                      _MicroPill(icon: Icons.repeat_rounded, label: '${item.sets} Séries'),
+                                      _MicroPill(icon: Icons.fitness_center_rounded, label: '${item.reps} reps'),
+                                      _MicroPill(icon: Icons.speed_rounded, label: 'Cadência 3-0-1-0'),
+                                      _MicroPill(
+                                        icon: Icons.timer_outlined,
+                                        label: '${item.restSeconds}s Descanso',
+                                        isTimer: true,
+                                        onTap: () => RestTimerSheet.show(
+                                          context,
+                                          seconds: item.restSeconds,
+                                          exerciseName: item.name,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 14),
+                                  // Green Activation Capsule
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF00B37E),
+                                      borderRadius: BorderRadius.circular(14),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFF00B37E).withValues(alpha: 0.3),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          item.targetMuscleGroup,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w900,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 1),
+                                        Text(
+                                          _getEmgForExercise(item.name),
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(alpha: 0.95),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800,
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
                                 ],
-                              ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          // Right Column: 3D Anatomical Model Preview
-                          Container(
-                            width: 108,
-                            height: 175,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF070C18), Color(0xFF0C1629)],
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                              ),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: AppColors.emerald(context).withValues(alpha: 0.35),
-                                width: 1.2,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.emerald(context).withValues(alpha: 0.12),
-                                  blurRadius: 12,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                            ),
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(13),
-                                  child: Image.asset(
-                                    'assets/images/anatomical_model_chest.png',
-                                    width: 106,
-                                    height: 173,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (context, error, stackTrace) => _AnatomicalMuscleCard(
-                                      exerciseName: item.name,
-                                      targetMuscle: item.targetMuscleGroup,
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  bottom: 6,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.75),
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(
-                                        color: AppColors.emerald(context).withValues(alpha: 0.5),
-                                        width: 0.8,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Container(
-                                          width: 5,
-                                          height: 5,
-                                          decoration: BoxDecoration(
-                                            color: AppColors.emerald(context),
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          'Ativo 3D',
-                                          style: TextStyle(
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.w800,
-                                            color: AppColors.emerald(context),
-                                            letterSpacing: 0.4,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 14),
-
-                      // Bottom Tactile Actions Row
-                      Row(
-                        children: [
-                          // Left: Biomechanical Analysis Button (Split-View & Raio-X)
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                                side: BorderSide(color: AppColors.accentBlue(context).withValues(alpha: 0.5)),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                backgroundColor: AppColors.accentBlue(context).withValues(alpha: 0.08),
-                              ),
-                              onPressed: () => BiomechanicalAnalysisSheet.show(
-                                context,
-                                exerciseName: item.name,
-                              ),
-                              icon: Icon(Icons.biotech_rounded, size: 16, color: AppColors.accentBlue(context)),
-                              label: Text(
-                                'Raio-X & Fases',
-                                style: TextStyle(
-                                  color: AppColors.accentBlue(context),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
+                            const SizedBox(width: 8),
+                            // Right 3D Model Column
+                            SizedBox(
+                              width: 125,
+                              height: 235,
+                              child: Image.asset(
+                                _getAnatomicalImage(item.name, item.targetMuscleGroup),
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) => _AnatomicalMuscleCard(
+                                  exerciseName: item.name,
+                                  targetMuscle: item.targetMuscleGroup,
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          // Right: Fast Adaptation Button (Salão)
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.tangerine(context),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              onPressed: () => _showAdaptationModal(index),
-                              icon: const Icon(Icons.bolt_rounded, size: 16),
-                              label: const Text(
-                                'Trocar Exercício',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      );
+                    },
                   ),
-                );
-              }),
-              const SizedBox(height: 20),
-            ],
-          ),
+                ),
+                const SizedBox(height: 14),
+
+                // 4. Dot Carousel Indicators
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(_exercises.length, (idx) {
+                    final isCurrent = idx == _currentCarouselIndex;
+                    return GestureDetector(
+                      onTap: () {
+                        _pageController.animateToPage(
+                          idx,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        width: isCurrent ? 24 : 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: isCurrent
+                              ? const Color(0xFF00B37E)
+                              : (isDark ? Colors.white24 : const Color(0xFFCBD5E1)),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 16),
+
+                // 5. Bottom Action Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: AppColors.card(context),
+                          side: BorderSide(
+                            color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                        ),
+                        onPressed: () => BiomechanicalAnalysisSheet.show(
+                          context,
+                          exerciseName: _exercises[_currentCarouselIndex].name,
+                        ),
+                        child: Text(
+                          'Raio-X & Fases',
+                          style: TextStyle(
+                            color: AppColors.text(context),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: AppColors.card(context),
+                          side: BorderSide(
+                            color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                        ),
+                        onPressed: () => _showAdaptationModal(_currentCarouselIndex),
+                        child: Text(
+                          'Trocar Exercício',
+                          style: TextStyle(
+                            color: AppColors.text(context),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
           if (_isLoading)
             Container(
               color: Colors.black.withValues(alpha: 0.6),
@@ -875,8 +842,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class _MicroPill extends StatelessWidget {
