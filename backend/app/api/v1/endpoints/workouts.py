@@ -213,6 +213,28 @@ async def get_active_prescription_for_client(
     )
 
 
+def _count_trainer_occupied_slots(trainer_id: str, exclude_student_id: str = None) -> int:
+    """Retorna o número de alunos ocupando vaga ativa na consultoria (não arquivados / não inativos)."""
+    return sum(
+        1 for sid, st in _STUDENTS_STORE.items()
+        if sid != exclude_student_id
+        and (st.get("trainer_id") == trainer_id or trainer_id in ("current-trainer", "dev-user-0000-0000-000000000001"))
+        and st.get("status", "").lower() not in ("arquivado", "inativo")
+    )
+
+
+def _get_trainer_max_students(trainer_id: str) -> int:
+    """Busca o limite do plano SaaS ativo do treinador (Starter=3, Pro=30, Elite=60, Studio=100)."""
+    from app.api.v1.endpoints.subscriptions import ACTIVE_TRAINER_SUBSCRIPTIONS
+    if trainer_id in ACTIVE_TRAINER_SUBSCRIPTIONS:
+        return ACTIVE_TRAINER_SUBSCRIPTIONS[trainer_id].max_students
+    if "current-trainer" in ACTIVE_TRAINER_SUBSCRIPTIONS:
+        return ACTIVE_TRAINER_SUBSCRIPTIONS["current-trainer"].max_students
+    if ACTIVE_TRAINER_SUBSCRIPTIONS:
+        return list(ACTIVE_TRAINER_SUBSCRIPTIONS.values())[-1].max_students
+    return 30
+
+
 @router.post(
     "/students",
     response_model=StudentResponse,
@@ -240,6 +262,17 @@ async def create_student(
             )
 
     trainer_id = data.trainer_id or current_user.get("sub") or "current-trainer"
+
+    # Validação estrita da cota de alunos do plano SaaS
+    occupied = _count_trainer_occupied_slots(trainer_id)
+    max_allowed = _get_trainer_max_students(trainer_id)
+    if occupied >= max_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Limite de {max_allowed} alunos ativos atingido no seu plano atual. "
+                   f"Faça upgrade do plano ou arquive alunos inativos antes de cadastrar novos."
+        )
+
     student_id = f"st_{uuid.uuid4().hex[:8]}"
     created_at = datetime.now().isoformat()
 
@@ -308,6 +341,20 @@ async def update_student(
     if data.injuries_or_restrictions is not None:
         student["injuries_or_restrictions"] = data.injuries_or_restrictions
     if data.status is not None:
+        old_status = student.get("status", "").lower()
+        new_status = data.status.lower()
+        # Se estava arquivado/inativo e está tentando reativar, valida cota
+        if old_status in ("arquivado", "inativo") and new_status not in ("arquivado", "inativo"):
+            trainer_id = student.get("trainer_id") or "current-trainer"
+            occupied = _count_trainer_occupied_slots(trainer_id, exclude_student_id=student_id)
+            max_allowed = _get_trainer_max_students(trainer_id)
+            if occupied >= max_allowed:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Não é possível reativar o aluno '{student.get('full_name')}'. "
+                           f"O limite de {max_allowed} alunos ativos do seu plano atual já foi atingido. "
+                           f"Faça upgrade de plano ou arquive outro aluno para liberar uma vaga."
+                )
         student["status"] = data.status
 
     return StudentResponse(**student)
@@ -331,8 +378,25 @@ async def update_student_status(
             detail=f"Aluno com ID '{student_id}' não encontrado."
         )
 
-    _STUDENTS_STORE[student_id]["status"] = data.status
-    return StudentResponse(**_STUDENTS_STORE[student_id])
+    student = _STUDENTS_STORE[student_id]
+    old_status = student.get("status", "").lower()
+    new_status = data.status.lower()
+
+    # Validação de integridade de reativação: se estava arquivado/inativo e tenta reativar
+    if old_status in ("arquivado", "inativo") and new_status not in ("arquivado", "inativo"):
+        trainer_id = student.get("trainer_id") or "current-trainer"
+        occupied = _count_trainer_occupied_slots(trainer_id, exclude_student_id=student_id)
+        max_allowed = _get_trainer_max_students(trainer_id)
+        if occupied >= max_allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Não é possível reativar o aluno '{student.get('full_name')}'. "
+                       f"O limite de {max_allowed} alunos ativos do seu plano atual já foi atingido. "
+                       f"Faça upgrade de plano ou arquive outro aluno para liberar uma vaga."
+            )
+
+    student["status"] = data.status
+    return StudentResponse(**student)
 
 
 @router.delete(
@@ -449,6 +513,17 @@ async def invite_student(
 ) -> StudentInviteResponse:
     trainer_name = current_user.get("user_metadata", {}).get("full_name") or current_user.get("full_name") or "Roberto Mendes"
     trainer_id = current_user.get("id") or "current-trainer"
+
+    # Validação estrita da cota de alunos do plano SaaS
+    occupied = _count_trainer_occupied_slots(trainer_id)
+    max_allowed = _get_trainer_max_students(trainer_id)
+    if occupied >= max_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Limite de {max_allowed} alunos ativos atingido no seu plano atual. "
+                   f"Faça upgrade do plano ou arquive alunos inativos antes de convidar novos."
+        )
+
     student_id = f"st-{uuid.uuid4().hex[:8]}"
 
     # Salva o aluno na store com status Pendente Confirmação

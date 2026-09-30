@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/config/app_config.dart';
 import '../models/workout_plan_model.dart';
 import 'auth_service.dart';
+import 'subscription_service.dart';
 
 class WorkoutService {
   static SupabaseClient? get _clientOrNull {
@@ -43,6 +44,20 @@ class WorkoutService {
     String? phone,
     String? goal,
   }) async {
+    final currentSub = SubscriptionService.activeSubscriptionNotifier.value;
+    if (currentSub != null) {
+      final occupiedCount = _localStudentsCache.where((s) {
+        final st = (s['status'] as String? ?? '').toLowerCase();
+        return !st.contains('arquivado') && !st.contains('inativo');
+      }).length;
+      if (occupiedCount >= currentSub.maxStudents) {
+        throw Exception(
+          'Limite de ${currentSub.maxStudents} alunos ativos atingido no plano ${currentSub.planName}. '
+          'Faça upgrade do plano ou arquive alunos inativos antes de cadastrar novos.',
+        );
+      }
+    }
+
     final trainer = AuthService.currentUser;
     final trainerId = trainer?.id ?? 'current-trainer';
     final studentId = 'st_${DateTime.now().millisecondsSinceEpoch}';
@@ -63,7 +78,41 @@ class WorkoutService {
     _localStudentsCache.removeWhere((s) => s['email'] == studentData['email']);
     _localStudentsCache.insert(0, studentData);
 
-    // 2. Persiste na tabela 'profiles' do Supabase
+    // 2. Sincroniza com a API do Backend e dispara convite oficial por e-mail via Resend
+    try {
+      final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/students/invite');
+      final res = await http.post(
+        uri,
+        headers: _apiHeaders,
+        body: jsonEncode({
+          'full_name': fullName.trim(),
+          'email': email.trim().toLowerCase(),
+          'phone': phone?.trim(),
+          'objective': goal ?? 'Hipertrofia Muscular',
+          'send_email': true,
+          'send_whatsapp': false,
+        }),
+      ).timeout(const Duration(seconds: 8));
+
+      if (res.statusCode == 403) {
+        _localStudentsCache.removeWhere((s) => s['id'] == studentId);
+        final err = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        throw Exception(err['detail'] ?? 'Limite de alunos ativos atingido no seu plano atual.');
+      }
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        studentData['id'] = data['id'] ?? studentId;
+        studentData['invitation_link'] = data['invitation_link'];
+        studentData['whatsapp_url'] = data['whatsapp_url'];
+        studentData['email_status'] = data['email_status'];
+      }
+    } catch (e) {
+      if (e.toString().contains('Limite de') || e.toString().contains('403')) rethrow;
+      debugPrint('Aviso Backend inviteStudent: $e');
+    }
+
+    // 3. Persiste na tabela 'profiles' do Supabase
     if (_clientOrNull != null) {
       try {
         await _client.from('profiles').upsert({
@@ -80,33 +129,6 @@ class WorkoutService {
       } catch (e) {
         debugPrint('Aviso Supabase createStudent: $e');
       }
-    }
-
-    // 3. Sincroniza com a API do Backend e dispara convite oficial por e-mail via Resend
-    try {
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/students/invite');
-      final res = await http.post(
-        uri,
-        headers: _apiHeaders,
-        body: jsonEncode({
-          'full_name': fullName.trim(),
-          'email': email.trim().toLowerCase(),
-          'phone': phone?.trim(),
-          'objective': goal ?? 'Hipertrofia Muscular',
-          'send_email': true,
-          'send_whatsapp': false,
-        }),
-      ).timeout(const Duration(seconds: 8));
-
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-        studentData['id'] = data['id'] ?? studentId;
-        studentData['invitation_link'] = data['invitation_link'];
-        studentData['whatsapp_url'] = data['whatsapp_url'];
-        studentData['email_status'] = data['email_status'];
-      }
-    } catch (e) {
-      debugPrint('Aviso Backend inviteStudent: $e');
     }
 
     return studentData;
@@ -370,8 +392,32 @@ class WorkoutService {
     String? injuriesOrRestrictions,
     String? status,
   }) async {
-    // 1. Atualiza no cache local
     final idx = _localStudentsCache.indexWhere((s) => s['id'] == studentId);
+    final prevStudent = idx != -1 ? Map<String, dynamic>.from(_localStudentsCache[idx]) : null;
+
+    // Se estiver tentando alterar o status para ativo/pendente (reativação de aluno):
+    if (status != null && !status.toLowerCase().contains('arquivado') && !status.toLowerCase().contains('inativo')) {
+      final currentSub = SubscriptionService.activeSubscriptionNotifier.value;
+      if (currentSub != null) {
+        final currentStudentStatus = (prevStudent?['status'] as String? ?? '').toLowerCase();
+        final isPreviouslyArchived = currentStudentStatus.contains('arquivado') || currentStudentStatus.contains('inativo');
+        if (isPreviouslyArchived) {
+          final occupied = _localStudentsCache.where((s) {
+            if (s['id'] == studentId) return false;
+            final st = (s['status'] as String? ?? '').toLowerCase();
+            return !st.contains('arquivado') && !st.contains('inativo');
+          }).length;
+          if (occupied >= currentSub.maxStudents) {
+            throw Exception(
+              'Limite de ${currentSub.maxStudents} alunos ativos atingido no plano ${currentSub.planName}. '
+              'Arquive um aluno ou faça upgrade do plano antes de reativar este aluno.',
+            );
+          }
+        }
+      }
+    }
+
+    // 1. Atualiza no cache local
     if (idx != -1) {
       if (fullName != null) _localStudentsCache[idx]['full_name'] = fullName;
       if (email != null) _localStudentsCache[idx]['email'] = email;
@@ -381,7 +427,38 @@ class WorkoutService {
       if (status != null) _localStudentsCache[idx]['status'] = status;
     }
 
-    // 2. Atualiza no Supabase
+    // 2. Atualiza no Backend FastAPI
+    try {
+      final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/students/$studentId');
+      final res = await http.put(
+        uri,
+        headers: _apiHeaders,
+        body: jsonEncode({
+          if (fullName != null) 'full_name': fullName,
+          if (email != null) 'email': email,
+          if (phone != null) 'phone': phone,
+          if (goal != null) 'goal': goal,
+          if (injuriesOrRestrictions != null) 'injuries_or_restrictions': injuriesOrRestrictions,
+          if (status != null) 'status': status,
+        }),
+      ).timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 403) {
+        if (idx != -1 && prevStudent != null) {
+          _localStudentsCache[idx] = prevStudent;
+        }
+        final err = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        throw Exception(err['detail'] ?? 'Limite de alunos ativos atingido no plano.');
+      }
+      if (res.statusCode != 200) {
+        debugPrint('Aviso backend updateStudent status: ${res.statusCode}');
+      }
+    } catch (e) {
+      if (e.toString().contains('Limite de') || e.toString().contains('403')) rethrow;
+      debugPrint('Aviso backend updateStudent: $e');
+    }
+
+    // 3. Atualiza no Supabase
     if (_clientOrNull != null) {
       try {
         final updateMap = <String, dynamic>{};
@@ -398,25 +475,6 @@ class WorkoutService {
       }
     }
 
-    // 3. Atualiza no Backend FastAPI
-    try {
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/students/$studentId');
-      final res = await http.put(
-        uri,
-        headers: _apiHeaders,
-        body: jsonEncode({
-          if (fullName != null) 'full_name': fullName,
-          if (email != null) 'email': email,
-          if (phone != null) 'phone': phone,
-          if (goal != null) 'goal': goal,
-          if (injuriesOrRestrictions != null) 'injuries_or_restrictions': injuriesOrRestrictions,
-          if (status != null) 'status': status,
-        }),
-      ).timeout(const Duration(seconds: 4));
-      return res.statusCode == 200;
-    } catch (e) {
-      debugPrint('Aviso backend updateStudent: $e');
-    }
     return true;
   }
 

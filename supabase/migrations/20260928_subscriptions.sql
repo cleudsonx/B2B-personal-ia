@@ -71,7 +71,7 @@ CREATE POLICY "Treinadores modificam sua própria assinatura" ON public.subscrip
     FOR ALL USING (auth.uid() = trainer_id)
     WITH CHECK (auth.uid() = trainer_id);
 
--- 4. Função auxiliar para verificar cota de alunos antes de inserir novo aluno
+-- 4. Função auxiliar para verificar cota de alunos antes de inserir ou reativar aluno
 CREATE OR REPLACE FUNCTION public.check_trainer_student_quota(p_trainer_id UUID)
 RETURNS BOOLEAN AS $$
 DECLARE
@@ -83,18 +83,92 @@ BEGIN
     FROM public.subscriptions s
     JOIN public.plans p ON p.id = s.plan_id
     WHERE s.trainer_id = p_trainer_id
-      AND s.status IN ('active', 'trialing');
+      AND s.status IN ('active', 'trialing')
+    ORDER BY s.created_at DESC
+    LIMIT 1;
 
     -- Se não encontrar assinatura, assume padrão trial (3 alunos)
     IF v_max_students IS NULL THEN
         v_max_students := 3;
     END IF;
 
-    -- Conta total de alunos ativos do treinador
+    -- Conta total de alunos ocupando vaga ativa do treinador (não arquivados / não inativos)
     SELECT COUNT(*) INTO v_current_students
-    FROM public.trainer_students
-    WHERE trainer_id = p_trainer_id;
+    FROM public.profiles
+    WHERE trainer_id = p_trainer_id
+      AND role = 'client'
+      AND LOWER(COALESCE(subscription_status, 'active')) NOT IN ('arquivado', 'inativo');
 
     RETURN v_current_students < v_max_students;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 5. Trigger para impedir violação de cota em inserção ou reativação de alunos
+CREATE OR REPLACE FUNCTION public.enforce_trainer_student_quota()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_max_students INTEGER;
+    v_current_students INTEGER;
+    v_is_reactivation BOOLEAN := false;
+BEGIN
+    -- Só valida para perfil de cliente com treinador associado
+    IF NEW.role <> 'client' OR NEW.trainer_id IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    -- Se o status for arquivado/inativo, permite salvar sem consumir vaga
+    IF LOWER(COALESCE(NEW.subscription_status, 'active')) IN ('arquivado', 'inativo') THEN
+        RETURN NEW;
+    END IF;
+
+    -- Verifica se é reativação (de arquivado/inativo para ativo)
+    IF TG_OP = 'UPDATE' THEN
+        IF LOWER(COALESCE(OLD.subscription_status, 'active')) IN ('arquivado', 'inativo') THEN
+            v_is_reactivation := true;
+        ELSE
+            -- Não está reativando, é apenas edição de dados cadastrais
+            RETURN NEW;
+        END IF;
+    END IF;
+
+    -- Busca limite do plano contratado
+    SELECT p.max_students INTO v_max_students
+    FROM public.subscriptions s
+    JOIN public.plans p ON p.id = s.plan_id
+    WHERE s.trainer_id = NEW.trainer_id
+      AND s.status IN ('active', 'trialing')
+    ORDER BY s.created_at DESC
+    LIMIT 1;
+
+    IF v_max_students IS NULL THEN
+        v_max_students := 3; -- Default Starter
+    END IF;
+
+    -- Conta vagas ocupadas por outros alunos (excluindo o próprio aluno em caso de update)
+    SELECT COUNT(*) INTO v_current_students
+    FROM public.profiles
+    WHERE trainer_id = NEW.trainer_id
+      AND role = 'client'
+      AND id <> COALESCE(NEW.id, '00000000-0000-0000-0000-000000000000'::UUID)
+      AND LOWER(COALESCE(subscription_status, 'active')) NOT IN ('arquivado', 'inativo');
+
+    IF v_current_students >= v_max_students THEN
+        IF v_is_reactivation THEN
+            RAISE EXCEPTION 'Limite de % alunos ativos atingido no seu plano. Para reativar este aluno, faça upgrade do plano ou arquive outro aluno.', v_max_students
+                USING ERRCODE = '23514'; -- check_violation
+        ELSE
+            RAISE EXCEPTION 'Limite de % alunos ativos atingido no seu plano. Faça upgrade para cadastrar novos alunos.', v_max_students
+                USING ERRCODE = '23514';
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_enforce_trainer_student_quota ON public.profiles;
+CREATE TRIGGER trg_enforce_trainer_student_quota
+    BEFORE INSERT OR UPDATE OF subscription_status ON public.profiles
+    FOR EACH ROW
+    EXECUTE FUNCTION public.enforce_trainer_student_quota();
+

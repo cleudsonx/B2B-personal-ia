@@ -204,3 +204,132 @@ def test_assistant_chat_specialist_knowledge():
     assert "torque" in data["text"].lower() or "polia" in data["text"].lower() or "emg" in data["text"].lower()
 
 
+def test_student_quota_enforcement_and_unarchive_blockage():
+    """
+    Testa a regra negocial estrita de limites de alunos por plano SaaS:
+    - Plano Starter (limite 3 alunos)
+    - Cadastra 3 alunos (cota cheia)
+    - Tenta cadastrar o 4º -> Bloqueado (403)
+    - Arquiva os 3 alunos (vagas liberadas)
+    - Cadastra 3 novos alunos (cota cheia novamente com 3)
+    - Tenta reativar um dos alunos arquivados -> Bloqueado com 403 Forbidden
+    - Arquiva 1 dos novos -> Reativação do arquivado agora é permitida (200)
+    - Upgrade de plano para Personal Pro (limite 30) -> Permite expansão
+    """
+    from app.api.v1.endpoints.subscriptions import ACTIVE_TRAINER_SUBSCRIPTIONS
+    from app.schemas.subscription import MySubscriptionResponse
+    from app.api.v1.endpoints.workouts import _STUDENTS_STORE
+    from datetime import datetime, timezone
+
+    trainer_id = "trainer-starter-quota-test"
+
+    # 1. Configura assinatura Starter (3 alunos)
+    ACTIVE_TRAINER_SUBSCRIPTIONS[trainer_id] = MySubscriptionResponse(
+        plan_id="starter",
+        plan_name="Starter Trial",
+        status="active",
+        billing_interval="monthly",
+        current_students=0,
+        max_students=3,
+        ai_generations_used=0,
+        max_ai_generations=10,
+        can_create_student=True,
+        can_generate_ai=True,
+    )
+
+    # 2. Cadastra 3 alunos iniciais
+    batch1_ids = []
+    for i in range(1, 4):
+        res = client.post("/api/v1/workouts/students", json={
+            "full_name": f"Aluno Inicial {i}",
+            "email": f"aluno.inicial.{i}@teste.com",
+            "goal": "Hipertrofia",
+            "trainer_id": trainer_id,
+        })
+        assert res.status_code == 201, res.text
+        batch1_ids.append(res.json()["id"])
+
+    # 3. Tentativa de cadastrar 4º aluno deve falhar (cota de 3 atingida)
+    overflow_res = client.post("/api/v1/workouts/students", json={
+        "full_name": "Aluno Excedente",
+        "email": "aluno.excedente@teste.com",
+        "goal": "Emagrecimento",
+        "trainer_id": trainer_id,
+    })
+    assert overflow_res.status_code == 403
+    assert "Limite de 3 alunos ativos atingido" in overflow_res.json()["detail"]
+
+    # 4. Professor arquiva os 3 alunos iniciais
+    for sid in batch1_ids:
+        arch_res = client.patch(f"/api/v1/workouts/students/{sid}/status", json={"status": "Arquivado"})
+        assert arch_res.status_code == 200
+        assert arch_res.json()["status"] == "Arquivado"
+
+    # 5. Com os 3 arquivados, cadastra 3 novos alunos
+    batch2_ids = []
+    for i in range(1, 4):
+        res = client.post("/api/v1/workouts/students", json={
+            "full_name": f"Aluno Novo {i}",
+            "email": f"aluno.novo.{i}@teste.com",
+            "goal": "Definição",
+            "trainer_id": trainer_id,
+        })
+        assert res.status_code == 201, res.text
+        batch2_ids.append(res.json()["id"])
+
+    # 6. Tenta reativar um dos alunos antigos via PATCH /status -> DEVE SER BLOQUEADO (403)!
+    unarchive_res = client.patch(
+        f"/api/v1/workouts/students/{batch1_ids[0]}/status",
+        json={"status": "Ativo"}
+    )
+    assert unarchive_res.status_code == 403
+    assert "Não é possível reativar o aluno" in unarchive_res.json()["detail"]
+    assert "3 alunos ativos" in unarchive_res.json()["detail"]
+
+    # 7. Tenta reativar também via PUT /students/{id} -> DEVE SER BLOQUEADO (403)!
+    put_unarchive_res = client.put(
+        f"/api/v1/workouts/students/{batch1_ids[1]}",
+        json={"status": "Ativo", "goal": "Reabilitação"}
+    )
+    assert put_unarchive_res.status_code == 403
+    assert "Não é possível reativar o aluno" in put_unarchive_res.json()["detail"]
+
+    # 8. Arquiva um aluno do segundo lote (liberando 1 vaga ativa)
+    free_slot_res = client.patch(
+        f"/api/v1/workouts/students/{batch2_ids[0]}/status",
+        json={"status": "Arquivado"}
+    )
+    assert free_slot_res.status_code == 200
+
+    # 9. Agora a reativação do aluno antigo tem vaga e deve ser aceita com sucesso (200)
+    reactivate_ok = client.patch(
+        f"/api/v1/workouts/students/{batch1_ids[0]}/status",
+        json={"status": "Ativo"}
+    )
+    assert reactivate_ok.status_code == 200
+    assert reactivate_ok.json()["status"] == "Ativo"
+
+    # 10. Upgrade de plano para Personal Pro (30 alunos)
+    ACTIVE_TRAINER_SUBSCRIPTIONS[trainer_id] = MySubscriptionResponse(
+        plan_id="pro",
+        plan_name="Personal Pro",
+        status="active",
+        billing_interval="monthly",
+        current_students=3,
+        max_students=30,
+        ai_generations_used=0,
+        max_ai_generations=-1,
+        can_create_student=True,
+        can_generate_ai=True,
+    )
+
+    # 11. Agora reativa os demais arquivados sem impedimento
+    reactivate_pro = client.patch(
+        f"/api/v1/workouts/students/{batch1_ids[1]}/status",
+        json={"status": "Ativo"}
+    )
+    assert reactivate_pro.status_code == 200
+    assert reactivate_pro.json()["status"] == "Ativo"
+
+
+

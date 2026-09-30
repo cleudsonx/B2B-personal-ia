@@ -257,9 +257,60 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     BuildContext context, {
     required int currentCount,
     required int maxAllowed,
+    String? actionContext,
   }) {
     final currentSub = SubscriptionService.activeSubscriptionNotifier.value ?? _mySubscription;
     final currentPlanName = currentSub?.planName ?? 'Starter Trial';
+    final planId = currentSub?.planId ?? 'starter';
+
+    String targetPlanName = 'Personal Pro';
+    String targetPrice = 'R\$ 89/mês';
+    int targetCapacity = 30;
+    bool isMaxTier = false;
+
+    if (planId == 'pro') {
+      targetPlanName = 'Elite Coach';
+      targetPrice = 'R\$ 149/mês';
+      targetCapacity = 60;
+    } else if (planId == 'elite') {
+      targetPlanName = 'Studio Scale';
+      targetPrice = 'R\$ 199/mês';
+      targetCapacity = 100;
+    } else if (planId == 'studio') {
+      isMaxTier = true;
+      targetPlanName = 'Studio Scale';
+      targetPrice = 'Capacidade Máxima';
+      targetCapacity = 100;
+    }
+
+    final actionText = actionContext ?? 'cadastrar novos alunos';
+    final descText = isMaxTier
+        ? 'Você já possui $currentCount de $maxAllowed alunos ativos cadastrados no seu plano atual ($currentPlanName), que é o limite máximo da plataforma.\n\nPara $actionText, arquive alunos inativos ou pausados da consultoria para liberar vagas.'
+        : 'Você já possui $currentCount de $maxAllowed alunos ativos simultâneos no seu plano atual ($currentPlanName).\n\nPara $actionText e expandir sua consultoria, faça upgrade para o $targetPlanName (até $targetCapacity alunos com IA ilimitada) ou arquive outros alunos inativos para liberar vagas imediatas.';
+
+    List<String> benefits = [];
+    if (planId == 'starter') {
+      benefits = [
+        'Até 30 alunos ativos na consultoria',
+        'Prescrições IA Mr. Coach Ilimitadas',
+        'Alertas em tempo real de dor e adaptação no salão',
+        'Raio-X Anatômico 3D com EMG e Fases',
+      ];
+    } else if (planId == 'pro') {
+      benefits = [
+        'Até 60 alunos ativos na consultoria',
+        'Automação e envio de treinos via WhatsApp',
+        'Alertas automáticos de dor direto no WhatsApp',
+        'Relatórios de assiduidade e retenção de alunos',
+      ];
+    } else {
+      benefits = [
+        'Até 100 alunos ativos na assessoria esportiva',
+        'Múltiplos personals colaboradores sob a mesma conta',
+        'White-label parcial da consultoria',
+        'Gerente de contas dedicado e suporte VIP',
+      ];
+    }
 
     showModalBottomSheet(
       context: context,
@@ -337,7 +388,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                 const SizedBox(height: 8),
 
                 Text(
-                  'Você já possui $currentCount de $maxAllowed alunos ativos simultâneos cadastrados no seu plano atual.\n\nPara cadastrar novos alunos e expandir sua consultoria, faça upgrade para o Personal Pro e atenda até 30 alunos com IA ilimitada.',
+                  descText,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: AppColors.subtext(context),
@@ -357,19 +408,16 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                   ),
                   child: Column(
                     children: [
-                      _buildUpgradeBenefitRow(context, 'Até 30 alunos ativos na consultoria'),
-                      const SizedBox(height: 8),
-                      _buildUpgradeBenefitRow(context, 'Prescrições IA Mr. Coach Ilimitadas'),
-                      const SizedBox(height: 8),
-                      _buildUpgradeBenefitRow(context, 'Alertas em tempo real de dor e adaptação no salão'),
-                      const SizedBox(height: 8),
-                      _buildUpgradeBenefitRow(context, 'Raio-X Anatômico 3D com EMG e Fases'),
+                      for (int i = 0; i < benefits.length; i++) ...[
+                        if (i > 0) const SizedBox(height: 8),
+                        _buildUpgradeBenefitRow(context, benefits[i]),
+                      ],
                     ],
                   ),
                 ),
                 const SizedBox(height: 20),
 
-                // Primary CTA: Upgrade to Pro
+                // Primary CTA: Upgrade or Manage
                 SizedBox(
                   height: 48,
                   child: ElevatedButton(
@@ -386,14 +434,14 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                         MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
                       );
                     },
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.bolt_rounded, size: 20, color: Colors.black),
-                        SizedBox(width: 8),
+                        const Icon(Icons.bolt_rounded, size: 20, color: Colors.black),
+                        const SizedBox(width: 8),
                         Text(
-                          'Fazer Upgrade para Personal Pro • R\$ 89/mês',
-                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                          isMaxTier ? 'Ver Planos & Assinatura' : 'Fazer Upgrade para $targetPlanName • $targetPrice',
+                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
                         ),
                       ],
                     ),
@@ -467,12 +515,22 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
   }
 
   void _showAddStudentDialog() {
-    final activeStudentsCount = _students.where((s) => (s['status'] as String? ?? '').toLowerCase() != 'arquivado').length;
+    final totalCount = _students.length;
+    final archivedCount = _students.where((s) {
+      final st = (s['status'] as String? ?? '').toLowerCase();
+      return st.contains('arquivado') || st.contains('inativo');
+    }).length;
+    final activeStudentsCount = totalCount - archivedCount;
     final currentSub = SubscriptionService.activeSubscriptionNotifier.value ?? _mySubscription;
-    final maxStudents = currentSub?.maxStudents ?? 30;
+    final maxStudents = currentSub?.maxStudents ?? 3;
 
     if (activeStudentsCount >= maxStudents) {
-      _showStudentLimitUpgradeSheet(context, currentCount: activeStudentsCount, maxAllowed: maxStudents);
+      _showStudentLimitUpgradeSheet(
+        context,
+        currentCount: activeStudentsCount,
+        maxAllowed: maxStudents,
+        actionContext: 'cadastrar novos alunos',
+      );
       return;
     }
 
@@ -897,6 +955,29 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     final newStatus = isArchiving ? 'Arquivado' : 'Ativo';
     final studentId = student['id'] as String;
 
+    if (!isArchiving) {
+      // Reativação de aluno: validar cota estritamente contra o limite do plano atual
+      final totalCount = _students.length;
+      final archivedCount = _students.where((s) {
+        final st = (s['status'] as String? ?? '').toLowerCase();
+        return st.contains('arquivado') || st.contains('inativo');
+      }).length;
+      final occupiedSlots = totalCount - archivedCount;
+
+      final currentSub = SubscriptionService.activeSubscriptionNotifier.value ?? _mySubscription;
+      final maxStudents = currentSub?.maxStudents ?? 3;
+
+      if (occupiedSlots >= maxStudents) {
+        _showStudentLimitUpgradeSheet(
+          context,
+          currentCount: occupiedSlots,
+          maxAllowed: maxStudents,
+          actionContext: 'reativar o aluno "${student['full_name']}"',
+        );
+        return;
+      }
+    }
+
     // Atualização otimista imediata na UI para atualizar pílulas e contadores
     setState(() {
       student['status'] = newStatus;
@@ -909,7 +990,23 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     try {
       await WorkoutService.updateStudentStatus(studentId: studentId, status: newStatus);
     } catch (e) {
-      debugPrint('Aviso ao sincronizar status do aluno no backend: $e');
+      // Se houver rejeição (ex: cota excedida no backend), reverte o estado na UI
+      setState(() {
+        student['status'] = currentStatus;
+        final idx = _students.indexWhere((s) => s['id'] == studentId);
+        if (idx != -1) {
+          _students[idx]['status'] = currentStatus;
+        }
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.red.shade900,
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+          ),
+        );
+      }
+      return;
     }
 
     if (mounted) {
@@ -1008,6 +1105,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
       final st = (s['status'] as String? ?? '').toLowerCase();
       return st.contains('arquivado') || st.contains('inativo');
     }).length;
+    final occupiedCount = totalCount - archivedCount;
     final alertsCount = _students.where((s) => s['has_alert'] == true).length;
 
     return Scaffold(
@@ -1140,17 +1238,21 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: isStarter
-                                        ? Colors.orange.withValues(alpha: 0.15)
-                                        : AppColors.emeraldBg(context),
+                                    color: (occupiedCount >= maxStudents)
+                                        ? Colors.redAccent.withValues(alpha: 0.15)
+                                        : (isStarter
+                                            ? Colors.orange.withValues(alpha: 0.15)
+                                            : AppColors.emeraldBg(context)),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
-                                    '$activeCount / $maxStudents alunos',
+                                    '$occupiedCount / $maxStudents alunos',
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w700,
-                                      color: isStarter ? Colors.orange : AppColors.emerald(context),
+                                      color: (occupiedCount >= maxStudents)
+                                          ? Colors.redAccent
+                                          : (isStarter ? Colors.orange : AppColors.emerald(context)),
                                     ),
                                   ),
                                 ),
