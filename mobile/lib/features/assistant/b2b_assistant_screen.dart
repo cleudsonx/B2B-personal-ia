@@ -127,8 +127,8 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
       final reply = await GeminiService.askB2BAssistant(
         prompt: promptWithContext,
         systemInstruction: widget.isStudentView
-            ? 'Você é o Mr. Coach AI, assistente do aluno focado em biomecânica, execução segura e hipertrofia.'
-            : 'Você é o Mr. Coach AI, autoridade multidisciplinar em Biomecânica de precisão, Fisiologia do Exercício, Treinamento Resistido Avançado e Estratégia B2B Fitness. Forneça respostas técnicas, práticas e de alto nível.',
+            ? 'Você é o Mr. Coach AI, assistente do aluno focado em biomecânica, execução segura e hipertrofia. Inicie sempre seu parecer com o cabeçalho "### 🤖 Parecer do Mr. Coach".'
+            : 'Você é o Mr. Coach AI, autoridade multidisciplinar em Biomecânica de precisão, Fisiologia do Exercício, Treinamento Resistido Avançado e Estratégia B2B Fitness. Forneça respostas técnicas, práticas e de alto nível. Inicie sempre seu parecer com o cabeçalho "### 🤖 Parecer do Mr. Coach".',
       );
       final replyExercise = detectedExercise ?? _detectExerciseInText(reply);
 

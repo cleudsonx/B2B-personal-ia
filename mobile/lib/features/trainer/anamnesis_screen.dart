@@ -8,6 +8,8 @@ import '../../models/workout_plan_model.dart';
 import '../../services/api_service.dart';
 import '../../services/workout_service.dart';
 
+enum StudentDispatchMode { individual, multiple }
+
 class TrainerAnamnesisScreen extends StatefulWidget {
   final String? initialStudentId;
   final String? initialStudentName;
@@ -44,7 +46,42 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
   WorkoutPlanModel? _generatedPlan;
 
   List<Map<String, dynamic>> _students = [];
-  final Set<String> _selectedStudentIds = {};
+  StudentDispatchMode _dispatchMode = StudentDispatchMode.individual;
+  String? _selectedIndividualStudentId;
+  final Set<String> _selectedMultipleStudentIds = {};
+
+  Set<String> get _selectedStudentIds {
+    if (_dispatchMode == StudentDispatchMode.individual) {
+      return _selectedIndividualStudentId != null ? {_selectedIndividualStudentId!} : {};
+    }
+    return _selectedMultipleStudentIds;
+  }
+
+  Map<String, dynamic>? get _selectedIndividualStudent {
+    if (_selectedIndividualStudentId == null) return null;
+    return _students.firstWhere(
+      (s) => s['id'] == _selectedIndividualStudentId,
+      orElse: () => {},
+    );
+  }
+
+  String _getRecipientsSummaryText() {
+    if (_dispatchMode == StudentDispatchMode.individual) {
+      final st = _selectedIndividualStudent;
+      return st?['full_name'] as String? ?? 'Nenhum aluno selecionado';
+    }
+    if (_selectedMultipleStudentIds.isEmpty) {
+      return 'Nenhum aluno selecionado';
+    }
+    final names = _students
+        .where((s) => _selectedMultipleStudentIds.contains(s['id']))
+        .map((s) => s['full_name'] as String? ?? 'Aluno')
+        .toList();
+    if (names.isEmpty) return 'Nenhum aluno selecionado';
+    if (names.length == 1) return names.first;
+    if (names.length == 2) return '${names[0]} e ${names[1]}';
+    return '${names[0]}, ${names[1]} e mais ${names.length - 2} alunos';
+  }
 
   @override
   void initState() {
@@ -58,27 +95,34 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
       setState(() {
         _students = list;
         if (widget.initialStudentId != null) {
-          _selectedStudentIds.add(widget.initialStudentId!);
-          final found = list.firstWhere(
-            (s) => s['id'] == widget.initialStudentId,
-            orElse: () => {},
-          );
-          if (found.isNotEmpty) {
-            if (found['injuries_or_restrictions'] != null &&
-                (found['injuries_or_restrictions'] as String).isNotEmpty) {
-              _restrictionsCtrl.text = found['injuries_or_restrictions'];
-            }
-            if (found['objective'] != null) {
-              final obj = found['objective'] as String;
-              if (['Hipertrofia Muscular', 'Emagrecimento', 'Condicionamento Geral', 'Força Máxima'].contains(obj)) {
-                _objective = obj;
-              }
-            }
-          }
-        } else if (list.isNotEmpty && _selectedStudentIds.isEmpty) {
-          _selectedStudentIds.add(list.first['id'] as String);
+          _dispatchMode = StudentDispatchMode.individual;
+          _onSelectIndividualStudent(widget.initialStudentId!);
+        } else if (list.isNotEmpty) {
+          _onSelectIndividualStudent(list.first['id'] as String);
         }
       });
+    }
+  }
+
+  void _onSelectIndividualStudent(String studentId) {
+    _selectedIndividualStudentId = studentId;
+    if (!_selectedMultipleStudentIds.contains(studentId)) {
+      _selectedMultipleStudentIds.add(studentId);
+    }
+    final found = _students.firstWhere(
+      (s) => s['id'] == studentId,
+      orElse: () => {},
+    );
+    if (found.isNotEmpty) {
+      if (found['injuries_or_restrictions'] != null &&
+          (found['injuries_or_restrictions'] as String).isNotEmpty) {
+        _restrictionsCtrl.text = found['injuries_or_restrictions'];
+      }
+      final obj = found['goal'] ?? found['objective'];
+      if (obj != null &&
+          ['Hipertrofia Muscular', 'Emagrecimento', 'Condicionamento Geral', 'Força Máxima'].contains(obj)) {
+        _objective = obj as String;
+      }
     }
   }
 
@@ -91,6 +135,21 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
 
   Future<void> _handleGenerate() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_selectedStudentIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.amber.shade900,
+          content: Text(
+            _dispatchMode == StudentDispatchMode.individual
+                ? 'Selecione um aluno destinatário antes de gerar a periodização.'
+                : 'Selecione ao menos 1 aluno para o envio em lote.',
+          ),
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -244,155 +303,6 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             ],
           ),
           const SizedBox(height: 20),
-          if (_students.isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.card(context),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: _selectedStudentIds.isEmpty ? Colors.amber.shade700 : AppColors.cardBorder(context),
-                  width: _selectedStudentIds.isEmpty ? 1.5 : 1,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.group_outlined, size: 18, color: AppColors.emerald(context)),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Alunos Destinatários (${_selectedStudentIds.length}/${_students.length})',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.text(context),
-                            ),
-                          ),
-                        ],
-                      ),
-                      TextButton.icon(
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        icon: Icon(
-                          _selectedStudentIds.length == _students.length
-                              ? Icons.check_box_rounded
-                              : Icons.select_all_rounded,
-                          size: 16,
-                          color: AppColors.emerald(context),
-                        ),
-                        label: Text(
-                          _selectedStudentIds.length == _students.length ? 'Desmarcar Todos' : 'Selecionar Todos',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.emerald(context),
-                          ),
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            if (_selectedStudentIds.length == _students.length) {
-                              _selectedStudentIds.clear();
-                            } else {
-                              _selectedStudentIds.clear();
-                              _selectedStudentIds.addAll(_students.map((s) => s['id'] as String));
-                            }
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _students.map((st) {
-                      final id = st['id'] as String;
-                      final name = st['full_name'] as String? ?? 'Aluno';
-                      final isSelected = _selectedStudentIds.contains(id);
-                      final hasAlert = st['has_alert'] == true;
-
-                      return FilterChip(
-                        selected: isSelected,
-                        showCheckmark: true,
-                        checkmarkColor: isSelected ? Colors.black : null,
-                        avatar: CircleAvatar(
-                          radius: 10,
-                          backgroundColor: isSelected ? Colors.black26 : AppColors.cardBorder(context),
-                          child: Text(
-                            name.isNotEmpty ? name[0].toUpperCase() : 'A',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: isSelected ? Colors.black : AppColors.text(context),
-                            ),
-                          ),
-                        ),
-                        label: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              name,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                                color: isSelected ? Colors.black : AppColors.text(context),
-                              ),
-                            ),
-                            if (hasAlert) ...[
-                              const SizedBox(width: 4),
-                              Icon(Icons.warning_amber_rounded, size: 14, color: isSelected ? Colors.black : Colors.amber),
-                            ],
-                          ],
-                        ),
-                        backgroundColor: AppColors.pillBg(context),
-                        selectedColor: AppColors.emerald(context),
-                        side: BorderSide(
-                          color: isSelected
-                              ? AppColors.emerald(context)
-                              : (hasAlert ? Colors.amber.shade600 : AppColors.cardBorder(context)),
-                        ),
-                        onSelected: (selected) {
-                          setState(() {
-                            if (selected) {
-                              _selectedStudentIds.add(id);
-                              // Auto-preenche campos se for o primeiro aluno selecionado
-                              if (st['injuries_or_restrictions'] != null &&
-                                  (st['injuries_or_restrictions'] as String).isNotEmpty) {
-                                _restrictionsCtrl.text = st['injuries_or_restrictions'];
-                              }
-                              if (st['objective'] != null) {
-                                final obj = st['objective'] as String;
-                                if (['Hipertrofia Muscular', 'Emagrecimento', 'Condicionamento Geral', 'Força Máxima'].contains(obj)) {
-                                  _objective = obj;
-                                }
-                              }
-                            } else {
-                              _selectedStudentIds.remove(id);
-                            }
-                          });
-                        },
-                      );
-                    }).toList(),
-                  ),
-                  if (_selectedStudentIds.isEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'Atenção: Selecione ao menos 1 aluno para liberar esta ficha.',
-                      style: TextStyle(fontSize: 11, color: Colors.amber.shade700, fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
           DropdownButtonFormField<String>(
             initialValue: _objective,
             dropdownColor: AppColors.card(context),
@@ -506,10 +416,20 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
               hint: 'Ex: Dar ênfase a peitoral superior e deltoides',
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
+          _buildDispatchSection(context),
+          const SizedBox(height: 10),
           ElevatedButton.icon(
             icon: const Icon(Icons.auto_awesome, color: Colors.black),
-            label: const Text('Gerar Periodização com IA'),
+            label: Text(
+              _dispatchMode == StudentDispatchMode.individual
+                  ? (_selectedIndividualStudent != null
+                      ? 'Gerar Periodização para ${_selectedIndividualStudent!['full_name']}'
+                      : 'Gerar Periodização Individual')
+                  : (_selectedMultipleStudentIds.isNotEmpty
+                      ? 'Gerar Periodização para ${_selectedMultipleStudentIds.length} Alunos'
+                      : 'Gerar Periodização para Vários Alunos'),
+            ),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
               backgroundColor: AppColors.emerald(context),
@@ -526,13 +446,497 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
     );
   }
 
+  Widget _buildDispatchSection(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card(context),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: _selectedStudentIds.isEmpty ? Colors.amber.shade700 : AppColors.cardBorder(context),
+          width: _selectedStudentIds.isEmpty ? 1.5 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.emeraldBg(context),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.send_rounded, color: AppColors.emerald(context), size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'DESTINATÁRIOS DO TREINO',
+                      style: TextStyle(
+                        fontSize: 11,
+                        letterSpacing: 1.1,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.emerald(context),
+                      ),
+                    ),
+                    Text(
+                      'Modo de Envio & Atribuição',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.text(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // SEGMENTED SWITCHER
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: AppColors.pillBg(context),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.pillBorder(context)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildModeTabButton(
+                    mode: StudentDispatchMode.individual,
+                    title: 'Aluno Individual',
+                    icon: Icons.person_rounded,
+                    badgeText: '1 Aluno',
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: _buildModeTabButton(
+                    mode: StudentDispatchMode.multiple,
+                    title: 'Vários Alunos',
+                    icon: Icons.groups_rounded,
+                    badgeText: '${_selectedMultipleStudentIds.length}',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          if (_dispatchMode == StudentDispatchMode.individual)
+            _buildIndividualModeContent(context)
+          else
+            _buildMultipleModeContent(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModeTabButton({
+    required StudentDispatchMode mode,
+    required String title,
+    required IconData icon,
+    required String badgeText,
+  }) {
+    final isSelected = _dispatchMode == mode;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _dispatchMode = mode;
+          if (mode == StudentDispatchMode.individual) {
+            if (_selectedIndividualStudentId == null && _students.isNotEmpty) {
+              _onSelectIndividualStudent(_students.first['id'] as String);
+            }
+          }
+        });
+      },
+      borderRadius: BorderRadius.circular(11),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.emerald(context) : Colors.transparent,
+          borderRadius: BorderRadius.circular(11),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected ? Colors.black : AppColors.subtext(context),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                  color: isSelected ? Colors.black : AppColors.text(context),
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: isSelected ? Colors.black12 : AppColors.cardBorder(context),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                badgeText,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: isSelected ? Colors.black : AppColors.subtext(context),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIndividualModeContent(BuildContext context) {
+    if (_students.isEmpty) {
+      return _buildEmptyStudentsWarning(context);
+    }
+
+    final selectedStudent = _selectedIndividualStudent;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Selecione o aluno que receberá esta prescrição exclusiva:',
+          style: TextStyle(fontSize: 12, color: AppColors.subtext(context)),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          initialValue: _selectedIndividualStudentId,
+          dropdownColor: AppColors.card(context),
+          style: TextStyle(color: AppColors.text(context), fontSize: 13),
+          isExpanded: true,
+          decoration: _inputDecoration(
+            context,
+            'Aluno Destinatário',
+            prefixIcon: Icons.person_outline_rounded,
+          ),
+          items: _students.map((st) {
+            final name = st['full_name'] as String? ?? 'Aluno';
+            final goal = st['goal'] ?? st['objective'] ?? 'Consultoria';
+            return DropdownMenuItem(
+              value: st['id'] as String,
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 11,
+                    backgroundColor: AppColors.emeraldBg(context),
+                    child: Text(
+                      name.isNotEmpty ? name[0].toUpperCase() : 'A',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.emerald(context)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '$name ($goal)',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+          onChanged: (val) {
+            if (val != null) {
+              setState(() {
+                _onSelectIndividualStudent(val);
+              });
+            }
+          },
+        ),
+        if (selectedStudent != null) ...[
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.pillBg(context),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.pillBorder(context)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.verified_user_outlined, size: 15, color: AppColors.emerald(context)),
+                    const SizedBox(width: 6),
+                    Text(
+                      selectedStudent['full_name'] as String? ?? 'Aluno',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.text(context),
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.emeraldBg(context),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        selectedStudent['status'] as String? ?? 'Ativo',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.emerald(context),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (selectedStudent['injuries_or_restrictions'] != null &&
+                    (selectedStudent['injuries_or_restrictions'] as String).isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, size: 14, color: Colors.amber),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Restrição no cadastro: ${selectedStudent['injuries_or_restrictions']}',
+                          style: const TextStyle(fontSize: 11, color: Colors.amber, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildMultipleModeContent(BuildContext context) {
+    if (_students.isEmpty) {
+      return _buildEmptyStudentsWarning(context);
+    }
+
+    final allSelected = _selectedMultipleStudentIds.length == _students.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'Selecione os Alunos',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.subtext(context),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.emeraldBg(context),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '${_selectedMultipleStudentIds.length}/${_students.length}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.emerald(context),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            TextButton.icon(
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                visualDensity: VisualDensity.compact,
+              ),
+              icon: Icon(
+                allSelected ? Icons.check_box_rounded : Icons.select_all_rounded,
+                size: 15,
+                color: AppColors.emerald(context),
+              ),
+              label: Text(
+                allSelected ? 'Desmarcar Todos' : 'Selecionar Todos',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.emerald(context),
+                ),
+              ),
+              onPressed: () {
+                setState(() {
+                  if (allSelected) {
+                    _selectedMultipleStudentIds.clear();
+                  } else {
+                    _selectedMultipleStudentIds.clear();
+                    _selectedMultipleStudentIds.addAll(_students.map((s) => s['id'] as String));
+                  }
+                });
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _students.map((st) {
+            final id = st['id'] as String;
+            final name = st['full_name'] as String? ?? 'Aluno';
+            final isSelected = _selectedMultipleStudentIds.contains(id);
+            final hasAlert = st['has_alert'] == true;
+
+            return FilterChip(
+              selected: isSelected,
+              showCheckmark: true,
+              checkmarkColor: isSelected ? Colors.black : null,
+              avatar: CircleAvatar(
+                radius: 10,
+                backgroundColor: isSelected ? Colors.black26 : AppColors.cardBorder(context),
+                child: Text(
+                  name.isNotEmpty ? name[0].toUpperCase() : 'A',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected ? Colors.black : AppColors.text(context),
+                  ),
+                ),
+              ),
+              label: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    name,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                      color: isSelected ? Colors.black : AppColors.text(context),
+                    ),
+                  ),
+                  if (hasAlert) ...[
+                    const SizedBox(width: 4),
+                    Icon(Icons.warning_amber_rounded, size: 14, color: isSelected ? Colors.black : Colors.amber),
+                  ],
+                ],
+              ),
+              backgroundColor: AppColors.pillBg(context),
+              selectedColor: AppColors.emerald(context),
+              side: BorderSide(
+                color: isSelected
+                    ? AppColors.emerald(context)
+                    : (hasAlert ? Colors.amber.shade600 : AppColors.cardBorder(context)),
+              ),
+              onSelected: (selected) {
+                setState(() {
+                  if (selected) {
+                    _selectedMultipleStudentIds.add(id);
+                  } else {
+                    _selectedMultipleStudentIds.remove(id);
+                  }
+                });
+              },
+            );
+          }).toList(),
+        ),
+        if (_selectedMultipleStudentIds.isEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Selecione ao menos 1 aluno para o envio em lote.',
+            style: TextStyle(fontSize: 11, color: Colors.amber.shade700, fontWeight: FontWeight.w600),
+          ),
+        ] else ...[
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.emeraldBg(context),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.emerald(context).withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.bolt_rounded, size: 16, color: AppColors.emerald(context)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'A mesma periodização será sincronizada para os ${_selectedMultipleStudentIds.length} alunos selecionados.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.emerald(context),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildEmptyStudentsWarning(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade900.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline_rounded, color: Colors.amber, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Nenhum aluno cadastrado ainda. A periodização poderá ser salva e vinculada posteriormente.',
+              style: TextStyle(fontSize: 12, color: AppColors.text(context)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handleApprovePlan() async {
     if (_generatedPlan == null) return;
     if (_selectedStudentIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: Colors.orange,
-          content: Text('Selecione ao menos um aluno para vincular a esta periodização.'),
+        SnackBar(
+          backgroundColor: Colors.orange.shade800,
+          content: Text(
+            _dispatchMode == StudentDispatchMode.individual
+                ? 'Selecione um aluno para vincular a esta periodização.'
+                : 'Selecione ao menos 1 aluno para vincular a esta periodização.',
+          ),
         ),
       );
       return;
@@ -552,14 +956,15 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
       }
 
       if (mounted) {
+        final individualStudent = _selectedIndividualStudent;
+        final message = (_dispatchMode == StudentDispatchMode.individual && individualStudent != null)
+            ? '✓ Ficha liberada com sucesso para ${individualStudent['full_name']}!'
+            : '✓ Ficha salva e liberada com sucesso para $successCount alunos!';
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.green.shade800,
-            content: Text(
-              successCount == 1
-                  ? '✓ Ficha salva no Supabase e liberada para o aluno!'
-                  : '✓ Ficha salva no Supabase e liberada para $successCount alunos com sucesso!',
-            ),
+            content: Text(message),
           ),
         );
       }
@@ -628,6 +1033,66 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                 Text(
                   'Diretriz Clínica: ${plan.notesForTrainer}',
                   style: TextStyle(fontSize: 12, color: AppColors.subtext(context), height: 1.3),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.pillBg(context),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.pillBorder(context)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _dispatchMode == StudentDispatchMode.individual
+                            ? Icons.person_rounded
+                            : Icons.groups_rounded,
+                        size: 18,
+                        color: AppColors.emerald(context),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _dispatchMode == StudentDispatchMode.individual
+                                  ? 'Destinatário Individual'
+                                  : 'Destinatários em Lote (${_selectedMultipleStudentIds.length} alunos)',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.emerald(context),
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            Text(
+                              _getRecipientsSummaryText(),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.text(context),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (_students.isNotEmpty)
+                        TextButton.icon(
+                          icon: const Icon(Icons.edit_outlined, size: 14),
+                          label: const Text('Alterar', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.emerald(context),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          onPressed: _showChangeRecipientsSheet,
+                        ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -752,9 +1217,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                 label: Text(
                   _isSavingPlan
                       ? 'Gravando no Supabase...'
-                      : (_selectedStudentIds.length > 1
-                          ? 'Aprovar e Liberar para ${_selectedStudentIds.length} Alunos'
-                          : 'Aprovar e Liberar para o Aluno'),
+                      : (_dispatchMode == StudentDispatchMode.individual
+                          ? 'Aprovar e Liberar para ${_selectedIndividualStudent?['full_name'] ?? 'o Aluno'}'
+                          : 'Aprovar e Liberar para ${_selectedMultipleStudentIds.length} Alunos'),
                   style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
                 ),
                 style: ElevatedButton.styleFrom(
@@ -771,6 +1236,214 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showChangeRecipientsSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.card(context),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Destinatários da Prescrição',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.text(context),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: AppColors.pillBg(context),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.pillBorder(context)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: () {
+                              setSheetState(() => _dispatchMode = StudentDispatchMode.individual);
+                              setState(() {});
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: _dispatchMode == StudentDispatchMode.individual
+                                    ? AppColors.emerald(context)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                'Aluno Individual',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: _dispatchMode == StudentDispatchMode.individual
+                                      ? Colors.black
+                                      : AppColors.text(context),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () {
+                              setSheetState(() => _dispatchMode = StudentDispatchMode.multiple);
+                              setState(() {});
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: _dispatchMode == StudentDispatchMode.multiple
+                                    ? AppColors.emerald(context)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                'Vários Alunos (${_selectedMultipleStudentIds.length})',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: _dispatchMode == StudentDispatchMode.multiple
+                                      ? Colors.black
+                                      : AppColors.text(context),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.45,
+                    ),
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: [
+                        if (_dispatchMode == StudentDispatchMode.individual) ...[
+                          ..._students.map((st) {
+                            final isSel = _selectedIndividualStudentId == st['id'];
+                            return ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: CircleAvatar(
+                                backgroundColor: isSel ? AppColors.emerald(context) : AppColors.pillBg(context),
+                                child: Text(
+                                  (st['full_name'] as String? ?? 'A')[0].toUpperCase(),
+                                  style: TextStyle(
+                                    color: isSel ? Colors.black : AppColors.text(context),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              title: Text(
+                                st['full_name'] as String? ?? 'Aluno',
+                                style: TextStyle(
+                                  color: AppColors.text(context),
+                                  fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+                                ),
+                              ),
+                              subtitle: Text(
+                                st['goal'] ?? st['objective'] ?? 'Consultoria',
+                                style: TextStyle(color: AppColors.subtext(context), fontSize: 12),
+                              ),
+                              trailing: isSel
+                                  ? Icon(Icons.check_circle_rounded, color: AppColors.emerald(context))
+                                  : null,
+                              onTap: () {
+                                setSheetState(() => _selectedIndividualStudentId = st['id']);
+                                setState(() => _selectedIndividualStudentId = st['id']);
+                              },
+                            );
+                          }),
+                        ] else ...[
+                          ..._students.map((st) {
+                            final id = st['id'] as String;
+                            final isSel = _selectedMultipleStudentIds.contains(id);
+                            return CheckboxListTile(
+                              contentPadding: EdgeInsets.zero,
+                              activeColor: AppColors.emerald(context),
+                              checkColor: Colors.black,
+                              value: isSel,
+                              title: Text(
+                                st['full_name'] as String? ?? 'Aluno',
+                                style: TextStyle(color: AppColors.text(context)),
+                              ),
+                              subtitle: Text(
+                                st['goal'] ?? st['objective'] ?? 'Consultoria',
+                                style: TextStyle(color: AppColors.subtext(context), fontSize: 12),
+                              ),
+                              onChanged: (val) {
+                                setSheetState(() {
+                                  if (val == true) {
+                                    _selectedMultipleStudentIds.add(id);
+                                  } else {
+                                    _selectedMultipleStudentIds.remove(id);
+                                  }
+                                });
+                                setState(() {});
+                              },
+                            );
+                          }),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.emerald(context),
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Confirmar Destinatários', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

@@ -204,7 +204,7 @@ class GeminiService:
                 "2. **Fisiologia do Exercício:** Bioenergética neuromuscular (ATP-CP, glicolítica, oxidativa), fadiga central vs periférica, gestão de estresse mecânico vs metabólico, RPE (Escala de Borg CR10), RIR (repetições em reserva), supercompensação e recuperação tecidual.\n"
                 "3. **Treinador de Musculação & Treinamento Resistido Avançado:** Periodização ondulatória diária (DUP), linear e em blocos; técnicas inteligentes de intensificação (Rest-Pause, Myo-Reps, Cluster Sets, Drop-Sets conscientes, repetições em máximo alongamento muscular); controle estrito de cadência e tempo sob tensão.\n"
                 "4. **Estrategista B2B Fitness & Negócios em Saúde:** Gestão e escala de consultorias presenciais e híbridas via app, estruturação de planos recorrentes de alto valor, scripts de fechamento e quebra de objeções no WhatsApp, fidelização, combate a churn e reengajamento de alunos inativos.\n"
-                "Seja sempre técnico, preciso, seguro, encorajador e direto ao ponto com o personal trainer."
+                "Inicie sempre seu parecer ou resposta com o cabeçalho '### 🤖 Parecer do Mr. Coach'. Seja sempre técnico, preciso, seguro, encorajador e direto ao ponto com o personal trainer."
             )
 
             config = types.GenerateContentConfig(
@@ -321,7 +321,7 @@ class GeminiService:
 
         else:
             return (
-                f"### 🤖 Parecer do Mr. Coach AI • Biomecânica & B2B\n\n"
+                f"### 🤖 Parecer do Mr. Coach\n\n"
                 f"Analisando a sua solicitação: **\"{prompt}\"**\n\n"
                 "1. **Fundamento Biomecânico:** Respeite a linha de ação das fibras musculares e o alinhamento das articulações envolvidas, priorizando a fase excêntrica controlada (cadência mínima de 3 segundos).\n"
                 "2. **Estímulo Neuromuscular:** Manipule o volume de séries mantendo o esforço próximo à falha mecânica (RIR 1-2), garantindo máxima tensão mecânica sem exaustão desnecessária do sistema nervoso central.\n"
