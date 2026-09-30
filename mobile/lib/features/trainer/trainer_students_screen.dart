@@ -875,13 +875,22 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     final currentStatus = student['status'] as String? ?? 'Ativo';
     final isArchiving = currentStatus.toLowerCase() == 'ativo' || currentStatus.toLowerCase().contains('pendente');
     final newStatus = isArchiving ? 'Arquivado' : 'Ativo';
-
     final studentId = student['id'] as String;
-    await WorkoutService.updateStudentStatus(studentId: studentId, status: newStatus);
 
+    // Atualização otimista imediata na UI para atualizar pílulas e contadores
     setState(() {
       student['status'] = newStatus;
+      final idx = _students.indexWhere((s) => s['id'] == studentId);
+      if (idx != -1) {
+        _students[idx]['status'] = newStatus;
+      }
     });
+
+    try {
+      await WorkoutService.updateStudentStatus(studentId: studentId, status: newStatus);
+    } catch (e) {
+      debugPrint('Aviso ao sincronizar status do aluno no backend: $e');
+    }
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -971,7 +980,14 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
 
     final totalCount = _students.length;
     final activeCount = _students.where((s) => (s['status'] as String? ?? '').toLowerCase() == 'ativo').length;
-    final pendingCount = _students.where((s) => (s['status'] as String? ?? '').toLowerCase().contains('pendente')).length;
+    final pendingCount = _students.where((s) {
+      final st = (s['status'] as String? ?? '').toLowerCase();
+      return st.contains('pendente') || st.contains('convidado');
+    }).length;
+    final archivedCount = _students.where((s) {
+      final st = (s['status'] as String? ?? '').toLowerCase();
+      return st.contains('arquivado') || st.contains('inativo');
+    }).length;
     final alertsCount = _students.where((s) => s['has_alert'] == true).length;
 
     return Scaffold(
@@ -1102,7 +1118,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                   const SizedBox(width: 8),
                   _buildFilterChip('Convidados ($pendingCount)', isSelected: _selectedFilter == 'Convidados', onTap: () => setState(() => _selectedFilter = 'Convidados')),
                   const SizedBox(width: 8),
-                  _buildFilterChip('Arquivados', isSelected: _selectedFilter == 'Arquivados', onTap: () => setState(() => _selectedFilter = 'Arquivados')),
+                  _buildFilterChip('Arquivados ($archivedCount)', isSelected: _selectedFilter == 'Arquivados', onTap: () => setState(() => _selectedFilter = 'Arquivados')),
                   const SizedBox(width: 8),
                   _buildFilterChip(
                     'Com Alerta ($alertsCount)',
