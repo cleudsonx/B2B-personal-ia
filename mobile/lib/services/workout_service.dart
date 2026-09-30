@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/config/app_config.dart';
 import '../models/workout_plan_model.dart';
@@ -236,32 +237,79 @@ class WorkoutService {
       debugPrint('Aviso Backend save-prescription: $e');
     }
 
+    // 3. Salva no cache offline persistente do celular para visualização sem internet
+    await _saveWorkoutToOfflineCache(clientId, plan);
+
     return supabaseResult ?? {'status': 'saved', 'client_id': clientId};
   }
 
-  /// Busca a ficha ativa do aluno logado
+  static const String _kOfflineWorkoutPrefix = 'b2b_offline_active_workout_';
+
+  /// Salva a ficha ativa no armazenamento local do dispositivo para uso offline
+  static Future<void> _saveWorkoutToOfflineCache(String clientId, WorkoutPlanModel plan) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('$_kOfflineWorkoutPrefix$clientId', jsonEncode(plan.toJson()));
+      await prefs.setString('${_kOfflineWorkoutPrefix}last_active', jsonEncode(plan.toJson()));
+    } catch (e) {
+      debugPrint('Aviso ao salvar treino no cache offline: $e');
+    }
+  }
+
+  /// Recupera a ficha ativa do armazenamento local se o aluno estiver offline
+  static Future<WorkoutPlanModel?> getOfflineCachedWorkout({String? clientId}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final target = clientId ?? AuthService.currentUser?.id;
+      String? raw;
+      if (target != null) {
+        raw = prefs.getString('$_kOfflineWorkoutPrefix$target');
+      }
+      raw ??= prefs.getString('${_kOfflineWorkoutPrefix}last_active');
+      if (raw != null && raw.isNotEmpty) {
+        final map = jsonDecode(raw) as Map<String, dynamic>;
+        return WorkoutPlanModel.fromJson(map);
+      }
+    } catch (e) {
+      debugPrint('Aviso ao carregar treino do cache offline: $e');
+    }
+    return null;
+  }
+
+  /// Busca a ficha ativa do aluno logado com tolerância a falhas offline
   static Future<WorkoutPlanModel?> getActiveWorkoutForClient({String? clientId}) async {
     final targetId = clientId ?? AuthService.currentUser?.id;
-    if (targetId == null || _clientOrNull == null) return null;
 
-    try {
-      final data = await _client
-          .from('workouts')
-          .select('plan_json')
-          .eq('client_id', targetId)
-          .eq('is_active', true)
-          .order('created_at', ascending: false)
-          .limit(1)
-          .maybeSingle();
+    // 1. Tenta carregar do Supabase se houver conexão
+    if (_clientOrNull != null && targetId != null) {
+      try {
+        final data = await _client
+            .from('workouts')
+            .select('plan_json')
+            .eq('client_id', targetId)
+            .eq('is_active', true)
+            .order('created_at', ascending: false)
+            .limit(1)
+            .maybeSingle();
 
-      if (data != null && data['plan_json'] != null) {
-        return WorkoutPlanModel.fromJson(Map<String, dynamic>.from(data['plan_json']));
+        if (data != null && data['plan_json'] != null) {
+          final plan = WorkoutPlanModel.fromJson(Map<String, dynamic>.from(data['plan_json']));
+          await _saveWorkoutToOfflineCache(targetId, plan);
+          return plan;
+        }
+      } catch (e) {
+        debugPrint('Aviso Supabase getActiveWorkoutForClient: $e. Tentando cache offline.');
       }
-      return null;
-    } catch (e) {
-      debugPrint('Erro ao buscar treino ativo do aluno: $e');
-      return null;
     }
+
+    // 2. Fallback resiliente offline (academia sem sinal ou sem internet)
+    final cached = await getOfflineCachedWorkout(clientId: targetId);
+    if (cached != null) {
+      debugPrint('[WorkoutService] Treino carregado com sucesso do cache offline persistente.');
+      return cached;
+    }
+
+    return null;
   }
 
   /// Registra uma substituição de exercício na tabela de auditoria

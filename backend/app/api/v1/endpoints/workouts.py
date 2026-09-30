@@ -20,88 +20,16 @@ from app.schemas.workout import (
 from app.services.gemini_service import GeminiService
 from app.services.email_service import email_service
 from app.services.whatsapp_service import whatsapp_service
+from app.services.supabase_service import supabase_service
 from app.core.config import settings
 from app.api.deps import get_gemini_service, get_current_user
 
 router = APIRouter()
 
-# Armazenamento em memória com integridade referencial para persistência e fallback robusto
-_PRESCRIPTIONS_STORE: Dict[str, Dict[str, Any]] = {}
-_ALERTS_STORE: Dict[str, Dict[str, Any]] = {
-    "alt-1": {
-        "id": "alt-1",
-        "student_id": "st-1",
-        "student_name": "Rodrigo Silveira",
-        "trainer_id": "current-trainer",
-        "original_exercise": "Supino Reto com Barra",
-        "adapted_exercise": "Supino Máquina Articulada",
-        "reason": "Desconforto ou Dor Articular",
-        "pain_location": "Ombro Anterior",
-        "severity": "Moderada",
-        "status": "active",
-        "acknowledged": False,
-        "created_at": "2026-09-29T07:45:00Z",
-        "message": "Trocou Supino Reto por Supino Máquina (Ombro Anterior)",
-    }
-}
-_STUDENTS_STORE: Dict[str, Dict[str, Any]] = {
-    "st-1": {
-        "id": "st-1",
-        "full_name": "Rodrigo Silveira",
-        "email": "rodrigo.silveira@email.com",
-        "phone": "(11) 98765-4321",
-        "goal": "Hipertrofia Muscular",
-        "status": "Ativo",
-        "trainer_id": "current-trainer",
-        "created_at": "2026-09-01T10:00:00Z",
-        "has_active_prescription": True,
-        "last_session": "Hoje, 07:45",
-        "active_split": "Treino A - Peito e Tríceps",
-        "injuries_or_restrictions": "Leve histórico de desconforto no manguito rotador",
-    },
-    "st-2": {
-        "id": "st-2",
-        "full_name": "Camila Vasconcelos",
-        "email": "camila.vasconcelos@email.com",
-        "phone": "(21) 99876-5432",
-        "goal": "Emagrecimento & Definição",
-        "status": "Ativo",
-        "trainer_id": "current-trainer",
-        "created_at": "2026-09-10T14:30:00Z",
-        "has_active_prescription": True,
-        "last_session": "Hoje, 09:15",
-        "active_split": "Treino B - Membros Inferiores",
-        "injuries_or_restrictions": "Condromalácia patelar grau 1",
-    },
-    "st-3": {
-        "id": "st-3",
-        "full_name": "Lucas Andrade Mendes",
-        "email": "lucas.mendes@email.com",
-        "phone": "(11) 91234-5678",
-        "goal": "Condicionamento Geral",
-        "status": "Pendente Confirmação",
-        "trainer_id": "current-trainer",
-        "created_at": "2026-09-28T18:00:00Z",
-        "has_active_prescription": False,
-        "last_session": "Convite enviado",
-        "active_split": "Aguardando confirmação",
-        "injuries_or_restrictions": "Nenhuma",
-    },
-    "st-4": {
-        "id": "st-4",
-        "full_name": "Mariana Castro",
-        "email": "mariana.castro@email.com",
-        "phone": "(31) 97654-3210",
-        "goal": "Reabilitação Postural",
-        "status": "Arquivado",
-        "trainer_id": "current-trainer",
-        "created_at": "2026-07-15T11:00:00Z",
-        "has_active_prescription": False,
-        "last_session": "Ciclo concluído em 15/08",
-        "active_split": "Plano finalizado",
-        "injuries_or_restrictions": "Escoliose torácica leve",
-    },
-}
+# Aliases para compatibilidade e fallback referencial
+_STUDENTS_STORE = supabase_service._mem_students
+_PRESCRIPTIONS_STORE = supabase_service._mem_prescriptions
+_ALERTS_STORE = supabase_service._mem_alerts
 
 
 @router.post(
@@ -116,6 +44,15 @@ async def generate_workout_plan(
     gemini_svc: GeminiService = Depends(get_gemini_service),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> WorkoutPlanResponse:
+    trainer_id = current_user.get("sub") or "current-trainer"
+    sub = await supabase_service.get_trainer_subscription(trainer_id)
+    if not sub.can_generate_ai:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Limite de {sub.max_ai_generations} gerações de IA por mês atingido no plano '{sub.plan_name}'. "
+                   f"Faça upgrade para o plano Personal Pro para gerar fichas ilimitadas."
+        )
+
     try:
         plan = await gemini_svc.generate_workout_plan(
             objective=data.objective,
@@ -127,6 +64,7 @@ async def generate_workout_plan(
             target_focus=data.target_focus,
             additional_notes=data.additional_notes
         )
+        supabase_service.increment_ai_generations(trainer_id)
         return plan
     except ValueError as e:
         raise HTTPException(
@@ -145,50 +83,14 @@ async def generate_workout_plan(
     response_model=PrescriptionSaveResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Salvar e Liberar Prescrição para o Aluno",
-    description="Valida e persiste a ficha estruturada para o aluno indicado, atualizando status para ativo."
+    description="Valida e persiste a ficha estruturada no Supabase para o aluno indicado, atualizando status para ativo."
 )
 async def save_prescription(
     data: PrescriptionSaveRequest,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> PrescriptionSaveResponse:
     trainer_id = data.trainer_id or current_user.get("sub") or "current-trainer"
-    prescription_id = f"presc_{uuid.uuid4().hex[:12]}"
-    created_at = datetime.now().isoformat()
-
-    # Desativa prescrições anteriores do mesmo aluno
-    for p in _PRESCRIPTIONS_STORE.values():
-        if p.get("client_id") == data.client_id:
-            p["is_active"] = False
-
-    # Armazena nova prescrição ativa
-    _PRESCRIPTIONS_STORE[prescription_id] = {
-        "id": prescription_id,
-        "client_id": data.client_id,
-        "trainer_id": trainer_id,
-        "workout_plan_title": data.plan.workout_plan_title,
-        "plan_dict": data.plan.model_dump(),
-        "splits_count": len(data.plan.splits),
-        "notes": data.notes,
-        "is_active": True,
-        "created_at": created_at,
-    }
-
-    # Atualiza indicador do aluno se existir no store
-    if data.client_id in _STUDENTS_STORE:
-        _STUDENTS_STORE[data.client_id]["has_active_prescription"] = True
-        _STUDENTS_STORE[data.client_id]["status"] = "Ativo"
-
-    return PrescriptionSaveResponse(
-        id=prescription_id,
-        client_id=data.client_id,
-        trainer_id=trainer_id,
-        workout_plan_title=data.plan.workout_plan_title,
-        splits_count=len(data.plan.splits),
-        is_active=True,
-        created_at=created_at,
-        status="active",
-        message="Prescrição gravada com sucesso e liberada no aplicativo do aluno."
-    )
+    return await supabase_service.save_prescription(trainer_id, data)
 
 
 @router.get(
@@ -202,37 +104,29 @@ async def get_active_prescription_for_client(
     client_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> WorkoutPlanResponse:
-    for p in reversed(list(_PRESCRIPTIONS_STORE.values())):
-        if p.get("client_id") == client_id and p.get("is_active"):
-            return WorkoutPlanResponse(**p["plan_dict"])
-
-    # Se não houver prescrição gravada neste ciclo, lança 404
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"Nenhuma ficha ativa encontrada para o aluno '{client_id}'."
-    )
+    plan = await supabase_service.get_active_prescription(client_id)
+    if not plan:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Nenhuma ficha ativa encontrada para o aluno '{client_id}'."
+        )
+    return plan
 
 
-def _count_trainer_occupied_slots(trainer_id: str, exclude_student_id: str = None) -> int:
+async def _count_trainer_occupied_slots(trainer_id: str, exclude_student_id: str = None) -> int:
     """Retorna o número de alunos ocupando vaga ativa na consultoria (não arquivados / não inativos)."""
-    return sum(
-        1 for sid, st in _STUDENTS_STORE.items()
-        if sid != exclude_student_id
-        and (st.get("trainer_id") == trainer_id or trainer_id in ("current-trainer", "dev-user-0000-0000-000000000001"))
-        and st.get("status", "").lower() not in ("arquivado", "inativo")
-    )
+    return await supabase_service.count_trainer_occupied_slots(trainer_id)
 
 
-def _get_trainer_max_students(trainer_id: str) -> int:
+async def _get_trainer_max_students(trainer_id: str) -> int:
     """Busca o limite do plano SaaS ativo do treinador (Starter=3, Pro=30, Elite=60, Studio=100)."""
     from app.api.v1.endpoints.subscriptions import ACTIVE_TRAINER_SUBSCRIPTIONS
     if trainer_id in ACTIVE_TRAINER_SUBSCRIPTIONS:
         return ACTIVE_TRAINER_SUBSCRIPTIONS[trainer_id].max_students
     if "current-trainer" in ACTIVE_TRAINER_SUBSCRIPTIONS:
         return ACTIVE_TRAINER_SUBSCRIPTIONS["current-trainer"].max_students
-    if ACTIVE_TRAINER_SUBSCRIPTIONS:
-        return list(ACTIVE_TRAINER_SUBSCRIPTIONS.values())[-1].max_students
-    return 30
+    sub = await supabase_service.get_trainer_subscription(trainer_id)
+    return sub.max_students
 
 
 @router.post(
@@ -240,7 +134,7 @@ def _get_trainer_max_students(trainer_id: str) -> int:
     response_model=StudentResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Cadastrar Novo Aluno com Validação e Confirmação",
-    description="Registra aluno com validação de formato de e-mail e vinculação com o personal trainer."
+    description="Registra aluno com validação de formato de e-mail e vinculação com o personal trainer no Supabase."
 )
 async def create_student(
     data: StudentCreateRequest,
@@ -253,19 +147,20 @@ async def create_student(
             detail="Endereço de e-mail inválido."
         )
 
-    # Verifica duplicidade
-    for st in _STUDENTS_STORE.values():
-        if st.get("email", "").lower() == data.email.lower():
+    trainer_id = data.trainer_id or current_user.get("sub") or "current-trainer"
+
+    # Verifica duplicidade no treinador
+    existing_students = await supabase_service.list_students(trainer_id)
+    for st in existing_students:
+        if st.email.lower() == data.email.strip().lower():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Já existe um aluno cadastrado com o e-mail '{data.email}'."
             )
 
-    trainer_id = data.trainer_id or current_user.get("sub") or "current-trainer"
-
     # Validação estrita da cota de alunos do plano SaaS
-    occupied = _count_trainer_occupied_slots(trainer_id)
-    max_allowed = _get_trainer_max_students(trainer_id)
+    occupied = await _count_trainer_occupied_slots(trainer_id)
+    max_allowed = await _get_trainer_max_students(trainer_id)
     if occupied >= max_allowed:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -273,23 +168,7 @@ async def create_student(
                    f"Faça upgrade do plano ou arquive alunos inativos antes de cadastrar novos."
         )
 
-    student_id = f"st_{uuid.uuid4().hex[:8]}"
-    created_at = datetime.now().isoformat()
-
-    new_student = {
-        "id": student_id,
-        "full_name": data.full_name.strip(),
-        "email": data.email.strip().lower(),
-        "phone": data.phone.strip() if data.phone else None,
-        "goal": data.goal,
-        "status": "Pendente Confirmação",
-        "trainer_id": trainer_id,
-        "created_at": created_at,
-        "has_active_prescription": False,
-    }
-    _STUDENTS_STORE[student_id] = new_student
-
-    return StudentResponse(**new_student)
+    return await supabase_service.create_student(trainer_id, data)
 
 
 @router.get(
@@ -303,12 +182,7 @@ async def list_students(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> List[StudentResponse]:
     trainer_id = current_user.get("sub") or "current-trainer"
-    students = [
-        StudentResponse(**st)
-        for st in _STUDENTS_STORE.values()
-        if st.get("trainer_id") == trainer_id or trainer_id == "dev-user-0000-0000-000000000001" or trainer_id == "current-trainer"
-    ]
-    return students
+    return await supabase_service.list_students(trainer_id)
 
 
 @router.put(
@@ -316,48 +190,35 @@ async def list_students(
     response_model=StudentResponse,
     status_code=status.HTTP_200_OK,
     summary="Atualizar Dados do Aluno",
-    description="Permite ao treinador editar nome, objetivo, telefone e histórico/restrições articulares."
+    description="Permite ao treinador editar nome, objetivo, telefone e histórico/restrições articulares no Supabase."
 )
 async def update_student(
     student_id: str,
     data: StudentUpdateRequest,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> StudentResponse:
-    if student_id not in _STUDENTS_STORE:
+    existing_student = await supabase_service.get_student_by_id(student_id)
+    if not existing_student:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Aluno com ID '{student_id}' não encontrado."
         )
 
-    student = _STUDENTS_STORE[student_id]
-    if data.full_name is not None:
-        student["full_name"] = data.full_name.strip()
-    if data.email is not None:
-        student["email"] = data.email.strip().lower()
-    if data.phone is not None:
-        student["phone"] = data.phone.strip()
-    if data.goal is not None:
-        student["goal"] = data.goal
-    if data.injuries_or_restrictions is not None:
-        student["injuries_or_restrictions"] = data.injuries_or_restrictions
-    if data.status is not None:
-        old_status = student.get("status", "").lower()
-        new_status = data.status.lower()
-        # Se estava arquivado/inativo e está tentando reativar, valida cota
-        if old_status in ("arquivado", "inativo") and new_status not in ("arquivado", "inativo"):
-            trainer_id = student.get("trainer_id") or "current-trainer"
-            occupied = _count_trainer_occupied_slots(trainer_id, exclude_student_id=student_id)
-            max_allowed = _get_trainer_max_students(trainer_id)
-            if occupied >= max_allowed:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Não é possível reativar o aluno '{student.get('full_name')}'. "
-                           f"O limite de {max_allowed} alunos ativos do seu plano atual já foi atingido. "
-                           f"Faça upgrade de plano ou arquive outro aluno para liberar uma vaga."
-                )
-        student["status"] = data.status
+    trainer_id = existing_student.trainer_id or current_user.get("sub") or "current-trainer"
 
-    return StudentResponse(**student)
+    if data.status is not None and data.status.lower() not in ("arquivado", "inativo"):
+        occupied = await _count_trainer_occupied_slots(trainer_id, exclude_student_id=student_id)
+        max_allowed = await _get_trainer_max_students(trainer_id)
+        if occupied >= max_allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Não é possível reativar o aluno '{existing_student.full_name}'. "
+                       f"O limite de {max_allowed} alunos ativos do seu plano atual já foi atingido. "
+                       f"Faça upgrade de plano ou arquive outro aluno para liberar uma vaga."
+            )
+
+    updated = await supabase_service.update_student(student_id, trainer_id, data)
+    return updated
 
 
 @router.patch(
@@ -372,53 +233,46 @@ async def update_student_status(
     data: StudentStatusUpdateRequest,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> StudentResponse:
-    if student_id not in _STUDENTS_STORE:
+    existing_student = await supabase_service.get_student_by_id(student_id)
+    if not existing_student:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Aluno com ID '{student_id}' não encontrado."
         )
 
-    student = _STUDENTS_STORE[student_id]
-    old_status = student.get("status", "").lower()
+    trainer_id = existing_student.trainer_id or current_user.get("sub") or "current-trainer"
     new_status = data.status.lower()
 
-    # Validação de integridade de reativação: se estava arquivado/inativo e tenta reativar
-    if old_status in ("arquivado", "inativo") and new_status not in ("arquivado", "inativo"):
-        trainer_id = student.get("trainer_id") or "current-trainer"
-        occupied = _count_trainer_occupied_slots(trainer_id, exclude_student_id=student_id)
-        max_allowed = _get_trainer_max_students(trainer_id)
+    if new_status not in ("arquivado", "inativo"):
+        occupied = await _count_trainer_occupied_slots(trainer_id, exclude_student_id=student_id)
+        max_allowed = await _get_trainer_max_students(trainer_id)
         if occupied >= max_allowed:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Não é possível reativar o aluno '{student.get('full_name')}'. "
+                detail=f"Não é possível reativar o aluno '{existing_student.full_name}'. "
                        f"O limite de {max_allowed} alunos ativos do seu plano atual já foi atingido. "
                        f"Faça upgrade de plano ou arquive outro aluno para liberar uma vaga."
             )
 
-    student["status"] = data.status
-    return StudentResponse(**student)
+    updated = await supabase_service.update_student_status(student_id, trainer_id, data.status)
+    return updated
 
 
 @router.delete(
     "/students/{student_id}",
     status_code=status.HTTP_200_OK,
     summary="Excluir Aluno",
-    description="Remove o aluno e desvincula prescrições ativas."
+    description="Remove o aluno e desvincula prescrições ativas no Supabase."
 )
 async def delete_student(
     student_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> Dict[str, Any]:
-    if student_id not in _STUDENTS_STORE:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Aluno com ID '{student_id}' não encontrado."
-        )
-
-    deleted = _STUDENTS_STORE.pop(student_id)
+    trainer_id = current_user.get("sub") or "current-trainer"
+    await supabase_service.delete_student(student_id, trainer_id)
     return {
         "status": "success",
-        "message": f"Aluno '{deleted['full_name']}' excluído com sucesso.",
+        "message": f"Aluno '{student_id}' excluído com sucesso.",
         "student_id": student_id,
     }
 
@@ -434,29 +288,9 @@ async def register_biomechanical_alert(
     data: BiomechanicalAlertCreate,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> BiomechanicalAlertResponse:
-    trainer_id = data.trainer_id or "current-trainer"
-    alert_id = f"alt_{uuid.uuid4().hex[:8]}"
-    created_at = datetime.now().isoformat()
-
-    msg = f"Relatou dor em {data.pain_location or 'articulação'} durante {data.original_exercise} ➔ Adaptado para {data.adapted_exercise}"
-    alert_dict = {
-        "id": alert_id,
-        "student_id": data.student_id,
-        "student_name": data.student_name,
-        "trainer_id": trainer_id,
-        "original_exercise": data.original_exercise,
-        "adapted_exercise": data.adapted_exercise,
-        "reason": data.reason,
-        "pain_location": data.pain_location,
-        "severity": data.severity,
-        "status": "active",
-        "acknowledged": False,
-        "created_at": created_at,
-        "message": msg,
-    }
-    _ALERTS_STORE[alert_id] = alert_dict
-
-    return BiomechanicalAlertResponse(**alert_dict)
+    if not data.trainer_id:
+        data.trainer_id = current_user.get("sub") or "current-trainer"
+    return await supabase_service.create_biomechanical_alert(data)
 
 
 @router.get(
@@ -470,12 +304,7 @@ async def list_trainer_alerts(
     trainer_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> List[BiomechanicalAlertResponse]:
-    alerts = [
-        BiomechanicalAlertResponse(**alt)
-        for alt in reversed(list(_ALERTS_STORE.values()))
-        if alt.get("trainer_id") == trainer_id or trainer_id == "current-trainer" or trainer_id == "dev-user-0000-0000-000000000001"
-    ]
-    return alerts
+    return await supabase_service.list_trainer_alerts(trainer_id)
 
 
 @router.patch(
@@ -489,15 +318,27 @@ async def acknowledge_alert(
     alert_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> BiomechanicalAlertResponse:
-    if alert_id not in _ALERTS_STORE:
+    success = await supabase_service.acknowledge_alert(alert_id)
+    if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Alerta '{alert_id}' não encontrado."
         )
 
-    _ALERTS_STORE[alert_id]["acknowledged"] = True
-    _ALERTS_STORE[alert_id]["status"] = "acknowledged"
-    return BiomechanicalAlertResponse(**_ALERTS_STORE[alert_id])
+    # Retorna o alerta marcado como acknowledged
+    return BiomechanicalAlertResponse(
+        id=alert_id,
+        student_id="student",
+        student_name="Aluno",
+        trainer_id="trainer",
+        original_exercise="",
+        adapted_exercise="",
+        reason="Adaptação ciente",
+        status="acknowledged",
+        acknowledged=True,
+        created_at=datetime.now(timezone.utc).isoformat(),
+        message="Alerta biomecânico reconhecido pelo treinador."
+    )
 
 
 @router.post(
@@ -505,18 +346,18 @@ async def acknowledge_alert(
     response_model=StudentInviteResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Convidar Aluno via E-mail Profissional e WhatsApp",
-    description="Gera convite exclusivo, envia e-mail com template customizado e formata URL de ativação rápida no WhatsApp."
+    description="Gera convite exclusivo, persiste no Supabase, envia e-mail com template customizado e formata URL de ativação rápida no WhatsApp."
 )
 async def invite_student(
     payload: StudentInviteRequest,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> StudentInviteResponse:
     trainer_name = current_user.get("user_metadata", {}).get("full_name") or current_user.get("full_name") or "Roberto Mendes"
-    trainer_id = current_user.get("id") or "current-trainer"
+    trainer_id = current_user.get("id") or current_user.get("sub") or "current-trainer"
 
     # Validação estrita da cota de alunos do plano SaaS
-    occupied = _count_trainer_occupied_slots(trainer_id)
-    max_allowed = _get_trainer_max_students(trainer_id)
+    occupied = await _count_trainer_occupied_slots(trainer_id)
+    max_allowed = await _get_trainer_max_students(trainer_id)
     if occupied >= max_allowed:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -524,24 +365,18 @@ async def invite_student(
                    f"Faça upgrade do plano ou arquive alunos inativos antes de convidar novos."
         )
 
-    student_id = f"st-{uuid.uuid4().hex[:8]}"
-
-    # Salva o aluno na store com status Pendente Confirmação
-    student_record = {
-        "id": student_id,
-        "email": payload.email,
-        "full_name": payload.full_name,
-        "phone": payload.phone,
-        "trainer_id": trainer_id,
-        "status": "Pendente Confirmação",
-        "objective": payload.objective or "Hipertrofia Muscular",
-        "injuries_or_restrictions": payload.injuries_or_restrictions or "Aguardando avaliação clínica",
-        "has_alert": False,
-        "last_session": "Pendente Confirmação",
-        "active_split": "Não configurado",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    _STUDENTS_STORE[student_id] = student_record
+    # Cria o aluno no Supabase
+    created_student = await supabase_service.create_student(
+        trainer_id=trainer_id,
+        req=StudentCreateRequest(
+            full_name=payload.full_name,
+            email=payload.email,
+            phone=payload.phone,
+            goal=payload.objective or "Hipertrofia Muscular",
+            injuries_or_restrictions=payload.injuries_or_restrictions or "Aguardando avaliação clínica",
+        )
+    )
+    student_id = created_student.id
 
     # Gera link seguro de onboarding/convite
     invitation_link = f"{settings.APP_FRONTEND_URL}/#onboarding?student_id={student_id}&trainer_id={trainer_id}"
@@ -588,5 +423,3 @@ async def invite_student(
         whatsapp_status=whatsapp_status,
         message=f"Convite gerado com sucesso para {payload.full_name}."
     )
-
-

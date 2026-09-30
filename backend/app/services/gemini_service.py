@@ -71,6 +71,32 @@ class GeminiService:
 
         raise RuntimeError(f"Todos os modelos da nuvem falharam: {last_error}")
 
+    def _get_model_candidates(self, model_name: Optional[str] = None, is_deep: bool = False) -> List[str]:
+        """
+        Retorna a lista ordenada de modelos candidatos para inferência.
+        Prioriza o modelo configurado em Settings (DEFAULT_DEEP_MODEL ou DEFAULT_FAST_MODEL)
+        e mantém a cascata de fallback de alta disponibilidade.
+        """
+        candidates: List[str] = []
+        if model_name:
+            candidates.append(model_name)
+
+        preferred = settings.DEFAULT_DEEP_MODEL if is_deep else settings.DEFAULT_FAST_MODEL
+        if preferred and preferred not in candidates:
+            candidates.append(preferred)
+
+        fallbacks = [
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",
+            "gemini-1.5-flash",
+            "gemini-1.5-flash-8b",
+        ]
+        for m in fallbacks:
+            if m not in candidates:
+                candidates.append(m)
+
+        return candidates
+
     async def generate_workout_plan(
         self,
         objective: str,
@@ -85,15 +111,7 @@ class GeminiService:
     ) -> WorkoutPlanResponse:
         try:
             self._ensure_client()
-            # Prioriza modelos rápidos e de alta performance disponíveis no Free Tier do Google AI Studio
-            candidates = [
-                "gemini-2.5-flash",
-                "gemini-2.5-flash-lite",
-                "gemini-1.5-flash",
-                "gemini-1.5-flash-8b"
-            ]
-            if model_name and model_name not in candidates:
-                candidates.insert(0, model_name)
+            candidates = self._get_model_candidates(model_name=model_name, is_deep=True)
 
             prompt_text = build_plan_prompt(
                 objective=objective,
@@ -143,14 +161,7 @@ class GeminiService:
     ) -> AdaptationResponse:
         try:
             self._ensure_client()
-            candidates = [
-                "gemini-2.5-flash",
-                "gemini-2.5-flash-lite",
-                "gemini-1.5-flash",
-                "gemini-1.5-flash-8b"
-            ]
-            if model_name and model_name not in candidates:
-                candidates.insert(0, model_name)
+            candidates = self._get_model_candidates(model_name=model_name, is_deep=False)
 
             prompt_text = build_adaptation_prompt(
                 current_exercise=current_exercise,
@@ -188,14 +199,7 @@ class GeminiService:
     ) -> str:
         try:
             self._ensure_client()
-            candidates = [
-                "gemini-2.5-flash",
-                "gemini-2.5-flash-lite",
-                "gemini-1.5-flash",
-                "gemini-1.5-flash-8b"
-            ]
-            if model_name and model_name not in candidates:
-                candidates.insert(0, model_name)
+            candidates = self._get_model_candidates(model_name=model_name, is_deep=False)
 
             sys_inst = system_instruction or (
                 "Você é o **Mr. Coach AI**, uma autoridade internacional multidisciplinar de elite para personal trainers e academias. "

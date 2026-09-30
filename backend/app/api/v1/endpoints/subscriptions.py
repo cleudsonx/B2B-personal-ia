@@ -13,100 +13,15 @@ from app.schemas.subscription import (
     PlanActivationRequest,
 )
 from app.services.payment_service import PaymentProviderService
+from app.services.supabase_service import supabase_service
 
 router = APIRouter()
 
-# Armazenamento em memória das assinaturas ativas por treinador (para demo e sincronização em tempo real)
-ACTIVE_TRAINER_SUBSCRIPTIONS = {}
+# Armazenamento referencial vinculado ao serviço com fallback
+ACTIVE_TRAINER_SUBSCRIPTIONS = supabase_service._mem_subscriptions
 
-# Tabela estática de planos conforme o Plano de Negócios B2B Personal IA
-SAAS_PLANS: List[PlanResponse] = [
-    PlanResponse(
-        id="starter",
-        name="Starter Trial",
-        tagline="Degustação completa para começar sua consultoria com IA",
-        price_monthly_cents=0,
-        price_yearly_cents=0,
-        price_yearly_monthly_equivalent_cents=0,
-        max_students=3,
-        max_ai_generations_per_month=10,
-        is_popular=False,
-        badge="GRATUITO",
-        features=[
-            PlanFeature(title="Até 3 alunos ativos simultâneos", included=True, highlight=False),
-            PlanFeature(title="10 fichas geradas por IA com Gemini 3.5", included=True, highlight=False),
-            PlanFeature(title="Adaptação de exercícios por dor ou aparelho ocupado", included=True, highlight=False),
-            PlanFeature(title="Raio-X Anatômico e Split-View para o aluno", included=True, highlight=False),
-            PlanFeature(title="Suporte comunitário", included=True, highlight=False),
-            PlanFeature(title="Alunos ilimitados", included=False, highlight=False),
-            PlanFeature(title="Alertas automáticos via WhatsApp", included=False, highlight=False),
-        ],
-    ),
-    PlanResponse(
-        id="pro",
-        name="Personal Pro",
-        tagline="O plano definitivo para o Personal Trainer autônomo de alta renda",
-        price_monthly_cents=8900,  # R$ 89,00
-        price_yearly_cents=85200,  # R$ 852,00 (R$ 71,00/mês - 20% OFF)
-        price_yearly_monthly_equivalent_cents=7100,
-        max_students=30,
-        max_ai_generations_per_month=-1,  # Ilimitado
-        is_popular=True,
-        badge="MAIS POPULAR",
-        features=[
-            PlanFeature(title="Até 30 alunos ativos na consultoria", included=True, highlight=True),
-            PlanFeature(title="Prescrições IA Ilimitadas (Gemini Flash)", included=True, highlight=True),
-            PlanFeature(title="Anamnese clínica profunda com histórico de lesões", included=True, highlight=False),
-            PlanFeature(title="Raio-X Muscular com EMG e Análise de Fases", included=True, highlight=True),
-            PlanFeature(title="Timer de descanso interativo sincronizado", included=True, highlight=False),
-            PlanFeature(title="Painel de alertas de adaptação em tempo real", included=True, highlight=True),
-            PlanFeature(title="Suporte prioritário via WhatsApp", included=True, highlight=False),
-            PlanFeature(title="Múltiplos personals colaboradores", included=False, highlight=False),
-        ],
-    ),
-    PlanResponse(
-        id="elite",
-        name="Elite Coach",
-        tagline="Consultoria esportiva de alta escala com canal WhatsApp automatizado",
-        price_monthly_cents=14900,  # R$ 149,00
-        price_yearly_cents=142800,  # R$ 1.428,00 (R$ 119,00/mês - 20% OFF)
-        price_yearly_monthly_equivalent_cents=11900,
-        max_students=60,
-        max_ai_generations_per_month=-1,
-        is_popular=False,
-        badge="ALTA ESCALA",
-        features=[
-            PlanFeature(title="Até 60 alunos ativos na consultoria", included=True, highlight=True),
-            PlanFeature(title="Prescrições IA Ilimitadas (Gemini Flash)", included=True, highlight=True),
-            PlanFeature(title="Automação WhatsApp (Evolution/Z-API): Envio de treinos", included=True, highlight=True),
-            PlanFeature(title="Alertas de dor e faltas recorrentes direto no WhatsApp", included=True, highlight=True),
-            PlanFeature(title="Raio-X Muscular com EMG e Análise de Fases", included=True, highlight=False),
-            PlanFeature(title="Relatórios de assiduidade e retenção de alunos", included=True, highlight=True),
-            PlanFeature(title="Suporte prioritário via WhatsApp", included=True, highlight=False),
-        ],
-    ),
-    PlanResponse(
-        id="studio",
-        name="Studio Scale",
-        tagline="Para assessorias esportivas e estúdios que buscam escala máxima",
-        price_monthly_cents=19900,  # R$ 199,00
-        price_yearly_cents=190800,  # R$ 1.908,00 (R$ 159,00/mês - 20% OFF)
-        price_yearly_monthly_equivalent_cents=15900,
-        max_students=100,
-        max_ai_generations_per_month=-1,
-        is_popular=False,
-        badge="ESCALA MÁXIMA",
-        features=[
-            PlanFeature(title="Até 100 alunos ativos na assessoria", included=True, highlight=True),
-            PlanFeature(title="Prescrições e adaptações IA Ilimitadas", included=True, highlight=True),
-            PlanFeature(title="Múltiplos personals e estagiários sob a mesma conta", included=True, highlight=True),
-            PlanFeature(title="Alertas de dor e evasão em tempo real via WhatsApp", included=True, highlight=True),
-            PlanFeature(title="Relatórios de assiduidade e retenção de alunos", included=True, highlight=True),
-            PlanFeature(title="Personalização com a marca (White-Label parcial)", included=True, highlight=False),
-            PlanFeature(title="Gerente de contas dedicado e suporte VIP", included=True, highlight=False),
-        ],
-    ),
-]
+# Importa catálogo unificado de planos da fonte única da verdade
+from app.core.plans import SAAS_PLANS, get_plan
 
 
 @router.get("/plans", response_model=List[PlanResponse])
@@ -119,88 +34,28 @@ async def list_subscription_plans():
 async def get_my_subscription(trainer_id: str = "current-trainer"):
     """
     Retorna o plano ativo e consumo de cotas do Personal Trainer autenticado.
-    Se o treinador já ativou um plano, retorna a assinatura ativa correspondente.
-    Garante sincronização bidirecional entre ID do usuário autenticado e fallback padrão.
+    Busca no Supabase com contagem real de alunos ocupando vagas na assessoria.
     """
-    if trainer_id in ACTIVE_TRAINER_SUBSCRIPTIONS:
-        return ACTIVE_TRAINER_SUBSCRIPTIONS[trainer_id]
-
-    if "current-trainer" in ACTIVE_TRAINER_SUBSCRIPTIONS:
-        sub = ACTIVE_TRAINER_SUBSCRIPTIONS["current-trainer"]
-        ACTIVE_TRAINER_SUBSCRIPTIONS[trainer_id] = sub
-        return sub
-
-    # Se houver alguma assinatura ativa em memória no sistema, aproveita a mais recente
-    if ACTIVE_TRAINER_SUBSCRIPTIONS:
-        last_sub = list(ACTIVE_TRAINER_SUBSCRIPTIONS.values())[-1]
-        ACTIVE_TRAINER_SUBSCRIPTIONS[trainer_id] = last_sub
-        ACTIVE_TRAINER_SUBSCRIPTIONS["current-trainer"] = last_sub
-        return last_sub
-
-    # Default: Personal Pro ativo
-    default_sub = MySubscriptionResponse(
-        plan_id="pro",
-        plan_name="Personal Pro",
-        status="active",
-        billing_interval="monthly",
-        current_students=4,
-        max_students=30,
-        ai_generations_used=12,
-        max_ai_generations=-1,
-        trial_days_remaining=None,
-        next_billing_date=(datetime.now() + timedelta(days=24)).strftime("%d/%m/%Y"),
-        payment_method="pix",
-        can_create_student=True,
-        can_generate_ai=True,
-    )
-    ACTIVE_TRAINER_SUBSCRIPTIONS[trainer_id] = default_sub
-    ACTIVE_TRAINER_SUBSCRIPTIONS["current-trainer"] = default_sub
-    return default_sub
+    return await supabase_service.get_trainer_subscription(trainer_id)
 
 
 @router.post("/activate-plan", response_model=MySubscriptionResponse)
 async def activate_subscription_plan(req: PlanActivationRequest):
     """
-    Ativa ou troca o plano do Personal Trainer imediatamente.
+    Ativa ou troca o plano do Personal Trainer imediatamente, persistindo no Supabase.
     Atualiza cotas de alunos, limite de gerações IA e periodicidade.
-    Persiste e reverbera em múltiplos identificadores para garantir consistência total.
     """
     selected_plan = next((p for p in SAAS_PLANS if p.id == req.plan_id), None)
     if not selected_plan:
         raise HTTPException(status_code=404, detail=f"Plano '{req.plan_id}' não encontrado.")
 
-    is_trial = selected_plan.id == "starter"
-    status_str = "trialing" if is_trial else "active"
-    trial_days = 14 if is_trial else None
-    days_to_add = 365 if req.billing_interval == "yearly" else 30
-    next_date = (datetime.now() + timedelta(days=days_to_add)).strftime("%d/%m/%Y")
-
     trainer_id = req.trainer_id or "current-trainer"
-    current_students = 4
-    if trainer_id in ACTIVE_TRAINER_SUBSCRIPTIONS:
-        current_students = ACTIVE_TRAINER_SUBSCRIPTIONS[trainer_id].current_students
-    elif "current-trainer" in ACTIVE_TRAINER_SUBSCRIPTIONS:
-        current_students = ACTIVE_TRAINER_SUBSCRIPTIONS["current-trainer"].current_students
-
-    updated_sub = MySubscriptionResponse(
-        plan_id=selected_plan.id,
-        plan_name=selected_plan.name,
-        status=status_str,
+    return await supabase_service.activate_subscription(
+        trainer_id=trainer_id,
+        plan_id=req.plan_id,
         billing_interval=req.billing_interval,
-        current_students=current_students,
-        max_students=selected_plan.max_students,
-        ai_generations_used=12 if not is_trial else 3,
-        max_ai_generations=selected_plan.max_ai_generations_per_month,
-        trial_days_remaining=trial_days,
-        next_billing_date=next_date,
         payment_method=req.payment_method or "pix",
-        can_create_student=current_students < selected_plan.max_students,
-        can_generate_ai=True,
     )
-
-    ACTIVE_TRAINER_SUBSCRIPTIONS[trainer_id] = updated_sub
-    ACTIVE_TRAINER_SUBSCRIPTIONS["current-trainer"] = updated_sub
-    return updated_sub
 
 
 @router.post("/calculate-change", response_model=PlanChangeSimulationResponse)
@@ -243,14 +98,15 @@ async def create_checkout_session(request: CheckoutSessionRequest):
     )
 
     checkout_data = PaymentProviderService.create_checkout(
-        provider=request.provider or "asaas",
+        provider=request.provider or "infinitepay",
         plan_id=selected_plan.id,
         plan_name=selected_plan.name,
         amount_cents=amount,
         billing_interval=request.billing_interval,
         payment_method=request.payment_method,
         trainer_name=request.trainer_name or "Personal Trainer",
-        trainer_email=request.trainer_email or "treinador@demo.com"
+        trainer_email=request.trainer_email or "treinador@demo.com",
+        trainer_id=request.trainer_id or "current-trainer"
     )
 
     return CheckoutSessionResponse(
@@ -284,7 +140,41 @@ async def webhook_mercadopago(payload: dict):
 @router.post("/webhook/infinitepay")
 async def webhook_infinitepay(payload: dict):
     """Webhook oficial InfinitePay para aprovações instantâneas de Pix e Smart Checkout."""
-    return PaymentProviderService.process_webhook("infinitepay", payload)
+    result = PaymentProviderService.process_webhook("infinitepay", payload)
+    if result.get("subscription_status") == "active":
+        trainer_id = result.get("trainer_id") or "current-trainer"
+        plan_id = result.get("plan_id") or "pro"
+        billing_interval = result.get("billing_interval") or "monthly"
+        await supabase_service.activate_subscription(
+            trainer_id=trainer_id,
+            plan_id=plan_id,
+            billing_interval=billing_interval,
+            payment_method="infinitepay"
+        )
+    return result
+
+
+@router.get("/check-status/{order_nsu}")
+async def check_payment_status(order_nsu: str):
+    """Consulta o status da transação na InfinitePay ou gateway associado."""
+    is_paid = PaymentProviderService.check_infinitepay_payment(order_nsu)
+    order_meta = PaymentProviderService._PENDING_ORDERS.get(order_nsu, {})
+    if is_paid and order_meta:
+        trainer_id = order_meta.get("trainer_id", "current-trainer")
+        plan_id = order_meta.get("plan_id", "pro")
+        billing_interval = order_meta.get("billing_interval", "monthly")
+        await supabase_service.activate_subscription(
+            trainer_id=trainer_id,
+            plan_id=plan_id,
+            billing_interval=billing_interval,
+            payment_method="infinitepay"
+        )
+    return {
+        "order_nsu": order_nsu,
+        "paid": is_paid,
+        "plan_id": order_meta.get("plan_id"),
+        "trainer_id": order_meta.get("trainer_id"),
+    }
 
 
 @router.post("/webhook/stripe")

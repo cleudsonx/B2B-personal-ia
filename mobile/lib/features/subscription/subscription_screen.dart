@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/theme_toggle_button.dart';
 import '../../models/subscription_model.dart';
@@ -936,6 +937,28 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
             ),
           ],
         ),
+        if (_session?.checkoutUrl != null) ...[
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.emerald(context),
+              side: BorderSide(color: AppColors.emerald(context)),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: const Icon(Icons.open_in_new_rounded, size: 18),
+            label: const Text(
+              'Abrir Checkout Oficial InfinitePay',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            onPressed: () async {
+              final url = Uri.parse(_session!.checkoutUrl!);
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url, mode: LaunchMode.externalApplication);
+              }
+            },
+          ),
+        ],
       ],
     );
   }
@@ -943,6 +966,38 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
   Widget _buildCreditCardContent() {
     return Column(
       children: [
+        if (_session?.checkoutUrl != null) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: AppColors.emerald(context).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.emerald(context).withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.verified_user_rounded, color: AppColors.emerald(context), size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Pague com cartão parcelado em até 12x direto pelo Checkout Oficial InfinitePay (\$sheipados).',
+                    style: TextStyle(color: AppColors.text(context), fontSize: 12),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final url = Uri.parse(_session!.checkoutUrl!);
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(url, mode: LaunchMode.externalApplication);
+                    }
+                  },
+                  child: const Text('Abrir', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
+        ],
         TextField(
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(

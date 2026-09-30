@@ -257,18 +257,24 @@ class SubscriptionService {
     return immediateModel;
   }
 
-  /// Gera a sessão de pagamento via Pix ou Cartão
+  /// Gera a sessão de pagamento oficial via InfinitePay (Pix ou Cartão)
   static Future<CheckoutSessionModel> createCheckoutSession({
     required String planId,
     required String billingInterval,
     required String paymentMethod,
+    String provider = 'infinitepay',
   }) async {
     try {
+      final user = AuthService.currentUser;
       final uri = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/checkout-session');
       final body = jsonEncode({
         'plan_id': planId,
         'billing_interval': billingInterval,
         'payment_method': paymentMethod,
+        'provider': provider,
+        'trainer_id': user?.id ?? 'current-trainer',
+        'trainer_name': user?.userMetadata?['full_name'] ?? 'Personal Trainer',
+        'trainer_email': user?.email ?? 'personal@sheipados.com',
       });
 
       final res = await _client.post(uri, headers: _headers, body: body).timeout(const Duration(seconds: 5));
@@ -293,14 +299,17 @@ class SubscriptionService {
             ? 'Elite Coach'
             : (planId == 'pro' ? 'Personal Pro' : 'Starter Trial'));
 
+    final sessId = 'sess_infinitepay_${DateTime.now().millisecondsSinceEpoch}';
     return CheckoutSessionModel(
-      sessionId: 'sess_simulated_${DateTime.now().millisecondsSinceEpoch}',
+      sessionId: sessId,
       planId: planId,
       planName: planName,
       amountCents: amount,
       billingInterval: billingInterval,
       paymentMethod: paymentMethod,
       pixCopyPaste: '00020126580014br.gov.bcb.pix0136b2b-personal-ia-demo520400005303986540${(amount / 100).toStringAsFixed(2)}5802BR5920B2B PERSONAL IA6009SAO PAULO62070503***6304ABCD',
+      checkoutUrl: 'https://checkout.infinitepay.io/sheipados/$sessId',
+      provider: 'infinitepay',
       status: 'pending',
       expiresAt: 'Hoje às 23:59',
     );

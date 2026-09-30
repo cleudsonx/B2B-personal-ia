@@ -145,6 +145,8 @@ class CheckoutSessionModel {
   final String billingInterval;
   final String paymentMethod;
   final String? pixCopyPaste;
+  final String? checkoutUrl;
+  final String? provider;
   final String status;
   final String expiresAt;
 
@@ -156,6 +158,8 @@ class CheckoutSessionModel {
     required this.billingInterval,
     required this.paymentMethod,
     this.pixCopyPaste,
+    this.checkoutUrl,
+    this.provider,
     required this.status,
     required this.expiresAt,
   });
@@ -171,6 +175,8 @@ class CheckoutSessionModel {
       billingInterval: json['billing_interval'] ?? 'monthly',
       paymentMethod: json['payment_method'] ?? 'pix',
       pixCopyPaste: json['pix_copy_paste'],
+      checkoutUrl: json['checkout_url'],
+      provider: json['provider'],
       status: json['status'] ?? 'pending',
       expiresAt: json['expires_at'] ?? '',
     );

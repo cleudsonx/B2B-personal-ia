@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
     EMAIL_FROM: str = "Mr. Coach <contato@shaipados.com>"
     APP_FRONTEND_URL: str = "https://shaipados.com"
+    APP_BACKEND_URL: str = "https://api.shaipados.com"
+
+    # InfinitePay Gateway
+    INFINITEPAY_HANDLE: str = "sheipados"
+    INFINITEPAY_CHECKOUT_API_URL: str = "https://api.checkout.infinitepay.io"
+    INFINITEPAY_WEBHOOK_SECRET: str = ""
     
     # CORS (aceita string "*", JSON '["*"]' ou listas sem erro no EnvSettingsSource do Pydantic)
     CORS_ORIGINS: Union[str, List[str]] = "*"

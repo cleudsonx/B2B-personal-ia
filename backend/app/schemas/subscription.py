@@ -45,6 +45,7 @@ class CheckoutSessionRequest(BaseModel):
     provider: Optional[str] = Field("asaas", description="Provedor de pagamento: 'asaas', 'mercadopago', 'infinitepay', 'stripe'")
     trainer_name: Optional[str] = "Personal Trainer"
     trainer_email: Optional[str] = "treinador@demo.com"
+    trainer_id: Optional[str] = "current-trainer"
 
 
 class CheckoutSessionResponse(BaseModel):

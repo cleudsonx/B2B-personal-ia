@@ -201,3 +201,132 @@ def test_activate_plan_endpoint():
     assert res_studio_fb.json()["max_students"] == 100
 
 
+def test_plans_catalog_unified_source_of_truth():
+    from app.core.plans import SAAS_PLANS, PLANS_INFO, PLANS_CATALOG
+
+    assert len(PLANS_CATALOG) == 4
+    assert len(SAAS_PLANS) == 4
+
+    plans_by_id = {p.id: p for p in SAAS_PLANS}
+
+    for pid in ("starter", "pro", "elite", "studio"):
+        assert pid in PLANS_INFO
+        assert pid in PLANS_CATALOG
+        assert pid in plans_by_id
+
+        p_obj = plans_by_id[pid]
+        p_dict = PLANS_CATALOG[pid]
+
+        assert p_obj.max_students == p_dict["max_students"]
+        assert p_obj.price_monthly_cents == p_dict["monthly_cents"]
+        assert p_obj.price_yearly_cents == p_dict["yearly_cents"]
+
+    # Valida regras de IA (Starter limitado a 10; Pro/Elite/Studio ilimitados)
+    assert plans_by_id["starter"].max_ai_generations_per_month == 10
+    assert plans_by_id["pro"].max_ai_generations_per_month == -1
+    assert plans_by_id["elite"].max_ai_generations_per_month == -1
+    assert plans_by_id["studio"].max_ai_generations_per_month == -1
+
+
+@pytest.mark.asyncio
+async def test_ai_generation_limit_enforcement_on_starter_plan():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.api.deps import get_current_user
+    from app.services.supabase_service import supabase_service
+
+    test_trainer_id = "trainer-starter-limit-test"
+
+    # 1. Ativa o plano starter para o treinador
+    sub = await supabase_service.activate_subscription(
+        trainer_id=test_trainer_id,
+        plan_id="starter",
+        billing_interval="monthly",
+        payment_method="pix"
+    )
+    assert sub.plan_id == "starter"
+    assert sub.max_ai_generations == 10
+    assert sub.can_generate_ai is True
+    assert sub.ai_generations_used == 0
+
+    # 2. Incrementa 10 gerações de IA consumidas
+    for _ in range(10):
+        supabase_service.increment_ai_generations(test_trainer_id)
+
+    # 3. Consulta assinatura e valida bloqueio can_generate_ai = False
+    sub_after = await supabase_service.get_trainer_subscription(test_trainer_id)
+    assert sub_after.ai_generations_used >= 10
+    assert sub_after.can_generate_ai is False
+
+    # 4. Tenta invocar o endpoint /generate-plan com esse treinador
+    client = TestClient(app)
+    app.dependency_overrides[get_current_user] = lambda: {"sub": test_trainer_id, "role": "trainer"}
+    try:
+        res = client.post("/api/v1/workouts/generate-plan", json={
+            "objective": "Hipertrofia",
+            "training_level": "Iniciante",
+            "days_per_week": 3,
+            "workout_location": "Academia completa",
+            "injuries_or_restrictions": "Nenhuma",
+            "split_type": "Full Body",
+        })
+        assert res.status_code == 403
+        assert "Limite de 10 gerações de IA por mês atingido" in res.json()["detail"]
+        assert "upgrade para o plano Personal Pro" in res.json()["detail"]
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_infinitepay_real_checkout_and_webhook_activation():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.services.payment_service import PaymentProviderService
+
+    client = TestClient(app)
+    trainer_test_id = "trainer-infinitepay-flow-1"
+
+    # 1. Cria sessão de checkout oficial da InfinitePay
+    checkout_res = client.post("/api/v1/subscriptions/checkout-session", json={
+        "plan_id": "pro",
+        "billing_interval": "monthly",
+        "payment_method": "pix",
+        "provider": "infinitepay",
+        "trainer_name": "Carlos Personal",
+        "trainer_email": "carlos@sheipados.com",
+        "trainer_id": trainer_test_id
+    })
+    assert checkout_res.status_code == 200
+    data = checkout_res.json()
+    session_id = data["session_id"]
+    assert data["provider"] == "infinitepay"
+    assert data["amount_cents"] == 8900
+    assert "sheipados" in data["checkout_url"]
+    assert "infinitepay.io" in data["checkout_url"]
+
+    # 2. Simula disparo do webhook da InfinitePay com aprovação
+    webhook_res = client.post("/api/v1/subscriptions/webhook/infinitepay", json={
+        "order_nsu": session_id,
+        "status": "approved",
+        "success": True,
+        "amount": 89.00,
+        "handle": "sheipados"
+    })
+    assert webhook_res.status_code == 200
+    wh_data = webhook_res.json()
+    assert wh_data["processed"] is True
+    assert wh_data["subscription_status"] == "active"
+    assert wh_data["trainer_id"] == trainer_test_id
+    assert wh_data["plan_id"] == "pro"
+
+    # 3. Valida que a assinatura do personal foi ativada com sucesso
+    sub_res = client.get(f"/api/v1/subscriptions/my-subscription?trainer_id={trainer_test_id}")
+    assert sub_res.status_code == 200
+    sub_data = sub_res.json()
+    assert sub_data["plan_id"] == "pro"
+    assert sub_data["plan_name"] == "Personal Pro"
+    assert sub_data["status"] == "active"
+    assert sub_data["max_students"] == 30
+
+
+
+
