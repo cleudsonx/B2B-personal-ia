@@ -57,6 +57,8 @@ class AuthService {
     required String role, // 'trainer' ou 'client'
     String? phone,
     String? trainerId,
+    String? professionalDocumentType, // 'CREF', 'CBMF', 'CPF'
+    String? professionalDocument, // Ex: 'CREF 019284-G/SP', 'CBMF-10294', '123.456.789-00'
   }) async {
     try {
       final response = await _client.auth.signUp(
@@ -67,6 +69,10 @@ class AuthService {
           'role': role,
           if (phone != null && phone.isNotEmpty) 'phone': phone.trim(),
           if (trainerId != null && trainerId.isNotEmpty) 'trainer_id': trainerId,
+          if (professionalDocumentType != null) 'professional_document_type': professionalDocumentType,
+          if (professionalDocument != null) 'professional_document': professionalDocument,
+          if (professionalDocument != null) 'cref_or_registry': professionalDocument,
+          if (professionalDocument != null && professionalDocumentType == 'CREF') 'cref': professionalDocument,
         },
       );
       if (response.user != null) {
@@ -85,6 +91,9 @@ class AuthService {
       final role = user.userMetadata?['role'] as String? ?? 'trainer';
       final phone = user.userMetadata?['phone'] as String?;
       final trainerId = user.userMetadata?['trainer_id'] as String?;
+      final docType = user.userMetadata?['professional_document_type'] as String?;
+      final doc = user.userMetadata?['professional_document'] as String?;
+      final crefOrReg = user.userMetadata?['cref_or_registry'] as String?;
 
       final payload = <String, dynamic>{
         'id': user.id,
@@ -95,6 +104,9 @@ class AuthService {
       if (user.email != null) payload['email'] = user.email;
       if (phone != null && phone.isNotEmpty) payload['phone'] = phone;
       if (trainerId != null && trainerId.isNotEmpty) payload['trainer_id'] = trainerId;
+      if (docType != null && docType.isNotEmpty) payload['professional_document_type'] = docType;
+      if (doc != null && doc.isNotEmpty) payload['professional_document'] = doc;
+      if (crefOrReg != null && crefOrReg.isNotEmpty) payload['cref_or_registry'] = crefOrReg;
 
       _cachedProfile = Map<String, dynamic>.from(payload);
       await _client.from('profiles').upsert(payload);
@@ -126,6 +138,10 @@ class AuthService {
       'full_name': user.userMetadata?['full_name'] ?? 'Usuário',
       'role': user.userMetadata?['role'] ?? 'trainer',
       'email': user.email,
+      'professional_document_type': user.userMetadata?['professional_document_type'],
+      'professional_document': user.userMetadata?['professional_document'],
+      'cref_or_registry': user.userMetadata?['cref_or_registry'],
+      'cref': user.userMetadata?['cref'],
     };
   }
 
@@ -137,7 +153,7 @@ class AuthService {
       if (trainerId != null && trainerId.isNotEmpty && _clientOrNull != null) {
         final trainer = await _client
             .from('profiles')
-            .select('id, full_name, email, phone')
+            .select('id, full_name, email, phone, professional_document, professional_document_type, cref_or_registry, cref')
             .eq('id', trainerId)
             .maybeSingle();
         return trainer;

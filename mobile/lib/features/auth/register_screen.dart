@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/document_validator.dart';
 import '../../services/auth_service.dart';
 import '../client/welcome_onboarding_screen.dart';
 import '../trainer/trainer_plan_selection_screen.dart';
@@ -21,11 +23,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _phoneCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmPasswordCtrl = TextEditingController();
+  final _documentCtrl = TextEditingController();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   late String _role; // 'trainer' ou 'client'
+  String _docType = 'CREF'; // 'CREF', 'CBMF', 'CPF'
+  DocumentValidationResult? _docValidation;
 
   @override
   void initState() {
@@ -40,11 +45,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _phoneCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmPasswordCtrl.dispose();
+    _documentCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _openUrl(String urlStr) async {
+    final uri = Uri.parse(urlStr);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   Future<void> _handleSignUp() async {
     if (!_formKey.currentState!.validate()) return;
+
+    String? validDocFormatted;
+    if (_role == 'trainer') {
+      final docRes = DocumentValidator.validate(type: _docType, value: _documentCtrl.text.trim());
+      if (!docRes.isValid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.red.shade800,
+            content: Text(docRes.errorMessage ?? 'Documento do professor inválido.'),
+          ),
+        );
+        return;
+      }
+      validDocFormatted = docRes.formatted ?? _documentCtrl.text.trim();
+    }
 
     setState(() => _isLoading = true);
     final fullName = _nameCtrl.text.trim();
@@ -59,6 +87,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         fullName: fullName,
         role: _role,
         phone: phone,
+        professionalDocumentType: _role == 'trainer' ? _docType : null,
+        professionalDocument: _role == 'trainer' ? validDocFormatted : null,
       );
 
       if (mounted) {
@@ -104,6 +134,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     final isTrainer = _role == 'trainer';
     final primaryAccent = isTrainer ? AppColors.trainerEmerald : AppColors.studentCyan;
+
+    String docLabel = 'Registro Profissional CREF';
+    String docHint = 'Ex: 019284-G/SP';
+    IconData docIcon = Icons.workspace_premium_rounded;
+    String docHelperNote = 'Formato CONFEF: 000000-G/UF (G=Graduado, P=Provisionado)';
+    String docLinkText = 'Consultar no CONFEF';
+    String docVerificationUrl = 'https://www.confef.org.br/confef/registrados/';
+
+    if (_docType == 'CBMF') {
+      docLabel = 'Registro de Filiado CBMF';
+      docHint = 'Ex: CBMF-10294';
+      docIcon = Icons.sports_gymnastics_rounded;
+      docHelperNote = 'Confederação Brasileira de Musculação e Fitness';
+      docLinkText = 'Portal do Filiado CBMF';
+      docVerificationUrl = 'https://portaldofiliadocbmf.abacusai.app/';
+    } else if (_docType == 'CPF') {
+      docLabel = 'CPF do Treinador';
+      docHint = '000.000.000-00';
+      docIcon = Icons.badge_outlined;
+      docHelperNote = 'Validação oficial pelos dígitos da Receita Federal';
+      docLinkText = 'Consultar na Receita Federal';
+      docVerificationUrl = 'https://servicos.receita.fazenda.gov.br/servicos/cpf/consultasituacao/consultapublica.asp';
+    }
 
     return Scaffold(
       backgroundColor: AppColors.studentBg,
@@ -262,6 +315,179 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     const SizedBox(height: 14),
+
+                    // Registro Profissional (Obrigatório para Treinador: CREF, CBMF ou CPF)
+                    if (isTrainer) ...[
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.studentSurface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: _docValidation?.isValid == true
+                                ? AppColors.trainerEmerald.withValues(alpha: 0.6)
+                                : AppColors.studentBorder,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.verified_user_outlined, size: 16, color: primaryAccent),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'REGISTRO PROFISSIONAL',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.6,
+                                        color: primaryAccent,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: primaryAccent.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    'Obrigatório',
+                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: primaryAccent),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            // Pílulas seletoras: CREF | CBMF | CPF
+                            Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: BoxDecoration(
+                                color: AppColors.studentBg,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.studentBorder),
+                              ),
+                              child: Row(
+                                children: [
+                                  _buildDocTypePill(
+                                    type: 'CREF',
+                                    title: 'CONFEF',
+                                    icon: Icons.workspace_premium_rounded,
+                                    activeColor: primaryAccent,
+                                  ),
+                                  _buildDocTypePill(
+                                    type: 'CBMF',
+                                    title: 'Filiado CBMF',
+                                    icon: Icons.sports_gymnastics_rounded,
+                                    activeColor: primaryAccent,
+                                  ),
+                                  _buildDocTypePill(
+                                    type: 'CPF',
+                                    title: 'Receita Federal',
+                                    icon: Icons.badge_outlined,
+                                    activeColor: primaryAccent,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            // Campo de Texto do Documento com Validação Dinâmica
+                            TextFormField(
+                              controller: _documentCtrl,
+                              keyboardType: _docType == 'CPF' ? TextInputType.number : TextInputType.text,
+                              style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+                              onChanged: (val) {
+                                setState(() {
+                                  _docValidation = val.isNotEmpty
+                                      ? DocumentValidator.validate(type: _docType, value: val)
+                                      : null;
+                                });
+                              },
+                              validator: (v) {
+                                if (!isTrainer) return null;
+                                final res = DocumentValidator.validate(type: _docType, value: v);
+                                if (!res.isValid) {
+                                  return res.errorMessage ?? 'Documento inválido';
+                                }
+                                return null;
+                              },
+                              decoration: InputDecoration(
+                                labelText: docLabel,
+                                hintText: docHint,
+                                labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                                hintStyle: TextStyle(color: AppColors.textMuted.withValues(alpha: 0.6), fontSize: 12),
+                                prefixIcon: Icon(docIcon, color: primaryAccent, size: 20),
+                                suffixIcon: _documentCtrl.text.isNotEmpty
+                                    ? Icon(
+                                        _docValidation?.isValid == true ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+                                        color: _docValidation?.isValid == true ? Colors.greenAccent : Colors.redAccent,
+                                        size: 20,
+                                      )
+                                    : null,
+                                filled: true,
+                                fillColor: AppColors.studentBg,
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: primaryAccent, width: 1.5),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            // Linha de Status de Validação + Link Oficial para Consulta
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    _docValidation?.isValid == true
+                                        ? '✓ Documento Válido: ${_docValidation?.formatted}'
+                                        : (_documentCtrl.text.isNotEmpty
+                                            ? (_docValidation?.errorMessage ?? '')
+                                            : docHelperNote),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: _docValidation?.isValid == true ? FontWeight.bold : FontWeight.normal,
+                                      color: _docValidation?.isValid == true
+                                          ? Colors.greenAccent
+                                          : (_documentCtrl.text.isNotEmpty ? Colors.redAccent : AppColors.textMuted),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                InkWell(
+                                  onTap: () => _openUrl(docVerificationUrl),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        docLinkText,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: primaryAccent,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Icon(Icons.open_in_new, size: 11, color: primaryAccent),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
 
                     // Senha
                     TextFormField(
@@ -431,4 +657,62 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
+
+  Widget _buildDocTypePill({
+    required String type,
+    required String title,
+    required IconData icon,
+    required Color activeColor,
+  }) {
+    final isSelected = _docType == type;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _docType = type;
+            _docValidation = _documentCtrl.text.isNotEmpty
+                ? DocumentValidator.validate(type: _docType, value: _documentCtrl.text.trim())
+                : null;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          decoration: BoxDecoration(
+            color: isSelected ? activeColor.withValues(alpha: 0.18) : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected ? activeColor : Colors.transparent,
+              width: 1.5,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18, color: isSelected ? activeColor : AppColors.textMuted),
+              const SizedBox(height: 3),
+              Text(
+                type,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected ? activeColor : AppColors.textPrimary,
+                ),
+              ),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 9,
+                  color: isSelected ? activeColor.withValues(alpha: 0.9) : AppColors.textMuted,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
+

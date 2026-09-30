@@ -139,7 +139,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         setState(() {
           final name = trainer['full_name'] as String?;
           if (name != null && name.isNotEmpty) _trainerName = name;
-          final reg = (trainer['cref_or_registry'] ?? trainer['cref']) as String?;
+          final reg = (trainer['cref_or_registry'] ?? trainer['cref'] ?? trainer['professional_document']) as String?;
           if (reg != null && reg.isNotEmpty) _trainerCref = reg;
         });
       }

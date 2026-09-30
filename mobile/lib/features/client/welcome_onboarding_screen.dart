@@ -46,6 +46,7 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
   final Set<String> _musclePriorities = {'Peitoral', 'Ombros'};
 
   String _resolvedTrainerName = 'Prof. Roberto Mendes';
+  String _resolvedTrainerRegistry = 'CREF 019284-G/SP';
 
   @override
   void initState() {
@@ -64,6 +65,8 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
         setState(() {
           final name = trainer['full_name'] as String?;
           if (name != null && name.isNotEmpty) _resolvedTrainerName = name;
+          final reg = (trainer['cref_or_registry'] ?? trainer['cref'] ?? trainer['professional_document']) as String?;
+          if (reg != null && reg.isNotEmpty) _resolvedTrainerRegistry = reg;
         });
       }
     } catch (_) {}
@@ -314,7 +317,7 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Seu Personal Trainer no Mr. Coach',
+                        '$_resolvedTrainerRegistry • Personal Trainer',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.emerald(context),
