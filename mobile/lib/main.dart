@@ -363,14 +363,29 @@ class _MainShellScreenState extends State<MainShellScreen> {
                       valueListenable: SubscriptionService.activeSubscriptionNotifier,
                       builder: (context, sub, _) {
                         final planName = sub?.planName ?? 'Personal Pro';
-                        final isPro = sub?.planId != 'starter';
+                        final planId = sub?.planId ?? 'pro';
+                        final Color planColor;
+                        final IconData planIcon;
+                        if (planId == 'starter') {
+                          planColor = Colors.orangeAccent;
+                          planIcon = Icons.rocket_launch_rounded;
+                        } else if (planId == 'elite') {
+                          planColor = const Color(0xFFF59E0B);
+                          planIcon = Icons.workspace_premium_rounded;
+                        } else if (planId == 'studio') {
+                          planColor = const Color(0xFF8B5CF6);
+                          planIcon = Icons.stars_rounded;
+                        } else {
+                          planColor = AppColors.trainerEmerald;
+                          planIcon = Icons.workspace_premium_rounded;
+                        }
                         return Container(
                           margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: AppColors.pillBg(context),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: isPro ? AppColors.trainerEmerald.withValues(alpha: 0.3) : AppColors.cardBorder(context),
+                              color: planColor.withValues(alpha: 0.3),
                             ),
                           ),
                           child: InkWell(
@@ -381,9 +396,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
                               child: Row(
                                 children: [
                                   Icon(
-                                    isPro ? Icons.workspace_premium_rounded : Icons.rocket_launch_rounded,
+                                    planIcon,
                                     size: 18,
-                                    color: isPro ? AppColors.trainerEmerald : Colors.orangeAccent,
+                                    color: planColor,
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
@@ -578,21 +593,32 @@ class _MainShellScreenState extends State<MainShellScreen> {
                           valueListenable: SubscriptionService.activeSubscriptionNotifier,
                           builder: (context, sub, _) {
                             final planName = sub?.planName ?? 'Personal Pro';
-                            final isPro = sub?.planId != 'starter';
+                            final planId = sub?.planId ?? 'pro';
+                            final Color planColor;
+                            final IconData planIcon;
+                            if (planId == 'starter') {
+                              planColor = Colors.orange;
+                              planIcon = Icons.rocket_launch_rounded;
+                            } else if (planId == 'elite') {
+                              planColor = const Color(0xFFF59E0B);
+                              planIcon = Icons.workspace_premium_rounded;
+                            } else if (planId == 'studio') {
+                              planColor = const Color(0xFF8B5CF6);
+                              planIcon = Icons.stars_rounded;
+                            } else {
+                              planColor = AppColors.trainerEmerald;
+                              planIcon = Icons.workspace_premium_rounded;
+                            }
                             return InkWell(
                               onTap: () => setState(() => _currentIndex = 3),
                               borderRadius: BorderRadius.circular(8),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                                 decoration: BoxDecoration(
-                                  color: isPro
-                                      ? AppColors.trainerEmerald.withValues(alpha: 0.15)
-                                      : Colors.orange.withValues(alpha: 0.15),
+                                  color: planColor.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                    color: isPro
-                                        ? AppColors.trainerEmerald.withValues(alpha: 0.4)
-                                        : Colors.orange.withValues(alpha: 0.4),
+                                    color: planColor.withValues(alpha: 0.4),
                                     width: 1,
                                   ),
                                 ),
@@ -600,15 +626,15 @@ class _MainShellScreenState extends State<MainShellScreen> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
-                                      isPro ? Icons.workspace_premium_rounded : Icons.rocket_launch_rounded,
+                                      planIcon,
                                       size: 13,
-                                      color: isPro ? AppColors.trainerEmerald : Colors.orange,
+                                      color: planColor,
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
                                       planName,
                                       style: TextStyle(
-                                        color: isPro ? AppColors.trainerEmerald : Colors.orange,
+                                        color: planColor,
                                         fontSize: 10,
                                         fontWeight: FontWeight.w800,
                                       ),

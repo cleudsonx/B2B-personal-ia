@@ -249,9 +249,12 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
   Widget _buildPlanCard(PlanModel plan) {
     final isFree = plan.id == 'starter';
     final isPopular = plan.isPopular;
+    final isElite = plan.id == 'elite';
     final primaryColor = isPopular
         ? AppColors.emerald(context)
-        : (isFree ? Colors.blueAccent : Colors.purpleAccent);
+        : (isFree
+            ? Colors.blueAccent
+            : (isElite ? const Color(0xFFF59E0B) : Colors.purpleAccent));
 
     final price = _isYearly ? plan.priceYearlyMonthlyEquivalent : plan.priceMonthly;
 
@@ -405,7 +408,9 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
                       backgroundColor: isPopular
                           ? AppColors.emerald(context)
                           : (isFree ? AppColors.pillBg(context) : primaryColor),
-                      foregroundColor: isPopular ? Colors.black : Colors.white,
+                      foregroundColor: (isPopular || isElite)
+                          ? Colors.black
+                          : (isFree ? AppColors.text(context) : Colors.white),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
@@ -421,7 +426,9 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
                         Icon(
                           isFree ? Icons.rocket_launch_rounded : Icons.lock_open_rounded,
                           size: 18,
-                          color: isPopular ? Colors.black : (isFree ? AppColors.text(context) : Colors.white),
+                          color: (isPopular || isElite)
+                              ? Colors.black
+                              : (isFree ? AppColors.text(context) : Colors.white),
                         ),
                         const SizedBox(width: 8),
                         Text(
@@ -429,7 +436,9 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w900,
-                            color: isPopular ? Colors.black : (isFree ? AppColors.text(context) : Colors.white),
+                            color: (isPopular || isElite)
+                                ? Colors.black
+                                : (isFree ? AppColors.text(context) : Colors.white),
                           ),
                         ),
                       ],

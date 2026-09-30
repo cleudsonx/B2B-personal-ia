@@ -414,7 +414,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final isDark = AppColors.isDark(context);
     final isCurrent = _mySubscription?.planId == plan.id;
     final isPro = plan.isPopular;
-    final borderColor = isPro ? AppColors.emerald(context) : AppColors.cardBorder(context);
+    final isElite = plan.id == 'elite';
+    final isStudio = plan.id == 'studio';
+    final borderColor = isPro
+        ? AppColors.emerald(context)
+        : (isElite
+            ? const Color(0xFFF59E0B)
+            : (isStudio ? const Color(0xFF8B5CF6) : AppColors.cardBorder(context)));
     final price = _isYearly ? plan.priceYearlyMonthlyEquivalent : plan.priceMonthly;
 
     return Container(
@@ -424,7 +430,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: borderColor,
-          width: isPro ? 1.8 : 1.0,
+          width: (isPro || isElite || isStudio) ? 1.8 : 1.0,
         ),
         boxShadow: [
           BoxShadow(
@@ -455,13 +461,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isPro ? AppColors.emerald(context) : AppColors.accentBlue(context),
+                      color: isPro
+                          ? AppColors.emerald(context)
+                          : (isElite
+                              ? const Color(0xFFF59E0B)
+                              : (isStudio ? const Color(0xFF8B5CF6) : AppColors.accentBlue(context))),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       plan.badge!,
-                      style: const TextStyle(
-                        color: Colors.black,
+                      style: TextStyle(
+                        color: (isPro || isElite) ? Colors.black : Colors.white,
                         fontWeight: FontWeight.w900,
                         fontSize: 10,
                         letterSpacing: 0.6,
@@ -487,7 +497,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.w900,
-                    color: isPro ? AppColors.emerald(context) : AppColors.text(context),
+                    color: isPro
+                        ? AppColors.emerald(context)
+                        : (isElite
+                            ? const Color(0xFFF59E0B)
+                            : (isStudio ? const Color(0xFFA78BFA) : AppColors.text(context))),
                   ),
                 ),
                 if (price > 0)
@@ -550,13 +564,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: isCurrent
                     ? AppColors.pillBg(context)
-                    : (isPro ? AppColors.emerald(context) : AppColors.accentBlue(context)),
+                    : (isPro
+                        ? AppColors.emerald(context)
+                        : (isElite
+                            ? const Color(0xFFF59E0B)
+                            : (isStudio ? const Color(0xFF8B5CF6) : AppColors.accentBlue(context)))),
                 foregroundColor: isCurrent
                     ? AppColors.subtext(context)
-                    : (isPro ? Colors.black : Colors.white),
+                    : ((isPro || isElite) ? Colors.black : Colors.white),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: isPro && !isCurrent ? 4 : 0,
+                elevation: (isPro || isElite || isStudio) && !isCurrent ? 4 : 0,
               ),
               onPressed: isCurrent ? null : () => _selectPlan(plan),
               child: Text(

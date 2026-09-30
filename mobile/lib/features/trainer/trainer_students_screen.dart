@@ -1170,8 +1170,24 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                 final currentSub = sub ?? _mySubscription;
                 final planName = currentSub?.planName ?? 'Personal Pro';
                 final maxStudents = currentSub?.maxStudents ?? 30;
-                final isStarter = currentSub?.planId == 'starter';
+                final planId = currentSub?.planId ?? 'starter';
                 final isDark = AppColors.isDark(context);
+
+                final Color planColor;
+                final IconData planIcon;
+                if (planId == 'starter') {
+                  planColor = Colors.orange;
+                  planIcon = Icons.rocket_launch_rounded;
+                } else if (planId == 'elite') {
+                  planColor = const Color(0xFFF59E0B);
+                  planIcon = Icons.workspace_premium_rounded;
+                } else if (planId == 'studio') {
+                  planColor = const Color(0xFF8B5CF6);
+                  planIcon = Icons.stars_rounded;
+                } else {
+                  planColor = AppColors.emerald(context);
+                  planIcon = Icons.workspace_premium_rounded;
+                }
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
@@ -1189,9 +1205,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                         color: AppColors.card(context),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: isStarter
-                              ? Colors.orange.withValues(alpha: 0.5)
-                              : AppColors.emerald(context).withValues(alpha: 0.4),
+                          color: planColor.withValues(alpha: 0.4),
                           width: 1.2,
                         ),
                         boxShadow: [
@@ -1207,15 +1221,13 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                           Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
-                              color: isStarter
-                                  ? Colors.orange.withValues(alpha: 0.15)
-                                  : AppColors.emeraldBg(context),
+                              color: planColor.withValues(alpha: 0.15),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
-                              isStarter ? Icons.rocket_launch_rounded : Icons.workspace_premium_rounded,
+                              planIcon,
                               size: 16,
-                              color: isStarter ? Colors.orange : AppColors.emerald(context),
+                              color: planColor,
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -1240,9 +1252,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                   decoration: BoxDecoration(
                                     color: (occupiedCount >= maxStudents)
                                         ? Colors.redAccent.withValues(alpha: 0.15)
-                                        : (isStarter
-                                            ? Colors.orange.withValues(alpha: 0.15)
-                                            : AppColors.emeraldBg(context)),
+                                        : planColor.withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
@@ -1252,7 +1262,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                       fontWeight: FontWeight.w700,
                                       color: (occupiedCount >= maxStudents)
                                           ? Colors.redAccent
-                                          : (isStarter ? Colors.orange : AppColors.emerald(context)),
+                                          : planColor,
                                     ),
                                   ),
                                 ),

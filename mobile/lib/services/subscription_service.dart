@@ -52,14 +52,27 @@ class SubscriptionService {
     }
   }
 
-  /// Busca os planos SaaS disponíveis no backend
   static Future<List<PlanModel>> getPlans() async {
     try {
       final uri = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/plans');
       final res = await _client.get(uri, headers: _headers).timeout(const Duration(seconds: 5));
       if (res.statusCode == 200) {
         final list = jsonDecode(utf8.decode(res.bodyBytes)) as List<dynamic>;
-        return list.map((p) => PlanModel.fromJson(p as Map<String, dynamic>)).toList();
+        final apiPlans = list.map((p) => PlanModel.fromJson(p as Map<String, dynamic>)).toList();
+
+        // Garante que TODOS os 4 planos canônicos (Starter, Pro, Elite, Studio) estejam presentes,
+        // mesmo se o servidor backend remoto ainda estiver sincronizando uma versão anterior.
+        final Map<String, PlanModel> merged = {
+          for (final def in _defaultPlans) def.id: def,
+        };
+        for (final p in apiPlans) {
+          merged[p.id] = p;
+        }
+
+        const canonicalOrder = ['starter', 'pro', 'elite', 'studio'];
+        return canonicalOrder
+            .map((id) => merged[id] ?? _defaultPlans.firstWhere((d) => d.id == id))
+            .toList();
       }
     } catch (_) {
       // Fallback gracioso com planos padrão caso offline
@@ -270,12 +283,20 @@ class SubscriptionService {
     final isYearly = billingInterval == 'yearly';
     final amount = planId == 'studio'
         ? (isYearly ? 190800 : 19900)
-        : (planId == 'pro' ? (isYearly ? 85200 : 8900) : 0);
+        : (planId == 'elite'
+            ? (isYearly ? 142800 : 14900)
+            : (planId == 'pro' ? (isYearly ? 85200 : 8900) : 0));
+
+    final planName = planId == 'studio'
+        ? 'Studio Scale'
+        : (planId == 'elite'
+            ? 'Elite Coach'
+            : (planId == 'pro' ? 'Personal Pro' : 'Starter Trial'));
 
     return CheckoutSessionModel(
       sessionId: 'sess_simulated_${DateTime.now().millisecondsSinceEpoch}',
       planId: planId,
-      planName: planId == 'studio' ? 'Studio Scale' : (planId == 'pro' ? 'Personal Pro' : 'Starter'),
+      planName: planName,
       amountCents: amount,
       billingInterval: billingInterval,
       paymentMethod: paymentMethod,
