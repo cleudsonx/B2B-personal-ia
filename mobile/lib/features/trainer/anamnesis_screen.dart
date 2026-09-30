@@ -4,6 +4,8 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/ai_generation_stepper.dart';
 import '../../core/widgets/server_config_dialog.dart';
 import '../../core/widgets/theme_toggle_button.dart';
+import '../../models/exercise_model.dart';
+import '../../models/split_model.dart';
 import '../../models/workout_plan_model.dart';
 import '../../services/api_service.dart';
 import '../../services/workout_service.dart';
@@ -1109,15 +1111,42 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           ),
           Expanded(
             child: TabBarView(
-              children: plan.splits.map((split) {
+              children: List.generate(plan.splits.length, (splitIndex) {
+                final split = plan.splits[splitIndex];
                 return ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: split.exercises.length,
+                  itemCount: split.exercises.length + 1,
                   itemBuilder: (ctx, i) {
+                    // BOTÃO INCLUIR NOVO EXERCÍCIO AO FINAL DO SPLIT
+                    if (i == split.exercises.length) {
+                      return Container(
+                        margin: const EdgeInsets.only(top: 8, bottom: 24),
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          icon: Icon(Icons.add_circle_outline_rounded, color: AppColors.emerald(context), size: 18),
+                          label: Text(
+                            'Incluir Novo Exercício no Treino ${split.splitIdentifier}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.emerald(context),
+                              fontSize: 13,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            side: BorderSide(color: AppColors.emerald(context).withValues(alpha: 0.5), width: 1.5),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            backgroundColor: AppColors.emerald(context).withValues(alpha: 0.05),
+                          ),
+                          onPressed: () => _showAddExerciseDialog(splitIndex),
+                        ),
+                      );
+                    }
+
                     final ex = split.exercises[i];
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: AppColors.card(context),
                         borderRadius: BorderRadius.circular(18),
@@ -1130,76 +1159,110 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                           ),
                         ],
                       ),
-                      child: Row(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: AppColors.emeraldBg(context),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: AppColors.emerald(context).withValues(alpha: 0.3)),
-                            ),
-                            child: Center(
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: AppColors.emeraldBg(context),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: AppColors.emerald(context).withValues(alpha: 0.3)),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '${i + 1}',
+                                    style: TextStyle(
+                                      color: AppColors.emerald(context),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      ex.name,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: AppColors.text(context),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      ex.targetMuscleGroup,
+                                      style: TextStyle(color: AppColors.subtext(context), fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded, size: 19),
+                                color: Colors.red.shade400,
+                                tooltip: 'Remover exercício',
+                                visualDensity: VisualDensity.compact,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                onPressed: () => _confirmRemoveExercise(splitIndex, i, ex.name),
+                              ),
+                            ],
+                          ),
+                          if (ex.notes.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Padding(
+                              padding: const EdgeInsets.only(left: 38),
                               child: Text(
-                                '${ex.order}',
+                                ex.notes,
                                 style: TextStyle(
-                                  color: AppColors.emerald(context),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
+                                  fontSize: 11,
+                                  color: AppColors.subtext(context),
+                                  fontStyle: FontStyle.italic,
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  ex.name,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
-                                    color: AppColors.text(context),
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  ex.targetMuscleGroup,
-                                  style: TextStyle(color: AppColors.subtext(context), fontSize: 12),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    _buildSplitBadge('${ex.sets} Séries'),
-                                    const SizedBox(width: 6),
-                                    _buildSplitBadge('${ex.reps} Reps'),
-                                    const SizedBox(width: 6),
-                                    _buildSplitBadge('${ex.restSeconds}s Descanso'),
-                                  ],
-                                ),
-                                if (ex.notes.isNotEmpty) ...[
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    ex.notes,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.subtext(context),
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
+                          ],
+                          const SizedBox(height: 12),
+                          // CONTROLES DE AJUSTE RÁPIDO: SÉRIES, REPS, DESCANSO
+                          Row(
+                            children: [
+                              _buildParamStepper(
+                                label: 'Séries',
+                                value: '${ex.sets}',
+                                onDecrement: () => _updateExerciseSets(splitIndex, i, -1),
+                                onIncrement: () => _updateExerciseSets(splitIndex, i, 1),
+                              ),
+                              const SizedBox(width: 8),
+                              _buildParamStepper(
+                                label: 'Reps',
+                                value: ex.reps,
+                                onDecrement: () => _cycleExerciseReps(splitIndex, i, -1),
+                                onIncrement: () => _cycleExerciseReps(splitIndex, i, 1),
+                                onTapValue: () => _editRepsDirectly(splitIndex, i, ex.reps),
+                              ),
+                              const SizedBox(width: 8),
+                              _buildParamStepper(
+                                label: 'Descanso',
+                                value: '${ex.restSeconds}s',
+                                onDecrement: () => _updateExerciseRest(splitIndex, i, -15),
+                                onIncrement: () => _updateExerciseRest(splitIndex, i, 15),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     );
                   },
                 );
-              }).toList(),
+              }),
             ),
           ),
           Padding(
@@ -1447,22 +1510,532 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
     );
   }
 
-  Widget _buildSplitBadge(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppColors.pillBg(context),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.pillBorder(context)),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: AppColors.text(context),
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
+  static const List<String> _commonRepRanges = [
+    '4-6',
+    '6-8',
+    '8-10',
+    '10-12',
+    '12-15',
+    '15-20',
+    '20-25',
+    'Até a Falha',
+  ];
+
+  Widget _buildParamStepper({
+    required String label,
+    required String value,
+    required VoidCallback onDecrement,
+    required VoidCallback onIncrement,
+    VoidCallback? onTapValue,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+        decoration: BoxDecoration(
+          color: AppColors.pillBg(context),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.pillBorder(context)),
+        ),
+        child: Column(
+          children: [
+            Text(
+              label.toUpperCase(),
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                color: AppColors.subtext(context),
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                InkWell(
+                  onTap: onDecrement,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: AppColors.card(context),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.cardBorder(context)),
+                    ),
+                    child: Icon(Icons.remove, size: 13, color: AppColors.text(context)),
+                  ),
+                ),
+                Expanded(
+                  child: InkWell(
+                    onTap: onTapValue,
+                    child: Text(
+                      value,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.text(context),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: onIncrement,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: AppColors.card(context),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.cardBorder(context)),
+                    ),
+                    child: Icon(Icons.add, size: 13, color: AppColors.text(context)),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  void _updateExerciseSets(int splitIndex, int exerciseIndex, int delta) {
+    if (_generatedPlan == null) return;
+    final splits = List<SplitModel>.from(_generatedPlan!.splits);
+    final split = splits[splitIndex];
+    final exercises = List<ExerciseModel>.from(split.exercises);
+    final ex = exercises[exerciseIndex];
+    final newSets = (ex.sets + delta).clamp(1, 10);
+    if (newSets == ex.sets) return;
+
+    exercises[exerciseIndex] = ex.copyWith(sets: newSets);
+    splits[splitIndex] = split.copyWith(exercises: exercises);
+    setState(() {
+      _generatedPlan = _generatedPlan!.copyWith(splits: splits);
+    });
+  }
+
+  void _cycleExerciseReps(int splitIndex, int exerciseIndex, int delta) {
+    if (_generatedPlan == null) return;
+    final splits = List<SplitModel>.from(_generatedPlan!.splits);
+    final split = splits[splitIndex];
+    final exercises = List<ExerciseModel>.from(split.exercises);
+    final ex = exercises[exerciseIndex];
+
+    int currentIdx = _commonRepRanges.indexOf(ex.reps.trim());
+    if (currentIdx == -1) {
+      currentIdx = 3;
+    }
+    final newIdx = (currentIdx + delta).clamp(0, _commonRepRanges.length - 1);
+    final newReps = _commonRepRanges[newIdx];
+
+    exercises[exerciseIndex] = ex.copyWith(reps: newReps);
+    splits[splitIndex] = split.copyWith(exercises: exercises);
+    setState(() {
+      _generatedPlan = _generatedPlan!.copyWith(splits: splits);
+    });
+  }
+
+  void _editRepsDirectly(int splitIndex, int exerciseIndex, String currentReps) {
+    final ctrl = TextEditingController(text: currentReps);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card(context),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Ajustar Repetições', style: TextStyle(color: AppColors.text(context), fontSize: 16)),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          style: TextStyle(color: AppColors.text(context)),
+          decoration: InputDecoration(
+            hintText: 'Ex: 10-12, 4x8, Até a falha',
+            filled: true,
+            fillColor: AppColors.pillBg(context),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancelar', style: TextStyle(color: AppColors.subtext(context))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.emerald(context),
+              foregroundColor: Colors.black,
+            ),
+            onPressed: () {
+              final val = ctrl.text.trim();
+              if (val.isNotEmpty) {
+                final splits = List<SplitModel>.from(_generatedPlan!.splits);
+                final split = splits[splitIndex];
+                final exercises = List<ExerciseModel>.from(split.exercises);
+                exercises[exerciseIndex] = exercises[exerciseIndex].copyWith(reps: val);
+                splits[splitIndex] = split.copyWith(exercises: exercises);
+                setState(() {
+                  _generatedPlan = _generatedPlan!.copyWith(splits: splits);
+                });
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _updateExerciseRest(int splitIndex, int exerciseIndex, int deltaSeconds) {
+    if (_generatedPlan == null) return;
+    final splits = List<SplitModel>.from(_generatedPlan!.splits);
+    final split = splits[splitIndex];
+    final exercises = List<ExerciseModel>.from(split.exercises);
+    final ex = exercises[exerciseIndex];
+    final newRest = (ex.restSeconds + deltaSeconds).clamp(15, 300);
+    if (newRest == ex.restSeconds) return;
+
+    exercises[exerciseIndex] = ex.copyWith(restSeconds: newRest);
+    splits[splitIndex] = split.copyWith(exercises: exercises);
+    setState(() {
+      _generatedPlan = _generatedPlan!.copyWith(splits: splits);
+    });
+  }
+
+  void _confirmRemoveExercise(int splitIndex, int exerciseIndex, String exerciseName) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card(context),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Remover Exercício?', style: TextStyle(color: AppColors.text(context))),
+        content: Text('Deseja remover "$exerciseName" desta divisão?', style: TextStyle(color: AppColors.subtext(context))),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancelar', style: TextStyle(color: AppColors.subtext(context))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _deleteExercise(splitIndex, exerciseIndex);
+            },
+            child: const Text('Remover'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteExercise(int splitIndex, int exerciseIndex) {
+    if (_generatedPlan == null) return;
+    final splits = List<SplitModel>.from(_generatedPlan!.splits);
+    final split = splits[splitIndex];
+    final exercises = List<ExerciseModel>.from(split.exercises);
+    exercises.removeAt(exerciseIndex);
+
+    final reordered = <ExerciseModel>[];
+    for (int k = 0; k < exercises.length; k++) {
+      reordered.add(exercises[k].copyWith(order: k + 1));
+    }
+    splits[splitIndex] = split.copyWith(exercises: reordered);
+    setState(() {
+      _generatedPlan = _generatedPlan!.copyWith(splits: splits);
+    });
+  }
+
+  void _addNewExercise(int splitIndex, ExerciseModel newExercise) {
+    if (_generatedPlan == null) return;
+    final splits = List<SplitModel>.from(_generatedPlan!.splits);
+    final split = splits[splitIndex];
+    final exercises = List<ExerciseModel>.from(split.exercises);
+    exercises.add(newExercise.copyWith(order: exercises.length + 1));
+    splits[splitIndex] = split.copyWith(exercises: exercises);
+    setState(() {
+      _generatedPlan = _generatedPlan!.copyWith(splits: splits);
+    });
+  }
+
+  void _showAddExerciseDialog(int splitIndex) {
+    if (_generatedPlan == null) return;
+    final split = _generatedPlan!.splits[splitIndex];
+
+    final nameCtrl = TextEditingController();
+    final notesCtrl = TextEditingController();
+    String selectedMuscle = 'Peitoral';
+    int sets = 3;
+    String reps = '10-12';
+    int restSeconds = 60;
+
+    const muscleOptions = [
+      'Peitoral',
+      'Dorsais / Costas',
+      'Deltoides / Ombros',
+      'Quadríceps',
+      'Posterior de Coxa',
+      'Glúteos',
+      'Bíceps',
+      'Tríceps',
+      'Panturrilhas',
+      'Abdômen / Core',
+      'Geral',
+    ];
+
+    const suggestions = [
+      'Supino Inclinado com Halteres',
+      'Puxada Alta (Lat Pulldown)',
+      'Elevação Lateral na Polia',
+      'Agachamento Búlgaro',
+      'Leg Press 45°',
+      'Cadeira Extensora',
+      'Tríceps na Polia com Corda',
+      'Rosca Direta com Barra W',
+      'Mesa Flexora',
+      'Elevação Pélvica',
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.card(context),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.fitness_center_rounded, color: AppColors.emerald(context), size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Novo Exercício • Treino ${split.splitIdentifier}',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.text(context),
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: nameCtrl,
+                      style: TextStyle(color: AppColors.text(context)),
+                      decoration: _inputDecoration(
+                        context,
+                        'Nome do Exercício',
+                        prefixIcon: Icons.edit_outlined,
+                        hint: 'Ex: Supino Inclinado com Halteres',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: suggestions.take(5).map((sug) {
+                        return ActionChip(
+                          label: Text(sug, style: const TextStyle(fontSize: 10)),
+                          backgroundColor: AppColors.pillBg(context),
+                          side: BorderSide(color: AppColors.pillBorder(context)),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          onPressed: () {
+                            setModalState(() {
+                              nameCtrl.text = sug;
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedMuscle,
+                      dropdownColor: AppColors.card(context),
+                      style: TextStyle(color: AppColors.text(context), fontSize: 13),
+                      decoration: _inputDecoration(
+                        context,
+                        'Grupo Muscular Alvo',
+                        prefixIcon: Icons.accessibility_new_rounded,
+                      ),
+                      items: muscleOptions
+                          .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                          .toList(),
+                      onChanged: (val) {
+                        if (val != null) setModalState(() => selectedMuscle = val);
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.pillBg(context),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.pillBorder(context)),
+                            ),
+                            child: Column(
+                              children: [
+                                Text('SÉRIES', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.subtext(context))),
+                                const SizedBox(height: 4),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    InkWell(
+                                      onTap: sets > 1 ? () => setModalState(() => sets--) : null,
+                                      child: Icon(Icons.remove_circle_outline, size: 20, color: AppColors.text(context)),
+                                    ),
+                                    Text('$sets', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.text(context))),
+                                    InkWell(
+                                      onTap: sets < 10 ? () => setModalState(() => sets++) : null,
+                                      child: Icon(Icons.add_circle_outline, size: 20, color: AppColors.text(context)),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.pillBg(context),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.pillBorder(context)),
+                            ),
+                            child: Column(
+                              children: [
+                                Text('REPETIÇÕES', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.subtext(context))),
+                                const SizedBox(height: 4),
+                                DropdownButton<String>(
+                                  value: _commonRepRanges.contains(reps) ? reps : '10-12',
+                                  dropdownColor: AppColors.card(context),
+                                  underline: const SizedBox(),
+                                  isDense: true,
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.text(context)),
+                                  items: _commonRepRanges.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                                  onChanged: (val) {
+                                    if (val != null) setModalState(() => reps = val);
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.pillBg(context),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.pillBorder(context)),
+                            ),
+                            child: Column(
+                              children: [
+                                Text('DESCANSO', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.subtext(context))),
+                                const SizedBox(height: 4),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    InkWell(
+                                      onTap: restSeconds > 15 ? () => setModalState(() => restSeconds -= 15) : null,
+                                      child: Icon(Icons.remove_circle_outline, size: 20, color: AppColors.text(context)),
+                                    ),
+                                    Text('${restSeconds}s', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.text(context))),
+                                    InkWell(
+                                      onTap: restSeconds < 300 ? () => setModalState(() => restSeconds += 15) : null,
+                                      child: Icon(Icons.add_circle_outline, size: 20, color: AppColors.text(context)),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: notesCtrl,
+                      style: TextStyle(color: AppColors.text(context), fontSize: 13),
+                      decoration: _inputDecoration(
+                        context,
+                        'Diretriz / Notas de Execução (Opcional)',
+                        prefixIcon: Icons.notes_rounded,
+                        hint: 'Ex: Cadência 3-0-1-0 com pico de contração',
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.add_rounded, color: Colors.black),
+                        label: Text('Adicionar ao Treino ${split.splitIdentifier}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.emerald(context),
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () {
+                          final name = nameCtrl.text.trim();
+                          if (name.isEmpty) return;
+
+                          final newExercise = ExerciseModel(
+                            order: split.exercises.length + 1,
+                            name: name,
+                            targetMuscleGroup: selectedMuscle,
+                            sets: sets,
+                            reps: reps,
+                            restSeconds: restSeconds,
+                            notes: notesCtrl.text.trim(),
+                            substitutionVector: '',
+                          );
+
+                          _addNewExercise(splitIndex, newExercise);
+                          Navigator.pop(ctx);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

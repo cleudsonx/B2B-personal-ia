@@ -35,4 +35,18 @@ class SplitModel {
       'exercises': exercises.map((e) => e.toJson()).toList(),
     };
   }
+
+  SplitModel copyWith({
+    String? splitIdentifier,
+    String? splitName,
+    int? estimatedDurationMin,
+    List<ExerciseModel>? exercises,
+  }) {
+    return SplitModel(
+      splitIdentifier: splitIdentifier ?? this.splitIdentifier,
+      splitName: splitName ?? this.splitName,
+      estimatedDurationMin: estimatedDurationMin ?? this.estimatedDurationMin,
+      exercises: exercises ?? this.exercises,
+    );
+  }
 }

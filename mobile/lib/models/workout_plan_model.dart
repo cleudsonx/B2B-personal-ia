@@ -31,4 +31,16 @@ class WorkoutPlanModel {
       'splits': splits.map((s) => s.toJson()).toList(),
     };
   }
+
+  WorkoutPlanModel copyWith({
+    String? workoutPlanTitle,
+    String? notesForTrainer,
+    List<SplitModel>? splits,
+  }) {
+    return WorkoutPlanModel(
+      workoutPlanTitle: workoutPlanTitle ?? this.workoutPlanTitle,
+      notesForTrainer: notesForTrainer ?? this.notesForTrainer,
+      splits: splits ?? this.splits,
+    );
+  }
 }
