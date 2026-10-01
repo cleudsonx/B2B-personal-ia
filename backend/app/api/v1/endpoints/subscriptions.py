@@ -225,8 +225,29 @@ async def process_card_checkout(
 async def webhook_asaas(payload: dict, request: Request):
     """Webhook oficial Asaas para confirmação de Pix recorrente e boleto/cartão.
     Persiste a ativação ou cancelamento da assinatura no Supabase via externalReference.
+    Garante idempotência estrita via event_id único para evitar duplicidade de processamento.
     """
     await _verify_payment_webhook("asaas", payload, request)
+
+    # Identificador de evento para garantia de idempotência
+    event_id = payload.get("id")
+    if not event_id:
+        payment_obj = payload.get("payment") or {}
+        p_id = payment_obj.get("id") or ""
+        evt = payload.get("event") or "UNKNOWN"
+        event_id = f"asaas_{evt}_{p_id}" if p_id else None
+
+    if event_id and await supabase_service.is_event_processed(event_id):
+        import logging as _log
+        _log.getLogger(__name__).info(f"[webhook/asaas] Evento duplicado ignorado com sucesso: {event_id}")
+        return {
+            "processed": True,
+            "provider": "asaas",
+            "idempotent": True,
+            "event_id": event_id,
+            "message": f"Evento {event_id} já processado anteriormente. Ignorando duplicata com segurança.",
+        }
+
     result = PaymentProviderService.process_webhook("asaas", payload)
 
     # Recuperar metadados da sessão pelo externalReference presente no payload
@@ -263,6 +284,15 @@ async def webhook_asaas(payload: dict, request: Request):
             "Nenhuma assinatura foi alterada."
         )
 
+    # Registrar evento no banco de idempotência após o processamento
+    if event_id:
+        await supabase_service.record_processed_event(
+            event_id=event_id,
+            provider="asaas",
+            event_type=payload.get("event", "UNKNOWN"),
+            payload=payload,
+        )
+
     return result
 
 
@@ -275,8 +305,24 @@ async def webhook_mercadopago(payload: dict, request: Request):
 
 @router.post("/webhook/infinitepay")
 async def webhook_infinitepay(payload: dict, request: Request):
-    """Webhook oficial InfinitePay para aprovações instantâneas de Pix e Smart Checkout."""
+    """Webhook oficial InfinitePay para aprovações instantâneas de Pix e Smart Checkout.
+    Garante idempotência estrita via nsu/slug único.
+    """
     await _verify_payment_webhook("infinitepay", payload, request)
+
+    order_nsu = payload.get("order_nsu") or payload.get("order_id") or payload.get("nsu") or payload.get("slug") or ""
+    evt = payload.get("event") or payload.get("status") or "UNKNOWN"
+    event_id = f"infinitepay_{evt}_{order_nsu}" if order_nsu else None
+
+    if event_id and await supabase_service.is_event_processed(event_id):
+        return {
+            "processed": True,
+            "provider": "infinitepay",
+            "idempotent": True,
+            "event_id": event_id,
+            "message": f"Evento {event_id} já processado anteriormente.",
+        }
+
     result = PaymentProviderService.process_webhook("infinitepay", payload)
     if result.get("subscription_status") == "active":
         trainer_id = result.get("trainer_id") or "current-trainer"
@@ -288,6 +334,15 @@ async def webhook_infinitepay(payload: dict, request: Request):
             billing_interval=billing_interval,
             payment_method="infinitepay"
         )
+
+    if event_id:
+        await supabase_service.record_processed_event(
+            event_id=event_id,
+            provider="infinitepay",
+            event_type=str(evt),
+            payload=payload,
+        )
+
     return result
 
 

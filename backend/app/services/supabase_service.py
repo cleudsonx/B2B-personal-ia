@@ -60,6 +60,7 @@ class SupabaseService:
         self._mem_alerts: Dict[str, Dict[str, Any]] = {}
         self._mem_subscriptions: Dict[str, Dict[str, Any]] = {}
         self._mem_ai_usage: Dict[str, int] = {}
+        self._mem_processed_events: Dict[str, Dict[str, Any]] = {}
 
     @staticmethod
     def _is_production() -> bool:
@@ -154,6 +155,69 @@ class SupabaseService:
         except Exception as e:
             logger.error(f"Erro ao atualizar status de assinatura no Supabase: {e}")
             self._raise_if_production("atualizar status de assinatura", e)
+
+    async def is_event_processed(self, event_id: str) -> bool:
+        """Verifica se um evento de webhook já foi processado anteriormente (idempotência)."""
+        if not event_id:
+            return False
+
+        if not self._is_production():
+            return event_id in self._mem_processed_events
+
+        client = await self.get_client()
+        if not client:
+            return event_id in self._mem_processed_events
+
+        try:
+            res = await client.table("processed_webhook_events")\
+                .select("event_id")\
+                .eq("event_id", event_id)\
+                .limit(1)\
+                .execute()
+            return bool(res.data)
+        except Exception as e:
+            logger.warning(f"Erro ao verificar idempotência de webhook {event_id}: {e}")
+            # Em caso de falha de conexão, checa fallback em memória para não bloquear
+            return event_id in self._mem_processed_events
+
+    async def record_processed_event(
+        self,
+        event_id: str,
+        provider: str,
+        event_type: str,
+        payload: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        """Registra um evento de webhook como processado de forma atômica e persistente."""
+        if not event_id:
+            return False
+
+        event_record = {
+            "event_id": event_id,
+            "provider": provider,
+            "event_type": event_type,
+            "processed_at": datetime.now(timezone.utc).isoformat(),
+        }
+        self._mem_processed_events[event_id] = event_record
+
+        if not self._is_production():
+            return True
+
+        client = await self.get_client()
+        if not client:
+            return True
+
+        try:
+            await client.table("processed_webhook_events").insert({
+                "event_id": event_id,
+                "provider": provider,
+                "event_type": event_type,
+                "payload": payload or {},
+            }).execute()
+            logger.info(f"[Supabase] Evento de webhook {event_id} ({provider}) registrado com sucesso.")
+            return True
+        except Exception as e:
+            logger.warning(f"Erro ao persistir evento de webhook {event_id} no Supabase: {e}")
+            return False
 
     async def get_client(self) -> Optional[AsyncClient]:
         """Obtém ou inicializa o cliente assíncrono do Supabase de forma segura."""

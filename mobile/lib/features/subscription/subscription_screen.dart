@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/theme_toggle_button.dart';
 import '../../models/subscription_model.dart';
@@ -748,50 +749,58 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
         _session = session;
         _isLoading = false;
       });
-      if (_paymentMethod == 'pix') {
+      if (_paymentMethod == 'pix' || _paymentMethod == 'credit_card') {
         _startPixPolling();
       }
     }
   }
 
-  Future<void> _submitCardPayment() async {
-    final num = _cardNumberController.text.replaceAll(RegExp(r'\s+'), '');
-    if (num.length < 13) {
-      _showError('Por favor, informe o número completo do cartão.');
+  Future<void> _openCardCheckout() async {
+    final url = _session?.checkoutUrl;
+    if (url == null || url.isEmpty) {
+      _showError('Link de checkout seguro não disponível no momento. Tente novamente.');
       return;
     }
-    if (_cardHolderController.text.trim().isEmpty) {
-      _showError('Informe o nome impresso no cartão.');
-      return;
+    final uri = Uri.parse(url);
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      }
+      _startPixPolling();
+    } catch (e) {
+      _showError('Não foi possível abrir o navegador: $e');
     }
-    final expParts = _expiryController.text.split('/');
-    if (expParts.length != 2 || expParts[0].length != 2 || expParts[1].length != 2) {
-      _showError('Validade inválida. Use o formato MM/AA.');
-      return;
-    }
-    if (_cvvController.text.length < 3) {
-      _showError('CVV inválido.');
-      return;
-    }
+  }
 
+  Future<void> _verifyCardPayment() async {
+    if (_session == null) return;
     setState(() => _isSubmittingCard = true);
-    final success = await SubscriptionService.processCardPayment(
-      sessionId: _session?.sessionId ?? 'sess_asaas_${DateTime.now().millisecondsSinceEpoch}',
-      cardHolderName: _cardHolderController.text.trim().toUpperCase(),
-      cardNumber: num,
-      expiryMonth: expParts[0],
-      expiryYear: expParts[1],
-      ccv: _cvvController.text.trim(),
-    );
-
+    final paid = await SubscriptionService.checkPaymentStatus(_session!.sessionId);
     if (mounted) {
       setState(() => _isSubmittingCard = false);
-      if (success) {
+      if (paid) {
         setState(() => _isPaid = true);
         HapticFeedback.heavyImpact();
         _showSuccessNotification();
       } else {
-        _showError('Não foi possível processar o cartão. Tente via Pix ou verifique os dados.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Color(0xFFD97706),
+            content: Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Pagamento ainda não confirmado pelo Asaas. Se já realizou a transação, aguarde alguns instantes.',
+                    style: TextStyle(color: Colors.white, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
       }
     }
   }
@@ -1051,31 +1060,20 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   elevation: 4,
                 ),
-                onPressed: _isSubmittingCard ? null : _submitCardPayment,
-                child: _isSubmittingCard
-                    ? const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
-                          ),
-                          SizedBox(width: 10),
-                          Text('Processando com Asaas...', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ],
-                      )
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.lock_rounded, size: 18, color: Colors.black),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Pagar R\$ ${amount.toStringAsFixed(2)} e Ativar Agora',
-                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
-                          ),
-                        ],
-                      ),
+                onPressed: _openCardCheckout,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.lock_rounded, size: 18, color: Colors.black),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Pagar R\$ ${amount.toStringAsFixed(2)} no Checkout Asaas',
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.open_in_new_rounded, size: 16, color: Colors.black),
+                  ],
+                ),
               ),
             ),
         ],
@@ -1323,126 +1321,108 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
     return Column(
       children: [
         const SizedBox(height: 6),
-        // CARTÃO VIRTUAL 3D INTERATIVO
+        // CARTÃO VIRTUAL 3D INTERATIVO (Exibição Visual de Prestígio)
         _buildInteractive3DCard(context),
         const SizedBox(height: 18),
 
-        // Formulário do Cartão
-        TextField(
-          controller: _cardNumberController,
-          keyboardType: TextInputType.number,
-          style: TextStyle(color: AppColors.text(context), fontWeight: FontWeight.bold),
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(16),
-            _CardNumberInputFormatter(),
-          ],
-          decoration: InputDecoration(
-            labelText: 'Número do Cartão',
-            labelStyle: TextStyle(color: AppColors.subtext(context), fontSize: 13),
-            prefixIcon: Icon(Icons.credit_card_rounded, color: AppColors.emerald(context), size: 20),
-            suffixIcon: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(
-                _detectCardBrand(_cardNumberController.text),
-                style: TextStyle(
-                  color: AppColors.emerald(context),
-                  fontWeight: FontWeight.w900,
-                  fontSize: 11,
-                ),
+        // Painel de Conformidade e Segurança PCI DSS
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.card(context),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.emerald(context).withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.emerald(context).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.verified_user_rounded, color: AppColors.emerald(context), size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Checkout Seguro Asaas (PCI DSS)',
+                          style: TextStyle(
+                            color: AppColors.text(context),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Criptografia bancária de ponta a ponta',
+                          style: TextStyle(color: AppColors.subtext(context), fontSize: 11.5),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ),
-            filled: true,
-            fillColor: AppColors.card(context),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: AppColors.cardBorder(context)),
-            ),
+              const SizedBox(height: 14),
+              Text(
+                'Por diretrizes rigorosas de segurança financeira (PCI DSS), o pagamento com cartão é processado diretamente no gateway oficial do Asaas.',
+                style: TextStyle(color: AppColors.subtext(context), fontSize: 12.5, height: 1.4),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Icon(Icons.check_circle_outline_rounded, color: AppColors.emerald(context), size: 16),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Seus dados de cartão nunca trafegam nem são gravados no app.',
+                      style: TextStyle(color: AppColors.text(context), fontSize: 11.5, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(Icons.check_circle_outline_rounded, color: AppColors.emerald(context), size: 16),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Ativação imediata da assinatura após aprovação da operadora.',
+                      style: TextStyle(color: AppColors.text(context), fontSize: 11.5, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
 
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _expiryController,
-                keyboardType: TextInputType.number,
-                style: TextStyle(color: AppColors.text(context), fontWeight: FontWeight.bold),
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(4),
-                  _ExpiryDateInputFormatter(),
-                ],
-                decoration: InputDecoration(
-                  labelText: 'Validade (MM/AA)',
-                  labelStyle: TextStyle(color: AppColors.subtext(context), fontSize: 13),
-                  filled: true,
-                  fillColor: AppColors.card(context),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(color: AppColors.cardBorder(context)),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextField(
-                controller: _cvvController,
-                focusNode: _cvvFocusNode,
-                keyboardType: TextInputType.number,
-                obscureText: true,
-                style: TextStyle(color: AppColors.text(context), fontWeight: FontWeight.bold),
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(4),
-                ],
-                decoration: InputDecoration(
-                  labelText: 'CVV (Verso)',
-                  labelStyle: TextStyle(color: AppColors.subtext(context), fontSize: 13),
-                  suffixIcon: const Icon(Icons.lock_outline_rounded, size: 18),
-                  filled: true,
-                  fillColor: AppColors.card(context),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(color: AppColors.cardBorder(context)),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-
-        TextField(
-          controller: _cardHolderController,
-          textCapitalization: TextCapitalization.characters,
-          style: TextStyle(color: AppColors.text(context), fontWeight: FontWeight.bold),
-          decoration: InputDecoration(
-            labelText: 'Nome Impresso no Cartão',
-            labelStyle: TextStyle(color: AppColors.subtext(context), fontSize: 13),
-            prefixIcon: Icon(Icons.person_outline_rounded, color: AppColors.emerald(context), size: 20),
-            filled: true,
-            fillColor: AppColors.card(context),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: AppColors.cardBorder(context)),
+        // Botão secundário de checagem manual
+        TextButton.icon(
+          onPressed: _isSubmittingCard ? null : _verifyCardPayment,
+          icon: _isSubmittingCard
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(Icons.refresh_rounded, size: 16, color: AppColors.emerald(context)),
+          label: Text(
+            'Já paguei pelo link (Verificar Aprovação)',
+            style: TextStyle(
+              color: AppColors.emerald(context),
+              fontSize: 12.5,
+              fontWeight: FontWeight.bold,
             ),
           ),
-        ),
-        const SizedBox(height: 14),
-
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.security_rounded, size: 14, color: AppColors.subtext(context)),
-            const SizedBox(width: 6),
-            Text(
-              'Transação direta protegida por tokenização PCI-DSS',
-              style: TextStyle(color: AppColors.subtext(context), fontSize: 11),
-            ),
-          ],
         ),
         const SizedBox(height: 10),
       ],
@@ -1667,41 +1647,6 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
           ],
         ),
       ),
-    );
-  }
-}
-
-// Formatadores de Entrada de Cartão
-class _CardNumberInputFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    final text = newValue.text.replaceAll(' ', '');
-    final buffer = StringBuffer();
-    for (int i = 0; i < text.length; i++) {
-      if (i > 0 && i % 4 == 0) buffer.write(' ');
-      buffer.write(text[i]);
-    }
-    final str = buffer.toString();
-    return TextEditingValue(
-      text: str,
-      selection: TextSelection.collapsed(offset: str.length),
-    );
-  }
-}
-
-class _ExpiryDateInputFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    final text = newValue.text.replaceAll('/', '');
-    final buffer = StringBuffer();
-    for (int i = 0; i < text.length; i++) {
-      if (i == 2) buffer.write('/');
-      buffer.write(text[i]);
-    }
-    final str = buffer.toString();
-    return TextEditingValue(
-      text: str,
-      selection: TextSelection.collapsed(offset: str.length),
     );
   }
 }

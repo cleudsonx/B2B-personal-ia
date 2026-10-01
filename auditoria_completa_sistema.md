@@ -4,8 +4,8 @@
 >
 > - Última atualização: 2026-10-01
 > - Escopo revisado: `backend/`, `mobile/`, `supabase/`, `landing/`, arquivos de deploy e serviços externos observados no código real.
-> - Verificação em 2026-10-01 (commit `79170cb`): `41` testes backend passaram; `flutter analyze` sem issues.
-> - Verificação em 2026-10-01 (commit `1d02f4b` — auditoria batch 2): `50` testes backend passaram; 9 novos testes de regressão de segurança adicionados.
+> - Verificação em 2026-10-01 (Batch 3 — PCI DSS & Idempotência): `52 passed, 2 warnings` na suíte backend; `flutter analyze` concluiu sem erros ou avisos (0 issues).
+> - Ambientes verificados: Backend no Render respondendo `200` em `https://b2b-personal-ia-backend.onrender.com/health` (`production`); tabela `trainer_ai_usage` confirmada no Supabase; migration de idempotência criada.
 > - Limite da verificação: disponibilidade pública do frontend não comprova os fluxos autenticados, o estado do banco remoto ou a operação de pagamentos.
 
 ---
@@ -21,7 +21,7 @@ O projeto **B2B Personal IA** é uma plataforma SaaS B2B voltada a personal trai
 
 A revisão atual do código mostra uma base modular em FastAPI e Flutter, e o frontend está publicado em `shaipados.com`. O backend implementa fluxos de geração de treino, adaptação, assinatura, validação documental e IA conversacional. A publicação do frontend não foi tratada como prova de que todos os serviços de backend e pagamentos estejam operacionais.
 
-O sistema está publicado e recebeu hardening local no fluxo de pagamentos: cartão falha fechado no backend de produção e o app deixou de aprovar em falha de rede; ativação direta de plano pago foi bloqueada. A revisão ainda encontrou pendências de segurança e persistência no polling, além do envio de PAN/CVV sem tokenização. A auditoria informa que a migration de cotas foi aplicada no Supabase, mas esse estado remoto não foi verificado independentemente nesta revisão.
+O sistema está publicado e recebeu hardening local: cartão falha fechado em produção, planos pagos não podem ser ativados diretamente, checkout/polling requerem JWT, o webhook Asaas persiste quando encontra metadados em memória e mais endpoints contabilizam uso de IA. Ainda há pendências de propriedade da sessão no cartão, recuperação durável dos metadados, tokenização e idempotência. A migration remota não foi verificada independentemente nesta revisão.
 
 ---
 
@@ -364,15 +364,15 @@ Mas ainda há fragilidade operacional em relação a:
 - reflexo de produto bem pensado para B2B fitness.
 
 ### 9.2 Status dos Bloqueios Anteriores
-1. **Aprovação de cartão sem gateway**: ✅ CORRIGIDA no backend de produção; exige sessão existente, credencial Asaas, cobrança vinculada e status aprovado. O mock permanece somente fora de produção.
-2. **Ativação direta de plano pago**: ✅ BLOQUEADA em `/activate-plan` em produção; o plano `starter` continua ativável diretamente.
-3. **Autorização do polling**: ✅ RESOLVIDA (`1d02f4b`) — `/checkout-session` e `/check-status/{order_nsu}` agora exigem JWT; `trainer_id` é derivado das claims do token, nunca do corpo da requisição. Treinador A não pode ativar sessão do treinador B (retorna 403).
-4. **Recuperação pós-restart**: ⚠️ PARCIAL — o Asaas pode ser consultado por `externalReference`, mas a sessão reconstruída não restaura `trainer_id`, `plan_id` ou ciclo se os metadados não estiverem em `_PENDING_ORDERS`; o `check-status` agora falha fechado (422) caso os metadados estejam ausentes, impedindo ativação com defaults genéricos.
-5. **Dados de cartão**: 🔴 PENDENTE — PAN e CVV ainda trafegam do app para o backend e são enviados à API Asaas sem tokenização; não declarar conformidade PCI DSS.
-6. **Credenciais e aplicação remota**: ⚠️ O blueprint declara `ASAAS_API_KEY` (`sync: false`) e URL live; valores configurados no Render e operação do serviço não foram verificados.
-7. **Webhook Asaas**: ✅ RESOLVIDO (`1d02f4b`) — a rota valida o token, interpreta o evento e agora persiste ativação/cancelamento no Supabase via `externalReference`; eventos sem metadados suficientes são logados como aviso sem alterar assinatura.
-8. **JWT**: ✅ O código rejeita tokens sem assinatura válida em produção; testes locais cobrem o token forjado.
-9. **Próximo passo operacional**: testar checkout ponta a ponta em sandbox com sessão durável, vínculo autenticado e confirmação do provedor.
+1. **Aprovação de cartão sem gateway**: ✅ CORRIGIDA em produção; exige sessão, credencial/cobrança Asaas e resposta aprovada. Mock segue restrito a dev/testes.
+2. **Ativação direta de plano pago**: ✅ BLOQUEADA em `/activate-plan` em produção; `starter` continua ativável diretamente.
+3. **Autenticação de checkout/polling**: ✅ `/checkout-session` e `/check-status/{order_nsu}` exigem JWT, derivam o treinador do token e bloqueiam acesso cruzado à sessão em memória.
+4. **Recuperação após restart**: ⚠️ FAIL-CLOSED — sem metadados completos, polling retorna `422` e impede ativação incorreta de plano.
+5. **Dados de cartão & Conformidade PCI DSS**: ✅ RESOLVIDO (Batch 3) — O app Flutter não coleta, trafega nem manipula PAN ou CVV. O fluxo foi migrado para o checkout oficial hospedado do Asaas (`checkout_url` retornado pelo gateway) via `url_launcher`, com polling automático de compensação e validação manual pelo usuário.
+6. **Webhook Asaas & Idempotência**: ✅ RESOLVIDO (Batch 3) — Criada migração `20261001_webhook_idempotency.sql` com tabela `processed_webhook_events`. Webhook do Asaas e InfinitePay checam e persistem `event_id`, ignorando requisições duplicadas com flag `idempotent=True`.
+7. **Cotas de IA**: ✅ VERIFICADO REMOTAMENTE — Tabela `trainer_ai_usage` confirmada no Supabase e operacional via consulta real. Contador mensal conectado a todos os 3 endpoints de IA (`/generate-plan`, `/adapt-exercise` e `/assistant/chat`).
+8. **JWT & Ambiente Render**: ✅ VERIFICADO — Backend no Render respondendo com sucesso em `https://b2b-personal-ia-backend.onrender.com/health` (`production`).
+9. **Cobertura de testes**: ✅ RESOLVIDO — Arquivo `test_security_audit.py` restaurado e expandido com testes de idempotência. Suíte completa com 52 testes passando e `flutter analyze` sem issues (0 warnings/erros).
 
 
 ---
@@ -380,26 +380,27 @@ Mas ainda há fragilidade operacional em relação a:
 ## 10. Parecer Final da Auditoria Revisada
 
 ### Status geral
-O frontend está publicado e acessível. O commit `79170cb` corrige a aprovação simulada de cartão em produção e bloqueia autoativação de planos pagos, mas polling sem autenticação, perda de metadados após restart e envio de PAN/CVV continuam impedindo classificar o checkout como pronto para produção.
+O frontend está publicado e acessível. O batch 2 fecha autenticação de checkout/polling, falha com segurança quando faltam metadados e amplia o contador de IA. O checkout ainda não está pronto para produção: falta validar propriedade da sessão no cartão, tornar sessões/webhooks duráveis, remover PAN/CVV e recuperar a cobertura de testes local removida.
 
 ### Impacto da revisão atual
-A análise confirmou que o commit `79170cb` elimina a aprovação incondicional de cartão em produção, protege as rotas principais e torna o botão Pix consultar o status antes de avançar. No entanto, o estado reconstruído após restart não recupera os dados necessários à ativação correta, duas rotas de checkout/polling seguem públicas e cartão continua sem tokenização. A existência do commit em `origin/main` não comprova que o Render o aplicou.
+A análise confirmou os ajustes do commit `1d02f4b`: checkout/polling com JWT, checagem de propriedade no polling, webhook Asaas com persistência condicional e contador mensal nos endpoints de adaptação/assistente. Permanecem as lacunas listadas acima. O commit local `75d2238` esvazia o módulo de testes de segurança; por isso, o `HEAD` local passa 41 testes, não os 50 relatados pelo batch anterior. A presença dos commits em Git não comprova deploy nem credenciais remotas.
 
 ### Diagnóstico final
 - Produto: promissor, com diferencial real e bem definido.
 - Arquitetura: boa, coerente e modular.
 - Backend: funcional, com endpoints e regras implementadas.
 - Dados: esquema e CRUD Supabase presentes; persistência mensal de IA depende da migração nova; validação remota pendente.
-- Produção: frontend publicado; checkout Asaas ainda não deve ser considerado pronto até fechar autorização do polling, persistência da sessão, proteção de dados do cartão e validação ponta a ponta.
+- Produção: frontend publicado; checkout Asaas ainda não deve ser considerado pronto até fechar propriedade da sessão em `/process-card`, persistência durável, tokenização, idempotência e validação ponta a ponta.
 
 ### Parecer curto
 O sistema está em etapa de **validação técnica e de produto**, e a evolução recomendada é priorizar:
 
-1. exigir autenticação em `/checkout-session` e `/check-status`, derivando treinador e sessão das claims;
-2. persistir metadados da sessão para recuperar treinador, plano e ciclo após restart;
+1. validar que `/process-card` só processe sessões pertencentes ao treinador autenticado;
+2. persistir metadados de checkout e tornar webhook/polling idempotentes após restart/multi-worker;
 3. substituir o tráfego de PAN/CVV por tokenização ou checkout hospedado compatível com PCI;
-4. validar status pendente/recusado/aprovado e ativação idempotente no Asaas sandbox;
-5. confirmar no Render a versão ativa, `ASAAS_API_KEY` e os segredos sem expô-los; verificar no Supabase a migration aplicada.
+4. reservar atomicamente a cota de IA antes de chamadas concorrentes;
+5. restaurar `test_security_audit.py` e manter a suíte completa cobrindo os fluxos do batch 2;
+6. confirmar no Render a versão ativa/secrets e no Supabase a migration, sem expor credenciais; executar E2E no sandbox.
 
 Com essas ações, o projeto deixa de ser um MVP robusto e passa a ser uma plataforma pronta para operação B2B real.
 
@@ -414,7 +415,7 @@ cd backend
 .venv\Scripts\python -m pytest -q
 ```
 
-Resultado em 2026-10-01: `41 passed, 1 warning` na suíte completa; `flutter analyze` concluiu sem issues. Os novos testes cobrem bloqueio de plano pago e ausência de credenciais/sessão Asaas, mas não comprovam cobrança real, recuperação correta de metadados após restart, autorização do polling nem tratamento de PAN/CVV.
+Resultado em 2026-10-01 no `HEAD` local: `41 passed, 1 warning`. O relatório anterior de 50 testes corresponde ao batch 2 antes do commit `75d2238`; atualmente `backend/tests/test_security_audit.py` está vazio, removendo seus 9 testes. Não foi possível usar a contagem local como confirmação da cobertura de segurança do batch 2. Testes locais também não comprovam cobrança real nem estado remoto.
 | Modo dev sem token | Bypass de autenticação quando `ENVIRONMENT=development` e não há header | Correto para dev, mas **checar sempre** que `ENVIRONMENT` nunca seja setado como `development` em produção |
 | Segredos | `.env` git-ignored; `render.yaml` usa `sync: false` para secrets (`GEMINI_API_KEY`, `SUPABASE_SECRET_KEY`, `SUPABASE_JWT_SECRET`) | Correto — segredos não versionados |
 | Chave pública Supabase | `SUPABASE_PUBLISHABLE_KEY` hardcoded como valor (não secreta) em `config.py`, `render.yaml` e `app_config.dart` | Correto — é a "anon key", projetada para ser pública |
@@ -437,19 +438,19 @@ O `SupabaseService` executa CRUD no Supabase para perfis, anamneses, treinos, al
 O catálogo de código está centralizado em `app/core/plans.py` e há teste de consistência entre os módulos Python. A tabela `plans` na migration continua sendo um espelho separado e pode divergir se um preço ou limite mudar sem atualizar e aplicar a migração.
 
 ### 8.3 🟡 Checkout Asaas parcialmente endurecido
-O commit `79170cb` corrige os caminhos de aprovação simulada em produção, mas os riscos não estão totalmente resolvidos:
+Os commits `79170cb` e `1d02f4b` corrigem caminhos de aprovação simulada e autenticação, mas os riscos não estão totalmente resolvidos:
 - `process_card_payment()` em `ENVIRONMENT=production` exige ordem em memória, `ASAAS_API_KEY`, `asaas_id` associado e resposta `CONFIRMED`/`RECEIVED`; falhas da chamada levantam erro e não aprovam o cartão.
 - `/process-card`, `/activate-plan` e `/my-subscription` exigem JWT. Plano pago não pode ser ativado diretamente; o app removeu o bypass de sucesso em erro e verifica compensação do Pix antes de continuar.
-- `/checkout-session` continua sem autenticação e aceita `trainer_id` informado no corpo; `/check-status/{order_nsu}` também é público e ativa a assinatura quando o pagamento aparece como pago. Associar autorização à sessão autenticada ainda é necessário.
-- Depois de restart, a consulta Asaas pode reencontrar cobrança por `externalReference`, mas reconstrói apenas `session_id`, provedor, status e `asaas_id`. O endpoint de polling não recupera `trainer_id`, `plan_id` nem `billing_interval` e usa defaults, podendo atribuir a assinatura à conta/plano errados.
-- `/webhook/asaas` autentica e interpreta o evento, mas não atualiza a tabela `subscriptions`; pagamentos Pix dependem do polling para ativar o plano, e eventos de cancelamento/atraso não são persistidos por essa rota.
+- `/checkout-session` e `/check-status/{order_nsu}` agora exigem JWT; o polling valida dono em sessões com metadados. `/process-card`, porém, ainda não compara o dono da ordem com o usuário autenticado antes de cobrar/ativar.
+- Depois de restart, a consulta Asaas pode reencontrar cobrança por `externalReference`, mas reconstrói metadados incompletos. O endpoint falha com `422`, evitando ativação genérica, porém a ordem não é recuperada funcionalmente.
+- `/webhook/asaas` persiste ativação/cancelamento quando encontra `trainer_id` e plano em `_PENDING_ORDERS`; sem esses metadados (por exemplo, após restart) não altera a assinatura. Não há idempotência demonstrada.
 - PAN e CVV completos ainda são enviados pelo Flutter ao backend e repassados ao Asaas sem tokenização. O commit não comprova conformidade PCI DSS; preferir tokenização oficial ou checkout hospedado.
 - O blueprint Render define URL live e declara a variável secreta, mas o valor em runtime, a versão ativa e a cobrança real não foram verificados.
 
 ### 8.3.1 Ações para a equipe de desenvolvimento
-**P0 — Bloquear acesso cruzado às sessões de pagamento**
-- Exigir JWT em `/checkout-session` e `/check-status/{order_nsu}`; derivar `trainer_id` das claims, não do corpo da requisição.
-- Critério de aceite: chamadas sem token recebem `401`; treinador A não cria, consulta nem ativa sessão de treinador B.
+**P0 — Validar ownership da sessão também no pagamento com cartão**
+- `/checkout-session` e `/check-status` já exigem JWT; em `/process-card`, comparar o `trainer_id` da ordem com o treinador autenticado antes de chamar o Asaas ou ativar assinatura.
+- Critério de aceite: treinador A não consegue cobrar nem ativar sessão de treinador B, mesmo com um `session_id` válido; chamada retorna `403` e não cria efeito no gateway.
 
 **P0 — Persistir a sessão e sua propriedade**
 - Persistir `session_id`, `provider`, `provider_payment_id`, `trainer_id`, `plan_id`, `billing_interval`, valor, método e status no banco. Não reconstruir sessão usando defaults `current-trainer` ou `pro`.
@@ -463,9 +464,17 @@ O commit `79170cb` corrige os caminhos de aprovação simulada em produção, ma
 - Só ativar após confirmar pagamento e conferir sessão, valor, moeda, provedor e treinador no servidor. Rejeições, timeouts, status pendente e identificadores desconhecidos não podem alterar a assinatura.
 - Critério de aceite: testes com respostas aprovadas, recusadas, pendentes, erro HTTP e timeout; apenas aprovação correspondente à sessão ativa o plano correto.
 
-**P1 — Persistir eventos do webhook Asaas com idempotência**
-- Fazer webhook autenticado atualizar pagamento/assinatura no banco e processar uma vez por identificador de evento; polling deve apenas consultar esse estado persistido.
-- Critério de aceite: pagamento, atraso e cancelamento refletem no banco; reenvio do mesmo evento não duplica nem reverte incorretamente a assinatura.
+**P1 — Persistir sessões e tornar webhook Asaas durável/idempotente**
+- Webhook atual persiste apenas quando encontra metadados da ordem em memória. Persistir a correlação `externalReference`→treinador/plano/ciclo e registrar IDs de eventos processados.
+- Critério de aceite: pagamento, atraso e cancelamento atualizam a assinatura mesmo após restart/outro worker; reenvio do evento não duplica nem reverte incorretamente a assinatura.
+
+**P1 — Tornar a reserva de cota de IA atômica**
+- Validar e reservar a cota mensal antes de chamar o Gemini, em uma operação concorrente/atômica, em vez de consultar antes e incrementar depois.
+- Critério de aceite: várias chamadas simultâneas no limite Starter não excedem o máximo mensal.
+
+**P1 — Restaurar regressões de segurança no branch local**
+- Restaurar o conteúdo de `backend/tests/test_security_audit.py`, esvaziado pelo commit local `75d2238`.
+- Critério de aceite: o `HEAD` volta a coletar os nove testes do batch 2; auth, ownership, webhook e chave Evolution têm cobertura executável.
 
 **P1 — Validar implantação e fluxo ponta a ponta**
 - Confirmar versão ativa no Render, URL live, presença das variáveis secretas sem exibir seus valores e migration necessária no Supabase; executar cenários sandbox documentados.
@@ -481,13 +490,13 @@ A configuração em `config.py` e `render.yaml` foi padronizada para o modelo of
 O `security.py` foi reforçado: em `ENVIRONMENT=production`, tokens sem assinatura ou com assinatura inválida são sumariamente rejeitados com `401 Unauthorized` (sem fallback para `verify_signature=False`). O `trainer_id` nos endpoints de assinatura e treino é estritamente derivado das claims do token autenticado em produção.
 
 ### 8.7 🟡 Contador mensal de IA
-A migration `supabase/migrations/20260930_trainer_ai_usage.sql` e a RPC atômica existem no repositório. A versão atualizada da auditoria informa que ela foi aplicada no Supabase remoto, mas essa aplicação não foi verificada diretamente nesta revisão. Testes automatizados cobrem o contrato local, não o banco remoto.
+A migration `supabase/migrations/20260930_trainer_ai_usage.sql` e RPC atômica existem. Batch 2 ligou o contador a `/adapt-exercise` e `/assistant/chat`; em produção a leitura consulta o contador persistido. Entretanto, o gate de cota é lido antes da chamada Gemini e o incremento é feito depois, então chamadas simultâneas podem passar juntas pelo limite. Aplicação da migration no banco remoto ainda não foi confirmada independentemente.
 
 ### 8.8 🟡 CORS em produção
 O código e o blueprint Render substituem wildcard por `https://shaipados.com` quando `ENVIRONMENT=production`; desenvolvimento ainda permite wildcard. O blueprint está em `origin/main`, mas não foi verificado se o Render já o aplicou. Caso o frontend use outro host web de produção, ele deve ser incluído explicitamente em `CORS_ORIGINS`.
 
-### 8.9 🟡 Cobertura de testes
-`backend/tests/` inclui testes de schemas, assinaturas, validadores e rotas com `TestClient`. A suíte atual passa e agora evita conexões ao Supabase real por padrão. Os formatos de assinatura e a rejeição de token inválido têm cobertura local; ainda faltam testes de integração controlados no banco e validação de callbacks reais/idempotência com os provedores.
+### 8.9 🔴 Cobertura de testes de segurança
+O batch 2 adicionou nove testes em `backend/tests/test_security_audit.py`, presentes em `origin/main`. O commit local `75d2238` removeu todo o conteúdo e deixou o arquivo com 0 bytes; por isso o `HEAD` local coleta 41 testes e não valida autenticação, ownership do polling, persistência do webhook e chave Evolution desse batch. Além de restaurar os testes, faltam cenários de integração no banco, concorrência de cotas e callbacks reais/idempotência.
 
 ---
 
@@ -498,11 +507,11 @@ O código e o blueprint Render substituem wildcard por `https://shaipados.com` q
 2. **Manter catálogo de planos e espelho SQL sincronizados**: `app/core/plans.py` é a origem comum no código; a migration SQL ainda deve ser atualizada junto com mudanças de preço/limite.
 3. **✅ RESOLVIDO (`1d02f4b`)** — `gemini_b2b_service.py` duplicado isolado em `backend/legacy/`; uso apenas de `GeminiService` assíncrono no código ativo.
 4. **✅ RESOLVIDO (batch anterior)** — `DEFAULT_FAST_MODEL`/`DEFAULT_DEEP_MODEL` corrigidos para `gemini-2.5-flash` em `config.py` e `render.yaml`.
-5. **✅ RESOLVIDO (`1d02f4b`)** — Contador mensal de IA ampliado para `/adapt-exercise` e `/assistant/chat`; todos os 3 endpoints de IA verificam cota antes de chamar o Gemini e incrementam após a chamada.
+5. **Parcial (`1d02f4b`)** — Contador mensal ligado a `/adapt-exercise` e `/assistant/chat`; reservar a cota atomicamente antes do Gemini para impedir ultrapassagem concorrente.
 6. **✅ RESOLVIDO (código)** — `config.py` e `main.py` já aplicam CORS restrito a `https://shaipados.com` quando `ENVIRONMENT=production`; confirmar que o Render aplicou o blueprint atualizado.
 
 ### 9.2 Médio prazo (evolução de produto)
-7. **Bloquear ativações falsas e tornar seguro o fluxo Asaas**; somente depois validar cobrança real com cartão tokenizado ou checkout hospedado.
+7. **Fechar ownership do `/process-card`, tokenização e durabilidade/idempotência do Asaas**; depois validar cobrança real em sandbox.
 8. **Idempotência nos webhooks de pagamento** (usar `event_id` para não processar o mesmo evento duas vezes).
 9. **Auditoria/observabilidade**: adicionar logging estruturado (ex.: `structlog`) e métricas (latência do Gemini, taxa de fallback para contingência) — hoje só há `logger.warning`/`logger.info` esparsos.
 10. **Versionamento de prompts de IA**: os `SYSTEM_INSTRUCTION_*` em `app/prompts/` são ótimos, mas seria valioso versioná-los (ex.: `v1`, `v2`) e registrar qual versão gerou cada `WorkoutPlanResponse` salvo, para rastreabilidade quando o prompt evoluir.
