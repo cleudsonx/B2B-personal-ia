@@ -292,3 +292,167 @@ def test_webhook_asaas_ignores_duplicate_event():
     data = res.json()
     assert data.get("idempotent") is True
     assert "já processado anteriormente" in data.get("message", "")
+
+
+# ---------------------------------------------------------------------------
+# AI-001 — Reserva Atômica de Cota de IA
+# ---------------------------------------------------------------------------
+
+def test_atomic_ai_quota_reservation_and_release():
+    """Testa que a cota é reservada atomicamente e liberada em caso de falha."""
+    from app.services.supabase_service import supabase_service
+    import asyncio
+
+    trainer_id = "tr-atomic-quota-test-01"
+
+    async def run():
+        # Limite de 2 gerações para teste
+        max_quota = 2
+
+        # 1ª reserva: deve ter sucesso
+        assert await supabase_service.reserve_monthly_ai_quota(trainer_id, max_quota) is True
+        # 2ª reserva: deve ter sucesso (limite atingido)
+        assert await supabase_service.reserve_monthly_ai_quota(trainer_id, max_quota) is True
+        # 3ª reserva: deve ser RECUSADA atomicamente (evita ultrapassagem concorrente)
+        assert await supabase_service.reserve_monthly_ai_quota(trainer_id, max_quota) is False
+
+        # Simula rollback em caso de falha de geração
+        await supabase_service.release_monthly_ai_quota(trainer_id)
+        # Agora deve permitir novamente 1 vaga
+        assert await supabase_service.reserve_monthly_ai_quota(trainer_id, max_quota) is True
+        # E bloquear em seguida
+        assert await supabase_service.reserve_monthly_ai_quota(trainer_id, max_quota) is False
+
+    asyncio.get_event_loop().run_until_complete(run())
+
+
+# ---------------------------------------------------------------------------
+# PAY-001 & PAY-002 — Bloqueio de PAN/CVV e Validação de Ownership em process-card
+# ---------------------------------------------------------------------------
+
+def test_process_card_blocks_cross_trainer_ownership(monkeypatch):
+    """Em produção, /process-card deve retornar 403 se a sessão pertencer a outro treinador."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.core.config import settings
+    from app.api.deps import get_current_user
+    from app.services.supabase_service import supabase_service
+    import asyncio
+
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+
+    sess_id = "sess_card_ownership_test_001"
+    asyncio.get_event_loop().run_until_complete(
+        supabase_service.save_checkout_session({
+            "session_id": sess_id,
+            "trainer_id": "trainer-legit-owner",
+            "plan_id": "pro",
+            "billing_interval": "monthly",
+            "amount_cents": 8900,
+        })
+    )
+
+    # Invasor tenta usar o endpoint de cartão na sessão de outro
+    app.dependency_overrides[get_current_user] = lambda: {"sub": "trainer-attacker-99", "role": "authenticated"}
+    try:
+        client = TestClient(app)
+        res = client.post("/api/v1/subscriptions/process-card", json={
+            "session_id": sess_id,
+            "card_holder_name": "TEST",
+            "card_number": "4111",
+            "expiry_month": "12",
+            "expiry_year": "2030",
+            "ccv": "123",
+        })
+        assert res.status_code == 403
+        assert "Acesso negado" in res.json()["detail"]
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_process_card_rejects_raw_card_data_in_production(monkeypatch):
+    """Em produção, /process-card deve rejeitar envio de PAN/CVV com 400 por conformidade PCI DSS."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.core.config import settings
+    from app.api.deps import get_current_user
+
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    app.dependency_overrides[get_current_user] = lambda: {"sub": "tr-pci-tester-1", "role": "authenticated"}
+    try:
+        client = TestClient(app)
+        res = client.post("/api/v1/subscriptions/process-card", json={
+            "session_id": "sess_non_existent",
+            "card_holder_name": "CARLOS SILVA",
+            "card_number": "4111 2222 3333 4444",
+            "expiry_month": "11",
+            "expiry_year": "2029",
+            "ccv": "123",
+            "installments": 1,
+        })
+        assert res.status_code == 400
+        assert "PCI DSS" in res.json()["detail"] or "desativada" in res.json()["detail"]
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+# ---------------------------------------------------------------------------
+# PAY-003 & PAY-004 — Sessão Durável e Webhook Não Consome Sem Metadados
+# ---------------------------------------------------------------------------
+
+def test_durable_checkout_session_storage():
+    """Testa persistência e recuperação de sessão de checkout durável."""
+    from app.services.supabase_service import supabase_service
+    import asyncio
+
+    sess_id = "sess_durable_test_abc"
+
+    async def run():
+        await supabase_service.save_checkout_session({
+            "session_id": sess_id,
+            "trainer_id": "tr-durable-01",
+            "plan_id": "elite",
+            "billing_interval": "yearly",
+            "amount_cents": 142800,
+            "status": "pending",
+        })
+        retrieved = await supabase_service.get_checkout_session(sess_id)
+        assert retrieved is not None
+        assert retrieved["plan_id"] == "elite"
+        assert retrieved["billing_interval"] == "yearly"
+        assert retrieved["amount_cents"] == 142800
+
+    asyncio.get_event_loop().run_until_complete(run())
+
+
+def test_webhook_does_not_mark_event_processed_if_metadata_missing():
+    """Se o webhook não encontrar metadados da sessão, o evento NÃO é marcado como processado (permitindo retry)."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.services.supabase_service import supabase_service
+    import asyncio
+
+    client = TestClient(app)
+    unmatched_evt_id = "evt_missing_meta_12345"
+
+    res = client.post(
+        "/api/v1/subscriptions/webhook/asaas",
+        json={
+            "id": unmatched_evt_id,
+            "event": "PAYMENT_RECEIVED",
+            "payment": {
+                "id": "pay_unmatched_1",
+                "value": 89.0,
+                "status": "RECEIVED",
+                "externalReference": "non_existent_ref_999"
+            }
+        }
+    )
+    assert res.status_code == 200
+
+    # Como não tinha metadados para persistir a assinatura, o evento NÃO deve ter sido gravado
+    async def check():
+        assert await supabase_service.is_event_processed(unmatched_evt_id) is False
+
+    asyncio.get_event_loop().run_until_complete(check())
+

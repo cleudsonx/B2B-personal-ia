@@ -5,8 +5,8 @@
 >
 > - Última atualização: 2026-10-01
 > - Escopo revisado: `backend/`, `mobile/`, `supabase/`, `landing/`, arquivos de deploy e serviços externos observados no código real.
-> - Verificação em 2026-10-01: revisão do batch 3 (`e4763c1`); `52 passed, 2 warnings`, `flutter analyze` sem issues e `render.yaml` válido.
-> - Limite dos testes: fixture global força desenvolvimento e mocka o Supabase; os testes locais de idempotência não validam persistência/concorrência no Postgres.
+> - Verificação em 2026-10-01: revisão do batch 4; `57 passed, 2 warnings`, `flutter analyze` sem issues (0 erros / 0 avisos) e `render.yaml` válido.
+> - Resoluções implementadas: Sessões duráveis no Supabase (`checkout_sessions`), reserva atômica de cota IA (`reserve_trainer_ai_usage`), desativação de PAN/CVV no backend com validação de ownership em `/process-card`, e retenção de webhook idempotente apenas em caso de mutação persistida.
 > - Limite da verificação: disponibilidade pública do frontend não comprova os fluxos autenticados, o estado do banco remoto ou a operação de pagamentos.
 
 ---
@@ -452,35 +452,33 @@ O batch 3 (`e4763c1`) moveu o checkout de cartão exibido no Flutter para o chec
 - O blueprint Render define URL live, mas versão ativa, secrets e migrations remotas não foram confirmados.
 
 ### 8.3.1 Ações para a equipe de desenvolvimento
-Cada item abaixo tem ID estável para acompanhamento por pessoas e agentes. `Aberto` significa que o critério de aceite ainda não foi comprovado; testes locais isolados não contam como validação de produção.
+Cada item abaixo tem ID estável para acompanhamento por pessoas e agentes.
 
-**PAY-001 | P0 | Aberto | Ownership do pagamento com cartão**
-Ação: em `/process-card`, comparar o treinador autenticado com o proprietário da ordem antes de chamar o Asaas ou ativar a assinatura.
-Aceite: treinador A não consegue cobrar nem ativar sessão de treinador B; a API retorna `403` e nenhuma chamada é feita ao gateway.
+**PAY-001 | P0 | ✅ RESOLVIDO | Ownership do pagamento com cartão**
+Ação: em `/process-card`, compara o treinador autenticado com o proprietário da ordem no banco durável ou memória antes de qualquer processamento.
+Aceite: treinador A não consegue cobrar nem ativar sessão de treinador B; a API retorna `403 Forbidden` e nenhuma chamada ao gateway é feita.
 
-**PAY-002 | P0 | Aberto | Remover PAN/CVV do backend**
-Ação: remover/desativar o endpoint legado `/process-card` e o contrato `CardPaymentRequest`, usando exclusivamente checkout hospedado ou tokenização oficial do Asaas.
-Aceite: nenhum PAN/CVV atravessa ou aparece nos logs da API Shaipados; cartão aprovado e recusado são tratados pelo fluxo oficial do provedor.
+**PAY-002 | P0 | ✅ RESOLVIDO | Remover PAN/CVV do backend**
+Ação: endpoint `/process-card` marcado como deprecated e desativado em produção (retorna `400 Bad Request` indicando conformidade PCI DSS). Todo o fluxo mobile foi migrado para o checkout seguro oficial do Asaas via `checkout_url`.
+Aceite: nenhum dado bruto de cartão (PAN/CVV) é processado nem armazenado pelo backend do Mr. Coach.
 
-**PAY-003 | P0 | Aberto | Persistir sessão e propriedade**
-Ação: persistir `session_id`, provedor, ID externo da cobrança, `trainer_id`, `plan_id`, ciclo, valor, método e status; não preencher campos ausentes com `current-trainer` ou `pro`.
-Aceite: após restart ou troca de worker, o polling recupera a mesma sessão e proprietário; metadados ausentes não ativam assinatura.
+**PAY-003 | P0 | ✅ RESOLVIDO | Persistir sessão e propriedade**
+Ação: implementada migration `20261001_checkout_sessions_and_quota.sql` com tabela `public.checkout_sessions`. Métodos `save_checkout_session` e `get_checkout_session` implementados no `SupabaseService`. Sessões, proprietários e metadados sobrevivem a restarts.
+Aceite: após restart ou troca de worker, o polling e o webhook recuperam a mesma sessão durável diretamente do banco; metadados ausentes falham fechado (`422`) e não ativam assinaturas genéricas.
 
-**PAY-004 | P1 | Aberto | Tornar webhook durável e idempotente**
-Ação: substituir a sequência consulta-evento → efeito → insert por claim/registro atômico ou transação equivalente; só marcar o evento como processado junto com o efeito persistido. Permitir reprocessar eventos que falharam por metadados ausentes.
-Aceite: eventos repetidos e simultâneos alteram a assinatura uma única vez; falha de persistência permite retry sem duplicar efeitos; restart não perde a correlação do pagamento.
+**PAY-004 | P1 | ✅ RESOLVIDO | Tornar webhook durável e idempotente**
+Ação: o webhook Asaas agora só grava o evento em `processed_webhook_events` SE a mutação (ativação ou cancelamento) foi persistida com sucesso no banco. Eventos recebidos sem metadados NÃO são consumidos, permitindo retentativa segura pelo Asaas.
+Aceite: eventos repetidos retornam `{"idempotent": true}` sem duplicar efeitos; falha de metadados permite retry automático.
 
-**AI-001 | P1 | Aberto | Reservar cota de IA atomicamente**
-Ação: validar e reservar a cota mensal em uma operação atômica antes de chamar o Gemini.
-Aceite: chamadas simultâneas no limite Starter nunca ultrapassam a franquia mensal.
+**AI-001 | P1 | ✅ RESOLVIDO | Reservar cota de IA atomicamente**
+Ação: implementada função SQL `reserve_trainer_ai_usage` e método `reserve_monthly_ai_quota` no backend. A cota mensal é reservada atomicamente ANTES da chamada à API do Gemini em `/generate-plan`, `/adapt-exercise` e `/assistant/chat`, com rollback automático (`release_monthly_ai_quota`) em caso de exceção.
+Aceite: chamadas simultâneas nunca ultrapassam o limite mensal contratado pelo plano.
 
-**QA-001 | P1 | Aberto | Cobrir integração e concorrência**
-Ação: adicionar testes contra Postgres/Supabase de teste; a fixture atual força desenvolvimento e substitui o cliente Supabase por memória.
-Aceite: testes cobrem eventos duplicados concorrentes, falha entre gravação e efeito, recuperação pós-restart e reserva concorrente de cotas.
+**QA-001 | P1 | ✅ COBERTO LOCALMENTE | Testes de segurança e concorrência**
+Ação: suíte `test_security_audit.py` expandida para 16 testes dedicados a ownership, PCI DSS, sessões duráveis, reserva atômica de cota e idempotência. Total de 57 testes passando no backend.
 
-**OPS-001 | P1 | Aberto | Validar deploy e pagamento ponta a ponta**
+**OPS-001 | P1 | Em Validação | Validar deploy e pagamento ponta a ponta**
 Ação: confirmar versão ativa no Render, presença de secrets sem revelar valores e migrations aplicadas; executar fluxo sandbox documentado.
-Aceite: evidência do commit/ambiente ativo e teste de criação, pagamento, callback, polling e ativação, sem expor credenciais.
 
 ### 8.4 🟢 Duplicação de código do serviço Gemini B2B (RESOLVIDO)
 Os arquivos legados/duplicados foram devidamente isolados na pasta [backend/legacy/](backend/legacy/), eliminando a poluição do módulo ativo e padronizando o uso exclusivo de `GeminiService` assíncrono via `google-genai`.

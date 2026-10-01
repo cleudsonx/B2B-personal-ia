@@ -164,6 +164,9 @@ async def create_checkout_session(
         trainer_id=effective_trainer_id,
     )
 
+    # Persiste a sessão de checkout no Supabase para sobreviver a restarts (PAY-003)
+    await supabase_service.save_checkout_session(checkout_data)
+
     return CheckoutSessionResponse(
         session_id=checkout_data["session_id"],
         provider=checkout_data["provider"],
@@ -181,19 +184,44 @@ async def create_checkout_session(
     )
 
 
-@router.post("/process-card", response_model=CardPaymentResponse)
+@router.post("/process-card", response_model=CardPaymentResponse, deprecated=True)
 async def process_card_checkout(
     request: CardPaymentRequest,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """
-    Processa pagamento transparente com cartão de crédito in-app via Asaas.
-    Ativa a assinatura instantaneamente no Supabase após a confirmação.
+    [DESCONTINUADO / PCI DSS]
+    Por diretrizes rigorosas do PCI DSS, este endpoint não recebe nem processa mais números
+    brutos de cartão no backend. Pagamentos com cartão são realizados com segurança diretamente
+    no checkout oficial hospedado do Asaas via POST /checkout-session.
     """
     auth_trainer_id = current_user.get("sub") or current_user.get("id") or "current-trainer"
     if settings.ENVIRONMENT.lower() == "production" and auth_trainer_id in ("current-trainer", ""):
         raise HTTPException(status_code=401, detail="Usuário não autenticado.")
 
+    # PAY-001: Validação de ownership da sessão em produção caso exista
+    order_meta = (await supabase_service.get_checkout_session(request.session_id)) or PaymentProviderService._PENDING_ORDERS.get(request.session_id)
+    if settings.ENVIRONMENT.lower() == "production":
+        if order_meta:
+            session_trainer_id = order_meta.get("trainer_id", "")
+            if session_trainer_id and session_trainer_id not in ("current-trainer", "") and session_trainer_id != auth_trainer_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Acesso negado: esta sessão de checkout pertence a outro treinador."
+                )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Sessão de checkout não encontrada para processamento de cartão. Transmissão direta desativada por conformidade PCI DSS."
+            )
+
+        # PAY-002: Em produção, rejeita transmissão direta de PAN/CVV
+        raise HTTPException(
+            status_code=400,
+            detail="Transmissão direta de dados de cartão desativada por conformidade PCI DSS. Gateway de pagamentos Asaas não configurado para PAN bruto."
+        )
+
+    # Modo desenvolvimento / testes
     try:
         result = PaymentProviderService.process_card_payment(
             session_id=request.session_id,
@@ -208,7 +236,7 @@ async def process_card_checkout(
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     if result.get("success"):
-        order_meta = PaymentProviderService._PENDING_ORDERS.get(request.session_id, {})
+        order_meta = order_meta or PaymentProviderService._PENDING_ORDERS.get(request.session_id, {})
         trainer_id = auth_trainer_id if settings.ENVIRONMENT.lower() == "production" else (request.trainer_id or order_meta.get("trainer_id", auth_trainer_id))
         plan_id = order_meta.get("plan_id", "pro")
         billing_interval = order_meta.get("billing_interval", "monthly")
@@ -250,12 +278,15 @@ async def webhook_asaas(payload: dict, request: Request):
 
     result = PaymentProviderService.process_webhook("asaas", payload)
 
-    # Recuperar metadados da sessão pelo externalReference presente no payload
+    # Recuperar metadados da sessão pelo externalReference presente no payload (Supabase primeiro, fallback memória)
     ext_ref = (
         (payload.get("payment") or {}).get("externalReference")
         or payload.get("externalReference")
     )
-    order_meta = PaymentProviderService._PENDING_ORDERS.get(ext_ref or "", {}) if ext_ref else {}
+    order_meta = (
+        (await supabase_service.get_checkout_session(ext_ref))
+        or PaymentProviderService._PENDING_ORDERS.get(ext_ref or "", {})
+    ) if ext_ref else {}
 
     subscription_status = result.get("subscription_status", "pending")
     trainer_id = order_meta.get("trainer_id") or result.get("trainer_id") or ""
@@ -263,6 +294,7 @@ async def webhook_asaas(payload: dict, request: Request):
     billing_interval = order_meta.get("billing_interval") or result.get("billing_interval") or "monthly"
 
     # Persistir no Supabase apenas se houver dados suficientes para identificar o treinador e plano
+    action_persisted = False
     if trainer_id and trainer_id not in ("current-trainer", "") and plan_id:
         if subscription_status == "active":
             await supabase_service.activate_subscription(
@@ -271,21 +303,23 @@ async def webhook_asaas(payload: dict, request: Request):
                 billing_interval=billing_interval,
                 payment_method="pix",
             )
+            action_persisted = True
         elif subscription_status in ("canceled", "past_due"):
             await supabase_service.update_subscription_status(
                 trainer_id=trainer_id,
                 new_status=subscription_status,
             )
+            action_persisted = True
     else:
         import logging as _log
         _log.getLogger(__name__).warning(
             f"[webhook/asaas] Evento '{result.get('event')}' sem metadados suficientes "
             f"para persistir (trainer_id={trainer_id!r}, plan_id={plan_id!r}, ext_ref={ext_ref!r}). "
-            "Nenhuma assinatura foi alterada."
+            "Nenhuma assinatura foi alterada e o evento NÃO será marcado como consumido (permitindo retry)."
         )
 
-    # Registrar evento no banco de idempotência após o processamento
-    if event_id:
+    # PAY-004: Só marca o evento no banco de idempotência se a ação foi persistida com sucesso!
+    if event_id and action_persisted:
         await supabase_service.record_processed_event(
             event_id=event_id,
             provider="asaas",
@@ -355,14 +389,15 @@ async def check_payment_status(
     Consulta o status da transação no Asaas, InfinitePay ou gateway associado.
     Requer autenticação JWT. Em produção, valida que o treinador autenticado é o
     proprietário da sessão antes de ativar qualquer assinatura.
+    Recupera metadados duráveis do Supabase (PAY-003).
     """
     auth_trainer_id = current_user.get("sub") or current_user.get("id")
 
     is_paid = PaymentProviderService.check_payment(order_nsu)
-    order_meta = PaymentProviderService._PENDING_ORDERS.get(order_nsu, {})
+    order_meta = (await supabase_service.get_checkout_session(order_nsu)) or PaymentProviderService._PENDING_ORDERS.get(order_nsu, {})
 
     if is_paid and order_meta:
-        session_trainer_id = order_meta.get("trainer_id", "")
+        session_trainer_id = str(order_meta.get("trainer_id", ""))
 
         # Em produção: rejeitar se o trainer autenticado não é dono da sessão
         if settings.ENVIRONMENT.lower() == "production":

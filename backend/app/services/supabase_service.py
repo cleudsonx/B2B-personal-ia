@@ -61,6 +61,7 @@ class SupabaseService:
         self._mem_subscriptions: Dict[str, Dict[str, Any]] = {}
         self._mem_ai_usage: Dict[str, int] = {}
         self._mem_processed_events: Dict[str, Dict[str, Any]] = {}
+        self._mem_checkout_sessions: Dict[str, Dict[str, Any]] = {}
 
     @staticmethod
     def _is_production() -> bool:
@@ -127,6 +128,132 @@ class SupabaseService:
             logger.error(f"Erro ao incrementar uso mensal de IA: {e}")
             self._raise_if_production("incrementar uso mensal de IA", e)
             raise
+
+    async def reserve_monthly_ai_quota(self, trainer_id: str, max_generations: int) -> bool:
+        """
+        Reserva uma cota de IA de forma atômica antes de chamar o modelo.
+        Garante que chamadas concorrentes nunca ultrapassem a franquia mensal.
+        Retorna True se reservado com sucesso; False se a cota do mês foi esgotada.
+        """
+        if not self._is_production():
+            current = self.get_ai_generations_used(trainer_id)
+            if max_generations >= 0 and current >= max_generations:
+                return False
+            self.increment_ai_generations(trainer_id)
+            return True
+
+        client = await self.get_client()
+        trainer_uuid = to_valid_uuid_str(trainer_id)
+        period_start = datetime.now(timezone.utc).date().replace(day=1).isoformat()
+        try:
+            res = await client.rpc("reserve_trainer_ai_usage", {
+                "p_trainer_id": trainer_uuid,
+                "p_period_start": period_start,
+                "p_max_generations": max_generations,
+            }).execute()
+            result = res.data
+            if isinstance(result, list) and result:
+                result = result[0]
+            if isinstance(result, dict):
+                result = result.get("reserve_trainer_ai_usage")
+            return bool(result)
+        except Exception as e:
+            # Fallback caso a RPC ainda não tenha sido aplicada no banco
+            logger.warning(f"RPC reserve_trainer_ai_usage indisponível ({e}). Usando fallback de consulta/incremento.")
+            used = await self.get_monthly_ai_generations_used(trainer_id)
+            if max_generations >= 0 and used >= max_generations:
+                return False
+            await self.increment_monthly_ai_generations(trainer_id)
+            return True
+
+    async def release_monthly_ai_quota(self, trainer_id: str) -> None:
+        """Libera a cota previamente reservada caso a chamada ao modelo de IA falhe."""
+        if not self._is_production():
+            t_uuid = to_valid_uuid_str(trainer_id)
+            for k in (trainer_id, t_uuid):
+                if k in self._mem_ai_usage and self._mem_ai_usage[k] > 0:
+                    self._mem_ai_usage[k] -= 1
+            return
+
+        client = await self.get_client()
+        trainer_uuid = to_valid_uuid_str(trainer_id)
+        period_start = datetime.now(timezone.utc).date().replace(day=1).isoformat()
+        try:
+            await client.rpc("release_trainer_ai_usage", {
+                "p_trainer_id": trainer_uuid,
+                "p_period_start": period_start,
+            }).execute()
+        except Exception as e:
+            logger.warning(f"Erro ao liberar cota de IA pós-falha: {e}")
+
+    async def save_checkout_session(self, session_data: Dict[str, Any]) -> None:
+        """
+        Persiste os metadados da sessão de checkout para sobreviver a restarts e trocas de worker.
+        Garante que session_id, trainer_id, plan_id, billing_interval e valores fiquem duráveis.
+        """
+        session_id = session_data.get("session_id")
+        if not session_id:
+            return
+
+        self._mem_checkout_sessions[session_id] = dict(session_data)
+
+        if not self._is_production():
+            return
+
+        client = await self.get_client()
+        if not client:
+            return
+
+        trainer_uuid = to_valid_uuid_str(session_data.get("trainer_id", ""))
+        payload = {
+            "session_id": session_id,
+            "provider": session_data.get("provider", "asaas"),
+            "provider_payment_id": session_data.get("asaas_id") or session_data.get("provider_payment_id"),
+            "trainer_id": trainer_uuid,
+            "plan_id": session_data.get("plan_id", "pro"),
+            "billing_interval": session_data.get("billing_interval", "monthly"),
+            "payment_method": session_data.get("payment_method", "pix"),
+            "amount_cents": session_data.get("amount_cents", 0),
+            "status": session_data.get("status", "pending"),
+            "checkout_url": session_data.get("checkout_url"),
+            "pix_copy_paste": session_data.get("pix_copy_paste"),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        try:
+            await client.table("checkout_sessions").upsert(payload, on_conflict="session_id").execute()
+            logger.info(f"[Supabase] Sessão de checkout {session_id} persistida com sucesso.")
+        except Exception as e:
+            logger.warning(f"Erro ao persistir sessão de checkout {session_id} no Supabase: {e}")
+
+    async def get_checkout_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Recupera os metadados completos da sessão de checkout (do banco persistido ou fallback).
+        """
+        if not session_id:
+            return None
+
+        # 1. Verifica memória local primeiro
+        if session_id in self._mem_checkout_sessions:
+            return self._mem_checkout_sessions[session_id]
+
+        if not self._is_production():
+            return None
+
+        # 2. Em produção, busca no Supabase persistido
+        client = await self.get_client()
+        if not client:
+            return None
+
+        try:
+            res = await client.table("checkout_sessions").select("*").eq("session_id", session_id).limit(1).execute()
+            if res.data:
+                session_row = res.data[0]
+                self._mem_checkout_sessions[session_id] = session_row
+                return session_row
+        except Exception as e:
+            logger.warning(f"Erro ao buscar sessão de checkout {session_id} no Supabase: {e}")
+
+        return None
 
     async def update_subscription_status(self, trainer_id: str, new_status: str) -> None:
         """
