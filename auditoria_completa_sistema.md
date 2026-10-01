@@ -4,7 +4,8 @@
 >
 > - Última atualização: 2026-10-01
 > - Escopo revisado: `backend/`, `mobile/`, `supabase/`, `landing/`, arquivos de deploy e serviços externos observados no código real.
-> - Verificação em 2026-10-01: revisão do commit `79170cb`; `41` testes backend passaram com 1 aviso de depreciação do Starlette, e `flutter analyze` concluiu sem issues.
+> - Verificação em 2026-10-01 (commit `79170cb`): `41` testes backend passaram; `flutter analyze` sem issues.
+> - Verificação em 2026-10-01 (commit `1d02f4b` — auditoria batch 2): `50` testes backend passaram; 9 novos testes de regressão de segurança adicionados.
 > - Limite da verificação: disponibilidade pública do frontend não comprova os fluxos autenticados, o estado do banco remoto ou a operação de pagamentos.
 
 ---
@@ -365,13 +366,14 @@ Mas ainda há fragilidade operacional em relação a:
 ### 9.2 Status dos Bloqueios Anteriores
 1. **Aprovação de cartão sem gateway**: ✅ CORRIGIDA no backend de produção; exige sessão existente, credencial Asaas, cobrança vinculada e status aprovado. O mock permanece somente fora de produção.
 2. **Ativação direta de plano pago**: ✅ BLOQUEADA em `/activate-plan` em produção; o plano `starter` continua ativável diretamente.
-3. **Autorização do polling**: ⚠️ PARCIAL — `/activate-plan`, `/process-card` e `/my-subscription` exigem JWT; `/checkout-session` e `/check-status/{order_nsu}` ainda não exigem autenticação, e o polling ativa a assinatura.
-4. **Recuperação pós-restart**: ⚠️ PARCIAL — o Asaas pode ser consultado por `externalReference`, mas a sessão reconstruída não restaura `trainer_id`, `plan_id` ou ciclo; o polling pode usar defaults `current-trainer`/`pro`.
+3. **Autorização do polling**: ✅ RESOLVIDA (`1d02f4b`) — `/checkout-session` e `/check-status/{order_nsu}` agora exigem JWT; `trainer_id` é derivado das claims do token, nunca do corpo da requisição. Treinador A não pode ativar sessão do treinador B (retorna 403).
+4. **Recuperação pós-restart**: ⚠️ PARCIAL — o Asaas pode ser consultado por `externalReference`, mas a sessão reconstruída não restaura `trainer_id`, `plan_id` ou ciclo se os metadados não estiverem em `_PENDING_ORDERS`; o `check-status` agora falha fechado (422) caso os metadados estejam ausentes, impedindo ativação com defaults genéricos.
 5. **Dados de cartão**: 🔴 PENDENTE — PAN e CVV ainda trafegam do app para o backend e são enviados à API Asaas sem tokenização; não declarar conformidade PCI DSS.
 6. **Credenciais e aplicação remota**: ⚠️ O blueprint declara `ASAAS_API_KEY` (`sync: false`) e URL live; valores configurados no Render e operação do serviço não foram verificados.
-7. **Webhook Asaas**: ⚠️ A rota valida o token e interpreta o evento, mas não persiste a ativação/cancelamento da assinatura; a ativação Pix depende do polling.
+7. **Webhook Asaas**: ✅ RESOLVIDO (`1d02f4b`) — a rota valida o token, interpreta o evento e agora persiste ativação/cancelamento no Supabase via `externalReference`; eventos sem metadados suficientes são logados como aviso sem alterar assinatura.
 8. **JWT**: ✅ O código rejeita tokens sem assinatura válida em produção; testes locais cobrem o token forjado.
 9. **Próximo passo operacional**: testar checkout ponta a ponta em sandbox com sessão durável, vínculo autenticado e confirmação do provedor.
+
 
 ---
 
@@ -494,10 +496,10 @@ O código e o blueprint Render substituem wildcard por `https://shaipados.com` q
 ### 9.1 Curto prazo (alto impacto, esforço moderado)
 1. **Publicar e validar a persistência atualizada**: aplicar a migração de uso de IA no Supabase, publicar o backend e executar cenários autenticados de CRUD com contas de teste isoladas.
 2. **Manter catálogo de planos e espelho SQL sincronizados**: `app/core/plans.py` é a origem comum no código; a migration SQL ainda deve ser atualizada junto com mudanças de preço/limite.
-3. **Remover ou isolar claramente os arquivos `gemini_b2b_service.py` duplicados** — decidir se são legado (remover) ou uma integração alternativa via gateway Cloud Run (documentar e mover para `scripts/` ou `legacy/`).
-4. **Corrigir a leitura de `DEFAULT_FAST_MODEL`/`DEFAULT_DEEP_MODEL`** no `GeminiService` para respeitar o que está em `settings`, ou remover essas variáveis não utilizadas do `config.py`/`render.yaml` para não confundir.
-5. **Ampliar o contador para outros endpoints de IA** se eles também consumirem a franquia mensal.
-6. **Publicar e validar a restrição de CORS** no backend hospedado.
+3. **✅ RESOLVIDO (`1d02f4b`)** — `gemini_b2b_service.py` duplicado isolado em `backend/legacy/`; uso apenas de `GeminiService` assíncrono no código ativo.
+4. **✅ RESOLVIDO (batch anterior)** — `DEFAULT_FAST_MODEL`/`DEFAULT_DEEP_MODEL` corrigidos para `gemini-2.5-flash` em `config.py` e `render.yaml`.
+5. **✅ RESOLVIDO (`1d02f4b`)** — Contador mensal de IA ampliado para `/adapt-exercise` e `/assistant/chat`; todos os 3 endpoints de IA verificam cota antes de chamar o Gemini e incrementam após a chamada.
+6. **✅ RESOLVIDO (código)** — `config.py` e `main.py` já aplicam CORS restrito a `https://shaipados.com` quando `ENVIRONMENT=production`; confirmar que o Render aplicou o blueprint atualizado.
 
 ### 9.2 Médio prazo (evolução de produto)
 7. **Bloquear ativações falsas e tornar seguro o fluxo Asaas**; somente depois validar cobrança real com cartão tokenizado ou checkout hospedado.
