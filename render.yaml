@@ -34,6 +34,10 @@ services:
         value: https://rgbyfiulomxpqkuufdtg.supabase.co/auth/v1/.well-known/jwks.json
       - key: SUPABASE_JWT_SECRET
         sync: false
+      - key: ASAAS_API_KEY
+        sync: false
+      - key: ASAAS_API_URL
+        value: https://api.asaas.com/v3
       - key: ASAAS_WEBHOOK_TOKEN
         sync: false
       - key: MERCADOPAGO_WEBHOOK_SECRET
