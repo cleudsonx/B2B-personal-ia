@@ -15,9 +15,9 @@ services:
       - key: ENVIRONMENT
         value: production
       - key: DEFAULT_FAST_MODEL
-        value: gemini-3.6-flash
+        value: gemini-2.5-flash
       - key: DEFAULT_DEEP_MODEL
-        value: gemini-3.6-flash
+        value: gemini-2.5-flash
       - key: AIS_GATEWAY_URL
         value: https://ais-dev-3ey6ymjmlzt5sh4qusmboi-873261240850.us-east1.run.app
       - key: GEMINI_API_KEY

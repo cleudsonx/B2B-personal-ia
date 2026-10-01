@@ -357,10 +357,9 @@ class SubscriptionService {
         return data['success'] == true;
       }
     } catch (e) {
-      debugPrint('Aviso ao processar cartão in-app: $e');
+      debugPrint('Erro ao processar cartão in-app: $e');
     }
-    // Fallback: se offline/demo, autoriza com sucesso para teste do Personal
-    return true;
+    return false;
   }
 
   /// Simula e calcula o impacto financeiro (pró-rata) e as regras de transição de plano (Upgrade / Downgrade)

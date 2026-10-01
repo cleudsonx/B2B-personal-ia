@@ -1,7 +1,9 @@
 import uuid
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends, Request
+from app.api.deps import get_current_user
+from app.core.config import settings
 from app.schemas.subscription import (
     PlanResponse,
     PlanFeature,
@@ -47,25 +49,49 @@ async def list_subscription_plans():
 
 
 @router.get("/my-subscription", response_model=MySubscriptionResponse)
-async def get_my_subscription(trainer_id: str = "current-trainer"):
+async def get_my_subscription(
+    trainer_id: str = "current-trainer",
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
     """
     Retorna o plano ativo e consumo de cotas do Personal Trainer autenticado.
     Busca no Supabase com contagem real de alunos ocupando vagas na assessoria.
     """
-    return await supabase_service.get_trainer_subscription(trainer_id)
+    auth_trainer_id = current_user.get("sub") or current_user.get("id")
+    if settings.ENVIRONMENT.lower() == "production" and auth_trainer_id:
+        effective_id = auth_trainer_id
+    else:
+        effective_id = trainer_id or auth_trainer_id or "current-trainer"
+    return await supabase_service.get_trainer_subscription(effective_id)
 
 
 @router.post("/activate-plan", response_model=MySubscriptionResponse)
-async def activate_subscription_plan(req: PlanActivationRequest):
+async def activate_subscription_plan(
+    req: PlanActivationRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
     """
     Ativa ou troca o plano do Personal Trainer imediatamente, persistindo no Supabase.
     Atualiza cotas de alunos, limite de gerações IA e periodicidade.
+    Em produção: permite ativação direta APENAS para o plano gratuito ('starter').
+    Planos pagos (pro, elite, studio) requerem pagamento comprovado via Asaas/Gateway.
     """
     selected_plan = next((p for p in SAAS_PLANS if p.id == req.plan_id), None)
     if not selected_plan:
         raise HTTPException(status_code=404, detail=f"Plano '{req.plan_id}' não encontrado.")
 
-    trainer_id = req.trainer_id or "current-trainer"
+    auth_trainer_id = current_user.get("sub") or current_user.get("id") or "current-trainer"
+    trainer_id = req.trainer_id or auth_trainer_id
+
+    # Bloqueio em produção: planos pagos não podem ser ativados sem checkout comprovado
+    if settings.ENVIRONMENT.lower() == "production":
+        if req.plan_id != "starter":
+            raise HTTPException(
+                status_code=400,
+                detail="Planos pagos só podem ser ativados através de pagamento confirmado (Pix ou Cartão)."
+            )
+        trainer_id = auth_trainer_id
+
     return await supabase_service.activate_subscription(
         trainer_id=trainer_id,
         plan_id=req.plan_id,
@@ -143,23 +169,34 @@ async def create_checkout_session(request: CheckoutSessionRequest):
 
 
 @router.post("/process-card", response_model=CardPaymentResponse)
-async def process_card_checkout(request: CardPaymentRequest):
+async def process_card_checkout(
+    request: CardPaymentRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
     """
     Processa pagamento transparente com cartão de crédito in-app via Asaas.
     Ativa a assinatura instantaneamente no Supabase após a confirmação.
     """
-    result = PaymentProviderService.process_card_payment(
-        session_id=request.session_id,
-        card_holder_name=request.card_holder_name,
-        card_number=request.card_number,
-        expiry_month=request.expiry_month,
-        expiry_year=request.expiry_year,
-        ccv=request.ccv,
-        installments=request.installments or 1,
-    )
+    auth_trainer_id = current_user.get("sub") or current_user.get("id") or "current-trainer"
+    if settings.ENVIRONMENT.lower() == "production" and auth_trainer_id in ("current-trainer", ""):
+        raise HTTPException(status_code=401, detail="Usuário não autenticado.")
+
+    try:
+        result = PaymentProviderService.process_card_payment(
+            session_id=request.session_id,
+            card_holder_name=request.card_holder_name,
+            card_number=request.card_number,
+            expiry_month=request.expiry_month,
+            expiry_year=request.expiry_year,
+            ccv=request.ccv,
+            installments=request.installments or 1,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
     if result.get("success"):
         order_meta = PaymentProviderService._PENDING_ORDERS.get(request.session_id, {})
-        trainer_id = request.trainer_id or order_meta.get("trainer_id", "current-trainer")
+        trainer_id = auth_trainer_id if settings.ENVIRONMENT.lower() == "production" else (request.trainer_id or order_meta.get("trainer_id", auth_trainer_id))
         plan_id = order_meta.get("plan_id", "pro")
         billing_interval = order_meta.get("billing_interval", "monthly")
         await supabase_service.activate_subscription(

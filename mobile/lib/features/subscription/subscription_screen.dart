@@ -1284,12 +1284,33 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
         ),
         const SizedBox(height: 16),
         TextButton(
-          onPressed: () {
-            // Permite ao usuário simular ou acelerar ativação
-            widget.onSuccess();
+          onPressed: () async {
+            final sessionId = _session?.sessionId;
+            if (sessionId == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Sessão de pagamento não identificada.'),
+                  backgroundColor: Color(0xFFEF4444),
+                ),
+              );
+              return;
+            }
+            final isPaid = await SubscriptionService.checkPaymentStatus(sessionId);
+            if (isPaid) {
+              widget.onSuccess();
+            } else {
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Aguardando compensação do Pix pelo banco. Tente novamente em alguns segundos.'),
+                  backgroundColor: Color(0xFFF59E0B),
+                  duration: Duration(seconds: 4),
+                ),
+              );
+            }
           },
           child: Text(
-            'Já paguei pelo aplicativo do banco (Ativar Imediatamente)',
+            'Já paguei pelo aplicativo do banco (Verificar Pagamento)',
             style: TextStyle(color: AppColors.emerald(context), fontSize: 12.5, fontWeight: FontWeight.bold),
           ),
         ),

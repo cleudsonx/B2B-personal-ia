@@ -490,3 +490,106 @@ def test_asaas_transparent_checkout_and_card_processing():
     assert poll_res.status_code == 200
     poll_data = poll_res.json()
     assert poll_data["paid"] is True
+
+
+def test_production_activate_plan_blocks_unpaid_tiers(monkeypatch):
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    client = TestClient(app)
+
+    # 1. Tentativa de ativação de plano pago (pro) em produção sem pagamento deve ser rejeitada com 400
+    res_paid = client.post(
+        "/api/v1/subscriptions/activate-plan",
+        json={
+            "plan_id": "pro",
+            "billing_interval": "monthly",
+            "payment_method": "pix",
+            "trainer_id": "tr-prod-attacker-1"
+        },
+        headers={"Authorization": "Bearer fake.prod.token"}
+    )
+    # Como o token é fake e ENVIRONMENT=production, security barra antes ou na rota
+    assert res_paid.status_code in (400, 401)
+
+    # Se injetarmos usuário autenticado válido em produção, plano pro ainda deve ser bloqueado com 400
+    from app.api.deps import get_current_user
+    app.dependency_overrides[get_current_user] = lambda: {"sub": "tr-prod-authenticated-1", "role": "authenticated"}
+    try:
+        res_blocked = client.post(
+            "/api/v1/subscriptions/activate-plan",
+            json={
+                "plan_id": "pro",
+                "billing_interval": "monthly",
+                "payment_method": "pix",
+                "trainer_id": "tr-prod-authenticated-1"
+            }
+        )
+        assert res_blocked.status_code == 400
+        assert "Planos pagos só podem ser ativados através de pagamento confirmado" in res_blocked.json()["detail"]
+
+        # 2. Plano gratuito Starter Trial DEVE ser permitido
+        res_starter = client.post(
+            "/api/v1/subscriptions/activate-plan",
+            json={
+                "plan_id": "starter",
+                "billing_interval": "monthly",
+                "payment_method": "pix",
+                "trainer_id": "tr-prod-authenticated-1"
+            }
+        )
+        assert res_starter.status_code == 200
+        assert res_starter.json()["plan_id"] == "starter"
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_production_process_card_requires_asaas_confirmation(monkeypatch):
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.core.config import settings
+    from app.api.deps import get_current_user
+
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(settings, "ASAAS_API_KEY", "")
+    client = TestClient(app)
+
+    app.dependency_overrides[get_current_user] = lambda: {"sub": "tr-card-tester-1", "role": "authenticated"}
+    try:
+        # Sem Asaas configurado em produção, process-card deve falhar fechado com 400
+        res = client.post("/api/v1/subscriptions/process-card", json={
+            "session_id": "sess_non_existent",
+            "card_holder_name": "CARLOS SILVA",
+            "card_number": "4111 2222 3333 4444",
+            "expiry_month": "11",
+            "expiry_year": "2029",
+            "ccv": "123",
+            "installments": 1,
+            "trainer_id": "tr-card-tester-1"
+        })
+        assert res.status_code == 400
+        assert "Sessão de checkout não encontrada" in res.json()["detail"] or "Gateway de pagamentos Asaas não configurado" in res.json()["detail"]
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_security_blocks_unsigned_jwt_in_production(monkeypatch):
+    import jwt
+    from app.core.config import settings
+    from app.core.security import decode_supabase_jwt
+    from fastapi import HTTPException
+
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(settings, "SUPABASE_JWKS_URL", "")
+    monkeypatch.setattr(settings, "SUPABASE_JWT_SECRET", "")
+
+    # Gera token forjado não assinado
+    forged_token = jwt.encode({"sub": "victim-user-id"}, key="", algorithm="none")
+
+    with pytest.raises(HTTPException) as exc_info:
+        decode_supabase_jwt(forged_token)
+    assert exc_info.value.status_code == 401
+    assert "Assinatura do token não pôde ser verificada" in exc_info.value.detail
+

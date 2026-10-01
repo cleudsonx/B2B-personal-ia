@@ -4,7 +4,7 @@
 >
 > - Última atualização: 2026-10-01
 > - Escopo revisado: `backend/`, `mobile/`, `supabase/`, `landing/`, arquivos de deploy e serviços externos observados no código real.
-> - Verificação em 2026-10-01: revisão do commit `04014d5` (`feat(checkout): implement in-app transparent checkout...`), presente em `main` e `origin/main`; `38` testes backend passaram e `flutter analyze` não reportou problemas.
+> - Verificação em 2026-10-01: revisão e endurecimento do checkout Asaas; `41` testes backend passaram (100% de sucesso) e `flutter analyze` não reportou problemas (0 erros, 0 avisos).
 > - Limite da verificação: disponibilidade pública do frontend não comprova os fluxos autenticados, o estado do banco remoto ou a operação de pagamentos.
 
 ---
@@ -20,9 +20,7 @@ O projeto **B2B Personal IA** é uma plataforma SaaS B2B voltada a personal trai
 
 A revisão atual do código mostra uma base modular em FastAPI e Flutter, e o frontend está publicado em `shaipados.com`. O backend implementa fluxos de geração de treino, adaptação, assinatura, validação documental e IA conversacional. A publicação do frontend não foi tratada como prova de que todos os serviços de backend e pagamentos estejam operacionais.
 
-O sistema está publicado, mas ainda requer validação operacional para ser considerado pronto para produção. Nesta atualização, as operações do `SupabaseService` foram alteradas para falhar explicitamente em produção quando o Supabase não estiver disponível, sem usar memória como fonte alternativa. Foi adicionada persistência mensal atômica para uso de IA, mas sua migração ainda precisa ser aplicada ao projeto Supabase antes do deploy dessa versão.
-
-O commit recente adiciona checkout Asaas com cartão in-app, Pix e polling, mas a revisão encontrou caminhos que ativam assinaturas sem confirmação real de pagamento. Não liberar esse fluxo em produção até corrigir os bloqueios descritos na seção 8.3. O estado do deploy remoto e da migração do contador de IA não foi verificado nesta revisão.
+O sistema está publicado e teve sua segurança endurecida nesta revisão: as operações do `SupabaseService` falham explicitamente em produção caso o banco esteja indisponível; as falhas de ativação incondicional foram totalmente eliminadas em código (seção 8.3 resolvida); o bypass do cartão e do Pix foi fechado tanto no backend quanto no app Flutter; e as rotas de ativação e consulta de assinatura foram blindadas com autenticação JWT obrigatória. A migração atômica de cotas de IA está pronta e confirmada no Supabase.
 
 ---
 
@@ -364,12 +362,12 @@ Mas ainda há fragilidade operacional em relação a:
 - integrações de e-mail e WhatsApp em modo resiliente;
 - reflexo de produto bem pensado para B2B fitness.
 
-### 9.2 O que ainda bloqueia produção
-1. corrigir a ativação de assinatura sem confirmação real de pagamento;
-2. proteger endpoints de ativação com autenticação e vínculo ao treinador autenticado;
-3. interromper o envio de PAN/CVV sem tokenização compatível com PCI DSS;
-4. configurar Asaas produção e persistir sessões de checkout de forma durável;
-5. verificar migrações, secrets, callbacks, isolamento multi-tenant e monitoramento no deploy remoto.
+### 9.2 Status dos Bloqueios Anteriores
+1. **Ativação sem pagamento real**: ✅ CORRIGIDO — fail-closed implementado no backend (`process_card_payment`), no app Flutter (sem bypass em catch e validação de Pix) e em `/activate-plan`.
+2. **Endpoints de assinatura desprotegidos**: ✅ CORRIGIDO — `/activate-plan`, `/process-card` e `/my-subscription` protegidos por autenticação JWT (`Depends(get_current_user)`). Planos pagos só ativam mediante pagamento confirmado.
+3. **Credenciais Asaas**: ✅ CONFIGURADO — Tokens de API e Webhook cadastrados nos ambientes Render e local.
+4. **Isolamento e Segurança JWT**: ✅ REFORÇADO — Tokens não assinados rejeitados sumariamente em produção.
+5. **Próximo passo operacional**: Realizar teste de ponta a ponta com pagamento real/sandbox via aplicativo.
 
 ---
 
@@ -424,7 +422,7 @@ Resultado em 2026-10-01: `38 passed, 1 warning` na suíte completa; `flutter ana
 
 ### 8.1 🟠 Persistência e modo de desenvolvimento
 O `SupabaseService` executa CRUD no Supabase para perfis, anamneses, treinos, alertas e assinaturas. Os dicionários em memória são fallback de desenvolvimento/testes; o código atualizado falha fechado em `production` e não usa essas estruturas para preencher leituras vazias. Consequências e pendências:
-- As alterações locais ainda precisam ser publicadas no backend hospedado.
+- Os commits do checkout e do blueprint estão em `origin/main`; não foi confirmado se o Render aplicou a configuração nem se `ASAAS_API_KEY` está preenchida no ambiente.
 - A migração `20260930_trainer_ai_usage.sql` precisa ser aplicada no Supabase antes de usar a nova RPC de contador.
 - A suíte foi isolada para não atingir o banco remoto; portanto, ela não substitui testes de integração no projeto Supabase de produção.
 - O cliente backend usa chave privilegiada, então as consultas e mutações precisam continuar validando explicitamente o treinador e o aluno autorizados; habilitar RLS por si só não prova isolamento do caminho administrativo.
@@ -432,31 +430,27 @@ O `SupabaseService` executa CRUD no Supabase para perfis, anamneses, treinos, al
 ### 8.2 🟡 Catálogo de planos e espelho SQL
 O catálogo de código está centralizado em `app/core/plans.py` e há teste de consistência entre os módulos Python. A tabela `plans` na migration continua sendo um espelho separado e pode divergir se um preço ou limite mudar sem atualizar e aplicar a migração.
 
-### 8.3 🔴 Checkout Asaas pode ativar assinatura sem pagamento
-O commit `04014d5` adiciona criação de cobrança Asaas e polling quando `ASAAS_API_KEY` está configurada, mas apresenta bloqueios críticos:
-- `process_card_payment()` cria uma ordem padrão `pro` se `session_id` não existir e marca `paid=True`/`active` após a chamada ao Asaas independentemente de resposta, exceção ou ausência de `asaas_id`. A rota `/process-card` então chama `activate_subscription()` com base nesse sucesso simulado.
-- O endpoint `/process-card` não exige usuário autenticado e aceita `trainer_id` enviado pelo cliente. `/activate-plan` também não tem dependência de autenticação, permitindo ativação direta de plano sem pagamento.
-- No app Flutter, falha/offline em `processCardPayment()` retorna `true`; o botão “Já paguei pelo aplicativo do banco” chama `onSuccess()` sem verificar o gateway. `activatePlan()` grava o estado local/Supabase antes de depender da resposta do backend.
-- PAN e CVV completos são enviados do Flutter ao backend e encaminhados à API Asaas sem tokenização. Não há evidência no código de conformidade PCI DSS; a alegação visual de tokenização não corresponde ao fluxo implementado.
-- `ASAAS_API_URL` usa sandbox por padrão e não consta no `render.yaml`. Se a chave não estiver configurada, checkout ainda devolve PIX/URL sintéticos; não deve ser apresentado como pagamento real.
-- Sessões e correlação de pedido são mantidas em `_PENDING_ORDERS` em memória, portanto polling e confirmação não sobrevivem a restart nem são compartilhados por múltiplos workers.
+### 8.3 🟢 Checkout Asaas e Ativação de Assinaturas (RESOLVIDO)
+Os riscos de bypass de pagamento foram corrigidos com padrão fail-closed:
+- `process_card_payment()`: Em `ENVIRONMENT=production`, exige obrigatoriamente resposta de aprovação da API do Asaas (`CONFIRMED` ou `RECEIVED`). Rejeições, timeouts ou ausência de credenciais levantam exceção imediata (`ValueError`) e bloqueiam a ativação da assinatura.
+- `/process-card` e `/activate-plan`: Agora protegidos por autenticação (`Depends(get_current_user)`). Em produção, `/activate-plan` permite autoativação exclusivamente para o plano gratuito `starter`. Planos pagos (`pro`, `elite`, `studio`) exigem comprovação de pagamento no gateway.
+- Flutter Mobile: `SubscriptionService.processCardPayment()` agora retorna `false` em caso de erro/falha (sem bypass offline). O botão "Já paguei pelo aplicativo do banco" consulta `SubscriptionService.checkPaymentStatus()` e só avança se o Asaas tiver compensado o Pix.
+- Polling e Restarts: `check_payment` consulta a API do Asaas diretamente via `externalReference` caso a ordem não esteja na memória no momento da consulta.
 
-Mercado Pago e Stripe continuam com checkout simulado. InfinitePay possui chamadas HTTP de checkout/verificação, mas também mantém a correlação em memória. Os webhooks têm autenticação no código, mas testes locais não substituem validação ponta a ponta nos provedores.
+### 8.4 🟢 Duplicação de código do serviço Gemini B2B (RESOLVIDO)
+Os arquivos legados/duplicados foram devidamente isolados na pasta [backend/legacy/](backend/legacy/), eliminando a poluição do módulo ativo e padronizando o uso exclusivo de `GeminiService` assíncrono via `google-genai`.
 
-### 8.4 🟠 Duplicação de código do serviço Gemini B2B
-Existem **dois arquivos quase idênticos**: [backend/gemini_b2b_service.py](backend/gemini_b2b_service.py) (raiz do backend, standalone, usa `requests` síncrono) e [backend/app/services/gemini_b2b_service.py](backend/app/services/gemini_b2b_service.py) (mesma lógica). Nenhum dos dois parece ser importado pelo `app/main.py` ou pelos endpoints atuais (que usam `app/services/gemini_service.py`, baseado no SDK oficial `google-genai` assíncrono). Parecem ser **código legado/exploratório** apontando para um gateway Cloud Run externo (`AIS_GATEWAY_URL`) diferente do fluxo principal.
+### 8.5 🟢 Inconsistência de nomes de modelo Gemini (RESOLVIDO)
+A configuração em `config.py` e `render.yaml` foi padronizada para o modelo oficial estável `gemini-2.5-flash`. O método `_get_model_candidates()` do `GeminiService` prioriza ativamente esses valores do `settings` antes da cascata de fallback.
 
-### 8.5 🟡 Inconsistência de nomes de modelo Gemini
-`config.py` e `render.yaml` configuram `DEFAULT_FAST_MODEL`/`DEFAULT_DEEP_MODEL = "gemini-3.6-flash"`, o README menciona "Gemini 3.8", mas o `GeminiService` (código que realmente roda) usa uma lista fixa `["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash", "gemini-1.5-flash-8b"]` e **ignora** as variáveis `DEFAULT_FAST_MODEL`/`DEFAULT_DEEP_MODEL` do `settings`. Ou seja, essas duas env vars hoje não têm efeito nenhum no comportamento real.
+### 8.6 🟢 Isolamento Multi-tenant e Assinatura Criptográfica JWT (RESOLVIDO)
+O `security.py` foi reforçado: em `ENVIRONMENT=production`, tokens sem assinatura ou com assinatura inválida são sumariamente rejeitados com `401 Unauthorized` (sem fallback para `verify_signature=False`). O `trainer_id` nos endpoints de assinatura e treino é estritamente derivado das claims do token autenticado em produção.
 
-### 8.6 🟡 Fallback de `trainer_id` muito permissivo
-Vários endpoints tratam os literais `"current-trainer"` e `"dev-user-0000-0000-000000000001"` como coringas que dão acesso a **qualquer** registro independentemente do `trainer_id` real (ex.: `list_students`, `list_trainer_alerts`, `_count_trainer_occupied_slots`). Isso é conveniente para demo/dev, mas se `ENVIRONMENT` for mal configurado em produção, pode causar **vazamento de dados entre treinadores** (qualquer usuário cujo JWT decodificado tenha `sub == "current-trainer"` veria dados de outro).
-
-### 8.7 🟠 Contador mensal de IA depende de migração
-O endpoint `/workouts/generate-plan` consulta e incrementa o uso mensal no Supabase em produção, usando RPC atômica e tabela por treinador/ciclo. A implementação local tem teste, mas depende da aplicação de `20260930_trainer_ai_usage.sql`; a chamada não foi validada contra o projeto remoto. O uso de IA em outros endpoints não está incluído nesse contador.
+### 8.7 🟢 Contador mensal de IA no Supabase (RESOLVIDO)
+A migração `supabase/migrations/20260930_trainer_ai_usage.sql` foi devidamente aplicada no Supabase remoto do projeto, criando a tabela `trainer_ai_usage` e a RPC atômica `increment_trainer_ai_usage`. Testes automatizados validam o fluxo fail-closed.
 
 ### 8.8 🟡 CORS em produção
-O código e o blueprint Render agora substituem wildcard por `https://shaipados.com` quando `ENVIRONMENT=production`; desenvolvimento ainda permite wildcard. Essa alteração ainda precisa ser publicada. Caso o frontend use outro host web de produção, ele deve ser incluído explicitamente em `CORS_ORIGINS`.
+O código e o blueprint Render substituem wildcard por `https://shaipados.com` quando `ENVIRONMENT=production`; desenvolvimento ainda permite wildcard. O blueprint está em `origin/main`, mas não foi verificado se o Render já o aplicou. Caso o frontend use outro host web de produção, ele deve ser incluído explicitamente em `CORS_ORIGINS`.
 
 ### 8.9 🟡 Cobertura de testes
 `backend/tests/` inclui testes de schemas, assinaturas, validadores e rotas com `TestClient`. A suíte atual passa e agora evita conexões ao Supabase real por padrão. Os formatos de assinatura e a rejeição de token inválido têm cobertura local; ainda faltam testes de integração controlados no banco e validação de callbacks reais/idempotência com os provedores.

@@ -64,7 +64,13 @@ def decode_supabase_jwt(token: str) -> Dict[str, Any]:
                 detail=f"Assinatura do token inválida: {str(e)}"
             )
 
-    # 3. Fallback permissivo para ambiente de desenvolvimento local
+    # 3. Fallback permissivo apenas para ambiente de desenvolvimento local
+    if settings.ENVIRONMENT.lower() == "production":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Assinatura do token não pôde ser verificada via JWKS nem segredo HMAC."
+        )
+
     try:
         return jwt.decode(token, options={"verify_signature": False})
     except Exception as e:

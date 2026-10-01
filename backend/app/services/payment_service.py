@@ -356,39 +356,69 @@ class PaymentProviderService:
 
     @classmethod
     def check_payment(cls, order_nsu: str) -> bool:
-        """Verifica se uma sessão de pagamento foi aprovada (suporta Asaas, InfinitePay e local)."""
+        """
+        Verifica se uma sessão de pagamento foi aprovada (suporta Asaas, InfinitePay e local).
+        Consulta o Asaas tanto pelo ID interno da cobrança quanto pela referência externa da sessão.
+        """
         order = cls._PENDING_ORDERS.get(order_nsu)
-        if not order:
-            return False
-        if order.get("paid") is True:
+        if order and order.get("paid") is True:
             return True
 
-        provider = order.get("provider", "asaas")
+        provider = order.get("provider", "asaas") if order else "asaas"
         if provider in ("infinitepay", "infinite_pay"):
             paid = cls.check_infinitepay_payment(order_nsu)
             if paid:
-                order["paid"] = True
-                order["status"] = "active"
-            return paid
+                if order:
+                    order["paid"] = True
+                    order["status"] = "active"
+                return True
 
-        if provider == "asaas" and getattr(settings, "ASAAS_API_KEY", ""):
-            asaas_id = order.get("asaas_id")
+        if getattr(settings, "ASAAS_API_KEY", ""):
+            base_url = getattr(settings, "ASAAS_API_URL", "https://sandbox.asaas.com/api/v3").rstrip("/")
+            headers = {"access_token": settings.ASAAS_API_KEY}
+            
+            # 1. Consulta por asaas_id direto se a sessão estiver em memória
+            asaas_id = order.get("asaas_id") if order else None
             if asaas_id:
                 try:
-                    base_url = getattr(settings, "ASAAS_API_URL", "https://sandbox.asaas.com/api/v3").rstrip("/")
-                    headers = {"access_token": settings.ASAAS_API_KEY}
                     with httpx.Client(timeout=4.0) as client:
                         r = client.get(f"{base_url}/payments/{asaas_id}", headers=headers)
                         if r.status_code == 200:
                             st = r.json().get("status")
                             if st in ("RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"):
-                                order["paid"] = True
-                                order["status"] = "active"
+                                if order:
+                                    order["paid"] = True
+                                    order["status"] = "active"
                                 return True
                 except Exception as e:
                     logger.warning(f"[Asaas] Erro ao verificar status do pagamento {asaas_id}: {e}")
 
-        return bool(order.get("paid", False))
+            # 2. Se a sessão reiniciou ou não tem asaas_id, consulta por externalReference
+            try:
+                with httpx.Client(timeout=4.0) as client:
+                    r = client.get(f"{base_url}/payments?externalReference={order_nsu}", headers=headers)
+                    if r.status_code == 200:
+                        data = r.json().get("data", [])
+                        if data:
+                            st = data[0].get("status")
+                            if st in ("RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"):
+                                if not order:
+                                    order = {
+                                        "session_id": order_nsu,
+                                        "provider": "asaas",
+                                        "paid": True,
+                                        "status": "active",
+                                        "asaas_id": data[0].get("id"),
+                                    }
+                                    cls._PENDING_ORDERS[order_nsu] = order
+                                else:
+                                    order["paid"] = True
+                                    order["status"] = "active"
+                                return True
+            except Exception as e:
+                logger.warning(f"[Asaas] Erro ao consultar externalReference {order_nsu}: {e}")
+
+        return bool(order.get("paid", False)) if order else False
 
     @classmethod
     def process_card_payment(
@@ -403,13 +433,19 @@ class PaymentProviderService:
     ) -> Dict[str, Any]:
         """
         Processa pagamento de cartão de crédito in-app de forma transparente.
-        Suporta Asaas com tokenização/chamada direta ou aprovação simulada segura.
+        Em produção: estritamente fail-closed — requer resposta positiva da API do Asaas.
+        Em desenvolvimento: permite simulação controlada caso não haja credenciais.
         """
         clean_num = card_number.replace(" ", "").replace("-", "")
         if len(clean_num) < 13:
             raise ValueError("Número de cartão de crédito inválido.")
 
         order = cls._PENDING_ORDERS.get(session_id)
+        is_prod = settings.ENVIRONMENT.lower() == "production"
+
+        if is_prod and not order:
+            raise ValueError("Sessão de checkout não encontrada ou expirada. Inicie uma nova sessão.")
+
         if not order:
             order = {
                 "session_id": session_id,
@@ -423,39 +459,87 @@ class PaymentProviderService:
             }
             cls._PENDING_ORDERS[session_id] = order
 
-        # Se houver credenciais Asaas, faz a chamada real
-        if getattr(settings, "ASAAS_API_KEY", ""):
-            try:
-                base_url = getattr(settings, "ASAAS_API_URL", "https://sandbox.asaas.com/api/v3").rstrip("/")
-                headers = {
-                    "access_token": settings.ASAAS_API_KEY,
-                    "Content-Type": "application/json"
-                }
-                exp_year_full = f"20{expiry_year}" if len(expiry_year) == 2 else expiry_year
-                card_payload = {
-                    "creditCard": {
-                        "holderName": card_holder_name,
-                        "number": clean_num,
-                        "expiryMonth": expiry_month.zfill(2),
-                        "expiryYear": exp_year_full,
-                        "ccv": ccv
-                    }
-                }
-                asaas_id = order.get("asaas_id")
-                if asaas_id:
-                    with httpx.Client(timeout=6.0) as client:
-                        resp = client.post(f"{base_url}/payments/{asaas_id}/payWithCreditCard", headers=headers, json=card_payload)
-                        if resp.status_code in (200, 201):
-                            res_json = resp.json()
-                            if res_json.get("status") in ("CONFIRMED", "RECEIVED"):
-                                order["paid"] = True
-                                order["status"] = "active"
-            except Exception as e:
-                logger.warning(f"[Asaas] Processamento do cartão via API Asaas falhou ({e}).")
+        # Validação estrita em produção
+        if is_prod:
+            if not getattr(settings, "ASAAS_API_KEY", ""):
+                raise ValueError("Gateway de pagamentos Asaas não configurado no servidor de produção.")
 
-        # Marca como aprovado na sessão do servidor
-        order["paid"] = True
-        order["status"] = "active"
+            asaas_id = order.get("asaas_id")
+            if not asaas_id:
+                raise ValueError("Nenhuma cobrança Asaas associada a esta sessão de checkout.")
+
+            base_url = getattr(settings, "ASAAS_API_URL", "https://api.asaas.com/v3").rstrip("/")
+            headers = {
+                "access_token": settings.ASAAS_API_KEY,
+                "Content-Type": "application/json"
+            }
+            exp_year_full = f"20{expiry_year}" if len(expiry_year) == 2 else expiry_year
+            card_payload = {
+                "creditCard": {
+                    "holderName": card_holder_name,
+                    "number": clean_num,
+                    "expiryMonth": expiry_month.zfill(2),
+                    "expiryYear": exp_year_full,
+                    "ccv": ccv
+                }
+            }
+
+            try:
+                with httpx.Client(timeout=8.0) as client:
+                    resp = client.post(
+                        f"{base_url}/payments/{asaas_id}/payWithCreditCard",
+                        headers=headers,
+                        json=card_payload
+                    )
+                    res_json = resp.json() if resp.content else {}
+                    if resp.status_code in (200, 201) and res_json.get("status") in ("CONFIRMED", "RECEIVED"):
+                        order["paid"] = True
+                        order["status"] = "active"
+                    else:
+                        err_desc = "Transação não aprovada pela operadora do cartão."
+                        if res_json.get("errors"):
+                            err_desc = res_json["errors"][0].get("description", err_desc)
+                        raise ValueError(f"Pagamento com cartão recusado: {err_desc}")
+            except ValueError:
+                raise
+            except Exception as e:
+                logger.error(f"[Asaas] Falha de comunicação com gateway de cartão: {e}")
+                raise ValueError("Falha temporária ao comunicar com o gateway Asaas. Tente novamente.") from e
+
+        else:
+            # Ambiente de desenvolvimento / testes locais
+            if getattr(settings, "ASAAS_API_KEY", "") and order.get("asaas_id"):
+                try:
+                    base_url = getattr(settings, "ASAAS_API_URL", "https://sandbox.asaas.com/api/v3").rstrip("/")
+                    headers = {
+                        "access_token": settings.ASAAS_API_KEY,
+                        "Content-Type": "application/json"
+                    }
+                    exp_year_full = f"20{expiry_year}" if len(expiry_year) == 2 else expiry_year
+                    card_payload = {
+                        "creditCard": {
+                            "holderName": card_holder_name,
+                            "number": clean_num,
+                            "expiryMonth": expiry_month.zfill(2),
+                            "expiryYear": exp_year_full,
+                            "ccv": ccv
+                        }
+                    }
+                    with httpx.Client(timeout=6.0) as client:
+                        resp = client.post(
+                            f"{base_url}/payments/{order['asaas_id']}/payWithCreditCard",
+                            headers=headers,
+                            json=card_payload
+                        )
+                        if resp.status_code in (200, 201) and resp.json().get("status") in ("CONFIRMED", "RECEIVED"):
+                            order["paid"] = True
+                            order["status"] = "active"
+                except Exception as e:
+                    logger.warning(f"[Asaas Sandbox] Chamada de cartão não confirmada ({e}).")
+
+            # Em desenvolvimento sem chave, permite aprovação mock
+            order["paid"] = True
+            order["status"] = "active"
 
         return {
             "success": True,

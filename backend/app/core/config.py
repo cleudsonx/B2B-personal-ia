@@ -9,10 +9,10 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "production"
     PORT: int = 8000
     
-    # Gemini API Models (gemini-3.6-flash é o modelo oficial ativo)
+    # Gemini API Models (gemini-2.5-flash é o modelo oficial ativo)
     GEMINI_API_KEY: str = ""
-    DEFAULT_FAST_MODEL: str = "gemini-3.6-flash"
-    DEFAULT_DEEP_MODEL: str = "gemini-3.6-flash"
+    DEFAULT_FAST_MODEL: str = "gemini-2.5-flash"
+    DEFAULT_DEEP_MODEL: str = "gemini-2.5-flash"
     AIS_GATEWAY_URL: str = "https://ais-dev-3ey6ymjmlzt5sh4qusmboi-873261240850.us-east1.run.app"
     
     # Supabase & Auth
