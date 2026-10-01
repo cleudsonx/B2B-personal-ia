@@ -6,7 +6,7 @@
 > - Última atualização: 2026-10-01
 > - Escopo revisado: `backend/`, `mobile/`, `supabase/`, `landing/`, arquivos de deploy e serviços externos observados no código real.
 > - Verificação em 2026-10-01: revisão do batch 4; `57 passed, 2 warnings`, `flutter analyze` sem issues (0 erros / 0 avisos) e `render.yaml` válido.
-> - Resoluções implementadas: Sessões duráveis no Supabase (`checkout_sessions`), reserva atômica de cota IA (`reserve_trainer_ai_usage`), desativação de PAN/CVV no backend com validação de ownership em `/process-card`, e retenção de webhook idempotente apenas em caso de mutação persistida.
+> - Estado verificado no código: sessões e RPC de cotas foram implementadas; `/process-card` rejeita PAN/CVV em produção e valida ownership; webhook grava eventos após mutação. Persistência de sessão, atomicidade sob falha/concorrência e configuração remota ainda não foram comprovadas integralmente.
 > - Limite da verificação: disponibilidade pública do frontend não comprova os fluxos autenticados, o estado do banco remoto ou a operação de pagamentos.
 
 ---
@@ -22,7 +22,7 @@ O projeto **B2B Personal IA** é uma plataforma SaaS B2B voltada a personal trai
 
 A revisão atual do código mostra uma base modular em FastAPI e Flutter, e o frontend está publicado em `shaipados.com`. O backend implementa fluxos de geração de treino, adaptação, assinatura, validação documental e IA conversacional. A publicação do frontend não foi tratada como prova de que todos os serviços de backend e pagamentos estejam operacionais.
 
-O sistema recebeu hardening adicional: a tela de cartão agora abre checkout hospedado Asaas; a migration de eventos idempotentes foi adicionada; e os testes de segurança foram restaurados. Permanecem pendências: a rota legada `/process-card` ainda aceita PAN/CVV, falta validar ownership nessa rota, sessões de checkout ficam em memória e a idempotência não é atômica. A aplicação das migrations/configuração no ambiente remoto não foi verificada nesta revisão.
+O batch 4 adiciona sessões no Supabase, reserva SQL de cota, ownership em `/process-card` e rejeição de PAN/CVV em produção. O checkout hospedado está na tela Flutter. Permanecem ressalvas: o contrato legado ainda recebe PAN/CVV antes de rejeitá-los; falha no `upsert` da sessão pode ser apenas logada; o registro idempotente não é atômico com a mutação; e a reserva de cota usa fallback não atômico quando a RPC falha. Migrations e configuração remotas não foram verificadas nesta revisão.
 
 ---
 
@@ -365,16 +365,16 @@ Mas ainda há fragilidade operacional em relação a:
 - reflexo de produto bem pensado para B2B fitness.
 
 ### 9.2 Status dos Bloqueios Anteriores
-1. **Aprovação de cartão sem gateway**: ✅ CORRIGIDA em produção; a tela abre checkout hospedado Asaas e a rota de cartão exige resposta aprovada. A rota legada com PAN/CVV ainda está ativa.
+1. **Checkout hospedado de cartão**: ✅ A tela Flutter abre checkout oficial do Asaas; o endpoint legado `/process-card` retorna `400` em produção. ⚠️ A rota e o schema ainda aceitam campos PAN/CVV no request antes da rejeição.
 2. **Ativação direta de plano pago**: ✅ BLOQUEADA em `/activate-plan` em produção; `starter` continua ativável diretamente.
 3. **Autenticação de checkout/polling**: ✅ `/checkout-session` e `/check-status/{order_nsu}` exigem JWT e derivam o treinador do token.
-4. **Recuperação após restart**: ⚠️ FAIL-CLOSED, mas não resiliente — sem metadados completos, polling retorna `422`; sessão/vínculo ainda não são persistidos.
-5. **Propriedade da sessão no pagamento com cartão**: 🔴 PENDENTE — `/process-card` não compara o dono da ordem com as claims antes de cobrar/ativar.
-6. **Dados de cartão**: ⚠️ PARCIAL — a UI usa checkout hospedado, mas `/process-card`, `CardPaymentRequest` e `process_card_payment()` ainda recebem PAN/CVV; não declarar PCI DSS resolvido enquanto essa API existir.
-7. **Webhook/idempotência**: ⚠️ PARCIAL — eventos são registrados em tabela com chave única, mas `check -> efeito -> insert` não é atômico; sessão/mapeamento ainda são voláteis e eventos sem metadados podem ser consumidos sem efeito.
-8. **Cotas de IA**: ✅ Contador mensal ligado a `/generate-plan`, `/adapt-exercise` e `/assistant/chat`; ⚠️ verificação e incremento separados permitem ultrapassar cota em concorrência.
+4. **Persistência de sessão**: ⚠️ migration/tabela e leitura/escrita existem; `save_checkout_session()` apenas registra warning se o `upsert` falhar, então o checkout pode responder com sessão não durável.
+5. **Ownership no pagamento com cartão**: ✅ o código consulta o proprietário e bloqueia sessão de outro treinador antes de qualquer chamada Asaas; teste local cobre `403`.
+6. **PAN/CVV na API**: ⚠️ produção rejeita `/process-card` com `400`, mas o endpoint e schema continuam recebendo esses campos. O fluxo visual atual usa checkout hospedado; remover o contrato legado para reduzir a superfície PCI.
+7. **Webhook/idempotência**: ⚠️ evento só é marcado depois de uma mutação persistida, mas `check → efeito → insert` não é transacional; falha no insert é ignorada pela rota e duplicatas concorrentes ainda podem aplicar efeitos duas vezes.
+8. **Cotas de IA**: ⚠️ RPC reserva atomicamente quando disponível; em exceção o serviço faz fallback para consultar e incrementar, que não é atômico. Cota pode exceder sob concorrência nesse caminho.
 9. **JWT/configuração remota**: tokens sem assinatura são rejeitados em produção; secrets, migrations e versão ativa no Render/Supabase não foram verificados remotamente.
-10. **Cobertura local**: ✅ Os testes do batch 2 foram restaurados e ampliados; ⚠️ testes de idempotência usam fixture dev/memória e não exercitam o Postgres nem concorrência.
+10. **Cobertura local**: ✅ `57` testes passam; ⚠️ fixture global substitui Supabase por memória, então testes de sessão/idempotência/cota não cobrem falhas de gravação, Postgres ou concorrência real.
 
 
 ---
@@ -382,27 +382,27 @@ Mas ainda há fragilidade operacional em relação a:
 ## 10. Parecer Final da Auditoria Revisada
 
 ### Status geral
-O frontend está publicado e acessível. O batch 3 adiciona checkout hospedado para cartão, tabela de eventos e deduplicação sequencial; porém a API antiga de cartão permanece, a idempotência não é atômica e sessões/webhooks ainda dependem de metadados em memória. O checkout segue bloqueado para produção até fechar esses pontos e validar a integração real.
+O frontend está publicado e acessível. O batch 4 adiciona sessões persistidas, reserva de cota por RPC, ownership e bloqueio de cartão bruto em produção. A prontidão do checkout ainda não está demonstrada: gravação de sessão pode falhar sem impedir resposta, idempotência não é transacional e cota tem fallback não atômico.
 
 ### Impacto da revisão atual
-A análise confirmou o commit `e4763c1`: checkout hospedado na UI, tabela de idempotência e 52 testes. A implementação ainda não garante exactly-once sob concorrência: primeiro consulta o evento, aplica a mutação e só depois grava o ID; se a gravação falhar, o efeito já ocorreu. A correlação de checkout continua em memória, e a rota legada de PAN/CVV continua ativa. Os testes usam fixture que desvia o Supabase para memória; Git e testes locais não comprovam deploy, credenciais nem comportamento do banco remoto.
+A análise revisou o commit `c8b400b`: checkout hospedado na UI, tabela `checkout_sessions`, RPC de reserva e 57 testes. No código, a escrita da sessão captura falhas sem propagá-las; a reserva de cota cai para leitura/incremento não atômicos se a RPC falhar; webhook verifica, aplica efeito e grava evento em operações separadas. O endpoint legado ainda recebe PAN/CVV, embora rejeite em produção. Os testes mockam Supabase; Git/testes locais não comprovam deploy, secrets, migrations remotas ou comportamento sob concorrência real.
 
 ### Diagnóstico final
 - Produto: promissor, com diferencial real e bem definido.
 - Arquitetura: boa, coerente e modular.
 - Backend: funcional, com endpoints e regras implementadas.
 - Dados: esquema e CRUD Supabase presentes; persistência mensal de IA depende da migração nova; validação remota pendente.
-- Produção: frontend publicado; checkout Asaas ainda não deve ser considerado pronto até remover a API PAN/CVV, validar ownership, persistir sessões, tornar idempotência atômica e validar o fluxo remoto.
+- Produção: frontend publicado; checkout Asaas ainda não deve ser considerado pronto até remover o contrato PAN/CVV, fazer persistência falhar fechado, tornar idempotência e cota atômicas e validar o fluxo remoto.
 
 ### Parecer curto
 O sistema está em etapa de **validação técnica e de produto**, e a evolução recomendada é priorizar:
 
-1. remover `/process-card` e o contrato PAN/CVV obsoleto, usando somente checkout hospedado/tokenização;
-2. validar ownership da ordem antes de processar qualquer pagamento com cartão;
-3. persistir sessão e vínculo `externalReference` para recuperação pós-restart;
-4. implementar claim/registro atômico de webhook; não marcar evento como processado se os metadados impedirem persistência;
-5. reservar cotas de IA atomicamente e testar chamadas concorrentes;
-6. validar idempotência com banco de teste e concorrência real, além de testar respostas aprovadas/recusadas;
+1. remover `/process-card` e `CardPaymentRequest` com PAN/CVV, mantendo somente checkout hospedado;
+2. fazer falha no `save_checkout_session` impedir criação/retorno de sessão em produção;
+3. implementar claim/efeito/registro de webhook em operação transacional ou atômica, com retry recuperável;
+4. remover fallback não atômico da reserva de cotas em produção;
+5. validar propriedade da sessão em cartão e callback com cenários positivos/negativos;
+6. testar concorrência e falhas contra Supabase/Postgres de teste, não apenas memória;
 7. confirmar no Render versão/secrets e no Supabase migrations; executar E2E sandbox sem expor credenciais.
 
 Com essas ações, o projeto deixa de ser um MVP robusto e passa a ser uma plataforma pronta para operação B2B real.
@@ -418,7 +418,7 @@ cd backend
 .venv\Scripts\python -m pytest -q
 ```
 
-Resultado em 2026-10-01 no commit `e4763c1`: `52 passed, 2 warnings`; `flutter analyze` sem issues; `render.yaml` válido. A fixture `backend/tests/conftest.py` força `ENVIRONMENT=development` e substitui `get_client()` por cliente nulo, então os novos testes de idempotência não exercitam a tabela Postgres nem chamadas concorrentes. Testes locais também não comprovam cobrança real nem estado remoto.
+Resultado em 2026-10-01 no commit `c8b400b`: `57 passed, 2 warnings`; `flutter analyze` sem issues; `render.yaml` válido. A fixture `backend/tests/conftest.py` força `ENVIRONMENT=development` e substitui `get_client()` por cliente nulo. Portanto, a suíte não exercita falhas reais de upsert, RPC Supabase, concorrência/idempotência no Postgres ou cobrança real; estado remoto permanece não verificado.
 | Modo dev sem token | Bypass de autenticação quando `ENVIRONMENT=development` e não há header | Correto para dev, mas **checar sempre** que `ENVIRONMENT` nunca seja setado como `development` em produção |
 | Segredos | `.env` git-ignored; `render.yaml` usa `sync: false` para secrets (`GEMINI_API_KEY`, `SUPABASE_SECRET_KEY`, `SUPABASE_JWT_SECRET`) | Correto — segredos não versionados |
 | Chave pública Supabase | `SUPABASE_PUBLISHABLE_KEY` hardcoded como valor (não secreta) em `config.py`, `render.yaml` e `app_config.dart` | Correto — é a "anon key", projetada para ser pública |
@@ -440,42 +440,44 @@ O `SupabaseService` executa CRUD no Supabase para perfis, anamneses, treinos, al
 ### 8.2 🟡 Catálogo de planos e espelho SQL
 O catálogo de código está centralizado em `app/core/plans.py` e há teste de consistência entre os módulos Python. A tabela `plans` na migration continua sendo um espelho separado e pode divergir se um preço ou limite mudar sem atualizar e aplicar a migração.
 
-### 8.3 🟡 Checkout Asaas parcialmente endurecido
-O batch 3 (`e4763c1`) moveu o checkout de cartão exibido no Flutter para o checkout hospedado do Asaas e adicionou tabela de eventos processados. Permanecem riscos:
-- A UI atual abre `checkoutUrl` e não coleta PAN/CVV; porém `/process-card`, `CardPaymentRequest` e `process_card_payment()` continuam ativos e recebem/enviam dados brutos. A superfície PCI ainda existe e o endpoint não valida que a sessão pertence ao treinador autenticado.
-- `/checkout-session` e `/check-status/{order_nsu}` exigem JWT e o polling valida propriedade quando os metadados da ordem existem. `/process-card` não realiza essa validação.
-- Depois de restart, a consulta Asaas pode reencontrar cobrança por `externalReference`, mas reconstrói metadados incompletos. O endpoint falha com `422`, evitando ativação genérica, mas a sessão não é recuperada funcionalmente.
-- O webhook faz `is_event_processed` → atualiza assinatura → `record_processed_event`. A consulta e gravação do ID não são atômicas: entregas concorrentes podem aplicar efeitos duplicados. O resultado de `record_processed_event()` não é usado para garantir que a gravação teve sucesso.
-- O webhook grava o evento mesmo quando não encontra metadados suficientes e não altera assinatura. A repetição será ignorada como duplicata, então o pagamento pode ficar sem ativação/cancelamento persistido.
-- A migration `20261001_webhook_idempotency.sql` armazena eventos, mas não persiste a relação de checkout `externalReference`→treinador/plano/ciclo; `_PENDING_ORDERS` segue sendo a única fonte desses metadados.
-- Cotas de IA são consultadas antes da chamada Gemini e incrementadas depois; chamadas simultâneas podem exceder o limite.
-- O blueprint Render define URL live, mas versão ativa, secrets e migrations remotas não foram confirmados.
+### 8.3 🟡 Checkout Asaas parcialmente endurecido (batch 4)
+O commit `c8b400b` adiciona sessões persistidas, reserva de cotas por RPC e validação de ownership. Revisão do código encontrou ressalvas que impedem marcar todos os critérios como resolvidos:
+- A UI usa checkout hospedado Asaas e não apresenta campos de PAN/CVV. O endpoint deprecated `/process-card` ainda existe com `CardPaymentRequest` contendo esses campos; em produção retorna `400` antes de encaminhá-los ao gateway, mas o backend ainda recebe e valida o payload. Remover o endpoint/schema legado para retirar essa superfície.
+- `/process-card` compara o treinador autenticado com o dono da sessão, mas o processamento direto foi desativado em produção; o critério de ownership deve continuar coberto caso o endpoint seja removido ou reaproveitado.
+- Sessões usam a tabela `checkout_sessions`, mas `save_checkout_session()` captura erro no `upsert`, registra warning e retorna normalmente. `/checkout-session` pode, portanto, responder com sessão que não ficou durável; o app pode iniciar pagamento e webhook/polling perder o vínculo após restart.
+- `get_checkout_session()` também converte erros de leitura em `None`; o webhook pode não recuperar metadados e não ativar a assinatura, embora responda sucesso ao provedor.
+- Idempotência segue a sequência consulta evento → aplica mutação → insere evento. A chave única evita gravação duplicada, mas não serializa a mutação concorrente; retorno `False` de `record_processed_event()` não impede resposta de sucesso. Duas entregas podem aplicar efeitos antes da disputa pelo insert.
+- Evento com metadados ausentes não é marcado pelo handler, mas erro de escrita da tabela de idempotência após mutação também não é propagado. O resultado é retry ambíguo e possível repetição de efeitos.
+- A reserva SQL é atômica quando `reserve_trainer_ai_usage` funciona. Em exceção, `reserve_monthly_ai_quota()` faz fallback de leitura seguida de incremento, que não é atômico e pode exceder cota sob concorrência.
+- Testes batch 4 passam localmente, mas fixture global substitui Supabase por memória; não valida falhas de `upsert`, corrida de webhooks ou fallback da RPC em produção.
+- URL live e variáveis do blueprint não comprovam versão ativa, segredo configurado nem migrations aplicadas no Render/Supabase remoto.
 
 ### 8.3.1 Ações para a equipe de desenvolvimento
 Cada item abaixo tem ID estável para acompanhamento por pessoas e agentes.
 
-**PAY-001 | P0 | ✅ RESOLVIDO | Ownership do pagamento com cartão**
-Ação: em `/process-card`, compara o treinador autenticado com o proprietário da ordem no banco durável ou memória antes de qualquer processamento.
-Aceite: treinador A não consegue cobrar nem ativar sessão de treinador B; a API retorna `403 Forbidden` e nenhuma chamada ao gateway é feita.
+**PAY-001 | P0 | ✅ MITIGADO EM PRODUÇÃO | Ownership do pagamento com cartão**
+Ação: `/process-card` compara o treinador autenticado com o proprietário da sessão; em produção, o endpoint também rejeita processamento direto de PAN/CVV.
+Aceite verificado em teste local: treinador A não consegue usar a sessão do treinador B (`403`) e chamadas de cartão em produção são rejeitadas (`400`); a execução real do gateway permanece bloqueada.
 
-**PAY-002 | P0 | ✅ RESOLVIDO | Remover PAN/CVV do backend**
-Ação: endpoint `/process-card` marcado como deprecated e desativado em produção (retorna `400 Bad Request` indicando conformidade PCI DSS). Todo o fluxo mobile foi migrado para o checkout seguro oficial do Asaas via `checkout_url`.
-Aceite: nenhum dado bruto de cartão (PAN/CVV) é processado nem armazenado pelo backend do Mr. Coach.
+**PAY-002 | P0 | ⚠️ PARCIAL | Remover PAN/CVV do backend**
+Ação: a UI Flutter usa checkout hospedado Asaas e o endpoint `/process-card` retorna `400` em produção. Entretanto, endpoint e schema ainda aceitam PAN/CVV e o corpo chega à aplicação antes da rejeição.
+Aceite pendente: remover endpoint/schema e confirmar que nenhum PAN/CVV é enviado à API Shaipados; não declarar conformidade PCI com o contrato atual.
 
-**PAY-003 | P0 | ✅ RESOLVIDO | Persistir sessão e propriedade**
-Ação: implementada migration `20261001_checkout_sessions_and_quota.sql` com tabela `public.checkout_sessions`. Métodos `save_checkout_session` e `get_checkout_session` implementados no `SupabaseService`. Sessões, proprietários e metadados sobrevivem a restarts.
-Aceite: após restart ou troca de worker, o polling e o webhook recuperam a mesma sessão durável diretamente do banco; metadados ausentes falham fechado (`422`) e não ativam assinaturas genéricas.
+**PAY-003 | P0 | ⚠️ PARCIAL | Persistir sessão e propriedade**
+Ação: migration `20261001_checkout_sessions_and_quota.sql` e métodos de persistência existem, mas `save_checkout_session()` engole falhas do `upsert` e retorna sem erro.
+Aceite pendente: falha de gravação deve impedir emissão/retorno da sessão; após restart/worker diferente, polling e webhook devem recuperar treinador, plano e ciclo do Supabase. Aplicação remota da migration ainda precisa de evidência.
 
-**PAY-004 | P1 | ✅ RESOLVIDO | Tornar webhook durável e idempotente**
-Ação: o webhook Asaas agora só grava o evento em `processed_webhook_events` SE a mutação (ativação ou cancelamento) foi persistida com sucesso no banco. Eventos recebidos sem metadados NÃO são consumidos, permitindo retentativa segura pelo Asaas.
-Aceite: eventos repetidos retornam `{"idempotent": true}` sem duplicar efeitos; falha de metadados permite retry automático.
+**PAY-004 | P1 | ⚠️ PARCIAL | Tornar webhook durável e idempotente**
+Ação: evento só é registrado após mutação bem-sucedida, mas a verificação, mutação e inserção não formam uma transação/claim atômica; falha no insert é ignorada pela rota.
+Aceite pendente: eventos concorrentes geram um único efeito; erro ao registrar evento não retorna sucesso; eventos sem metadados permanecem reprocessáveis; comprovar contra Supabase de teste.
 
-**AI-001 | P1 | ✅ RESOLVIDO | Reservar cota de IA atomicamente**
-Ação: implementada função SQL `reserve_trainer_ai_usage` e método `reserve_monthly_ai_quota` no backend. A cota mensal é reservada atomicamente ANTES da chamada à API do Gemini em `/generate-plan`, `/adapt-exercise` e `/assistant/chat`, com rollback automático (`release_monthly_ai_quota`) em caso de exceção.
-Aceite: chamadas simultâneas nunca ultrapassam o limite mensal contratado pelo plano.
+**AI-001 | P1 | ⚠️ PARCIAL | Reservar cota de IA atomicamente**
+Ação: RPC de reserva e chamadas antes do Gemini estão implementadas; quando a RPC lança erro, o serviço usa fallback de leitura seguida de incremento, que não é atômico.
+Aceite pendente: em produção, indisponibilidade/ausência da RPC deve falhar fechado ou usar alternativa comprovadamente atômica; chamadas simultâneas nunca ultrapassam a cota.
 
-**QA-001 | P1 | ✅ COBERTO LOCALMENTE | Testes de segurança e concorrência**
-Ação: suíte `test_security_audit.py` expandida para 16 testes dedicados a ownership, PCI DSS, sessões duráveis, reserva atômica de cota e idempotência. Total de 57 testes passando no backend.
+**QA-001 | P1 | ⚠️ COBERTURA LOCAL, SEM INTEGRAÇÃO REAL | Testes de segurança e concorrência**
+Ação: 57 testes passam localmente, incluindo regressões de ownership, sessão, cota e webhook. A fixture global força desenvolvimento e mocka o cliente Supabase; os testes não validam transações/concorrência no Postgres.
+Aceite pendente: integração com banco de teste cobre corrida de webhooks, erro de gravação, recuperação pós-restart e reserva de cotas concorrente.
 
 **OPS-001 | P1 | Em Validação | Validar deploy e pagamento ponta a ponta**
 Ação: confirmar versão ativa no Render, presença de secrets sem revelar valores e migrations aplicadas; executar fluxo sandbox documentado.
@@ -490,13 +492,13 @@ A configuração em `config.py` e `render.yaml` foi padronizada para o modelo of
 O `security.py` foi reforçado: em `ENVIRONMENT=production`, tokens sem assinatura ou com assinatura inválida são sumariamente rejeitados com `401 Unauthorized` (sem fallback para `verify_signature=False`). O `trainer_id` nos endpoints de assinatura e treino é estritamente derivado das claims do token autenticado em produção.
 
 ### 8.7 🟡 Contador mensal de IA
-A migration `supabase/migrations/20260930_trainer_ai_usage.sql` e RPC atômica existem. Batch 2 ligou o contador a `/adapt-exercise` e `/assistant/chat`; em produção a leitura consulta o contador persistido. Entretanto, o gate de cota é lido antes da chamada Gemini e o incremento é feito depois, então chamadas simultâneas podem passar juntas pelo limite. Aplicação da migration no banco remoto ainda não foi confirmada independentemente.
+O batch 4 adicionou `reserve_trainer_ai_usage` e chama `reserve_monthly_ai_quota()` antes do Gemini nos três endpoints de IA. A RPC é atômica quando disponível, mas `reserve_monthly_ai_quota()` captura exceções e recorre a leitura seguida de incremento, que não é atômico. Em produção, falha/ausência da RPC pode reabrir condição de corrida; não marcar AI-001 como resolvido até remover o fallback ou provar alternativa atômica. Aplicação da migration no banco remoto não foi confirmada.
 
 ### 8.8 🟡 CORS em produção
 O código e o blueprint Render substituem wildcard por `https://shaipados.com` quando `ENVIRONMENT=production`; desenvolvimento ainda permite wildcard. O blueprint está em `origin/main`, mas não foi verificado se o Render já o aplicou. Caso o frontend use outro host web de produção, ele deve ser incluído explicitamente em `CORS_ORIGINS`.
 
 ### 8.9 🟡 Cobertura de integração e idempotência
-`backend/tests/test_security_audit.py` foi restaurado; no commit `e4763c1`, a suíte local passa 52 testes. Porém, `backend/tests/conftest.py` força `ENVIRONMENT=development` e substitui `get_client()` por `None`, então os testes de idempotência exercitam `_mem_processed_events`, não a tabela `processed_webhook_events`. Ainda faltam testes de integração no banco, chamadas concorrentes, falha ao gravar evento após atualizar assinatura e callbacks reais.
+No commit `c8b400b`, `backend/tests/test_security_audit.py` e a suíte totalizam 57 testes passando. Porém, `backend/tests/conftest.py` força `ENVIRONMENT=development` e substitui `get_client()` por `None`; os testes de sessão/idempotência/reserva cobrem memória, não a tabela `processed_webhook_events`, `checkout_sessions` ou as RPCs reais. Faltam testes de integração com banco, concorrência, falha de gravação e callbacks do provedor.
 
 ---
 
