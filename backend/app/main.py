@@ -29,11 +29,17 @@ app.include_router(api_router, prefix="/api/v1")
 
 from app.api.v1.endpoints.assistant import chat_with_assistant
 from app.schemas.assistant import AssistantChatRequest, AssistantChatResponse
+from app.api.deps import get_current_user
+from typing import Dict, Any
+from fastapi import Depends
 
 @app.post("/api/generate", response_model=AssistantChatResponse, tags=["Compatibility"])
-async def legacy_generate(request: AssistantChatRequest):
+async def legacy_generate(
+    request: AssistantChatRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
     """Rota direta para compatibilidade com o gateway em nuvem"""
-    return await chat_with_assistant(request)
+    return await chat_with_assistant(request, current_user)
 
 
 @app.get("/health", tags=["Health"])

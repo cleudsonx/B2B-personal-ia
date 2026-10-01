@@ -124,14 +124,27 @@ async def simulate_plan_change(request: PlanChangeSimulationRequest):
 
 
 @router.post("/checkout-session", response_model=CheckoutSessionResponse)
-async def create_checkout_session(request: CheckoutSessionRequest):
+async def create_checkout_session(
+    request: CheckoutSessionRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
     """
     Gera uma sessão de checkout para assinatura do plano escolhido via Pix ou Cartão.
+    Requer autenticação JWT. Em produção, o trainer_id é derivado do token autenticado.
     Suporta múltiplos gateways: Asaas, Mercado Pago, InfinitePay e Stripe.
     """
     selected_plan = next((p for p in SAAS_PLANS if p.id == request.plan_id), None)
     if not selected_plan:
         raise HTTPException(status_code=404, detail="Plano não encontrado.")
+
+    # Derivar trainer_id das claims do token em produção — nunca do corpo da requisição
+    auth_trainer_id = current_user.get("sub") or current_user.get("id")
+    if settings.ENVIRONMENT.lower() == "production":
+        if not auth_trainer_id or auth_trainer_id == "current-trainer":
+            raise HTTPException(status_code=401, detail="Usuário não autenticado.")
+        effective_trainer_id = auth_trainer_id
+    else:
+        effective_trainer_id = request.trainer_id or auth_trainer_id or "current-trainer"
 
     amount = (
         selected_plan.price_yearly_cents
@@ -148,7 +161,7 @@ async def create_checkout_session(request: CheckoutSessionRequest):
         payment_method=request.payment_method,
         trainer_name=request.trainer_name or "Personal Trainer",
         trainer_email=request.trainer_email or "treinador@demo.com",
-        trainer_id=request.trainer_id or "current-trainer"
+        trainer_id=effective_trainer_id,
     )
 
     return CheckoutSessionResponse(
@@ -164,7 +177,7 @@ async def create_checkout_session(request: CheckoutSessionRequest):
         checkout_url=checkout_data.get("checkout_url"),
         status=checkout_data.get("status", "pending"),
         expires_at=checkout_data["expires_at"],
-        notes=checkout_data.get("notes")
+        notes=checkout_data.get("notes"),
     )
 
 
@@ -210,9 +223,47 @@ async def process_card_checkout(
 
 @router.post("/webhook/asaas")
 async def webhook_asaas(payload: dict, request: Request):
-    """Webhook oficial Asaas para confirmação de Pix recorrente e boleto/cartão."""
+    """Webhook oficial Asaas para confirmação de Pix recorrente e boleto/cartão.
+    Persiste a ativação ou cancelamento da assinatura no Supabase via externalReference.
+    """
     await _verify_payment_webhook("asaas", payload, request)
-    return PaymentProviderService.process_webhook("asaas", payload)
+    result = PaymentProviderService.process_webhook("asaas", payload)
+
+    # Recuperar metadados da sessão pelo externalReference presente no payload
+    ext_ref = (
+        (payload.get("payment") or {}).get("externalReference")
+        or payload.get("externalReference")
+    )
+    order_meta = PaymentProviderService._PENDING_ORDERS.get(ext_ref or "", {}) if ext_ref else {}
+
+    subscription_status = result.get("subscription_status", "pending")
+    trainer_id = order_meta.get("trainer_id") or result.get("trainer_id") or ""
+    plan_id = order_meta.get("plan_id") or result.get("plan_id") or ""
+    billing_interval = order_meta.get("billing_interval") or result.get("billing_interval") or "monthly"
+
+    # Persistir no Supabase apenas se houver dados suficientes para identificar o treinador e plano
+    if trainer_id and trainer_id not in ("current-trainer", "") and plan_id:
+        if subscription_status == "active":
+            await supabase_service.activate_subscription(
+                trainer_id=trainer_id,
+                plan_id=plan_id,
+                billing_interval=billing_interval,
+                payment_method="pix",
+            )
+        elif subscription_status in ("canceled", "past_due"):
+            await supabase_service.update_subscription_status(
+                trainer_id=trainer_id,
+                new_status=subscription_status,
+            )
+    else:
+        import logging as _log
+        _log.getLogger(__name__).warning(
+            f"[webhook/asaas] Evento '{result.get('event')}' sem metadados suficientes "
+            f"para persistir (trainer_id={trainer_id!r}, plan_id={plan_id!r}, ext_ref={ext_ref!r}). "
+            "Nenhuma assinatura foi alterada."
+        )
+
+    return result
 
 
 @router.post("/webhook/mercadopago")
@@ -241,21 +292,56 @@ async def webhook_infinitepay(payload: dict, request: Request):
 
 
 @router.get("/check-status/{order_nsu}")
-async def check_payment_status(order_nsu: str):
-    """Consulta o status da transação no Asaas, InfinitePay ou gateway associado."""
+async def check_payment_status(
+    order_nsu: str,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Consulta o status da transação no Asaas, InfinitePay ou gateway associado.
+    Requer autenticação JWT. Em produção, valida que o treinador autenticado é o
+    proprietário da sessão antes de ativar qualquer assinatura.
+    """
+    auth_trainer_id = current_user.get("sub") or current_user.get("id")
+
     is_paid = PaymentProviderService.check_payment(order_nsu)
     order_meta = PaymentProviderService._PENDING_ORDERS.get(order_nsu, {})
+
     if is_paid and order_meta:
-        trainer_id = order_meta.get("trainer_id", "current-trainer")
+        session_trainer_id = order_meta.get("trainer_id", "")
+
+        # Em produção: rejeitar se o trainer autenticado não é dono da sessão
+        if settings.ENVIRONMENT.lower() == "production":
+            if not auth_trainer_id or auth_trainer_id == "current-trainer":
+                raise HTTPException(status_code=401, detail="Usuário não autenticado.")
+            if session_trainer_id and session_trainer_id not in ("current-trainer", "") \
+                    and session_trainer_id != auth_trainer_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Acesso negado: esta sessão de checkout pertence a outro treinador.",
+                )
+            # Usar sempre o trainer autenticado como fonte confiável
+            effective_trainer_id = auth_trainer_id
+        else:
+            effective_trainer_id = session_trainer_id or auth_trainer_id or "current-trainer"
+
         plan_id = order_meta.get("plan_id", "pro")
         billing_interval = order_meta.get("billing_interval", "monthly")
         payment_method = order_meta.get("payment_method", "pix")
+
+        # Não ativar com defaults genéricos — se plano/ciclo ausentes, falhar fechado
+        if not order_meta.get("plan_id") or not order_meta.get("billing_interval"):
+            raise HTTPException(
+                status_code=422,
+                detail="Metadados da sessão incompletos — não é possível ativar assinatura com segurança. Inicie um novo checkout.",
+            )
+
         await supabase_service.activate_subscription(
-            trainer_id=trainer_id,
+            trainer_id=effective_trainer_id,
             plan_id=plan_id,
             billing_interval=billing_interval,
-            payment_method=payment_method
+            payment_method=payment_method,
         )
+
     return {
         "order_nsu": order_nsu,
         "paid": is_paid,

@@ -127,6 +127,34 @@ class SupabaseService:
             self._raise_if_production("incrementar uso mensal de IA", e)
             raise
 
+    async def update_subscription_status(self, trainer_id: str, new_status: str) -> None:
+        """
+        Atualiza o status da assinatura de um treinador no Supabase.
+        Usado pelos webhooks de pagamento para registrar cancelamento ('canceled') ou
+        inadimplência ('past_due') sem recalcular plano ou ciclo.
+        Em desenvolvimento usa o fallback em memória.
+        """
+        if not self._is_production():
+            t_uuid = to_valid_uuid_str(trainer_id)
+            for key in (trainer_id, t_uuid):
+                if key in self._mem_subscriptions:
+                    self._mem_subscriptions[key]["status"] = new_status
+            logger.info(f"[Dev] Assinatura {trainer_id} -> status={new_status}")
+            return
+
+        client = await self.get_client()
+        if not client:
+            return
+        trainer_uuid = to_valid_uuid_str(trainer_id)
+        try:
+            await client.table("subscriptions").update(
+                {"status": new_status, "updated_at": datetime.now(timezone.utc).isoformat()}
+            ).eq("trainer_id", trainer_uuid).eq("status", "active").execute()
+            logger.info(f"[Supabase] Assinatura do treinador {trainer_uuid} atualizada para '{new_status}'.")
+        except Exception as e:
+            logger.error(f"Erro ao atualizar status de assinatura no Supabase: {e}")
+            self._raise_if_production("atualizar status de assinatura", e)
+
     async def get_client(self) -> Optional[AsyncClient]:
         """Obtém ou inicializa o cliente assíncrono do Supabase de forma segura."""
         current_loop = None

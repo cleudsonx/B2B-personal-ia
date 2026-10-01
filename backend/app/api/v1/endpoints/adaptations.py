@@ -2,6 +2,7 @@ from typing import Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.schemas.adaptation import AdaptationInput, AdaptationResponse
 from app.services.gemini_service import GeminiService
+from app.services.supabase_service import supabase_service
 from app.api.deps import get_gemini_service, get_current_user
 
 router = APIRouter()
@@ -17,8 +18,19 @@ router = APIRouter()
 async def adapt_exercise(
     data: AdaptationInput,
     gemini_svc: GeminiService = Depends(get_gemini_service),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> AdaptationResponse:
+    trainer_id = current_user.get("sub") or "current-trainer"
+
+    # Verificar cota mensal de IA antes de chamar o Gemini
+    sub = await supabase_service.get_trainer_subscription(trainer_id)
+    if not sub.can_generate_ai:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Limite de {sub.max_ai_generations} gerações de IA por mês atingido no plano '{sub.plan_name}'. "
+                   "Faça upgrade para o plano Personal Pro para adaptações ilimitadas.",
+        )
+
     try:
         adaptation = await gemini_svc.adapt_exercise(
             current_exercise=data.current_exercise,
@@ -26,6 +38,7 @@ async def adapt_exercise(
             workout_location=data.workout_location,
             injuries_or_restrictions=data.injuries_or_restrictions or "Nenhuma"
         )
+        await supabase_service.increment_monthly_ai_generations(trainer_id)
         return adaptation
     except ValueError as e:
         raise HTTPException(

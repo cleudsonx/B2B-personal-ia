@@ -20,9 +20,10 @@ class WhatsAppService:
         evolution_instance: Optional[str] = None,
     ):
         self.provider = provider
-        self.evolution_url = evolution_url or "http://localhost:8080"
-        self.evolution_key = evolution_key or "mr_coach_secret_api_key_2026"
-        self.evolution_instance = evolution_instance or "mr_coach_instance"
+        self.evolution_url = evolution_url or getattr(settings, "EVOLUTION_API_URL", "http://localhost:8080")
+        # A chave não possui valor padrão — deve ser configurada via variável de ambiente EVOLUTION_API_KEY
+        self.evolution_key = evolution_key or getattr(settings, "EVOLUTION_API_KEY", "")
+        self.evolution_instance = evolution_instance or getattr(settings, "EVOLUTION_INSTANCE", "mr_coach_instance")
 
     async def send_text_message(self, phone: str, message: str) -> Dict[str, Any]:
         """

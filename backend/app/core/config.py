@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     ASAAS_WEBHOOK_TOKEN: str = ""
     MERCADOPAGO_WEBHOOK_SECRET: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
+
+    # WhatsApp / Evolution API (sem valor padrão — configurar como secret no Render)
+    EVOLUTION_API_KEY: str = ""
+    EVOLUTION_API_URL: str = "http://localhost:8080"
+    EVOLUTION_INSTANCE: str = "mr_coach_instance"
     
     # CORS (aceita string "*", JSON '["*"]' ou listas sem erro no EnvSettingsSource do Pydantic)
     CORS_ORIGINS: Union[str, List[str]] = "*"
