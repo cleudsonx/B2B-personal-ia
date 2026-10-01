@@ -2,9 +2,9 @@
 
 > Documento vivo de referência técnica e de negócio para o projeto B2B Personal IA.
 >
-> - Última atualização: 2026-09-30
+> - Última atualização: 2026-10-01
 > - Escopo revisado: `backend/`, `mobile/`, `supabase/`, `landing/`, arquivos de deploy e serviços externos observados no código real.
-> - Verificação em 2026-09-30: `https://shaipados.com` respondeu publicamente com a aplicação Flutter; testes executados na venv do backend; alterações locais de persistência cobertas por testes focados.
+> - Verificação em 2026-10-01: revisão do commit `04014d5` (`feat(checkout): implement in-app transparent checkout...`), presente em `main` e `origin/main`; `38` testes backend passaram e `flutter analyze` não reportou problemas.
 > - Limite da verificação: disponibilidade pública do frontend não comprova os fluxos autenticados, o estado do banco remoto ou a operação de pagamentos.
 
 ---
@@ -22,7 +22,7 @@ A revisão atual do código mostra uma base modular em FastAPI e Flutter, e o fr
 
 O sistema está publicado, mas ainda requer validação operacional para ser considerado pronto para produção. Nesta atualização, as operações do `SupabaseService` foram alteradas para falhar explicitamente em produção quando o Supabase não estiver disponível, sem usar memória como fonte alternativa. Foi adicionada persistência mensal atômica para uso de IA, mas sua migração ainda precisa ser aplicada ao projeto Supabase antes do deploy dessa versão.
 
-O parecer permanece condicionado à aplicação da migração, validação das rotas autenticadas no backend publicado, auditoria dos webhooks de pagamento, configuração dos segredos/CORS e monitoramento operacional.
+O commit recente adiciona checkout Asaas com cartão in-app, Pix e polling, mas a revisão encontrou caminhos que ativam assinaturas sem confirmação real de pagamento. Não liberar esse fluxo em produção até corrigir os bloqueios descritos na seção 8.3. O estado do deploy remoto e da migração do contador de IA não foi verificado nesta revisão.
 
 ---
 
@@ -138,7 +138,7 @@ Em outras palavras, o sistema está em modo de **fallback resiliente**, não em 
 | Banco | Supabase/PostgreSQL | CRUD implementado; produção agora falha fechada; migração do contador de IA pendente de aplicação |
 | E-mail | Resend + mock fallback | Implementado |
 | WhatsApp | Evolution API + mock fallback | Implementado |
-| Pagamentos | Asaas, Mercado Pago, InfinitePay, Stripe | InfinitePay parcialmente integrado; checkout dos demais ainda simulado; validação de webhook implementada localmente |
+| Pagamentos | Asaas, Mercado Pago, InfinitePay, Stripe | Asaas com chamadas parciais à API, mas aprovação insegura; Mercado Pago/Stripe simulados; InfinitePay parcialmente integrado |
 | Mobile | Flutter | Estrutura de telas e navegação implementada |
 | Testes | pytest | Executados na venv do backend; regressões de produção adicionadas |
 
@@ -331,7 +331,7 @@ Há validação real de CPF, CREF e CBMF, e o sistema oferece caminho de criaç�
 | RLS do Supabase | Implementado no schema | Potencial forte, mas não usado consistentemente em runtime |
 | Persistência | Supabase obrigatório em produção; fallback local em dev/testes | Código ajustado; implantação e migração ainda pendentes |
 | E-mail/WhatsApp | Mock-safe e real quando chaves existem | Bom para desenvolvimento e operação parcial |
-| Pagamentos | Webhooks autenticados no código local; checkout parcial | Falta publicar/configurar segredos e validar callbacks reais com os provedores |
+| Pagamentos | Checkout Asaas parcial e endpoints de cartão/Pix; outras integrações parciais | Bloqueado para produção: aprovação simulada, ativação sem confirmação e cartão sem tokenização |
 | Observabilidade | Logs básicos | Ainda insuficiente para operação em produção |
 | Testes | Suíte pytest executada na venv | Testes focados passaram; suíte completa desta atualização ainda será registrada |
 
@@ -365,37 +365,37 @@ Mas ainda há fragilidade operacional em relação a:
 - reflexo de produto bem pensado para B2B fitness.
 
 ### 9.2 O que ainda bloqueia produção
-1. migração nova ainda não aplicada e alterações ainda não publicadas no backend;
-2. confirmação pendente dos fluxos de banco no ambiente remoto;
-3. necessidade de monitoramento e observabilidade;
-4. webhooks precisam de validação ponta a ponta no ambiente remoto e idempotência;
-5. isolamento entre contas e configuração dos segredos precisam ser verificados no deploy.
+1. corrigir a ativação de assinatura sem confirmação real de pagamento;
+2. proteger endpoints de ativação com autenticação e vínculo ao treinador autenticado;
+3. interromper o envio de PAN/CVV sem tokenização compatível com PCI DSS;
+4. configurar Asaas produção e persistir sessões de checkout de forma durável;
+5. verificar migrações, secrets, callbacks, isolamento multi-tenant e monitoramento no deploy remoto.
 
 ---
 
 ## 10. Parecer Final da Auditoria Revisada
 
 ### Status geral
-O frontend está publicado e acessível, mas a prontidão de produção do sistema completo ainda não foi comprovada.
+O frontend está publicado e acessível, mas o commit revisado contém um bloqueio crítico de pagamentos: o código pode retornar sucesso e ativar plano sem confirmação do gateway. A prontidão do backend remoto não foi verificada.
 
 ### Impacto da revisão atual
-A análise confirmou que o backend já usa Supabase em operações de negócio. Nesta atualização, o código passou a falhar fechado em produção, deixou de consultar dados em memória nesse ambiente, e ganhou contador mensal de IA com RPC atômica. A publicação destas alterações e a aplicação da migração ainda não foram feitas.
+A análise confirmou o fluxo de persistência Supabase já existente e revisou o novo checkout Asaas. O commit cria cobranças via API quando `ASAAS_API_KEY` está configurada, gera QR Pix e adiciona processamento de cartão e polling; contudo, o processamento de cartão marca a ordem como paga incondicionalmente e a UI permite ativar sem confirmação. Embora o commit esteja em `origin/main`, não foi verificado se o serviço hospedado já o executa.
 
 ### Diagnóstico final
 - Produto: promissor, com diferencial real e bem definido.
 - Arquitetura: boa, coerente e modular.
 - Backend: funcional, com endpoints e regras implementadas.
 - Dados: esquema e CRUD Supabase presentes; persistência mensal de IA depende da migração nova; validação remota pendente.
-- Produção: frontend publicado; backend e integrações ainda precisam de verificação ponta a ponta após publicar as alterações.
+- Produção: frontend publicado; checkout Asaas não deve ser habilitado até os achados críticos serem resolvidos e testados ponta a ponta.
 
 ### Parecer curto
 O sistema está em etapa de **validação técnica e de produto**, e a evolução recomendada é priorizar:
 
-1. aplicar a migração `20260930_trainer_ai_usage.sql` no Supabase;
-2. publicar a versão atualizada do backend e validar `/health` e fluxos autenticados;
-3. auditar webhooks e confirmar cobrança real no gateway escolhido;
-4. restringir CORS, revisar autorização/RLS e confirmar segredos de produção;
-5. implantar monitoramento, alertas e pipeline de deploy/rollback.
+1. remover aprovações simuladas e ativação direta de plano sem resposta verificada do Asaas;
+2. exigir autenticação e derivar `trainer_id`, plano e valor da sessão persistida no servidor;
+3. usar tokenização/checkout hospedado aprovado pelo gateway em vez de encaminhar PAN/CVV;
+4. configurar `ASAAS_API_URL` de produção e persistir sessões de checkout;
+5. verificar/aplicar migrations, configurar segredos e validar `/health`, webhooks e cobrança no ambiente hospedado.
 
 Com essas ações, o projeto deixa de ser um MVP robusto e passa a ser uma plataforma pronta para operação B2B real.
 
@@ -410,7 +410,7 @@ cd backend
 .venv\Scripts\python -m pytest -q
 ```
 
-Resultado: `37 passed, 1 warning` na suíte completa. Os testes isolam o cliente Supabase para não gravar acidentalmente no banco remoto. A cobertura inclui persistência fail-closed, incremento atômico do uso mensal de IA, assinaturas de webhook, rejeição de token inválido, eventos pendentes e wildcard CORS em produção.
+Resultado em 2026-10-01: `38 passed, 1 warning` na suíte completa; `flutter analyze` concluiu com `No issues found`. O teste de checkout Asaas passa, mas valida a resposta de sucesso simulada sem credenciais ou confirmação real do gateway; portanto, não comprova cobrança correta.
 | Modo dev sem token | Bypass de autenticação quando `ENVIRONMENT=development` e não há header | Correto para dev, mas **checar sempre** que `ENVIRONMENT` nunca seja setado como `development` em produção |
 | Segredos | `.env` git-ignored; `render.yaml` usa `sync: false` para secrets (`GEMINI_API_KEY`, `SUPABASE_SECRET_KEY`, `SUPABASE_JWT_SECRET`) | Correto — segredos não versionados |
 | Chave pública Supabase | `SUPABASE_PUBLISHABLE_KEY` hardcoded como valor (não secreta) em `config.py`, `render.yaml` e `app_config.dart` | Correto — é a "anon key", projetada para ser pública |
@@ -432,8 +432,16 @@ O `SupabaseService` executa CRUD no Supabase para perfis, anamneses, treinos, al
 ### 8.2 🟡 Catálogo de planos e espelho SQL
 O catálogo de código está centralizado em `app/core/plans.py` e há teste de consistência entre os módulos Python. A tabela `plans` na migration continua sendo um espelho separado e pode divergir se um preço ou limite mudar sem atualizar e aplicar a migração.
 
-### 8.3 🟠 Integrações de pagamento incompletas
-Asaas, Mercado Pago e Stripe ainda geram links/QRs sintéticos no `create_checkout`; não há fluxo completo de cobrança real nesses provedores. InfinitePay chama a API de links e consulta `payment_check`, mas usa fallback de URL e mantém a correlação dos pedidos em memória, o que não é durável entre workers/restarts. Os webhooks agora exigem token Asaas, HMAC Mercado Pago/Stripe ou confirmação da InfinitePay com pedido reconhecido; eventos desconhecidos não ativam assinaturas. Antes do deploy, configurar `ASAAS_WEBHOOK_TOKEN`, `MERCADOPAGO_WEBHOOK_SECRET` e `STRIPE_WEBHOOK_SECRET` no provedor de hospedagem.
+### 8.3 🔴 Checkout Asaas pode ativar assinatura sem pagamento
+O commit `04014d5` adiciona criação de cobrança Asaas e polling quando `ASAAS_API_KEY` está configurada, mas apresenta bloqueios críticos:
+- `process_card_payment()` cria uma ordem padrão `pro` se `session_id` não existir e marca `paid=True`/`active` após a chamada ao Asaas independentemente de resposta, exceção ou ausência de `asaas_id`. A rota `/process-card` então chama `activate_subscription()` com base nesse sucesso simulado.
+- O endpoint `/process-card` não exige usuário autenticado e aceita `trainer_id` enviado pelo cliente. `/activate-plan` também não tem dependência de autenticação, permitindo ativação direta de plano sem pagamento.
+- No app Flutter, falha/offline em `processCardPayment()` retorna `true`; o botão “Já paguei pelo aplicativo do banco” chama `onSuccess()` sem verificar o gateway. `activatePlan()` grava o estado local/Supabase antes de depender da resposta do backend.
+- PAN e CVV completos são enviados do Flutter ao backend e encaminhados à API Asaas sem tokenização. Não há evidência no código de conformidade PCI DSS; a alegação visual de tokenização não corresponde ao fluxo implementado.
+- `ASAAS_API_URL` usa sandbox por padrão e não consta no `render.yaml`. Se a chave não estiver configurada, checkout ainda devolve PIX/URL sintéticos; não deve ser apresentado como pagamento real.
+- Sessões e correlação de pedido são mantidas em `_PENDING_ORDERS` em memória, portanto polling e confirmação não sobrevivem a restart nem são compartilhados por múltiplos workers.
+
+Mercado Pago e Stripe continuam com checkout simulado. InfinitePay possui chamadas HTTP de checkout/verificação, mas também mantém a correlação em memória. Os webhooks têm autenticação no código, mas testes locais não substituem validação ponta a ponta nos provedores.
 
 ### 8.4 🟠 Duplicação de código do serviço Gemini B2B
 Existem **dois arquivos quase idênticos**: [backend/gemini_b2b_service.py](backend/gemini_b2b_service.py) (raiz do backend, standalone, usa `requests` síncrono) e [backend/app/services/gemini_b2b_service.py](backend/app/services/gemini_b2b_service.py) (mesma lógica). Nenhum dos dois parece ser importado pelo `app/main.py` ou pelos endpoints atuais (que usam `app/services/gemini_service.py`, baseado no SDK oficial `google-genai` assíncrono). Parecem ser **código legado/exploratório** apontando para um gateway Cloud Run externo (`AIS_GATEWAY_URL`) diferente do fluxo principal.
@@ -466,7 +474,7 @@ O código e o blueprint Render agora substituem wildcard por `https://shaipados.
 6. **Publicar e validar a restrição de CORS** no backend hospedado.
 
 ### 9.2 Médio prazo (evolução de produto)
-7. **Completar a integração real de pagamento** com pelo menos um gateway; webhooks agora validam autenticidade, mas o checkout ainda é incompleto para Asaas, Mercado Pago e Stripe.
+7. **Bloquear ativações falsas e tornar seguro o fluxo Asaas**; somente depois validar cobrança real com cartão tokenizado ou checkout hospedado.
 8. **Idempotência nos webhooks de pagamento** (usar `event_id` para não processar o mesmo evento duas vezes).
 9. **Auditoria/observabilidade**: adicionar logging estruturado (ex.: `structlog`) e métricas (latência do Gemini, taxa de fallback para contingência) — hoje só há `logger.warning`/`logger.info` esparsos.
 10. **Versionamento de prompts de IA**: os `SYSTEM_INSTRUCTION_*` em `app/prompts/` são ótimos, mas seria valioso versioná-los (ex.: `v1`, `v2`) e registrar qual versão gerou cada `WorkoutPlanResponse` salvo, para rastreabilidade quando o prompt evoluir.
@@ -508,7 +516,7 @@ backend/app/
 └── services/
     ├── gemini_service.py        # cliente Gemini com fallback em cascata + contingência offline
     ├── gemini_b2b_service.py    # ⚠️ duplicado/legado, ver 8.4
-    ├── payment_service.py       # abstração multi-gateway (simulada)
+    ├── payment_service.py       # gateways parciais; checkout Asaas requer correções críticas
     ├── email_service.py         # Resend + fallback mock
     └── whatsapp_service.py      # Evolution API + fallback mock
 
@@ -552,7 +560,7 @@ stack:
   banco: "Supabase Postgres com RLS e CRUD do backend; migração de contador de IA criada localmente e ainda não aplicada"
   auth: "Supabase Auth (JWT ES256 via JWKS, fallback HS256, fallback dev mock)"
   ia: "Google Gemini (cascata: gemini-2.5-flash > gemini-2.5-flash-lite > gemini-1.5-flash > gemini-1.5-flash-8b, com contingência local hardcoded se tudo falhar)"
-  pagamentos: "InfinitePay com chamadas de checkout/verificação; Asaas, Mercado Pago e Stripe ainda têm checkout simulado; webhooks protegidos no código local"
+  pagamentos: "Asaas chama parcialmente a API, mas cartão pode ser aprovado sem confirmação; Mercado Pago/Stripe seguem simulados; InfinitePay tem chamadas de checkout/verificação e estado em memória"
   mensageria: "Resend (e-mail) e Evolution API (WhatsApp), ambos com modo mock automático se sem API key"
 persistencia_estado_atual: "Supabase para CRUD de negócio em produção; fallback em memória somente em dev/testes; contador mensal exige migração aplicada"
 planos_saas:
