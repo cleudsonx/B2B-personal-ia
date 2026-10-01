@@ -52,6 +52,68 @@ def test_student_creation_and_validation():
     assert data["has_active_prescription"] is False
 
 
+@pytest.mark.asyncio
+async def test_student_creation_fails_when_supabase_is_unavailable_in_production(monkeypatch):
+    from app.core.config import settings
+    from app.schemas.workout import StudentCreateRequest
+    from app.services.supabase_service import SupabaseService
+
+    service = SupabaseService()
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+
+    async def no_supabase_client():
+        return None
+
+    monkeypatch.setattr(service, "get_client", no_supabase_client)
+
+    with pytest.raises(RuntimeError, match="não foi persistido"):
+        await service.create_student(
+            "trainer-id",
+            StudentCreateRequest(full_name="Aluno Teste", email="aluno@example.com"),
+        )
+
+
+@pytest.mark.asyncio
+async def test_student_list_does_not_use_memory_when_production_database_is_empty(monkeypatch):
+    from app.core.config import settings
+    from app.services.supabase_service import SupabaseService
+
+    class EmptyQuery:
+        def select(self, *_args):
+            return self
+
+        def eq(self, *_args):
+            return self
+
+        def order(self, *_args, **_kwargs):
+            return self
+
+        async def execute(self):
+            return type("Result", (), {"data": []})()
+
+    class EmptyDatabase:
+        def table(self, _table_name):
+            return EmptyQuery()
+
+    service = SupabaseService()
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    service._mem_students["stale-student"] = {
+        "id": "stale-student",
+        "full_name": "Aluno Antigo",
+        "email": "antigo@example.com",
+        "goal": "Hipertrofia",
+        "trainer_id": "trainer-id",
+        "created_at": "2026-01-01T00:00:00+00:00",
+    }
+
+    async def fake_get_client():
+        return EmptyDatabase()
+
+    monkeypatch.setattr(service, "get_client", fake_get_client)
+
+    assert await service.list_students("631e76b9-3cb0-454f-8fd9-1d450e5560d6") == []
+
+
 def test_prescription_persistence_flow():
     # 1. Salva prescrição para o aluno st-1
     save_res = client.post("/api/v1/workouts/save-prescription", json={

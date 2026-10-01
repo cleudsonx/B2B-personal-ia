@@ -64,7 +64,7 @@ async def generate_workout_plan(
             target_focus=data.target_focus,
             additional_notes=data.additional_notes
         )
-        supabase_service.increment_ai_generations(trainer_id)
+        await supabase_service.increment_monthly_ai_generations(trainer_id)
         return plan
     except ValueError as e:
         raise HTTPException(

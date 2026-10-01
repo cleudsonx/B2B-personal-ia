@@ -5,6 +5,9 @@
 import os
 import uuid
 import logging
+import hashlib
+import hmac
+import time
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
 import httpx
@@ -23,6 +26,85 @@ class PaymentProviderService:
 
     # Registro de ordens pendentes em memória para correlação do webhook (order_nsu -> metadata)
     _PENDING_ORDERS: Dict[str, Dict[str, Any]] = {}
+
+    @classmethod
+    def verify_webhook(
+        cls,
+        provider: str,
+        payload: Dict[str, Any],
+        headers: Dict[str, str],
+        raw_body: bytes,
+    ) -> None:
+        """Autentica notificações externas antes de processar eventos de pagamento."""
+        if settings.ENVIRONMENT.lower() != "production":
+            return
+
+        provider_clean = provider.lower().strip()
+        if provider_clean == "asaas":
+            secret = settings.ASAAS_WEBHOOK_TOKEN
+            received = headers.get("asaas-access-token", "")
+            if not secret:
+                raise RuntimeError("ASAAS_WEBHOOK_TOKEN não configurado.")
+            if not hmac.compare_digest(received, secret):
+                raise ValueError("Token de webhook Asaas inválido.")
+            return
+
+        if provider_clean in ("mercadopago", "mercado_pago"):
+            secret = settings.MERCADOPAGO_WEBHOOK_SECRET
+            if not secret:
+                raise RuntimeError("MERCADOPAGO_WEBHOOK_SECRET não configurado.")
+            signature_parts = {
+                key.strip(): value.strip()
+                for item in headers.get("x-signature", "").split(",")
+                if "=" in item
+                for key, value in [item.split("=", 1)]
+            }
+            request_id = headers.get("x-request-id", "")
+            data_id = str((payload.get("data") or {}).get("id") or "").lower()
+            timestamp = signature_parts.get("ts", "")
+            received = signature_parts.get("v1", "")
+            if not (request_id and data_id and timestamp and received):
+                raise ValueError("Cabeçalhos de assinatura do Mercado Pago incompletos.")
+            manifest = f"id:{data_id};request-id:{request_id};ts:{timestamp};"
+            expected = hmac.new(secret.encode(), manifest.encode(), hashlib.sha256).hexdigest()
+            if not hmac.compare_digest(received, expected):
+                raise ValueError("Assinatura de webhook Mercado Pago inválida.")
+            return
+
+        if provider_clean == "stripe":
+            secret = settings.STRIPE_WEBHOOK_SECRET
+            if not secret:
+                raise RuntimeError("STRIPE_WEBHOOK_SECRET não configurado.")
+            signature_parts = [
+                item.split("=", 1)
+                for item in headers.get("stripe-signature", "").split(",")
+                if "=" in item
+            ]
+            timestamps = [value for key, value in signature_parts if key == "t"]
+            signatures = [value for key, value in signature_parts if key == "v1"]
+            if not timestamps or not signatures:
+                raise ValueError("Cabeçalho Stripe-Signature inválido.")
+            timestamp = timestamps[0]
+            try:
+                if abs(time.time() - int(timestamp)) > 300:
+                    raise ValueError("Assinatura Stripe expirada.")
+            except ValueError as e:
+                raise ValueError("Timestamp da assinatura Stripe inválido ou expirado.") from e
+            signed_content = timestamp.encode() + b"." + raw_body
+            expected = hmac.new(secret.encode(), signed_content, hashlib.sha256).hexdigest()
+            if not any(hmac.compare_digest(signature, expected) for signature in signatures):
+                raise ValueError("Assinatura de webhook Stripe inválida.")
+            return
+
+        if provider_clean in ("infinitepay", "infinite_pay"):
+            order_nsu = payload.get("order_nsu") or payload.get("order_id") or payload.get("nsu") or payload.get("slug")
+            if not order_nsu or order_nsu not in cls._PENDING_ORDERS:
+                raise ValueError("Pedido InfinitePay não reconhecido neste servidor.")
+            if not cls.check_infinitepay_payment(str(order_nsu)):
+                raise ValueError("A InfinitePay não confirmou o pagamento do pedido.")
+            return
+
+        raise ValueError("Provedor de webhook não suportado.")
 
     @classmethod
     def create_checkout(
@@ -214,13 +296,13 @@ class PaymentProviderService:
         logger.info(f"[PaymentService] Processando webhook do provedor '{provider_clean}': {payload}")
 
         event_name = "UNKNOWN"
-        subscription_status = "active"
+        subscription_status = "pending"
         trainer_id = payload.get("trainer_id") or payload.get("customer_id") or "current-trainer"
         plan_id = payload.get("plan_id") or "pro"
         billing_interval = payload.get("billing_interval") or "monthly"
 
         if provider_clean == "asaas":
-            event_name = payload.get("event", "PAYMENT_RECEIVED")
+            event_name = payload.get("event", "UNKNOWN")
             if event_name in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"):
                 subscription_status = "active"
             elif event_name in ("PAYMENT_OVERDUE", "SUBSCRIPTION_INACTIVATED"):
@@ -231,14 +313,19 @@ class PaymentProviderService:
         elif provider_clean == "mercadopago":
             action = payload.get("action", payload.get("type", "payment.created"))
             event_name = action
-            if "approved" in str(payload).lower():
+            payment_status = str(
+                payload.get("status") or (payload.get("data") or {}).get("status") or ""
+            ).lower()
+            if payment_status in ("approved", "authorized"):
                 subscription_status = "active"
-            elif "cancelled" in str(payload).lower():
+            elif payment_status in ("cancelled", "canceled", "refunded"):
                 subscription_status = "canceled"
+            elif payment_status in ("rejected", "charged_back"):
+                subscription_status = "past_due"
 
         elif provider_clean in ("infinitepay", "infinite_pay"):
             order_nsu = payload.get("order_nsu") or payload.get("order_id") or payload.get("nsu") or payload.get("slug")
-            event_name = payload.get("event") or payload.get("status") or "transaction.approved"
+            event_name = payload.get("event") or payload.get("status") or "UNKNOWN"
 
             order_meta = cls._PENDING_ORDERS.get(order_nsu, {})
             if order_meta:
@@ -253,11 +340,13 @@ class PaymentProviderService:
             )
             if is_approved:
                 subscription_status = "active"
-            else:
+            elif str(payload.get("status", "")).lower() in ("failed", "rejected", "past_due"):
                 subscription_status = "past_due"
+            elif str(payload.get("status", "")).lower() in ("canceled", "cancelled"):
+                subscription_status = "canceled"
 
         elif provider_clean == "stripe":
-            event_name = payload.get("type", "checkout.session.completed")
+            event_name = payload.get("type", "UNKNOWN")
             if event_name in ("checkout.session.completed", "invoice.paid", "customer.subscription.created"):
                 subscription_status = "active"
             elif event_name in ("invoice.payment_failed",):

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timedelta
 from typing import List
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from app.schemas.subscription import (
     PlanResponse,
     PlanFeature,
@@ -22,6 +22,20 @@ ACTIVE_TRAINER_SUBSCRIPTIONS = supabase_service._mem_subscriptions
 
 # Importa catálogo unificado de planos da fonte única da verdade
 from app.core.plans import SAAS_PLANS, get_plan
+
+
+async def _verify_payment_webhook(provider: str, payload: dict, request: Request) -> None:
+    try:
+        PaymentProviderService.verify_webhook(
+            provider=provider,
+            payload=payload,
+            headers=dict(request.headers),
+            raw_body=await request.body(),
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e)) from e
 
 
 @router.get("/plans", response_model=List[PlanResponse])
@@ -126,20 +140,23 @@ async def create_checkout_session(request: CheckoutSessionRequest):
 
 
 @router.post("/webhook/asaas")
-async def webhook_asaas(payload: dict):
+async def webhook_asaas(payload: dict, request: Request):
     """Webhook oficial Asaas para confirmação de Pix recorrente e boleto/cartão."""
+    await _verify_payment_webhook("asaas", payload, request)
     return PaymentProviderService.process_webhook("asaas", payload)
 
 
 @router.post("/webhook/mercadopago")
-async def webhook_mercadopago(payload: dict):
+async def webhook_mercadopago(payload: dict, request: Request):
     """Webhook oficial Mercado Pago para IPN / Notificações de pagamentos."""
+    await _verify_payment_webhook("mercadopago", payload, request)
     return PaymentProviderService.process_webhook("mercadopago", payload)
 
 
 @router.post("/webhook/infinitepay")
-async def webhook_infinitepay(payload: dict):
+async def webhook_infinitepay(payload: dict, request: Request):
     """Webhook oficial InfinitePay para aprovações instantâneas de Pix e Smart Checkout."""
+    await _verify_payment_webhook("infinitepay", payload, request)
     result = PaymentProviderService.process_webhook("infinitepay", payload)
     if result.get("subscription_status") == "active":
         trainer_id = result.get("trainer_id") or "current-trainer"
@@ -178,16 +195,18 @@ async def check_payment_status(order_nsu: str):
 
 
 @router.post("/webhook/stripe")
-async def webhook_stripe(payload: dict):
+async def webhook_stripe(payload: dict, request: Request):
     """Webhook oficial Stripe Billing para eventos de Checkout e Ciclo de Vida da Assinatura."""
+    await _verify_payment_webhook("stripe", payload, request)
     return PaymentProviderService.process_webhook("stripe", payload)
 
 
 @router.post("/webhook")
-async def handle_payment_webhook(payload: dict):
+async def handle_payment_webhook(payload: dict, request: Request):
     """
     Webhook universal unificado para receber notificações automáticas do Asaas,
     Mercado Pago, InfinitePay ou Stripe.
     """
     provider = payload.get("provider", "universal")
+    await _verify_payment_webhook(provider, payload, request)
     return PaymentProviderService.process_webhook(provider, payload)

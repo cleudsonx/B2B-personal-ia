@@ -83,6 +83,89 @@ def test_payment_service_webhooks():
     assert wh_stripe["subscription_status"] == "active"
 
 
+@pytest.mark.parametrize("provider,payload", [
+    ("asaas", {"event": "PAYMENT_CREATED"}),
+    ("mercadopago", {"action": "payment.created", "data": {"status": "pending"}}),
+    ("infinitepay", {"event": "transaction.pending"}),
+    ("stripe", {"type": "customer.subscription.updated"}),
+])
+def test_unknown_or_pending_payment_events_do_not_activate_subscription(provider, payload):
+    result = PaymentProviderService.process_webhook(provider, payload)
+
+    assert result["subscription_status"] != "active"
+
+
+def test_production_webhooks_validate_asaas_token(monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(settings, "ASAAS_WEBHOOK_TOKEN", "expected-token")
+
+    with pytest.raises(ValueError, match="Token de webhook Asaas inválido"):
+        PaymentProviderService.verify_webhook("asaas", {}, {"asaas-access-token": "wrong"}, b"{}")
+
+    assert PaymentProviderService.verify_webhook(
+        "asaas", {}, {"asaas-access-token": "expected-token"}, b"{}"
+    ) is None
+
+
+def test_production_webhooks_validate_mercadopago_signature(monkeypatch):
+    import hashlib
+    import hmac
+    from app.core.config import settings
+
+    secret = "mp-test-secret"
+    data_id = "payment-123"
+    request_id = "request-456"
+    timestamp = "1720000000000"
+    manifest = f"id:{data_id};request-id:{request_id};ts:{timestamp};"
+    signature = hmac.new(secret.encode(), manifest.encode(), hashlib.sha256).hexdigest()
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(settings, "MERCADOPAGO_WEBHOOK_SECRET", secret)
+
+    PaymentProviderService.verify_webhook(
+        "mercadopago",
+        {"data": {"id": data_id}},
+        {"x-request-id": request_id, "x-signature": f"ts={timestamp},v1={signature}"},
+        b"{}",
+    )
+
+
+def test_production_webhooks_validate_stripe_signature(monkeypatch):
+    import hashlib
+    import hmac
+    import time
+    from app.core.config import settings
+
+    secret = "whsec-test-secret"
+    timestamp = str(int(time.time()))
+    raw_body = b'{"type":"invoice.paid"}'
+    signed_content = timestamp.encode() + b"." + raw_body
+    signature = hmac.new(secret.encode(), signed_content, hashlib.sha256).hexdigest()
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(settings, "STRIPE_WEBHOOK_SECRET", secret)
+
+    PaymentProviderService.verify_webhook(
+        "stripe", {"type": "invoice.paid"}, {"stripe-signature": f"t={timestamp},v1={signature}"}, raw_body
+    )
+
+
+def test_asaas_webhook_endpoint_rejects_invalid_token_in_production(monkeypatch):
+    from fastapi.testclient import TestClient
+    from app.core.config import settings
+    from app.main import app
+
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(settings, "ASAAS_WEBHOOK_TOKEN", "expected-token")
+    response = TestClient(app).post(
+        "/api/v1/subscriptions/webhook/asaas",
+        json={"event": "PAYMENT_RECEIVED", "trainer_id": "trainer-test"},
+        headers={"asaas-access-token": "attacker-token"},
+    )
+
+    assert response.status_code == 401
+
+
 def test_plan_upgrade_calculation_and_proration():
     # Upgrade Starter (grátis) -> Pro (R$ 89,00)
     res = PaymentProviderService.calculate_plan_change(
@@ -275,6 +358,41 @@ async def test_ai_generation_limit_enforcement_on_starter_plan():
         assert "upgrade para o plano Personal Pro" in res.json()["detail"]
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_ai_generation_counter_uses_atomic_supabase_rpc_in_production(monkeypatch):
+    from app.core.config import settings
+    from app.services.supabase_service import SupabaseService
+
+    calls = {}
+
+    class RpcResponse:
+        data = 4
+
+    class RpcQuery:
+        async def execute(self):
+            return RpcResponse()
+
+    class FakeClient:
+        def rpc(self, function_name, params):
+            calls["function_name"] = function_name
+            calls["params"] = params
+            return RpcQuery()
+
+    service = SupabaseService()
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+
+    async def fake_get_client():
+        return FakeClient()
+
+    monkeypatch.setattr(service, "get_client", fake_get_client)
+
+    count = await service.increment_monthly_ai_generations("631e76b9-3cb0-454f-8fd9-1d450e5560d6")
+
+    assert count == 4
+    assert calls["function_name"] == "increment_trainer_ai_usage"
+    assert calls["params"]["p_period_start"].endswith("-01")
 
 
 def test_infinitepay_real_checkout_and_webhook_activation():

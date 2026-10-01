@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     INFINITEPAY_HANDLE: str = "sheipados"
     INFINITEPAY_CHECKOUT_API_URL: str = "https://api.checkout.infinitepay.io"
     INFINITEPAY_WEBHOOK_SECRET: str = ""
+
+    # Webhook authentication
+    ASAAS_WEBHOOK_TOKEN: str = ""
+    MERCADOPAGO_WEBHOOK_SECRET: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
     
     # CORS (aceita string "*", JSON '["*"]' ou listas sem erro no EnvSettingsSource do Pydantic)
     CORS_ORIGINS: Union[str, List[str]] = "*"
@@ -41,19 +46,30 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> List[str]:
         val = self.CORS_ORIGINS
         if isinstance(val, list):
-            return [str(item) for item in val]
+            origins = [str(item) for item in val]
+            if "*" in origins and self.ENVIRONMENT.lower() == "production":
+                return ["https://shaipados.com"]
+            return origins
         if isinstance(val, str):
             v_clean = val.strip()
             if not v_clean or v_clean == "*":
+                if self.ENVIRONMENT.lower() == "production":
+                    return ["https://shaipados.com"]
                 return ["*"]
             if v_clean.startswith("[") and v_clean.endswith("]"):
                 try:
                     parsed = json.loads(v_clean)
                     if isinstance(parsed, list):
-                        return [str(item) for item in parsed]
+                        origins = [str(item) for item in parsed]
+                        if "*" in origins and self.ENVIRONMENT.lower() == "production":
+                            return ["https://shaipados.com"]
+                        return origins
                 except Exception:
                     pass
-            return [i.strip() for i in v_clean.split(",") if i.strip()]
+            origins = [i.strip() for i in v_clean.split(",") if i.strip()]
+            if "*" in origins and self.ENVIRONMENT.lower() == "production":
+                return ["https://shaipados.com"]
+            return origins
         return ["*"]
 
     model_config = SettingsConfigDict(

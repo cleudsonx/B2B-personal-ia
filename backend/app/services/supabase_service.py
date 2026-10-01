@@ -61,6 +61,14 @@ class SupabaseService:
         self._mem_subscriptions: Dict[str, Dict[str, Any]] = {}
         self._mem_ai_usage: Dict[str, int] = {}
 
+    @staticmethod
+    def _is_production() -> bool:
+        return settings.ENVIRONMENT.lower() == "production"
+
+    def _raise_if_production(self, operation: str, error: Exception) -> None:
+        if self._is_production():
+            raise RuntimeError(f"Falha ao {operation} no Supabase.") from error
+
     def get_ai_generations_used(self, trainer_id: str) -> int:
         """Retorna o número de gerações de IA utilizadas pelo treinador no ciclo."""
         t_uuid = to_valid_uuid_str(trainer_id)
@@ -73,6 +81,51 @@ class SupabaseService:
         self._mem_ai_usage[trainer_id] = current
         self._mem_ai_usage[t_uuid] = current
         return current
+
+    async def get_monthly_ai_generations_used(self, trainer_id: str) -> int:
+        if not self._is_production():
+            return self.get_ai_generations_used(trainer_id)
+
+        client = await self.get_client()
+        trainer_uuid = to_valid_uuid_str(trainer_id)
+        period_start = datetime.now(timezone.utc).date().replace(day=1).isoformat()
+        try:
+            res = await client.table("trainer_ai_usage")\
+                .select("generations_used")\
+                .eq("trainer_id", trainer_uuid)\
+                .eq("period_start", period_start)\
+                .limit(1)\
+                .execute()
+            return int(res.data[0]["generations_used"]) if res.data else 0
+        except Exception as e:
+            logger.error(f"Erro ao consultar uso mensal de IA: {e}")
+            self._raise_if_production("consultar uso mensal de IA", e)
+            return 0
+
+    async def increment_monthly_ai_generations(self, trainer_id: str) -> int:
+        if not self._is_production():
+            return self.increment_ai_generations(trainer_id)
+
+        client = await self.get_client()
+        trainer_uuid = to_valid_uuid_str(trainer_id)
+        period_start = datetime.now(timezone.utc).date().replace(day=1).isoformat()
+        try:
+            res = await client.rpc("increment_trainer_ai_usage", {
+                "p_trainer_id": trainer_uuid,
+                "p_period_start": period_start,
+            }).execute()
+            result = res.data
+            if isinstance(result, list) and result:
+                result = result[0]
+            if isinstance(result, dict):
+                result = result.get("increment_trainer_ai_usage")
+            if result is None:
+                raise RuntimeError("A função de uso mensal não retornou um contador.")
+            return int(result)
+        except Exception as e:
+            logger.error(f"Erro ao incrementar uso mensal de IA: {e}")
+            self._raise_if_production("incrementar uso mensal de IA", e)
+            raise
 
     async def get_client(self) -> Optional[AsyncClient]:
         """Obtém ou inicializa o cliente assíncrono do Supabase de forma segura."""
@@ -89,6 +142,8 @@ class SupabaseService:
         url = settings.SUPABASE_URL
 
         if not url or not key:
+            if self._is_production():
+                raise RuntimeError("Supabase URL ou chave não configurados em produção.")
             logger.warning("Supabase URL ou Key não configurados. Operando em modo de fallback em memória.")
             return None
 
@@ -100,6 +155,7 @@ class SupabaseService:
             return self._client
         except Exception as e:
             logger.error(f"Falha ao conectar com o Supabase: {e}. Operando em modo de fallback em memória.")
+            self._raise_if_production("conectar", e)
             return None
 
     # =========================================================================
@@ -130,9 +186,10 @@ class SupabaseService:
                         p for p in res.data
                         if p.get("subscription_status") != "canceled" and p.get("id") != exclude_student_id
                     ]
-                    return max(len(occupied), mem_count)
+                    return len(occupied) if self._is_production() else max(len(occupied), mem_count)
                 except Exception as e:
                     logger.warning(f"Erro ao contar alunos no Supabase ({e}).")
+                    self._raise_if_production("contar alunos", e)
 
         return mem_count
 
@@ -203,10 +260,10 @@ class SupabaseService:
                         injuries_or_restrictions=anam.get("injuries_or_restrictions") or "Nenhuma restrição relatada",
                     ))
 
-                if students:
-                    return students
+                return students
             except Exception as e:
                 logger.warning(f"Erro ao listar alunos no Supabase ({e}). Utilizando fallback.")
+                self._raise_if_production("listar alunos", e)
 
         # Fallback local
         for s in self._mem_students.values():
@@ -216,7 +273,7 @@ class SupabaseService:
 
     async def get_student_by_id(self, student_id: str) -> Optional[StudentResponse]:
         """Busca um aluno específico por ID."""
-        if student_id in self._mem_students:
+        if not self._is_production() and student_id in self._mem_students:
             return StudentResponse(**self._mem_students[student_id])
 
         s_uuid = to_valid_uuid_str(student_id)
@@ -242,14 +299,20 @@ class SupabaseService:
                         )
                 except Exception as e:
                     logger.error(f"Erro ao buscar aluno por ID no Supabase: {e}")
+                    self._raise_if_production("buscar aluno", e)
         return None
 
     async def create_student(self, trainer_id: str, req: StudentCreateRequest) -> StudentResponse:
         """Cadastra um novo aluno gerando usuário e perfil no Supabase."""
         t_uuid = to_valid_uuid_str(trainer_id)
         client = await self.get_client()
+        is_production = settings.ENVIRONMENT.lower() == "production"
+
+        if client is None and is_production:
+            raise RuntimeError("Supabase indisponível; o cadastro do aluno não foi persistido.")
 
         if client:
+            student_id = None
             try:
                 # 1. Cria usuário no Supabase Auth via Admin API
                 user_res = await client.auth.admin.create_user({
@@ -300,10 +363,18 @@ class SupabaseService:
                     active_split="Aguardando confirmação",
                     injuries_or_restrictions=req.injuries_or_restrictions,
                 )
-                self._mem_students[student_id] = student_resp.model_dump()
+                if not is_production:
+                    self._mem_students[student_id] = student_resp.model_dump()
                 return student_resp
             except Exception as e:
-                logger.error(f"Erro ao criar aluno no Supabase Auth/DB: {e}. Usando fallback.")
+                logger.error(f"Erro ao criar aluno no Supabase Auth/DB: {e}")
+                if is_production:
+                    if student_id:
+                        try:
+                            await client.auth.admin.delete_user(student_id)
+                        except Exception as cleanup_error:
+                            logger.error(f"Falha ao remover usuário parcialmente criado: {cleanup_error}")
+                    raise RuntimeError("Falha ao persistir o cadastro do aluno no Supabase.") from e
 
         # Fallback local
         mock_id = f"st-{uuid.uuid4().hex[:6]}"
@@ -354,8 +425,26 @@ class SupabaseService:
 
             except Exception as e:
                 logger.error(f"Erro ao atualizar aluno no Supabase: {e}")
+                self._raise_if_production("atualizar aluno", e)
 
         # Atualiza fallback de memória
+        if self._is_production() and is_valid_uuid(student_id):
+            student = await self.get_student_by_id(student_id)
+            if student is None:
+                return None
+            updates = {
+                key: value
+                for key, value in {
+                    "full_name": req.full_name,
+                    "phone": req.phone,
+                    "goal": req.goal,
+                    "injuries_or_restrictions": req.injuries_or_restrictions,
+                    "status": req.status,
+                }.items()
+                if value is not None
+            }
+            return student.model_copy(update=updates)
+
         if student_id in self._mem_students:
             curr = self._mem_students[student_id]
             if req.full_name is not None: curr["full_name"] = req.full_name
@@ -381,15 +470,18 @@ class SupabaseService:
         if client and is_valid_uuid(student_id):
             try:
                 # O DELETE CASCADE do schema Postgres remove automaticamente anamnesis, workouts e logs
-                await client.table("profiles").delete().eq("id", s_uuid).execute()
+                res = await client.table("profiles").delete().eq("id", s_uuid).execute()
+                if self._is_production() and not res.data:
+                    return False
                 try:
                     await client.auth.admin.delete_user(s_uuid)
                 except Exception:
                     pass
             except Exception as e:
                 logger.error(f"Erro ao excluir aluno do Supabase: {e}")
+                self._raise_if_production("excluir aluno", e)
 
-        if student_id in self._mem_students:
+        if not self._is_production() and student_id in self._mem_students:
             del self._mem_students[student_id]
             return True
         return True
@@ -432,7 +524,8 @@ class SupabaseService:
                 if res.data:
                     prescription_id = res.data[0]["id"]
             except Exception as e:
-                logger.error(f"Erro ao salvar prescrição no Supabase: {e}. Usando fallback local.")
+                logger.error(f"Erro ao salvar prescrição no Supabase: {e}")
+                self._raise_if_production("salvar prescrição", e)
 
         # Armazena também em memória
         presc_entry = {
@@ -445,7 +538,8 @@ class SupabaseService:
             "created_at": datetime.now(timezone.utc).isoformat(),
             "plan_json": req.plan.model_dump(),
         }
-        self._mem_prescriptions[req.client_id] = presc_entry
+        if not self._is_production():
+            self._mem_prescriptions[req.client_id] = presc_entry
 
         return PrescriptionSaveResponse(
             id=prescription_id,
@@ -478,9 +572,10 @@ class SupabaseService:
                     return WorkoutPlanResponse(**res.data[0]["plan_json"])
             except Exception as e:
                 logger.error(f"Erro ao buscar prescrição ativa no Supabase: {e}")
+                self._raise_if_production("buscar prescrição", e)
 
         # Fallback de memória
-        if client_id in self._mem_prescriptions:
+        if not self._is_production() and client_id in self._mem_prescriptions:
             entry = self._mem_prescriptions[client_id]
             if entry.get("is_active") and "plan_json" in entry:
                 return WorkoutPlanResponse(**entry["plan_json"])
@@ -522,6 +617,7 @@ class SupabaseService:
                     alert_id = res.data[0]["id"]
             except Exception as e:
                 logger.error(f"Erro ao salvar alerta no Supabase: {e}")
+                self._raise_if_production("salvar alerta biomecânico", e)
 
         resp = BiomechanicalAlertResponse(
             id=alert_id,
@@ -538,7 +634,8 @@ class SupabaseService:
             created_at=created_at_str,
             message=f"{alert.student_name} adaptou '{alert.original_exercise}' por '{alert.adapted_exercise}'.",
         )
-        self._mem_alerts[alert_id] = resp.model_dump()
+        if not self._is_production():
+            self._mem_alerts[alert_id] = resp.model_dump()
         return resp
 
     async def list_trainer_alerts(self, trainer_id: str) -> List[BiomechanicalAlertResponse]:
@@ -573,10 +670,10 @@ class SupabaseService:
                         created_at=row.get("created_at") or datetime.now(timezone.utc).isoformat(),
                         message=f"Trocou {row['original_exercise']} por {row['adapted_exercise']}",
                     ))
-                if alerts:
-                    return alerts
+                return alerts
             except Exception as e:
                 logger.error(f"Erro ao listar alertas no Supabase: {e}")
+                self._raise_if_production("listar alertas biomecânicos", e)
 
         # Fallback local
         for a in self._mem_alerts.values():
@@ -598,8 +695,9 @@ class SupabaseService:
                     return True
             except Exception as e:
                 logger.error(f"Erro ao marcar alerta no Supabase: {e}")
+                self._raise_if_production("reconhecer alerta biomecânico", e)
 
-        if alert_id in self._mem_alerts:
+        if not self._is_production() and alert_id in self._mem_alerts:
             self._mem_alerts[alert_id]["acknowledged"] = True
             self._mem_alerts[alert_id]["status"] = "acknowledged"
             return True
@@ -611,7 +709,7 @@ class SupabaseService:
 
     async def get_trainer_subscription(self, trainer_id: str) -> MySubscriptionResponse:
         """Recupera a assinatura ativa do treinador a partir do Supabase ou cache."""
-        if trainer_id in self._mem_subscriptions:
+        if not self._is_production() and trainer_id in self._mem_subscriptions:
             cached = self._mem_subscriptions[trainer_id]
             curr_students = await self.count_trainer_occupied_slots(trainer_id)
             ai_used = self.get_ai_generations_used(trainer_id)
@@ -647,7 +745,7 @@ class SupabaseService:
                     plan = sub.get("plans") or {}
                     current_students = await self.count_trainer_occupied_slots(t_uuid)
                     max_st = plan.get("max_students", 30)
-                    ai_used = self.get_ai_generations_used(trainer_id)
+                    ai_used = await self.get_monthly_ai_generations_used(trainer_id)
                     max_ai = plan.get("max_ai_generations_per_month", -1)
 
                     return MySubscriptionResponse(
@@ -667,26 +765,33 @@ class SupabaseService:
                     )
             except Exception as e:
                 logger.error(f"Erro ao buscar assinatura no Supabase: {e}")
+                self._raise_if_production("buscar assinatura", e)
 
-        # Fallback padrão (Personal Pro ativo)
+        # O fallback de produção respeita o menor plano até existir assinatura persistida.
         curr_students = await self.count_trainer_occupied_slots(trainer_id)
-        ai_used = self.get_ai_generations_used(trainer_id)
+        ai_used = await self.get_monthly_ai_generations_used(trainer_id)
+        default_is_production = self._is_production()
+        default_plan_id = "starter" if default_is_production else "pro"
+        default_plan_name = "Starter Trial" if default_is_production else "Personal Pro"
+        default_max_students = 3 if default_is_production else 30
+        default_max_ai = 10 if default_is_production else -1
         default_sub = MySubscriptionResponse(
-            plan_id="pro",
-            plan_name="Personal Pro",
-            status="active",
+            plan_id=default_plan_id,
+            plan_name=default_plan_name,
+            status="trialing" if default_is_production else "active",
             billing_interval="monthly",
             current_students=curr_students,
-            max_students=30,
+            max_students=default_max_students,
             ai_generations_used=ai_used,
-            max_ai_generations=-1,
-            trial_days_remaining=None,
+            max_ai_generations=default_max_ai,
+            trial_days_remaining=14 if default_is_production else None,
             next_billing_date=(datetime.now() + timedelta(days=24)).strftime("%d/%m/%Y"),
             payment_method="pix",
-            can_create_student=curr_students < 30,
-            can_generate_ai=True,
+            can_create_student=curr_students < default_max_students,
+            can_generate_ai=default_max_ai == -1 or ai_used < default_max_ai,
         )
-        self._mem_subscriptions[trainer_id] = default_sub
+        if not default_is_production:
+            self._mem_subscriptions[trainer_id] = default_sub
         return default_sub
 
     async def activate_subscription(
@@ -724,6 +829,7 @@ class SupabaseService:
                 }, on_conflict="trainer_id").execute()
             except Exception as e:
                 logger.error(f"Erro ao persistir assinatura no Supabase: {e}")
+                self._raise_if_production("persistir assinatura", e)
 
         curr_students = await self.count_trainer_occupied_slots(trainer_id)
         plan_max = 3 if plan_id == "starter" else (30 if plan_id == "pro" else (60 if plan_id == "elite" else 100))
@@ -743,8 +849,9 @@ class SupabaseService:
             can_create_student=curr_students < plan_max,
             can_generate_ai=True,
         )
-        self._mem_subscriptions[trainer_id] = sub_resp
-        self._mem_subscriptions["current-trainer"] = sub_resp
+        if not self._is_production():
+            self._mem_subscriptions[trainer_id] = sub_resp
+            self._mem_subscriptions["current-trainer"] = sub_resp
         return sub_resp
 
     async def admin_create_user(
@@ -814,6 +921,7 @@ class SupabaseService:
                 await client.table("profiles").upsert(profile_payload).execute()
             except Exception as e:
                 logger.warning(f"Erro ao salvar perfil no profiles após admin_create_user: {e}")
+                self._raise_if_production("salvar perfil do usuário", e)
 
         return {
             "success": True,
