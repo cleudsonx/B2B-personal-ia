@@ -747,6 +747,83 @@ class SupabaseService:
         self._mem_subscriptions["current-trainer"] = sub_resp
         return sub_resp
 
+    async def admin_create_user(
+        self,
+        email: str,
+        password: str,
+        full_name: str,
+        role: str = "trainer",
+        phone: Optional[str] = None,
+        trainer_id: Optional[str] = None,
+        professional_document_type: Optional[str] = None,
+        professional_document: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Cria um usuário diretamente via Supabase Admin API com email_confirm=True,
+        evitando falhas de envio de e-mail de confirmação SMTP e garantindo login imediato.
+        """
+        client = await self.get_client()
+        user_metadata: Dict[str, Any] = {
+            "full_name": full_name,
+            "role": role,
+        }
+        if phone:
+            user_metadata["phone"] = phone
+        if trainer_id and is_valid_uuid(trainer_id):
+            user_metadata["trainer_id"] = trainer_id
+        if professional_document_type:
+            user_metadata["professional_document_type"] = professional_document_type
+        if professional_document:
+            user_metadata["professional_document"] = professional_document
+            user_metadata["cref_or_registry"] = professional_document
+
+        user_id = None
+        if client and hasattr(client, "auth") and hasattr(client.auth, "admin"):
+            try:
+                admin_res = await client.auth.admin.create_user({
+                    "email": email,
+                    "password": password,
+                    "email_confirm": True,
+                    "user_metadata": user_metadata,
+                })
+                if admin_res and hasattr(admin_res, "user") and admin_res.user:
+                    user_id = admin_res.user.id
+            except Exception as e:
+                err_str = str(e).lower()
+                logger.error(f"Erro no admin.create_user do Supabase: {e}")
+                if "already registered" in err_str or "unique" in err_str or "duplicate" in err_str:
+                    raise ValueError("Este e-mail já está cadastrado no sistema.")
+                raise e
+
+        if not user_id:
+            user_id = str(uuid.uuid4())
+
+        if client:
+            try:
+                profile_payload = {
+                    "id": user_id,
+                    "full_name": full_name,
+                    "role": role,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+                if phone:
+                    profile_payload["phone"] = phone
+                if trainer_id and is_valid_uuid(trainer_id):
+                    profile_payload["trainer_id"] = to_valid_uuid_str(trainer_id)
+
+                await client.table("profiles").upsert(profile_payload).execute()
+            except Exception as e:
+                logger.warning(f"Erro ao salvar perfil no profiles após admin_create_user: {e}")
+
+        return {
+            "success": True,
+            "user_id": user_id,
+            "email": email,
+            "role": role,
+            "message": "Usuário criado e confirmado com sucesso."
+        }
+
 
 # Instância singleton global do serviço
 supabase_service = SupabaseService()
+

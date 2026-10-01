@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
@@ -45,8 +46,19 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
   String _objective = 'Hipertrofia Muscular';
   final Set<String> _musclePriorities = {'Peitoral', 'Ombros'};
 
-  String _resolvedTrainerName = 'Prof. Roberto Mendes';
-  String _resolvedTrainerRegistry = 'CREF 019284-G/SP';
+  String _resolvedTrainerName = 'Seu Treinador';
+  String _resolvedTrainerRegistry = 'Registro Profissional Ativo';
+  String? _trainerId;
+
+  String _getTrainerInitials() {
+    final clean = _resolvedTrainerName.replaceAll('Prof.', '').trim();
+    if (clean.isEmpty) return 'PT';
+    final parts = clean.split(' ').where((p) => p.isNotEmpty).toList();
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return clean.substring(0, clean.length >= 2 ? 2 : 1).toUpperCase();
+  }
 
   @override
   void initState() {
@@ -55,18 +67,77 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
   }
 
   Future<void> _loadTrainerInfo() async {
+    // 1. Prioriza o nome passado explicitamente para o widget
     if (widget.trainerName != null && widget.trainerName!.isNotEmpty) {
       _resolvedTrainerName = widget.trainerName!;
-      return;
     }
+
+    // 2. Extrai da URL atual do navegador (Web query parameters ou fragment query)
+    try {
+      final queryParams = Map<String, String>.from(Uri.base.queryParameters);
+      final fragment = Uri.base.fragment;
+      if (fragment.contains('?')) {
+        final fragmentQuery = fragment.split('?')[1];
+        queryParams.addAll(Uri.splitQueryString(fragmentQuery));
+      }
+
+      if (queryParams.containsKey('trainer_id') && queryParams['trainer_id']!.isNotEmpty) {
+        _trainerId = queryParams['trainer_id'];
+      }
+
+      if (queryParams.containsKey('trainer_name') && queryParams['trainer_name']!.isNotEmpty) {
+        final tName = queryParams['trainer_name']!;
+        _resolvedTrainerName = tName.startsWith('Prof.') ? tName : 'Prof. $tName';
+      }
+
+      if (queryParams.containsKey('cref') && queryParams['cref']!.isNotEmpty) {
+        _resolvedTrainerRegistry = queryParams['cref']!;
+      }
+
+      // 3. Se temos o trainer_id, busca o perfil real no Supabase para garantir os dados mais recentes
+      if (_trainerId != null && _trainerId!.isNotEmpty) {
+        try {
+          final client = Supabase.instance.client;
+          final trainerData = await client
+              .from('profiles')
+              .select()
+              .eq('id', _trainerId!)
+              .maybeSingle();
+
+          if (trainerData != null && mounted) {
+            setState(() {
+              final name = trainerData['full_name'] as String?;
+              if (name != null && name.isNotEmpty) {
+                _resolvedTrainerName = name.startsWith('Prof.') ? name : 'Prof. $name';
+              }
+              final reg = (trainerData['cref_or_registry'] ??
+                  trainerData['cref'] ??
+                  trainerData['professional_document']) as String?;
+              if (reg != null && reg.isNotEmpty) {
+                _resolvedTrainerRegistry = reg;
+              }
+            });
+            return;
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
+
+    // 4. Se o aluno já estiver autenticado, busca pelo vínculo do perfil dele
     try {
       final trainer = await AuthService.getTrainerForStudent();
       if (trainer != null && mounted) {
         setState(() {
           final name = trainer['full_name'] as String?;
-          if (name != null && name.isNotEmpty) _resolvedTrainerName = name;
-          final reg = (trainer['cref_or_registry'] ?? trainer['cref'] ?? trainer['professional_document']) as String?;
-          if (reg != null && reg.isNotEmpty) _resolvedTrainerRegistry = reg;
+          if (name != null && name.isNotEmpty) {
+            _resolvedTrainerName = name.startsWith('Prof.') ? name : 'Prof. $name';
+          }
+          final reg = (trainer['cref_or_registry'] ??
+              trainer['cref'] ??
+              trainer['professional_document']) as String?;
+          if (reg != null && reg.isNotEmpty) {
+            _resolvedTrainerRegistry = reg;
+          }
         });
       }
     } catch (_) {}
@@ -110,10 +181,19 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
         'objective': _objective,
         'muscle_priorities': _musclePriorities.toList(),
         'completed_at': DateTime.now().toIso8601String(),
+        if (_trainerId != null) 'trainer_id': _trainerId,
       };
 
       // Persiste na tabela client_anamnesis e atualiza perfil do aluno
       await WorkoutService.saveClientAnamnesis(clientId: clientId, data: anamnesisPayload);
+
+      // Garante o vínculo relacional do aluno com o personal trainer no Supabase
+      if (_trainerId != null && _trainerId!.isNotEmpty && user != null) {
+        try {
+          final client = Supabase.instance.client;
+          await client.from('profiles').update({'trainer_id': _trainerId}).eq('id', clientId);
+        } catch (_) {}
+      }
 
       if (mounted) {
         setState(() {
@@ -279,18 +359,55 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
             ),
             child: Row(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(26),
-                  child: Image.asset(
-                    'assets/images/trainer_roberto_avatar.png',
-                    width: 52,
-                    height: 52,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => CircleAvatar(
-                      radius: 26,
-                      backgroundColor: AppColors.emeraldBg(context),
-                      child: Icon(Icons.person_rounded, color: AppColors.emerald(context), size: 30),
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.emerald(context),
+                        AppColors.accentBlue(context),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.emerald(context).withValues(alpha: 0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Center(
+                        child: Text(
+                          _getTrainerInitials(),
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        right: 2,
+                        bottom: 2,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 14),

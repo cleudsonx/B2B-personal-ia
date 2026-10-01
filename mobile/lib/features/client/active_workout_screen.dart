@@ -22,8 +22,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
   String _workoutTitle = 'Treino A: Membros Superiores (Ênfase Empurrar)';
-  String _trainerName = 'Prof. Roberto Mendes';
-  String _trainerCref = 'CREF 019284';
+  String _trainerName = 'Carregando treinador...';
+  String _trainerCref = 'CREF Ativo';
   final Set<int> _adaptedIndices = {};
   int _currentCarouselIndex = 0;
   late final PageController _pageController;
@@ -96,22 +96,32 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     super.dispose();
   }
 
+  String _getTrainerInitials() {
+    final clean = _trainerName.replaceAll('Prof.', '').replaceAll('Carregando...', '').trim();
+    if (clean.isEmpty) return 'PT';
+    final parts = clean.split(' ').where((p) => p.isNotEmpty).toList();
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return clean.substring(0, clean.length >= 2 ? 2 : 1).toUpperCase();
+  }
+
   String _getAnatomicalImage(String exerciseName, String targetMuscle) {
     final name = exerciseName.toLowerCase();
     final muscle = targetMuscle.toLowerCase();
 
     if (name.contains('supino') || name.contains('peito') || name.contains('crucifixo') || muscle.contains('peitor')) {
-      return 'assets/images/anatomical_chest.png';
+      return 'assets/images/biomech_3d_chest.jpg';
     } else if (name.contains('desenvolvimento') || name.contains('elevacao') || name.contains('elevação') || name.contains('ombro') || muscle.contains('deltoid')) {
-      return 'assets/images/anatomical_shoulders.png';
+      return 'assets/images/biomech_3d_shoulders.jpg';
     } else if (name.contains('triceps') || name.contains('tríceps') || name.contains('biceps') || name.contains('bíceps') || name.contains('rosca') || muscle.contains('braco') || muscle.contains('braquial')) {
-      return 'assets/images/anatomical_triceps.png';
+      return 'assets/images/biomech_3d_arms.jpg';
     } else if (name.contains('agachamento') || name.contains('leg') || name.contains('extensora') || name.contains('quadr') || muscle.contains('perna') || muscle.contains('glúteo') || muscle.contains('gluteo')) {
-      return 'assets/images/anatomical_legs.png';
+      return 'assets/images/biomech_3d_legs.jpg';
     } else if (name.contains('puxada') || name.contains('remada') || name.contains('dorsal') || muscle.contains('costas') || muscle.contains('lat')) {
-      return 'assets/images/anatomical_back.png';
+      return 'assets/images/biomech_3d_back.jpg';
     }
-    return 'assets/images/anatomical_chest.png';
+    return 'assets/images/biomech_3d_chest.jpg';
   }
 
   String _getEmgForExercise(String exerciseName) {
@@ -386,34 +396,53 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           clipBehavior: Clip.none,
                           alignment: Alignment.center,
                           children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(26),
-                              child: Image.asset(
-                                'assets/images/trainer_roberto_avatar.png',
-                                width: 52,
-                                height: 52,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => CircleAvatar(
-                                  radius: 26,
-                                  backgroundColor: AppColors.emerald(context).withValues(alpha: 0.15),
-                                  child: Icon(Icons.person_rounded, color: AppColors.emerald(context), size: 30),
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    AppColors.emerald(context),
+                                    AppColors.accentBlue(context),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.emerald(context).withValues(alpha: 0.3),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _getTrainerInitials(),
+                                  style: const TextStyle(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 17,
+                                    letterSpacing: -0.5,
+                                  ),
                                 ),
                               ),
                             ),
                             Positioned(
-                              bottom: -2,
-                              right: -2,
+                              bottom: -1,
+                              right: -1,
                               child: Container(
-                                width: 22,
-                                height: 22,
+                                width: 20,
+                                height: 20,
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF00E5A3),
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: AppColors.bg(context), width: 2.2),
+                                  border: Border.all(color: AppColors.bg(context), width: 2.0),
                                   boxShadow: [
                                     BoxShadow(
                                       color: const Color(0xFF00E5A3).withValues(alpha: 0.45),
-                                      blurRadius: 6,
+                                      blurRadius: 5,
                                       offset: const Offset(0, 2),
                                     ),
                                   ],
@@ -421,7 +450,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                 child: const Icon(
                                   Icons.check_rounded,
                                   color: Colors.black,
-                                  size: 14,
+                                  size: 13,
                                 ),
                               ),
                             ),
@@ -526,7 +555,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
                 // 3. Carousel Hero Card (PageView)
                 SizedBox(
-                  height: 395,
+                  height: 505,
                   child: PageView.builder(
                     controller: _pageController,
                     itemCount: _exercises.length,
@@ -566,147 +595,287 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                             ),
                           ],
                         ),
-                        padding: const EdgeInsets.all(20),
-                        child: Row(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Left details column
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (isAdapted)
-                                    Container(
-                                      margin: const EdgeInsets.only(bottom: 8),
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.tangerineBg(context),
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: AppColors.tangerine(context).withValues(alpha: 0.4)),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.auto_awesome, size: 12, color: AppColors.tangerine(context)),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            'ADAPTADO POR MR. COACH',
-                                            style: TextStyle(
-                                              fontSize: 8.5,
-                                              fontWeight: FontWeight.w800,
-                                              color: AppColors.tangerine(context),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  Text(
-                                    item.name,
+                            // 1. Top Tags: Exercise Order & Target Muscle EMG Pill
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    'EXERCÍCIO ${index + 1} DE ${_exercises.length}',
                                     style: TextStyle(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: -0.5,
-                                      height: 1.15,
-                                      color: AppColors.text(context),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.5,
+                                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
                                     ),
                                   ),
-                                  const SizedBox(height: 14),
-                                  // Micro-Pills fiéis à amostra
-                                  Row(
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF00E5A3).withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: const Color(0xFF00E5A3), width: 1.0),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      _StatPill(number: '${item.sets}', label: 'Séries'),
-                                      const SizedBox(width: 8),
-                                      _StatPill(number: item.reps, label: 'reps'),
+                                      const Icon(Icons.bolt_rounded, size: 13, color: Color(0xFF00E5A3)),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        '${item.targetMuscleGroup.toUpperCase()} • ${_getEmgForExercise(item.name)}',
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF00E5A3),
+                                        ),
+                                      ),
                                     ],
                                   ),
-                                  const SizedBox(height: 8),
-                                  _StatPill(prefix: 'Cadência', number: '3-0-1-0'),
-                                  const SizedBox(height: 8),
-                                  _StatPill(
-                                    number: '${item.restSeconds}s',
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+
+                            // 2. Full-Width Exercise Name (No broken words!)
+                            Text(
+                              item.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.3,
+                                height: 1.2,
+                                color: AppColors.text(context),
+                              ),
+                            ),
+                            if (isAdapted) ...[
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.tangerineBg(context),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.auto_awesome, size: 11, color: AppColors.tangerine(context)),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'ADAPTADO POR MR. COACH AI',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.tangerine(context),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 12),
+
+                            // 3. 3D Biomechanical Visual Stage (High-Fidelity Render)
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => BiomechanicalAnalysisSheet.show(
+                                  context,
+                                  exerciseName: item.name,
+                                ),
+                                child: Container(
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    color: Colors.black,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: isDark ? const Color(0xFF334155).withValues(alpha: 0.6) : const Color(0xFFCBD5E1),
+                                      width: 1.0,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.25),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(15),
+                                    child: Stack(
+                                      fit: StackFit.expand,
+                                      children: [
+                                        Image.asset(
+                                          _getAnatomicalImage(item.name, item.targetMuscleGroup),
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) => _AnatomicalMuscleCard(
+                                            exerciseName: item.name,
+                                            targetMuscle: item.targetMuscleGroup,
+                                          ),
+                                        ),
+                                        // Gradient shading overlay
+                                        Positioned.fill(
+                                          child: DecoratedBox(
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                begin: Alignment.topCenter,
+                                                end: Alignment.bottomCenter,
+                                                colors: [
+                                                  Colors.transparent,
+                                                  Colors.transparent,
+                                                  Colors.black.withValues(alpha: 0.70),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        // Floating Badge on Bottom Left
+                                        Positioned(
+                                          left: 10,
+                                          bottom: 10,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black.withValues(alpha: 0.65),
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(color: Colors.white24, width: 0.8),
+                                            ),
+                                            child: const Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.view_in_ar_rounded, size: 13, color: Color(0xFF00E5A3)),
+                                                SizedBox(width: 5),
+                                                Text(
+                                                  '3D Biomecânica & EMG',
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                        // Hint on Bottom Right
+                                        Positioned(
+                                          right: 10,
+                                          bottom: 10,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF00E5A3).withValues(alpha: 0.2),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: const Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  'Toque p/ Raio-X',
+                                                  style: TextStyle(
+                                                    color: Color(0xFF00E5A3),
+                                                    fontSize: 9.5,
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
+                                                ),
+                                                SizedBox(width: 3),
+                                                Icon(Icons.arrow_forward_ios_rounded, size: 9, color: Color(0xFF00E5A3)),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+
+                            // 4. HUD Telemetry Stat Grid (4 Expanded columns - Zero Clipping!)
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _HudStatTile(
+                                    label: 'Séries',
+                                    value: '${item.sets}',
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _HudStatTile(
+                                    label: 'Reps',
+                                    value: item.reps,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _HudStatTile(
+                                    label: 'Cadência',
+                                    value: '3-0-1-0',
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _HudStatTile(
                                     label: 'Descanso',
-                                    isTimer: true,
+                                    value: '${item.restSeconds}s',
+                                    icon: Icons.timer_outlined,
                                     onTap: () => RestTimerSheet.show(
                                       context,
                                       seconds: item.restSeconds,
                                       exerciseName: item.name,
                                     ),
                                   ),
-                                  const Spacer(),
-                                  // Green Activation Capsule
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF00E5A3).withValues(alpha: 0.10),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: const Color(0xFF00E5A3), width: 1.2),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: const Color(0xFF00E5A3).withValues(alpha: 0.22),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(5),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF00E5A3).withValues(alpha: 0.2),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Icon(
-                                            Icons.fitness_center_rounded,
-                                            color: Color(0xFF00E5A3),
-                                            size: 15,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              item.targetMuscleGroup,
-                                              style: const TextStyle(
-                                                color: Color(0xFF00E5A3),
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w800,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 1),
-                                            Text(
-                                              _getEmgForExercise(item.name),
-                                              style: const TextStyle(
-                                                color: Color(0xFFD1FAE5),
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 10),
-                            // Right 3D Model Column
-                            SizedBox(
-                              width: 130,
-                              height: 310,
-                              child: Image.asset(
-                                _getAnatomicalImage(item.name, item.targetMuscleGroup),
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) => _AnatomicalMuscleCard(
-                                  exerciseName: item.name,
-                                  targetMuscle: item.targetMuscleGroup,
+
+                            // 5. Execution Tip / Notes
+                            if (item.notes.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.5) : const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: isDark ? const Color(0xFF334155).withValues(alpha: 0.4) : const Color(0xFFE2E8F0),
+                                  ),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(Icons.tips_and_updates_outlined, size: 14, color: Color(0xFFF59E0B)),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        item.notes,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          height: 1.25,
+                                          fontWeight: FontWeight.w500,
+                                          color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
+                            ],
                           ],
                         ),
                       );
@@ -764,13 +933,20 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           context,
                           exerciseName: _exercises[_currentCarouselIndex].name,
                         ),
-                        child: const Text(
-                          'Raio-X & Fases',
-                          style: TextStyle(
-                            color: Color(0xFF38BDF8),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.biotech_rounded, size: 18, color: Color(0xFF38BDF8)),
+                            SizedBox(width: 6),
+                            Text(
+                              'Raio-X & Fases',
+                              style: TextStyle(
+                                color: Color(0xFF38BDF8),
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -788,13 +964,20 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           elevation: 0,
                         ),
                         onPressed: () => _showAdaptationModal(_currentCarouselIndex),
-                        child: Text(
-                          'Trocar Exercício',
-                          style: TextStyle(
-                            color: isDark ? Colors.white : AppColors.text(context),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.swap_horiz_rounded, size: 18, color: isDark ? Colors.white70 : AppColors.text(context)),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Trocar Exercício',
+                              style: TextStyle(
+                                color: isDark ? Colors.white : AppColors.text(context),
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -855,66 +1038,66 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   }
 }
 
-class _StatPill extends StatelessWidget {
-  final String? prefix;
-  final String number;
-  final String? label;
-  final bool isTimer;
+class _HudStatTile extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData? icon;
   final VoidCallback? onTap;
 
-  const _StatPill({
-    this.prefix,
-    required this.number,
-    this.label,
-    this.isTimer = false,
+  const _HudStatTile({
+    required this.label,
+    required this.value,
+    this.icon,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final pill = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+    final content = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(10),
+        color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.8) : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDark ? const Color(0xFF334155).withValues(alpha: 0.6) : const Color(0xFFCBD5E1),
+          color: isDark ? const Color(0xFF334155).withValues(alpha: 0.6) : const Color(0xFFE2E8F0),
+          width: 1,
         ),
       ),
-      child: Row(
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (prefix != null) ...[
-            Text(
-              prefix!,
-              style: TextStyle(
-                fontSize: 12,
-                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                fontWeight: FontWeight.w500,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 10, color: const Color(0xFF00E5A3)),
+                const SizedBox(width: 3),
+              ],
+              Text(
+                label.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.3,
+                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                ),
               ),
-            ),
-            const SizedBox(width: 4),
-          ],
+            ],
+          ),
+          const SizedBox(height: 3),
           Text(
-            number,
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: isDark ? Colors.white : Colors.black87,
+              fontSize: 13.5,
+              fontWeight: FontWeight.w900,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+              letterSpacing: -0.2,
             ),
           ),
-          if (label != null) ...[
-            const SizedBox(width: 4),
-            Text(
-              label!,
-              style: TextStyle(
-                fontSize: 12,
-                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -922,11 +1105,11 @@ class _StatPill extends StatelessWidget {
     if (onTap != null) {
       return InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: pill,
+        borderRadius: BorderRadius.circular(12),
+        child: content,
       );
     }
-    return pill;
+    return content;
   }
 }
 

@@ -122,6 +122,8 @@ class StudentInviteRequest(BaseModel):
     injuries_or_restrictions: Optional[str] = None
     send_email: bool = True
     send_whatsapp: bool = True
+    trainer_id: Optional[str] = None
+    trainer_name: Optional[str] = None
 
 
 class StudentInviteResponse(BaseModel):

@@ -889,6 +889,48 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.studentCyan,
+                          side: const BorderSide(color: AppColors.studentCyan),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                        ),
+                        icon: const Icon(Icons.send_rounded, size: 18),
+                        label: const Text('Reenviar E-mail de Convite Oficial', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        onPressed: () async {
+                          final email = emailCtrl.text.trim();
+                          if (email.isEmpty || !email.contains('@')) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Insira um e-mail válido para reenviar.')),
+                            );
+                            return;
+                          }
+                          final messenger = ScaffoldMessenger.of(context);
+                          messenger.showSnackBar(
+                            SnackBar(
+                              backgroundColor: AppColors.card(context),
+                              content: Text('Enviando convite para $email...'),
+                              duration: const Duration(seconds: 1),
+                            ),
+                          );
+                          final ok = await WorkoutService.resendInvitationEmail(
+                            fullName: nameCtrl.text.trim(),
+                            email: email,
+                            phone: phoneCtrl.text.trim(),
+                            goal: goal,
+                          );
+                          if (ok && mounted) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                backgroundColor: Colors.green.shade800,
+                                content: Text('🎉 E-mail de convite enviado para $email!'),
+                              ),
+                            );
+                          }
+                        },
+                      ),
                     ],
                   ),
                 ),

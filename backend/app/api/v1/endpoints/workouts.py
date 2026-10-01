@@ -20,7 +20,7 @@ from app.schemas.workout import (
 from app.services.gemini_service import GeminiService
 from app.services.email_service import email_service
 from app.services.whatsapp_service import whatsapp_service
-from app.services.supabase_service import supabase_service
+from app.services.supabase_service import supabase_service, is_valid_uuid, to_valid_uuid_str
 from app.core.config import settings
 from app.api.deps import get_gemini_service, get_current_user
 
@@ -352,8 +352,25 @@ async def invite_student(
     payload: StudentInviteRequest,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> StudentInviteResponse:
-    trainer_name = current_user.get("user_metadata", {}).get("full_name") or current_user.get("full_name") or "Roberto Mendes"
-    trainer_id = current_user.get("id") or current_user.get("sub") or "current-trainer"
+    trainer_id = payload.trainer_id or current_user.get("id") or current_user.get("sub") or "current-trainer"
+    trainer_name = payload.trainer_name or current_user.get("user_metadata", {}).get("full_name") or current_user.get("full_name")
+    trainer_cref = ""
+
+    # Se for UUID válido, busca perfil no Supabase para garantir nome e registro reais do professor
+    client = await supabase_service.get_client()
+    if client and is_valid_uuid(trainer_id):
+        try:
+            t_res = await client.table("profiles").select("*").eq("id", to_valid_uuid_str(trainer_id)).maybe_single().execute()
+            if t_res and t_res.data:
+                td = t_res.data
+                if not trainer_name or trainer_name == "Roberto Mendes":
+                    trainer_name = td.get("full_name") or trainer_name
+                trainer_cref = td.get("professional_document") or td.get("cref") or td.get("cref_or_registry") or ""
+        except Exception:
+            pass
+
+    if not trainer_name or trainer_name == "Roberto Mendes":
+        trainer_name = "Seu Treinador"
 
     # Validação estrita da cota de alunos do plano SaaS
     occupied = await _count_trainer_occupied_slots(trainer_id)
@@ -365,7 +382,7 @@ async def invite_student(
                    f"Faça upgrade do plano ou arquive alunos inativos antes de convidar novos."
         )
 
-    # Cria o aluno no Supabase
+    # Cria o aluno no Supabase vinculado ao trainer_id real
     created_student = await supabase_service.create_student(
         trainer_id=trainer_id,
         req=StudentCreateRequest(
@@ -378,8 +395,16 @@ async def invite_student(
     )
     student_id = created_student.id
 
-    # Gera link seguro de onboarding/convite
-    invitation_link = f"{settings.APP_FRONTEND_URL}/#onboarding?student_id={student_id}&trainer_id={trainer_id}"
+    # Gera link seguro de onboarding/convite com parâmetros reais do professor
+    query_params = {
+        "student_id": student_id,
+        "trainer_id": trainer_id,
+        "trainer_name": trainer_name,
+    }
+    if trainer_cref:
+        query_params["cref"] = trainer_cref
+
+    invitation_link = f"{settings.APP_FRONTEND_URL}/#onboarding?{urllib.parse.urlencode(query_params)}"
 
     # 1. Envio de E-mail via Resend/Mock
     email_status = "skipped"

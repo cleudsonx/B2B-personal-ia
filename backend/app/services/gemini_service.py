@@ -453,16 +453,41 @@ class GeminiService:
             )
 
     def _build_contingency_adaptation(self, current_exercise: str, reason: str) -> AdaptationResponse:
+        lower = current_exercise.lower()
+        if "supino" in lower or "peito" in lower or "crucifixo" in lower:
+            adapted = "Supino Inclinado na Máquina Articulada"
+            notes = "Ajustar o assento para que os pegadores fiquem na linha do peitoral superior. Escápulas aduzidas."
+            rationale = "Reduz o estresse glenoumeral anterior mantendo a trajetória guiada no vetor de empurrar horizontal."
+        elif "desenvolvimento" in lower or "ombro" in lower or "elevação" in lower or "elevacao" in lower:
+            adapted = "Desenvolvimento na Máquina Convergente"
+            notes = "Pegada neutra ou semi-pronada. Cotovelos levemente à frente no plano escapular (30°)."
+            rationale = "Diminui a compressão no manguito rotador preservando o recrutamento do deltoide anterior."
+        elif "triceps" in lower or "tríceps" in lower:
+            adapted = "Tríceps na Polia com Barra V"
+            notes = "Cotovelos fixos ao lado do tronco. Estender completamente sem balanço lombar."
+            rationale = "Isola o tríceps braquial com tensão mecânica constante na polia."
+        elif "agachamento" in lower or "leg" in lower or "perna" in lower:
+            adapted = "Leg Press 45° com Pés Médios"
+            notes = "Pés apoiados na largura dos ombros. Manter lombar 100% apoiada no encosto."
+            rationale = "Permite sobrecarga nos extensores de joelho e quadril com descarga axial da coluna vertebral."
+        elif "puxada" in lower or "remada" in lower or "costas" in lower or "dorsal" in lower:
+            adapted = "Remada Sentada na Máquina com Apoio no Peito"
+            notes = "Manter o esterno apoiado na almofada. Puxar cotovelos em direção ao quadril."
+            rationale = "Elimina a demanda estabilizadora sobre os eretores da espinha, focando na adução das escápulas e latíssimo."
+        else:
+            adapted = f"{current_exercise} na Máquina Articulada"
+            notes = "Mantenha a postura alinhada, execute a fase excêntrica em 3 segundos e evite movimentos balísticos."
+            rationale = f"Substituição motivada por: '{reason}'. Preserva o mesmo vetor biomecânico e ativação muscular com maior estabilidade guiada."
+
         return AdaptationResponse(
             original_exercise=current_exercise,
-            adapted_exercise=f"{current_exercise} na Máquina / Variação Segura",
-            target_muscle_group="Grupo Muscular Equivalente",
-            biomechanical_justification=f"Substituição imediata motivada por: '{reason}'. Preserva o mesmo vetor de força e curva de resistência motora com menor estresse de cisalhamento articular.",
-            execution_cues="Mantenha a postura alinhada, execute a fase excêntrica em 3 segundos e evite movimentos balísticos.",
+            adapted_exercise=adapted,
+            reason=reason,
             sets=3,
             reps="10-12",
             rest_seconds=60,
-            confidence_score=0.98
+            notes=notes,
+            biomechanical_rationale=rationale,
         )
 
 

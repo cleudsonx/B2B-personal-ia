@@ -61,6 +61,7 @@ class WorkoutService {
 
     final trainer = AuthService.currentUser;
     final trainerId = trainer?.id ?? 'current-trainer';
+    final trainerName = trainer?.userMetadata?['full_name'] as String? ?? 'Personal Trainer';
     final studentId = 'st_${DateTime.now().millisecondsSinceEpoch}';
 
     final studentData = {
@@ -92,6 +93,8 @@ class WorkoutService {
           'objective': goal ?? 'Hipertrofia Muscular',
           'send_email': true,
           'send_whatsapp': false,
+          'trainer_id': trainerId,
+          'trainer_name': trainerName,
         }),
       ).timeout(const Duration(seconds: 8));
 
@@ -116,23 +119,57 @@ class WorkoutService {
     // 3. Persiste na tabela 'profiles' do Supabase
     if (_clientOrNull != null) {
       try {
-        await _client.from('profiles').upsert({
+        final payload = <String, dynamic>{
           'id': studentId,
           'full_name': fullName.trim(),
-          'email': email.trim().toLowerCase(),
-          'phone': phone?.trim(),
           'role': 'client',
-          'trainer_id': trainerId,
-          'status': 'Pendente Confirmação',
-          'goal': goal,
+          'subscription_status': 'trial',
           'updated_at': DateTime.now().toIso8601String(),
-        });
+        };
+        if (phone != null && phone.trim().isNotEmpty) payload['phone'] = phone.trim();
+        if (trainerId.isNotEmpty && trainerId != 'current-trainer') payload['trainer_id'] = trainerId;
+        await _client.from('profiles').upsert(payload);
       } catch (e) {
         debugPrint('Aviso Supabase createStudent: $e');
       }
     }
 
     return studentData;
+  }
+
+  /// Reenvia o e-mail de convite oficial para o aluno através do backend (Resend API)
+  static Future<bool> resendInvitationEmail({
+    required String fullName,
+    required String email,
+    String? phone,
+    String? goal,
+  }) async {
+    try {
+      final trainer = AuthService.currentUser;
+      final trainerId = trainer?.id ?? 'current-trainer';
+      final trainerName = trainer?.userMetadata?['full_name'] as String? ?? 'Personal Trainer';
+
+      final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/students/invite');
+      final res = await http.post(
+        uri,
+        headers: _apiHeaders,
+        body: jsonEncode({
+          'full_name': fullName.trim(),
+          'email': email.trim().toLowerCase(),
+          'phone': phone?.trim(),
+          'objective': goal ?? 'Hipertrofia Muscular',
+          'send_email': true,
+          'send_whatsapp': false,
+          'trainer_id': trainerId,
+          'trainer_name': trainerName,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      return res.statusCode == 200 || res.statusCode == 201;
+    } catch (e) {
+      debugPrint('Erro ao reenviar convite por e-mail: $e');
+      return false;
+    }
   }
 
   /// Busca os alunos vinculados ao personal trainer com dupla checagem (Supabase + Backend + Cache)
@@ -151,15 +188,16 @@ class WorkoutService {
       try {
         final List<dynamic> response = await _client
             .from('profiles')
-            .select('id, full_name, email, phone, status, goal')
+            .select()
             .eq('trainer_id', trainerId)
             .eq('role', 'client')
-            .order('full_name');
+            .order('created_at', ascending: false);
 
         for (final row in response) {
           final map = Map<String, dynamic>.from(row as Map);
-          map['status'] = map['status'] ?? 'Ativo';
-          map['goal'] = map['goal'] ?? 'Consultoria';
+          final subStatus = map['subscription_status'] as String? ?? 'trial';
+          map['status'] = subStatus == 'canceled' ? 'Arquivado' : 'Ativo';
+          map['goal'] = 'Consultoria Personalizada';
           aggregated[map['id'] as String] = map;
         }
       } catch (e) {
@@ -572,22 +610,31 @@ class WorkoutService {
       _localStudentsCache[index]['status'] = 'Ativo';
     }
 
-    // 2. Persiste na tabela client_anamnesis e profiles no Supabase
+    // 2. Persiste na tabela 'anamnesis' e atualiza 'profiles' no Supabase
     if (_clientOrNull != null) {
       try {
-        await _client.from('client_anamnesis').upsert(data);
+        await _client.from('anamnesis').insert({
+          'client_id': clientId,
+          'objective': data['objective'] ?? 'Hipertrofia Muscular',
+          'training_level': data['level'] ?? 'Iniciante',
+          'days_per_week': data['days_per_week'] ?? 3,
+          'workout_location': data['location'] ?? 'Academia Convencional',
+          'injuries_or_restrictions': data['injuries_summary'] ?? 'Nenhuma',
+          if (data['trainer_id'] != null) 'trainer_id': data['trainer_id'],
+        });
       } catch (e) {
         debugPrint('Aviso Supabase saveClientAnamnesis: $e');
       }
 
       try {
-        await _client.from('profiles').update({
-          'objective': data['objective'],
-          'injuries_or_restrictions': data['injuries_summary'],
-          'status': 'Ativo',
-          'has_completed_anamnesis': true,
+        final profileUpdate = <String, dynamic>{
+          'subscription_status': 'active',
           'updated_at': DateTime.now().toIso8601String(),
-        }).eq('id', clientId);
+        };
+        if (data['trainer_id'] != null && (data['trainer_id'] as String).isNotEmpty) {
+          profileUpdate['trainer_id'] = data['trainer_id'];
+        }
+        await _client.from('profiles').update(profileUpdate).eq('id', clientId);
       } catch (e) {
         debugPrint('Aviso Supabase update profile anamnesis: $e');
       }

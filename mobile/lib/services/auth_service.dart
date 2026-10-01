@@ -1,4 +1,7 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../core/config/app_config.dart';
 
 class AuthService {
   static SupabaseClient? get _clientOrNull {
@@ -80,7 +83,70 @@ class AuthService {
       }
       return response;
     } catch (e) {
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('confirmation email') ||
+          errStr.contains('unexpected_failure') ||
+          errStr.contains('statuscode: 500')) {
+        try {
+          await _registerViaBackend(
+            email: email,
+            password: password,
+            fullName: fullName,
+            role: role,
+            phone: phone,
+            trainerId: trainerId,
+            professionalDocumentType: professionalDocumentType,
+            professionalDocument: professionalDocument,
+          );
+          return await signIn(email: email, password: password);
+        } catch (backendErr) {
+          throw Exception('Falha ao criar conta: ${_formatAuthError(backendErr)}');
+        }
+      }
       throw Exception('Falha ao criar conta: ${_formatAuthError(e)}');
+    }
+  }
+
+  /// Cadastro direto via Backend com bypass de SMTP quando o serviço de e-mail do Supabase falha
+  static Future<void> _registerViaBackend({
+    required String email,
+    required String password,
+    required String fullName,
+    required String role,
+    String? phone,
+    String? trainerId,
+    String? professionalDocumentType,
+    String? professionalDocument,
+  }) async {
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/auth/register-direct');
+    final response = await http
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+          body: jsonEncode({
+            'email': email.trim(),
+            'password': password,
+            'full_name': fullName.trim(),
+            'role': role,
+            if (phone != null && phone.isNotEmpty) 'phone': phone.trim(),
+            if (trainerId != null && trainerId.isNotEmpty) 'trainer_id': trainerId,
+            if (professionalDocumentType != null)
+              'professional_document_type': professionalDocumentType,
+            if (professionalDocument != null)
+              'professional_document': professionalDocument,
+          }),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      String msg = 'Erro no servidor ao criar conta (${response.statusCode})';
+      try {
+        final err = jsonDecode(response.body);
+        if (err is Map && err.containsKey('detail')) {
+          msg = err['detail'].toString();
+        }
+      } catch (_) {}
+      throw Exception(msg);
     }
   }
 
@@ -153,7 +219,7 @@ class AuthService {
       if (trainerId != null && trainerId.isNotEmpty && _clientOrNull != null) {
         final trainer = await _client
             .from('profiles')
-            .select('id, full_name, email, phone, professional_document, professional_document_type, cref_or_registry, cref')
+            .select()
             .eq('id', trainerId)
             .maybeSingle();
         return trainer;
