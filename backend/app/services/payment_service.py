@@ -568,6 +568,17 @@ class PaymentProviderService:
 
         if provider_clean == "asaas":
             event_name = payload.get("event", "UNKNOWN")
+            payment_obj = payload.get("payment") or {}
+            ext_ref = payment_obj.get("externalReference") or payload.get("externalReference")
+            if ext_ref and ext_ref in cls._PENDING_ORDERS:
+                order_meta = cls._PENDING_ORDERS[ext_ref]
+                trainer_id = order_meta.get("trainer_id", trainer_id)
+                plan_id = order_meta.get("plan_id", plan_id)
+                billing_interval = order_meta.get("billing_interval", billing_interval)
+                if event_name in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"):
+                    order_meta["paid"] = True
+                    order_meta["status"] = "active"
+
             if event_name in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"):
                 subscription_status = "active"
             elif event_name in ("PAYMENT_OVERDUE", "SUBSCRIPTION_INACTIVATED"):

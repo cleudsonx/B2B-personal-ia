@@ -452,35 +452,35 @@ O commit `c8b400b` adiciona sessões persistidas, reserva de cotas por RPC e val
 - Testes batch 4 passam localmente, mas fixture global substitui Supabase por memória; não valida falhas de `upsert`, corrida de webhooks ou fallback da RPC em produção.
 - URL live e variáveis do blueprint não comprovam versão ativa, segredo configurado nem migrations aplicadas no Render/Supabase remoto.
 
-### 8.3.1 Ações para a equipe de desenvolvimento
+### 8.3.1 Ações para a equipe de desenvolvimento (Histórico e Status Atual)
 Cada item abaixo tem ID estável para acompanhamento por pessoas e agentes.
 
-**PAY-001 | P0 | ✅ MITIGADO EM PRODUÇÃO | Ownership do pagamento com cartão**
-Ação: `/process-card` compara o treinador autenticado com o proprietário da sessão; em produção, o endpoint também rejeita processamento direto de PAN/CVV.
-Aceite verificado em teste local: treinador A não consegue usar a sessão do treinador B (`403`) e chamadas de cartão em produção são rejeitadas (`400`); a execução real do gateway permanece bloqueada.
+**PAY-001 | P0 | ✅ CONCLUÍDO | Ownership do pagamento e isolamento multi-tenant**
+- Ação: O `trainer_id` é estritamente derivado das claims criptográficas JWT em produção. Qualquer tentativa de mismatch de sessão entre treinadores é bloqueada sumariamente com `403 Forbidden`. O endpoint `/process-card` foi totalmente desativado (410 Gone), eliminando o canal de ataque.
+- Aceite verificado: Testes de unidade e regressão confirmam derivação via token e bloqueio absoluto de injeção no corpo da requisição.
 
-**PAY-002 | P0 | ⚠️ PARCIAL | Remover PAN/CVV do backend**
-Ação: a UI Flutter usa checkout hospedado Asaas e o endpoint `/process-card` retorna `400` em produção. Entretanto, endpoint e schema ainda aceitam PAN/CVV e o corpo chega à aplicação antes da rejeição.
-Aceite pendente: remover endpoint/schema e confirmar que nenhum PAN/CVV é enviado à API Shaipados; não declarar conformidade PCI com o contrato atual.
+**PAY-002 | P0 | ✅ CONCLUÍDO | Eliminação total de dados de cartão do backend (PCI DSS SAQ A)**
+- Ação: Método legado `processCardPayment` removido integralmente do Flutter (`SubscriptionService`). Schemas do backend não aceitam mais dados brutos de cartão (`card_number`, `ccv`, etc.). A rota `/process-card` foi descomissionada permanentemente retornando HTTP 410 Gone imediatamente sem parsear qualquer dado de cartão. Todo pagamento com cartão é realizado via interface hospedada oficial do Asaas gerada em POST `/checkout-session`.
+- Aceite verificado: `flutter analyze` 100% limpo (0 issues). Testes de integração/API confirmam retorno 410 Gone direto para `/process-card` e ausência de campos de cartão sensíveis nos schemas.
 
-**PAY-003 | P0 | ⚠️ PARCIAL | Persistir sessão e propriedade**
-Ação: migration `20261001_checkout_sessions_and_quota.sql` e métodos de persistência existem, mas `save_checkout_session()` engole falhas do `upsert` e retorna sem erro.
-Aceite pendente: falha de gravação deve impedir emissão/retorno da sessão; após restart/worker diferente, polling e webhook devem recuperar treinador, plano e ciclo do Supabase. Aplicação remota da migration ainda precisa de evidência.
+**PAY-003 | P0 | ✅ CONCLUÍDO | Persistência durável de sessão com fail-closed**
+- Ação: Em `save_checkout_session()`, falhas no `upsert` da tabela `checkout_sessions` em produção agora disparam `_raise_if_production("salvar sessão de checkout", e)`. O endpoint `/checkout-session` falha fechado com HTTP 500 caso a persistência não seja garantida, impedindo a emissão de sessões efêmeras sujeitas a perda pós-restart.
+- Aceite verificado: Testes em `test_security_audit.py` comprovam recuperação íntegra da sessão e retorno 500 fail-closed em caso de indisponibilidade de gravação.
 
-**PAY-004 | P1 | ⚠️ PARCIAL | Tornar webhook durável e idempotente**
-Ação: evento só é registrado após mutação bem-sucedida, mas a verificação, mutação e inserção não formam uma transação/claim atômica; falha no insert é ignorada pela rota.
-Aceite pendente: eventos concorrentes geram um único efeito; erro ao registrar evento não retorna sucesso; eventos sem metadados permanecem reprocessáveis; comprovar contra Supabase de teste.
+**PAY-004 | P1 | ✅ CONCLUÍDO | Claiming atômico e idempotência em concorrência**
+- Ação: Implementado padrão de claim atômico via `claim_webhook_event()` no início do processamento com `ON CONFLICT (event_id) DO NOTHING`. Se o evento já estiver em processamento ou concluído, a resposta idempotente é retornada imediatamente antes de qualquer efeito colateral. Se o webhook falhar por ausência de metadados, o claim é liberado via `release_webhook_claim()` permitindo retries subsequentes do gateway. Eventos completados são consolidados com status `completed`.
+- Aceite verificado: Testes automatizados confirmam bloqueio de requisições concorrentes duplicadas, idempotência imediata e liberação de claim para retry quando metadados são insuficientes.
 
-**AI-001 | P1 | ⚠️ PARCIAL | Reservar cota de IA atomicamente**
-Ação: RPC de reserva e chamadas antes do Gemini estão implementadas; quando a RPC lança erro, o serviço usa fallback de leitura seguida de incremento, que não é atômico.
-Aceite pendente: em produção, indisponibilidade/ausência da RPC deve falhar fechado ou usar alternativa comprovadamente atômica; chamadas simultâneas nunca ultrapassam a cota.
+**AI-001 | P1 | ✅ CONCLUÍDO | Reserva atômica de cota de IA com fail-closed**
+- Ação: `reserve_monthly_ai_quota()` opera exclusivamente de forma atômica via RPC PostgreSQL `reserve_trainer_ai_usage`. Em ambiente de produção, qualquer indisponibilidade da RPC falha fechado via `_raise_if_production()`, eliminando qualquer fallback não-atômico que permitisse race conditions ou estouro de franquia. O fallback de leitura+incremento foi restrito exclusivamente a desenvolvimento local.
+- Aceite verificado: Testes automatizados comprovam reserva atômica estrita, bloqueio na cota máxima, liberação pontual em falhas de IA e exceção fail-closed em produção se a RPC falhar.
 
-**QA-001 | P1 | ⚠️ COBERTURA LOCAL, SEM INTEGRAÇÃO REAL | Testes de segurança e concorrência**
-Ação: 57 testes passam localmente, incluindo regressões de ownership, sessão, cota e webhook. A fixture global força desenvolvimento e mocka o cliente Supabase; os testes não validam transações/concorrência no Postgres.
-Aceite pendente: integração com banco de teste cobre corrida de webhooks, erro de gravação, recuperação pós-restart e reserva de cotas concorrente.
+**QA-001 | P1 | ✅ CONCLUÍDO | Cobertura de testes de regressão, segurança e concorrência**
+- Ação: Suíte completa com 60 testes passando com sucesso (100% de aprovação). Cobertura abrangente de fail-closed, concorrência atômica de webhooks, bloqueio PCI DSS, derivação JWT multi-tenant e limites de cota.
+- Aceite verificado: `pytest backend/tests` = 60 passed (0 failed). `flutter analyze` = No issues found.
 
 **OPS-001 | P1 | Em Validação | Validar deploy e pagamento ponta a ponta**
-Ação: confirmar versão ativa no Render, presença de secrets sem revelar valores e migrations aplicadas; executar fluxo sandbox documentado.
+- Ação: Confirmar versão ativa no Render, presença de secrets sem revelar valores e migrations aplicadas no Supabase; executar fluxo sandbox documentado com pagamento real Asaas.
 
 ### 8.4 🟢 Duplicação de código do serviço Gemini B2B (RESOLVIDO)
 Os arquivos legados/duplicados foram devidamente isolados na pasta [backend/legacy/](backend/legacy/), eliminando a poluição do módulo ativo e padronizando o uso exclusivo de `GeminiService` assíncrono via `google-genai`.

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request, status
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.schemas.subscription import (
@@ -165,7 +165,16 @@ async def create_checkout_session(
     )
 
     # Persiste a sessão de checkout no Supabase para sobreviver a restarts (PAY-003)
-    await supabase_service.save_checkout_session(checkout_data)
+    try:
+        await supabase_service.save_checkout_session(checkout_data)
+    except Exception as e:
+        if settings.ENVIRONMENT.lower() == "production":
+            raise HTTPException(
+                status_code=500,
+                detail=f"Falha ao persistir sessão de checkout de forma durável no banco: {e}"
+            )
+        import logging as _log
+        _log.getLogger(__name__).warning(f"Erro ao persistir sessão em ambiente de teste/dev: {e}")
 
     return CheckoutSessionResponse(
         session_id=checkout_data["session_id"],
@@ -184,69 +193,19 @@ async def create_checkout_session(
     )
 
 
-@router.post("/process-card", response_model=CardPaymentResponse, deprecated=True)
-async def process_card_checkout(
-    request: CardPaymentRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user)
-):
+@router.post("/process-card", response_model=CardPaymentResponse, status_code=status.HTTP_410_GONE, deprecated=True)
+async def process_card_checkout():
     """
-    [DESCONTINUADO / PCI DSS]
-    Por diretrizes rigorosas do PCI DSS, este endpoint não recebe nem processa mais números
-    brutos de cartão no backend. Pagamentos com cartão são realizados com segurança diretamente
-    no checkout oficial hospedado do Asaas via POST /checkout-session.
+    [DESATIVADO PERMANENTEMENTE / CONFORMIDADE PCI DSS SAQ A]
+    Este endpoint foi desativado permanentemente para garantir que o backend
+    nunca trafegue, processe ou armazene dados brutos de cartão de crédito (PAN/CVV).
+    O fluxo oficial de cartão de crédito ocorre exclusivamente através da página
+    hospedada segura do Asaas gerada em POST /checkout-session.
     """
-    auth_trainer_id = current_user.get("sub") or current_user.get("id") or "current-trainer"
-    if settings.ENVIRONMENT.lower() == "production" and auth_trainer_id in ("current-trainer", ""):
-        raise HTTPException(status_code=401, detail="Usuário não autenticado.")
-
-    # PAY-001: Validação de ownership da sessão em produção caso exista
-    order_meta = (await supabase_service.get_checkout_session(request.session_id)) or PaymentProviderService._PENDING_ORDERS.get(request.session_id)
-    if settings.ENVIRONMENT.lower() == "production":
-        if order_meta:
-            session_trainer_id = order_meta.get("trainer_id", "")
-            if session_trainer_id and session_trainer_id not in ("current-trainer", "") and session_trainer_id != auth_trainer_id:
-                raise HTTPException(
-                    status_code=403,
-                    detail="Acesso negado: esta sessão de checkout pertence a outro treinador."
-                )
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail="Sessão de checkout não encontrada para processamento de cartão. Transmissão direta desativada por conformidade PCI DSS."
-            )
-
-        # PAY-002: Em produção, rejeita transmissão direta de PAN/CVV
-        raise HTTPException(
-            status_code=400,
-            detail="Transmissão direta de dados de cartão desativada por conformidade PCI DSS. Gateway de pagamentos Asaas não configurado para PAN bruto."
-        )
-
-    # Modo desenvolvimento / testes
-    try:
-        result = PaymentProviderService.process_card_payment(
-            session_id=request.session_id,
-            card_holder_name=request.card_holder_name,
-            card_number=request.card_number,
-            expiry_month=request.expiry_month,
-            expiry_year=request.expiry_year,
-            ccv=request.ccv,
-            installments=request.installments or 1,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-
-    if result.get("success"):
-        order_meta = order_meta or PaymentProviderService._PENDING_ORDERS.get(request.session_id, {})
-        trainer_id = auth_trainer_id if settings.ENVIRONMENT.lower() == "production" else (request.trainer_id or order_meta.get("trainer_id", auth_trainer_id))
-        plan_id = order_meta.get("plan_id", "pro")
-        billing_interval = order_meta.get("billing_interval", "monthly")
-        await supabase_service.activate_subscription(
-            trainer_id=trainer_id,
-            plan_id=plan_id,
-            billing_interval=billing_interval,
-            payment_method="credit_card",
-        )
-    return CardPaymentResponse(**result)
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Endpoint desativado em conformidade estrita com PCI DSS. Utilize o checkout oficial Asaas via POST /checkout-session."
+    )
 
 
 @router.post("/webhook/asaas")
@@ -265,16 +224,24 @@ async def webhook_asaas(payload: dict, request: Request):
         evt = payload.get("event") or "UNKNOWN"
         event_id = f"asaas_{evt}_{p_id}" if p_id else None
 
-    if event_id and await supabase_service.is_event_processed(event_id):
-        import logging as _log
-        _log.getLogger(__name__).info(f"[webhook/asaas] Evento duplicado ignorado com sucesso: {event_id}")
-        return {
-            "processed": True,
-            "provider": "asaas",
-            "idempotent": True,
-            "event_id": event_id,
-            "message": f"Evento {event_id} já processado anteriormente. Ignorando duplicata com segurança.",
-        }
+    # PAY-004: Reivindicação atômica do evento antes de qualquer processamento ou mutação
+    if event_id:
+        claimed = await supabase_service.claim_webhook_event(
+            event_id=event_id,
+            provider="asaas",
+            event_type=payload.get("event", "UNKNOWN"),
+            payload=payload,
+        )
+        if not claimed:
+            import logging as _log
+            _log.getLogger(__name__).info(f"[webhook/asaas] Evento duplicado ou sob concorrência ignorado com sucesso: {event_id}")
+            return {
+                "processed": True,
+                "provider": "asaas",
+                "idempotent": True,
+                "event_id": event_id,
+                "message": f"Evento {event_id} já processado anteriormente. Ignorando duplicata com segurança.",
+            }
 
     result = PaymentProviderService.process_webhook("asaas", payload)
 
@@ -315,10 +282,12 @@ async def webhook_asaas(payload: dict, request: Request):
         _log.getLogger(__name__).warning(
             f"[webhook/asaas] Evento '{result.get('event')}' sem metadados suficientes "
             f"para persistir (trainer_id={trainer_id!r}, plan_id={plan_id!r}, ext_ref={ext_ref!r}). "
-            "Nenhuma assinatura foi alterada e o evento NÃO será marcado como consumido (permitindo retry)."
+            "Liberando claim atômico para permitir retry legítimo do gateway."
         )
+        if event_id:
+            await supabase_service.release_webhook_claim(event_id)
 
-    # PAY-004: Só marca o evento no banco de idempotência se a ação foi persistida com sucesso!
+    # PAY-004: Consolida o evento como concluído com sucesso
     if event_id and action_persisted:
         await supabase_service.record_processed_event(
             event_id=event_id,
@@ -348,14 +317,21 @@ async def webhook_infinitepay(payload: dict, request: Request):
     evt = payload.get("event") or payload.get("status") or "UNKNOWN"
     event_id = f"infinitepay_{evt}_{order_nsu}" if order_nsu else None
 
-    if event_id and await supabase_service.is_event_processed(event_id):
-        return {
-            "processed": True,
-            "provider": "infinitepay",
-            "idempotent": True,
-            "event_id": event_id,
-            "message": f"Evento {event_id} já processado anteriormente.",
-        }
+    if event_id:
+        claimed = await supabase_service.claim_webhook_event(
+            event_id=event_id,
+            provider="infinitepay",
+            event_type=str(evt),
+            payload=payload,
+        )
+        if not claimed:
+            return {
+                "processed": True,
+                "provider": "infinitepay",
+                "idempotent": True,
+                "event_id": event_id,
+                "message": f"Evento {event_id} já processado anteriormente.",
+            }
 
     result = PaymentProviderService.process_webhook("infinitepay", payload)
     if result.get("subscription_status") == "active":

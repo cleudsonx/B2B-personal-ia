@@ -328,39 +328,6 @@ class SubscriptionService {
     return false;
   }
 
-  /// Processa o pagamento transparente com cartão de crédito in-app via Asaas
-  static Future<bool> processCardPayment({
-    required String sessionId,
-    required String cardHolderName,
-    required String cardNumber,
-    required String expiryMonth,
-    required String expiryYear,
-    required String ccv,
-    int installments = 1,
-  }) async {
-    try {
-      final user = AuthService.currentUser;
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/process-card');
-      final body = jsonEncode({
-        'session_id': sessionId,
-        'card_holder_name': cardHolderName,
-        'card_number': cardNumber,
-        'expiry_month': expiryMonth,
-        'expiry_year': expiryYear,
-        'ccv': ccv,
-        'installments': installments,
-        'trainer_id': user?.id ?? 'current-trainer',
-      });
-      final res = await _client.post(uri, headers: _headers, body: body).timeout(const Duration(seconds: 8));
-      if (res.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-        return data['success'] == true;
-      }
-    } catch (e) {
-      debugPrint('Erro ao processar cartão in-app: $e');
-    }
-    return false;
-  }
 
   /// Simula e calcula o impacto financeiro (pró-rata) e as regras de transição de plano (Upgrade / Downgrade)
   static Future<PlanChangeSimulationModel> simulatePlanChange({

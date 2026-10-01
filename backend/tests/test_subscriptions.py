@@ -469,27 +469,39 @@ def test_asaas_transparent_checkout_and_card_processing():
     assert sess_data["provider"] == "asaas"
     assert sess_data["status"] == "pending"
 
-    # 2. Executa pagamento transparente com cartão de crédito in-app
+    # 2. Verifica desativação definitiva de process-card (PCI DSS SAQ A)
     card_res = client.post("/api/v1/subscriptions/process-card", json={
         "session_id": session_id,
-        "card_holder_name": "PERSONAL INOVADOR",
-        "card_number": "4111 2222 3333 4444",
-        "expiry_month": "12",
-        "expiry_year": "2029",
-        "ccv": "123",
-        "installments": 1,
-        "trainer_id": trainer_id
     })
-    assert card_res.status_code == 200
+    assert card_res.status_code == 410
     card_data = card_res.json()
-    assert card_data["success"] is True
-    assert card_data["status"] == "active"
+    assert "PCI DSS" in card_data["detail"]
+    assert "checkout-session" in card_data["detail"]
 
-    # 3. Consulta status via endpoint de polling em tempo real
+    # 3. Consulta status via endpoint de polling em tempo real (inicialmente pendente)
     poll_res = client.get(f"/api/v1/subscriptions/check-status/{session_id}")
     assert poll_res.status_code == 200
     poll_data = poll_res.json()
-    assert poll_data["paid"] is True
+    assert poll_data["paid"] is False
+
+    # 4. Confirmação ocorre exclusivamente via webhook oficial Asaas
+    wh_res = client.post("/api/v1/subscriptions/webhook/asaas", json={
+        "id": f"evt_card_test_{session_id}",
+        "event": "PAYMENT_RECEIVED",
+        "payment": {
+            "id": f"pay_card_{session_id}",
+            "externalReference": session_id,
+            "status": "RECEIVED",
+            "value": 89.0,
+            "billingType": "CREDIT_CARD",
+        }
+    })
+    assert wh_res.status_code == 200
+
+    # 5. Polling agora reflete que foi compensado com sucesso
+    poll_after = client.get(f"/api/v1/subscriptions/check-status/{session_id}")
+    assert poll_after.status_code == 200
+    assert poll_after.json()["paid"] is True
 
 
 def test_production_activate_plan_blocks_unpaid_tiers(monkeypatch):
@@ -553,24 +565,16 @@ def test_production_process_card_requires_asaas_confirmation(monkeypatch):
     from app.api.deps import get_current_user
 
     monkeypatch.setattr(settings, "ENVIRONMENT", "production")
-    monkeypatch.setattr(settings, "ASAAS_API_KEY", "")
     client = TestClient(app)
 
     app.dependency_overrides[get_current_user] = lambda: {"sub": "tr-card-tester-1", "role": "authenticated"}
     try:
-        # Sem Asaas configurado em produção, process-card deve falhar fechado com 400
+        # Em conformidade com PCI DSS, /process-card está desativado (410 Gone)
         res = client.post("/api/v1/subscriptions/process-card", json={
             "session_id": "sess_non_existent",
-            "card_holder_name": "CARLOS SILVA",
-            "card_number": "4111 2222 3333 4444",
-            "expiry_month": "11",
-            "expiry_year": "2029",
-            "ccv": "123",
-            "installments": 1,
-            "trainer_id": "tr-card-tester-1"
         })
-        assert res.status_code == 400
-        assert "Sessão de checkout não encontrada" in res.json()["detail"] or "Gateway de pagamentos Asaas não configurado" in res.json()["detail"]
+        assert res.status_code == 410
+        assert "PCI DSS" in res.json()["detail"]
     finally:
         app.dependency_overrides.pop(get_current_user, None)
 

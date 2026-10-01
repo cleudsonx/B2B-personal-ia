@@ -143,6 +143,15 @@ class SupabaseService:
             return True
 
         client = await self.get_client()
+        if not client:
+            if self._is_production():
+                raise RuntimeError("Cliente Supabase indisponível para reservar cota de IA em produção.")
+            current = self.get_ai_generations_used(trainer_id)
+            if max_generations >= 0 and current >= max_generations:
+                return False
+            self.increment_ai_generations(trainer_id)
+            return True
+
         trainer_uuid = to_valid_uuid_str(trainer_id)
         period_start = datetime.now(timezone.utc).date().replace(day=1).isoformat()
         try:
@@ -158,8 +167,11 @@ class SupabaseService:
                 result = result.get("reserve_trainer_ai_usage")
             return bool(result)
         except Exception as e:
-            # Fallback caso a RPC ainda não tenha sido aplicada no banco
-            logger.warning(f"RPC reserve_trainer_ai_usage indisponível ({e}). Usando fallback de consulta/incremento.")
+            if self._is_production():
+                logger.error(f"Erro ao executar RPC reserve_trainer_ai_usage em produção: {e}")
+                self._raise_if_production("reservar cota de IA via RPC", e)
+            # Fallback exclusivo para ambiente de desenvolvimento local
+            logger.warning(f"RPC reserve_trainer_ai_usage indisponível ({e}) em desenvolvimento. Usando fallback de consulta/incremento.")
             used = await self.get_monthly_ai_generations_used(trainer_id)
             if max_generations >= 0 and used >= max_generations:
                 return False
@@ -202,6 +214,8 @@ class SupabaseService:
 
         client = await self.get_client()
         if not client:
+            if self._is_production():
+                raise RuntimeError("Cliente Supabase indisponível para persistir sessão de checkout em produção.")
             return
 
         trainer_uuid = to_valid_uuid_str(session_data.get("trainer_id", ""))
@@ -223,7 +237,8 @@ class SupabaseService:
             await client.table("checkout_sessions").upsert(payload, on_conflict="session_id").execute()
             logger.info(f"[Supabase] Sessão de checkout {session_id} persistida com sucesso.")
         except Exception as e:
-            logger.warning(f"Erro ao persistir sessão de checkout {session_id} no Supabase: {e}")
+            logger.error(f"Erro ao persistir sessão de checkout {session_id} no Supabase: {e}")
+            self._raise_if_production("salvar sessão de checkout", e)
 
     async def get_checkout_session(self, session_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -283,6 +298,101 @@ class SupabaseService:
             logger.error(f"Erro ao atualizar status de assinatura no Supabase: {e}")
             self._raise_if_production("atualizar status de assinatura", e)
 
+    async def claim_webhook_event(
+        self,
+        event_id: str,
+        provider: str,
+        event_type: str,
+        payload: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        """
+        Reivindica atomicamente o processamento de um evento de webhook (PAY-004).
+        Retorna True se este processo obteve a posse exclusiva do evento.
+        Retorna False se o evento já foi processado ou está sendo processado concorrentemente.
+        """
+        if not event_id:
+            return True
+
+        # 1. Modo de desenvolvimento / memória local
+        if not self._is_production():
+            if event_id in self._mem_processed_events:
+                return False
+            self._mem_processed_events[event_id] = {
+                "event_id": event_id,
+                "provider": provider,
+                "event_type": event_type,
+                "status": "processing",
+                "claimed_at": datetime.now(timezone.utc).isoformat(),
+            }
+            return True
+
+        # 2. Modo produção com Supabase
+        client = await self.get_client()
+        if not client:
+            if event_id in self._mem_processed_events:
+                return False
+            self._mem_processed_events[event_id] = {
+                "event_id": event_id,
+                "provider": provider,
+                "event_type": event_type,
+                "status": "processing",
+                "claimed_at": datetime.now(timezone.utc).isoformat(),
+            }
+            return True
+
+        try:
+            # Tenta inserção com ignore_duplicates (ON CONFLICT (event_id) DO NOTHING)
+            res = await client.table("processed_webhook_events").upsert(
+                {
+                    "event_id": event_id,
+                    "provider": provider,
+                    "event_type": event_type,
+                    "payload": payload or {},
+                    "processed_at": datetime.now(timezone.utc).isoformat(),
+                },
+                on_conflict="event_id",
+                ignore_duplicates=True,
+            ).execute()
+            if res.data and len(res.data) > 0:
+                self._mem_processed_events[event_id] = {"event_id": event_id, "status": "processing"}
+                return True
+            else:
+                # Conflito atômico: outro worker já reivindicou o evento
+                return False
+        except Exception as e:
+            err_msg = str(e).lower()
+            if "duplicate" in err_msg or "conflict" in err_msg or "unique" in err_msg:
+                return False
+            logger.warning(f"Erro ao reivindicar webhook atomicamente {event_id}: {e}")
+            if event_id in self._mem_processed_events:
+                return False
+            self._mem_processed_events[event_id] = {"event_id": event_id, "status": "processing"}
+            return True
+
+    async def release_webhook_claim(self, event_id: str) -> None:
+        """
+        Libera o claim atômico de um evento de webhook caso seu processamento
+        tenha sido interrompido por ausência de metadados, permitindo que retries
+        legítimos do gateway de pagamento sejam processados futuramente.
+        """
+        if not event_id:
+            return
+
+        self._mem_processed_events.pop(event_id, None)
+
+        if not self._is_production():
+            return
+
+        client = await self.get_client()
+        if not client:
+            return
+
+        try:
+            await client.table("processed_webhook_events").delete().eq("event_id", event_id).execute()
+            logger.info(f"[Supabase] Claim do evento de webhook {event_id} liberado para retry.")
+        except Exception as e:
+            logger.warning(f"Erro ao liberar claim de webhook {event_id} no Supabase: {e}")
+
     async def is_event_processed(self, event_id: str) -> bool:
         """Verifica se um evento de webhook já foi processado anteriormente (idempotência)."""
         if not event_id:
@@ -322,6 +432,7 @@ class SupabaseService:
             "event_id": event_id,
             "provider": provider,
             "event_type": event_type,
+            "status": "completed",
             "processed_at": datetime.now(timezone.utc).isoformat(),
         }
         self._mem_processed_events[event_id] = event_record
@@ -334,13 +445,14 @@ class SupabaseService:
             return True
 
         try:
-            await client.table("processed_webhook_events").insert({
+            await client.table("processed_webhook_events").upsert({
                 "event_id": event_id,
                 "provider": provider,
                 "event_type": event_type,
                 "payload": payload or {},
-            }).execute()
-            logger.info(f"[Supabase] Evento de webhook {event_id} ({provider}) registrado com sucesso.")
+                "processed_at": datetime.now(timezone.utc).isoformat(),
+            }, on_conflict="event_id").execute()
+            logger.info(f"[Supabase] Evento de webhook {event_id} ({provider}) consolidado com sucesso.")
             return True
         except Exception as e:
             logger.warning(f"Erro ao persistir evento de webhook {event_id} no Supabase: {e}")

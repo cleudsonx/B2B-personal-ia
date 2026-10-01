@@ -97,21 +97,25 @@ class PlanActivationRequest(BaseModel):
 
 
 class CardPaymentRequest(BaseModel):
-    session_id: str = Field(..., description="ID da sessão de checkout")
-    card_holder_name: str = Field(..., description="Nome do titular como no cartão")
-    card_number: str = Field(..., description="Número completo do cartão")
-    expiry_month: str = Field(..., description="Mês de expiração (MM)")
-    expiry_year: str = Field(..., description="Ano de expiração (AA ou AAAA)")
-    ccv: str = Field(..., description="Código de segurança CVV")
-    installments: Optional[int] = Field(1, description="Número de parcelas (1 a 12)")
-    trainer_id: Optional[str] = Field("current-trainer", description="ID do treinador")
+    """
+    [DESCONTINUADO / PCI DSS]
+    Schema descontinuado. O backend não aceita nem processa dados brutos de cartão (PAN/CVV)
+    em conformidade com o escopo PCI DSS SAQ A.
+    """
+    session_id: Optional[str] = Field(None, description="ID da sessão de checkout (opcional)")
 
 
 class CardPaymentResponse(BaseModel):
-    success: bool
-    session_id: str
-    status: str = "active"
-    message: str
+    """
+    Resposta padrão indicando desativação do processamento in-app de cartão.
+    """
+    success: bool = False
+    session_id: Optional[str] = None
+    status: str = "deprecated"
+    message: str = (
+        "Endpoint desativado em conformidade estrita com PCI DSS. "
+        "Utilize o checkout oficial Asaas via POST /checkout-session."
+    )
     plan_id: Optional[str] = None
     trainer_id: Optional[str] = None
     billing_interval: Optional[str] = "monthly"

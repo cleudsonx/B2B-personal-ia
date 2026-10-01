@@ -45,10 +45,15 @@ def test_checkout_session_uses_auth_trainer_id(monkeypatch):
     from app.main import app
     from app.core.config import settings
     from app.api.deps import get_current_user
+    from app.services.supabase_service import supabase_service
     from app.services.payment_service import PaymentProviderService
 
     monkeypatch.setattr(settings, "ENVIRONMENT", "production")
     monkeypatch.setattr(settings, "ASAAS_API_KEY", "")  # evita chamada HTTP real
+
+    async def mock_save_ok(data):
+        supabase_service._mem_checkout_sessions[data["session_id"]] = dict(data)
+    monkeypatch.setattr(supabase_service, "save_checkout_session", mock_save_ok)
 
     auth_id = "auth-trainer-prod-001"
     body_id = "attacker-trainer-999"
@@ -326,74 +331,65 @@ def test_atomic_ai_quota_reservation_and_release():
     asyncio.get_event_loop().run_until_complete(run())
 
 
-# ---------------------------------------------------------------------------
-# PAY-001 & PAY-002 — Bloqueio de PAN/CVV e Validação de Ownership em process-card
-# ---------------------------------------------------------------------------
-
-def test_process_card_blocks_cross_trainer_ownership(monkeypatch):
-    """Em produção, /process-card deve retornar 403 se a sessão pertencer a outro treinador."""
-    from fastapi.testclient import TestClient
-    from app.main import app
-    from app.core.config import settings
-    from app.api.deps import get_current_user
+def test_ai_quota_reservation_fails_closed_in_production_if_rpc_fails(monkeypatch):
+    """Em produção, se a chamada da RPC falhar, não deve usar fallback vulnerável a race conditions."""
     from app.services.supabase_service import supabase_service
+    from app.core.config import settings
+    import pytest
     import asyncio
 
     monkeypatch.setattr(settings, "ENVIRONMENT", "production")
 
-    sess_id = "sess_card_ownership_test_001"
-    asyncio.get_event_loop().run_until_complete(
-        supabase_service.save_checkout_session({
-            "session_id": sess_id,
-            "trainer_id": "trainer-legit-owner",
-            "plan_id": "pro",
-            "billing_interval": "monthly",
-            "amount_cents": 8900,
-        })
-    )
+    class MockFailingClient:
+        def rpc(self, name, params):
+            class RPC:
+                async def execute(self):
+                    raise RuntimeError("RPC reserve_trainer_ai_usage connection timeout")
+            return RPC()
 
-    # Invasor tenta usar o endpoint de cartão na sessão de outro
-    app.dependency_overrides[get_current_user] = lambda: {"sub": "trainer-attacker-99", "role": "authenticated"}
-    try:
-        client = TestClient(app)
-        res = client.post("/api/v1/subscriptions/process-card", json={
-            "session_id": sess_id,
-            "card_holder_name": "TEST",
-            "card_number": "4111",
-            "expiry_month": "12",
-            "expiry_year": "2030",
-            "ccv": "123",
-        })
-        assert res.status_code == 403
-        assert "Acesso negado" in res.json()["detail"]
-    finally:
-        app.dependency_overrides.pop(get_current_user, None)
+    async def mock_get_client():
+        return MockFailingClient()
+
+    monkeypatch.setattr(supabase_service, "get_client", mock_get_client)
+
+    async def run():
+        with pytest.raises(RuntimeError) as exc_info:
+            await supabase_service.reserve_monthly_ai_quota("tr-fail-closed-ai", 10)
+        assert "Falha ao reservar cota de IA via RPC no Supabase" in str(exc_info.value)
+
+    asyncio.get_event_loop().run_until_complete(run())
+
+
+# ---------------------------------------------------------------------------
+# PAY-001 & PAY-002 — Desativação Definitiva de /process-card e Eliminação do Escopo PCI DSS
+# ---------------------------------------------------------------------------
+
+def test_process_card_is_permanently_decommissioned_http_410():
+    """/process-card deve retornar HTTP 410 Gone imediatamente para qualquer requisição."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    client = TestClient(app)
+    res = client.post("/api/v1/subscriptions/process-card", json={"session_id": "test_sess"})
+    assert res.status_code == 410
+    detail = res.json().get("detail", "")
+    assert "PCI DSS" in detail
+    assert "POST /checkout-session" in detail
 
 
 def test_process_card_rejects_raw_card_data_in_production(monkeypatch):
-    """Em produção, /process-card deve rejeitar envio de PAN/CVV com 400 por conformidade PCI DSS."""
+    """Em produção, /process-card permanece 410 Gone desativado, impedindo tráfego de dados de cartão."""
     from fastapi.testclient import TestClient
     from app.main import app
     from app.core.config import settings
-    from app.api.deps import get_current_user
 
     monkeypatch.setattr(settings, "ENVIRONMENT", "production")
-    app.dependency_overrides[get_current_user] = lambda: {"sub": "tr-pci-tester-1", "role": "authenticated"}
-    try:
-        client = TestClient(app)
-        res = client.post("/api/v1/subscriptions/process-card", json={
-            "session_id": "sess_non_existent",
-            "card_holder_name": "CARLOS SILVA",
-            "card_number": "4111 2222 3333 4444",
-            "expiry_month": "11",
-            "expiry_year": "2029",
-            "ccv": "123",
-            "installments": 1,
-        })
-        assert res.status_code == 400
-        assert "PCI DSS" in res.json()["detail"] or "desativada" in res.json()["detail"]
-    finally:
-        app.dependency_overrides.pop(get_current_user, None)
+    client = TestClient(app)
+    res = client.post("/api/v1/subscriptions/process-card", json={
+        "session_id": "sess_non_existent",
+    })
+    assert res.status_code == 410
+    assert "PCI DSS" in res.json()["detail"]
 
 
 # ---------------------------------------------------------------------------
@@ -423,6 +419,35 @@ def test_durable_checkout_session_storage():
         assert retrieved["amount_cents"] == 142800
 
     asyncio.get_event_loop().run_until_complete(run())
+
+
+def test_checkout_session_fails_closed_in_production_if_persistence_fails(monkeypatch):
+    """Em produção, falha na persistência da sessão de checkout deve retornar HTTP 500 (fail-closed)."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.core.config import settings
+    from app.api.deps import get_current_user
+    from app.services.supabase_service import supabase_service
+
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    app.dependency_overrides[get_current_user] = lambda: {"sub": "tr-fail-closed-test", "role": "authenticated"}
+
+    async def mock_save_fail(data):
+        raise RuntimeError("Falha ao salvar sessão de checkout no Supabase.")
+
+    monkeypatch.setattr(supabase_service, "save_checkout_session", mock_save_fail)
+    try:
+        client = TestClient(app)
+        res = client.post("/api/v1/subscriptions/checkout-session", json={
+            "plan_id": "pro",
+            "billing_interval": "monthly",
+            "payment_method": "pix",
+            "trainer_id": "tr-fail-closed-test",
+        })
+        assert res.status_code == 500
+        assert "Falha ao persistir sessão de checkout" in res.json()["detail"]
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
 
 
 def test_webhook_does_not_mark_event_processed_if_metadata_missing():
@@ -455,4 +480,44 @@ def test_webhook_does_not_mark_event_processed_if_metadata_missing():
         assert await supabase_service.is_event_processed(unmatched_evt_id) is False
 
     asyncio.get_event_loop().run_until_complete(check())
+
+
+def test_webhook_atomic_claim_blocks_concurrent_duplicate():
+    """Se um evento já foi reivindicado/processado, chamadas subsequentes retornam resposta idempotente imediatamente."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.services.supabase_service import supabase_service
+    import asyncio
+
+    client = TestClient(app)
+    claimed_evt_id = "evt_claimed_test_888"
+
+    async def pre_claim():
+        # Simula reivindicação atômica já ocorrida
+        await supabase_service.claim_webhook_event(
+            event_id=claimed_evt_id,
+            provider="asaas",
+            event_type="PAYMENT_RECEIVED"
+        )
+    asyncio.get_event_loop().run_until_complete(pre_claim())
+
+    # Segunda requisição concorrente com o mesmo event_id
+    res = client.post(
+        "/api/v1/subscriptions/webhook/asaas",
+        json={
+            "id": claimed_evt_id,
+            "event": "PAYMENT_RECEIVED",
+            "payment": {
+                "id": "pay_dup_1",
+                "value": 89.0,
+                "status": "RECEIVED",
+                "externalReference": "ref_dup_888"
+            }
+        }
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data.get("idempotent") is True
+    assert data.get("event_id") == claimed_evt_id
+
 
