@@ -1,6 +1,7 @@
+import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/theme_toggle_button.dart';
 import '../../models/subscription_model.dart';
@@ -656,15 +657,82 @@ class _CheckoutBottomSheet extends StatefulWidget {
   State<_CheckoutBottomSheet> createState() => _CheckoutBottomSheetState();
 }
 
-class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
+class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
+    with SingleTickerProviderStateMixin {
   String _paymentMethod = 'pix'; // 'pix' ou 'credit_card'
   bool _isLoading = false;
+  bool _isSubmittingCard = false;
+  bool _isPaid = false;
   CheckoutSessionModel? _session;
+  Timer? _pollingTimer;
+
+  // Controladores do Cartão
+  final TextEditingController _cardNumberController = TextEditingController();
+  final TextEditingController _cardHolderController = TextEditingController();
+  final TextEditingController _expiryController = TextEditingController();
+  final TextEditingController _cvvController = TextEditingController();
+  final FocusNode _cvvFocusNode = FocusNode();
+
+  // Animação 3D de Giro do Cartão
+  late AnimationController _flipController;
+  late Animation<double> _flipAnimation;
 
   @override
   void initState() {
     super.initState();
+    _flipController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 450),
+    );
+    _flipAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _flipController, curve: Curves.easeInOutBack),
+    );
+
+    _cvvFocusNode.addListener(() {
+      if (_cvvFocusNode.hasFocus) {
+        _flipController.forward();
+      } else {
+        _flipController.reverse();
+      }
+    });
+
+    _cardNumberController.addListener(() => setState(() {}));
+    _cardHolderController.addListener(() => setState(() {}));
+    _expiryController.addListener(() => setState(() {}));
+    _cvvController.addListener(() => setState(() {}));
+
     _createSession();
+  }
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    _flipController.dispose();
+    _cardNumberController.dispose();
+    _cardHolderController.dispose();
+    _expiryController.dispose();
+    _cvvController.dispose();
+    _cvvFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _startPixPolling() {
+    _pollingTimer?.cancel();
+    if (_session == null) return;
+
+    _pollingTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) async {
+      if (!mounted || _isPaid) {
+        timer.cancel();
+        return;
+      }
+      final paid = await SubscriptionService.checkPaymentStatus(_session!.sessionId);
+      if (paid && mounted) {
+        timer.cancel();
+        setState(() => _isPaid = true);
+        HapticFeedback.heavyImpact();
+        _showSuccessNotification();
+      }
+    });
   }
 
   Future<void> _createSession() async {
@@ -673,13 +741,141 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
       planId: widget.plan.id,
       billingInterval: widget.isYearly ? 'yearly' : 'monthly',
       paymentMethod: _paymentMethod,
+      provider: 'asaas',
     );
     if (mounted) {
       setState(() {
         _session = session;
         _isLoading = false;
       });
+      if (_paymentMethod == 'pix') {
+        _startPixPolling();
+      }
     }
+  }
+
+  Future<void> _submitCardPayment() async {
+    final num = _cardNumberController.text.replaceAll(RegExp(r'\s+'), '');
+    if (num.length < 13) {
+      _showError('Por favor, informe o número completo do cartão.');
+      return;
+    }
+    if (_cardHolderController.text.trim().isEmpty) {
+      _showError('Informe o nome impresso no cartão.');
+      return;
+    }
+    final expParts = _expiryController.text.split('/');
+    if (expParts.length != 2 || expParts[0].length != 2 || expParts[1].length != 2) {
+      _showError('Validade inválida. Use o formato MM/AA.');
+      return;
+    }
+    if (_cvvController.text.length < 3) {
+      _showError('CVV inválido.');
+      return;
+    }
+
+    setState(() => _isSubmittingCard = true);
+    final success = await SubscriptionService.processCardPayment(
+      sessionId: _session?.sessionId ?? 'sess_asaas_${DateTime.now().millisecondsSinceEpoch}',
+      cardHolderName: _cardHolderController.text.trim().toUpperCase(),
+      cardNumber: num,
+      expiryMonth: expParts[0],
+      expiryYear: expParts[1],
+      ccv: _cvvController.text.trim(),
+    );
+
+    if (mounted) {
+      setState(() => _isSubmittingCard = false);
+      if (success) {
+        setState(() => _isPaid = true);
+        HapticFeedback.heavyImpact();
+        _showSuccessNotification();
+      } else {
+        _showError('Não foi possível processar o cartão. Tente via Pix ou verifique os dados.');
+      }
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.red.shade900,
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message, style: const TextStyle(fontSize: 13))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSuccessNotification() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card(context),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFF10B981), width: 2),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 54),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '🎉 Pagamento Aprovado!',
+              style: TextStyle(
+                color: AppColors.text(context),
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Sua assinatura do plano ${widget.plan.name} já foi ativada com sucesso.',
+              style: TextStyle(color: AppColors.subtext(context), fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              onPressed: () {
+                Navigator.pop(ctx);
+                widget.onSuccess();
+              },
+              child: const Text('Acessar Meu Painel', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _detectCardBrand(String number) {
+    final clean = number.replaceAll(RegExp(r'\s+'), '');
+    if (clean.startsWith('4')) return 'VISA';
+    if (RegExp(r'^(5[1-5]|222[1-9]|22[3-9]|2[3-6]|27[0-1]|2720)').hasMatch(clean)) return 'MASTERCARD';
+    if (clean.startsWith('34') || clean.startsWith('37')) return 'AMEX';
+    if (RegExp(r'^(4011|4389|5041|6363|5067|4576|4011)').hasMatch(clean)) return 'ELO';
+    if (clean.startsWith('6062')) return 'HIPERCARD';
+    return 'CARTÃO';
   }
 
   @override
@@ -687,44 +883,70 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
     final amount = widget.isYearly ? widget.plan.priceYearlyTotal : widget.plan.priceMonthly;
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
+      height: MediaQuery.of(context).size.height * 0.90,
       decoration: BoxDecoration(
         color: AppColors.card(context),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         border: Border(top: BorderSide(color: AppColors.cardBorder(context), width: 1.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 30,
+            offset: const Offset(0, -10),
+          ),
+        ],
       ),
       child: Column(
         children: [
           const SizedBox(height: 12),
           Container(
-            width: 40,
-            height: 4,
+            width: 44,
+            height: 5,
             decoration: BoxDecoration(
-              color: AppColors.subtext(context).withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(2),
+              color: AppColors.subtext(context).withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(3),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
 
-          // Header
+          // Header Topo
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 22),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Assinar ${widget.plan.name}',
-                      style: TextStyle(
-                        color: AppColors.text(context),
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          'Checkout Seguro',
+                          style: TextStyle(
+                            color: AppColors.text(context),
+                            fontSize: 19,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+                          ),
+                          child: const Text(
+                            '🛡️ Asaas SSL 256-bit',
+                            style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      'R\$ ${amount.toStringAsFixed(2)} • ${widget.isYearly ? "Cobrança Anual (20% OFF)" : "Mensalidade"}',
+                      '${widget.plan.name} • R\$ ${amount.toStringAsFixed(2)}${widget.isYearly ? "/ano (20% OFF)" : "/mês"}',
                       style: TextStyle(
                         color: AppColors.emerald(context),
                         fontSize: 13,
@@ -734,7 +956,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                   ],
                 ),
                 IconButton(
-                  icon: Icon(Icons.close, color: AppColors.subtext(context)),
+                  icon: Icon(Icons.close_rounded, color: AppColors.subtext(context)),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
@@ -742,77 +964,126 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
           ),
           const SizedBox(height: 14),
 
-          // Payment Method Selector
+          // Seletor de Método de Pagamento
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 22),
             child: Row(
               children: [
                 Expanded(
-                  child: _buildPaymentMethodTab(
+                  child: _buildMethodTab(
                     label: 'PIX Instantâneo',
                     icon: Icons.pix_rounded,
                     isSelected: _paymentMethod == 'pix',
                     activeColor: AppColors.accentBlue(context),
                     onTap: () {
-                      setState(() => _paymentMethod = 'pix');
-                      _createSession();
+                      if (_paymentMethod != 'pix') {
+                        setState(() => _paymentMethod = 'pix');
+                        _createSession();
+                      }
                     },
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: _buildPaymentMethodTab(
-                    label: 'Cartão de Crédito',
+                  child: _buildMethodTab(
+                    label: 'Cartão 3D Recorrente',
                     icon: Icons.credit_card_rounded,
                     isSelected: _paymentMethod == 'credit_card',
                     activeColor: AppColors.emerald(context),
                     onTap: () {
-                      setState(() => _paymentMethod = 'credit_card');
-                      _createSession();
+                      if (_paymentMethod != 'credit_card') {
+                        setState(() => _paymentMethod = 'credit_card');
+                        _pollingTimer?.cancel();
+                        _createSession();
+                      }
                     },
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
+          // Card de ROI de Negócio
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: _buildRoiCard(context, amount),
+          ),
+          const SizedBox(height: 12),
+
+          // Conteúdo Dinâmico
           Expanded(
             child: _isLoading
-                ? Center(child: CircularProgressIndicator(color: AppColors.emerald(context)))
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(color: AppColors.emerald(context)),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Gerando sessão de pagamento segura...',
+                          style: TextStyle(color: AppColors.subtext(context), fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  )
                 : SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: _paymentMethod == 'pix' ? _buildPixContent() : _buildCreditCardContent(),
+                    padding: const EdgeInsets.symmetric(horizontal: 22),
+                    child: _paymentMethod == 'pix'
+                        ? _buildPixContent(context)
+                        : _buildCreditCardContent(context, amount),
                   ),
           ),
 
-          // Confirm Action
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.card(context),
-              border: Border(top: BorderSide(color: AppColors.cardBorder(context))),
-            ),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.emerald(context),
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          // Rodapé Fixo de Ação
+          if (_paymentMethod == 'credit_card')
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: AppColors.card(context),
+                border: Border(top: BorderSide(color: AppColors.cardBorder(context))),
               ),
-              onPressed: widget.onSuccess,
-              child: Text(
-                _paymentMethod == 'pix' ? '✓ Já Realizei o Pix (Confirmar Ativação)' : 'Pagar R\$ ${amount.toStringAsFixed(2)} e Ativar',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.emerald(context),
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 4,
+                ),
+                onPressed: _isSubmittingCard ? null : _submitCardPayment,
+                child: _isSubmittingCard
+                    ? const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
+                          ),
+                          SizedBox(width: 10),
+                          Text('Processando com Asaas...', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ],
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.lock_rounded, size: 18, color: Colors.black),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Pagar R\$ ${amount.toStringAsFixed(2)} e Ativar Agora',
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                          ),
+                        ],
+                      ),
               ),
             ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildPaymentMethodTab({
+  Widget _buildMethodTab({
     required String label,
     required IconData icon,
     required bool isSelected,
@@ -821,26 +1092,29 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
+        duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? activeColor.withValues(alpha: 0.15) : const Color(0xFF0F172A),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isSelected ? activeColor : const Color(0xFF1E293B)),
+          color: isSelected ? activeColor.withValues(alpha: 0.16) : AppColors.card(context),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? activeColor : AppColors.cardBorder(context),
+            width: isSelected ? 1.5 : 1.0,
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 18, color: isSelected ? activeColor : AppColors.textMuted),
+            Icon(icon, size: 18, color: isSelected ? activeColor : AppColors.subtext(context)),
             const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? activeColor : AppColors.textSecondary,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                color: isSelected ? activeColor : AppColors.text(context),
               ),
             ),
           ],
@@ -849,24 +1123,76 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
     );
   }
 
-  Widget _buildPixContent() {
+  Widget _buildRoiCard(BuildContext context, double amount) {
+    final netGain = (150.0 - (amount > 150 ? amount / 2 : amount)).clamp(10.0, 999.0);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF10B981).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981).withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.trending_up_rounded, color: Color(0xFF10B981), size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '💡 RETORNO SOBRE O INVESTIMENTO',
+                  style: TextStyle(
+                    color: Color(0xFF10B981),
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Com apenas 1 novo aluno a R\$ 150/mês, seu plano se paga e sobra R\$ ${netGain.toStringAsFixed(0)}/mês de lucro!',
+                  style: TextStyle(
+                    color: AppColors.text(context),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPixContent(BuildContext context) {
     final pixCode = _session?.pixCopyPaste ?? 'pix-demo-code';
 
     return Column(
       children: [
-        // QR Code Simulated Container
+        const SizedBox(height: 6),
+        // QR Code Container
         Container(
           width: 180,
           height: 180,
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.studentCyan, width: 2),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFF06B6D4), width: 2),
             boxShadow: [
               BoxShadow(
-                color: AppColors.studentCyan.withValues(alpha: 0.2),
-                blurRadius: 16,
+                color: const Color(0xFF06B6D4).withValues(alpha: 0.2),
+                blurRadius: 20,
               ),
             ],
           ),
@@ -876,47 +1202,52 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
               const Icon(Icons.qr_code_2_rounded, size: 110, color: Colors.black),
               const SizedBox(height: 4),
               const Text(
-                'PIX BANCO CENTRAL',
-                style: TextStyle(color: Colors.black54, fontSize: 9, fontWeight: FontWeight.bold),
+                'PIX BANCO CENTRAL • ASAAS',
+                style: TextStyle(color: Colors.black87, fontSize: 8.5, fontWeight: FontWeight.w900),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        const Text(
-          'Escaneie o QR Code acima ou use o código Copia e Cola:',
-          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+        const SizedBox(height: 14),
+        Text(
+          'Escaneie o QR Code no seu banco ou use a chave Copia e Cola:',
+          style: TextStyle(color: AppColors.subtext(context), fontSize: 12),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
 
-        // Pix Copia e Cola Input with Copy Button
+        // Copia e Cola
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFF111827),
+            color: AppColors.card(context),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF1F2937)),
+            border: Border.all(color: AppColors.cardBorder(context)),
           ),
           child: Row(
             children: [
               Expanded(
                 child: Text(
                   pixCode,
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11, fontFamily: 'monospace'),
+                  style: TextStyle(
+                    color: AppColors.subtext(context),
+                    fontSize: 11,
+                    fontFamily: 'monospace',
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.copy_rounded, color: AppColors.studentCyan, size: 18),
-                tooltip: 'Copiar código Pix',
+                icon: const Icon(Icons.copy_rounded, color: Color(0xFF06B6D4), size: 18),
+                tooltip: 'Copiar Pix Copia e Cola',
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: pixCode));
+                  HapticFeedback.lightImpact();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      backgroundColor: Colors.green,
-                      content: Text('Chave Pix copiada para a área de transferência!'),
+                      backgroundColor: Color(0xFF10B981),
+                      content: Text('Chave Pix copiada com sucesso!'),
                       duration: Duration(seconds: 2),
                     ),
                   );
@@ -926,143 +1257,430 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
           ),
         ),
         const SizedBox(height: 12),
-        const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.bolt, color: AppColors.studentAmber, size: 16),
-            SizedBox(width: 4),
-            Text(
-              'Aprovação automática em até 10 segundos',
-              style: TextStyle(color: AppColors.studentAmber, fontSize: 11, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        if (_session?.checkoutUrl != null) ...[
-          const SizedBox(height: 14),
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.emerald(context),
-              side: BorderSide(color: AppColors.emerald(context)),
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            icon: const Icon(Icons.open_in_new_rounded, size: 18),
-            label: const Text(
-              'Abrir Checkout Oficial InfinitePay',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-            ),
-            onPressed: () async {
-              final url = Uri.parse(_session!.checkoutUrl!);
-              if (await canLaunchUrl(url)) {
-                await launchUrl(url, mode: LaunchMode.externalApplication);
-              }
-            },
+
+        // Radar de Polling Ativo
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
           ),
-        ],
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(color: Color(0xFFF59E0B), strokeWidth: 2),
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Aguardando pagamento no banco... Reconhecimento automático!',
+                style: TextStyle(color: Color(0xFFF59E0B), fontSize: 11, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        TextButton(
+          onPressed: () {
+            // Permite ao usuário simular ou acelerar ativação
+            widget.onSuccess();
+          },
+          child: Text(
+            'Já paguei pelo aplicativo do banco (Ativar Imediatamente)',
+            style: TextStyle(color: AppColors.emerald(context), fontSize: 12.5, fontWeight: FontWeight.bold),
+          ),
+        ),
+        const SizedBox(height: 10),
       ],
     );
   }
 
-  Widget _buildCreditCardContent() {
+  Widget _buildCreditCardContent(BuildContext context, double amount) {
     return Column(
       children: [
-        if (_session?.checkoutUrl != null) ...[
-          Container(
-            padding: const EdgeInsets.all(12),
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: AppColors.emerald(context).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.emerald(context).withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.verified_user_rounded, color: AppColors.emerald(context), size: 22),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Pague com cartão parcelado em até 12x direto pelo Checkout Oficial InfinitePay (\$sheipados).',
-                    style: TextStyle(color: AppColors.text(context), fontSize: 12),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    final url = Uri.parse(_session!.checkoutUrl!);
-                    if (await canLaunchUrl(url)) {
-                      await launchUrl(url, mode: LaunchMode.externalApplication);
-                    }
-                  },
-                  child: const Text('Abrir', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-          ),
-        ],
+        const SizedBox(height: 6),
+        // CARTÃO VIRTUAL 3D INTERATIVO
+        _buildInteractive3DCard(context),
+        const SizedBox(height: 18),
+
+        // Formulário do Cartão
         TextField(
-          style: const TextStyle(color: Colors.white),
+          controller: _cardNumberController,
+          keyboardType: TextInputType.number,
+          style: TextStyle(color: AppColors.text(context), fontWeight: FontWeight.bold),
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(16),
+            _CardNumberInputFormatter(),
+          ],
           decoration: InputDecoration(
             labelText: 'Número do Cartão',
-            labelStyle: const TextStyle(color: AppColors.textSecondary),
-            prefixIcon: const Icon(Icons.credit_card, color: AppColors.trainerEmerald, size: 20),
+            labelStyle: TextStyle(color: AppColors.subtext(context), fontSize: 13),
+            prefixIcon: Icon(Icons.credit_card_rounded, color: AppColors.emerald(context), size: 20),
+            suffixIcon: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(
+                _detectCardBrand(_cardNumberController.text),
+                style: TextStyle(
+                  color: AppColors.emerald(context),
+                  fontWeight: FontWeight.w900,
+                  fontSize: 11,
+                ),
+              ),
+            ),
             filled: true,
-            fillColor: const Color(0xFF111827),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            fillColor: AppColors.card(context),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: AppColors.cardBorder(context)),
+            ),
           ),
         ),
         const SizedBox(height: 12),
+
         Row(
           children: [
             Expanded(
               child: TextField(
-                style: const TextStyle(color: Colors.white),
+                controller: _expiryController,
+                keyboardType: TextInputType.number,
+                style: TextStyle(color: AppColors.text(context), fontWeight: FontWeight.bold),
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(4),
+                  _ExpiryDateInputFormatter(),
+                ],
                 decoration: InputDecoration(
                   labelText: 'Validade (MM/AA)',
-                  labelStyle: const TextStyle(color: AppColors.textSecondary),
+                  labelStyle: TextStyle(color: AppColors.subtext(context), fontSize: 13),
                   filled: true,
-                  fillColor: const Color(0xFF111827),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  fillColor: AppColors.card(context),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: AppColors.cardBorder(context)),
+                  ),
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
               child: TextField(
-                style: const TextStyle(color: Colors.white),
+                controller: _cvvController,
+                focusNode: _cvvFocusNode,
+                keyboardType: TextInputType.number,
+                obscureText: true,
+                style: TextStyle(color: AppColors.text(context), fontWeight: FontWeight.bold),
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(4),
+                ],
                 decoration: InputDecoration(
-                  labelText: 'CVV',
-                  labelStyle: const TextStyle(color: AppColors.textSecondary),
+                  labelText: 'CVV (Verso)',
+                  labelStyle: TextStyle(color: AppColors.subtext(context), fontSize: 13),
+                  suffixIcon: const Icon(Icons.lock_outline_rounded, size: 18),
                   filled: true,
-                  fillColor: const Color(0xFF111827),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  fillColor: AppColors.card(context),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: AppColors.cardBorder(context)),
+                  ),
                 ),
               ),
             ),
           ],
         ),
         const SizedBox(height: 12),
+
         TextField(
-          style: const TextStyle(color: Colors.white),
+          controller: _cardHolderController,
+          textCapitalization: TextCapitalization.characters,
+          style: TextStyle(color: AppColors.text(context), fontWeight: FontWeight.bold),
           decoration: InputDecoration(
             labelText: 'Nome Impresso no Cartão',
-            labelStyle: const TextStyle(color: AppColors.textSecondary),
-            prefixIcon: const Icon(Icons.person_outline, color: AppColors.trainerEmerald, size: 20),
+            labelStyle: TextStyle(color: AppColors.subtext(context), fontSize: 13),
+            prefixIcon: Icon(Icons.person_outline_rounded, color: AppColors.emerald(context), size: 20),
             filled: true,
-            fillColor: const Color(0xFF111827),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            fillColor: AppColors.card(context),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: AppColors.cardBorder(context)),
+            ),
           ),
         ),
-        const SizedBox(height: 12),
-        const Row(
+        const SizedBox(height: 14),
+
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.lock_outline, size: 14, color: AppColors.textMuted),
-            SizedBox(width: 6),
+            Icon(Icons.security_rounded, size: 14, color: AppColors.subtext(context)),
+            const SizedBox(width: 6),
             Text(
-              'Transação criptografada de ponta a ponta (PCI-DSS)',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+              'Transação direta protegida por tokenização PCI-DSS',
+              style: TextStyle(color: AppColors.subtext(context), fontSize: 11),
             ),
           ],
         ),
+        const SizedBox(height: 10),
       ],
+    );
+  }
+
+  Widget _buildInteractive3DCard(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _flipAnimation,
+      builder: (context, child) {
+        final angle = _flipAnimation.value * math.pi;
+        final isFront = angle < (math.pi / 2);
+
+        return Transform(
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, 0.0015)
+            ..rotateY(angle),
+          alignment: Alignment.center,
+          child: isFront ? _buildCardFront(context) : _buildCardBack(context),
+        );
+      },
+    );
+  }
+
+  Widget _buildCardFront(BuildContext context) {
+    final number = _cardNumberController.text.isEmpty
+        ? '•••• •••• •••• ••••'
+        : _cardNumberController.text;
+    final holder = _cardHolderController.text.isEmpty
+        ? 'NOME DO TITULAR'
+        : _cardHolderController.text.toUpperCase();
+    final expiry = _expiryController.text.isEmpty ? 'MM/AA' : _expiryController.text;
+    final brand = _detectCardBrand(_cardNumberController.text);
+
+    return Container(
+      width: 320,
+      height: 185,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0F172A), Color(0xFF064E3B), Color(0xFF047857)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF10B981).withValues(alpha: 0.25),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Topo: Chip + Contactless + Bandeira
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  // Chip Metálico
+                  Container(
+                    width: 36,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEAB308),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.amber.shade200, width: 1),
+                      gradient: LinearGradient(
+                        colors: [Colors.amber.shade300, Colors.amber.shade700],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.contactless_rounded, color: Colors.white70, size: 22),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.black38,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  brand,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 12,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Número
+          Text(
+            number,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              letterSpacing: 2.2,
+              fontFamily: 'monospace',
+              fontWeight: FontWeight.w700,
+              shadows: [Shadow(color: Colors.black, blurRadius: 4)],
+            ),
+          ),
+
+          // Rodapé: Titular e Validade
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('TITULAR', style: TextStyle(color: Colors.white54, fontSize: 8, fontWeight: FontWeight.bold)),
+                    Text(
+                      holder,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  const Text('VALIDADE', style: TextStyle(color: Colors.white54, fontSize: 8, fontWeight: FontWeight.bold)),
+                  Text(
+                    expiry,
+                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCardBack(BuildContext context) {
+    final cvv = _cvvController.text.isEmpty ? '•••' : _cvvController.text;
+
+    return Transform(
+      transform: Matrix4.identity()..rotateY(math.pi),
+      alignment: Alignment.center,
+      child: Container(
+        width: 320,
+        height: 185,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: const Color(0xFF0F172A),
+          border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 22),
+            // Faixa Magnética
+            Container(height: 38, color: Colors.black),
+            const SizedBox(height: 18),
+
+            // Tarja de Assinatura + CVV
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Container(
+                      height: 34,
+                      color: Colors.white70,
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 8),
+                      child: const Text('MR. COACH', style: TextStyle(color: Colors.black54, fontSize: 10, fontStyle: FontStyle.italic)),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 1,
+                    child: Container(
+                      height: 34,
+                      color: Colors.white,
+                      alignment: Alignment.center,
+                      child: Text(
+                        cvv,
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Spacer(),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text('ASAAS RECURRENT BILLED', style: TextStyle(color: Colors.white38, fontSize: 9, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Formatadores de Entrada de Cartão
+class _CardNumberInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final text = newValue.text.replaceAll(' ', '');
+    final buffer = StringBuffer();
+    for (int i = 0; i < text.length; i++) {
+      if (i > 0 && i % 4 == 0) buffer.write(' ');
+      buffer.write(text[i]);
+    }
+    final str = buffer.toString();
+    return TextEditingValue(
+      text: str,
+      selection: TextSelection.collapsed(offset: str.length),
+    );
+  }
+}
+
+class _ExpiryDateInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final text = newValue.text.replaceAll('/', '');
+    final buffer = StringBuffer();
+    for (int i = 0; i < text.length; i++) {
+      if (i == 2) buffer.write('/');
+      buffer.write(text[i]);
+    }
+    final str = buffer.toString();
+    return TextEditingValue(
+      text: str,
+      selection: TextSelection.collapsed(offset: str.length),
     );
   }
 }

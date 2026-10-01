@@ -34,7 +34,9 @@ class Settings(BaseSettings):
     INFINITEPAY_CHECKOUT_API_URL: str = "https://api.checkout.infinitepay.io"
     INFINITEPAY_WEBHOOK_SECRET: str = ""
 
-    # Webhook authentication
+    # Asaas Gateway & Webhooks
+    ASAAS_API_KEY: str = ""
+    ASAAS_API_URL: str = "https://sandbox.asaas.com/api/v3"
     ASAAS_WEBHOOK_TOKEN: str = ""
     MERCADOPAGO_WEBHOOK_SECRET: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""

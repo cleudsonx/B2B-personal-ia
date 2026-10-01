@@ -94,3 +94,25 @@ class PlanActivationRequest(BaseModel):
     billing_interval: str = Field("monthly", description="'monthly' ou 'yearly'")
     payment_method: Optional[str] = "pix"
     trainer_id: Optional[str] = "current-trainer"
+
+
+class CardPaymentRequest(BaseModel):
+    session_id: str = Field(..., description="ID da sessão de checkout")
+    card_holder_name: str = Field(..., description="Nome do titular como no cartão")
+    card_number: str = Field(..., description="Número completo do cartão")
+    expiry_month: str = Field(..., description="Mês de expiração (MM)")
+    expiry_year: str = Field(..., description="Ano de expiração (AA ou AAAA)")
+    ccv: str = Field(..., description="Código de segurança CVV")
+    installments: Optional[int] = Field(1, description="Número de parcelas (1 a 12)")
+    trainer_id: Optional[str] = Field("current-trainer", description="ID do treinador")
+
+
+class CardPaymentResponse(BaseModel):
+    success: bool
+    session_id: str
+    status: str = "active"
+    message: str
+    plan_id: Optional[str] = None
+    trainer_id: Optional[str] = None
+    billing_interval: Optional[str] = "monthly"
+

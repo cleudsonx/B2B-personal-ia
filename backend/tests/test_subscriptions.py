@@ -446,5 +446,47 @@ def test_infinitepay_real_checkout_and_webhook_activation():
     assert sub_data["max_students"] == 30
 
 
+def test_asaas_transparent_checkout_and_card_processing():
+    from fastapi.testclient import TestClient
+    from app.main import app
 
+    client = TestClient(app)
+    trainer_id = "trainer-asaas-transparent-1"
 
+    # 1. Cria sessão de checkout Asaas transparente (Pix ou Cartão)
+    checkout_res = client.post("/api/v1/subscriptions/checkout-session", json={
+        "plan_id": "pro",
+        "billing_interval": "monthly",
+        "payment_method": "credit_card",
+        "provider": "asaas",
+        "trainer_name": "Personal Inovador",
+        "trainer_email": "inovador@sheipados.com",
+        "trainer_id": trainer_id
+    })
+    assert checkout_res.status_code == 200
+    sess_data = checkout_res.json()
+    session_id = sess_data["session_id"]
+    assert sess_data["provider"] == "asaas"
+    assert sess_data["status"] == "pending"
+
+    # 2. Executa pagamento transparente com cartão de crédito in-app
+    card_res = client.post("/api/v1/subscriptions/process-card", json={
+        "session_id": session_id,
+        "card_holder_name": "PERSONAL INOVADOR",
+        "card_number": "4111 2222 3333 4444",
+        "expiry_month": "12",
+        "expiry_year": "2029",
+        "ccv": "123",
+        "installments": 1,
+        "trainer_id": trainer_id
+    })
+    assert card_res.status_code == 200
+    card_data = card_res.json()
+    assert card_data["success"] is True
+    assert card_data["status"] == "active"
+
+    # 3. Consulta status via endpoint de polling em tempo real
+    poll_res = client.get(f"/api/v1/subscriptions/check-status/{session_id}")
+    assert poll_res.status_code == 200
+    poll_data = poll_res.json()
+    assert poll_data["paid"] is True

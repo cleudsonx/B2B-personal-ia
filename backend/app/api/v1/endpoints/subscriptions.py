@@ -11,6 +11,8 @@ from app.schemas.subscription import (
     PlanChangeSimulationRequest,
     PlanChangeSimulationResponse,
     PlanActivationRequest,
+    CardPaymentRequest,
+    CardPaymentResponse,
 )
 from app.services.payment_service import PaymentProviderService
 from app.services.supabase_service import supabase_service
@@ -112,7 +114,7 @@ async def create_checkout_session(request: CheckoutSessionRequest):
     )
 
     checkout_data = PaymentProviderService.create_checkout(
-        provider=request.provider or "infinitepay",
+        provider=request.provider or "asaas",
         plan_id=selected_plan.id,
         plan_name=selected_plan.name,
         amount_cents=amount,
@@ -131,12 +133,42 @@ async def create_checkout_session(request: CheckoutSessionRequest):
         amount_cents=checkout_data["amount_cents"],
         billing_interval=checkout_data["billing_interval"],
         payment_method=checkout_data["payment_method"],
+        pix_qr_code_base64=checkout_data.get("pix_qr_code_base64"),
         pix_copy_paste=checkout_data.get("pix_copy_paste"),
         checkout_url=checkout_data.get("checkout_url"),
         status=checkout_data.get("status", "pending"),
         expires_at=checkout_data["expires_at"],
         notes=checkout_data.get("notes")
     )
+
+
+@router.post("/process-card", response_model=CardPaymentResponse)
+async def process_card_checkout(request: CardPaymentRequest):
+    """
+    Processa pagamento transparente com cartão de crédito in-app via Asaas.
+    Ativa a assinatura instantaneamente no Supabase após a confirmação.
+    """
+    result = PaymentProviderService.process_card_payment(
+        session_id=request.session_id,
+        card_holder_name=request.card_holder_name,
+        card_number=request.card_number,
+        expiry_month=request.expiry_month,
+        expiry_year=request.expiry_year,
+        ccv=request.ccv,
+        installments=request.installments or 1,
+    )
+    if result.get("success"):
+        order_meta = PaymentProviderService._PENDING_ORDERS.get(request.session_id, {})
+        trainer_id = request.trainer_id or order_meta.get("trainer_id", "current-trainer")
+        plan_id = order_meta.get("plan_id", "pro")
+        billing_interval = order_meta.get("billing_interval", "monthly")
+        await supabase_service.activate_subscription(
+            trainer_id=trainer_id,
+            plan_id=plan_id,
+            billing_interval=billing_interval,
+            payment_method="credit_card",
+        )
+    return CardPaymentResponse(**result)
 
 
 @router.post("/webhook/asaas")
@@ -173,18 +205,19 @@ async def webhook_infinitepay(payload: dict, request: Request):
 
 @router.get("/check-status/{order_nsu}")
 async def check_payment_status(order_nsu: str):
-    """Consulta o status da transação na InfinitePay ou gateway associado."""
-    is_paid = PaymentProviderService.check_infinitepay_payment(order_nsu)
+    """Consulta o status da transação no Asaas, InfinitePay ou gateway associado."""
+    is_paid = PaymentProviderService.check_payment(order_nsu)
     order_meta = PaymentProviderService._PENDING_ORDERS.get(order_nsu, {})
     if is_paid and order_meta:
         trainer_id = order_meta.get("trainer_id", "current-trainer")
         plan_id = order_meta.get("plan_id", "pro")
         billing_interval = order_meta.get("billing_interval", "monthly")
+        payment_method = order_meta.get("payment_method", "pix")
         await supabase_service.activate_subscription(
             trainer_id=trainer_id,
             plan_id=plan_id,
             billing_interval=billing_interval,
-            payment_method="infinitepay"
+            payment_method=payment_method
         )
     return {
         "order_nsu": order_nsu,
