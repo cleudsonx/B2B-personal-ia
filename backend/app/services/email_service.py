@@ -118,7 +118,12 @@ class EmailService:
                         }
                     else:
                         logger.warning(f"Fallback Resend retornou {fallback_res.status_code}: {fallback_res.text}")
+                        if fallback_res.status_code == 403:
+                            return {"status": "error", "code": fallback_res.status_code, "detail": "Sua conta Resend é nova e precisa de um domínio verificado para enviar e-mails a terceiros. No momento (Sandbox), apenas e-mails verificados no painel podem receber mensagens."}
                         return {"status": "error", "code": fallback_res.status_code, "detail": fallback_res.text}
+                elif res.status_code == 403:
+                    logger.warning(f"Resend erro de permissão (403): {res.text}")
+                    return {"status": "error", "code": res.status_code, "detail": "Sua conta Resend é nova e precisa de um domínio verificado para enviar e-mails a terceiros. No momento (Sandbox), apenas e-mails verificados no painel podem receber mensagens."}
                 else:
                     logger.warning(f"Resend retornou status {res.status_code}: {res.text}")
                     return {"status": "error", "code": res.status_code, "detail": res.text}

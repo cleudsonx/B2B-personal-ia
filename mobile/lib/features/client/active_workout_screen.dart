@@ -24,6 +24,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   String _workoutTitle = 'Treino A: Membros Superiores (Ênfase Empurrar)';
   String _trainerName = 'Carregando treinador...';
   String _trainerCref = 'CREF Ativo';
+  String? _trainerPhotoUrl;
   final Set<int> _adaptedIndices = {};
   int _currentCarouselIndex = 0;
   late final PageController _pageController;
@@ -147,8 +148,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       final trainer = await AuthService.getTrainerForStudent();
       if (trainer != null && mounted) {
         setState(() {
-          final name = trainer['full_name'] as String?;
+          final name = (trainer['trainer_name'] ?? trainer['full_name']) as String?;
           if (name != null && name.isNotEmpty) _trainerName = name;
+          final photoUrl = trainer['trainer_photo_url'] as String?;
+          if (photoUrl != null && photoUrl.isNotEmpty) _trainerPhotoUrl = photoUrl;
           final reg = (trainer['cref_or_registry'] ?? trainer['cref'] ?? trainer['professional_document']) as String?;
           if (reg != null && reg.isNotEmpty) _trainerCref = reg;
         });
@@ -415,6 +418,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                   end: Alignment.bottomRight,
                                 ),
                                 shape: BoxShape.circle,
+                                image: _trainerPhotoUrl != null && _trainerPhotoUrl!.isNotEmpty
+                                    ? DecorationImage(
+                                        image: NetworkImage(_trainerPhotoUrl!),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null,
                                 boxShadow: [
                                   BoxShadow(
                                     color: AppColors.emerald(context).withValues(alpha: 0.3),
@@ -423,17 +432,19 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                   ),
                                 ],
                               ),
-                              child: Center(
-                                child: Text(
-                                  _getTrainerInitials(),
-                                  style: const TextStyle(
-                                    color: Colors.black,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 17,
-                                    letterSpacing: -0.5,
-                                  ),
-                                ),
-                              ),
+                              child: _trainerPhotoUrl == null || _trainerPhotoUrl!.isEmpty
+                                  ? Center(
+                                      child: Text(
+                                        _getTrainerInitials(),
+                                        style: const TextStyle(
+                                          color: Colors.black,
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 17,
+                                          letterSpacing: -0.5,
+                                        ),
+                                      ),
+                                    )
+                                  : null,
                             ),
                             Positioned(
                               bottom: -1,
@@ -467,7 +478,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Supervisionado por',
+                              'Seu treino com',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: AppColors.subtext(context),

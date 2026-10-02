@@ -1183,6 +1183,7 @@ class SupabaseService:
         trainer_id: Optional[str] = None,
         professional_document_type: Optional[str] = None,
         professional_document: Optional[str] = None,
+        photo_url: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Cria um usuário diretamente via Supabase Admin API com email_confirm=True,
@@ -1236,6 +1237,8 @@ class SupabaseService:
                     profile_payload["phone"] = phone
                 if trainer_id and is_valid_uuid(trainer_id):
                     profile_payload["trainer_id"] = to_valid_uuid_str(trainer_id)
+                if photo_url:
+                    profile_payload["photo_url"] = photo_url
 
                 await client.table("profiles").upsert(profile_payload).execute()
             except Exception as e:
@@ -1250,6 +1253,33 @@ class SupabaseService:
             "message": "Usuário criado e confirmado com sucesso."
         }
 
+    async def get_user_profile(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """Busca o perfil do usuário, com JOIN no professor para retornar nome e foto."""
+        client = await self.get_client()
+        if client and is_valid_uuid(user_id):
+            try:
+                # Usando select com JOIN (para o trainer associado)
+                # A tabela profiles tem um relacionamento com ela mesma via trainer_id
+                res = await client.table("profiles").select(
+                    "*, trainer:trainer_id(full_name, photo_url)"
+                ).eq("id", user_id).execute()
+                
+                if res.data:
+                    profile = res.data[0]
+                    # Extrair o nome e foto do professor do dict 'trainer' e colocar na raiz para facilitar
+                    trainer_data = profile.pop("trainer", None)
+                    if trainer_data:
+                        # Em caso de ser uma lista, pega o primeiro
+                        if isinstance(trainer_data, list) and len(trainer_data) > 0:
+                            trainer_data = trainer_data[0]
+                        if isinstance(trainer_data, dict):
+                            profile["trainer_name"] = trainer_data.get("full_name")
+                            profile["trainer_photo_url"] = trainer_data.get("photo_url")
+                    return profile
+            except Exception as e:
+                logger.error(f"Erro ao buscar perfil do usuário no Supabase: {e}")
+                
+        return None
 
 # Instância singleton global do serviço
 supabase_service = SupabaseService()

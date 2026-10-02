@@ -149,7 +149,58 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
                       ),
                     ),
                   ),
+                  const SizedBox(height: 24),
+                  
+                  // Profile Photo Space
+                  Center(
+                    child: GestureDetector(
+                      onTap: () {
+                        // Opcionalmente abriria câmera ou galeria
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: AppColors.emerald(context),
+                            content: const Text('Funcionalidade de upload de foto (Câmera/Galeria) será implementada em breve.'),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: 90,
+                        height: 90,
+                        decoration: BoxDecoration(
+                          color: AppColors.card(context),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.emerald(context), width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.emerald(context).withValues(alpha: 0.15),
+                              blurRadius: 15,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Icon(
+                            Icons.add_a_photo_rounded,
+                            size: 32,
+                            color: AppColors.emerald(context),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 12),
+                  Center(
+                    child: Text(
+                      'Adicionar Foto de Perfil',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.emerald(context),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
                   Text(
                     'Olá, Prof. ${widget.trainerName}!',
                     textAlign: TextAlign.center,

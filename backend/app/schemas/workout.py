@@ -83,6 +83,8 @@ class StudentResponse(BaseModel):
     last_session: Optional[str] = None
     active_split: Optional[str] = None
     injuries_or_restrictions: Optional[str] = None
+    trainer_name: Optional[str] = None
+    trainer_photo_url: Optional[str] = None
 
 
 class BiomechanicalAlertCreate(BaseModel):

@@ -15,6 +15,7 @@ class DirectRegisterRequest(BaseModel):
     trainer_id: Optional[str] = None
     professional_document_type: Optional[str] = None
     professional_document: Optional[str] = None
+    photo_url: Optional[str] = None
 
 
 class DirectRegisterResponse(BaseModel):
@@ -41,9 +42,30 @@ async def register_user_direct(req: DirectRegisterRequest):
             trainer_id=req.trainer_id,
             professional_document_type=req.professional_document_type,
             professional_document=req.professional_document,
+            photo_url=req.photo_url,
         )
         return DirectRegisterResponse(**res)
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro interno ao criar conta: {str(e)}")
+
+
+from app.api.deps import get_current_user
+from fastapi import Depends
+from typing import Dict, Any
+
+@router.get("/me")
+async def get_my_profile(current_user: Dict[str, Any] = Depends(get_current_user)):
+    """
+    Retorna o perfil do usuário atual, incluindo o nome e a foto do seu professor vinculado (se for aluno).
+    """
+    user_id = current_user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Usuário não autenticado.")
+        
+    profile = await supabase_service.get_user_profile(user_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Perfil não encontrado.")
+        
+    return profile
