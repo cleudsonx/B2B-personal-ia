@@ -88,8 +88,8 @@ class GeminiService:
         fallbacks = [
             "gemini-2.5-flash",
             "gemini-2.5-flash-lite",
-            "gemini-1.5-flash",
-            "gemini-1.5-flash-8b",
+            "gemini-3.5-flash",
+            "gemini-3.8-flash",
         ]
         for m in fallbacks:
             if m not in candidates:
@@ -135,7 +135,7 @@ class GeminiService:
                 candidate_models=candidates,
                 contents=prompt_text,
                 config=config,
-                per_model_timeout=6.0
+                per_model_timeout=30.0
             )
             if response.text:
                 return WorkoutPlanResponse.model_validate_json(response.text)
@@ -181,7 +181,7 @@ class GeminiService:
                 candidate_models=candidates,
                 contents=prompt_text,
                 config=config,
-                per_model_timeout=5.0
+                per_model_timeout=30.0
             )
             if response.text:
                 return AdaptationResponse.model_validate_json(response.text)
@@ -220,7 +220,7 @@ class GeminiService:
                 candidate_models=candidates,
                 contents=prompt,
                 config=config,
-                per_model_timeout=5.0
+                per_model_timeout=30.0
             )
             if response and response.text:
                 return response.text

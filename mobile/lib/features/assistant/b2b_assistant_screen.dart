@@ -19,7 +19,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
   final TextEditingController _promptCtrl = TextEditingController();
   final List<_ChatMessage> _messages = [];
   bool _isLoading = false;
-  String _selectedModelId = 'gemini-3.1-pro';
+  String _selectedModelId = 'gemini-3.1-pro-preview';
 
   String _selectedPillar = 'Todos';
 
@@ -199,7 +199,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
             onSelected: (val) => setState(() => _selectedModelId = val),
             itemBuilder: (ctx) => [
               const PopupMenuItem(
-                value: 'gemini-3.1-pro',
+                value: 'gemini-3.1-pro-preview',
                 child: Row(
                   children: [
                     Icon(Icons.psychology, size: 18),

@@ -28,3 +28,4 @@ DIRETRIZES:
 - Não prescreva dietas ou treinos do zero (essa é a função do personal), foque em ajudar na execução, tirar dúvidas pontuais e motivar.
 ''';
 }
+
