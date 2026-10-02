@@ -268,10 +268,16 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
   }
 
   Widget _buildForm() {
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
     return Form(
       key: _formKey,
       child: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: bottomInset + 30,
+        ),
         children: [
           Row(
             children: [
@@ -1266,7 +1272,12 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.only(
+              left: 16.0,
+              right: 16.0,
+              top: 16.0,
+              bottom: 16.0 + MediaQuery.paddingOf(context).bottom,
+            ),
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(

@@ -377,15 +377,21 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = AppColors.isDark(context);
+    final topPadding = MediaQuery.paddingOf(context).top;
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
 
     return Scaffold(
       backgroundColor: AppColors.bg(context),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              children: [
+      body: Stack(
+        children: [
+          ListView(
+            padding: EdgeInsets.only(
+              top: topPadding + 12,
+              bottom: bottomPadding + 30,
+              left: 18,
+              right: 18,
+            ),
+            children: [
                 // 1. Supervisor Header & Theme Switch Row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1033,8 +1039,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             ),
         ],
       ),
-    ),
-  );
+    );
   }
 }
 

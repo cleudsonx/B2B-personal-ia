@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/login_screen.dart';
@@ -16,8 +17,11 @@ import 'core/config/app_config.dart';
 import 'core/theme/theme_controller.dart';
 import 'core/widgets/theme_toggle_button.dart';
 
+import 'package:flutter/services.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   
   try {
     await Supabase.initialize(
@@ -46,6 +50,14 @@ class B2BPersonalIaApp extends StatelessWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: ThemeController.instance.themeMode,
+          scrollBehavior: const MaterialScrollBehavior().copyWith(
+            dragDevices: {
+              PointerDeviceKind.mouse,
+              PointerDeviceKind.touch,
+              PointerDeviceKind.stylus,
+              PointerDeviceKind.trackpad,
+            },
+          ),
           home: const LoginScreen(),
         );
       },
@@ -545,110 +557,113 @@ class _MainShellScreenState extends State<MainShellScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: roleColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: roleColor.withValues(alpha: 0.3)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: BoxDecoration(color: roleColor, shape: BoxShape.circle),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              _isTrainer ? 'Treinador' : 'Aluno',
-                              style: TextStyle(
-                                color: roleColor,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          widget.userName,
-                          style: TextStyle(
-                            color: AppColors.text(context),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: roleColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: roleColor.withValues(alpha: 0.3)),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(color: roleColor, shape: BoxShape.circle),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                _isTrainer ? 'Treinador' : 'Aluno',
+                                style: TextStyle(
+                                  color: roleColor,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      if (_isTrainer) ...[
                         const SizedBox(width: 8),
-                        ValueListenableBuilder<MySubscriptionModel?>(
-                          valueListenable: SubscriptionService.activeSubscriptionNotifier,
-                          builder: (context, sub, _) {
-                            final planName = sub?.planName ?? 'Personal Pro';
-                            final planId = sub?.planId ?? 'pro';
-                            final Color planColor;
-                            final IconData planIcon;
-                            if (planId == 'starter') {
-                              planColor = Colors.orange;
-                              planIcon = Icons.rocket_launch_rounded;
-                            } else if (planId == 'elite') {
-                              planColor = const Color(0xFFF59E0B);
-                              planIcon = Icons.workspace_premium_rounded;
-                            } else if (planId == 'studio') {
-                              planColor = const Color(0xFF8B5CF6);
-                              planIcon = Icons.stars_rounded;
-                            } else {
-                              planColor = AppColors.trainerEmerald;
-                              planIcon = Icons.workspace_premium_rounded;
-                            }
-                            return InkWell(
-                              onTap: () => setState(() => _currentIndex = 3),
-                              borderRadius: BorderRadius.circular(8),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: planColor.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: planColor.withValues(alpha: 0.4),
-                                    width: 1,
+                        Flexible(
+                          child: Text(
+                            widget.userName,
+                            style: TextStyle(
+                              color: AppColors.text(context),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (_isTrainer) ...[
+                          const SizedBox(width: 8),
+                          ValueListenableBuilder<MySubscriptionModel?>(
+                            valueListenable: SubscriptionService.activeSubscriptionNotifier,
+                            builder: (context, sub, _) {
+                              final planName = sub?.planName ?? 'Personal Pro';
+                              final planId = sub?.planId ?? 'pro';
+                              final Color planColor;
+                              final IconData planIcon;
+                              if (planId == 'starter') {
+                                planColor = Colors.orange;
+                                planIcon = Icons.rocket_launch_rounded;
+                              } else if (planId == 'elite') {
+                                planColor = const Color(0xFFF59E0B);
+                                planIcon = Icons.workspace_premium_rounded;
+                              } else if (planId == 'studio') {
+                                planColor = const Color(0xFF8B5CF6);
+                                planIcon = Icons.stars_rounded;
+                              } else {
+                                planColor = AppColors.trainerEmerald;
+                                planIcon = Icons.workspace_premium_rounded;
+                              }
+                              return InkWell(
+                                onTap: () => setState(() => _currentIndex = 3),
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: planColor.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: planColor.withValues(alpha: 0.4),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        planIcon,
+                                        size: 13,
+                                        color: planColor,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        planName,
+                                        style: TextStyle(
+                                          color: planColor,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      planIcon,
-                                      size: 13,
-                                      color: planColor,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      planName,
-                                      style: TextStyle(
-                                        color: planColor,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                              );
+                            },
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const ThemeToggleButton(compact: true),
                       const SizedBox(width: 4),
