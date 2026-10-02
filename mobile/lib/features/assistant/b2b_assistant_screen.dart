@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/biomechanical_analysis_sheet.dart';
 import '../../core/widgets/server_config_dialog.dart';
+import '../../core/constants/ai_prompts.dart';
 import '../../services/gemini_service.dart';
 
 class B2BAssistantScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
   final TextEditingController _promptCtrl = TextEditingController();
   final List<_ChatMessage> _messages = [];
   bool _isLoading = false;
+  String _selectedModelId = 'gemini-3.1-pro';
 
   String _selectedPillar = 'Todos';
 
@@ -121,14 +123,15 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
 
     try {
       final promptWithContext = widget.isStudentView
-          ? 'Você é um assistente de musculação e biomecânica para alunos na academia. Responda de forma direta, clara, acolhedora e focada em segurança articular e hipertrofia: $text'
+          ? 'Por favor, me ajude de forma clara e acessível: $text'
           : text;
 
       final reply = await GeminiService.askB2BAssistant(
         prompt: promptWithContext,
         systemInstruction: widget.isStudentView
-            ? 'Você é o Mr. Coach AI, assistente do aluno focado em biomecânica, execução segura e hipertrofia. Inicie sempre seu parecer com o cabeçalho "### 🤖 Parecer do Mr. Coach".'
-            : 'Você é o Mr. Coach AI, autoridade multidisciplinar em Biomecânica de precisão, Fisiologia do Exercício, Treinamento Resistido Avançado e Estratégia B2B Fitness. Forneça respostas técnicas, práticas e de alto nível. Inicie sempre seu parecer com o cabeçalho "### 🤖 Parecer do Mr. Coach".',
+            ? AiPrompts.expertStudentPersona
+            : AiPrompts.expertTrainerPersona,
+        model: _selectedModelId,
       );
       final replyExercise = detectedExercise ?? _detectExerciseInText(reply);
 
@@ -187,6 +190,36 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
           ],
         ),
         actions: [
+          PopupMenuButton<String>(
+            icon: Icon(
+              _selectedModelId.contains('pro') ? Icons.psychology : Icons.bolt,
+              color: accentColor,
+            ),
+            tooltip: 'Selecionar Modelo de IA',
+            onSelected: (val) => setState(() => _selectedModelId = val),
+            itemBuilder: (ctx) => [
+              const PopupMenuItem(
+                value: 'gemini-3.1-pro',
+                child: Row(
+                  children: [
+                    Icon(Icons.psychology, size: 18),
+                    SizedBox(width: 8),
+                    Text('Gemini 3.1 Pro (Deep Thinking)'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'gemini-2.5-flash',
+                child: Row(
+                  children: [
+                    Icon(Icons.bolt, size: 18),
+                    SizedBox(width: 8),
+                    Text('Gemini 2.5 Flash (Fast)'),
+                  ],
+                ),
+              ),
+            ],
+          ),
           if (kDebugMode)
             IconButton(
               icon: const Icon(Icons.settings_ethernet_rounded),
