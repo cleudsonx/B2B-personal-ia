@@ -597,3 +597,77 @@ def test_security_blocks_unsigned_jwt_in_production(monkeypatch):
     assert exc_info.value.status_code == 401
     assert "Assinatura do token não pôde ser verificada" in exc_info.value.detail
 
+
+def test_in_app_card_tokenization_and_subscription_activation():
+    """
+    Testa o fluxo da Solução 1: Tokenização In-App (Cartão de Crédito).
+    Valida que o endpoint /pay-with-card recebe os dados do cartão, valida regras
+    de bandeira/validade/CVV, simula a tokenização no gateway e ativa a assinatura
+    do treinador diretamente sem expor PAN/CVV persistidos.
+    """
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.api.deps import get_current_user
+
+    client = TestClient(app)
+    trainer_test_id = "tr-inapp-token-test-1"
+
+    app.dependency_overrides[get_current_user] = lambda: {
+        "sub": trainer_test_id,
+        "email": "inapp_trainer@sheipados.com",
+        "name": "Treinador In-App",
+        "role": "authenticated"
+    }
+    try:
+        # 1. Requisição com dados de cartão válidos para plano Pro anual
+        res = client.post(
+            "/api/v1/subscriptions/pay-with-card",
+            json={
+                "plan_id": "pro",
+                "billing_interval": "yearly",
+                "card_number": "4111 2222 3333 4444",
+                "holder_name": "TREINADOR IN-APP",
+                "expiry_month": "12",
+                "expiry_year": "2029",
+                "ccv": "789",
+                "holder_cpf": "12345678901",
+                "provider": "asaas"
+            }
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["success"] is True
+        assert data["status"] == "active"
+        assert data["plan_id"] == "pro"
+        assert data["plan_name"] == "Personal Pro"
+        assert data["billing_interval"] == "yearly"
+        assert data["trainer_id"] == trainer_test_id
+        assert data["last4"] == "4444"
+        assert data["card_brand"] == "VISA"
+        assert data["card_token"] is not None
+
+        # 2. Rejeição de cartão com número inválido
+        res_invalid = client.post(
+            "/api/v1/subscriptions/pay-with-card",
+            json={
+                "plan_id": "pro",
+                "billing_interval": "monthly",
+                "card_number": "123",  # inválido
+                "holder_name": "ERRO",
+                "expiry_month": "12",
+                "expiry_year": "29",
+                "ccv": "123"
+            }
+        )
+        assert res_invalid.status_code == 422 or res_invalid.status_code == 400
+
+        # 3. Valida que a assinatura do treinador agora está ativa
+        sub_res = client.get(f"/api/v1/subscriptions/my-subscription?trainer_id={trainer_test_id}")
+        assert sub_res.status_code == 200
+        sub_data = sub_res.json()
+        assert sub_data["plan_id"] == "pro"
+        assert sub_data["status"] == "active"
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+

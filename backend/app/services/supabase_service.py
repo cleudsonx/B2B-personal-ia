@@ -207,16 +207,13 @@ class SupabaseService:
         if not session_id:
             return
 
-        self._mem_checkout_sessions[session_id] = dict(session_data)
-
         if not self._is_production():
+            self._mem_checkout_sessions[session_id] = dict(session_data)
             return
 
         client = await self.get_client()
         if not client:
-            if self._is_production():
-                raise RuntimeError("Cliente Supabase indisponível para persistir sessão de checkout em produção.")
-            return
+            raise RuntimeError("Cliente Supabase indisponível para persistir sessão de checkout em produção.")
 
         trainer_uuid = to_valid_uuid_str(session_data.get("trainer_id", ""))
         payload = {
@@ -235,8 +232,10 @@ class SupabaseService:
         }
         try:
             await client.table("checkout_sessions").upsert(payload, on_conflict="session_id").execute()
+            self._mem_checkout_sessions[session_id] = dict(session_data)
             logger.info(f"[Supabase] Sessão de checkout {session_id} persistida com sucesso.")
         except Exception as e:
+            self._mem_checkout_sessions.pop(session_id, None)
             logger.error(f"Erro ao persistir sessão de checkout {session_id} no Supabase: {e}")
             self._raise_if_production("salvar sessão de checkout", e)
 
@@ -329,16 +328,7 @@ class SupabaseService:
         # 2. Modo produção com Supabase
         client = await self.get_client()
         if not client:
-            if event_id in self._mem_processed_events:
-                return False
-            self._mem_processed_events[event_id] = {
-                "event_id": event_id,
-                "provider": provider,
-                "event_type": event_type,
-                "status": "processing",
-                "claimed_at": datetime.now(timezone.utc).isoformat(),
-            }
-            return True
+            raise RuntimeError("Cliente Supabase indisponível para claim atômico de webhook em produção.")
 
         try:
             # Tenta inserção com ignore_duplicates (ON CONFLICT (event_id) DO NOTHING)
@@ -363,11 +353,9 @@ class SupabaseService:
             err_msg = str(e).lower()
             if "duplicate" in err_msg or "conflict" in err_msg or "unique" in err_msg:
                 return False
-            logger.warning(f"Erro ao reivindicar webhook atomicamente {event_id}: {e}")
-            if event_id in self._mem_processed_events:
-                return False
-            self._mem_processed_events[event_id] = {"event_id": event_id, "status": "processing"}
-            return True
+            logger.error(f"Erro ao reivindicar webhook atomicamente {event_id}: {e}")
+            self._raise_if_production("reivindicar evento de webhook atomicamente", e)
+            return False
 
     async def release_webhook_claim(self, event_id: str) -> None:
         """

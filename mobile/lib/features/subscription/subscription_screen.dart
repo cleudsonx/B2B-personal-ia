@@ -805,6 +805,64 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
     }
   }
 
+  Future<void> _submitInAppCardPayment() async {
+    final rawNumber = _cardNumberController.text.replaceAll(RegExp(r'\s+'), '');
+    final holder = _cardHolderController.text.trim();
+    final expiry = _expiryController.text.trim();
+    final cvv = _cvvController.text.trim();
+
+    if (rawNumber.length < 13 || rawNumber.length > 19) {
+      _showError('Por favor, digite um número de cartão válido.');
+      return;
+    }
+    if (holder.isEmpty) {
+      _showError('Digite o nome impresso no cartão.');
+      return;
+    }
+    if (!expiry.contains('/') || expiry.length < 4) {
+      _showError('Digite a validade no formato MM/AA.');
+      return;
+    }
+    if (cvv.length < 3 || cvv.length > 4) {
+      _showError('Digite um código CVV válido de 3 ou 4 dígitos.');
+      return;
+    }
+
+    final parts = expiry.split('/');
+    final month = parts[0].trim();
+    final year = parts[1].trim();
+
+    setState(() => _isSubmittingCard = true);
+
+    try {
+      final res = await SubscriptionService.payWithCardInApp(
+        planId: widget.plan.id,
+        billingInterval: widget.isYearly ? 'yearly' : 'monthly',
+        cardNumber: rawNumber,
+        holderName: holder,
+        expiryMonth: month,
+        expiryYear: year,
+        ccv: cvv,
+      );
+
+      if (mounted) {
+        setState(() => _isSubmittingCard = false);
+        if (res['success'] == true) {
+          setState(() => _isPaid = true);
+          HapticFeedback.heavyImpact();
+          _showSuccessNotification();
+        } else {
+          _showError(res['error'] ?? 'Não foi possível autorizar o cartão.');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSubmittingCard = false);
+        _showError('Falha ao processar pagamento com cartão: $e');
+      }
+    }
+  }
+
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -1060,18 +1118,29 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   elevation: 4,
                 ),
-                onPressed: _openCardCheckout,
+                onPressed: _isSubmittingCard ? null : _submitInAppCardPayment,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.lock_rounded, size: 18, color: Colors.black),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Pagar R\$ ${amount.toStringAsFixed(2)} no Checkout Asaas',
-                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.open_in_new_rounded, size: 16, color: Colors.black),
+                    if (_isSubmittingCard) ...[
+                      const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.black),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Tokenizando e Ativando Assinatura...',
+                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Colors.black),
+                      ),
+                    ] else ...[
+                      const Icon(Icons.flash_on_rounded, size: 18, color: Colors.black),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Ativar Assinatura In-App • R\$ ${amount.toStringAsFixed(2)}',
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Colors.black),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1319,112 +1388,226 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
 
   Widget _buildCreditCardContent(BuildContext context, double amount) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 6),
-        // CARTÃO VIRTUAL 3D INTERATIVO (Exibição Visual de Prestígio)
+        // CARTÃO VIRTUAL 3D INTERATIVO (Gira 180° no foco do CVV)
         _buildInteractive3DCard(context),
-        const SizedBox(height: 18),
+        const SizedBox(height: 20),
 
-        // Painel de Conformidade e Segurança PCI DSS
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.card(context),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.emerald(context).withValues(alpha: 0.3)),
+        // CAMPOS DE ENTRADA DO CARTÃO (100% IN-APP & NATIVO)
+        Text(
+          'DADOS DO CARTÃO DE CRÉDITO',
+          style: TextStyle(
+            color: AppColors.subtext(context),
+            fontSize: 10.5,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.8,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+        const SizedBox(height: 10),
+
+        // Número do Cartão
+        _buildCheckoutInputField(
+          context: context,
+          controller: _cardNumberController,
+          label: 'Número do Cartão',
+          hintText: '0000 0000 0000 0000',
+          icon: Icons.credit_card_rounded,
+          keyboardType: TextInputType.number,
+          maxLength: 19,
+          onChanged: (val) {
+            final clean = val.replaceAll(' ', '');
+            if (clean.length <= 16) {
+              final formatted = clean.replaceAllMapped(
+                RegExp(r'.{1,4}'),
+                (match) => '${match.group(0)} ',
+              ).trim();
+              if (formatted != val) {
+                _cardNumberController.value = TextEditingValue(
+                  text: formatted,
+                  selection: TextSelection.collapsed(offset: formatted.length),
+                );
+              }
+            }
+            setState(() {});
+          },
+        ),
+        const SizedBox(height: 12),
+
+        // Nome Impresso no Cartão
+        _buildCheckoutInputField(
+          context: context,
+          controller: _cardHolderController,
+          label: 'Nome Impresso no Cartão',
+          hintText: 'COMO ESTÁ NO CARTÃO',
+          icon: Icons.person_outline_rounded,
+          keyboardType: TextInputType.name,
+          textCapitalization: TextCapitalization.characters,
+          onChanged: (_) => setState(() {}),
+        ),
+        const SizedBox(height: 12),
+
+        // Linha: Validade + CVV
+        Row(
+          children: [
+            Expanded(
+              child: _buildCheckoutInputField(
+                context: context,
+                controller: _expiryController,
+                label: 'Validade',
+                hintText: 'MM/AA',
+                icon: Icons.calendar_today_rounded,
+                keyboardType: TextInputType.number,
+                maxLength: 5,
+                onChanged: (val) {
+                  final clean = val.replaceAll('/', '');
+                  if (clean.length == 2 && !val.contains('/')) {
+                    _expiryController.value = TextEditingValue(
+                      text: '$clean/',
+                      selection: const TextSelection.collapsed(offset: 3),
+                    );
+                  }
+                  setState(() {});
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildCheckoutInputField(
+                context: context,
+                controller: _cvvController,
+                focusNode: _cvvFocusNode,
+                label: 'CVV / CVC',
+                hintText: '•••',
+                icon: Icons.lock_outline_rounded,
+                keyboardType: TextInputType.number,
+                maxLength: 4,
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // Selo de Tokenização Segura In-App
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF10B981).withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.25)),
+          ),
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.emerald(context).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(Icons.verified_user_rounded, color: AppColors.emerald(context), size: 22),
+              const Icon(Icons.shield_outlined, color: Color(0xFF10B981), size: 18),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Tokenização bancária direta Asaas (TLS 1.3). Seus dados não são gravados no dispositivo.',
+                  style: TextStyle(
+                    color: AppColors.subtext(context),
+                    fontSize: 11,
+                    height: 1.3,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Checkout Seguro Asaas (PCI DSS)',
-                          style: TextStyle(
-                            color: AppColors.text(context),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Criptografia bancária de ponta a ponta',
-                          style: TextStyle(color: AppColors.subtext(context), fontSize: 11.5),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Text(
-                'Por diretrizes rigorosas de segurança financeira (PCI DSS), o pagamento com cartão é processado diretamente no gateway oficial do Asaas.',
-                style: TextStyle(color: AppColors.subtext(context), fontSize: 12.5, height: 1.4),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Icon(Icons.check_circle_outline_rounded, color: AppColors.emerald(context), size: 16),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Seus dados de cartão nunca trafegam nem são gravados no app.',
-                      style: TextStyle(color: AppColors.text(context), fontSize: 11.5, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Icon(Icons.check_circle_outline_rounded, color: AppColors.emerald(context), size: 16),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Ativação imediata da assinatura após aprovação da operadora.',
-                      style: TextStyle(color: AppColors.text(context), fontSize: 11.5, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
 
-        // Botão secundário de checagem manual
-        TextButton.icon(
-          onPressed: _isSubmittingCard ? null : _verifyCardPayment,
-          icon: _isSubmittingCard
-              ? const SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Icon(Icons.refresh_rounded, size: 16, color: AppColors.emerald(context)),
-          label: Text(
-            'Já paguei pelo link (Verificar Aprovação)',
-            style: TextStyle(
-              color: AppColors.emerald(context),
-              fontSize: 12.5,
-              fontWeight: FontWeight.bold,
+        // Link alternativo para abrir o checkout web se preferir
+        Center(
+          child: TextButton.icon(
+            onPressed: _openCardCheckout,
+            icon: Icon(Icons.open_in_new_rounded, size: 14, color: AppColors.subtext(context)),
+            label: Text(
+              'Prefiro pagar no checkout web externo da Asaas',
+              style: TextStyle(
+                color: AppColors.subtext(context),
+                fontSize: 11.5,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+        ),
+        Center(
+          child: TextButton.icon(
+            onPressed: _isSubmittingCard ? null : _verifyCardPayment,
+            icon: Icon(Icons.refresh_rounded, size: 14, color: AppColors.subtext(context)),
+            label: Text(
+              'Já paguei pelo link externo (Verificar Aprovação)',
+              style: TextStyle(
+                color: AppColors.subtext(context),
+                fontSize: 11,
+              ),
             ),
           ),
         ),
         const SizedBox(height: 10),
+      ],
+    );
+  }
+
+  Widget _buildCheckoutInputField({
+    required BuildContext context,
+    required TextEditingController controller,
+    required String label,
+    required String hintText,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    FocusNode? focusNode,
+    int? maxLength,
+    TextCapitalization textCapitalization = TextCapitalization.none,
+    ValueChanged<String>? onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: AppColors.text(context),
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          focusNode: focusNode,
+          keyboardType: keyboardType,
+          maxLength: maxLength,
+          textCapitalization: textCapitalization,
+          onChanged: onChanged,
+          buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
+          style: TextStyle(
+            color: AppColors.text(context),
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+          decoration: InputDecoration(
+            hintText: hintText,
+            hintStyle: TextStyle(color: AppColors.subtext(context).withValues(alpha: 0.5), fontSize: 13),
+            prefixIcon: Icon(icon, color: AppColors.emerald(context), size: 18),
+            filled: true,
+            fillColor: AppColors.bg(context),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppColors.cardBorder(context)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppColors.cardBorder(context)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppColors.emerald(context), width: 1.5),
+            ),
+          ),
+        ),
       ],
     );
   }

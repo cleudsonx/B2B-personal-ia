@@ -107,16 +107,55 @@ class CardPaymentRequest(BaseModel):
 
 class CardPaymentResponse(BaseModel):
     """
-    Resposta padrão indicando desativação do processamento in-app de cartão.
+    Resposta padrão indicando desativação do processamento in-app legada de cartão.
     """
     success: bool = False
     session_id: Optional[str] = None
     status: str = "deprecated"
     message: str = (
-        "Endpoint desativado em conformidade estrita com PCI DSS. "
-        "Utilize o checkout oficial Asaas via POST /checkout-session."
+        "Endpoint legado desativado. "
+        "Utilize /checkout-session ou a tokenização in-app segura via POST /pay-with-card."
     )
     plan_id: Optional[str] = None
     trainer_id: Optional[str] = None
     billing_interval: Optional[str] = "monthly"
+
+
+class InAppCardPaymentRequest(BaseModel):
+    """
+    Requisição de ativação de assinatura com tokenização in-app transparente (Solução 1).
+    Os dados do cartão são encaminhados via canal seguro TLS 1.3 diretamente ao Asaas,
+    sendo tokenizados sem persistência local de PAN ou CVV no backend ou banco de dados.
+    """
+    plan_id: str = Field(..., description="ID do plano escolhido ('pro', 'elite', 'studio')")
+    billing_interval: str = Field("monthly", description="'monthly' ou 'yearly'")
+    card_number: str = Field(..., min_length=13, max_length=23, description="Número do cartão")
+    holder_name: str = Field(..., min_length=2, max_length=100, description="Nome impresso no cartão")
+    expiry_month: str = Field(..., min_length=1, max_length=2, description="Mês de vencimento (01 a 12)")
+    expiry_year: str = Field(..., min_length=2, max_length=4, description="Ano de vencimento (AA ou AAAA)")
+    ccv: str = Field(..., min_length=3, max_length=4, description="Código de segurança (CVV/CVC)")
+    holder_cpf: Optional[str] = Field(None, description="CPF do titular (opcional para antifraude)")
+    holder_phone: Optional[str] = Field(None, description="Telefone de contato do titular")
+    holder_postal_code: Optional[str] = Field(None, description="CEP do titular")
+    holder_address_number: Optional[str] = Field(None, description="Número do endereço")
+    provider: Optional[str] = Field("asaas", description="Gateway de tokenização (padrão: asaas)")
+
+
+class InAppCardPaymentResponse(BaseModel):
+    """
+    Resposta de sucesso da tokenização in-app e ativação da assinatura.
+    """
+    success: bool = True
+    status: str = Field(..., description="'active' ou 'pending'")
+    message: str
+    plan_id: str
+    plan_name: str
+    billing_interval: str
+    trainer_id: str
+    card_token: Optional[str] = None
+    last4: Optional[str] = None
+    card_brand: Optional[str] = None
+    subscription_id: Optional[str] = None
+    next_billing_date: Optional[str] = None
+
 

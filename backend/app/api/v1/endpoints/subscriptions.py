@@ -15,6 +15,8 @@ from app.schemas.subscription import (
     PlanActivationRequest,
     CardPaymentRequest,
     CardPaymentResponse,
+    InAppCardPaymentRequest,
+    InAppCardPaymentResponse,
 )
 from app.services.payment_service import PaymentProviderService
 from app.services.supabase_service import supabase_service
@@ -193,6 +195,89 @@ async def create_checkout_session(
     )
 
 
+@router.post("/pay-with-card", response_model=InAppCardPaymentResponse)
+async def pay_with_card_in_app(
+    request: InAppCardPaymentRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    [Solução 1: Tokenização In-App Transparente & Nativa]
+    Recebe os dados do cartão via TLS 1.3 do app mobile, encaminha-os diretamente
+    ao gateway Asaas para tokenização e cobrança imediata da assinatura.
+    NENHUM dado de cartão (PAN ou CVV) é armazenado em disco, logs ou banco local.
+    Apenas o token gerado (creditCardToken) e a assinatura ativada são persistidos.
+    """
+    token_trainer_id = current_user.get("sub") or current_user.get("trainer_id")
+    if not token_trainer_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Autenticação requerida para pagamento com cartão."
+        )
+
+    trainer_name = (
+        current_user.get("user_metadata", {}).get("full_name")
+        or current_user.get("name")
+        or request.holder_name
+        or "Personal Trainer"
+    )
+    trainer_email = current_user.get("email") or "treinador@demo.com"
+
+    try:
+        result = PaymentProviderService.process_in_app_card_tokenization(
+            plan_id=request.plan_id,
+            billing_interval=request.billing_interval,
+            card_number=request.card_number,
+            holder_name=request.holder_name,
+            expiry_month=request.expiry_month,
+            expiry_year=request.expiry_year,
+            ccv=request.ccv,
+            trainer_id=token_trainer_id,
+            trainer_name=trainer_name,
+            trainer_email=trainer_email,
+            holder_cpf=request.holder_cpf,
+            holder_phone=request.holder_phone,
+            holder_postal_code=request.holder_postal_code,
+            holder_address_number=request.holder_address_number,
+            provider=request.provider or "asaas",
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
+
+    # Ativa a assinatura do treinador no Supabase
+    try:
+        await supabase_service.activate_subscription(
+            trainer_id=token_trainer_id,
+            plan_id=request.plan_id,
+            billing_interval=request.billing_interval,
+            payment_method="credit_card",
+        )
+    except Exception as e:
+        if settings.ENVIRONMENT.lower() == "production":
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Falha ao persistir ativação da assinatura no banco: {e}"
+            )
+        import logging as _log
+        _log.getLogger(__name__).warning(f"Erro ao persistir assinatura em dev/teste: {e}")
+
+    return InAppCardPaymentResponse(
+        success=True,
+        status="active",
+        message=result["message"],
+        plan_id=result["plan_id"],
+        plan_name=result["plan_name"],
+        billing_interval=result["billing_interval"],
+        trainer_id=token_trainer_id,
+        card_token=result.get("card_token"),
+        last4=result.get("last4"),
+        card_brand=result.get("card_brand"),
+        subscription_id=result.get("subscription_id"),
+        next_billing_date=result.get("next_billing_date"),
+    )
+
+
 @router.post("/process-card", response_model=CardPaymentResponse, status_code=status.HTTP_410_GONE, deprecated=True)
 async def process_card_checkout():
     """
@@ -334,24 +419,30 @@ async def webhook_infinitepay(payload: dict, request: Request):
             }
 
     result = PaymentProviderService.process_webhook("infinitepay", payload)
+    action_persisted = False
     if result.get("subscription_status") == "active":
         trainer_id = result.get("trainer_id") or "current-trainer"
         plan_id = result.get("plan_id") or "pro"
         billing_interval = result.get("billing_interval") or "monthly"
-        await supabase_service.activate_subscription(
-            trainer_id=trainer_id,
-            plan_id=plan_id,
-            billing_interval=billing_interval,
-            payment_method="infinitepay"
-        )
+        if trainer_id and trainer_id != "current-trainer" and plan_id:
+            await supabase_service.activate_subscription(
+                trainer_id=trainer_id,
+                plan_id=plan_id,
+                billing_interval=billing_interval,
+                payment_method="infinitepay"
+            )
+            action_persisted = True
 
     if event_id:
-        await supabase_service.record_processed_event(
-            event_id=event_id,
-            provider="infinitepay",
-            event_type=str(evt),
-            payload=payload,
-        )
+        if action_persisted:
+            await supabase_service.record_processed_event(
+                event_id=event_id,
+                provider="infinitepay",
+                event_type=str(evt),
+                payload=payload,
+            )
+        else:
+            await supabase_service.release_webhook_claim(event_id)
 
     return result
 
