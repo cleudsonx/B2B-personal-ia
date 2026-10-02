@@ -527,6 +527,69 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+
+                // --- Gamification Mock ---
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            '14 Dias',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: AppColors.text(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                        ),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                value: 0.65,
+                                strokeWidth: 3,
+                                color: AppColors.emerald(context),
+                                backgroundColor: isDark ? Colors.black26 : Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Progresso Semanal',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.subtext(context),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 18),
 
                 // 2. Workout Split Duration Banner
@@ -534,7 +597,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF1E293B) : const Color(0xFFEDF2F7),
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(24),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -598,19 +661,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                     : (isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0))),
                             width: (isCurrent || isAdapted) ? 2.0 : 1.2,
                           ),
-                          boxShadow: [
-                            if (isCurrent)
-                              BoxShadow(
-                                color: const Color(0xFF00E5A3).withValues(alpha: 0.16),
-                                blurRadius: 18,
-                                offset: const Offset(0, 4),
-                              ),
-                            BoxShadow(
-                              color: isDark ? Colors.black54 : const Color(0x0C0F172A),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
+                          // elevation: 0 (No shadow)
                         ),
                         padding: const EdgeInsets.all(16),
                         child: Column(
