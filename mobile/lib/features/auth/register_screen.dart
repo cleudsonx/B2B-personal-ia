@@ -1,11 +1,13 @@
-import 'package:flutter/material.dart';
-import 'package:mr_coach/core/theme/app_colors.dart';
-import 'package:mr_coach/services/auth_service.dart';
-import 'package:mr_coach/features/auth/login_screen.dart';
-import 'package:mr_coach/features/trainer/presentation/screens/trainer_profile_setup_screen.dart';
+﻿import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
+import '../../services/auth_service.dart';
+import 'login_screen.dart';
+import '../trainer/presentation/screens/trainer_profile_setup_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  final String initialRole;
+
+  const RegisterScreen({super.key, this.initialRole = 'trainer'});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -53,7 +55,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = AppColors.isDark(context);
 
     return Scaffold(
       backgroundColor: AppColors.bg(context),
@@ -88,7 +89,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Comece a prescrever com InteligÃªncia Artificial',
+                    'Comece a prescrever com InteligÃƒÂªncia Artificial',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,
@@ -157,7 +158,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     validator:
                         (v) =>
                             v == null || !v.contains('@')
-                                ? 'E-mail invÃ¡lido'
+                                ? 'E-mail invÃƒÂ¡lido'
                                 : null,
                   ),
                   const SizedBox(height: 16),
@@ -203,12 +204,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     validator:
                         (v) =>
                             v == null || v.length < 6
-                                ? 'A senha deve ter no mÃ­nimo 6 caracteres'
+                                ? 'A senha deve ter no mÃƒÂ­nimo 6 caracteres'
                                 : null,
                   ),
                   const SizedBox(height: 32),
 
-                  // BotÃ£o Criar Conta
+                  // BotÃƒÂ£o Criar Conta
                   ElevatedButton(
                     onPressed: _isLoading ? null : _handleRegister,
                     style: ElevatedButton.styleFrom(
@@ -231,7 +232,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                             )
                             : const Text(
-                              'Criar Conta GrÃ¡tis',
+                              'Criar Conta GrÃƒÂ¡tis',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -240,12 +241,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // JÃ¡ tem conta?
+                  // JÃƒÂ¡ tem conta?
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'JÃ¡ tem uma conta? ',
+                        'JÃƒÂ¡ tem uma conta? ',
                         style: TextStyle(color: AppColors.subtext(context)),
                       ),
                       TextButton(
@@ -277,3 +278,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
+
+
+
