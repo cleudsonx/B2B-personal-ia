@@ -18,6 +18,7 @@ import 'core/theme/theme_controller.dart';
 import 'core/widgets/theme_toggle_button.dart';
 
 import 'package:flutter/services.dart';
+import 'features/invite/invite_landing_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,6 +59,23 @@ class B2BPersonalIaApp extends StatelessWidget {
               PointerDeviceKind.trackpad,
             },
           ),
+          onGenerateRoute: (settings) {
+            final name = settings.name;
+            if (name != null) {
+              final uri = Uri.parse(name);
+              if (uri.pathSegments.length >= 3 &&
+                  uri.pathSegments[0] == 'convite') {
+                return MaterialPageRoute(
+                  builder:
+                      (_) => InviteLandingScreen(
+                        trainerSlug: uri.pathSegments[1],
+                        token: uri.pathSegments[2],
+                      ),
+                );
+              }
+            }
+            return null; // Fallback to 'home'
+          },
           home: const LoginScreen(),
         );
       },
@@ -125,7 +143,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         _NavDestinationItem(
           icon: Icons.assignment_outlined,
           activeIcon: Icons.assignment_rounded,
-          label: 'Prescrição IA',
+          label: 'PrescriÃ§Ã£o IA',
           activeColor: AppColors.trainerEmerald,
         ),
         _NavDestinationItem(
@@ -186,7 +204,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
               ],
             ),
             content: Text(
-              'Deseja sair da conta de ${widget.userName} e voltar para a tela de autenticação?',
+              'Deseja sair da conta de ${widget.userName} e voltar para a tela de autenticaÃ§Ã£o?',
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 13,
