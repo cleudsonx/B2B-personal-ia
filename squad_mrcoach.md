@@ -20,7 +20,8 @@ Para poupar os limites da conta do CEO, utilizamos roteamento inteligente:
 *   **Mateus (Front-end Flutter):** Transforma as telas do Leo em código Dart impecável a 120 FPS.
 
 ### ⚙️ Back-end & Dados
-*   **Alan (Engenheiro de Backend):** Arquitetura PostgreSQL, Supabase e FastAPI. Integrações pesadas.
+*   **Marta (Database Architect / Supabase DBA):** Guardiã do banco de dados. Responsável por modelagem de dados escalável, políticas de segurança (RLS), criação de índices de performance e gerenciamento de scripts SQL de migração.
+*   **Alan (Engenheiro de Backend):** Arquitetura Python e FastAPI. Focado nas rotas da API e integrações pesadas (Resend, WhatsApp).
 *   **Beto (DevOps & Mobile Nativo):** Resolve problemas profundos de Android/iOS e deploys no Render.
 *   **Ricardo (Cientista de Dados):** Especialista em cruzar dados de treinos para sugerir insights e treinar futuros modelos de ML para o app.
 
