@@ -5,7 +5,7 @@ import '../../core/widgets/server_config_dialog.dart';
 import '../../services/auth_service.dart';
 import '../../main.dart';
 import '../client/welcome_onboarding_screen.dart';
-import '../landing/landing_page_screen.dart';
+import '../landing/mrcoach_landing_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -67,7 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ? user!.userMetadata!['full_name'] as String
               : (_selectedRole == 'trainer'
                   ? 'Personal Trainer'
-                  : 'Aluno no Salão');
+                  : 'Aluno no SalÃ£o');
 
       final hasCompletedAnamnesis = profile?['has_completed_anamnesis'] == true;
 
@@ -138,7 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Informe o e-mail cadastrado para receber o link de redefinição de acesso:',
+                  'Informe o e-mail cadastrado para receber o link de redefiniÃ§Ã£o de acesso:',
                   style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 13,
@@ -179,7 +179,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     SnackBar(
                       backgroundColor: Colors.green.shade800,
                       content: Text(
-                        'Instruções enviadas para ${resetEmailCtrl.text}',
+                        'InstruÃ§Ãµes enviadas para ${resetEmailCtrl.text}',
                       ),
                     ),
                   );
@@ -275,10 +275,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         child: Text(
                           widget.initialRole == 'client'
-                              ? 'ÁREA EXCLUSIVA DO ALUNO'
+                              ? 'ÃREA EXCLUSIVA DO ALUNO'
                               : (isTrainer
                                   ? 'PORTAL DO PERSONAL TRAINER'
-                                  : 'ÁREA DO ALUNO'),
+                                  : 'ÃREA DO ALUNO'),
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
@@ -293,7 +293,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Text(
                         widget.initialRole == 'client'
                             ? 'Acesse seu treino personalizado prescrito pelo seu treinador.'
-                            : 'Prescrição Biomecânica & Adaptação no Salão com IA',
+                            : 'PrescriÃ§Ã£o BiomecÃ¢nica & AdaptaÃ§Ã£o no SalÃ£o com IA',
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
@@ -304,7 +304,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Role Selector Toggle (Apenas se não for link exclusivo de aluno)
+                    // Role Selector Toggle (Apenas se nÃ£o for link exclusivo de aluno)
                     if (widget.initialRole != 'client') ...[
                       Container(
                         padding: const EdgeInsets.all(4),
@@ -326,7 +326,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             Expanded(
                               child: _buildRoleTab(
-                                title: 'Aluno no Salão',
+                                title: 'Aluno no SalÃ£o',
                                 icon: Icons.fitness_center_rounded,
                                 isSelected: !isTrainer,
                                 activeColor: AppColors.studentCyan,
@@ -340,8 +340,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       Center(
                         child: Text(
                           isTrainer
-                              ? 'Acesso à gestão de alunos, anamnese clínica e prescrição IA'
-                              : 'Acesso ao treino do dia, timer de descanso e troca rápida',
+                              ? 'Acesso Ã  gestÃ£o de alunos, anamnese clÃ­nica e prescriÃ§Ã£o IA'
+                              : 'Acesso ao treino do dia, timer de descanso e troca rÃ¡pida',
                           style: TextStyle(
                             fontSize: 11,
                             color: primaryAccent,
@@ -362,7 +362,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         if (val == null || val.trim().isEmpty)
                           return 'Informe seu e-mail';
                         if (!val.contains('@'))
-                          return 'Informe um e-mail válido';
+                          return 'Informe um e-mail vÃ¡lido';
                         return null;
                       },
                       decoration: InputDecoration(
@@ -410,7 +410,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         if (val == null || val.trim().isEmpty)
                           return 'Informe sua senha';
                         if (val.length < 6)
-                          return 'A senha deve ter no mínimo 6 dígitos';
+                          return 'A senha deve ter no mÃ­nimo 6 dÃ­gitos';
                         return null;
                       },
                       decoration: InputDecoration(
@@ -529,7 +529,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               )
                               : Text(
-                                'Entrar como ${isTrainer ? 'Treinador Pro' : 'Aluno no Salão'}',
+                                'Entrar como ${isTrainer ? 'Treinador Pro' : 'Aluno no SalÃ£o'}',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w900,
                                   fontSize: 15,
@@ -544,7 +544,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         const Text(
-                          'Ainda não tem conta? ',
+                          'Ainda nÃ£o tem conta? ',
                           style: TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 13,
@@ -563,7 +563,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             );
                           },
                           child: Text(
-                            'Cadastre-se grátis',
+                            'Cadastre-se grÃ¡tis',
                             style: TextStyle(
                               color: primaryAccent,
                               fontWeight: FontWeight.bold,
@@ -581,7 +581,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: primaryAccent,
                       ),
                       label: Text(
-                        'Conhecer a Plataforma (Página Web & WhatsApp)',
+                        'Conhecer a Plataforma (PÃ¡gina Web & WhatsApp)',
                         style: TextStyle(
                           color: primaryAccent,
                           fontSize: 12,
@@ -592,7 +592,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const LandingPageScreen(),
+                            builder: (_) => const MrCoachLandingScreen(),
                           ),
                         );
                       },

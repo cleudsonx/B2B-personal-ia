@@ -143,7 +143,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         _NavDestinationItem(
           icon: Icons.assignment_outlined,
           activeIcon: Icons.assignment_rounded,
-          label: 'PrescriÃ§Ã£o IA',
+          label: 'PrescriÃƒÂ§ÃƒÂ£o IA',
           activeColor: AppColors.trainerEmerald,
         ),
         _NavDestinationItem(
@@ -204,7 +204,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
               ],
             ),
             content: Text(
-              'Deseja sair da conta de ${widget.userName} e voltar para a tela de autenticaÃ§Ã£o?',
+              'Deseja sair da conta de ${widget.userName} e voltar para a tela de autenticaÃƒÂ§ÃƒÂ£o?',
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 13,
