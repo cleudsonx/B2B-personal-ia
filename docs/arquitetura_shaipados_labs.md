@@ -66,3 +66,19 @@ Sempre que iniciar uma nova fase, os agentes são instanciados (via invoke_subag
 3.  **No-Code Local:** Segredos e chaves de API nunca são commitados. Sempre dependemos do .env e de variáveis de ambiente injetadas no deploy (Supabase, Resend, Meta).
 
 *(Documento gerado pela Inteligência Artificial da Google Deepmind durante a transformação arquitetural para Venture Builder - 2026).*
+# Arquitetura Ventur Builder: Shaipados Labs
+
+## 1. Topologia de Hospedagem (Atualizada)
+- **Frontend (Flutter Web):** Firebase Hosting. Responsável pelo roteamento de ponta a ponta (SPA).
+  - \shaipados.com\: Landing Page da Fábrica de Software.
+  - \mrcoach.shaipados.com\: Landing Page de vendas B2B para o Personal Trainer.
+  - \pp.shaipados.com\: PWA e Sistema do Ecossistema (Login / Dashboard).
+- **Backend (FastAPI):** Render (Web Service).
+- **Banco de Dados (PostgreSQL):** Supabase.
+- **CI/CD:** GitHub Actions com \FirebaseExtended/action-hosting-deploy\.
+
+## 2. Frente 1 - Robô Passivo de WhatsApp (Evolution API)
+Estratégia "Custo Zero" (QR Code) focada em mitigação de banimentos:
+- **Fila de Mensagens (\whatsapp_message_queue\):** Todas as mensagens (cobranças, alertas da IA) caem nesta tabela com status \PENDING\.
+- **Spintax & Delay:** Um worker no backend lerá a fila e disparará as mensagens com atrasos aleatórios (4s a 12s) para imitar comportamento humano.
+- **Opt-in/Opt-out:** Obrigatório o aceite do aluno (\whatsapp_opt_in\). A palavra chave "PARE" corta o envio.
