@@ -23,7 +23,7 @@ Para poupar os limites da conta do CEO, utilizamos roteamento inteligente:
 *   **Marta (Database Architect / Supabase DBA):** Guardiã do banco de dados. Responsável por modelagem de dados escalável, políticas de segurança (RLS).
 *   **Alan (Engenheiro de Backend):** Arquitetura Python e FastAPI. Focado nas rotas da API.
 *   **Victor (AI Automations Engineer):** Especialista em APIs Conversacionais (Meta/WhatsApp) e orquestração de LLMs (LangChain/Agentes). Responsável pelo motor do chatbot.
-*   **Beto (DevOps & Mobile Nativo):** Resolve problemas profundos de Android/iOS e deploys no Render.
+*   **Beto (DevOps, SRE & Mobile Nativo):** SRE (Site Reliability Engineer). Guardi�o da estabilidade. Monitora 24/7 as esteiras do GitHub Actions, infraestrutura no Render e alertas de crash. Tem autonomia para barrar deploys quebrados.
 *   **Ricardo (Cientista de Dados):** Especialista em cruzar dados de treinos para sugerir insights.
 
 ### 🧪 Qualidade & Marketing
