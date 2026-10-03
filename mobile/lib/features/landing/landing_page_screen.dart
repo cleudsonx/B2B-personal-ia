@@ -5,13 +5,13 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/theme_toggle_button.dart';
 import '../auth/login_screen.dart';
 
-/// Landing Page oficial de conversão e vendas do Mr. Coach (B2B Personal IA).
+/// Landing Page oficial de conversÃ£o e vendas do Mr. Coach (B2B Personal IA).
 ///
 /// Diretrizes Visuais:
-/// - Material You (M3 Expressivo) com tons pastéis Menta (#98FF98) e Pêssego (#FFDAB9).
+/// - Material You (M3 Expressivo) com tons pastÃ©is Menta (#98FF98) e PÃªssego (#FFDAB9).
 /// - Zero sombras artificiais (Flat com bordas de 1px sutis).
 /// - Cantos super arredondados (24px a 32px e Pills 100px).
-/// - Hero com Mega Botão de WhatsApp convidativo e direto.
+/// - Hero com Mega BotÃ£o de WhatsApp convidativo e direto.
 /// - Arquitetura Edge-to-Edge estrita (sem SafeArea envolvendo o Scaffold).
 class LandingPageScreen extends StatefulWidget {
   const LandingPageScreen({super.key});
@@ -24,7 +24,7 @@ class _LandingPageScreenState extends State<LandingPageScreen> {
   final ScrollController _scrollController = ScrollController();
   static const String _whatsappNumber = '5511999998888';
   static const String _defaultWaMessage =
-      'Olá! Quero conhecer o Mr. Coach IA e testar a plataforma na minha consultoria fitness.';
+      'OlÃ¡! Quero conhecer o Mr. Coach IA e testar a plataforma na minha consultoria fitness.';
 
   Future<void> _openWhatsApp([String? customMessage]) async {
     final text = Uri.encodeComponent(customMessage ?? _defaultWaMessage);
@@ -41,7 +41,9 @@ class _LandingPageScreenState extends State<LandingPageScreen> {
           SnackBar(
             content: Text('Abrindo canal do WhatsApp: wa.me/$_whatsappNumber'),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
           ),
         );
       }
@@ -70,18 +72,19 @@ class _LandingPageScreenState extends State<LandingPageScreen> {
     final horizontalPadding = isDesktop ? 64.0 : (isTablet ? 32.0 : 20.0);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
 
-    // Sincronização dinâmica da SystemBar para Edge-to-Edge nativo
-    final overlayStyle = isDark
-        ? SystemUiOverlayStyle.light.copyWith(
-            statusBarColor: Colors.transparent,
-            systemNavigationBarColor: Colors.transparent,
-            systemNavigationBarDividerColor: Colors.transparent,
-          )
-        : SystemUiOverlayStyle.dark.copyWith(
-            statusBarColor: Colors.transparent,
-            systemNavigationBarColor: Colors.transparent,
-            systemNavigationBarDividerColor: Colors.transparent,
-          );
+    // SincronizaÃ§Ã£o dinÃ¢mica da SystemBar para Edge-to-Edge nativo
+    final overlayStyle =
+        isDark
+            ? SystemUiOverlayStyle.light.copyWith(
+              statusBarColor: Colors.transparent,
+              systemNavigationBarColor: Colors.transparent,
+              systemNavigationBarDividerColor: Colors.transparent,
+            )
+            : SystemUiOverlayStyle.dark.copyWith(
+              statusBarColor: Colors.transparent,
+              systemNavigationBarColor: Colors.transparent,
+              systemNavigationBarDividerColor: Colors.transparent,
+            );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: overlayStyle,
@@ -89,32 +92,33 @@ class _LandingPageScreenState extends State<LandingPageScreen> {
         backgroundColor: AppColors.bg(context),
         body: Stack(
           children: [
-            // Conteúdo Rolável Principal
+            // ConteÃºdo RolÃ¡vel Principal
             CustomScrollView(
               controller: _scrollController,
               slivers: [
-                // 1. Barra de Navegação Flutuante / Topo
+                // 1. Barra de NavegaÃ§Ã£o Flutuante / Topo
                 SliverToBoxAdapter(
                   child: _Navbar(
                     onLoginTap: _navigateToLogin,
-                    onWhatsAppTap: () => _openWhatsApp(
-                      'Olá! Gostaria de falar com o time comercial do Mr. Coach.',
-                    ),
+                    onWhatsAppTap:
+                        () => _openWhatsApp(
+                          'OlÃ¡! Gostaria de falar com o time comercial do Mr. Coach.',
+                        ),
                     horizontalPadding: horizontalPadding,
                   ),
                 ),
 
-                // 2. Seção Hero com o Mega Botão de WhatsApp
+                // 2. SeÃ§Ã£o Hero com o Mega BotÃ£o de WhatsApp
                 SliverToBoxAdapter(
                   child: _HeroSection(
                     horizontalPadding: horizontalPadding,
                     isDesktop: isDesktop,
-                    onWhatsAppPrimaryTap: () => _openWhatsApp(),
+                    onRegisterTap: _navigateToLogin,
                     onLoginTap: _navigateToLogin,
                   ),
                 ),
 
-                // 3. Faixa de Métricas e Prova Social
+                // 3. Faixa de MÃ©tricas e Prova Social
                 SliverToBoxAdapter(
                   child: _MetricsStrip(horizontalPadding: horizontalPadding),
                 ),
@@ -131,9 +135,10 @@ class _LandingPageScreenState extends State<LandingPageScreen> {
                 SliverToBoxAdapter(
                   child: _HowItWorksSection(
                     horizontalPadding: horizontalPadding,
-                    onWhatsAppTap: () => _openWhatsApp(
-                      'Quero iniciar meu teste gratuito de 3 passos no WhatsApp!',
-                    ),
+                    onWhatsAppTap:
+                        () => _openWhatsApp(
+                          'Quero iniciar meu teste gratuito de 3 passos no WhatsApp!',
+                        ),
                   ),
                 ),
 
@@ -145,32 +150,32 @@ class _LandingPageScreenState extends State<LandingPageScreen> {
                   ),
                 ),
 
-                // 7. Planos & Preços com CTA WhatsApp
+                // 7. Planos & PreÃ§os com CTA WhatsApp
                 SliverToBoxAdapter(
                   child: _PricingSection(
                     horizontalPadding: horizontalPadding,
                     isDesktop: isDesktop,
-                    onSelectPlan: (plan) => _openWhatsApp(
-                      'Olá! Quero assinar o plano $plan do Mr. Coach com condição especial de lançamento.',
-                    ),
+                    onSelectPlan:
+                        (plan) => _openWhatsApp(
+                          'OlÃ¡! Quero assinar o plano $plan do Mr. Coach com condiÃ§Ã£o especial de lanÃ§amento.',
+                        ),
                   ),
                 ),
 
-                // 8. FAQ Acordeão
+                // 8. FAQ AcordeÃ£o
                 SliverToBoxAdapter(
                   child: _FaqSection(
                     horizontalPadding: horizontalPadding,
-                    onWhatsAppTap: () => _openWhatsApp(
-                      'Oi, tenho uma dúvida sobre a plataforma antes de começar.',
-                    ),
+                    onWhatsAppTap: () => _openWhatsApp(),
                   ),
                 ),
 
-                // 9. Mega Rodapé Institucional
+                // 9. Mega RodapÃ© Institucional
                 SliverToBoxAdapter(
                   child: _FooterSection(
                     horizontalPadding: horizontalPadding,
-                    bottomInset: bottomInset + 80.0, // Espaço para o Floating CTA
+                    bottomInset:
+                        bottomInset + 80.0, // EspaÃ§o para o Floating CTA
                     onWhatsAppTap: () => _openWhatsApp(),
                     onLoginTap: _navigateToLogin,
                   ),
@@ -178,14 +183,15 @@ class _LandingPageScreenState extends State<LandingPageScreen> {
               ],
             ),
 
-            // 10. Botão Flutuante de WhatsApp Fixo no Canto Inferior Direito
+            // 10. BotÃ£o Flutuante de WhatsApp Fixo no Canto Inferior Direito
             Positioned(
               right: 20,
               bottom: bottomInset + 20,
               child: _FloatingWhatsAppCta(
-                onTap: () => _openWhatsApp(
-                  'Olá! Estou navegando na página e gostaria de tirar uma dúvida rápida.',
-                ),
+                onTap:
+                    () => _openWhatsApp(
+                      'OlÃ¡! Estou navegando na pÃ¡gina e gostaria de tirar uma dÃºvida rÃ¡pida.',
+                    ),
               ),
             ),
           ],
@@ -268,7 +274,10 @@ class _Navbar extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.tangerineBg(context),
                           borderRadius: BorderRadius.circular(100),
@@ -297,7 +306,7 @@ class _Navbar extends StatelessWidget {
             ],
           ),
 
-          // Ações do Topo
+          // AÃ§Ãµes do Topo
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -308,21 +317,29 @@ class _Navbar extends StatelessWidget {
                   onPressed: onLoginTap,
                   style: TextButton.styleFrom(
                     foregroundColor: AppColors.text(context),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(100),
+                    ),
                   ),
                   child: const Text(
-                    'Já sou Treinador',
+                    'JÃ¡ sou Treinador',
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                 ),
               const SizedBox(width: 8),
-              // CTA Rápido Navbar
+              // CTA RÃ¡pido Navbar
               InkWell(
                 onTap: onWhatsAppTap,
                 borderRadius: BorderRadius.circular(100),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 9,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.emeraldBg(context),
                     borderRadius: BorderRadius.circular(100),
@@ -334,10 +351,14 @@ class _Navbar extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _WhatsAppIcon(size: 16, color: AppColors.emerald(context)),
+                      Icon(
+                        Icons.login_rounded,
+                        size: 16,
+                        color: AppColors.emerald(context),
+                      ),
                       const SizedBox(width: 6),
                       Text(
-                        isSmall ? 'WhatsApp' : 'Falar no WhatsApp',
+                        isSmall ? 'Entrar' : 'Criar Conta / Entrar',
                         style: TextStyle(
                           color: AppColors.emerald(context),
                           fontWeight: FontWeight.w700,
@@ -357,18 +378,18 @@ class _Navbar extends StatelessWidget {
 }
 
 // ============================================================================
-// 2. HERO SECTION COM O MEGA BOTÃO DE WHATSAPP
+// 2. HERO SECTION COM O MEGA BOTÃƒO DE WHATSAPP
 // ============================================================================
 class _HeroSection extends StatelessWidget {
   final double horizontalPadding;
   final bool isDesktop;
-  final VoidCallback onWhatsAppPrimaryTap;
+  final VoidCallback onRegisterTap;
   final VoidCallback onLoginTap;
 
   const _HeroSection({
     required this.horizontalPadding,
     required this.isDesktop,
-    required this.onWhatsAppPrimaryTap,
+    required this.onRegisterTap,
     required this.onLoginTap,
   });
 
@@ -385,9 +406,12 @@ class _HeroSection extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // 1. Tag de Destaque Superior (Pill Pastel Menta & Pêssego)
+              // 1. Tag de Destaque Superior (Pill Pastel Menta & PÃªssego)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.emeraldBg(context),
                   borderRadius: BorderRadius.circular(100),
@@ -441,12 +465,17 @@ class _HeroSection extends StatelessWidget {
                     const TextSpan(text: 'Prescreva treinos em '),
                     WidgetSpan(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.emeraldBg(context),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: AppColors.emerald(context).withValues(alpha: 0.4),
+                            color: AppColors.emerald(
+                              context,
+                            ).withValues(alpha: 0.4),
                           ),
                         ),
                         child: Text(
@@ -462,12 +491,17 @@ class _HeroSection extends StatelessWidget {
                     const TextSpan(text: ' e seus alunos '),
                     WidgetSpan(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.tangerineBg(context),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: AppColors.tangerine(context).withValues(alpha: 0.4),
+                            color: AppColors.tangerine(
+                              context,
+                            ).withValues(alpha: 0.4),
                           ),
                         ),
                         child: Text(
@@ -480,17 +514,17 @@ class _HeroSection extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const TextSpan(text: ' no salão de musculação.'),
+                    const TextSpan(text: ' no salÃ£o de musculaÃ§Ã£o.'),
                   ],
                 ),
               ),
               const SizedBox(height: 20),
 
-              // 3. Subtítulo com Proposta de Valor
+              // 3. SubtÃ­tulo com Proposta de Valor
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 720),
                 child: Text(
-                  'A primeira plataforma inteligente que cria periodizações personalizadas baseadas em anamnese clínica e permite que o aluno adapte exercícios ocupados ou com dor em 1 toque, com a segurança do mesmo vetor motor.',
+                  'A primeira plataforma inteligente que cria periodizaÃ§Ãµes personalizadas baseadas em anamnese clÃ­nica e permite que o aluno adapte exercÃ­cios ocupados ou com dor em 1 toque, com a seguranÃ§a do mesmo vetor motor.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: isDesktop ? 17 : 14,
@@ -503,9 +537,9 @@ class _HeroSection extends StatelessWidget {
               const SizedBox(height: 36),
 
               // ===============================================================
-              // 4. O MEGA BOTÃO DE WHATSAPP (ELEMENTO CHAVE DE VENDA)
+              // 4. O MEGA BOTÃƒO DE WHATSAPP (ELEMENTO CHAVE DE VENDA)
               // ===============================================================
-              _MegaWhatsAppHeroButton(onTap: onWhatsAppPrimaryTap),
+              _MegaRegisterHeroButton(onTap: onRegisterTap),
 
               const SizedBox(height: 20),
 
@@ -518,11 +552,11 @@ class _HeroSection extends StatelessWidget {
                 children: [
                   _HeroMicroBadge(
                     icon: Icons.bolt_rounded,
-                    label: 'Ativação imediata em 1 minuto',
+                    label: 'AtivaÃ§Ã£o imediata em 1 minuto',
                   ),
                   _HeroMicroBadge(
                     icon: Icons.credit_card_off_rounded,
-                    label: 'Sem cartão de crédito',
+                    label: 'Sem cartÃ£o de crÃ©dito',
                   ),
                   _HeroMicroBadge(
                     icon: Icons.verified_user_outlined,
@@ -539,18 +573,19 @@ class _HeroSection extends StatelessWidget {
 }
 
 // ============================================================================
-// MEGA BOTÃO WHATSAPP (COMPONENTE DE ALTA CONVERSÃO)
+// MEGA BOTÃƒO WHATSAPP (COMPONENTE DE ALTA CONVERSÃƒO)
 // ============================================================================
-class _MegaWhatsAppHeroButton extends StatefulWidget {
+class _MegaRegisterHeroButton extends StatefulWidget {
   final VoidCallback onTap;
 
-  const _MegaWhatsAppHeroButton({required this.onTap});
+  const _MegaRegisterHeroButton({required this.onTap});
 
   @override
-  State<_MegaWhatsAppHeroButton> createState() => _MegaWhatsAppHeroButtonState();
+  State<_MegaRegisterHeroButton> createState() =>
+      _MegaRegisterHeroButtonState();
 }
 
-class _MegaWhatsAppHeroButtonState extends State<_MegaWhatsAppHeroButton> {
+class _MegaRegisterHeroButtonState extends State<_MegaRegisterHeroButton> {
   bool _isHovered = false;
 
   @override
@@ -573,31 +608,33 @@ class _MegaWhatsAppHeroButtonState extends State<_MegaWhatsAppHeroButton> {
               vertical: isDesktop ? 20 : 16,
             ),
             decoration: BoxDecoration(
-              // Sem sombras! Tons pastéis suaves com gradiente linear sutil
+              // Sem sombras! Tons pastÃ©is suaves com gradiente linear sutil
               gradient: LinearGradient(
-                colors: _isHovered
-                    ? [
-                        AppColors.emerald(context).withValues(alpha: 0.28),
-                        AppColors.emerald(context).withValues(alpha: 0.16),
-                      ]
-                    : [
-                        AppColors.emeraldBg(context),
-                        AppColors.emeraldBg(context).withValues(alpha: 0.7),
-                      ],
+                colors:
+                    _isHovered
+                        ? [
+                          AppColors.emerald(context).withValues(alpha: 0.28),
+                          AppColors.emerald(context).withValues(alpha: 0.16),
+                        ]
+                        : [
+                          AppColors.emeraldBg(context),
+                          AppColors.emeraldBg(context).withValues(alpha: 0.7),
+                        ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(100), // Pill Shape generoso
               border: Border.all(
-                color: _isHovered
-                    ? AppColors.emerald(context)
-                    : AppColors.emerald(context).withValues(alpha: 0.6),
+                color:
+                    _isHovered
+                        ? AppColors.emerald(context)
+                        : AppColors.emerald(context).withValues(alpha: 0.6),
                 width: _isHovered ? 2.0 : 1.5,
               ),
             ),
             child: Row(
               children: [
-                // Ícone Grande do WhatsApp em Container Circular
+                // Ãcone Grande do WhatsApp em Container Circular
                 Container(
                   width: isDesktop ? 56 : 46,
                   height: isDesktop ? 56 : 46,
@@ -606,15 +643,16 @@ class _MegaWhatsAppHeroButtonState extends State<_MegaWhatsAppHeroButton> {
                     shape: BoxShape.circle,
                   ),
                   child: Center(
-                    child: _WhatsAppIcon(
+                    child: Icon(
+                      Icons.person_add_rounded,
                       size: isDesktop ? 28 : 22,
-                      color: Colors.black87,
+                      color: Colors.white,
                     ),
                   ),
                 ),
                 SizedBox(width: isDesktop ? 18 : 12),
 
-                // Conteúdo Textual de Alta Intenção
+                // ConteÃºdo Textual de Alta IntenÃ§Ã£o
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -633,21 +671,23 @@ class _MegaWhatsAppHeroButtonState extends State<_MegaWhatsAppHeroButton> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            'ONLINE AGORA • RESPOSTA EM 2 MIN',
+                            'ACESSO LIBERADO â€¢ CONFIGURE EM 2 MIN',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 0.8,
-                              color: AppColors.text(context).withValues(alpha: 0.8),
+                              color: AppColors.text(
+                                context,
+                              ).withValues(alpha: 0.8),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 3),
 
-                      // Título Principal Convidativo
+                      // TÃ­tulo Principal Convidativo
                       Text(
-                        'QUERO TESTAR GRÁTIS NO WHATSAPP',
+                        'CRIAR CONTA GRÃTIS',
                         style: TextStyle(
                           fontSize: isDesktop ? 17 : 14,
                           fontWeight: FontWeight.w900,
@@ -657,9 +697,9 @@ class _MegaWhatsAppHeroButtonState extends State<_MegaWhatsAppHeroButton> {
                       ),
                       const SizedBox(height: 2),
 
-                      // Subtexto sem fricção
+                      // Subtexto sem fricÃ§Ã£o
                       Text(
-                        'Inicie seu teste gratuito em 1 clique • Fale direto com o especialista',
+                        'Inicie seu teste gratuito em 1 clique â€¢ Acesso imediato Ã  plataforma',
                         style: TextStyle(
                           fontSize: isDesktop ? 12 : 10,
                           fontWeight: FontWeight.w500,
@@ -670,7 +710,7 @@ class _MegaWhatsAppHeroButtonState extends State<_MegaWhatsAppHeroButton> {
                   ),
                 ),
 
-                // Ícone de Ação / Flecha
+                // Ãcone de AÃ§Ã£o / Flecha
                 Container(
                   width: isDesktop ? 38 : 30,
                   height: isDesktop ? 38 : 30,
@@ -732,7 +772,7 @@ class _HeroMicroBadge extends StatelessWidget {
 }
 
 // ============================================================================
-// 3. FAIXA DE MÉTRICAS & PROVA SOCIAL
+// 3. FAIXA DE MÃ‰TRICAS & PROVA SOCIAL
 // ============================================================================
 class _MetricsStrip extends StatelessWidget {
   final double horizontalPadding;
@@ -754,7 +794,10 @@ class _MetricsStrip extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.card(context),
               borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: AppColors.cardBorder(context), width: 1),
+              border: Border.all(
+                color: AppColors.cardBorder(context),
+                width: 1,
+              ),
             ),
             child: LayoutBuilder(
               builder: (ctx, constraints) {
@@ -762,26 +805,50 @@ class _MetricsStrip extends StatelessWidget {
                 if (isNarrow) {
                   return Column(
                     children: const [
-                      _MetricItem(number: '+2.400', label: 'Treinos gerados via IA'),
+                      _MetricItem(
+                        number: '+2.400',
+                        label: 'Treinos gerados via IA',
+                      ),
                       Divider(height: 24),
-                      _MetricItem(number: '30s', label: 'Tempo médio de periodização'),
+                      _MetricItem(
+                        number: '30s',
+                        label: 'Tempo mÃ©dio de periodizaÃ§Ã£o',
+                      ),
                       Divider(height: 24),
-                      _MetricItem(number: '99.4%', label: 'Acurácia biomecânica'),
+                      _MetricItem(
+                        number: '99.4%',
+                        label: 'AcurÃ¡cia biomecÃ¢nica',
+                      ),
                       Divider(height: 24),
-                      _MetricItem(number: '3x', label: 'Mais alunos por treinador'),
+                      _MetricItem(
+                        number: '3x',
+                        label: 'Mais alunos por treinador',
+                      ),
                     ],
                   );
                 }
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: const [
-                    _MetricItem(number: '+2.400', label: 'Treinos gerados via IA'),
+                    _MetricItem(
+                      number: '+2.400',
+                      label: 'Treinos gerados via IA',
+                    ),
                     _VerticalDivider(),
-                    _MetricItem(number: '30s', label: 'Tempo médio de periodização'),
+                    _MetricItem(
+                      number: '30s',
+                      label: 'Tempo mÃ©dio de periodizaÃ§Ã£o',
+                    ),
                     _VerticalDivider(),
-                    _MetricItem(number: '99.4%', label: 'Acurácia biomecânica'),
+                    _MetricItem(
+                      number: '99.4%',
+                      label: 'AcurÃ¡cia biomecÃ¢nica',
+                    ),
                     _VerticalDivider(),
-                    _MetricItem(number: '3x', label: 'Mais alunos por treinador'),
+                    _MetricItem(
+                      number: '3x',
+                      label: 'Mais alunos por treinador',
+                    ),
                   ],
                 );
               },
@@ -865,9 +932,12 @@ class _BentoGridFeatures extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 1040),
           child: Column(
             children: [
-              // Cabeçalho da Seção
+              // CabeÃ§alho da SeÃ§Ã£o
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.tangerineBg(context),
                   borderRadius: BorderRadius.circular(100),
@@ -895,7 +965,7 @@ class _BentoGridFeatures extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                'Projetado especificamente para a rotina caótica de personal trainers no WhatsApp e salões de musculação.',
+                'Projetado especificamente para a rotina caÃ³tica de personal trainers no WhatsApp e salÃµes de musculaÃ§Ã£o.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -919,10 +989,11 @@ class _BentoGridFeatures extends StatelessWidget {
                               child: _BentoCard(
                                 isMint: true,
                                 icon: Icons.auto_awesome_rounded,
-                                tag: 'PRESCRIÇÃO COM IA',
-                                title: 'Splits A, B, C e Periodização em 30 Segundos',
+                                tag: 'PRESCRIÃ‡ÃƒO COM IA',
+                                title:
+                                    'Splits A, B, C e PeriodizaÃ§Ã£o em 30 Segundos',
                                 description:
-                                    'Diga adeus às planilhas lentas. Nossa IA baseada no Gemini 3.8 lê as metas e monta divisões completas, séries, repetições e intervalos científicos.',
+                                    'Diga adeus Ã s planilhas lentas. Nossa IA baseada no Gemini 3.8 lÃª as metas e monta divisÃµes completas, sÃ©ries, repetiÃ§Ãµes e intervalos cientÃ­ficos.',
                               ),
                             ),
                             const SizedBox(width: 18),
@@ -932,9 +1003,10 @@ class _BentoGridFeatures extends StatelessWidget {
                                 isMint: false,
                                 icon: Icons.change_circle_rounded,
                                 tag: 'SALVADOR DO ALUNO',
-                                title: 'Botão de Pânico: Aparelho Ocupado ou Dor',
+                                title:
+                                    'BotÃ£o de PÃ¢nico: Aparelho Ocupado ou Dor',
                                 description:
-                                    'Se o leg press estiver lotado ou houver desconforto no joelho, o aluno toca no botão e a IA sugere na hora uma variação com o mesmo vetor motor.',
+                                    'Se o leg press estiver lotado ou houver desconforto no joelho, o aluno toca no botÃ£o e a IA sugere na hora uma variaÃ§Ã£o com o mesmo vetor motor.',
                               ),
                             ),
                           ],
@@ -948,10 +1020,10 @@ class _BentoGridFeatures extends StatelessWidget {
                               child: _BentoCard(
                                 isMint: false,
                                 icon: Icons.medical_services_outlined,
-                                tag: 'SEGURANÇA TOTAL',
-                                title: 'Blindagem de Lesões & Restrições',
+                                tag: 'SEGURANÃ‡A TOTAL',
+                                title: 'Blindagem de LesÃµes & RestriÃ§Ãµes',
                                 description:
-                                    'O aluno tem hérnia lombar ou impacto no ombro? A anamnese filtra e bloqueia automaticamente qualquer exercício de risco contraindicado.',
+                                    'O aluno tem hÃ©rnia lombar ou impacto no ombro? A anamnese filtra e bloqueia automaticamente qualquer exercÃ­cio de risco contraindicado.',
                               ),
                             ),
                             const SizedBox(width: 18),
@@ -960,10 +1032,11 @@ class _BentoGridFeatures extends StatelessWidget {
                               child: _BentoCard(
                                 isMint: true,
                                 icon: Icons.hub_rounded,
-                                tag: 'RETENÇÃO & AUDITORIA',
-                                title: 'Painel Central do Personal & Notificações',
+                                tag: 'RETENÃ‡ÃƒO & AUDITORIA',
+                                title:
+                                    'Painel Central do Personal & NotificaÃ§Ãµes',
                                 description:
-                                    'Veja em tempo real quem treinou, quais exercícios foram adaptados e receba relatórios prontos para mandar aos seus alunos no WhatsApp.',
+                                    'Veja em tempo real quem treinou, quais exercÃ­cios foram adaptados e receba relatÃ³rios prontos para mandar aos seus alunos no WhatsApp.',
                               ),
                             ),
                           ],
@@ -972,43 +1045,43 @@ class _BentoGridFeatures extends StatelessWidget {
                     );
                   }
 
-                  // Layout Mobile Coluna Única
+                  // Layout Mobile Coluna Ãšnica
                   return Column(
                     children: [
                       _BentoCard(
                         isMint: true,
                         icon: Icons.auto_awesome_rounded,
-                        tag: 'PRESCRIÇÃO COM IA',
-                        title: 'Splits A, B, C e Periodização em 30 Segundos',
+                        tag: 'PRESCRIÃ‡ÃƒO COM IA',
+                        title: 'Splits A, B, C e PeriodizaÃ§Ã£o em 30 Segundos',
                         description:
-                            'Diga adeus às planilhas lentas. Nossa IA lê metas e monta divisões completas, repetições e intervalos científicos.',
+                            'Diga adeus Ã s planilhas lentas. Nossa IA lÃª metas e monta divisÃµes completas, repetiÃ§Ãµes e intervalos cientÃ­ficos.',
                       ),
                       const SizedBox(height: 14),
                       _BentoCard(
                         isMint: false,
                         icon: Icons.change_circle_rounded,
                         tag: 'SALVADOR DO ALUNO',
-                        title: 'Botão de Pânico: Aparelho Ocupado ou Dor',
+                        title: 'BotÃ£o de PÃ¢nico: Aparelho Ocupado ou Dor',
                         description:
-                            'Se o leg press estiver lotado, o aluno toca no botão e a IA sugere na hora uma variação biomecânica equivalente.',
+                            'Se o leg press estiver lotado, o aluno toca no botÃ£o e a IA sugere na hora uma variaÃ§Ã£o biomecÃ¢nica equivalente.',
                       ),
                       const SizedBox(height: 14),
                       _BentoCard(
                         isMint: false,
                         icon: Icons.medical_services_outlined,
-                        tag: 'SEGURANÇA TOTAL',
-                        title: 'Blindagem de Lesões & Restrições',
+                        tag: 'SEGURANÃ‡A TOTAL',
+                        title: 'Blindagem de LesÃµes & RestriÃ§Ãµes',
                         description:
-                            'Filtro rigoroso de contraindicações articulares baseado em anamnese clínica detalhada.',
+                            'Filtro rigoroso de contraindicaÃ§Ãµes articulares baseado em anamnese clÃ­nica detalhada.',
                       ),
                       const SizedBox(height: 14),
                       _BentoCard(
                         isMint: true,
                         icon: Icons.hub_rounded,
-                        tag: 'RETENÇÃO & AUDITORIA',
-                        title: 'Painel Central do Personal & Notificações',
+                        tag: 'RETENÃ‡ÃƒO & AUDITORIA',
+                        title: 'Painel Central do Personal & NotificaÃ§Ãµes',
                         description:
-                            'Acompanhe adesão, evolução e adaptações em tempo real pelo seu painel administrativo.',
+                            'Acompanhe adesÃ£o, evoluÃ§Ã£o e adaptaÃ§Ãµes em tempo real pelo seu painel administrativo.',
                       ),
                     ],
                   );
@@ -1039,8 +1112,10 @@ class _BentoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accentColor = isMint ? AppColors.emerald(context) : AppColors.tangerine(context);
-    final accentBg = isMint ? AppColors.emeraldBg(context) : AppColors.tangerineBg(context);
+    final accentColor =
+        isMint ? AppColors.emerald(context) : AppColors.tangerine(context);
+    final accentBg =
+        isMint ? AppColors.emeraldBg(context) : AppColors.tangerineBg(context);
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -1066,7 +1141,10 @@ class _BentoCard extends StatelessWidget {
                 child: Icon(icon, color: accentColor, size: 22),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: accentBg,
                   borderRadius: BorderRadius.circular(100),
@@ -1136,12 +1214,18 @@ class _HowItWorksSection extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.card(context),
               borderRadius: BorderRadius.circular(32),
-              border: Border.all(color: AppColors.cardBorder(context), width: 1),
+              border: Border.all(
+                color: AppColors.cardBorder(context),
+                width: 1,
+              ),
             ),
             child: Column(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.emeraldBg(context),
                     borderRadius: BorderRadius.circular(100),
@@ -1158,7 +1242,7 @@ class _HowItWorksSection extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'Como começar em 3 minutos no WhatsApp',
+                  'Como comeÃ§ar em 3 minutos no WhatsApp',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 26,
@@ -1176,20 +1260,23 @@ class _HowItWorksSection extends StatelessWidget {
                         children: const [
                           _StepItem(
                             step: '1',
-                            title: 'Chame nosso time no WhatsApp',
-                            desc: 'Envie um "olá" e nossa equipe libera seu acesso de teste em menos de 2 minutos.',
+                            title: 'Crie sua conta grÃ¡tis',
+                            desc:
+                                'Preencha seus dados bÃ¡sicos e sua vitrine de professor serÃ¡ ativada em segundos.',
                           ),
                           SizedBox(height: 18),
                           _StepItem(
                             step: '2',
                             title: 'Cadastre sua anamnese',
-                            desc: 'Insira os dados do aluno ou importe a rotina. A IA gera o split em 30 segundos.',
+                            desc:
+                                'Insira os dados do aluno ou importe a rotina. A IA gera o split em 30 segundos.',
                           ),
                           SizedBox(height: 18),
                           _StepItem(
                             step: '3',
                             title: 'Envie o app para seu aluno',
-                            desc: 'Seu aluno treina com seu acompanhamento e você ganha horas de volta toda semana.',
+                            desc:
+                                'Seu aluno treina com seu acompanhamento e vocÃª ganha horas de volta toda semana.',
                           ),
                         ],
                       );
@@ -1201,7 +1288,8 @@ class _HowItWorksSection extends StatelessWidget {
                           child: _StepItem(
                             step: '1',
                             title: 'Chame no WhatsApp',
-                            desc: 'Envie um "olá" e nossa equipe libera seu acesso de teste em menos de 2 minutos.',
+                            desc:
+                                'Preencha seus dados bÃ¡sicos e sua vitrine de professor serÃ¡ ativada em segundos.',
                           ),
                         ),
                         SizedBox(width: 16),
@@ -1209,7 +1297,8 @@ class _HowItWorksSection extends StatelessWidget {
                           child: _StepItem(
                             step: '2',
                             title: 'Cadastre a Anamnese',
-                            desc: 'Insira metas e restrições. A IA gera a periodização completa em 30 segundos.',
+                            desc:
+                                'Insira metas e restriÃ§Ãµes. A IA gera a periodizaÃ§Ã£o completa em 30 segundos.',
                           ),
                         ),
                         SizedBox(width: 16),
@@ -1217,7 +1306,8 @@ class _HowItWorksSection extends StatelessWidget {
                           child: _StepItem(
                             step: '3',
                             title: 'Escale seus Alunos',
-                            desc: 'Seu aluno treina no app e você dobra sua consultoria com zero sobrecarga.',
+                            desc:
+                                'Seu aluno treina no app e vocÃª dobra sua consultoria com zero sobrecarga.',
                           ),
                         ),
                       ],
@@ -1225,19 +1315,24 @@ class _HowItWorksSection extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 32),
-                // Botão de WhatsApp Convidativo da Seção
+                // BotÃ£o de WhatsApp Convidativo da SeÃ§Ã£o
                 ElevatedButton.icon(
                   onPressed: onWhatsAppTap,
                   icon: const _WhatsAppIcon(size: 18, color: Colors.black87),
                   label: const Text(
-                    'Começar Passo 1 no WhatsApp Agora',
+                    'ComeÃ§ar Passo 1 no WhatsApp Agora',
                     style: TextStyle(fontWeight: FontWeight.w800),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.emerald(context),
                     foregroundColor: Colors.black87,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(100),
+                    ),
                     elevation: 0,
                   ),
                 ),
@@ -1340,7 +1435,10 @@ class _TestimonialsSection extends StatelessWidget {
           child: Column(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.tangerineBg(context),
                   borderRadius: BorderRadius.circular(100),
@@ -1376,14 +1474,14 @@ class _TestimonialsSection extends StatelessWidget {
                     author: 'Rodrigo Mello, CREF 14209-G',
                     role: 'Personal & Consultor Online (42 alunos)',
                     quote:
-                        '"Eu gastava meus domingos inteiros montando planilhas de treino. Com o Mr. Coach, gero uma periodização impecável com Gemini 3.8 em segundos e aprovo na hora."',
+                        '"Eu gastava meus domingos inteiros montando planilhas de treino. Com o Mr. Coach, gero uma periodizaÃ§Ã£o impecÃ¡vel com Gemini 3.8 em segundos e aprovo na hora."',
                     rating: 5,
                   ),
                   _TestimonialCard(
                     author: 'Camila Fagundes, CREF 09312-G',
                     role: 'Treinadora Funcional & Hipertrofia (68 alunos)',
                     quote:
-                        '"O botão de aparelho ocupado é genial! Meus alunos me mandavam áudio desesperados do meio da academia. Agora eles resolvem sozinhos com segurança biomecânica."',
+                        '"O botÃ£o de aparelho ocupado Ã© genial! Meus alunos me mandavam Ã¡udio desesperados do meio da academia. Agora eles resolvem sozinhos com seguranÃ§a biomecÃ¢nica."',
                     rating: 5,
                   ),
                 ],
@@ -1425,7 +1523,11 @@ class _TestimonialCard extends StatelessWidget {
           Row(
             children: List.generate(
               rating,
-              (i) => const Icon(Icons.star_rounded, color: Color(0xFFF59E0B), size: 18),
+              (i) => const Icon(
+                Icons.star_rounded,
+                color: Color(0xFFF59E0B),
+                size: 18,
+              ),
             ),
           ),
           const SizedBox(height: 14),
@@ -1484,7 +1586,7 @@ class _TestimonialCard extends StatelessWidget {
 }
 
 // ============================================================================
-// 7. PLANOS & PREÇOS (CTA DIRETO WHATSAPP)
+// 7. PLANOS & PREÃ‡OS (CTA DIRETO WHATSAPP)
 // ============================================================================
 class _PricingSection extends StatelessWidget {
   final double horizontalPadding;
@@ -1510,13 +1612,16 @@ class _PricingSection extends StatelessWidget {
           child: Column(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.emeraldBg(context),
                   borderRadius: BorderRadius.circular(100),
                 ),
                 child: Text(
-                  'CONDIÇÃO ESPECIAL DE LANÇAMENTO',
+                  'CONDIÃ‡ÃƒO ESPECIAL DE LANÃ‡AMENTO',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
@@ -1538,9 +1643,12 @@ class _PricingSection extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Converse conosco no WhatsApp para liberar condições personalizadas para sua consultoria.',
+                'Converse conosco no WhatsApp para liberar condiÃ§Ãµes personalizadas para sua consultoria.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: AppColors.subtext(context)),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.subtext(context),
+                ),
               ),
               const SizedBox(height: 32),
               Wrap(
@@ -1549,30 +1657,30 @@ class _PricingSection extends StatelessWidget {
                 alignment: WrapAlignment.center,
                 children: [
                   _PricingCard(
-                    title: 'Starter Grátis',
+                    title: 'Starter GrÃ¡tis',
                     price: 'R\$ 0',
-                    period: '/mês vitalício',
+                    period: '/mÃªs vitalÃ­cio',
                     isHighlight: false,
                     features: const [
-                      'Até 5 alunos ativos',
+                      'AtÃ© 5 alunos ativos',
                       '10 fichas IA mensais',
-                      'Botão de emergência básico',
+                      'BotÃ£o de emergÃªncia bÃ¡sico',
                       'Suporte via comunidade',
                     ],
                     buttonLabel: 'Testar Starter no WhatsApp',
-                    onTap: () => onSelectPlan('Starter Grátis'),
+                    onTap: () => onSelectPlan('Starter GrÃ¡tis'),
                   ),
                   _PricingCard(
                     title: 'Personal Pro',
                     badge: 'MAIS ESCOLHIDO',
                     price: 'R\$ 69',
-                    period: '/mês',
+                    period: '/mÃªs',
                     isHighlight: true,
                     features: const [
-                      'Até 30 alunos ativos',
-                      'Gerações de IA Ilimitadas',
-                      'Adaptação de treinos em tempo real',
-                      'Anamnese clínica completa',
+                      'AtÃ© 30 alunos ativos',
+                      'GeraÃ§Ãµes de IA Ilimitadas',
+                      'AdaptaÃ§Ã£o de treinos em tempo real',
+                      'Anamnese clÃ­nica completa',
                       'Suporte VIP no WhatsApp',
                     ],
                     buttonLabel: 'Garantir Pro no WhatsApp',
@@ -1581,13 +1689,13 @@ class _PricingSection extends StatelessWidget {
                   _PricingCard(
                     title: 'Consultoria Elite',
                     price: 'R\$ 149',
-                    period: '/mês',
+                    period: '/mÃªs',
                     isHighlight: false,
                     features: const [
                       'Alunos ilimitados',
-                      'Multiusuários / Estúdios',
+                      'MultiusuÃ¡rios / EstÃºdios',
                       'Treinamento 1-on-1 com nossa equipe',
-                      'Onboarding prioritário',
+                      'Onboarding prioritÃ¡rio',
                     ],
                     buttonLabel: 'Falar com Consultor Elite',
                     onTap: () => onSelectPlan('Consultoria Elite'),
@@ -1629,16 +1737,18 @@ class _PricingCard extends StatelessWidget {
       width: 320,
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: isHighlight
-            ? (AppColors.isDark(context)
-                ? const Color(0xFF16233B)
-                : const Color(0xFFF0FDF4))
-            : AppColors.card(context),
+        color:
+            isHighlight
+                ? (AppColors.isDark(context)
+                    ? const Color(0xFF16233B)
+                    : const Color(0xFFF0FDF4))
+                : AppColors.card(context),
         borderRadius: BorderRadius.circular(28),
         border: Border.all(
-          color: isHighlight
-              ? AppColors.emerald(context)
-              : AppColors.cardBorder(context),
+          color:
+              isHighlight
+                  ? AppColors.emerald(context)
+                  : AppColors.cardBorder(context),
           width: isHighlight ? 2 : 1,
         ),
       ),
@@ -1650,7 +1760,10 @@ class _PricingCard extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Container(
                 margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.emerald(context),
                   borderRadius: BorderRadius.circular(100),
@@ -1728,12 +1841,16 @@ class _PricingCard extends StatelessWidget {
           ElevatedButton(
             onPressed: onTap,
             style: ElevatedButton.styleFrom(
-              backgroundColor: isHighlight
-                  ? AppColors.emerald(context)
-                  : AppColors.pillBg(context),
-              foregroundColor: isHighlight ? Colors.black87 : AppColors.text(context),
+              backgroundColor:
+                  isHighlight
+                      ? AppColors.emerald(context)
+                      : AppColors.pillBg(context),
+              foregroundColor:
+                  isHighlight ? Colors.black87 : AppColors.text(context),
               padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(100),
+              ),
               elevation: 0,
             ),
             child: Row(
@@ -1741,12 +1858,16 @@ class _PricingCard extends StatelessWidget {
               children: [
                 _WhatsAppIcon(
                   size: 16,
-                  color: isHighlight ? Colors.black87 : AppColors.emerald(context),
+                  color:
+                      isHighlight ? Colors.black87 : AppColors.emerald(context),
                 ),
                 const SizedBox(width: 8),
                 Text(
                   buttonLabel,
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
@@ -1758,7 +1879,7 @@ class _PricingCard extends StatelessWidget {
 }
 
 // ============================================================================
-// 8. FAQ ACORDEÃO
+// 8. FAQ ACORDEÃƒO
 // ============================================================================
 class _FaqSection extends StatelessWidget {
   final double horizontalPadding;
@@ -1782,13 +1903,16 @@ class _FaqSection extends StatelessWidget {
           child: Column(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.tangerineBg(context),
                   borderRadius: BorderRadius.circular(100),
                 ),
                 child: Text(
-                  'TIRE SUAS DÚVIDAS',
+                  'TIRE SUAS DÃšVIDAS',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
@@ -1809,30 +1933,34 @@ class _FaqSection extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               _FaqAccordionItem(
-                question: 'A inteligência artificial substitui meu papel como Personal?',
+                question:
+                    'A inteligÃªncia artificial substitui meu papel como Personal?',
                 answer:
-                    'Não! O Mr. Coach é uma ferramenta de escala e copiloto do treinador. A IA gera a proposta de treino baseada na sua anamnese e nada vai para o aluno sem a sua aprovação ou ajuste em 1 clique.',
+                    'NÃ£o! O Mr. Coach Ã© uma ferramenta de escala e copiloto do treinador. A IA gera a proposta de treino baseada na sua anamnese e nada vai para o aluno sem a sua aprovaÃ§Ã£o ou ajuste em 1 clique.',
               ),
               _FaqAccordionItem(
-                question: 'Como funciona o botão de "Aparelho Ocupado" no app do aluno?',
+                question:
+                    'Como funciona o botÃ£o de "Aparelho Ocupado" no app do aluno?',
                 answer:
-                    'Quando o aluno está na academia e o aparelho prescrito está ocupado (ex: Crossover), ele clica no botão de emergência. A IA analisa o vetor biomecânico e sugere uma substituição equivalente com halteres ou elástico, notificando você no painel.',
+                    'Quando o aluno estÃ¡ na academia e o aparelho prescrito estÃ¡ ocupado (ex: Crossover), ele clica no botÃ£o de emergÃªncia. A IA analisa o vetor biomecÃ¢nico e sugere uma substituiÃ§Ã£o equivalente com halteres ou elÃ¡stico, notificando vocÃª no painel.',
               ),
               _FaqAccordionItem(
-                question: 'Como faço para testar na prática?',
+                question: 'Como faÃ§o para testar na prÃ¡tica?',
                 answer:
-                    'Basta clicar em qualquer botão de WhatsApp nesta página. Nosso time cria sua conta gratuita imediatamente e envia um vídeo de demonstração rápida.',
+                    'Basta clicar em "Criar Conta GrÃ¡tis" no topo da pÃ¡gina. O acesso Ã© imediato e self-service.',
               ),
               _FaqAccordionItem(
-                question: 'Posso cadastrar restrições articulares e lesões?',
+                question: 'Posso cadastrar restriÃ§Ãµes articulares e lesÃµes?',
                 answer:
-                    'Sim. A anamnese permite marcar lesões de ombro, joelho, lombar, condromalácia, etc. A IA respeita estritamente as limitações biomecânicas.',
+                    'Sim. A anamnese permite marcar lesÃµes de ombro, joelho, lombar, condromalÃ¡cia, etc. A IA respeita estritamente as limitaÃ§Ãµes biomecÃ¢nicas.',
               ),
               const SizedBox(height: 20),
               TextButton.icon(
                 onPressed: onWhatsAppTap,
                 icon: const _WhatsAppIcon(size: 16),
-                label: const Text('Ainda com dúvidas? Fale conosco no WhatsApp'),
+                label: const Text(
+                  'Ainda com dÃºvidas? Fale conosco no WhatsApp',
+                ),
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.emerald(context),
                 ),
@@ -1880,7 +2008,9 @@ class _FaqAccordionItemState extends State<_FaqAccordionItem> {
             ),
           ),
           trailing: Icon(
-            _expanded ? Icons.remove_circle_outline_rounded : Icons.add_circle_outline_rounded,
+            _expanded
+                ? Icons.remove_circle_outline_rounded
+                : Icons.add_circle_outline_rounded,
             color: AppColors.emerald(context),
           ),
           children: [
@@ -1962,7 +2092,7 @@ class _FooterSection extends StatelessWidget {
                   TextButton(
                     onPressed: onLoginTap,
                     child: Text(
-                      'Área do Treinador',
+                      'Ãrea do Treinador',
                       style: TextStyle(
                         color: AppColors.subtext(context),
                         fontSize: 12,
@@ -1990,11 +2120,8 @@ class _FooterSection extends StatelessWidget {
           Divider(color: AppColors.cardBorder(context), height: 1),
           const SizedBox(height: 16),
           Text(
-            '© 2026 Mr. Coach - Plataforma B2B para Personal Trainers & Consultorias Fitness. Todos os direitos reservados.',
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.subtext(context),
-            ),
+            'Â© 2026 Mr. Coach - Plataforma B2B para Personal Trainers & Consultorias Fitness. Todos os direitos reservados.',
+            style: TextStyle(fontSize: 11, color: AppColors.subtext(context)),
             textAlign: TextAlign.center,
           ),
         ],
@@ -2030,9 +2157,13 @@ class _FloatingWhatsAppCtaState extends State<_FloatingWhatsAppCta> {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           decoration: BoxDecoration(
-            color: _isHovered ? const Color(0xFF10B981) : const Color(0xFF25D366),
+            color:
+                _isHovered ? const Color(0xFF10B981) : const Color(0xFF25D366),
             borderRadius: BorderRadius.circular(100),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.5),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.3),
+              width: 1.5,
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -2057,7 +2188,7 @@ class _FloatingWhatsAppCtaState extends State<_FloatingWhatsAppCta> {
               ),
               const SizedBox(width: 10),
               const Text(
-                'Dúvidas? Chame no Zap',
+                'DÃºvidas? Chame no Zap',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w900,
@@ -2074,7 +2205,7 @@ class _FloatingWhatsAppCtaState extends State<_FloatingWhatsAppCta> {
 }
 
 // ============================================================================
-// COMPONENTE AUXILIAR: ÍCONE CUSTOMIZADO DO WHATSAPP
+// COMPONENTE AUXILIAR: ÃCONE CUSTOMIZADO DO WHATSAPP
 // ============================================================================
 class _WhatsAppIcon extends StatelessWidget {
   final double size;
