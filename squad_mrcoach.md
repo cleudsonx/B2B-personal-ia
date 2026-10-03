@@ -29,3 +29,15 @@ Para poupar os limites da conta do CEO, utilizamos roteamento inteligente:
 ### ðŸ§ª Qualidade & Marketing
 *   **Thiago (QA Engineer):** Focado em testes automatizados e caÃ§ar bugs.
 *   **Sofia (Copywriter B2B):** Escreve e-mails que convertem, landing pages atraentes e mensagens de WhatsApp persuasivas.
+
+## ?? Matriz de Roteamento de IA (Custos e Performance)
+Para mantermos a excelência sem estourar o orçamento, definimos a seguinte política de uso dos modelos LLM disponíveis na nossa infraestrutura, baseada no custo-benefício de cada motor:
+
+| Membro da Equipe | Especialidade | Modelo Padrão Designado | Motivo Estratégico |
+| :--- | :--- | :--- | :--- |
+| **Arthur (Tech Lead)** | Orquestração e Decisões Críticas | Gemini 3.1 Pro | Custo "Low" na nossa tier, mas com alta capacidade de raciocínio profundo para gerenciar o projeto. |
+| **Sarah & Sofia (Produto/Copy)** | Estratégia B2B e Textos Persuasivos | Claude Opus 5.5 | Modelo mais robusto para nuances de linguagem humana, criatividade e assertividade comercial (Uso pontual). |
+| **Alan & Victor (Backend/IA)** | Lógica Complexa e Arquitetura | Claude Sonnet 5.5 | Excelente balanço de velocidade e inteligência avançada para escrever código Python e regras de negócio. |
+| **Mateus & Leo (Front/UI)** | Iteração Rápida de Telas Flutter | Gemini 3.8 Flash | Velocidade absurda ("Fast") para refatoração constante de UI e ajustes de layout responsivo. |
+| **Thiago & Beto (QA/SRE)** | Leitura de Logs e Testes Repetitivos | Gemini 3.8 Flash | Tarefas de validação e CI/CD exigem velocidade e baixo custo, ideal para o motor Flash mais recente. |
+| **Laboratório / Pesquisa** | Testes Locais e Alternativas | GPT-OSS 120B | Usado sob demanda para não dependermos apenas de APIs proprietárias. |
