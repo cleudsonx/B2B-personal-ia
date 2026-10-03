@@ -87,7 +87,8 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
 
   String? _detectExerciseInText(String text) {
     final lower = text.toLowerCase();
-    if (lower.contains('supino') && (lower.contains('inclinado') || lower.contains('halteres'))) {
+    if (lower.contains('supino') &&
+        (lower.contains('inclinado') || lower.contains('halteres'))) {
       return 'Supino Inclinado com Halteres';
     } else if (lower.contains('supino')) {
       return 'Supino Reto com Barra';
@@ -112,43 +113,51 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
     final detectedExercise = _detectExerciseInText(text);
 
     setState(() {
-      _messages.add(_ChatMessage(
-        text: text,
-        isUser: true,
-        detectedExercise: detectedExercise,
-      ));
+      _messages.add(
+        _ChatMessage(
+          text: text,
+          isUser: true,
+          detectedExercise: detectedExercise,
+        ),
+      );
       _isLoading = true;
       if (textOverride == null) _promptCtrl.clear();
     });
 
     try {
-      final promptWithContext = widget.isStudentView
-          ? 'Por favor, me ajude de forma clara e acessível: $text'
-          : text;
+      final promptWithContext =
+          widget.isStudentView
+              ? 'Por favor, me ajude de forma clara e acessível: $text'
+              : text;
 
       final reply = await GeminiService.askB2BAssistant(
         prompt: promptWithContext,
-        systemInstruction: widget.isStudentView
-            ? AiPrompts.expertStudentPersona
-            : AiPrompts.expertTrainerPersona,
+        systemInstruction:
+            widget.isStudentView
+                ? AiPrompts.expertStudentPersona
+                : AiPrompts.expertTrainerPersona,
         model: _selectedModelId,
       );
       final replyExercise = detectedExercise ?? _detectExerciseInText(reply);
 
       setState(() {
-        _messages.add(_ChatMessage(
-          text: reply,
-          isUser: false,
-          detectedExercise: replyExercise,
-        ));
+        _messages.add(
+          _ChatMessage(
+            text: reply,
+            isUser: false,
+            detectedExercise: replyExercise,
+          ),
+        );
       });
     } catch (e) {
       setState(() {
-        _messages.add(_ChatMessage(
-          text: 'Falha ao consultar assistente: $e',
-          isUser: false,
-          isError: true,
-        ));
+        _messages.add(
+          _ChatMessage(
+            text: 'Falha ao consultar assistente: $e',
+            isUser: false,
+            isError: true,
+          ),
+        );
       });
     } finally {
       if (mounted) {
@@ -159,7 +168,8 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final accentColor = widget.isStudentView ? AppColors.studentCyan : AppColors.trainerIndigo;
+    final accentColor =
+        widget.isStudentView ? AppColors.studentCyan : AppColors.trainerIndigo;
 
     return Scaffold(
       backgroundColor: AppColors.bg(context),
@@ -177,14 +187,18 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                 border: Border.all(color: accentColor.withValues(alpha: 0.4)),
               ),
               child: Icon(
-                widget.isStudentView ? Icons.fitness_center_rounded : Icons.smart_toy_outlined,
+                widget.isStudentView
+                    ? Icons.fitness_center_rounded
+                    : Icons.smart_toy_outlined,
                 color: accentColor,
                 size: 20,
               ),
             ),
             const SizedBox(width: 10),
             Text(
-              widget.isStudentView ? 'Mr. Coach AI • Biomecânica' : 'Mr. Coach AI • Consultoria & Treino',
+              widget.isStudentView
+                  ? 'Mr. Coach AI • Biomecânica'
+                  : 'Mr. Coach AI • Consultoria & Treino',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
           ],
@@ -197,28 +211,29 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
             ),
             tooltip: 'Selecionar Modelo de IA',
             onSelected: (val) => setState(() => _selectedModelId = val),
-            itemBuilder: (ctx) => [
-              const PopupMenuItem(
-                value: 'gemini-3.1-pro-preview',
-                child: Row(
-                  children: [
-                    Icon(Icons.psychology, size: 18),
-                    SizedBox(width: 8),
-                    Text('Gemini 3.1 Pro (Deep Thinking)'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'gemini-2.5-flash',
-                child: Row(
-                  children: [
-                    Icon(Icons.bolt, size: 18),
-                    SizedBox(width: 8),
-                    Text('Gemini 2.5 Flash (Fast)'),
-                  ],
-                ),
-              ),
-            ],
+            itemBuilder:
+                (ctx) => [
+                  const PopupMenuItem(
+                    value: 'gemini-3.1-pro-preview',
+                    child: Row(
+                      children: [
+                        Icon(Icons.psychology, size: 18),
+                        SizedBox(width: 8),
+                        Text('Gemini 3.1 Pro (Deep Thinking)'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'gemini-2.5-flash',
+                    child: Row(
+                      children: [
+                        Icon(Icons.bolt, size: 18),
+                        SizedBox(width: 8),
+                        Text('Gemini 2.5 Flash (Fast)'),
+                      ],
+                    ),
+                  ),
+                ],
           ),
           if (kDebugMode)
             IconButton(
@@ -243,7 +258,9 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                       decoration: BoxDecoration(
                         color: AppColors.card(context),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: accentColor.withValues(alpha: 0.3)),
+                        border: Border.all(
+                          color: accentColor.withValues(alpha: 0.3),
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: accentColor.withValues(alpha: 0.06),
@@ -259,10 +276,15 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                             decoration: BoxDecoration(
                               color: accentColor.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: accentColor, width: 1.5),
+                              border: Border.all(
+                                color: accentColor,
+                                width: 1.5,
+                              ),
                             ),
                             child: Icon(
-                              widget.isStudentView ? Icons.biotech_rounded : Icons.psychology_outlined,
+                              widget.isStudentView
+                                  ? Icons.biotech_rounded
+                                  : Icons.psychology_outlined,
                               color: accentColor,
                               size: 26,
                             ),
@@ -287,7 +309,10 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                                   widget.isStudentView
                                       ? 'Peça demonstrações de movimentos, ângulos seguros e cadência das fases.'
                                       : 'Pergunte sobre precificação, retenção de alunos e estratégias comerciais.',
-                                  style: TextStyle(color: AppColors.subtext(context), fontSize: 12),
+                                  style: TextStyle(
+                                    color: AppColors.subtext(context),
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ],
                             ),
@@ -311,15 +336,40 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: [
-                            _buildPillarChip(context, 'Todos', Icons.auto_awesome, accentColor),
+                            _buildPillarChip(
+                              context,
+                              'Todos',
+                              Icons.auto_awesome,
+                              accentColor,
+                            ),
                             const SizedBox(width: 8),
-                            _buildPillarChip(context, 'Biomecânica', Icons.biotech_rounded, Colors.cyan),
+                            _buildPillarChip(
+                              context,
+                              'Biomecânica',
+                              Icons.biotech_rounded,
+                              Colors.cyan,
+                            ),
                             const SizedBox(width: 8),
-                            _buildPillarChip(context, 'Fisiologia', Icons.bolt, Colors.amber),
+                            _buildPillarChip(
+                              context,
+                              'Fisiologia',
+                              Icons.bolt,
+                              Colors.amber,
+                            ),
                             const SizedBox(width: 8),
-                            _buildPillarChip(context, 'Treinamento', Icons.fitness_center_rounded, Colors.orange),
+                            _buildPillarChip(
+                              context,
+                              'Treinamento',
+                              Icons.fitness_center_rounded,
+                              Colors.orange,
+                            ),
                             const SizedBox(width: 8),
-                            _buildPillarChip(context, 'Negócios B2B', Icons.trending_up_rounded, AppColors.emerald(context)),
+                            _buildPillarChip(
+                              context,
+                              'Negócios B2B',
+                              Icons.trending_up_rounded,
+                              AppColors.emerald(context),
+                            ),
                           ],
                         ),
                       ),
@@ -341,30 +391,49 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                     Wrap(
                       spacing: 8,
                       runSpacing: 10,
-                      children: _quickPrompts.map((prompt) {
-                        final isBiomechanicsPrompt = prompt.contains('Raio-X') || prompt.contains('executar');
-                        return ActionChip(
-                          backgroundColor: AppColors.card(context),
-                          side: BorderSide(
-                            color: isBiomechanicsPrompt ? accentColor.withValues(alpha: 0.4) : AppColors.cardBorder(context),
-                          ),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          avatar: Icon(
-                            isBiomechanicsPrompt ? Icons.biotech_rounded : Icons.bolt,
-                            size: 15,
-                            color: isBiomechanicsPrompt ? accentColor : AppColors.studentAmber,
-                          ),
-                          label: Text(
-                            prompt,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isBiomechanicsPrompt ? AppColors.text(context) : AppColors.subtext(context),
-                              fontWeight: isBiomechanicsPrompt ? FontWeight.w600 : FontWeight.normal,
-                            ),
-                          ),
-                          onPressed: () => _sendPrompt(prompt),
-                        );
-                      }).toList(),
+                      children:
+                          _quickPrompts.map((prompt) {
+                            final isBiomechanicsPrompt =
+                                prompt.contains('Raio-X') ||
+                                prompt.contains('executar');
+                            return ActionChip(
+                              backgroundColor: AppColors.card(context),
+                              side: BorderSide(
+                                color:
+                                    isBiomechanicsPrompt
+                                        ? accentColor.withValues(alpha: 0.4)
+                                        : AppColors.cardBorder(context),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              avatar: Icon(
+                                isBiomechanicsPrompt
+                                    ? Icons.biotech_rounded
+                                    : Icons.bolt,
+                                size: 15,
+                                color:
+                                    isBiomechanicsPrompt
+                                        ? accentColor
+                                        : AppColors.studentAmber,
+                              ),
+                              label: Text(
+                                prompt,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color:
+                                      isBiomechanicsPrompt
+                                          ? AppColors.text(context)
+                                          : AppColors.subtext(context),
+                                  fontWeight:
+                                      isBiomechanicsPrompt
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
+                                ),
+                              ),
+                              onPressed: () => _sendPrompt(prompt),
+                            );
+                          }).toList(),
                     ),
                   ],
                 ),
@@ -373,12 +442,18 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
           ] else ...[
             Expanded(
               child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 itemCount: _messages.length,
                 itemBuilder: (context, index) {
                   final msg = _messages[index];
                   return Align(
-                    alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
+                    alignment:
+                        msg.isUser
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
                     child: Container(
                       margin: const EdgeInsets.symmetric(vertical: 6),
                       padding: const EdgeInsets.all(14),
@@ -386,16 +461,18 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                         maxWidth: MediaQuery.of(context).size.width * 0.84,
                       ),
                       decoration: BoxDecoration(
-                        color: msg.isUser
-                            ? accentColor.withValues(alpha: 0.18)
-                            : msg.isError
+                        color:
+                            msg.isUser
+                                ? accentColor.withValues(alpha: 0.18)
+                                : msg.isError
                                 ? Colors.red.shade900.withValues(alpha: 0.2)
                                 : AppColors.card(context),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: msg.isUser
-                              ? accentColor.withValues(alpha: 0.4)
-                              : msg.isError
+                          color:
+                              msg.isUser
+                                  ? accentColor.withValues(alpha: 0.4)
+                                  : msg.isError
                                   ? Colors.red.shade700
                                   : AppColors.cardBorder(context),
                         ),
@@ -407,7 +484,10 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                             msg.text,
                             style: TextStyle(
                               fontSize: 13,
-                              color: msg.isError ? Colors.red.shade200 : AppColors.text(context),
+                              color:
+                                  msg.isError
+                                      ? Colors.red.shade200
+                                      : AppColors.text(context),
                               height: 1.4,
                             ),
                           ),
@@ -419,28 +499,46 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                                 BiomechanicalAnalysisSheet.show(
                                   context,
                                   exerciseName: msg.detectedExercise!,
-                                  onAskAI: () => _sendPrompt('Explique a biomecânica detalhada do ${msg.detectedExercise}'),
+                                  onAskAI:
+                                      () => _sendPrompt(
+                                        'Explique a biomecânica detalhada do ${msg.detectedExercise}',
+                                      ),
                                 );
                               },
                               borderRadius: BorderRadius.circular(10),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: [
-                                      AppColors.trainerIndigo.withValues(alpha: 0.25),
-                                      AppColors.studentCyan.withValues(alpha: 0.15),
+                                      AppColors.trainerIndigo.withValues(
+                                        alpha: 0.25,
+                                      ),
+                                      AppColors.studentCyan.withValues(
+                                        alpha: 0.15,
+                                      ),
                                     ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
                                   borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: AppColors.studentCyan.withValues(alpha: 0.6)),
+                                  border: Border.all(
+                                    color: AppColors.studentCyan.withValues(
+                                      alpha: 0.6,
+                                    ),
+                                  ),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.biotech_rounded, size: 16, color: AppColors.studentCyan),
+                                    const Icon(
+                                      Icons.biotech_rounded,
+                                      size: 16,
+                                      color: AppColors.studentCyan,
+                                    ),
                                     const SizedBox(width: 8),
                                     Text(
                                       '🧬 Ver Raio-X & Fases: ${msg.detectedExercise}',
@@ -451,7 +549,11 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: 6),
-                                    const Icon(Icons.chevron_right, size: 16, color: AppColors.studentCyan),
+                                    const Icon(
+                                      Icons.chevron_right,
+                                      size: 16,
+                                      color: AppColors.studentCyan,
+                                    ),
                                   ],
                                 ),
                               ),
@@ -462,15 +564,24 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                             InkWell(
                               onTap: () => ServerConfigDialog.show(context),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: Colors.red.shade900.withValues(alpha: 0.3),
+                                  color: Colors.red.shade900.withValues(
+                                    alpha: 0.3,
+                                  ),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: const Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.settings, size: 14, color: Colors.redAccent),
+                                    Icon(
+                                      Icons.settings,
+                                      size: 14,
+                                      color: Colors.redAccent,
+                                    ),
                                     SizedBox(width: 4),
                                     Text(
                                       'Ajustar IP do Servidor',
@@ -502,12 +613,20 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                   SizedBox(
                     width: 16,
                     height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: accentColor),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: accentColor,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    widget.isStudentView ? 'Consultando Biomecânica IA...' : 'Gerando estratégia B2B...',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    widget.isStudentView
+                        ? 'Consultando Biomecânica IA...'
+                        : 'Gerando estratégia B2B...',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ],
               ),
@@ -518,34 +637,53 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: AppColors.card(context),
-                border: Border(top: BorderSide(color: AppColors.cardBorder(context))),
+                border: Border(
+                  top: BorderSide(color: AppColors.cardBorder(context)),
+                ),
               ),
               child: Row(
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _promptCtrl,
-                      style: TextStyle(color: AppColors.text(context), fontSize: 13),
+                      style: TextStyle(
+                        color: AppColors.text(context),
+                        fontSize: 13,
+                      ),
                       decoration: InputDecoration(
-                        hintText: widget.isStudentView
-                            ? 'Dúvida de execução, ângulo ou dor...'
-                            : 'Digite sua dúvida de negócio...',
-                        hintStyle: TextStyle(color: AppColors.subtext(context), fontSize: 13),
+                        hintText:
+                            widget.isStudentView
+                                ? 'Dúvida de execução, ângulo ou dor...'
+                                : 'Digite sua dúvida de negócio...',
+                        hintStyle: TextStyle(
+                          color: AppColors.subtext(context),
+                          fontSize: 13,
+                        ),
                         filled: true,
                         fillColor: AppColors.pillBg(context),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide(color: AppColors.pillBorder(context)),
+                          borderSide: BorderSide(
+                            color: AppColors.pillBorder(context),
+                          ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide(color: AppColors.pillBorder(context)),
+                          borderSide: BorderSide(
+                            color: AppColors.pillBorder(context),
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide(color: accentColor, width: 1.5),
+                          borderSide: BorderSide(
+                            color: accentColor,
+                            width: 1.5,
+                          ),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                       ),
                       onSubmitted: (_) => _sendPrompt(),
                     ),
@@ -568,7 +706,12 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
     );
   }
 
-  Widget _buildPillarChip(BuildContext context, String title, IconData icon, Color color) {
+  Widget _buildPillarChip(
+    BuildContext context,
+    String title,
+    IconData icon,
+    Color color,
+  ) {
     final isSelected = _selectedPillar == title;
     return ChoiceChip(
       selected: isSelected,

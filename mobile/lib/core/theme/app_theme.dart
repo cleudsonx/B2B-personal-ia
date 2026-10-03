@@ -23,7 +23,9 @@ class AppTheme {
         onSurface: AppColors.lightTextPrimary,
         error: AppColors.danger,
       ),
-      textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme).copyWith(
+      textTheme: GoogleFonts.interTextTheme(
+        ThemeData.light().textTheme,
+      ).copyWith(
         displaySmall: GoogleFonts.inter(
           fontSize: 26,
           fontWeight: FontWeight.w800,
@@ -140,7 +142,9 @@ class AppTheme {
         onSurface: AppColors.darkTextPrimary,
         error: AppColors.danger,
       ),
-      textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
+      textTheme: GoogleFonts.interTextTheme(
+        ThemeData.dark().textTheme,
+      ).copyWith(
         displaySmall: GoogleFonts.inter(
           fontSize: 26,
           fontWeight: FontWeight.w800,

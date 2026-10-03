@@ -22,7 +22,7 @@ import 'package:flutter/services.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  
+
   try {
     await Supabase.initialize(
       url: AppConfig.supabaseUrl,
@@ -168,38 +168,51 @@ class _MainShellScreenState extends State<MainShellScreen> {
   Future<void> _logout() async {
     final shouldLogout = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.trainerSurface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: AppColors.trainerBorder),
-        ),
-        title: const Row(
-          children: [
-            Icon(Icons.logout_rounded, color: AppColors.studentAmber),
-            SizedBox(width: 8),
-            Text('Trocar Perfil / Sair', style: TextStyle(color: AppColors.textPrimary, fontSize: 18)),
-          ],
-        ),
-        content: Text(
-          'Deseja sair da conta de ${widget.userName} e voltar para a tela de autenticação?',
-          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar', style: TextStyle(color: AppColors.textMuted)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.studentAmber,
-              foregroundColor: Colors.black,
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: AppColors.trainerSurface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+              side: const BorderSide(color: AppColors.trainerBorder),
             ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Sair e Trocar', style: TextStyle(fontWeight: FontWeight.bold)),
+            title: const Row(
+              children: [
+                Icon(Icons.logout_rounded, color: AppColors.studentAmber),
+                SizedBox(width: 8),
+                Text(
+                  'Trocar Perfil / Sair',
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 18),
+                ),
+              ],
+            ),
+            content: Text(
+              'Deseja sair da conta de ${widget.userName} e voltar para a tela de autenticação?',
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(color: AppColors.textMuted),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.studentAmber,
+                  foregroundColor: Colors.black,
+                ),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text(
+                  'Sair e Trocar',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
     );
 
     if (shouldLogout == true && mounted) {
@@ -227,7 +240,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
     }
 
     final isWideScreen = MediaQuery.of(context).size.width >= 850;
-    final roleColor = _isTrainer ? AppColors.trainerEmerald : AppColors.studentCyan;
+    final roleColor =
+        _isTrainer ? AppColors.trainerEmerald : AppColors.studentCyan;
 
     if (isWideScreen) {
       // Desktop / Web Layout with Left Sidebar
@@ -240,7 +254,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
               width: 250,
               decoration: BoxDecoration(
                 color: AppColors.card(context),
-                border: Border(right: BorderSide(color: AppColors.cardBorder(context), width: 1)),
+                border: Border(
+                  right: BorderSide(
+                    color: AppColors.cardBorder(context),
+                    width: 1,
+                  ),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -256,7 +275,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
                           height: 36,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [roleColor.withValues(alpha: 0.3), roleColor.withValues(alpha: 0.05)],
+                              colors: [
+                                roleColor.withValues(alpha: 0.3),
+                                roleColor.withValues(alpha: 0.05),
+                              ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
@@ -264,7 +286,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
                             border: Border.all(color: roleColor, width: 1.5),
                           ),
                           child: Icon(
-                            _isTrainer ? Icons.sports_gymnastics : Icons.fitness_center_rounded,
+                            _isTrainer
+                                ? Icons.sports_gymnastics
+                                : Icons.fitness_center_rounded,
                             color: roleColor,
                             size: 20,
                           ),
@@ -283,7 +307,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
                               ),
                             ),
                             Text(
-                              _isTrainer ? 'PROFESSOR / PERSONAL' : 'ALUNO EM TREINO',
+                              _isTrainer
+                                  ? 'PROFESSOR / PERSONAL'
+                                  : 'ALUNO EM TREINO',
                               style: TextStyle(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w700,
@@ -315,23 +341,35 @@ class _MainShellScreenState extends State<MainShellScreen> {
                             borderRadius: BorderRadius.circular(12),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 180),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
                               decoration: BoxDecoration(
-                                color: isSelected
-                                    ? item.activeColor.withValues(alpha: 0.12)
-                                    : Colors.transparent,
+                                color:
+                                    isSelected
+                                        ? item.activeColor.withValues(
+                                          alpha: 0.12,
+                                        )
+                                        : Colors.transparent,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: isSelected
-                                      ? item.activeColor.withValues(alpha: 0.5)
-                                      : Colors.transparent,
+                                  color:
+                                      isSelected
+                                          ? item.activeColor.withValues(
+                                            alpha: 0.5,
+                                          )
+                                          : Colors.transparent,
                                 ),
                               ),
                               child: Row(
                                 children: [
                                   Icon(
                                     isSelected ? item.activeIcon : item.icon,
-                                    color: isSelected ? item.activeColor : AppColors.textMuted,
+                                    color:
+                                        isSelected
+                                            ? item.activeColor
+                                            : AppColors.textMuted,
                                     size: 20,
                                   ),
                                   const SizedBox(width: 12),
@@ -340,8 +378,14 @@ class _MainShellScreenState extends State<MainShellScreen> {
                                       item.label,
                                       style: TextStyle(
                                         fontSize: 13,
-                                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                        color: isSelected ? item.activeColor : AppColors.subtext(context),
+                                        fontWeight:
+                                            isSelected
+                                                ? FontWeight.w700
+                                                : FontWeight.w500,
+                                        color:
+                                            isSelected
+                                                ? item.activeColor
+                                                : AppColors.subtext(context),
                                       ),
                                     ),
                                   ),
@@ -372,7 +416,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   // Plan indicator in sidebar for trainers
                   if (_isTrainer)
                     ValueListenableBuilder<MySubscriptionModel?>(
-                      valueListenable: SubscriptionService.activeSubscriptionNotifier,
+                      valueListenable:
+                          SubscriptionService.activeSubscriptionNotifier,
                       builder: (context, sub, _) {
                         final planName = sub?.planName ?? 'Personal Pro';
                         final planId = sub?.planId ?? 'pro';
@@ -392,7 +437,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
                           planIcon = Icons.workspace_premium_rounded;
                         }
                         return Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.pillBg(context),
                             borderRadius: BorderRadius.circular(12),
@@ -404,18 +452,18 @@ class _MainShellScreenState extends State<MainShellScreen> {
                             onTap: () => setState(() => _currentIndex = 3),
                             borderRadius: BorderRadius.circular(12),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
                               child: Row(
                                 children: [
-                                  Icon(
-                                    planIcon,
-                                    size: 18,
-                                    color: planColor,
-                                  ),
+                                  Icon(planIcon, size: 18, color: planColor),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           'PLANO ATIVO',
@@ -438,7 +486,11 @@ class _MainShellScreenState extends State<MainShellScreen> {
                                       ],
                                     ),
                                   ),
-                                  Icon(Icons.chevron_right, size: 16, color: AppColors.subtext(context)),
+                                  Icon(
+                                    Icons.chevron_right,
+                                    size: 16,
+                                    color: AppColors.subtext(context),
+                                  ),
                                 ],
                               ),
                             ),
@@ -449,7 +501,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
                   // Theme Toggle Pill in Sidebar
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 6,
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -482,7 +537,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
                           radius: 16,
                           backgroundColor: roleColor.withValues(alpha: 0.2),
                           child: Text(
-                            widget.userName.isNotEmpty ? widget.userName[0].toUpperCase() : 'U',
+                            widget.userName.isNotEmpty
+                                ? widget.userName[0].toUpperCase()
+                                : 'U',
                             style: TextStyle(
                               color: roleColor,
                               fontWeight: FontWeight.bold,
@@ -516,7 +573,11 @@ class _MainShellScreenState extends State<MainShellScreen> {
                           ),
                         ),
                         IconButton(
-                          icon: Icon(Icons.logout_rounded, size: 18, color: AppColors.subtext(context)),
+                          icon: Icon(
+                            Icons.logout_rounded,
+                            size: 18,
+                            color: AppColors.subtext(context),
+                          ),
                           tooltip: 'Sair / Trocar Perfil',
                           onPressed: _logout,
                         ),
@@ -529,10 +590,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
             // Main Content Area
             Expanded(
-              child: IndexedStack(
-                index: _currentIndex,
-                children: screens,
-              ),
+              child: IndexedStack(index: _currentIndex, children: screens),
             ),
           ],
         ),
@@ -552,7 +610,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
               ),
               decoration: BoxDecoration(
                 color: AppColors.card(context),
-                border: Border(bottom: BorderSide(color: AppColors.cardBorder(context))),
+                border: Border(
+                  bottom: BorderSide(color: AppColors.cardBorder(context)),
+                ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -561,11 +621,16 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: roleColor.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: roleColor.withValues(alpha: 0.3)),
+                            border: Border.all(
+                              color: roleColor.withValues(alpha: 0.3),
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -573,7 +638,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
                               Container(
                                 width: 6,
                                 height: 6,
-                                decoration: BoxDecoration(color: roleColor, shape: BoxShape.circle),
+                                decoration: BoxDecoration(
+                                  color: roleColor,
+                                  shape: BoxShape.circle,
+                                ),
                               ),
                               const SizedBox(width: 6),
                               Text(
@@ -603,7 +671,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
                         if (_isTrainer) ...[
                           const SizedBox(width: 8),
                           ValueListenableBuilder<MySubscriptionModel?>(
-                            valueListenable: SubscriptionService.activeSubscriptionNotifier,
+                            valueListenable:
+                                SubscriptionService.activeSubscriptionNotifier,
                             builder: (context, sub, _) {
                               final planName = sub?.planName ?? 'Personal Pro';
                               final planId = sub?.planId ?? 'pro';
@@ -626,7 +695,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
                                 onTap: () => setState(() => _currentIndex = 3),
                                 borderRadius: BorderRadius.circular(8),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 3,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: planColor.withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(8),
@@ -669,11 +741,24 @@ class _MainShellScreenState extends State<MainShellScreen> {
                       const SizedBox(width: 4),
                       TextButton.icon(
                         style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           visualDensity: VisualDensity.compact,
                         ),
-                        icon: Icon(Icons.logout_rounded, size: 14, color: AppColors.subtext(context)),
-                        label: Text('Sair', style: TextStyle(color: AppColors.subtext(context), fontSize: 11)),
+                        icon: Icon(
+                          Icons.logout_rounded,
+                          size: 14,
+                          color: AppColors.subtext(context),
+                        ),
+                        label: Text(
+                          'Sair',
+                          style: TextStyle(
+                            color: AppColors.subtext(context),
+                            fontSize: 11,
+                          ),
+                        ),
                         onPressed: _logout,
                       ),
                     ],
@@ -683,17 +768,16 @@ class _MainShellScreenState extends State<MainShellScreen> {
             ),
             // Screen Content
             Expanded(
-              child: IndexedStack(
-                index: _currentIndex,
-                children: screens,
-              ),
+              child: IndexedStack(index: _currentIndex, children: screens),
             ),
           ],
         ),
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
             color: AppColors.card(context),
-            border: Border(top: BorderSide(color: AppColors.cardBorder(context), width: 1)),
+            border: Border(
+              top: BorderSide(color: AppColors.cardBorder(context), width: 1),
+            ),
           ),
           child: SafeArea(
             child: Padding(
@@ -758,7 +842,10 @@ class _NavBarItem extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? activeColor.withValues(alpha: 0.12) : Colors.transparent,
+          color:
+              isSelected
+                  ? activeColor.withValues(alpha: 0.12)
+                  : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Column(

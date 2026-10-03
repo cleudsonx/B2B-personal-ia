@@ -15,10 +15,12 @@ class TrainerPlanSelectionScreen extends StatefulWidget {
   });
 
   @override
-  State<TrainerPlanSelectionScreen> createState() => _TrainerPlanSelectionScreenState();
+  State<TrainerPlanSelectionScreen> createState() =>
+      _TrainerPlanSelectionScreenState();
 }
 
-class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen> {
+class _TrainerPlanSelectionScreenState
+    extends State<TrainerPlanSelectionScreen> {
   bool _isLoading = true;
   bool _isYearly = false;
   List<PlanModel> _plans = [];
@@ -40,7 +42,10 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
     }
   }
 
-  Future<void> _proceedToApp({required String planId, required String planName}) async {
+  Future<void> _proceedToApp({
+    required String planId,
+    required String planName,
+  }) async {
     await SubscriptionService.activatePlan(
       planId: planId,
       billingInterval: _isYearly ? 'yearly' : 'monthly',
@@ -50,7 +55,9 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.green.shade800,
-          content: Text('🎉 Plano $planName ativado com sucesso! Bem-vindo ao Mr. Coach.'),
+          content: Text(
+            '🎉 Plano $planName ativado com sucesso! Bem-vindo ao Mr. Coach.',
+          ),
         ),
       );
     }
@@ -59,11 +66,12 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
-          builder: (_) => MainShellScreen(
-            initialIndex: 0,
-            activeRole: 'trainer',
-            userName: widget.trainerName,
-          ),
+          builder:
+              (_) => MainShellScreen(
+                initialIndex: 0,
+                activeRole: 'trainer',
+                userName: widget.trainerName,
+              ),
         ),
         (route) => false,
       );
@@ -80,16 +88,17 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => _CheckoutModal(
-        plan: plan,
-        isYearly: _isYearly,
-        trainerName: widget.trainerName,
-        trainerEmail: widget.trainerEmail ?? 'treinador@demo.com',
-        onSuccess: () {
-          Navigator.pop(ctx);
-          _proceedToApp(planId: plan.id, planName: plan.name);
-        },
-      ),
+      builder:
+          (ctx) => _CheckoutModal(
+            plan: plan,
+            isYearly: _isYearly,
+            trainerName: widget.trainerName,
+            trainerEmail: widget.trainerEmail ?? 'treinador@demo.com',
+            onSuccess: () {
+              Navigator.pop(ctx);
+              _proceedToApp(planId: plan.id, planName: plan.name);
+            },
+          ),
     );
   }
 
@@ -103,7 +112,9 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
         scrolledUnderElevation: 0,
         actions: [
           TextButton(
-            onPressed: () => _proceedToApp(planId: 'starter', planName: 'Starter Free'),
+            onPressed:
+                () =>
+                    _proceedToApp(planId: 'starter', planName: 'Starter Free'),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -116,149 +127,177 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
                   ),
                 ),
                 const SizedBox(width: 4),
-                Icon(Icons.chevron_right, size: 18, color: AppColors.subtext(context)),
+                Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: AppColors.subtext(context),
+                ),
               ],
             ),
           ),
           const SizedBox(width: 12),
         ],
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: AppColors.emerald(context)))
-          : SafeArea(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                children: [
-                  // Header
-                  Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: AppColors.emeraldBg(context),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.emerald(context).withValues(alpha: 0.4)),
-                      ),
-                      child: Text(
-                        '🚀 BOAS-VINDAS AO MR. COACH',
-                        style: TextStyle(
-                          color: AppColors.emerald(context),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.8,
+      body:
+          _isLoading
+              ? Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.emerald(context),
+                ),
+              )
+              : SafeArea(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  children: [
+                    // Header
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.emeraldBg(context),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: AppColors.emerald(
+                              context,
+                            ).withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Text(
+                          '🚀 BOAS-VINDAS AO MR. COACH',
+                          style: TextStyle(
+                            color: AppColors.emerald(context),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.8,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // Profile Photo Space
-                  Center(
-                    child: GestureDetector(
-                      onTap: () {
-                        // Opcionalmente abriria câmera ou galeria
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            backgroundColor: AppColors.emerald(context),
-                            content: const Text('Funcionalidade de upload de foto (Câmera/Galeria) será implementada em breve.'),
+                    const SizedBox(height: 24),
+
+                    // Profile Photo Space
+                    Center(
+                      child: GestureDetector(
+                        onTap: () {
+                          // Opcionalmente abriria câmera ou galeria
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              backgroundColor: AppColors.emerald(context),
+                              content: const Text(
+                                'Funcionalidade de upload de foto (Câmera/Galeria) será implementada em breve.',
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          width: 90,
+                          height: 90,
+                          decoration: BoxDecoration(
+                            color: AppColors.card(context),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.emerald(context),
+                              width: 2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.emerald(
+                                  context,
+                                ).withValues(alpha: 0.15),
+                                blurRadius: 15,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                        );
-                      },
+                          child: Center(
+                            child: Icon(
+                              Icons.add_a_photo_rounded,
+                              size: 32,
+                              color: AppColors.emerald(context),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Center(
+                      child: Text(
+                        'Adicionar Foto de Perfil',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.emerald(context),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    Text(
+                      'Olá, Prof. ${widget.trainerName}!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.text(context),
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Escolha o modelo ideal para iniciar sua consultoria com IA biomecânica.\nVocê pode começar 100% grátis ou acelerar com benefícios Pro.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.subtext(context),
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Toggle Mensal / Anual
+                    Center(
                       child: Container(
-                        width: 90,
-                        height: 90,
+                        padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
                           color: AppColors.card(context),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.emerald(context), width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.emerald(context).withValues(alpha: 0.15),
-                              blurRadius: 15,
-                              offset: const Offset(0, 4),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppColors.cardBorder(context),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildIntervalButton(
+                              label: 'Mensal',
+                              isSelected: !_isYearly,
+                              onTap: () => setState(() => _isYearly = false),
+                            ),
+                            const SizedBox(width: 4),
+                            _buildIntervalButton(
+                              label: 'Anual (20% OFF 🎁)',
+                              isSelected: _isYearly,
+                              isHighlighted: true,
+                              onTap: () => setState(() => _isYearly = true),
                             ),
                           ],
                         ),
-                        child: Center(
-                          child: Icon(
-                            Icons.add_a_photo_rounded,
-                            size: 32,
-                            color: AppColors.emerald(context),
-                          ),
-                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Center(
-                    child: Text(
-                      'Adicionar Foto de Perfil',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.emerald(context),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                    const SizedBox(height: 24),
 
-                  Text(
-                    'Olá, Prof. ${widget.trainerName}!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.text(context),
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Escolha o modelo ideal para iniciar sua consultoria com IA biomecânica.\nVocê pode começar 100% grátis ou acelerar com benefícios Pro.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.subtext(context),
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Toggle Mensal / Anual
-                  Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: AppColors.card(context),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.cardBorder(context)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildIntervalButton(
-                            label: 'Mensal',
-                            isSelected: !_isYearly,
-                            onTap: () => setState(() => _isYearly = false),
-                          ),
-                          const SizedBox(width: 4),
-                          _buildIntervalButton(
-                            label: 'Anual (20% OFF 🎁)',
-                            isSelected: _isYearly,
-                            isHighlighted: true,
-                            onTap: () => setState(() => _isYearly = true),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Plans List
-                  ..._plans.map((p) => _buildPlanCard(p)),
-                  const SizedBox(height: 30),
-                ],
+                    // Plans List
+                    ..._plans.map((p) => _buildPlanCard(p)),
+                    const SizedBox(height: 30),
+                  ],
+                ),
               ),
-            ),
     );
   }
 
@@ -275,20 +314,25 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected
-              ? (isHighlighted ? AppColors.emerald(context) : AppColors.pillBg(context))
-              : Colors.transparent,
+          color:
+              isSelected
+                  ? (isHighlighted
+                      ? AppColors.emerald(context)
+                      : AppColors.pillBg(context))
+                  : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
-          border: isSelected && !isHighlighted
-              ? Border.all(color: AppColors.pillBorder(context))
-              : null,
+          border:
+              isSelected && !isHighlighted
+                  ? Border.all(color: AppColors.pillBorder(context))
+                  : null,
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected
-                ? (isHighlighted ? Colors.black : AppColors.text(context))
-                : AppColors.subtext(context),
+            color:
+                isSelected
+                    ? (isHighlighted ? Colors.black : AppColors.text(context))
+                    : AppColors.subtext(context),
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             fontSize: 12,
           ),
@@ -301,13 +345,15 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
     final isFree = plan.id == 'starter';
     final isPopular = plan.isPopular;
     final isElite = plan.id == 'elite';
-    final primaryColor = isPopular
-        ? AppColors.emerald(context)
-        : (isFree
-            ? Colors.blueAccent
-            : (isElite ? const Color(0xFFF59E0B) : Colors.purpleAccent));
+    final primaryColor =
+        isPopular
+            ? AppColors.emerald(context)
+            : (isFree
+                ? Colors.blueAccent
+                : (isElite ? const Color(0xFFF59E0B) : Colors.purpleAccent));
 
-    final price = _isYearly ? plan.priceYearlyMonthlyEquivalent : plan.priceMonthly;
+    final price =
+        _isYearly ? plan.priceYearlyMonthlyEquivalent : plan.priceMonthly;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -315,18 +361,22 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
         color: AppColors.card(context),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isPopular ? AppColors.emerald(context) : AppColors.cardBorder(context),
+          color:
+              isPopular
+                  ? AppColors.emerald(context)
+                  : AppColors.cardBorder(context),
           width: isPopular ? 2 : 1,
         ),
-        boxShadow: isPopular
-            ? [
-                BoxShadow(
-                  color: AppColors.emerald(context).withValues(alpha: 0.12),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                )
-              ]
-            : null,
+        boxShadow:
+            isPopular
+                ? [
+                  BoxShadow(
+                    color: AppColors.emerald(context).withValues(alpha: 0.12),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ]
+                : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -336,8 +386,13 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
             Container(
               padding: const EdgeInsets.symmetric(vertical: 6),
               decoration: BoxDecoration(
-                color: isPopular ? AppColors.emerald(context) : primaryColor.withValues(alpha: 0.2),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                color:
+                    isPopular
+                        ? AppColors.emerald(context)
+                        : primaryColor.withValues(alpha: 0.2),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(18),
+                ),
               ),
               child: Text(
                 plan.badge!,
@@ -370,15 +425,24 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
                     ),
                     if (isFree)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.blueAccent.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.3)),
+                          border: Border.all(
+                            color: Colors.blueAccent.withValues(alpha: 0.3),
+                          ),
                         ),
                         child: const Text(
                           'Sem Cartão',
-                          style: TextStyle(color: Colors.blueAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: Colors.blueAccent,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                   ],
@@ -386,7 +450,11 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
                 const SizedBox(height: 6),
                 Text(
                   plan.tagline,
-                  style: TextStyle(color: AppColors.subtext(context), fontSize: 13, height: 1.3),
+                  style: TextStyle(
+                    color: AppColors.subtext(context),
+                    fontSize: 13,
+                    height: 1.3,
+                  ),
                 ),
                 const SizedBox(height: 16),
 
@@ -406,13 +474,20 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
                     ),
                     Text(
                       isFree ? ' / vitalício' : ' / mês',
-                      style: TextStyle(color: AppColors.subtext(context), fontSize: 13),
+                      style: TextStyle(
+                        color: AppColors.subtext(context),
+                        fontSize: 13,
+                      ),
                     ),
                     if (_isYearly && !isFree) ...[
                       const SizedBox(width: 8),
                       Text(
                         'cobrado anualmente (R\$ ${plan.priceYearlyTotal.toStringAsFixed(0)})',
-                        style: TextStyle(color: AppColors.emerald(context), fontSize: 11, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          color: AppColors.emerald(context),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ],
@@ -427,20 +502,35 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Icon(
-                          f.included ? Icons.check_circle_rounded : Icons.cancel_outlined,
+                          f.included
+                              ? Icons.check_circle_rounded
+                              : Icons.cancel_outlined,
                           size: 18,
-                          color: f.included
-                              ? (f.highlight ? AppColors.emerald(context) : Colors.green)
-                              : AppColors.subtext(context).withValues(alpha: 0.4),
+                          color:
+                              f.included
+                                  ? (f.highlight
+                                      ? AppColors.emerald(context)
+                                      : Colors.green)
+                                  : AppColors.subtext(
+                                    context,
+                                  ).withValues(alpha: 0.4),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             f.title,
                             style: TextStyle(
-                              color: f.included ? AppColors.text(context) : AppColors.subtext(context).withValues(alpha: 0.5),
+                              color:
+                                  f.included
+                                      ? AppColors.text(context)
+                                      : AppColors.subtext(
+                                        context,
+                                      ).withValues(alpha: 0.5),
                               fontSize: 13,
-                              fontWeight: f.highlight ? FontWeight.bold : FontWeight.normal,
+                              fontWeight:
+                                  f.highlight
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
                             ),
                           ),
                         ),
@@ -456,18 +546,28 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
                   height: 48,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isPopular
-                          ? AppColors.emerald(context)
-                          : (isFree ? AppColors.pillBg(context) : primaryColor),
-                      foregroundColor: (isPopular || isElite)
-                          ? Colors.black
-                          : (isFree ? AppColors.text(context) : Colors.white),
+                      backgroundColor:
+                          isPopular
+                              ? AppColors.emerald(context)
+                              : (isFree
+                                  ? AppColors.pillBg(context)
+                                  : primaryColor),
+                      foregroundColor:
+                          (isPopular || isElite)
+                              ? Colors.black
+                              : (isFree
+                                  ? AppColors.text(context)
+                                  : Colors.white),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
-                        side: isFree
-                            ? BorderSide(color: AppColors.pillBorder(context), width: 1.5)
-                            : BorderSide.none,
+                        side:
+                            isFree
+                                ? BorderSide(
+                                  color: AppColors.pillBorder(context),
+                                  width: 1.5,
+                                )
+                                : BorderSide.none,
                       ),
                     ),
                     onPressed: () => _openCheckout(plan),
@@ -475,21 +575,31 @@ class _TrainerPlanSelectionScreenState extends State<TrainerPlanSelectionScreen>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          isFree ? Icons.rocket_launch_rounded : Icons.lock_open_rounded,
+                          isFree
+                              ? Icons.rocket_launch_rounded
+                              : Icons.lock_open_rounded,
                           size: 18,
-                          color: (isPopular || isElite)
-                              ? Colors.black
-                              : (isFree ? AppColors.text(context) : Colors.white),
+                          color:
+                              (isPopular || isElite)
+                                  ? Colors.black
+                                  : (isFree
+                                      ? AppColors.text(context)
+                                      : Colors.white),
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          isFree ? 'Começar Gratuitamente (3 Alunos)' : 'Assinar ${plan.name}',
+                          isFree
+                              ? 'Começar Gratuitamente (3 Alunos)'
+                              : 'Assinar ${plan.name}',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w900,
-                            color: (isPopular || isElite)
-                                ? Colors.black
-                                : (isFree ? AppColors.text(context) : Colors.white),
+                            color:
+                                (isPopular || isElite)
+                                    ? Colors.black
+                                    : (isFree
+                                        ? AppColors.text(context)
+                                        : Colors.white),
                           ),
                         ),
                       ],
@@ -552,7 +662,10 @@ class _CheckoutModalState extends State<_CheckoutModal> {
 
   @override
   Widget build(BuildContext context) {
-    final price = widget.isYearly ? widget.plan.priceYearlyTotal : widget.plan.priceMonthly;
+    final price =
+        widget.isYearly
+            ? widget.plan.priceYearlyTotal
+            : widget.plan.priceMonthly;
 
     return Container(
       decoration: BoxDecoration(
@@ -584,7 +697,11 @@ class _CheckoutModalState extends State<_CheckoutModal> {
 
             Row(
               children: [
-                Icon(Icons.verified_user_rounded, color: AppColors.emerald(context), size: 24),
+                Icon(
+                  Icons.verified_user_rounded,
+                  color: AppColors.emerald(context),
+                  size: 24,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -601,7 +718,11 @@ class _CheckoutModalState extends State<_CheckoutModal> {
             const SizedBox(height: 8),
             Text(
               'Total: R\$ ${price.toStringAsFixed(2)} / ${widget.isYearly ? 'ano' : 'mês'}',
-              style: TextStyle(color: AppColors.emerald(context), fontWeight: FontWeight.bold, fontSize: 16),
+              style: TextStyle(
+                color: AppColors.emerald(context),
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
             ),
             const SizedBox(height: 20),
 
@@ -651,8 +772,12 @@ class _CheckoutModalState extends State<_CheckoutModal> {
                       ),
                       const SizedBox(height: 8),
                       SelectableText(
-                        _session!.pixCopyPaste ?? '00020126580014br.gov.bcb.pix...',
-                        style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+                        _session!.pixCopyPaste ??
+                            '00020126580014br.gov.bcb.pix...',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontFamily: 'monospace',
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -680,10 +805,15 @@ class _CheckoutModalState extends State<_CheckoutModal> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.emerald(context),
                     foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   onPressed: widget.onSuccess,
-                  child: const Text('Confirmar Pagamento e Iniciar', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    'Confirmar Pagamento e Iniciar',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ],
@@ -693,7 +823,11 @@ class _CheckoutModalState extends State<_CheckoutModal> {
     );
   }
 
-  Widget _buildMethodTab({required String id, required String label, required IconData icon}) {
+  Widget _buildMethodTab({
+    required String id,
+    required String label,
+    required IconData icon,
+  }) {
     final isSelected = _paymentMethod == id;
     return InkWell(
       onTap: () {
@@ -704,22 +838,38 @@ class _CheckoutModalState extends State<_CheckoutModal> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.emerald(context).withValues(alpha: 0.15) : AppColors.pillBg(context),
+          color:
+              isSelected
+                  ? AppColors.emerald(context).withValues(alpha: 0.15)
+                  : AppColors.pillBg(context),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? AppColors.emerald(context) : AppColors.cardBorder(context),
+            color:
+                isSelected
+                    ? AppColors.emerald(context)
+                    : AppColors.cardBorder(context),
             width: isSelected ? 1.5 : 1,
           ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 18, color: isSelected ? AppColors.emerald(context) : AppColors.subtext(context)),
+            Icon(
+              icon,
+              size: 18,
+              color:
+                  isSelected
+                      ? AppColors.emerald(context)
+                      : AppColors.subtext(context),
+            ),
             const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? AppColors.emerald(context) : AppColors.text(context),
+                color:
+                    isSelected
+                        ? AppColors.emerald(context)
+                        : AppColors.text(context),
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                 fontSize: 12,
               ),

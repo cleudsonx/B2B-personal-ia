@@ -24,22 +24,25 @@ class BiomechanicalAnalysisSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => BiomechanicalAnalysisSheet(
-        exerciseName: exerciseName,
-        primaryMuscle: primaryMuscle,
-        onAskAI: onAskAI,
-      ),
+      builder:
+          (_) => BiomechanicalAnalysisSheet(
+            exerciseName: exerciseName,
+            primaryMuscle: primaryMuscle,
+            onAskAI: onAskAI,
+          ),
     );
   }
 
   @override
-  State<BiomechanicalAnalysisSheet> createState() => _BiomechanicalAnalysisSheetState();
+  State<BiomechanicalAnalysisSheet> createState() =>
+      _BiomechanicalAnalysisSheetState();
 }
 
 class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  int _selectedPhase = 0; // 0: Completo, 1: Excêntrica, 2: Isométrica, 3: Concêntrica
+  int _selectedPhase =
+      0; // 0: Completo, 1: Excêntrica, 2: Isométrica, 3: Concêntrica
   double _animationProgress = 0.0;
   Timer? _ticker;
 
@@ -71,21 +74,26 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
 
   _ExerciseBiomechanicsData _getBiomechanicsData(String name) {
     final lower = name.toLowerCase();
-    if (lower.contains('supino') && (lower.contains('inclinado') || lower.contains('halteres'))) {
+    if (lower.contains('supino') &&
+        (lower.contains('inclinado') || lower.contains('halteres'))) {
       return const _ExerciseBiomechanicsData(
         title: 'Supino Inclinado com Halteres',
         targetMuscle: 'Peitoral Maior (Fibras Claviculares)',
         secondaryMuscles: 'Deltoide Anterior, Tríceps Braquial',
         stabilizers: 'Manguito Rotador, Serrátil Anterior, Core',
         jointAngleCue: 'Cotovelos a 45° - 60° em relação ao tronco',
-        criticalError: 'Projetar os ombros à frente (perder a retração escapular)',
+        criticalError:
+            'Projetar os ombros à frente (perder a retração escapular)',
         tempoCadence: '3s descida • 1s transição • 1s subida',
         emgTarget: 92,
         emgSecondary: 68,
         emgStabilizers: 45,
-        eccentricCue: 'Desça abrindo o peito lentamente sem tocar os halteres nos ombros.',
-        isometricCue: 'Pausa controlada na máxima extensão sem relaxar as escápulas.',
-        concentricCue: 'Suba convergindo levemente os halteres sem bater no topo.',
+        eccentricCue:
+            'Desça abrindo o peito lentamente sem tocar os halteres nos ombros.',
+        isometricCue:
+            'Pausa controlada na máxima extensão sem relaxar as escápulas.',
+        concentricCue:
+            'Suba convergindo levemente os halteres sem bater no topo.',
       );
     } else if (lower.contains('agachamento') || lower.contains('búlgaro')) {
       return const _ExerciseBiomechanicsData(
@@ -94,14 +102,18 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
         secondaryMuscles: 'Isquiotibiais, Adutores',
         stabilizers: 'Core, Glúteo Médio (Estabilizador Pélvico)',
         jointAngleCue: 'Tronco ligeiramente inclinado (~15°) para focar glúteo',
-        criticalError: 'Valgo dinâmico (joelho colapsando para dentro) ou calcanhar saindo do chão',
+        criticalError:
+            'Valgo dinâmico (joelho colapsando para dentro) ou calcanhar saindo do chão',
         tempoCadence: '3s descida • 1s pausa inferior • 1.5s subida',
         emgTarget: 95,
         emgSecondary: 72,
         emgStabilizers: 82,
-        eccentricCue: 'Flexione o joelho da frente descendo a pelve na vertical sem tombar.',
-        isometricCue: 'Mantenha a tíbia estável e o quadril nivelado no ponto mais baixo.',
-        concentricCue: 'Empurre o solo com o calcanhar ativando a cadeia posterior.',
+        eccentricCue:
+            'Flexione o joelho da frente descendo a pelve na vertical sem tombar.',
+        isometricCue:
+            'Mantenha a tíbia estável e o quadril nivelado no ponto mais baixo.',
+        concentricCue:
+            'Empurre o solo com o calcanhar ativando a cadeia posterior.',
       );
     } else if (lower.contains('leg press')) {
       return const _ExerciseBiomechanicsData(
@@ -109,15 +121,20 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
         targetMuscle: 'Quadríceps (Vasto Lateral e Reto Femoral)',
         secondaryMuscles: 'Glúteo Máximo, Adutor Magno',
         stabilizers: 'Eretores da Espinha, Core Abdominal',
-        jointAngleCue: 'Joelho a 90° no ponto de reversão sem retroversão pélvica',
-        criticalError: 'Tirar o quadril/sacro do encosto (flexão lombar severa sob carga)',
+        jointAngleCue:
+            'Joelho a 90° no ponto de reversão sem retroversão pélvica',
+        criticalError:
+            'Tirar o quadril/sacro do encosto (flexão lombar severa sob carga)',
         tempoCadence: '3s descida • 0s pausa • 1.5s subida sem hiperestensão',
         emgTarget: 90,
         emgSecondary: 65,
         emgStabilizers: 50,
-        eccentricCue: 'Controle a plataforma resistindo à gravidade até os joelhos atingirem 90°.',
-        isometricCue: 'Inversão suave sem permitir que a lombar descole do assento.',
-        concentricCue: 'Estenda os joelhos sem travá-los no topo para proteger a patela.',
+        eccentricCue:
+            'Controle a plataforma resistindo à gravidade até os joelhos atingirem 90°.',
+        isometricCue:
+            'Inversão suave sem permitir que a lombar descole do assento.',
+        concentricCue:
+            'Estenda os joelhos sem travá-los no topo para proteger a patela.',
       );
     } else if (lower.contains('puxada') || lower.contains('lat')) {
       return const _ExerciseBiomechanicsData(
@@ -126,14 +143,19 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
         secondaryMuscles: 'Bíceps Braquial, Braquiorradial, Redondo Maior',
         stabilizers: 'Trapézio Médio/Inferior, Romboides, Core',
         jointAngleCue: 'Puxada em direção à fúrcula esternal com tronco a ~10°',
-        criticalError: 'Puxar atrás da nuca ou usar balanço excessivo de coluna lombar',
-        tempoCadence: '1.5s puxada • 1s contração isométrica • 3s subida controlada',
+        criticalError:
+            'Puxar atrás da nuca ou usar balanço excessivo de coluna lombar',
+        tempoCadence:
+            '1.5s puxada • 1s contração isométrica • 3s subida controlada',
         emgTarget: 94,
         emgSecondary: 60,
         emgStabilizers: 55,
-        eccentricCue: 'Permita o alongamento das dorsais sem deixar os ombros subirem nas orelhas.',
-        isometricCue: 'Aperte os cotovelos contra os bolsos das calças por 1 segundo.',
-        concentricCue: 'Inicie o movimento deprimindo as escápulas antes de flexionar os cotovelos.',
+        eccentricCue:
+            'Permita o alongamento das dorsais sem deixar os ombros subirem nas orelhas.',
+        isometricCue:
+            'Aperte os cotovelos contra os bolsos das calças por 1 segundo.',
+        concentricCue:
+            'Inicie o movimento deprimindo as escápulas antes de flexionar os cotovelos.',
       );
     } else {
       return _ExerciseBiomechanicsData(
@@ -141,15 +163,19 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
         targetMuscle: widget.primaryMuscle ?? 'Grupo Muscular Primário',
         secondaryMuscles: 'Sinergistas e Auxiliares',
         stabilizers: 'Core e Estabilizadores Articulares',
-        jointAngleCue: 'Alinhamento articular neutro com respeito à anatomia individual',
-        criticalError: 'Compensação postural por excesso de carga ou velocidade balística',
+        jointAngleCue:
+            'Alinhamento articular neutro com respeito à anatomia individual',
+        criticalError:
+            'Compensação postural por excesso de carga ou velocidade balística',
         tempoCadence: '3s excêntrica • 1s transição • 1s concêntrica',
         emgTarget: 88,
         emgSecondary: 62,
         emgStabilizers: 48,
-        eccentricCue: 'Fase de controle excêntrico: acumule energia elástica e preserve a tensão.',
+        eccentricCue:
+            'Fase de controle excêntrico: acumule energia elástica e preserve a tensão.',
         isometricCue: 'Transição suave sem tranco articular.',
-        concentricCue: 'Aplique força contra a carga com máxima intenção motora.',
+        concentricCue:
+            'Aplique força contra a carga com máxima intenção motora.',
       );
     }
   }
@@ -191,9 +217,15 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
                   decoration: BoxDecoration(
                     color: AppColors.studentCyan.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.studentCyan.withValues(alpha: 0.4)),
+                    border: Border.all(
+                      color: AppColors.studentCyan.withValues(alpha: 0.4),
+                    ),
                   ),
-                  child: const Icon(Icons.biotech_rounded, color: AppColors.studentCyan, size: 22),
+                  child: const Icon(
+                    Icons.biotech_rounded,
+                    color: AppColors.studentCyan,
+                    size: 22,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -214,9 +246,14 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
-                              color: AppColors.trainerEmerald.withValues(alpha: 0.15),
+                              color: AppColors.trainerEmerald.withValues(
+                                alpha: 0.15,
+                              ),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
@@ -230,14 +267,23 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
                             ),
                           ),
                           const SizedBox(width: 6),
-                          const Text('• Split-View IA', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                          const Text(
+                            '• Split-View IA',
+                            style: TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 11,
+                            ),
+                          ),
                         ],
                       ),
                     ],
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded, color: AppColors.textMuted),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: AppColors.textMuted,
+                  ),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
@@ -259,11 +305,16 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
               indicator: BoxDecoration(
                 color: AppColors.studentCyan.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.studentCyan.withValues(alpha: 0.6)),
+                border: Border.all(
+                  color: AppColors.studentCyan.withValues(alpha: 0.6),
+                ),
               ),
               labelColor: AppColors.studentCyan,
               unselectedLabelColor: AppColors.textSecondary,
-              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
               indicatorSize: TabBarIndicatorSize.tab,
               tabs: const [
                 Tab(
@@ -307,13 +358,18 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
                       backgroundColor: AppColors.trainerIndigo,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       elevation: 3,
                     ),
                     icon: const Icon(Icons.smart_toy_outlined, size: 18),
                     label: const Text(
                       'Tirar Dúvida de Execução com IA',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
                     ),
                     onPressed: () {
                       Navigator.pop(context);
@@ -344,7 +400,9 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
           decoration: BoxDecoration(
             color: const Color(0xFF030712),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.studentCyan.withValues(alpha: 0.4)),
+            border: Border.all(
+              color: AppColors.studentCyan.withValues(alpha: 0.4),
+            ),
             boxShadow: [
               BoxShadow(
                 color: AppColors.studentCyan.withValues(alpha: 0.08),
@@ -368,20 +426,33 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
                 top: 10,
                 left: 12,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.redAccent.withValues(alpha: 0.6)),
+                    border: Border.all(
+                      color: Colors.redAccent.withValues(alpha: 0.6),
+                    ),
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.fiber_manual_record, color: Colors.redAccent, size: 10),
+                      Icon(
+                        Icons.fiber_manual_record,
+                        color: Colors.redAccent,
+                        size: 10,
+                      ),
                       SizedBox(width: 5),
                       Text(
                         'LOOP DE EXECUÇÃO',
-                        style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ],
                   ),
@@ -392,15 +463,24 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
                 top: 10,
                 right: 12,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: AppColors.studentAmber.withValues(alpha: 0.6)),
+                    border: Border.all(
+                      color: AppColors.studentAmber.withValues(alpha: 0.6),
+                    ),
                   ),
                   child: Text(
                     _data.tempoCadence,
-                    style: const TextStyle(color: AppColors.studentAmber, fontSize: 9, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: AppColors.studentAmber,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -415,19 +495,33 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
                       decoration: BoxDecoration(
                         color: AppColors.studentCyan.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.studentCyan, width: 2),
+                        border: Border.all(
+                          color: AppColors.studentCyan,
+                          width: 2,
+                        ),
                       ),
-                      child: const Icon(Icons.fitness_center_rounded, color: AppColors.studentCyan, size: 28),
+                      child: const Icon(
+                        Icons.fitness_center_rounded,
+                        color: AppColors.studentCyan,
+                        size: 28,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       _data.title,
-                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Cadência Controlada • Ângulo Seguro',
-                      style: TextStyle(color: AppColors.textMuted.withValues(alpha: 0.9), fontSize: 11),
+                      style: TextStyle(
+                        color: AppColors.textMuted.withValues(alpha: 0.9),
+                        fontSize: 11,
+                      ),
                     ),
                   ],
                 ),
@@ -438,7 +532,9 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
                 left: 0,
                 right: 0,
                 child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(15)),
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(15),
+                  ),
                   child: LinearProgressIndicator(
                     value: _animationProgress,
                     minHeight: 4,
@@ -499,10 +595,14 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
           padding: const EdgeInsets.symmetric(vertical: 8),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.studentCyan.withValues(alpha: 0.18) : const Color(0xFF111827),
+            color:
+                isSelected
+                    ? AppColors.studentCyan.withValues(alpha: 0.18)
+                    : const Color(0xFF111827),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: isSelected ? AppColors.studentCyan : const Color(0xFF1F2937),
+              color:
+                  isSelected ? AppColors.studentCyan : const Color(0xFF1F2937),
             ),
           ),
           child: Text(
@@ -510,7 +610,8 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
             style: TextStyle(
               fontSize: 10,
               fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-              color: isSelected ? AppColors.studentCyan : AppColors.textSecondary,
+              color:
+                  isSelected ? AppColors.studentCyan : AppColors.textSecondary,
             ),
             textAlign: TextAlign.center,
             maxLines: 1,
@@ -658,7 +759,9 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
               end: Alignment.bottomCenter,
             ),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.trainerEmerald.withValues(alpha: 0.4)),
+            border: Border.all(
+              color: AppColors.trainerEmerald.withValues(alpha: 0.4),
+            ),
             boxShadow: [
               BoxShadow(
                 color: AppColors.trainerEmerald.withValues(alpha: 0.08),
@@ -681,14 +784,21 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.trainerEmerald.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: const Text(
                       'Eletromiografia (EMG)',
-                      style: TextStyle(color: AppColors.trainerEmerald, fontSize: 9, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: AppColors.trainerEmerald,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -745,7 +855,11 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
             children: [
               const Row(
                 children: [
-                  Icon(Icons.architecture_rounded, color: AppColors.studentCyan, size: 18),
+                  Icon(
+                    Icons.architecture_rounded,
+                    color: AppColors.studentCyan,
+                    size: 18,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     'Braço de Momento & Força Articular',
@@ -769,11 +883,19 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
               const SizedBox(height: 10),
               Row(
                 children: [
-                  const Icon(Icons.security_rounded, color: AppColors.trainerEmerald, size: 14),
+                  const Icon(
+                    Icons.security_rounded,
+                    color: AppColors.trainerEmerald,
+                    size: 14,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     'Sobrecarga articular: Baixa a Moderada com execução padrão',
-                    style: TextStyle(color: AppColors.trainerEmerald.withValues(alpha: 0.9), fontSize: 11, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: AppColors.trainerEmerald.withValues(alpha: 0.9),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -797,7 +919,11 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
         const SizedBox(width: 5),
         Text(
           label,
-          style: const TextStyle(color: AppColors.textSecondary, fontSize: 10, fontWeight: FontWeight.w500),
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );
@@ -838,7 +964,10 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
           ],
         ),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
+        Text(
+          label,
+          style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+        ),
         const SizedBox(height: 6),
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
@@ -892,13 +1021,17 @@ class _BiomechanicalMotionPainter extends CustomPainter {
   final double progress;
   final Color accentColor;
 
-  _BiomechanicalMotionPainter({required this.progress, required this.accentColor});
+  _BiomechanicalMotionPainter({
+    required this.progress,
+    required this.accentColor,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF161E2E)
-      ..strokeWidth = 1.0;
+    final paint =
+        Paint()
+          ..color = const Color(0xFF161E2E)
+          ..strokeWidth = 1.0;
 
     // Grid lines
     for (double i = 0; i < size.width; i += 30) {
@@ -909,10 +1042,11 @@ class _BiomechanicalMotionPainter extends CustomPainter {
     }
 
     // Dynamic wave/arc simulating range of motion
-    final wavePaint = Paint()
-      ..color = accentColor.withValues(alpha: 0.3)
-      ..strokeWidth = 2.0
-      ..style = PaintingStyle.stroke;
+    final wavePaint =
+        Paint()
+          ..color = accentColor.withValues(alpha: 0.3)
+          ..strokeWidth = 2.0
+          ..style = PaintingStyle.stroke;
 
     final path = Path();
     path.moveTo(40, size.height * 0.7);
@@ -925,12 +1059,15 @@ class _BiomechanicalMotionPainter extends CustomPainter {
     canvas.drawPath(path, wavePaint);
 
     // Glowing point tracking the rep position
-    final pointPaint = Paint()
-      ..color = accentColor
-      ..style = PaintingStyle.fill;
+    final pointPaint =
+        Paint()
+          ..color = accentColor
+          ..style = PaintingStyle.fill;
 
     final x = 40 + (size.width - 80) * progress;
-    final y = size.height * 0.7 - (size.height * 0.35 * (1 - (progress - 0.5).abs() * 2));
+    final y =
+        size.height * 0.7 -
+        (size.height * 0.35 * (1 - (progress - 0.5).abs() * 2));
     canvas.drawCircle(Offset(x, y), 5, pointPaint);
   }
 

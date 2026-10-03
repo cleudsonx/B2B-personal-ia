@@ -9,20 +9,17 @@ class ApiService {
   final String baseUrl;
   final http.Client _client;
 
-  ApiService({
-    String? baseUrl,
-    http.Client? client,
-  })  : baseUrl = baseUrl ?? AppConfig.apiBaseUrl,
-        _client = client ?? http.Client();
+  ApiService({String? baseUrl, http.Client? client})
+    : baseUrl = baseUrl ?? AppConfig.apiBaseUrl,
+      _client = client ?? http.Client();
 
   Map<String, String> _buildHeaders({String? token}) {
     final headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
-    final activeToken = (token != null && token.isNotEmpty)
-        ? token
-        : AuthService.accessToken;
+    final activeToken =
+        (token != null && token.isNotEmpty) ? token : AuthService.accessToken;
     if (activeToken != null && activeToken.isNotEmpty) {
       headers['Authorization'] = 'Bearer $activeToken';
     }
@@ -65,10 +62,12 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
       return WorkoutPlanModel.fromJson(data);
     } else {
-      String errorMessage = 'Falha ao gerar treino (Status ${response.statusCode})';
+      String errorMessage =
+          'Falha ao gerar treino (Status ${response.statusCode})';
       try {
         final errorJson = jsonDecode(utf8.decode(response.bodyBytes));
         if (errorJson['detail'] != null) {
@@ -102,10 +101,12 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
       return AdaptationModel.fromJson(data);
     } else {
-      String errorMessage = 'Falha ao adaptar exercício (Status ${response.statusCode})';
+      String errorMessage =
+          'Falha ao adaptar exercício (Status ${response.statusCode})';
       try {
         final errorJson = jsonDecode(utf8.decode(response.bodyBytes));
         if (errorJson['detail'] != null) {

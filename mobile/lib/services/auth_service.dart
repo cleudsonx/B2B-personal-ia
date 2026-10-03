@@ -14,7 +14,8 @@ class AuthService {
 
   static SupabaseClient get _client {
     final c = _clientOrNull;
-    if (c == null) throw Exception('Serviço de autenticação temporariamente indisponível.');
+    if (c == null)
+      throw Exception('Serviço de autenticação temporariamente indisponível.');
     return c;
   }
 
@@ -27,7 +28,8 @@ class AuthService {
   static Session? get currentSession => _clientOrNull?.auth.currentSession;
 
   /// Retorna o Access Token JWT para enviar nos headers do backend FastAPI
-  static String? get accessToken => _clientOrNull?.auth.currentSession?.accessToken;
+  static String? get accessToken =>
+      _clientOrNull?.auth.currentSession?.accessToken;
 
   /// Stream reativo para observar mudanças no estado de login/logout
   static Stream<AuthState> get onAuthStateChange =>
@@ -61,7 +63,8 @@ class AuthService {
     String? phone,
     String? trainerId,
     String? professionalDocumentType, // 'CREF', 'CBMF', 'CPF'
-    String? professionalDocument, // Ex: 'CREF 019284-G/SP', 'CBMF-10294', '123.456.789-00'
+    String?
+    professionalDocument, // Ex: 'CREF 019284-G/SP', 'CBMF-10294', '123.456.789-00'
   }) async {
     try {
       final response = await _client.auth.signUp(
@@ -71,11 +74,17 @@ class AuthService {
           'full_name': fullName.trim(),
           'role': role,
           if (phone != null && phone.isNotEmpty) 'phone': phone.trim(),
-          if (trainerId != null && trainerId.isNotEmpty) 'trainer_id': trainerId,
-          if (professionalDocumentType != null) 'professional_document_type': professionalDocumentType,
-          if (professionalDocument != null) 'professional_document': professionalDocument,
-          if (professionalDocument != null) 'cref_or_registry': professionalDocument,
-          if (professionalDocument != null && professionalDocumentType == 'CREF') 'cref': professionalDocument,
+          if (trainerId != null && trainerId.isNotEmpty)
+            'trainer_id': trainerId,
+          if (professionalDocumentType != null)
+            'professional_document_type': professionalDocumentType,
+          if (professionalDocument != null)
+            'professional_document': professionalDocument,
+          if (professionalDocument != null)
+            'cref_or_registry': professionalDocument,
+          if (professionalDocument != null &&
+              professionalDocumentType == 'CREF')
+            'cref': professionalDocument,
         },
       );
       if (response.user != null) {
@@ -100,7 +109,9 @@ class AuthService {
           );
           return await signIn(email: email, password: password);
         } catch (backendErr) {
-          throw Exception('Falha ao criar conta: ${_formatAuthError(backendErr)}');
+          throw Exception(
+            'Falha ao criar conta: ${_formatAuthError(backendErr)}',
+          );
         }
       }
       throw Exception('Falha ao criar conta: ${_formatAuthError(e)}');
@@ -122,14 +133,18 @@ class AuthService {
     final response = await http
         .post(
           uri,
-          headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
           body: jsonEncode({
             'email': email.trim(),
             'password': password,
             'full_name': fullName.trim(),
             'role': role,
             if (phone != null && phone.isNotEmpty) 'phone': phone.trim(),
-            if (trainerId != null && trainerId.isNotEmpty) 'trainer_id': trainerId,
+            if (trainerId != null && trainerId.isNotEmpty)
+              'trainer_id': trainerId,
             if (professionalDocumentType != null)
               'professional_document_type': professionalDocumentType,
             if (professionalDocument != null)
@@ -157,7 +172,8 @@ class AuthService {
       final role = user.userMetadata?['role'] as String? ?? 'trainer';
       final phone = user.userMetadata?['phone'] as String?;
       final trainerId = user.userMetadata?['trainer_id'] as String?;
-      final docType = user.userMetadata?['professional_document_type'] as String?;
+      final docType =
+          user.userMetadata?['professional_document_type'] as String?;
       final doc = user.userMetadata?['professional_document'] as String?;
       final crefOrReg = user.userMetadata?['cref_or_registry'] as String?;
 
@@ -169,10 +185,13 @@ class AuthService {
       };
       if (user.email != null) payload['email'] = user.email;
       if (phone != null && phone.isNotEmpty) payload['phone'] = phone;
-      if (trainerId != null && trainerId.isNotEmpty) payload['trainer_id'] = trainerId;
-      if (docType != null && docType.isNotEmpty) payload['professional_document_type'] = docType;
+      if (trainerId != null && trainerId.isNotEmpty)
+        payload['trainer_id'] = trainerId;
+      if (docType != null && docType.isNotEmpty)
+        payload['professional_document_type'] = docType;
       if (doc != null && doc.isNotEmpty) payload['professional_document'] = doc;
-      if (crefOrReg != null && crefOrReg.isNotEmpty) payload['cref_or_registry'] = crefOrReg;
+      if (crefOrReg != null && crefOrReg.isNotEmpty)
+        payload['cref_or_registry'] = crefOrReg;
 
       _cachedProfile = Map<String, dynamic>.from(payload);
       await _client.from('profiles').upsert(payload);
@@ -187,11 +206,12 @@ class AuthService {
     if (user == null) return null;
 
     try {
-      final data = await _client
-          .from('profiles')
-          .select()
-          .eq('id', user.id)
-          .maybeSingle();
+      final data =
+          await _client
+              .from('profiles')
+              .select()
+              .eq('id', user.id)
+              .maybeSingle();
       if (data != null) {
         _cachedProfile = Map<String, dynamic>.from(data);
         return data;
@@ -199,16 +219,18 @@ class AuthService {
     } catch (_) {}
 
     // Fallback para metadados salvos no auth ou cache local
-    return _cachedProfile ?? {
-      'id': user.id,
-      'full_name': user.userMetadata?['full_name'] ?? 'Usuário',
-      'role': user.userMetadata?['role'] ?? 'trainer',
-      'email': user.email,
-      'professional_document_type': user.userMetadata?['professional_document_type'],
-      'professional_document': user.userMetadata?['professional_document'],
-      'cref_or_registry': user.userMetadata?['cref_or_registry'],
-      'cref': user.userMetadata?['cref'],
-    };
+    return _cachedProfile ??
+        {
+          'id': user.id,
+          'full_name': user.userMetadata?['full_name'] ?? 'Usuário',
+          'role': user.userMetadata?['role'] ?? 'trainer',
+          'email': user.email,
+          'professional_document_type':
+              user.userMetadata?['professional_document_type'],
+          'professional_document': user.userMetadata?['professional_document'],
+          'cref_or_registry': user.userMetadata?['cref_or_registry'],
+          'cref': user.userMetadata?['cref'],
+        };
   }
 
   /// Busca os dados do professor vinculado ao aluno atual
@@ -217,11 +239,12 @@ class AuthService {
       final profile = await getCurrentProfile();
       final trainerId = profile?['trainer_id'] as String?;
       if (trainerId != null && trainerId.isNotEmpty && _clientOrNull != null) {
-        final trainer = await _client
-            .from('profiles')
-            .select()
-            .eq('id', trainerId)
-            .maybeSingle();
+        final trainer =
+            await _client
+                .from('profiles')
+                .select()
+                .eq('id', trainerId)
+                .maybeSingle();
         return trainer;
       }
     } catch (_) {}
@@ -242,7 +265,8 @@ class AuthService {
       return 'E-mail ou senha incorretos.';
     } else if (str.contains('email not confirmed')) {
       return 'E-mail não confirmado. Verifique a confirmação na sua caixa de entrada.';
-    } else if (str.contains('email already in use') || str.contains('user already registered')) {
+    } else if (str.contains('email already in use') ||
+        str.contains('user already registered')) {
       return 'Este e-mail já está cadastrado.';
     } else if (str.contains('password should be at least')) {
       return 'A senha deve ter no mínimo 6 caracteres.';

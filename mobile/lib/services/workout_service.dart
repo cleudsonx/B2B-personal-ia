@@ -47,10 +47,11 @@ class WorkoutService {
   }) async {
     final currentSub = SubscriptionService.activeSubscriptionNotifier.value;
     if (currentSub != null) {
-      final occupiedCount = _localStudentsCache.where((s) {
-        final st = (s['status'] as String? ?? '').toLowerCase();
-        return !st.contains('arquivado') && !st.contains('inativo');
-      }).length;
+      final occupiedCount =
+          _localStudentsCache.where((s) {
+            final st = (s['status'] as String? ?? '').toLowerCase();
+            return !st.contains('arquivado') && !st.contains('inativo');
+          }).length;
       if (occupiedCount >= currentSub.maxStudents) {
         throw Exception(
           'Limite de ${currentSub.maxStudents} alunos ativos atingido no plano ${currentSub.planName}. '
@@ -61,7 +62,8 @@ class WorkoutService {
 
     final trainer = AuthService.currentUser;
     final trainerId = trainer?.id ?? 'current-trainer';
-    final trainerName = trainer?.userMetadata?['full_name'] as String? ?? 'Personal Trainer';
+    final trainerName =
+        trainer?.userMetadata?['full_name'] as String? ?? 'Personal Trainer';
     final studentId = 'st_${DateTime.now().millisecondsSinceEpoch}';
 
     final studentData = {
@@ -83,36 +85,44 @@ class WorkoutService {
     // 2. Sincroniza com a API do Backend e dispara convite oficial por e-mail via Resend
     try {
       final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/students/invite');
-      final res = await http.post(
-        uri,
-        headers: _apiHeaders,
-        body: jsonEncode({
-          'full_name': fullName.trim(),
-          'email': email.trim().toLowerCase(),
-          'phone': phone?.trim(),
-          'objective': goal ?? 'Hipertrofia Muscular',
-          'send_email': true,
-          'send_whatsapp': false,
-          'trainer_id': trainerId,
-          'trainer_name': trainerName,
-        }),
-      ).timeout(const Duration(seconds: 8));
+      final res = await http
+          .post(
+            uri,
+            headers: _apiHeaders,
+            body: jsonEncode({
+              'full_name': fullName.trim(),
+              'email': email.trim().toLowerCase(),
+              'phone': phone?.trim(),
+              'objective': goal ?? 'Hipertrofia Muscular',
+              'send_email': true,
+              'send_whatsapp': false,
+              'trainer_id': trainerId,
+              'trainer_name': trainerName,
+            }),
+          )
+          .timeout(const Duration(seconds: 8));
 
       if (res.statusCode == 403) {
         _localStudentsCache.removeWhere((s) => s['id'] == studentId);
-        final err = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-        throw Exception(err['detail'] ?? 'Limite de alunos ativos atingido no seu plano atual.');
+        final err =
+            jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        throw Exception(
+          err['detail'] ??
+              'Limite de alunos ativos atingido no seu plano atual.',
+        );
       }
 
       if (res.statusCode == 200 || res.statusCode == 201) {
-        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        final data =
+            jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
         studentData['id'] = data['id'] ?? studentId;
         studentData['invitation_link'] = data['invitation_link'];
         studentData['whatsapp_url'] = data['whatsapp_url'];
         studentData['email_status'] = data['email_status'];
       }
     } catch (e) {
-      if (e.toString().contains('Limite de') || e.toString().contains('403')) rethrow;
+      if (e.toString().contains('Limite de') || e.toString().contains('403'))
+        rethrow;
       debugPrint('Aviso Backend inviteStudent: $e');
     }
 
@@ -126,8 +136,10 @@ class WorkoutService {
           'subscription_status': 'trial',
           'updated_at': DateTime.now().toIso8601String(),
         };
-        if (phone != null && phone.trim().isNotEmpty) payload['phone'] = phone.trim();
-        if (trainerId.isNotEmpty && trainerId != 'current-trainer') payload['trainer_id'] = trainerId;
+        if (phone != null && phone.trim().isNotEmpty)
+          payload['phone'] = phone.trim();
+        if (trainerId.isNotEmpty && trainerId != 'current-trainer')
+          payload['trainer_id'] = trainerId;
         await _client.from('profiles').upsert(payload);
       } catch (e) {
         debugPrint('Aviso Supabase createStudent: $e');
@@ -147,23 +159,26 @@ class WorkoutService {
     try {
       final trainer = AuthService.currentUser;
       final trainerId = trainer?.id ?? 'current-trainer';
-      final trainerName = trainer?.userMetadata?['full_name'] as String? ?? 'Personal Trainer';
+      final trainerName =
+          trainer?.userMetadata?['full_name'] as String? ?? 'Personal Trainer';
 
       final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/students/invite');
-      final res = await http.post(
-        uri,
-        headers: _apiHeaders,
-        body: jsonEncode({
-          'full_name': fullName.trim(),
-          'email': email.trim().toLowerCase(),
-          'phone': phone?.trim(),
-          'objective': goal ?? 'Hipertrofia Muscular',
-          'send_email': true,
-          'send_whatsapp': false,
-          'trainer_id': trainerId,
-          'trainer_name': trainerName,
-        }),
-      ).timeout(const Duration(seconds: 10));
+      final res = await http
+          .post(
+            uri,
+            headers: _apiHeaders,
+            body: jsonEncode({
+              'full_name': fullName.trim(),
+              'email': email.trim().toLowerCase(),
+              'phone': phone?.trim(),
+              'objective': goal ?? 'Hipertrofia Muscular',
+              'send_email': true,
+              'send_whatsapp': false,
+              'trainer_id': trainerId,
+              'trainer_name': trainerName,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
 
       return res.statusCode == 200 || res.statusCode == 201;
     } catch (e) {
@@ -208,7 +223,9 @@ class WorkoutService {
     // 3. Busca do Backend /workouts/students
     try {
       final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/students');
-      final res = await http.get(uri, headers: _apiHeaders).timeout(const Duration(seconds: 4));
+      final res = await http
+          .get(uri, headers: _apiHeaders)
+          .timeout(const Duration(seconds: 4));
       if (res.statusCode == 200) {
         final list = jsonDecode(utf8.decode(res.bodyBytes)) as List<dynamic>;
         for (final item in list) {
@@ -241,18 +258,19 @@ class WorkoutService {
             .eq('client_id', clientId);
 
         // Insere o novo plano estruturado
-        supabaseResult = await _client
-            .from('workouts')
-            .insert({
-              'trainer_id': trainerId,
-              'client_id': clientId,
-              'title': plan.workoutPlanTitle,
-              'notes_for_trainer': plan.notesForTrainer,
-              'plan_json': plan.toJson(),
-              'is_active': true,
-            })
-            .select()
-            .single();
+        supabaseResult =
+            await _client
+                .from('workouts')
+                .insert({
+                  'trainer_id': trainerId,
+                  'client_id': clientId,
+                  'title': plan.workoutPlanTitle,
+                  'notes_for_trainer': plan.notesForTrainer,
+                  'plan_json': plan.toJson(),
+                  'is_active': true,
+                })
+                .select()
+                .single();
       } catch (e) {
         debugPrint('Aviso Supabase saveWorkoutPlan: $e');
       }
@@ -260,17 +278,21 @@ class WorkoutService {
 
     // 2. Persistência no Backend FastAPI (/workouts/save-prescription)
     try {
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/save-prescription');
-      await http.post(
-        uri,
-        headers: _apiHeaders,
-        body: jsonEncode({
-          'client_id': clientId,
-          'trainer_id': trainerId,
-          'plan': plan.toJson(),
-          'notes': plan.notesForTrainer,
-        }),
-      ).timeout(const Duration(seconds: 4));
+      final uri = Uri.parse(
+        '${AppConfig.apiBaseUrl}/workouts/save-prescription',
+      );
+      await http
+          .post(
+            uri,
+            headers: _apiHeaders,
+            body: jsonEncode({
+              'client_id': clientId,
+              'trainer_id': trainerId,
+              'plan': plan.toJson(),
+              'notes': plan.notesForTrainer,
+            }),
+          )
+          .timeout(const Duration(seconds: 4));
     } catch (e) {
       debugPrint('Aviso Backend save-prescription: $e');
     }
@@ -284,18 +306,29 @@ class WorkoutService {
   static const String _kOfflineWorkoutPrefix = 'b2b_offline_active_workout_';
 
   /// Salva a ficha ativa no armazenamento local do dispositivo para uso offline
-  static Future<void> _saveWorkoutToOfflineCache(String clientId, WorkoutPlanModel plan) async {
+  static Future<void> _saveWorkoutToOfflineCache(
+    String clientId,
+    WorkoutPlanModel plan,
+  ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('$_kOfflineWorkoutPrefix$clientId', jsonEncode(plan.toJson()));
-      await prefs.setString('${_kOfflineWorkoutPrefix}last_active', jsonEncode(plan.toJson()));
+      await prefs.setString(
+        '$_kOfflineWorkoutPrefix$clientId',
+        jsonEncode(plan.toJson()),
+      );
+      await prefs.setString(
+        '${_kOfflineWorkoutPrefix}last_active',
+        jsonEncode(plan.toJson()),
+      );
     } catch (e) {
       debugPrint('Aviso ao salvar treino no cache offline: $e');
     }
   }
 
   /// Recupera a ficha ativa do armazenamento local se o aluno estiver offline
-  static Future<WorkoutPlanModel?> getOfflineCachedWorkout({String? clientId}) async {
+  static Future<WorkoutPlanModel?> getOfflineCachedWorkout({
+    String? clientId,
+  }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final target = clientId ?? AuthService.currentUser?.id;
@@ -315,35 +348,44 @@ class WorkoutService {
   }
 
   /// Busca a ficha ativa do aluno logado com tolerância a falhas offline
-  static Future<WorkoutPlanModel?> getActiveWorkoutForClient({String? clientId}) async {
+  static Future<WorkoutPlanModel?> getActiveWorkoutForClient({
+    String? clientId,
+  }) async {
     final targetId = clientId ?? AuthService.currentUser?.id;
 
     // 1. Tenta carregar do Supabase se houver conexão
     if (_clientOrNull != null && targetId != null) {
       try {
-        final data = await _client
-            .from('workouts')
-            .select('plan_json')
-            .eq('client_id', targetId)
-            .eq('is_active', true)
-            .order('created_at', ascending: false)
-            .limit(1)
-            .maybeSingle();
+        final data =
+            await _client
+                .from('workouts')
+                .select('plan_json')
+                .eq('client_id', targetId)
+                .eq('is_active', true)
+                .order('created_at', ascending: false)
+                .limit(1)
+                .maybeSingle();
 
         if (data != null && data['plan_json'] != null) {
-          final plan = WorkoutPlanModel.fromJson(Map<String, dynamic>.from(data['plan_json']));
+          final plan = WorkoutPlanModel.fromJson(
+            Map<String, dynamic>.from(data['plan_json']),
+          );
           await _saveWorkoutToOfflineCache(targetId, plan);
           return plan;
         }
       } catch (e) {
-        debugPrint('Aviso Supabase getActiveWorkoutForClient: $e. Tentando cache offline.');
+        debugPrint(
+          'Aviso Supabase getActiveWorkoutForClient: $e. Tentando cache offline.',
+        );
       }
     }
 
     // 2. Fallback resiliente offline (academia sem sinal ou sem internet)
     final cached = await getOfflineCachedWorkout(clientId: targetId);
     if (cached != null) {
-      debugPrint('[WorkoutService] Treino carregado com sucesso do cache offline persistente.');
+      debugPrint(
+        '[WorkoutService] Treino carregado com sucesso do cache offline persistente.',
+      );
       return cached;
     }
 
@@ -362,7 +404,8 @@ class WorkoutService {
   }) async {
     final client = AuthService.currentUser;
     final clientId = client?.id ?? 'client-demo';
-    final studentName = client?.userMetadata?['full_name'] as String? ?? 'Aluno em Treino';
+    final studentName =
+        client?.userMetadata?['full_name'] as String? ?? 'Aluno em Treino';
 
     try {
       String? actualTrainerId = trainerId;
@@ -416,22 +459,26 @@ class WorkoutService {
     Map<String, dynamic>? details,
   }) async {
     try {
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/adaptations/alert');
-      final res = await http.post(
-        uri,
-        headers: _apiHeaders,
-        body: jsonEncode({
-          'student_id': studentId,
-          'student_name': studentName,
-          'trainer_id': trainerId ?? 'current-trainer',
-          'original_exercise': originalExercise,
-          'adapted_exercise': adaptedExercise,
-          'reason': reason,
-          'pain_location': painLocation,
-          'severity': severity,
-          'details': details,
-        }),
-      ).timeout(const Duration(seconds: 4));
+      final uri = Uri.parse(
+        '${AppConfig.apiBaseUrl}/workouts/adaptations/alert',
+      );
+      final res = await http
+          .post(
+            uri,
+            headers: _apiHeaders,
+            body: jsonEncode({
+              'student_id': studentId,
+              'student_name': studentName,
+              'trainer_id': trainerId ?? 'current-trainer',
+              'original_exercise': originalExercise,
+              'adapted_exercise': adaptedExercise,
+              'reason': reason,
+              'pain_location': painLocation,
+              'severity': severity,
+              'details': details,
+            }),
+          )
+          .timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 201) {
         return jsonDecode(res.body) as Map<String, dynamic>;
@@ -443,14 +490,22 @@ class WorkoutService {
   }
 
   /// Busca os alertas ativos para o painel do treinador
-  static Future<List<Map<String, dynamic>>> getTrainerAlerts({String? trainerId}) async {
+  static Future<List<Map<String, dynamic>>> getTrainerAlerts({
+    String? trainerId,
+  }) async {
     final tid = trainerId ?? AuthService.currentUser?.id ?? 'current-trainer';
     try {
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/trainer/$tid/alerts');
-      final res = await http.get(uri, headers: _apiHeaders).timeout(const Duration(seconds: 4));
+      final uri = Uri.parse(
+        '${AppConfig.apiBaseUrl}/workouts/trainer/$tid/alerts',
+      );
+      final res = await http
+          .get(uri, headers: _apiHeaders)
+          .timeout(const Duration(seconds: 4));
       if (res.statusCode == 200) {
         final list = jsonDecode(res.body) as List<dynamic>;
-        return list.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+        return list
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList();
       }
     } catch (e) {
       debugPrint('Aviso backend getTrainerAlerts: $e');
@@ -461,8 +516,12 @@ class WorkoutService {
   /// Marca um alerta como ciente pelo treinador
   static Future<void> acknowledgeAlert(String alertId) async {
     try {
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/alerts/$alertId/acknowledge');
-      await http.patch(uri, headers: _apiHeaders).timeout(const Duration(seconds: 4));
+      final uri = Uri.parse(
+        '${AppConfig.apiBaseUrl}/workouts/alerts/$alertId/acknowledge',
+      );
+      await http
+          .patch(uri, headers: _apiHeaders)
+          .timeout(const Duration(seconds: 4));
     } catch (e) {
       debugPrint('Aviso backend acknowledgeAlert: $e');
     }
@@ -479,20 +538,27 @@ class WorkoutService {
     String? status,
   }) async {
     final idx = _localStudentsCache.indexWhere((s) => s['id'] == studentId);
-    final prevStudent = idx != -1 ? Map<String, dynamic>.from(_localStudentsCache[idx]) : null;
+    final prevStudent =
+        idx != -1 ? Map<String, dynamic>.from(_localStudentsCache[idx]) : null;
 
     // Se estiver tentando alterar o status para ativo/pendente (reativação de aluno):
-    if (status != null && !status.toLowerCase().contains('arquivado') && !status.toLowerCase().contains('inativo')) {
+    if (status != null &&
+        !status.toLowerCase().contains('arquivado') &&
+        !status.toLowerCase().contains('inativo')) {
       final currentSub = SubscriptionService.activeSubscriptionNotifier.value;
       if (currentSub != null) {
-        final currentStudentStatus = (prevStudent?['status'] as String? ?? '').toLowerCase();
-        final isPreviouslyArchived = currentStudentStatus.contains('arquivado') || currentStudentStatus.contains('inativo');
+        final currentStudentStatus =
+            (prevStudent?['status'] as String? ?? '').toLowerCase();
+        final isPreviouslyArchived =
+            currentStudentStatus.contains('arquivado') ||
+            currentStudentStatus.contains('inativo');
         if (isPreviouslyArchived) {
-          final occupied = _localStudentsCache.where((s) {
-            if (s['id'] == studentId) return false;
-            final st = (s['status'] as String? ?? '').toLowerCase();
-            return !st.contains('arquivado') && !st.contains('inativo');
-          }).length;
+          final occupied =
+              _localStudentsCache.where((s) {
+                if (s['id'] == studentId) return false;
+                final st = (s['status'] as String? ?? '').toLowerCase();
+                return !st.contains('arquivado') && !st.contains('inativo');
+              }).length;
           if (occupied >= currentSub.maxStudents) {
             throw Exception(
               'Limite de ${currentSub.maxStudents} alunos ativos atingido no plano ${currentSub.planName}. '
@@ -509,38 +575,49 @@ class WorkoutService {
       if (email != null) _localStudentsCache[idx]['email'] = email;
       if (phone != null) _localStudentsCache[idx]['phone'] = phone;
       if (goal != null) _localStudentsCache[idx]['goal'] = goal;
-      if (injuriesOrRestrictions != null) _localStudentsCache[idx]['injuries_or_restrictions'] = injuriesOrRestrictions;
+      if (injuriesOrRestrictions != null)
+        _localStudentsCache[idx]['injuries_or_restrictions'] =
+            injuriesOrRestrictions;
       if (status != null) _localStudentsCache[idx]['status'] = status;
     }
 
     // 2. Atualiza no Backend FastAPI
     try {
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/students/$studentId');
-      final res = await http.put(
-        uri,
-        headers: _apiHeaders,
-        body: jsonEncode({
-          if (fullName != null) 'full_name': fullName,
-          if (email != null) 'email': email,
-          if (phone != null) 'phone': phone,
-          if (goal != null) 'goal': goal,
-          if (injuriesOrRestrictions != null) 'injuries_or_restrictions': injuriesOrRestrictions,
-          if (status != null) 'status': status,
-        }),
-      ).timeout(const Duration(seconds: 4));
+      final uri = Uri.parse(
+        '${AppConfig.apiBaseUrl}/workouts/students/$studentId',
+      );
+      final res = await http
+          .put(
+            uri,
+            headers: _apiHeaders,
+            body: jsonEncode({
+              if (fullName != null) 'full_name': fullName,
+              if (email != null) 'email': email,
+              if (phone != null) 'phone': phone,
+              if (goal != null) 'goal': goal,
+              if (injuriesOrRestrictions != null)
+                'injuries_or_restrictions': injuriesOrRestrictions,
+              if (status != null) 'status': status,
+            }),
+          )
+          .timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 403) {
         if (idx != -1 && prevStudent != null) {
           _localStudentsCache[idx] = prevStudent;
         }
-        final err = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-        throw Exception(err['detail'] ?? 'Limite de alunos ativos atingido no plano.');
+        final err =
+            jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        throw Exception(
+          err['detail'] ?? 'Limite de alunos ativos atingido no plano.',
+        );
       }
       if (res.statusCode != 200) {
         debugPrint('Aviso backend updateStudent status: ${res.statusCode}');
       }
     } catch (e) {
-      if (e.toString().contains('Limite de') || e.toString().contains('403')) rethrow;
+      if (e.toString().contains('Limite de') || e.toString().contains('403'))
+        rethrow;
       debugPrint('Aviso backend updateStudent: $e');
     }
 
@@ -588,8 +665,12 @@ class WorkoutService {
 
     // 3. Remove do Backend FastAPI
     try {
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/students/$studentId');
-      final res = await http.delete(uri, headers: _apiHeaders).timeout(const Duration(seconds: 4));
+      final uri = Uri.parse(
+        '${AppConfig.apiBaseUrl}/workouts/students/$studentId',
+      );
+      final res = await http
+          .delete(uri, headers: _apiHeaders)
+          .timeout(const Duration(seconds: 4));
       return res.statusCode == 200;
     } catch (e) {
       debugPrint('Aviso backend deleteStudent: $e');
@@ -606,7 +687,8 @@ class WorkoutService {
     final index = _localStudentsCache.indexWhere((s) => s['id'] == clientId);
     if (index != -1) {
       _localStudentsCache[index]['objective'] = data['objective'];
-      _localStudentsCache[index]['injuries_or_restrictions'] = data['injuries_summary'];
+      _localStudentsCache[index]['injuries_or_restrictions'] =
+          data['injuries_summary'];
       _localStudentsCache[index]['status'] = 'Ativo';
     }
 
@@ -631,7 +713,8 @@ class WorkoutService {
           'subscription_status': 'active',
           'updated_at': DateTime.now().toIso8601String(),
         };
-        if (data['trainer_id'] != null && (data['trainer_id'] as String).isNotEmpty) {
+        if (data['trainer_id'] != null &&
+            (data['trainer_id'] as String).isNotEmpty) {
           profileUpdate['trainer_id'] = data['trainer_id'];
         }
         await _client.from('profiles').update(profileUpdate).eq('id', clientId);
@@ -642,16 +725,20 @@ class WorkoutService {
 
     // 3. Atualiza no Backend FastAPI
     try {
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/students/$clientId');
-      await http.put(
-        uri,
-        headers: _apiHeaders,
-        body: jsonEncode({
-          'objective': data['objective'],
-          'injuries_or_restrictions': data['injuries_summary'],
-          'status': 'Ativo',
-        }),
-      ).timeout(const Duration(seconds: 4));
+      final uri = Uri.parse(
+        '${AppConfig.apiBaseUrl}/workouts/students/$clientId',
+      );
+      await http
+          .put(
+            uri,
+            headers: _apiHeaders,
+            body: jsonEncode({
+              'objective': data['objective'],
+              'injuries_or_restrictions': data['injuries_summary'],
+              'status': 'Ativo',
+            }),
+          )
+          .timeout(const Duration(seconds: 4));
     } catch (e) {
       debugPrint('Aviso backend saveClientAnamnesis: $e');
     }
@@ -659,4 +746,3 @@ class WorkoutService {
     return true;
   }
 }
-

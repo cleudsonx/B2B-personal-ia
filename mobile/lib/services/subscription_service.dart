@@ -9,7 +9,8 @@ import 'auth_service.dart';
 
 class SubscriptionService {
   static final http.Client _client = http.Client();
-  static const String _kSubscriptionStorageKey = 'b2b_trainer_active_subscription';
+  static const String _kSubscriptionStorageKey =
+      'b2b_trainer_active_subscription';
 
   static MySubscriptionModel? _currentSubscriptionCache;
   static final ValueNotifier<MySubscriptionModel?> activeSubscriptionNotifier =
@@ -46,7 +47,10 @@ class SubscriptionService {
   static Future<void> _saveToLocalCache(MySubscriptionModel model) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_kSubscriptionStorageKey, jsonEncode(model.toJson()));
+      await prefs.setString(
+        _kSubscriptionStorageKey,
+        jsonEncode(model.toJson()),
+      );
     } catch (e) {
       debugPrint('Aviso ao salvar assinatura no cache local: $e');
     }
@@ -55,10 +59,15 @@ class SubscriptionService {
   static Future<List<PlanModel>> getPlans() async {
     try {
       final uri = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/plans');
-      final res = await _client.get(uri, headers: _headers).timeout(const Duration(seconds: 5));
+      final res = await _client
+          .get(uri, headers: _headers)
+          .timeout(const Duration(seconds: 5));
       if (res.statusCode == 200) {
         final list = jsonDecode(utf8.decode(res.bodyBytes)) as List<dynamic>;
-        final apiPlans = list.map((p) => PlanModel.fromJson(p as Map<String, dynamic>)).toList();
+        final apiPlans =
+            list
+                .map((p) => PlanModel.fromJson(p as Map<String, dynamic>))
+                .toList();
 
         // Garante que TODOS os 4 planos canônicos (Starter, Pro, Elite, Studio) estejam presentes,
         // mesmo se o servidor backend remoto ainda estiver sincronizando uma versão anterior.
@@ -71,7 +80,9 @@ class SubscriptionService {
 
         const canonicalOrder = ['starter', 'pro', 'elite', 'studio'];
         return canonicalOrder
-            .map((id) => merged[id] ?? _defaultPlans.firstWhere((d) => d.id == id))
+            .map(
+              (id) => merged[id] ?? _defaultPlans.firstWhere((d) => d.id == id),
+            )
             .toList();
       }
     } catch (_) {
@@ -95,10 +106,15 @@ class SubscriptionService {
 
     // 2. Consulta a API FastAPI backend com o identificador do treinador
     try {
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/my-subscription?trainer_id=$trainerId');
-      final res = await _client.get(uri, headers: _headers).timeout(const Duration(seconds: 5));
+      final uri = Uri.parse(
+        '${AppConfig.apiBaseUrl}/subscriptions/my-subscription?trainer_id=$trainerId',
+      );
+      final res = await _client
+          .get(uri, headers: _headers)
+          .timeout(const Duration(seconds: 5));
       if (res.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        final data =
+            jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
         final model = MySubscriptionModel.fromJson(data);
         _currentSubscriptionCache = model;
         activeSubscriptionNotifier.value = model;
@@ -114,24 +130,32 @@ class SubscriptionService {
     if (user != null) {
       try {
         final client = Supabase.instance.client;
-        final subData = await client
-            .from('subscriptions')
-            .select()
-            .eq('trainer_id', user.id)
-            .maybeSingle();
+        final subData =
+            await client
+                .from('subscriptions')
+                .select()
+                .eq('trainer_id', user.id)
+                .maybeSingle();
 
         if (subData != null) {
           final planId = subData['plan_id'] as String? ?? 'pro';
           final plans = await getPlans();
-          final plan = plans.firstWhere((p) => p.id == planId, orElse: () => _defaultPlans[1]);
+          final plan = plans.firstWhere(
+            (p) => p.id == planId,
+            orElse: () => _defaultPlans[1],
+          );
           final isTrial = plan.id == 'starter';
-          final currentStudents = _currentSubscriptionCache?.currentStudents ?? 4;
+          final currentStudents =
+              _currentSubscriptionCache?.currentStudents ?? 4;
 
           final model = MySubscriptionModel(
             planId: plan.id,
             planName: plan.name,
-            status: subData['status'] as String? ?? (isTrial ? 'trialing' : 'active'),
-            billingInterval: subData['billing_interval'] as String? ?? 'monthly',
+            status:
+                subData['status'] as String? ??
+                (isTrial ? 'trialing' : 'active'),
+            billingInterval:
+                subData['billing_interval'] as String? ?? 'monthly',
             currentStudents: currentStudents,
             maxStudents: plan.maxStudents,
             aiGenerationsUsed: isTrial ? 3 : 12,
@@ -185,11 +209,16 @@ class SubscriptionService {
     String paymentMethod = 'pix',
   }) async {
     final plans = await getPlans();
-    final plan = plans.firstWhere((p) => p.id == planId, orElse: () => _defaultPlans[0]);
+    final plan = plans.firstWhere(
+      (p) => p.id == planId,
+      orElse: () => _defaultPlans[0],
+    );
     final isTrial = plan.id == 'starter';
     final now = DateTime.now();
-    final nextDate = '${now.day.toString().padLeft(2, '0')}/${((now.month + 1) > 12 ? 1 : now.month + 1).toString().padLeft(2, '0')}/${now.year}';
-    final currentStudentsCount = _currentSubscriptionCache?.currentStudents ?? 4;
+    final nextDate =
+        '${now.day.toString().padLeft(2, '0')}/${((now.month + 1) > 12 ? 1 : now.month + 1).toString().padLeft(2, '0')}/${now.year}';
+    final currentStudentsCount =
+        _currentSubscriptionCache?.currentStudents ?? 4;
 
     final immediateModel = MySubscriptionModel(
       planId: plan.id,
@@ -234,16 +263,21 @@ class SubscriptionService {
 
     // 2. Notifica o backend FastAPI para atualizar o estado e limites em tempo real
     try {
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/activate-plan');
+      final uri = Uri.parse(
+        '${AppConfig.apiBaseUrl}/subscriptions/activate-plan',
+      );
       final body = jsonEncode({
         'plan_id': planId,
         'billing_interval': billingInterval,
         'payment_method': paymentMethod,
         'trainer_id': trainerId,
       });
-      final res = await _client.post(uri, headers: _headers, body: body).timeout(const Duration(seconds: 5));
+      final res = await _client
+          .post(uri, headers: _headers, body: body)
+          .timeout(const Duration(seconds: 5));
       if (res.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        final data =
+            jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
         final backendModel = MySubscriptionModel.fromJson(data);
         _currentSubscriptionCache = backendModel;
         activeSubscriptionNotifier.value = backendModel;
@@ -266,7 +300,9 @@ class SubscriptionService {
   }) async {
     try {
       final user = AuthService.currentUser;
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/checkout-session');
+      final uri = Uri.parse(
+        '${AppConfig.apiBaseUrl}/subscriptions/checkout-session',
+      );
       final body = jsonEncode({
         'plan_id': planId,
         'billing_interval': billingInterval,
@@ -277,9 +313,12 @@ class SubscriptionService {
         'trainer_email': user?.email ?? 'personal@sheipados.com',
       });
 
-      final res = await _client.post(uri, headers: _headers, body: body).timeout(const Duration(seconds: 5));
+      final res = await _client
+          .post(uri, headers: _headers, body: body)
+          .timeout(const Duration(seconds: 5));
       if (res.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        final data =
+            jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
         return CheckoutSessionModel.fromJson(data);
       }
     } catch (_) {
@@ -287,17 +326,19 @@ class SubscriptionService {
     }
 
     final isYearly = billingInterval == 'yearly';
-    final amount = planId == 'studio'
-        ? (isYearly ? 190800 : 19900)
-        : (planId == 'elite'
-            ? (isYearly ? 142800 : 14900)
-            : (planId == 'pro' ? (isYearly ? 85200 : 8900) : 0));
+    final amount =
+        planId == 'studio'
+            ? (isYearly ? 190800 : 19900)
+            : (planId == 'elite'
+                ? (isYearly ? 142800 : 14900)
+                : (planId == 'pro' ? (isYearly ? 85200 : 8900) : 0));
 
-    final planName = planId == 'studio'
-        ? 'Studio Scale'
-        : (planId == 'elite'
-            ? 'Elite Coach'
-            : (planId == 'pro' ? 'Personal Pro' : 'Starter Trial'));
+    final planName =
+        planId == 'studio'
+            ? 'Studio Scale'
+            : (planId == 'elite'
+                ? 'Elite Coach'
+                : (planId == 'pro' ? 'Personal Pro' : 'Starter Trial'));
 
     final sessId = 'sess_asaas_${DateTime.now().millisecondsSinceEpoch}';
     return CheckoutSessionModel(
@@ -307,7 +348,8 @@ class SubscriptionService {
       amountCents: amount,
       billingInterval: billingInterval,
       paymentMethod: paymentMethod,
-      pixCopyPaste: '00020126580014br.gov.bcb.pix0136b2b-personal-ia-demo520400005303986540${(amount / 100).toStringAsFixed(2)}5802BR5920B2B PERSONAL IA6009SAO PAULO62070503***6304ABCD',
+      pixCopyPaste:
+          '00020126580014br.gov.bcb.pix0136b2b-personal-ia-demo520400005303986540${(amount / 100).toStringAsFixed(2)}5802BR5920B2B PERSONAL IA6009SAO PAULO62070503***6304ABCD',
       checkoutUrl: 'https://sandbox.asaas.com/c/$sessId',
       provider: provider,
       status: 'pending',
@@ -318,10 +360,15 @@ class SubscriptionService {
   /// Consulta em tempo real se o Pix ou pagamento foi compensado pelo gateway
   static Future<bool> checkPaymentStatus(String orderNsu) async {
     try {
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/check-status/$orderNsu');
-      final res = await _client.get(uri, headers: _headers).timeout(const Duration(seconds: 4));
+      final uri = Uri.parse(
+        '${AppConfig.apiBaseUrl}/subscriptions/check-status/$orderNsu',
+      );
+      final res = await _client
+          .get(uri, headers: _headers)
+          .timeout(const Duration(seconds: 4));
       if (res.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        final data =
+            jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
         return data['paid'] == true;
       }
     } catch (_) {}
@@ -343,7 +390,9 @@ class SubscriptionService {
     String provider = 'asaas',
   }) async {
     try {
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/pay-with-card');
+      final uri = Uri.parse(
+        '${AppConfig.apiBaseUrl}/subscriptions/pay-with-card',
+      );
       final body = jsonEncode({
         'plan_id': planId,
         'billing_interval': billingInterval,
@@ -356,15 +405,19 @@ class SubscriptionService {
         'provider': provider,
       });
 
-      final res = await _client.post(uri, headers: _headers, body: body).timeout(const Duration(seconds: 12));
+      final res = await _client
+          .post(uri, headers: _headers, body: body)
+          .timeout(const Duration(seconds: 12));
       if (res.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        final data =
+            jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
         await getMySubscription();
         return {'success': true, 'data': data};
       } else {
         String detail = 'Erro no processamento do cartão.';
         try {
-          final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+          final data =
+              jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
           detail = data['detail']?.toString() ?? detail;
         } catch (_) {}
         return {'success': false, 'error': detail};
@@ -372,7 +425,10 @@ class SubscriptionService {
     } catch (e) {
       // Fallback gracioso para modo de testes/offline
       final plans = await getPlans();
-      final plan = plans.firstWhere((p) => p.id == planId, orElse: () => _defaultPlans[1]);
+      final plan = plans.firstWhere(
+        (p) => p.id == planId,
+        orElse: () => _defaultPlans[1],
+      );
       final model = MySubscriptionModel(
         planId: plan.id,
         planName: plan.name,
@@ -383,7 +439,8 @@ class SubscriptionService {
         aiGenerationsUsed: 0,
         maxAiGenerations: plan.maxAiGenerationsPerMonth,
         trialDaysRemaining: null,
-        nextBillingDate: billingInterval == 'yearly' ? '01/10/2027' : '01/11/2026',
+        nextBillingDate:
+            billingInterval == 'yearly' ? '01/10/2027' : '01/11/2026',
         paymentMethod: 'credit_card',
         canCreateStudent: true,
         canGenerateAi: true,
@@ -395,8 +452,6 @@ class SubscriptionService {
     }
   }
 
-
-
   /// Simula e calcula o impacto financeiro (pró-rata) e as regras de transição de plano (Upgrade / Downgrade)
   static Future<PlanChangeSimulationModel> simulatePlanChange({
     required String currentPlanId,
@@ -407,7 +462,9 @@ class SubscriptionService {
     int activeStudentsCount = 0,
   }) async {
     try {
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/calculate-change');
+      final uri = Uri.parse(
+        '${AppConfig.apiBaseUrl}/subscriptions/calculate-change',
+      );
       final body = jsonEncode({
         'current_plan_id': currentPlanId,
         'new_plan_id': newPlanId,
@@ -417,9 +474,12 @@ class SubscriptionService {
         'active_students_count': activeStudentsCount,
       });
 
-      final res = await _client.post(uri, headers: _headers, body: body).timeout(const Duration(seconds: 4));
+      final res = await _client
+          .post(uri, headers: _headers, body: body)
+          .timeout(const Duration(seconds: 4));
       if (res.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        final data =
+            jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
         return PlanChangeSimulationModel.fromJson(data);
       }
     } catch (_) {}
@@ -454,7 +514,8 @@ class SubscriptionService {
       return PlanChangeSimulationModel(
         changeType: 'downgrade',
         isBlocked: true,
-        blockReason: 'Você possui $activeStudentsCount alunos ativos. O plano ${planNames[newPlanId]} permite no máximo $targetMaxStudents alunos. Desative ou arquive pelo menos $excess aluno(s) antes de mudar.',
+        blockReason:
+            'Você possui $activeStudentsCount alunos ativos. O plano ${planNames[newPlanId]} permite no máximo $targetMaxStudents alunos. Desative ou arquive pelo menos $excess aluno(s) antes de mudar.',
         currentPlanName: planNames[currentPlanId] ?? 'Plano Atual',
         newPlanName: planNames[newPlanId] ?? 'Novo Plano',
         currentPlanPriceCents: currentPrice,
@@ -468,9 +529,12 @@ class SubscriptionService {
       );
     }
 
-    final unusedCredit = (isUpgrade && currentPrice > 0)
-        ? ((currentPrice / totalDaysInCycle) * (totalDaysInCycle - daysUsedInCycle)).toInt()
-        : 0;
+    final unusedCredit =
+        (isUpgrade && currentPrice > 0)
+            ? ((currentPrice / totalDaysInCycle) *
+                    (totalDaysInCycle - daysUsedInCycle))
+                .toInt()
+            : 0;
     final netCharge = (targetPrice - unusedCredit).clamp(0, 9999999);
 
     return PlanChangeSimulationModel(
@@ -483,12 +547,14 @@ class SubscriptionService {
       newPlanPriceCents: targetPrice,
       unusedCreditCents: unusedCredit,
       netChargeCents: netCharge,
-      effectiveDate: isUpgrade ? 'Imediato após pagamento' : 'No fim do ciclo atual',
+      effectiveDate:
+          isUpgrade ? 'Imediato após pagamento' : 'No fim do ciclo atual',
       newStudentLimit: targetMaxStudents,
       newAiLimit: newPlanId == 'starter' ? 10 : -1,
-      summaryMessage: isUpgrade
-          ? 'Upgrade com crédito pró-rata de R\$ ${(unusedCredit / 100).toStringAsFixed(2)}.'
-          : 'Downgrade agendado para o final do ciclo atual.',
+      summaryMessage:
+          isUpgrade
+              ? 'Upgrade com crédito pró-rata de R\$ ${(unusedCredit / 100).toStringAsFixed(2)}.'
+              : 'Downgrade agendado para o final do ciclo atual.',
     );
   }
 
@@ -505,12 +571,27 @@ class SubscriptionService {
       isPopular: false,
       badge: 'GRATUITO',
       features: [
-        PlanFeatureModel(title: 'Até 3 alunos ativos simultâneos', included: true),
-        PlanFeatureModel(title: '10 fichas com IA Gemini 3.5 / mês', included: true),
-        PlanFeatureModel(title: 'Adaptação de exercícios no salão', included: true),
-        PlanFeatureModel(title: 'Raio-X Anatômico e Split-View', included: true),
+        PlanFeatureModel(
+          title: 'Até 3 alunos ativos simultâneos',
+          included: true,
+        ),
+        PlanFeatureModel(
+          title: '10 fichas com IA Gemini 3.5 / mês',
+          included: true,
+        ),
+        PlanFeatureModel(
+          title: 'Adaptação de exercícios no salão',
+          included: true,
+        ),
+        PlanFeatureModel(
+          title: 'Raio-X Anatômico e Split-View',
+          included: true,
+        ),
         PlanFeatureModel(title: 'Alunos ilimitados', included: false),
-        PlanFeatureModel(title: 'Alertas WhatsApp via Webhook', included: false),
+        PlanFeatureModel(
+          title: 'Alertas WhatsApp via Webhook',
+          included: false,
+        ),
       ],
     ),
     PlanModel(
@@ -525,13 +606,38 @@ class SubscriptionService {
       isPopular: true,
       badge: 'MAIS POPULAR',
       features: [
-        PlanFeatureModel(title: 'Até 30 alunos ativos na consultoria', included: true, highlight: true),
-        PlanFeatureModel(title: 'Prescrições IA Ilimitadas (Gemini Flash)', included: true, highlight: true),
-        PlanFeatureModel(title: 'Anamnese clínica profunda e restrições', included: true),
-        PlanFeatureModel(title: 'Raio-X Muscular com EMG e Análise de Fases', included: true, highlight: true),
-        PlanFeatureModel(title: 'Timer de descanso interativo sincronizado', included: true),
-        PlanFeatureModel(title: 'Painel de alertas de adaptação em tempo real', included: true, highlight: true),
-        PlanFeatureModel(title: 'Suporte prioritário via WhatsApp', included: true),
+        PlanFeatureModel(
+          title: 'Até 30 alunos ativos na consultoria',
+          included: true,
+          highlight: true,
+        ),
+        PlanFeatureModel(
+          title: 'Prescrições IA Ilimitadas (Gemini Flash)',
+          included: true,
+          highlight: true,
+        ),
+        PlanFeatureModel(
+          title: 'Anamnese clínica profunda e restrições',
+          included: true,
+        ),
+        PlanFeatureModel(
+          title: 'Raio-X Muscular com EMG e Análise de Fases',
+          included: true,
+          highlight: true,
+        ),
+        PlanFeatureModel(
+          title: 'Timer de descanso interativo sincronizado',
+          included: true,
+        ),
+        PlanFeatureModel(
+          title: 'Painel de alertas de adaptação em tempo real',
+          included: true,
+          highlight: true,
+        ),
+        PlanFeatureModel(
+          title: 'Suporte prioritário via WhatsApp',
+          included: true,
+        ),
       ],
     ),
     PlanModel(
@@ -546,12 +652,35 @@ class SubscriptionService {
       isPopular: false,
       badge: 'ALTA ESCALA',
       features: [
-        PlanFeatureModel(title: 'Até 60 alunos ativos na consultoria', included: true, highlight: true),
-        PlanFeatureModel(title: 'Prescrições IA Ilimitadas (Gemini Flash)', included: true, highlight: true),
-        PlanFeatureModel(title: 'Automação WhatsApp (Evolution/Z-API)', included: true, highlight: true),
-        PlanFeatureModel(title: 'Alertas automáticos de dor e faltas no WhatsApp', included: true, highlight: true),
-        PlanFeatureModel(title: 'Relatórios de assiduidade e retenção', included: true, highlight: true),
-        PlanFeatureModel(title: 'Suporte prioritário VIP via WhatsApp', included: true),
+        PlanFeatureModel(
+          title: 'Até 60 alunos ativos na consultoria',
+          included: true,
+          highlight: true,
+        ),
+        PlanFeatureModel(
+          title: 'Prescrições IA Ilimitadas (Gemini Flash)',
+          included: true,
+          highlight: true,
+        ),
+        PlanFeatureModel(
+          title: 'Automação WhatsApp (Evolution/Z-API)',
+          included: true,
+          highlight: true,
+        ),
+        PlanFeatureModel(
+          title: 'Alertas automáticos de dor e faltas no WhatsApp',
+          included: true,
+          highlight: true,
+        ),
+        PlanFeatureModel(
+          title: 'Relatórios de assiduidade e retenção',
+          included: true,
+          highlight: true,
+        ),
+        PlanFeatureModel(
+          title: 'Suporte prioritário VIP via WhatsApp',
+          included: true,
+        ),
       ],
     ),
     PlanModel(
@@ -566,12 +695,35 @@ class SubscriptionService {
       isPopular: false,
       badge: 'ESCALA MÁXIMA',
       features: [
-        PlanFeatureModel(title: 'Até 100 alunos ativos na assessoria', included: true, highlight: true),
-        PlanFeatureModel(title: 'Prescrições e adaptações IA Ilimitadas', included: true, highlight: true),
-        PlanFeatureModel(title: 'Múltiplos personals sob a mesma conta', included: true, highlight: true),
-        PlanFeatureModel(title: 'Alertas de dor e evasão no WhatsApp', included: true, highlight: true),
-        PlanFeatureModel(title: 'Relatórios de assiduidade e retenção', included: true, highlight: true),
-        PlanFeatureModel(title: 'Gerente de contas dedicado e suporte VIP', included: true),
+        PlanFeatureModel(
+          title: 'Até 100 alunos ativos na assessoria',
+          included: true,
+          highlight: true,
+        ),
+        PlanFeatureModel(
+          title: 'Prescrições e adaptações IA Ilimitadas',
+          included: true,
+          highlight: true,
+        ),
+        PlanFeatureModel(
+          title: 'Múltiplos personals sob a mesma conta',
+          included: true,
+          highlight: true,
+        ),
+        PlanFeatureModel(
+          title: 'Alertas de dor e evasão no WhatsApp',
+          included: true,
+          highlight: true,
+        ),
+        PlanFeatureModel(
+          title: 'Relatórios de assiduidade e retenção',
+          included: true,
+          highlight: true,
+        ),
+        PlanFeatureModel(
+          title: 'Gerente de contas dedicado e suporte VIP',
+          included: true,
+        ),
       ],
     ),
   ];

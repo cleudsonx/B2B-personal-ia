@@ -11,7 +11,8 @@ class AIGenerationStepper extends StatefulWidget {
   State<AIGenerationStepper> createState() => _AIGenerationStepperState();
 }
 
-class _AIGenerationStepperState extends State<AIGenerationStepper> with SingleTickerProviderStateMixin {
+class _AIGenerationStepperState extends State<AIGenerationStepper>
+    with SingleTickerProviderStateMixin {
   int _currentStep = 0;
   Timer? _stepTimer;
   late AnimationController _pulseController;
@@ -146,34 +147,50 @@ class _AIGenerationStepperState extends State<AIGenerationStepper> with SingleTi
                         height: 28,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: isDone
-                              ? AppColors.trainerEmerald
-                              : (isCurrent ? AppColors.trainerEmerald.withValues(alpha: 0.2) : AppColors.trainerBorder),
+                          color:
+                              isDone
+                                  ? AppColors.trainerEmerald
+                                  : (isCurrent
+                                      ? AppColors.trainerEmerald.withValues(
+                                        alpha: 0.2,
+                                      )
+                                      : AppColors.trainerBorder),
                           border: Border.all(
-                            color: isDone || isCurrent ? AppColors.trainerEmerald : Colors.transparent,
+                            color:
+                                isDone || isCurrent
+                                    ? AppColors.trainerEmerald
+                                    : Colors.transparent,
                             width: 1.5,
                           ),
                         ),
                         child: Center(
-                          child: isDone
-                              ? const Icon(Icons.check, size: 16, color: Colors.black)
-                              : (isCurrent
-                                  ? const SizedBox(
-                                      width: 12,
-                                      height: 12,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.trainerEmerald),
-                                      ),
-                                    )
-                                  : Text(
-                                      '${index + 1}',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.textMuted,
-                                      ),
-                                    )),
+                          child:
+                              isDone
+                                  ? const Icon(
+                                    Icons.check,
+                                    size: 16,
+                                    color: Colors.black,
+                                  )
+                                  : (isCurrent
+                                      ? const SizedBox(
+                                        width: 12,
+                                        height: 12,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                AppColors.trainerEmerald,
+                                              ),
+                                        ),
+                                      )
+                                      : Text(
+                                        '${index + 1}',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.textMuted,
+                                        ),
+                                      )),
                         ),
                       ),
                       const SizedBox(width: 14),
@@ -185,8 +202,14 @@ class _AIGenerationStepperState extends State<AIGenerationStepper> with SingleTi
                               item['title'] as String,
                               style: TextStyle(
                                 fontSize: 13,
-                                fontWeight: isCurrent ? FontWeight.bold : FontWeight.w600,
-                                color: isDone || isCurrent ? AppColors.textPrimary : AppColors.textMuted,
+                                fontWeight:
+                                    isCurrent
+                                        ? FontWeight.bold
+                                        : FontWeight.w600,
+                                color:
+                                    isDone || isCurrent
+                                        ? AppColors.textPrimary
+                                        : AppColors.textMuted,
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -194,7 +217,10 @@ class _AIGenerationStepperState extends State<AIGenerationStepper> with SingleTi
                               item['detail'] as String,
                               style: TextStyle(
                                 fontSize: 11,
-                                color: isCurrent ? AppColors.trainerEmerald : AppColors.textMuted,
+                                color:
+                                    isCurrent
+                                        ? AppColors.trainerEmerald
+                                        : AppColors.textMuted,
                               ),
                             ),
                           ],
@@ -208,7 +234,9 @@ class _AIGenerationStepperState extends State<AIGenerationStepper> with SingleTi
               LinearProgressIndicator(
                 value: (_currentStep + 1) / _steps.length,
                 backgroundColor: AppColors.trainerBorder,
-                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.trainerEmerald),
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  AppColors.trainerEmerald,
+                ),
                 minHeight: 4,
                 borderRadius: BorderRadius.circular(4),
               ),

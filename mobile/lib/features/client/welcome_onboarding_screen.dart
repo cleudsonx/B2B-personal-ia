@@ -16,7 +16,8 @@ class WelcomeOnboardingScreen extends StatefulWidget {
   });
 
   @override
-  State<WelcomeOnboardingScreen> createState() => _WelcomeOnboardingScreenState();
+  State<WelcomeOnboardingScreen> createState() =>
+      _WelcomeOnboardingScreenState();
 }
 
 class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
@@ -81,13 +82,16 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
         queryParams.addAll(Uri.splitQueryString(fragmentQuery));
       }
 
-      if (queryParams.containsKey('trainer_id') && queryParams['trainer_id']!.isNotEmpty) {
+      if (queryParams.containsKey('trainer_id') &&
+          queryParams['trainer_id']!.isNotEmpty) {
         _trainerId = queryParams['trainer_id'];
       }
 
-      if (queryParams.containsKey('trainer_name') && queryParams['trainer_name']!.isNotEmpty) {
+      if (queryParams.containsKey('trainer_name') &&
+          queryParams['trainer_name']!.isNotEmpty) {
         final tName = queryParams['trainer_name']!;
-        _resolvedTrainerName = tName.startsWith('Prof.') ? tName : 'Prof. $tName';
+        _resolvedTrainerName =
+            tName.startsWith('Prof.') ? tName : 'Prof. $tName';
       }
 
       if (queryParams.containsKey('cref') && queryParams['cref']!.isNotEmpty) {
@@ -98,21 +102,25 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
       if (_trainerId != null && _trainerId!.isNotEmpty) {
         try {
           final client = Supabase.instance.client;
-          final trainerData = await client
-              .from('profiles')
-              .select()
-              .eq('id', _trainerId!)
-              .maybeSingle();
+          final trainerData =
+              await client
+                  .from('profiles')
+                  .select()
+                  .eq('id', _trainerId!)
+                  .maybeSingle();
 
           if (trainerData != null && mounted) {
             setState(() {
               final name = trainerData['full_name'] as String?;
               if (name != null && name.isNotEmpty) {
-                _resolvedTrainerName = name.startsWith('Prof.') ? name : 'Prof. $name';
+                _resolvedTrainerName =
+                    name.startsWith('Prof.') ? name : 'Prof. $name';
               }
-              final reg = (trainerData['cref_or_registry'] ??
-                  trainerData['cref'] ??
-                  trainerData['professional_document']) as String?;
+              final reg =
+                  (trainerData['cref_or_registry'] ??
+                          trainerData['cref'] ??
+                          trainerData['professional_document'])
+                      as String?;
               if (reg != null && reg.isNotEmpty) {
                 _resolvedTrainerRegistry = reg;
               }
@@ -130,11 +138,14 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
         setState(() {
           final name = trainer['full_name'] as String?;
           if (name != null && name.isNotEmpty) {
-            _resolvedTrainerName = name.startsWith('Prof.') ? name : 'Prof. $name';
+            _resolvedTrainerName =
+                name.startsWith('Prof.') ? name : 'Prof. $name';
           }
-          final reg = (trainer['cref_or_registry'] ??
-              trainer['cref'] ??
-              trainer['professional_document']) as String?;
+          final reg =
+              (trainer['cref_or_registry'] ??
+                      trainer['cref'] ??
+                      trainer['professional_document'])
+                  as String?;
           if (reg != null && reg.isNotEmpty) {
             _resolvedTrainerRegistry = reg;
           }
@@ -159,10 +170,14 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
       final user = AuthService.currentUser;
       final clientId = user?.id ?? 'client-demo';
 
-      final injuriesSummary = _selectedInjuries.isEmpty || _selectedInjuries.contains('Nenhuma dor ou restrição')
-          ? 'Nenhuma dor ou restrição articular reportada.'
-          : _selectedInjuries.join(', ') +
-              (_injuriesDetailsCtrl.text.isNotEmpty ? ' (${_injuriesDetailsCtrl.text.trim()})' : '');
+      final injuriesSummary =
+          _selectedInjuries.isEmpty ||
+                  _selectedInjuries.contains('Nenhuma dor ou restrição')
+              ? 'Nenhuma dor ou restrição articular reportada.'
+              : _selectedInjuries.join(', ') +
+                  (_injuriesDetailsCtrl.text.isNotEmpty
+                      ? ' (${_injuriesDetailsCtrl.text.trim()})'
+                      : '');
 
       final anamnesisPayload = {
         'client_id': clientId,
@@ -185,13 +200,19 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
       };
 
       // Persiste na tabela client_anamnesis e atualiza perfil do aluno
-      await WorkoutService.saveClientAnamnesis(clientId: clientId, data: anamnesisPayload);
+      await WorkoutService.saveClientAnamnesis(
+        clientId: clientId,
+        data: anamnesisPayload,
+      );
 
       // Garante o vínculo relacional do aluno com o personal trainer no Supabase
       if (_trainerId != null && _trainerId!.isNotEmpty && user != null) {
         try {
           final client = Supabase.instance.client;
-          await client.from('profiles').update({'trainer_id': _trainerId}).eq('id', clientId);
+          await client
+              .from('profiles')
+              .update({'trainer_id': _trainerId})
+              .eq('id', clientId);
         } catch (_) {}
       }
 
@@ -228,9 +249,10 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
     return Scaffold(
       backgroundColor: AppColors.bg(context),
       body: SafeArea(
-        child: _currentStep == 0
-            ? _buildWelcomeScreen(isDark)
-            : _currentStep == 6
+        child:
+            _currentStep == 0
+                ? _buildWelcomeScreen(isDark)
+                : _currentStep == 6
                 ? _buildSuccessScreen(isDark)
                 : _buildOnboardingStepScaffold(isDark),
       ),
@@ -256,20 +278,25 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                     'assets/images/logo_shaipados.png',
                     height: 42,
                     fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: AppColors.emerald(context),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'S',
-                          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 13),
+                    errorBuilder:
+                        (context, error, stackTrace) => Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: AppColors.emerald(context),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'S',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
                   ),
                   const SizedBox(width: 10),
                   Column(
@@ -298,11 +325,16 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.emeraldBg(context),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.emerald(context).withValues(alpha: 0.4)),
+                  border: Border.all(
+                    color: AppColors.emerald(context).withValues(alpha: 0.4),
+                  ),
                 ),
                 child: Text(
                   'CONVITE EXCLUSIVO',
@@ -374,7 +406,9 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.emerald(context).withValues(alpha: 0.3),
+                        color: AppColors.emerald(
+                          context,
+                        ).withValues(alpha: 0.3),
                         blurRadius: 10,
                         offset: const Offset(0, 3),
                       ),
@@ -429,7 +463,11 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                             ),
                           ),
                           const SizedBox(width: 4),
-                          Icon(Icons.verified_rounded, size: 16, color: AppColors.accentBlue(context)),
+                          Icon(
+                            Icons.verified_rounded,
+                            size: 16,
+                            color: AppColors.accentBlue(context),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 2),
@@ -444,7 +482,10 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                       const SizedBox(height: 4),
                       Text(
                         'Aguardando sua avaliação para liberar sua periodização.',
-                        style: TextStyle(fontSize: 11, color: AppColors.subtext(context)),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.subtext(context),
+                        ),
                       ),
                     ],
                   ),
@@ -459,16 +500,24 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              icon: const Icon(Icons.arrow_forward_rounded, color: Colors.black),
+              icon: const Icon(
+                Icons.arrow_forward_rounded,
+                color: Colors.black,
+              ),
               label: const Text('Iniciar Avaliação Biomecânica (3 min)'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.emerald(context),
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 elevation: 4,
                 shadowColor: AppColors.emerald(context).withValues(alpha: 0.35),
-                textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                textStyle: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               onPressed: () => setState(() => _currentStep = 1),
             ),
@@ -559,7 +608,9 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: AppColors.card(context),
-            border: Border(top: BorderSide(color: AppColors.cardBorder(context))),
+            border: Border(
+              top: BorderSide(color: AppColors.cardBorder(context)),
+            ),
           ),
           child: Row(
             children: [
@@ -569,26 +620,40 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                     backgroundColor: AppColors.emerald(context),
                     foregroundColor: Colors.black,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                     elevation: 3,
-                    textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                    textStyle: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                  onPressed: _isSubmitting
-                      ? null
-                      : () {
-                          if (_currentStep < 5) {
-                            setState(() => _currentStep++);
-                          } else {
-                            _submitAnamnesis();
-                          }
-                        },
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
-                        )
-                      : Text(_currentStep < 5 ? 'Continuar →' : 'Enviar Avaliação ao Treinador ✓'),
+                  onPressed:
+                      _isSubmitting
+                          ? null
+                          : () {
+                            if (_currentStep < 5) {
+                              setState(() => _currentStep++);
+                            } else {
+                              _submitAnamnesis();
+                            }
+                          },
+                  child:
+                      _isSubmitting
+                          ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.black,
+                              strokeWidth: 2,
+                            ),
+                          )
+                          : Text(
+                            _currentStep < 5
+                                ? 'Continuar →'
+                                : 'Enviar Avaliação ao Treinador ✓',
+                          ),
                 ),
               ),
             ],
@@ -605,7 +670,11 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
       children: [
         Text(
           'Perfil Biométrico & Rotina',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.text(context)),
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: AppColors.text(context),
+          ),
         ),
         const SizedBox(height: 6),
         Text(
@@ -616,15 +685,27 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
         Row(
           children: [
             Expanded(
-              child: _buildTextField('Idade (anos)', _ageCtrl, keyboardType: TextInputType.number),
+              child: _buildTextField(
+                'Idade (anos)',
+                _ageCtrl,
+                keyboardType: TextInputType.number,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _buildTextField('Peso (kg)', _weightCtrl, keyboardType: TextInputType.number),
+              child: _buildTextField(
+                'Peso (kg)',
+                _weightCtrl,
+                keyboardType: TextInputType.number,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _buildTextField('Altura (cm)', _heightCtrl, keyboardType: TextInputType.number),
+              child: _buildTextField(
+                'Altura (cm)',
+                _heightCtrl,
+                keyboardType: TextInputType.number,
+              ),
             ),
           ],
         ),
@@ -662,7 +743,11 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
       children: [
         Text(
           'Experiência & Disponibilidade',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.text(context)),
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: AppColors.text(context),
+          ),
         ),
         const SizedBox(height: 6),
         Text(
@@ -695,7 +780,12 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
         _buildDropdown(
           label: 'Tempo Disponível por Sessão',
           value: _sessionDuration,
-          items: ['30 a 45 minutos', '45 a 60 minutos', '60 minutos', '75 a 90 minutos'],
+          items: [
+            '30 a 45 minutos',
+            '45 a 60 minutos',
+            '60 minutos',
+            '75 a 90 minutos',
+          ],
           onChanged: (val) => setState(() => _sessionDuration = val!),
         ),
       ],
@@ -719,7 +809,11 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
       children: [
         Text(
           'Mapeamento Articular & Lesões',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.text(context)),
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: AppColors.text(context),
+          ),
         ),
         const SizedBox(height: 6),
         Text(
@@ -730,42 +824,48 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: options.map((opt) {
-            final isSelected = _selectedInjuries.contains(opt);
-            return FilterChip(
-              selected: isSelected,
-              showCheckmark: true,
-              checkmarkColor: isSelected ? Colors.black : null,
-              label: Text(
-                opt,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                  color: isSelected ? Colors.black : AppColors.text(context),
-                ),
-              ),
-              backgroundColor: AppColors.pillBg(context),
-              selectedColor: AppColors.emerald(context),
-              side: BorderSide(
-                color: isSelected ? AppColors.emerald(context) : AppColors.cardBorder(context),
-              ),
-              onSelected: (selected) {
-                setState(() {
-                  if (opt == 'Nenhuma dor ou restrição') {
-                    _selectedInjuries.clear();
-                    if (selected) _selectedInjuries.add(opt);
-                  } else {
-                    _selectedInjuries.remove('Nenhuma dor ou restrição');
-                    if (selected) {
-                      _selectedInjuries.add(opt);
-                    } else {
-                      _selectedInjuries.remove(opt);
-                    }
-                  }
-                });
-              },
-            );
-          }).toList(),
+          children:
+              options.map((opt) {
+                final isSelected = _selectedInjuries.contains(opt);
+                return FilterChip(
+                  selected: isSelected,
+                  showCheckmark: true,
+                  checkmarkColor: isSelected ? Colors.black : null,
+                  label: Text(
+                    opt,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight:
+                          isSelected ? FontWeight.w800 : FontWeight.w500,
+                      color:
+                          isSelected ? Colors.black : AppColors.text(context),
+                    ),
+                  ),
+                  backgroundColor: AppColors.pillBg(context),
+                  selectedColor: AppColors.emerald(context),
+                  side: BorderSide(
+                    color:
+                        isSelected
+                            ? AppColors.emerald(context)
+                            : AppColors.cardBorder(context),
+                  ),
+                  onSelected: (selected) {
+                    setState(() {
+                      if (opt == 'Nenhuma dor ou restrição') {
+                        _selectedInjuries.clear();
+                        if (selected) _selectedInjuries.add(opt);
+                      } else {
+                        _selectedInjuries.remove('Nenhuma dor ou restrição');
+                        if (selected) {
+                          _selectedInjuries.add(opt);
+                        } else {
+                          _selectedInjuries.remove(opt);
+                        }
+                      }
+                    });
+                  },
+                );
+              }).toList(),
         ),
         const SizedBox(height: 20),
         TextFormField(
@@ -774,7 +874,8 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
           style: TextStyle(color: AppColors.text(context), fontSize: 13),
           decoration: InputDecoration(
             labelText: 'Detalhes ou Diagnósticos Médicos (Opcional)',
-            hintText: 'Ex: Tenho leve impacto subacromial no ombro direito quando faço abdução acima de 90°...',
+            hintText:
+                'Ex: Tenho leve impacto subacromial no ombro direito quando faço abdução acima de 90°...',
             filled: true,
             fillColor: AppColors.card(context),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
@@ -791,7 +892,11 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
       children: [
         Text(
           'Espaço de Treino & Estrutura',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.text(context)),
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: AppColors.text(context),
+          ),
         ),
         const SizedBox(height: 6),
         Text(
@@ -815,14 +920,26 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
 
   // ETAPA 5: Objetivos & Focos
   Widget _buildStep5Goals() {
-    final muscles = ['Peitoral', 'Costas / Dorsais', 'Ombros', 'Quadríceps', 'Glúteos', 'Braços / Tríceps', 'Abdômen'];
+    final muscles = [
+      'Peitoral',
+      'Costas / Dorsais',
+      'Ombros',
+      'Quadríceps',
+      'Glúteos',
+      'Braços / Tríceps',
+      'Abdômen',
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Metas & Prioridades Estéticas',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.text(context)),
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: AppColors.text(context),
+          ),
         ),
         const SizedBox(height: 6),
         Text(
@@ -844,42 +961,52 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
         const SizedBox(height: 24),
         Text(
           'Músculos com Maior Foco / Prioridade:',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.text(context)),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: AppColors.text(context),
+          ),
         ),
         const SizedBox(height: 10),
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: muscles.map((m) {
-            final isSelected = _musclePriorities.contains(m);
-            return FilterChip(
-              selected: isSelected,
-              showCheckmark: true,
-              checkmarkColor: isSelected ? Colors.black : null,
-              label: Text(
-                m,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                  color: isSelected ? Colors.black : AppColors.text(context),
-                ),
-              ),
-              backgroundColor: AppColors.pillBg(context),
-              selectedColor: AppColors.emerald(context),
-              side: BorderSide(
-                color: isSelected ? AppColors.emerald(context) : AppColors.cardBorder(context),
-              ),
-              onSelected: (selected) {
-                setState(() {
-                  if (selected) {
-                    _musclePriorities.add(m);
-                  } else {
-                    _musclePriorities.remove(m);
-                  }
-                });
-              },
-            );
-          }).toList(),
+          children:
+              muscles.map((m) {
+                final isSelected = _musclePriorities.contains(m);
+                return FilterChip(
+                  selected: isSelected,
+                  showCheckmark: true,
+                  checkmarkColor: isSelected ? Colors.black : null,
+                  label: Text(
+                    m,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight:
+                          isSelected ? FontWeight.w800 : FontWeight.w500,
+                      color:
+                          isSelected ? Colors.black : AppColors.text(context),
+                    ),
+                  ),
+                  backgroundColor: AppColors.pillBg(context),
+                  selectedColor: AppColors.emerald(context),
+                  side: BorderSide(
+                    color:
+                        isSelected
+                            ? AppColors.emerald(context)
+                            : AppColors.cardBorder(context),
+                  ),
+                  onSelected: (selected) {
+                    setState(() {
+                      if (selected) {
+                        _musclePriorities.add(m);
+                      } else {
+                        _musclePriorities.remove(m);
+                      }
+                    });
+                  },
+                );
+              }).toList(),
         ),
       ],
     );
@@ -902,7 +1029,11 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
               shape: BoxShape.circle,
               border: Border.all(color: AppColors.emerald(context), width: 2),
             ),
-            child: Icon(Icons.check_rounded, color: AppColors.emerald(context), size: 44),
+            child: Icon(
+              Icons.check_rounded,
+              color: AppColors.emerald(context),
+              size: 44,
+            ),
           ),
           const SizedBox(height: 24),
           Text(
@@ -918,7 +1049,11 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
           Text(
             'Seus dados biomecânicos foram transmitidos com sucesso para o $_resolvedTrainerName.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: AppColors.subtext(context), height: 1.4),
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.subtext(context),
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 24),
           Container(
@@ -930,12 +1065,19 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
             ),
             child: Row(
               children: [
-                Icon(Icons.mark_chat_read_rounded, color: AppColors.emerald(context), size: 24),
+                Icon(
+                  Icons.mark_chat_read_rounded,
+                  color: AppColors.emerald(context),
+                  size: 24,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'Uma notificação de confirmação e resumo foi preparada para o seu WhatsApp.',
-                    style: TextStyle(fontSize: 12, color: AppColors.text(context)),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.text(context),
+                    ),
                   ),
                 ),
               ],
@@ -949,8 +1091,13 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                 backgroundColor: AppColors.emerald(context),
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               onPressed: _finishAndEnterApp,
               child: const Text('Entrar no Espaço de Treino →'),
@@ -962,7 +1109,11 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
   }
 
   // Auxiliares de UI
-  Widget _buildTextField(String label, TextEditingController ctrl, {TextInputType keyboardType = TextInputType.text}) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController ctrl, {
+    TextInputType keyboardType = TextInputType.text,
+  }) {
     return TextFormField(
       controller: ctrl,
       keyboardType: keyboardType,
@@ -1002,7 +1153,15 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
           borderSide: BorderSide(color: AppColors.cardBorder(context)),
         ),
       ),
-      items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, overflow: TextOverflow.ellipsis))).toList(),
+      items:
+          items
+              .map(
+                (e) => DropdownMenuItem(
+                  value: e,
+                  child: Text(e, overflow: TextOverflow.ellipsis),
+                ),
+              )
+              .toList(),
       onChanged: onChanged,
     );
   }

@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Controlador global reativo para alternância entre Modo Claro e Modo Escuro
 class ThemeController extends ChangeNotifier {
   static const String _prefKey = 'app_theme_mode_v2';
-  
+
   static final ThemeController instance = ThemeController._internal();
   ThemeController._internal() {
     _loadFromPrefs();
@@ -32,7 +32,10 @@ class ThemeController extends ChangeNotifier {
     notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_prefKey, mode == ThemeMode.dark ? 'dark' : 'light');
+      await prefs.setString(
+        _prefKey,
+        mode == ThemeMode.dark ? 'dark' : 'light',
+      );
     } catch (_) {}
   }
 

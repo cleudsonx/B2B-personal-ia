@@ -14,9 +14,33 @@ class DocumentValidationResult {
 
 class DocumentValidator {
   static const Set<String> _validUfs = {
-    'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
-    'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
-    'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO',
+    'AC',
+    'AL',
+    'AP',
+    'AM',
+    'BA',
+    'CE',
+    'DF',
+    'ES',
+    'GO',
+    'MA',
+    'MT',
+    'MS',
+    'MG',
+    'PA',
+    'PB',
+    'PR',
+    'PE',
+    'PI',
+    'RJ',
+    'RN',
+    'RS',
+    'RO',
+    'RR',
+    'SC',
+    'SP',
+    'SE',
+    'TO',
   };
 
   /// Validação oficial do CPF com verificação matemática dos dois dígitos (Módulo 11 da Receita Federal)
@@ -42,7 +66,8 @@ class DocumentValidator {
     if (allSame.hasMatch(digits)) {
       return const DocumentValidationResult(
         isValid: false,
-        errorMessage: 'CPF inválido (sequência não permitida pela Receita Federal).',
+        errorMessage:
+            'CPF inválido (sequência não permitida pela Receita Federal).',
       );
     }
 
@@ -111,7 +136,10 @@ class DocumentValidator {
     }
 
     final number = match.group(1)!;
-    final category = match.group(2)!.toUpperCase(); // G = Graduado, P = Provisionado, T = Treinador
+    final category =
+        match
+            .group(2)!
+            .toUpperCase(); // G = Graduado, P = Provisionado, T = Treinador
     final uf = match.group(3)!.toUpperCase();
 
     if (!_validUfs.contains(uf)) {
@@ -159,7 +187,8 @@ class DocumentValidator {
     if (rawCode.length < 3) {
       return const DocumentValidationResult(
         isValid: false,
-        errorMessage: 'O registro CBMF deve conter pelo menos 3 caracteres alfanuméricos.',
+        errorMessage:
+            'O registro CBMF deve conter pelo menos 3 caracteres alfanuméricos.',
       );
     }
 

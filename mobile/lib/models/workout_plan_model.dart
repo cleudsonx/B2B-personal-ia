@@ -13,9 +13,10 @@ class WorkoutPlanModel {
 
   factory WorkoutPlanModel.fromJson(Map<String, dynamic> json) {
     var rawSplits = json['splits'] as List<dynamic>? ?? [];
-    List<SplitModel> parsedSplits = rawSplits
-        .map((s) => SplitModel.fromJson(s as Map<String, dynamic>))
-        .toList();
+    List<SplitModel> parsedSplits =
+        rawSplits
+            .map((s) => SplitModel.fromJson(s as Map<String, dynamic>))
+            .toList();
 
     return WorkoutPlanModel(
       workoutPlanTitle: json['workout_plan_title'] as String? ?? 'Periodização',

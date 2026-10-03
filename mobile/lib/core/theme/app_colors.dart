@@ -9,7 +9,9 @@ class AppColors {
   static const Color lightBg = Color(0xFFF8FAFC); // Off-White Slate
   static const Color lightCard = Color(0xFFFFFFFF); // Pure White
   static const Color lightCardBorder = Color(0xFFE2E8F0); // 1px sutil
-  static const Color lightCardShadow = Color(0x0D0F172A); // 0 10px 30px rgba(15,23,42,0.05)
+  static const Color lightCardShadow = Color(
+    0x0D0F172A,
+  ); // 0 10px 30px rgba(15,23,42,0.05)
   static const Color lightTextPrimary = Color(0xFF0F172A); // Slate Black
   static const Color lightTextSecondary = Color(0xFF64748B); // Muted Slate
   static const Color lightPillBg = Color(0xFFF1F5F9); // Slate 100
@@ -24,7 +26,9 @@ class AppColors {
   static const Color tangerineSurface = Color(0xFFFFF7ED); // Peach 50
   static const Color tangerineBorder = Color(0xFFFED7AA); // Peach 200
 
-  static const Color cobaltPrimary = Color(0xFF0284C7); // Sky Blue / Pastel Blue
+  static const Color cobaltPrimary = Color(
+    0xFF0284C7,
+  ); // Sky Blue / Pastel Blue
   static const Color cobaltSurface = Color(0xFFF0F9FF); // Sky 50
 
   // ==========================================
@@ -32,7 +36,9 @@ class AppColors {
   // ==========================================
   static const Color darkBg = Color(0xFF090D16); // Obsidian Fosco
   static const Color darkCard = Color(0xFF131B2E); // Carbon Slate Elevado
-  static const Color darkCardBorder = Color(0x1FFFFFFF); // 1px luminescente suave
+  static const Color darkCardBorder = Color(
+    0x1FFFFFFF,
+  ); // 1px luminescente suave
   static const Color darkTextPrimary = Color(0xFFF8FAFC); // Off-White
   static const Color darkTextSecondary = Color(0xFF94A3B8); // Slate 400
   static const Color darkPillBg = Color(0xFF1E293B); // Slate 800
@@ -85,8 +91,7 @@ class AppColors {
   static bool isDark(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark;
 
-  static Color bg(BuildContext context) =>
-      isDark(context) ? darkBg : lightBg;
+  static Color bg(BuildContext context) => isDark(context) ? darkBg : lightBg;
 
   static Color card(BuildContext context) =>
       isDark(context) ? darkCard : lightCard;

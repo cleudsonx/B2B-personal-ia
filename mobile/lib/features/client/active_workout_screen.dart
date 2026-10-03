@@ -210,8 +210,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             dailyGoalProgress =
                 (progress is double)
                     ? progress
-                    : double.tryParse(progress.toString()) ??
-                        dailyGoalProgress;
+                    : double.tryParse(progress.toString()) ?? dailyGoalProgress;
           }
         });
       }

@@ -46,7 +46,8 @@ class PlanModel {
   });
 
   double get priceMonthly => priceMonthlyCents / 100.0;
-  double get priceYearlyMonthlyEquivalent => priceYearlyMonthlyEquivalentCents / 100.0;
+  double get priceYearlyMonthlyEquivalent =>
+      priceYearlyMonthlyEquivalentCents / 100.0;
   double get priceYearlyTotal => priceYearlyCents / 100.0;
 
   factory PlanModel.fromJson(Map<String, dynamic> json) {
@@ -56,12 +57,14 @@ class PlanModel {
       tagline: json['tagline'] ?? '',
       priceMonthlyCents: json['price_monthly_cents'] ?? 0,
       priceYearlyCents: json['price_yearly_cents'] ?? 0,
-      priceYearlyMonthlyEquivalentCents: json['price_yearly_monthly_equivalent_cents'] ?? 0,
+      priceYearlyMonthlyEquivalentCents:
+          json['price_yearly_monthly_equivalent_cents'] ?? 0,
       maxStudents: json['max_students'] ?? 3,
       maxAiGenerationsPerMonth: json['max_ai_generations_per_month'] ?? 10,
       isPopular: json['is_popular'] ?? false,
       badge: json['badge'],
-      features: (json['features'] as List<dynamic>?)
+      features:
+          (json['features'] as List<dynamic>?)
               ?.map((f) => PlanFeatureModel.fromJson(f as Map<String, dynamic>))
               .toList() ??
           [],

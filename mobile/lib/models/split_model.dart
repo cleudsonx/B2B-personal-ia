@@ -15,9 +15,10 @@ class SplitModel {
 
   factory SplitModel.fromJson(Map<String, dynamic> json) {
     var rawExercises = json['exercises'] as List<dynamic>? ?? [];
-    List<ExerciseModel> parsedExercises = rawExercises
-        .map((e) => ExerciseModel.fromJson(e as Map<String, dynamic>))
-        .toList();
+    List<ExerciseModel> parsedExercises =
+        rawExercises
+            .map((e) => ExerciseModel.fromJson(e as Map<String, dynamic>))
+            .toList();
 
     return SplitModel(
       splitIdentifier: json['split_identifier'] as String? ?? 'A',
