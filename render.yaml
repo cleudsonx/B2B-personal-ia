@@ -47,9 +47,3 @@ services:
       - key: CORS_ORIGINS
         value: '["https://shaipados.com", "https://mrcoach.shaipados.com", "https://app.shaipados.com"]'
 
-  - type: static_site
-    name: shaipados-frontend
-    rootDir: mobile
-    buildCommand: git clone https://github.com/flutter/flutter.git --depth 1 -b stable _flutter && export PATH="$PATH:./_flutter/bin" && flutter pub get && flutter build web --release
-    staticPublishPath: build/web
-    autoDeploy: true
