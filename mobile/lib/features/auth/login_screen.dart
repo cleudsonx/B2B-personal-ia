@@ -5,6 +5,7 @@ import '../../core/widgets/server_config_dialog.dart';
 import '../../services/auth_service.dart';
 import '../../main.dart';
 import '../client/welcome_onboarding_screen.dart';
+import '../landing/landing_page_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -469,6 +470,24 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton.icon(
+                      icon: Icon(Icons.public_rounded, size: 16, color: primaryAccent),
+                      label: Text(
+                        'Conhecer a Plataforma (Página Web & WhatsApp)',
+                        style: TextStyle(
+                          color: primaryAccent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LandingPageScreen()),
+                        );
+                      },
                     ),
 
                     // API Server Config Shortcut (Only displayed in Debug / Development Mode)
