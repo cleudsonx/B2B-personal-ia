@@ -1,6 +1,5 @@
 ﻿import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
-import '../../services/auth_service.dart';
 
 class StudentProfileScreen extends StatefulWidget {
   const StudentProfileScreen({super.key});
@@ -283,4 +282,5 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     );
   }
 }
+
 
