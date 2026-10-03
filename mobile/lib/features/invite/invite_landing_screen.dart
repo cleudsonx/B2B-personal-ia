@@ -27,7 +27,7 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
   }
 
   Future<void> _fetchTrainerData() async {
-    // SimulaÃ§Ã£o de busca no Supabase (GET /api/v1/public/trainers/{slug})
+    // SimulaÃƒÂ§ÃƒÂ£o de busca no Supabase (GET /api/v1/public/trainers/{slug})
     await Future.delayed(const Duration(milliseconds: 800));
 
     // Converte 'joao-silva' para 'Joao Silva' para mock
@@ -67,7 +67,7 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Ã cone / Logo
+                // Ãƒ cone / Logo
                 Container(
                   width: 80,
                   height: 80,
@@ -118,7 +118,7 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'gerou a sua periodizaÃ§Ã£o com InteligÃªncia Artificial.',
+                    'gerou a sua periodizaÃƒÂ§ÃƒÂ£o com InteligÃƒÂªncia Artificial.',
                     style: TextStyle(
                       fontSize: 16,
                       color: AppColors.subtext(context),
@@ -127,7 +127,7 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
                   ),
                   const SizedBox(height: 40),
 
-                  // BotÃ£o CTA
+                  // BotÃƒÂ£o CTA
                   SizedBox(
                     width: double.infinity,
                     height: 56,
