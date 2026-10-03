@@ -1,8 +1,12 @@
+import 'features/landing/mrcoach_landing_screen.dart';
+import 'features/landing/shaipados_studio_screen.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/login_screen.dart';
+import 'features/auth/auth_gate.dart';
 import 'features/client/active_workout_screen.dart';
 import 'features/trainer/anamnesis_screen.dart';
 import 'features/trainer/trainer_students_screen.dart';
@@ -76,7 +80,22 @@ class B2BPersonalIaApp extends StatelessWidget {
             }
             return null; // Fallback to 'home'
           },
-          home: const LoginScreen(),
+          home: Builder(
+            builder: (context) {
+              if (kIsWeb) {
+                final host = Uri.base.host;
+                if (host.contains('mrcoach')) {
+                  return const MrCoachLandingScreen();
+                } else if (host.contains('app') || host.contains('localhost')) {
+                  return const AuthGate();
+                } else {
+                  return const ShaipadosStudioScreen();
+                }
+              }
+              // Fallback for native apps
+              return const AuthGate();
+            },
+          ),
         );
       },
     );
