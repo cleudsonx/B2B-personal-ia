@@ -32,3 +32,9 @@ Para garantir persistência, autenticidade e segurança:
 * **Identificador Único (UUID v4):** Todo usuário (Professor ou Aluno) é registrado no Supabase Auth e recebe um ID criptográfico único e universal. E-mails são estritamente únicos.
 * **Autenticidade (RLS):** O banco de dados utiliza Row Level Security (RLS) do PostgreSQL. Um token JWT de aluno garante que ele só pode fazer UPDATE na própria linha da tabela profiles, sendo matematicamente impossível que ele altere os dados do professor ou de outros alunos.
 * **Consistência de Dados:** O Backend em FastAPI fará a validação de todos os payloads usando Pydantic, garantindo clareza e que nenhum dado corrompido chegue ao banco.
+
+## 7. Segurança contra Vazamento de Convites (Anti-Burlas)
+Para impedir que um convite seja repassado a terceiros e utilizado de forma indevida:
+* **Cadastro B2C Fechado:** Não existe botão público de "Criar Conta como Aluno". Um aluno só pode entrar no sistema se atrelado a um Professor.
+* **Token de Uso Único (Single-use):** O link de convite (/invite/token...) expira no exato segundo em que o primeiro cadastro é concluído. Se o aluno repassar o link depois de usar, o terceiro verá uma página de "Convite Expirado".
+* **Pre-Binding (Trava de Identidade):** O convite gerado pelo professor é atrelado ao e-mail ou WhatsApp específico do aluno. Para ativar a conta, o aluno precisa confirmar um OTP (código de 6 dígitos) enviado para aquele contato exato. Um invasor com o link não conseguiria ativar a conta sem ter acesso ao celular/e-mail original do aluno.
