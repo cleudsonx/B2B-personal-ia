@@ -1,6 +1,7 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'student_profile_screen.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/rest_timer_sheet.dart';
 import '../../core/widgets/biomechanical_analysis_sheet.dart';
@@ -22,7 +23,7 @@ class ActiveWorkoutScreen extends StatefulWidget {
 class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
-  String _workoutTitle = 'Treino A: Membros Superiores (Ênfase Empurrar)';
+  String _workoutTitle = 'Treino A: Membros Superiores (ÃŠnfase Empurrar)';
   String _trainerName = 'Carregando treinador...';
   String _trainerCref = 'CREF Ativo';
   String? _trainerPhotoUrl;
@@ -30,11 +31,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   int _currentCarouselIndex = 0;
   late final PageController _pageController;
 
-  // Variáveis reais de Gamificação (Backend)
+  // VariÃ¡veis reais de GamificaÃ§Ã£o (Backend)
   int currentStreak = 14;
   double dailyGoalProgress = 0.65;
 
-  // Lista de exercícios de demonstração inicial fiel à amostra
+  // Lista de exercÃ­cios de demonstraÃ§Ã£o inicial fiel Ã  amostra
   late List<ExerciseModel> _exercises;
 
   @override
@@ -49,7 +50,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         sets: 4,
         reps: '8-10',
         restSeconds: 90,
-        notes: 'Manter escápulas aduzidas e banco regulado a 30°.',
+        notes: 'Manter escÃ¡pulas aduzidas e banco regulado a 30Â°.',
         substitutionVector: 'Empurrar inclinado livre',
       ),
       const ExerciseModel(
@@ -59,38 +60,38 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         sets: 4,
         reps: '8-10',
         restSeconds: 60,
-        notes: 'Ajustar banco a 75° e cotovelos no plano escapular.',
+        notes: 'Ajustar banco a 75Â° e cotovelos no plano escapular.',
         substitutionVector: 'Empurrar vertical livre',
       ),
       const ExerciseModel(
         order: 3,
-        name: 'Elevação Lateral na Polia',
+        name: 'ElevaÃ§Ã£o Lateral na Polia',
         targetMuscleGroup: 'Deltoide Lateral',
         sets: 3,
         reps: '12-15',
         restSeconds: 45,
-        notes: 'Manter ligeira flexão de cotovelos sem impulso do tronco.',
-        substitutionVector: 'Abdução de ombros cabo',
+        notes: 'Manter ligeira flexÃ£o de cotovelos sem impulso do tronco.',
+        substitutionVector: 'AbduÃ§Ã£o de ombros cabo',
       ),
       const ExerciseModel(
         order: 4,
-        name: 'Tríceps Polia com Barra',
-        targetMuscleGroup: 'Tríceps Braquial',
+        name: 'TrÃ­ceps Polia com Barra',
+        targetMuscleGroup: 'TrÃ­ceps Braquial',
         sets: 4,
         reps: '10-12',
         restSeconds: 60,
-        notes: 'Cotovelos fixos ao lado do tronco durante toda a extensão.',
-        substitutionVector: 'Extensão de cotovelos cabo',
+        notes: 'Cotovelos fixos ao lado do tronco durante toda a extensÃ£o.',
+        substitutionVector: 'ExtensÃ£o de cotovelos cabo',
       ),
       const ExerciseModel(
         order: 5,
         name: 'Agachamento Livre com Barra',
-        targetMuscleGroup: 'Quadríceps & Glúteo',
+        targetMuscleGroup: 'QuadrÃ­ceps & GlÃºteo',
         sets: 4,
         reps: '8-10',
         restSeconds: 90,
-        notes: 'Coluna neutra, escápulas travadas e pés na largura dos ombros.',
-        substitutionVector: 'Padrão agachamento bilateral',
+        notes: 'Coluna neutra, escÃ¡pulas travadas e pÃ©s na largura dos ombros.',
+        substitutionVector: 'PadrÃ£o agachamento bilateral',
       ),
     ];
     _loadActiveWorkout();
@@ -127,14 +128,14 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       return 'assets/images/biomech_3d_chest.jpg';
     } else if (name.contains('desenvolvimento') ||
         name.contains('elevacao') ||
-        name.contains('elevação') ||
+        name.contains('elevaÃ§Ã£o') ||
         name.contains('ombro') ||
         muscle.contains('deltoid')) {
       return 'assets/images/biomech_3d_shoulders.jpg';
     } else if (name.contains('triceps') ||
-        name.contains('tríceps') ||
+        name.contains('trÃ­ceps') ||
         name.contains('biceps') ||
-        name.contains('bíceps') ||
+        name.contains('bÃ­ceps') ||
         name.contains('rosca') ||
         muscle.contains('braco') ||
         muscle.contains('braquial')) {
@@ -144,7 +145,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         name.contains('extensora') ||
         name.contains('quadr') ||
         muscle.contains('perna') ||
-        muscle.contains('glúteo') ||
+        muscle.contains('glÃºteo') ||
         muscle.contains('gluteo')) {
       return 'assets/images/biomech_3d_legs.jpg';
     } else if (name.contains('puxada') ||
@@ -159,10 +160,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
   String _getEmgForExercise(String exerciseName) {
     final lower = exerciseName.toLowerCase();
-    if (lower.contains('triceps') || lower.contains('tríceps'))
+    if (lower.contains('triceps') || lower.contains('trÃ­ceps'))
       return '96% EMG';
     if (lower.contains('elevacao') ||
-        lower.contains('elevação') ||
+        lower.contains('elevaÃ§Ã£o') ||
         lower.contains('agachamento'))
       return '95% EMG';
     if (lower.contains('supino')) return '94% EMG';
@@ -250,14 +251,14 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'O Mr. Coach AI encontrará uma variação biomecanicamente equivalente e notificará seu professor:',
+                  'O Mr. Coach AI encontrarÃ¡ uma variaÃ§Ã£o biomecanicamente equivalente e notificarÃ¡ seu professor:',
                   style: TextStyle(color: Colors.grey, fontSize: 13),
                 ),
                 const SizedBox(height: 18),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.people_outline),
                   label: const Text(
-                    'Aparelho Ocupado / Fila no Espaço de Treino',
+                    'Aparelho Ocupado / Fila no EspaÃ§o de Treino',
                   ),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -309,7 +310,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       {'name': 'Dor no Joelho / Patela', 'loc': 'Joelho / Patela'},
       {'name': 'Desconforto na Coluna / Lombar', 'loc': 'Coluna Lombar'},
       {'name': 'Dor no Cotovelo / Punho', 'loc': 'Cotovelo'},
-      {'name': 'Outro Desconforto Articular', 'loc': 'Articulação Geral'},
+      {'name': 'Outro Desconforto Articular', 'loc': 'ArticulaÃ§Ã£o Geral'},
     ];
 
     showModalBottomSheet(
@@ -335,7 +336,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Qual articulação apresenta desconforto?',
+                        'Qual articulaÃ§Ã£o apresenta desconforto?',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -347,7 +348,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Exercício: ${currentExercise.name}',
+                  'ExercÃ­cio: ${currentExercise.name}',
                   style: TextStyle(
                     color: AppColors.subtext(context),
                     fontSize: 13,
@@ -404,14 +405,14 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     final target = _exercises[index];
     final restrictionsDesc =
         painLocation != null
-            ? 'Relato de $painLocation. Eliminar compressão e estresse nesta articulação mantendo o estímulo muscular.'
-            : 'Aparelho indisponível no espaço de treino presencial.';
+            ? 'Relato de $painLocation. Eliminar compressÃ£o e estresse nesta articulaÃ§Ã£o mantendo o estÃ­mulo muscular.'
+            : 'Aparelho indisponÃ­vel no espaÃ§o de treino presencial.';
 
     try {
       final AdaptationModel result = await _apiService.adaptExercise(
         currentExercise: target.name,
         reason: reason,
-        workoutLocation: 'Academia completa e espaço de musculação',
+        workoutLocation: 'Academia completa e espaÃ§o de musculaÃ§Ã£o',
         injuriesOrRestrictions: restrictionsDesc,
       );
 
@@ -427,7 +428,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         );
       });
 
-      // Dispara persistência e alerta em tempo real para o professor
+      // Dispara persistÃªncia e alerta em tempo real para o professor
       WorkoutService.logAdaptation(
         originalExercise: target.name,
         adaptedExercise: result.adaptedExercise,
@@ -441,7 +442,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           SnackBar(
             backgroundColor: Colors.green.shade800,
             content: Text(
-              '✓ Substituído com sucesso: ${result.adaptedExercise} (Treinador notificado em tempo real)',
+              'âœ“ SubstituÃ­do com sucesso: ${result.adaptedExercise} (Treinador notificado em tempo real)',
             ),
             duration: const Duration(seconds: 4),
           ),
@@ -452,7 +453,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.red.shade800,
-            content: Text('Erro ao adaptar exercício: $e'),
+            content: Text('Erro ao adaptar exercÃ­cio: $e'),
             action: SnackBarAction(
               label: 'Mudar IP',
               textColor: Colors.yellow,
@@ -642,6 +643,22 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                         ),
                         const SizedBox(width: 4),
                         const ThemeToggleButton(),
+                        IconButton(
+                          icon: Icon(
+                            Icons.person_outline_rounded,
+                            size: 20,
+                            color: AppColors.subtext(context),
+                          ),
+                          tooltip: 'Meu Perfil & Anamnese',
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const StudentProfileScreen(),
+                              ),
+                            );
+                          },
+                        ),
                       ],
                     ),
                   ],
@@ -851,7 +868,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    'EXERCÍCIO ${index + 1} DE ${_exercises.length}',
+                                    'EXERCÃCIO ${index + 1} DE ${_exercises.length}',
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w800,
@@ -888,7 +905,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                       ),
                                       const SizedBox(width: 3),
                                       Text(
-                                        '${item.targetMuscleGroup.toUpperCase()} • ${_getEmgForExercise(item.name)}',
+                                        '${item.targetMuscleGroup.toUpperCase()} â€¢ ${_getEmgForExercise(item.name)}',
                                         style: const TextStyle(
                                           fontSize: 10,
                                           fontWeight: FontWeight.w800,
@@ -1048,7 +1065,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                                 ),
                                                 SizedBox(width: 5),
                                                 Text(
-                                                  '3D Biomecânica & EMG',
+                                                  '3D BiomecÃ¢nica & EMG',
                                                   style: TextStyle(
                                                     color: Colors.white,
                                                     fontSize: 10,
@@ -1110,7 +1127,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                               children: [
                                 Expanded(
                                   child: _HudStatTile(
-                                    label: 'Séries',
+                                    label: 'SÃ©ries',
                                     value: '${item.sets}',
                                   ),
                                 ),
@@ -1124,7 +1141,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: _HudStatTile(
-                                    label: 'Cadência',
+                                    label: 'CadÃªncia',
                                     value: '3-0-1-0',
                                   ),
                                 ),
@@ -1320,7 +1337,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'Trocar Exercício',
+                              'Trocar ExercÃ­cio',
                               style: TextStyle(
                                 color:
                                     isDark
@@ -1373,7 +1390,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Adaptando exercício com IA...',
+                          'Adaptando exercÃ­cio com IA...',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: AppColors.text(context),
@@ -1381,7 +1398,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Buscando vetor biomecânico equivalente',
+                          'Buscando vetor biomecÃ¢nico equivalente',
                           style: TextStyle(
                             fontSize: 12,
                             color: AppColors.subtext(context),
@@ -1484,7 +1501,7 @@ class _HudStatTile extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Card Anatômico 3D com Músculo Alvo em Ação & Eletromiografia
+// Card AnatÃ´mico 3D com MÃºsculo Alvo em AÃ§Ã£o & Eletromiografia
 // ---------------------------------------------------------------------------
 class _AnatomicalMuscleCard extends StatelessWidget {
   final String exerciseName;
@@ -1499,7 +1516,7 @@ class _AnatomicalMuscleCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final lower = exerciseName.toLowerCase();
     int emg = 94;
-    String secondary = 'Deltoide Anterior & Tríceps';
+    String secondary = 'Deltoide Anterior & TrÃ­ceps';
     String stabilizers = 'Manguito Rotador & Core';
     Color glowColor = const Color(0xFF10B981); // Emerald default
 
@@ -1507,36 +1524,36 @@ class _AnatomicalMuscleCard extends StatelessWidget {
         lower.contains('peito') ||
         lower.contains('crucifixo')) {
       emg = 94;
-      secondary = 'Deltoide Anterior, Tríceps Braquial';
-      stabilizers = 'Manguito Rotador, Serrátil Anterior';
+      secondary = 'Deltoide Anterior, TrÃ­ceps Braquial';
+      stabilizers = 'Manguito Rotador, SerrÃ¡til Anterior';
       glowColor = const Color(0xFF10B981); // Emerald
     } else if (lower.contains('desenvolvimento') ||
         lower.contains('elevacao') ||
         lower.contains('ombro')) {
       emg = 92;
-      secondary = 'Tríceps Braquial, Trapézio Superior';
+      secondary = 'TrÃ­ceps Braquial, TrapÃ©zio Superior';
       stabilizers = 'Manguito Rotador, Core Abdominal';
       glowColor = const Color(0xFFF59E0B); // Amber
     } else if (lower.contains('triceps') ||
         lower.contains('polia') ||
         lower.contains('testa')) {
       emg = 96;
-      secondary = 'Ancôneo, Extensores do Punho';
-      stabilizers = 'Deltóide Posterior, Core';
+      secondary = 'AncÃ´neo, Extensores do Punho';
+      stabilizers = 'DeltÃ³ide Posterior, Core';
       glowColor = const Color(0xFF06B6D4); // Cyan
     } else if (lower.contains('agachamento') ||
         lower.contains('leg press') ||
         lower.contains('extensora')) {
       emg = 95;
-      secondary = 'Glúteo Máximo, Isquiotibiais';
+      secondary = 'GlÃºteo MÃ¡ximo, Isquiotibiais';
       stabilizers = 'Core Abdominal, Eretores da Espinha';
       glowColor = const Color(0xFF10B981); // Emerald
     } else if (lower.contains('puxada') ||
         lower.contains('remada') ||
         lower.contains('costas')) {
       emg = 93;
-      secondary = 'Bíceps Braquial, Braquiorradial';
-      stabilizers = 'Trapézio Médio/Inferior, Romboides';
+      secondary = 'BÃ­ceps Braquial, Braquiorradial';
+      stabilizers = 'TrapÃ©zio MÃ©dio/Inferior, Romboides';
       glowColor = const Color(0xFF3B82F6); // Blue
     }
 
@@ -1585,7 +1602,7 @@ class _AnatomicalMuscleCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'BIOMECÂNICA & ATIVAÇÃO 3D',
+                        'BIOMECÃ‚NICA & ATIVAÃ‡ÃƒO 3D',
                         style: TextStyle(
                           color: glowColor,
                           fontSize: 9,
@@ -1727,7 +1744,7 @@ class _AnatomicalMuscleCard extends StatelessWidget {
   }
 }
 
-// Custom Painter para Silhueta Anatômica com Músculo Alvo Iluminado
+// Custom Painter para Silhueta AnatÃ´mica com MÃºsculo Alvo Iluminado
 class _AnatomicalBodyPainter extends CustomPainter {
   final String exerciseType;
   final Color glowColor;
@@ -1739,7 +1756,7 @@ class _AnatomicalBodyPainter extends CustomPainter {
     final cx = size.width / 2;
     final cy = size.height / 2;
 
-    // Grid lines tecnológicas
+    // Grid lines tecnolÃ³gicas
     final gridPaint =
         Paint()
           ..color = const Color(0xFF161F33)
@@ -1751,20 +1768,20 @@ class _AnatomicalBodyPainter extends CustomPainter {
       canvas.drawLine(Offset(cx - 120, y), Offset(cx + 120, y), gridPaint);
     }
 
-    // Contorno da Silhueta Corporal (Cabeça, Ombros, Peito, Braços, Cintura)
+    // Contorno da Silhueta Corporal (CabeÃ§a, Ombros, Peito, BraÃ§os, Cintura)
     final bodyOutlinePaint =
         Paint()
           ..color = const Color(0xFF2D3748)
           ..strokeWidth = 1.2
           ..style = PaintingStyle.stroke;
 
-    // Cabeça
+    // CabeÃ§a
     canvas.drawOval(
       Rect.fromCenter(center: Offset(cx, cy - 36), width: 22, height: 26),
       bodyOutlinePaint,
     );
 
-    // Pescoço e Trapézio
+    // PescoÃ§o e TrapÃ©zio
     final trapPath =
         Path()
           ..moveTo(cx - 6, cy - 24)
@@ -1788,7 +1805,7 @@ class _AnatomicalBodyPainter extends CustomPainter {
           ..close();
     canvas.drawPath(torsoPath, bodyOutlinePaint);
 
-    // Braços
+    // BraÃ§os
     final leftArmPath =
         Path()
           ..moveTo(cx - 36, cy + 2)
@@ -1802,7 +1819,7 @@ class _AnatomicalBodyPainter extends CustomPainter {
     canvas.drawPath(leftArmPath, bodyOutlinePaint);
     canvas.drawPath(rightArmPath, bodyOutlinePaint);
 
-    // Pintura e Iluminação do Músculo Ativo
+    // Pintura e IluminaÃ§Ã£o do MÃºsculo Ativo
     final muscleGlowPaint =
         Paint()
           ..color = glowColor.withValues(alpha: 0.35)
@@ -1906,7 +1923,7 @@ class _AnatomicalBodyPainter extends CustomPainter {
     } else if (exerciseType.contains('triceps') ||
         exerciseType.contains('polia') ||
         exerciseType.contains('testa')) {
-      // Braço e Tríceps Esquerdo
+      // BraÃ§o e TrÃ­ceps Esquerdo
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromCenter(
@@ -1930,7 +1947,7 @@ class _AnatomicalBodyPainter extends CustomPainter {
         muscleSolidPaint,
       );
 
-      // Braço e Tríceps Direito
+      // BraÃ§o e TrÃ­ceps Direito
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromCenter(
@@ -1967,7 +1984,7 @@ class _AnatomicalBodyPainter extends CustomPainter {
       canvas.drawPath(centerCore, muscleBorderPaint);
     }
 
-    // Ponto indicador biomecânico com sensor
+    // Ponto indicador biomecÃ¢nico com sensor
     final sensorPaint =
         Paint()
           ..color = Colors.white
@@ -1982,3 +1999,4 @@ class _AnatomicalBodyPainter extends CustomPainter {
         oldDelegate.glowColor != glowColor;
   }
 }
+
