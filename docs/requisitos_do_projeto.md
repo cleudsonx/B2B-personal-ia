@@ -20,3 +20,15 @@ O aluno não entra pela porta da frente genérica. Ele tem uma experiência guia
 
 ## 4. O Papel do WhatsApp (Suporte e Vendas Avançadas)
 O botão de WhatsApp não deve ser a **única** porta de entrada. Ele deve ser um canal de **Suporte** (dúvidas complexas) ou **Vendas Enterprise** (acima de 10 alunos). A porta principal de entrada é o cadastro "Self-Service".
+
+## 5. Edição Colaborativa (O Novo Fluxo do Aluno)
+Conforme aprovado, o fluxo de Anamnese será bidirecional:
+1. O Professor faz o cadastro inicial (Anamnese Padrão) e gera o primeiro treino.
+2. O Aluno, ao aceitar o convite e acessar o app, tem total autonomia para **visualizar, revisar e editar** seus dados cadastrais e sua Anamnese (ex: relatar uma lesão no joelho que o professor não sabia).
+3. **Regra de Negócio (IA):** Se o aluno alterar a anamnese inserindo uma nova restrição, o sistema (via Backend) deve acionar o motor do Gemini para revisar automaticamente o treino ativo, garantindo a **consistência e segurança biomecânica**.
+
+## 6. Arquitetura de Segurança e Consistência (Supabase)
+Para garantir persistência, autenticidade e segurança:
+* **Identificador Único (UUID v4):** Todo usuário (Professor ou Aluno) é registrado no Supabase Auth e recebe um ID criptográfico único e universal. E-mails são estritamente únicos.
+* **Autenticidade (RLS):** O banco de dados utiliza Row Level Security (RLS) do PostgreSQL. Um token JWT de aluno garante que ele só pode fazer UPDATE na própria linha da tabela profiles, sendo matematicamente impossível que ele altere os dados do professor ou de outros alunos.
+* **Consistência de Dados:** O Backend em FastAPI fará a validação de todos os payloads usando Pydantic, garantindo clareza e que nenhum dado corrompido chegue ao banco.
