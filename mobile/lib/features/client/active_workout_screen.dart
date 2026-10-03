@@ -103,7 +103,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   }
 
   String _getTrainerInitials() {
-    final clean = _trainerName.replaceAll('Prof.', '').replaceAll('Carregando...', '').trim();
+    final clean =
+        _trainerName
+            .replaceAll('Prof.', '')
+            .replaceAll('Carregando...', '')
+            .trim();
     if (clean.isEmpty) return 'PT';
     final parts = clean.split(' ').where((p) => p.isNotEmpty).toList();
     if (parts.length >= 2) {
@@ -116,15 +120,38 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     final name = exerciseName.toLowerCase();
     final muscle = targetMuscle.toLowerCase();
 
-    if (name.contains('supino') || name.contains('peito') || name.contains('crucifixo') || muscle.contains('peitor')) {
+    if (name.contains('supino') ||
+        name.contains('peito') ||
+        name.contains('crucifixo') ||
+        muscle.contains('peitor')) {
       return 'assets/images/biomech_3d_chest.jpg';
-    } else if (name.contains('desenvolvimento') || name.contains('elevacao') || name.contains('elevação') || name.contains('ombro') || muscle.contains('deltoid')) {
+    } else if (name.contains('desenvolvimento') ||
+        name.contains('elevacao') ||
+        name.contains('elevação') ||
+        name.contains('ombro') ||
+        muscle.contains('deltoid')) {
       return 'assets/images/biomech_3d_shoulders.jpg';
-    } else if (name.contains('triceps') || name.contains('tríceps') || name.contains('biceps') || name.contains('bíceps') || name.contains('rosca') || muscle.contains('braco') || muscle.contains('braquial')) {
+    } else if (name.contains('triceps') ||
+        name.contains('tríceps') ||
+        name.contains('biceps') ||
+        name.contains('bíceps') ||
+        name.contains('rosca') ||
+        muscle.contains('braco') ||
+        muscle.contains('braquial')) {
       return 'assets/images/biomech_3d_arms.jpg';
-    } else if (name.contains('agachamento') || name.contains('leg') || name.contains('extensora') || name.contains('quadr') || muscle.contains('perna') || muscle.contains('glúteo') || muscle.contains('gluteo')) {
+    } else if (name.contains('agachamento') ||
+        name.contains('leg') ||
+        name.contains('extensora') ||
+        name.contains('quadr') ||
+        muscle.contains('perna') ||
+        muscle.contains('glúteo') ||
+        muscle.contains('gluteo')) {
       return 'assets/images/biomech_3d_legs.jpg';
-    } else if (name.contains('puxada') || name.contains('remada') || name.contains('dorsal') || muscle.contains('costas') || muscle.contains('lat')) {
+    } else if (name.contains('puxada') ||
+        name.contains('remada') ||
+        name.contains('dorsal') ||
+        muscle.contains('costas') ||
+        muscle.contains('lat')) {
       return 'assets/images/biomech_3d_back.jpg';
     }
     return 'assets/images/biomech_3d_chest.jpg';
@@ -132,8 +159,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
   String _getEmgForExercise(String exerciseName) {
     final lower = exerciseName.toLowerCase();
-    if (lower.contains('triceps') || lower.contains('tríceps')) return '96% EMG';
-    if (lower.contains('elevacao') || lower.contains('elevação') || lower.contains('agachamento')) return '95% EMG';
+    if (lower.contains('triceps') || lower.contains('tríceps'))
+      return '96% EMG';
+    if (lower.contains('elevacao') ||
+        lower.contains('elevação') ||
+        lower.contains('agachamento'))
+      return '95% EMG';
     if (lower.contains('supino')) return '94% EMG';
     if (lower.contains('puxada')) return '93% EMG';
     return '92% EMG';
@@ -144,7 +175,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     if (activePlan != null && activePlan.splits.isNotEmpty && mounted) {
       setState(() {
         final firstSplit = activePlan.splits.first;
-        _workoutTitle = 'Treino ${firstSplit.splitIdentifier}: ${firstSplit.splitName}';
+        _workoutTitle =
+            'Treino ${firstSplit.splitIdentifier}: ${firstSplit.splitName}';
         _exercises = List.from(firstSplit.exercises);
       });
     }
@@ -153,20 +185,33 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       final trainer = await AuthService.getTrainerForStudent();
       if (trainer != null && mounted) {
         setState(() {
-          final name = (trainer['trainer_name'] ?? trainer['full_name']) as String?;
+          final name =
+              (trainer['trainer_name'] ?? trainer['full_name']) as String?;
           if (name != null && name.isNotEmpty) _trainerName = name;
           final photoUrl = trainer['trainer_photo_url'] as String?;
-          if (photoUrl != null && photoUrl.isNotEmpty) _trainerPhotoUrl = photoUrl;
-          final reg = (trainer['cref_or_registry'] ?? trainer['cref'] ?? trainer['professional_document']) as String?;
+          if (photoUrl != null && photoUrl.isNotEmpty)
+            _trainerPhotoUrl = photoUrl;
+          final reg =
+              (trainer['cref_or_registry'] ??
+                      trainer['cref'] ??
+                      trainer['professional_document'])
+                  as String?;
           if (reg != null && reg.isNotEmpty) _trainerCref = reg;
 
           final streak = trainer['current_streak'];
           final progress = trainer['daily_goal_progress'];
           if (streak != null) {
-            current_streak = (streak is int) ? streak : int.tryParse(streak.toString()) ?? current_streak;
+            current_streak =
+                (streak is int)
+                    ? streak
+                    : int.tryParse(streak.toString()) ?? current_streak;
           }
           if (progress != null) {
-            daily_goal_progress = (progress is double) ? progress : double.tryParse(progress.toString()) ?? daily_goal_progress;
+            daily_goal_progress =
+                (progress is double)
+                    ? progress
+                    : double.tryParse(progress.toString()) ??
+                        daily_goal_progress;
           }
         });
       }
@@ -212,7 +257,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 const SizedBox(height: 18),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.people_outline),
-                  label: const Text('Aparelho Ocupado / Fila no Espaço de Treino'),
+                  label: const Text(
+                    'Aparelho Ocupado / Fila no Espaço de Treino',
+                  ),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     backgroundColor: Colors.blue.shade700,
@@ -220,15 +267,24 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   ),
                   onPressed: () {
                     Navigator.pop(ctx);
-                    _executeAdaptation(exerciseIndex, 'Aparelho Ocupado / Fila');
+                    _executeAdaptation(
+                      exerciseIndex,
+                      'Aparelho Ocupado / Fila',
+                    );
                   },
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
-                  icon: const Icon(Icons.health_and_safety_outlined, color: Colors.orange),
+                  icon: const Icon(
+                    Icons.health_and_safety_outlined,
+                    color: Colors.orange,
+                  ),
                   label: const Text(
                     'Desconforto ou Dor Articular',
-                    style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Colors.orange,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -272,7 +328,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 24),
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.orange,
+                      size: 24,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -289,7 +349,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 const SizedBox(height: 6),
                 Text(
                   'Exercício: ${currentExercise.name}',
-                  style: TextStyle(color: AppColors.subtext(context), fontSize: 13),
+                  style: TextStyle(
+                    color: AppColors.subtext(context),
+                    fontSize: 13,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 ...locations.map((item) {
@@ -310,9 +373,16 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       },
                       child: Row(
                         children: [
-                          const Icon(Icons.radio_button_checked, size: 16, color: Colors.orange),
+                          const Icon(
+                            Icons.radio_button_checked,
+                            size: 16,
+                            color: Colors.orange,
+                          ),
                           const SizedBox(width: 10),
-                          Text(item['name']!, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          Text(
+                            item['name']!,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
                         ],
                       ),
                     ),
@@ -326,12 +396,17 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     );
   }
 
-  Future<void> _executeAdaptation(int index, String reason, {String? painLocation}) async {
+  Future<void> _executeAdaptation(
+    int index,
+    String reason, {
+    String? painLocation,
+  }) async {
     setState(() => _isLoading = true);
     final target = _exercises[index];
-    final restrictionsDesc = painLocation != null
-        ? 'Relato de $painLocation. Eliminar compressão e estresse nesta articulação mantendo o estímulo muscular.'
-        : 'Aparelho indisponível no espaço de treino presencial.';
+    final restrictionsDesc =
+        painLocation != null
+            ? 'Relato de $painLocation. Eliminar compressão e estresse nesta articulação mantendo o estímulo muscular.'
+            : 'Aparelho indisponível no espaço de treino presencial.';
 
     try {
       final AdaptationModel result = await _apiService.adaptExercise(
@@ -348,7 +423,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           sets: result.sets,
           reps: result.reps,
           restSeconds: result.restSeconds,
-          notes: '${result.notes}\n[Mr. Coach AI: ${result.biomechanicalRationale}]',
+          notes:
+              '${result.notes}\n[Mr. Coach AI: ${result.biomechanicalRationale}]',
         );
       });
 
@@ -365,7 +441,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.green.shade800,
-            content: Text('✓ Substituído com sucesso: ${result.adaptedExercise} (Treinador notificado em tempo real)'),
+            content: Text(
+              '✓ Substituído com sucesso: ${result.adaptedExercise} (Treinador notificado em tempo real)',
+            ),
             duration: const Duration(seconds: 4),
           ),
         );
@@ -402,20 +480,21 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         systemNavigationBarColor: AppColors.bg(context),
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarIconBrightness:
+            isDark ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: AppColors.bg(context),
         body: Stack(
-        children: [
-          ListView(
-            padding: EdgeInsets.only(
-              top: topPadding + 12,
-              bottom: bottomPadding + 30,
-              left: 18,
-              right: 18,
-            ),
-            children: [
+          children: [
+            ListView(
+              padding: EdgeInsets.only(
+                top: topPadding + 12,
+                bottom: bottomPadding + 30,
+                left: 18,
+                right: 18,
+              ),
+              children: [
                 // 1. Supervisor Header & Theme Switch Row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -439,33 +518,41 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                   end: Alignment.bottomRight,
                                 ),
                                 shape: BoxShape.circle,
-                                image: _trainerPhotoUrl != null && _trainerPhotoUrl!.isNotEmpty
-                                    ? DecorationImage(
-                                        image: NetworkImage(_trainerPhotoUrl!),
-                                        fit: BoxFit.cover,
-                                      )
-                                    : null,
+                                image:
+                                    _trainerPhotoUrl != null &&
+                                            _trainerPhotoUrl!.isNotEmpty
+                                        ? DecorationImage(
+                                          image: NetworkImage(
+                                            _trainerPhotoUrl!,
+                                          ),
+                                          fit: BoxFit.cover,
+                                        )
+                                        : null,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.emerald(context).withValues(alpha: 0.3),
+                                    color: AppColors.emerald(
+                                      context,
+                                    ).withValues(alpha: 0.3),
                                     blurRadius: 10,
                                     offset: const Offset(0, 3),
                                   ),
                                 ],
                               ),
-                              child: _trainerPhotoUrl == null || _trainerPhotoUrl!.isEmpty
-                                  ? Center(
-                                      child: Text(
-                                        _getTrainerInitials(),
-                                        style: const TextStyle(
-                                          color: Colors.black,
-                                          fontWeight: FontWeight.w900,
-                                          fontSize: 17,
-                                          letterSpacing: -0.5,
+                              child:
+                                  _trainerPhotoUrl == null ||
+                                          _trainerPhotoUrl!.isEmpty
+                                      ? Center(
+                                        child: Text(
+                                          _getTrainerInitials(),
+                                          style: const TextStyle(
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 17,
+                                            letterSpacing: -0.5,
+                                          ),
                                         ),
-                                      ),
-                                    )
-                                  : null,
+                                      )
+                                      : null,
                             ),
                             Positioned(
                               bottom: -1,
@@ -476,10 +563,15 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF00E5A3),
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: AppColors.bg(context), width: 2.0),
+                                  border: Border.all(
+                                    color: AppColors.bg(context),
+                                    width: 2.0,
+                                  ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFF00E5A3).withValues(alpha: 0.45),
+                                      color: const Color(
+                                        0xFF00E5A3,
+                                      ).withValues(alpha: 0.45),
                                       blurRadius: 5,
                                       offset: const Offset(0, 2),
                                     ),
@@ -533,12 +625,19 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       children: [
                         if (kDebugMode)
                           IconButton(
-                            icon: const Icon(Icons.settings_ethernet_rounded, size: 20),
+                            icon: const Icon(
+                              Icons.settings_ethernet_rounded,
+                              size: 20,
+                            ),
                             tooltip: 'Configurar IP do Servidor (Dev)',
                             onPressed: () => ServerConfigDialog.show(context),
                           ),
                         IconButton(
-                          icon: Icon(Icons.refresh_rounded, size: 20, color: AppColors.subtext(context)),
+                          icon: Icon(
+                            Icons.refresh_rounded,
+                            size: 20,
+                            color: AppColors.subtext(context),
+                          ),
                           tooltip: 'Sincronizar Ficha do Banco',
                           onPressed: _loadActiveWorkout,
                         ),
@@ -554,15 +653,30 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                        color:
+                            isDark
+                                ? const Color(0xFF1E293B)
+                                : const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                        border: Border.all(
+                          color:
+                              isDark
+                                  ? const Color(0xFF334155)
+                                  : const Color(0xFFE2E8F0),
+                        ),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 18),
+                          const Icon(
+                            Icons.local_fire_department_rounded,
+                            color: Colors.orange,
+                            size: 18,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             '$current_streak Dias',
@@ -578,11 +692,22 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                          color:
+                              isDark
+                                  ? const Color(0xFF1E293B)
+                                  : const Color(0xFFF1F5F9),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                          border: Border.all(
+                            color:
+                                isDark
+                                    ? const Color(0xFF334155)
+                                    : const Color(0xFFE2E8F0),
+                          ),
                         ),
                         child: Row(
                           children: [
@@ -593,7 +718,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                 value: daily_goal_progress,
                                 strokeWidth: 3,
                                 color: AppColors.emerald(context),
-                                backgroundColor: isDark ? Colors.black26 : Colors.white,
+                                backgroundColor:
+                                    isDark ? Colors.black26 : Colors.white,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -615,9 +741,15 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
                 // 2. Workout Split Duration Banner
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFEDF2F7),
+                    color:
+                        isDark
+                            ? const Color(0xFF1E293B)
+                            : const Color(0xFFEDF2F7),
                     borderRadius: BorderRadius.circular(24),
                   ),
                   child: Row(
@@ -635,9 +767,15 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: isDark ? Colors.black26 : Colors.white.withValues(alpha: 0.8),
+                          color:
+                              isDark
+                                  ? Colors.black26
+                                  : Colors.white.withValues(alpha: 0.8),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -670,16 +808,25 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
                       return AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
-                        margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF0F172A) : AppColors.card(context),
+                          color:
+                              isDark
+                                  ? const Color(0xFF0F172A)
+                                  : AppColors.card(context),
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
-                            color: isAdapted
-                                ? AppColors.tangerine(context)
-                                : (isCurrent
-                                    ? const Color(0xFF00E5A3)
-                                    : (isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0))),
+                            color:
+                                isAdapted
+                                    ? AppColors.tangerine(context)
+                                    : (isCurrent
+                                        ? const Color(0xFF00E5A3)
+                                        : (isDark
+                                            ? const Color(0xFF1E293B)
+                                            : const Color(0xFFE2E8F0))),
                             width: (isCurrent || isAdapted) ? 2.0 : 1.2,
                           ),
                           // elevation: 0 (No shadow)
@@ -693,9 +840,15 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 9,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                                    color:
+                                        isDark
+                                            ? const Color(0xFF1E293B)
+                                            : const Color(0xFFE2E8F0),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
@@ -704,21 +857,36 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                       fontSize: 10,
                                       fontWeight: FontWeight.w800,
                                       letterSpacing: 0.5,
-                                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
+                                      color:
+                                          isDark
+                                              ? const Color(0xFF94A3B8)
+                                              : const Color(0xFF475569),
                                     ),
                                   ),
                                 ),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF00E5A3).withValues(alpha: 0.12),
+                                    color: const Color(
+                                      0xFF00E5A3,
+                                    ).withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: const Color(0xFF00E5A3), width: 1.0),
+                                    border: Border.all(
+                                      color: const Color(0xFF00E5A3),
+                                      width: 1.0,
+                                    ),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(Icons.bolt_rounded, size: 13, color: Color(0xFF00E5A3)),
+                                      const Icon(
+                                        Icons.bolt_rounded,
+                                        size: 13,
+                                        color: Color(0xFF00E5A3),
+                                      ),
                                       const SizedBox(width: 3),
                                       Text(
                                         '${item.targetMuscleGroup.toUpperCase()} • ${_getEmgForExercise(item.name)}',
@@ -751,7 +919,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                             if (isAdapted) ...[
                               const SizedBox(height: 4),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
                                   color: AppColors.tangerineBg(context),
                                   borderRadius: BorderRadius.circular(6),
@@ -759,7 +930,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.auto_awesome, size: 11, color: AppColors.tangerine(context)),
+                                    Icon(
+                                      Icons.auto_awesome,
+                                      size: 11,
+                                      color: AppColors.tangerine(context),
+                                    ),
                                     const SizedBox(width: 4),
                                     Text(
                                       'ADAPTADO POR MR. COACH AI',
@@ -778,22 +953,30 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                             // 3. 3D Biomechanical Visual Stage (High-Fidelity Render)
                             Expanded(
                               child: GestureDetector(
-                                onTap: () => BiomechanicalAnalysisSheet.show(
-                                  context,
-                                  exerciseName: item.name,
-                                ),
+                                onTap:
+                                    () => BiomechanicalAnalysisSheet.show(
+                                      context,
+                                      exerciseName: item.name,
+                                    ),
                                 child: Container(
                                   width: double.infinity,
                                   decoration: BoxDecoration(
                                     color: Colors.black,
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
-                                      color: isDark ? const Color(0xFF334155).withValues(alpha: 0.6) : const Color(0xFFCBD5E1),
+                                      color:
+                                          isDark
+                                              ? const Color(
+                                                0xFF334155,
+                                              ).withValues(alpha: 0.6)
+                                              : const Color(0xFFCBD5E1),
                                       width: 1.0,
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.25),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.25,
+                                        ),
                                         blurRadius: 10,
                                         offset: const Offset(0, 4),
                                       ),
@@ -805,12 +988,18 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                       fit: StackFit.expand,
                                       children: [
                                         Image.asset(
-                                          _getAnatomicalImage(item.name, item.targetMuscleGroup),
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) => _AnatomicalMuscleCard(
-                                            exerciseName: item.name,
-                                            targetMuscle: item.targetMuscleGroup,
+                                          _getAnatomicalImage(
+                                            item.name,
+                                            item.targetMuscleGroup,
                                           ),
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  _AnatomicalMuscleCard(
+                                                    exerciseName: item.name,
+                                                    targetMuscle:
+                                                        item.targetMuscleGroup,
+                                                  ),
                                         ),
                                         // Gradient shading overlay
                                         Positioned.fill(
@@ -822,7 +1011,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                                 colors: [
                                                   Colors.transparent,
                                                   Colors.transparent,
-                                                  Colors.black.withValues(alpha: 0.70),
+                                                  Colors.black.withValues(
+                                                    alpha: 0.70,
+                                                  ),
                                                 ],
                                               ),
                                             ),
@@ -833,16 +1024,29 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                           left: 10,
                                           bottom: 10,
                                           child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 9,
+                                              vertical: 4,
+                                            ),
                                             decoration: BoxDecoration(
-                                              color: Colors.black.withValues(alpha: 0.65),
-                                              borderRadius: BorderRadius.circular(8),
-                                              border: Border.all(color: Colors.white24, width: 0.8),
+                                              color: Colors.black.withValues(
+                                                alpha: 0.65,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: Colors.white24,
+                                                width: 0.8,
+                                              ),
                                             ),
                                             child: const Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                Icon(Icons.view_in_ar_rounded, size: 13, color: Color(0xFF00E5A3)),
+                                                Icon(
+                                                  Icons.view_in_ar_rounded,
+                                                  size: 13,
+                                                  color: Color(0xFF00E5A3),
+                                                ),
                                                 SizedBox(width: 5),
                                                 Text(
                                                   '3D Biomecânica & EMG',
@@ -861,10 +1065,16 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                           right: 10,
                                           bottom: 10,
                                           child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFF00E5A3).withValues(alpha: 0.2),
-                                              borderRadius: BorderRadius.circular(8),
+                                              color: const Color(
+                                                0xFF00E5A3,
+                                              ).withValues(alpha: 0.2),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                             child: const Row(
                                               mainAxisSize: MainAxisSize.min,
@@ -878,7 +1088,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                                   ),
                                                 ),
                                                 SizedBox(width: 3),
-                                                Icon(Icons.arrow_forward_ios_rounded, size: 9, color: Color(0xFF00E5A3)),
+                                                Icon(
+                                                  Icons
+                                                      .arrow_forward_ios_rounded,
+                                                  size: 9,
+                                                  color: Color(0xFF00E5A3),
+                                                ),
                                               ],
                                             ),
                                           ),
@@ -920,11 +1135,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                     label: 'Descanso',
                                     value: '${item.restSeconds}s',
                                     icon: Icons.timer_outlined,
-                                    onTap: () => RestTimerSheet.show(
-                                      context,
-                                      seconds: item.restSeconds,
-                                      exerciseName: item.name,
-                                    ),
+                                    onTap:
+                                        () => RestTimerSheet.show(
+                                          context,
+                                          seconds: item.restSeconds,
+                                          exerciseName: item.name,
+                                        ),
                                   ),
                                 ),
                               ],
@@ -935,18 +1151,35 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                               const SizedBox(height: 10),
                               Container(
                                 width: double.infinity,
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 7,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.5) : const Color(0xFFF8FAFC),
+                                  color:
+                                      isDark
+                                          ? const Color(
+                                            0xFF1E293B,
+                                          ).withValues(alpha: 0.5)
+                                          : const Color(0xFFF8FAFC),
                                   borderRadius: BorderRadius.circular(10),
                                   border: Border.all(
-                                    color: isDark ? const Color(0xFF334155).withValues(alpha: 0.4) : const Color(0xFFE2E8F0),
+                                    color:
+                                        isDark
+                                            ? const Color(
+                                              0xFF334155,
+                                            ).withValues(alpha: 0.4)
+                                            : const Color(0xFFE2E8F0),
                                   ),
                                 ),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Icon(Icons.tips_and_updates_outlined, size: 14, color: Color(0xFFF59E0B)),
+                                    const Icon(
+                                      Icons.tips_and_updates_outlined,
+                                      size: 14,
+                                      color: Color(0xFFF59E0B),
+                                    ),
                                     const SizedBox(width: 6),
                                     Expanded(
                                       child: Text(
@@ -957,7 +1190,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                           fontSize: 11,
                                           height: 1.25,
                                           fontWeight: FontWeight.w500,
-                                          color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+                                          color:
+                                              isDark
+                                                  ? const Color(0xFFCBD5E1)
+                                                  : const Color(0xFF475569),
                                         ),
                                       ),
                                     ),
@@ -992,9 +1228,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                         width: isCurrent ? 24 : 7,
                         height: 7,
                         decoration: BoxDecoration(
-                          color: isCurrent
-                              ? const Color(0xFF00E5A3)
-                              : (isDark ? Colors.white24 : const Color(0xFFCBD5E1)),
+                          color:
+                              isCurrent
+                                  ? const Color(0xFF00E5A3)
+                                  : (isDark
+                                      ? Colors.white24
+                                      : const Color(0xFFCBD5E1)),
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
@@ -1010,22 +1249,31 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          backgroundColor: isDark ? const Color(0xFF161F2E) : Colors.white,
+                          backgroundColor:
+                              isDark ? const Color(0xFF161F2E) : Colors.white,
                           side: const BorderSide(
                             color: Color(0xFF00BCD4), // cyan / neon teal border
                             width: 1.6,
                           ),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
                           elevation: 0,
                         ),
-                        onPressed: () => BiomechanicalAnalysisSheet.show(
-                          context,
-                          exerciseName: _exercises[_currentCarouselIndex].name,
-                        ),
+                        onPressed:
+                            () => BiomechanicalAnalysisSheet.show(
+                              context,
+                              exerciseName:
+                                  _exercises[_currentCarouselIndex].name,
+                            ),
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.biotech_rounded, size: 18, color: Color(0xFF38BDF8)),
+                            Icon(
+                              Icons.biotech_rounded,
+                              size: 18,
+                              color: Color(0xFF38BDF8),
+                            ),
                             SizedBox(width: 6),
                             Text(
                               'Raio-X & Fases',
@@ -1044,24 +1292,41 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          backgroundColor: isDark ? const Color(0xFF161F2E) : Colors.white,
+                          backgroundColor:
+                              isDark ? const Color(0xFF161F2E) : Colors.white,
                           side: BorderSide(
-                            color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                            color:
+                                isDark
+                                    ? const Color(0xFF334155)
+                                    : const Color(0xFFCBD5E1),
                             width: 1.2,
                           ),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
                           elevation: 0,
                         ),
-                        onPressed: () => _showAdaptationModal(_currentCarouselIndex),
+                        onPressed:
+                            () => _showAdaptationModal(_currentCarouselIndex),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.swap_horiz_rounded, size: 18, color: isDark ? Colors.white70 : AppColors.text(context)),
+                            Icon(
+                              Icons.swap_horiz_rounded,
+                              size: 18,
+                              color:
+                                  isDark
+                                      ? Colors.white70
+                                      : AppColors.text(context),
+                            ),
                             const SizedBox(width: 6),
                             Text(
                               'Trocar Exercício',
                               style: TextStyle(
-                                color: isDark ? Colors.white : AppColors.text(context),
+                                color:
+                                    isDark
+                                        ? Colors.white
+                                        : AppColors.text(context),
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -1075,52 +1340,61 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 const SizedBox(height: 24),
               ],
             ),
-          if (_isLoading)
-            Container(
-              color: Colors.black.withValues(alpha: 0.6),
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.all(24.0),
-                  decoration: BoxDecoration(
-                    color: AppColors.card(context),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.emerald(context).withValues(alpha: 0.4)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.emerald(context).withValues(alpha: 0.15),
-                        blurRadius: 24,
+            if (_isLoading)
+              Container(
+                color: Colors.black.withValues(alpha: 0.6),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(24.0),
+                    decoration: BoxDecoration(
+                      color: AppColors.card(context),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppColors.emerald(
+                          context,
+                        ).withValues(alpha: 0.4),
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.emerald(context)),
-                        strokeWidth: 3,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Adaptando exercício com IA...',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.text(context),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.emerald(
+                            context,
+                          ).withValues(alpha: 0.15),
+                          blurRadius: 24,
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Buscando vetor biomecânico equivalente',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.subtext(context),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppColors.emerald(context),
+                          ),
+                          strokeWidth: 3,
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 16),
+                        Text(
+                          'Adaptando exercício com IA...',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.text(context),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Buscando vetor biomecânico equivalente',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.subtext(context),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1145,10 +1419,16 @@ class _HudStatTile extends StatelessWidget {
     final content = Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.8) : const Color(0xFFF1F5F9),
+        color:
+            isDark
+                ? const Color(0xFF1E293B).withValues(alpha: 0.8)
+                : const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDark ? const Color(0xFF334155).withValues(alpha: 0.6) : const Color(0xFFE2E8F0),
+          color:
+              isDark
+                  ? const Color(0xFF334155).withValues(alpha: 0.6)
+                  : const Color(0xFFE2E8F0),
           width: 1,
         ),
       ),
@@ -1169,7 +1449,10 @@ class _HudStatTile extends StatelessWidget {
                   fontSize: 9.5,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.3,
-                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                  color:
+                      isDark
+                          ? const Color(0xFF94A3B8)
+                          : const Color(0xFF64748B),
                 ),
               ),
             ],
@@ -1221,27 +1504,37 @@ class _AnatomicalMuscleCard extends StatelessWidget {
     String stabilizers = 'Manguito Rotador & Core';
     Color glowColor = const Color(0xFF10B981); // Emerald default
 
-    if (lower.contains('supino') || lower.contains('peito') || lower.contains('crucifixo')) {
+    if (lower.contains('supino') ||
+        lower.contains('peito') ||
+        lower.contains('crucifixo')) {
       emg = 94;
       secondary = 'Deltoide Anterior, Tríceps Braquial';
       stabilizers = 'Manguito Rotador, Serrátil Anterior';
       glowColor = const Color(0xFF10B981); // Emerald
-    } else if (lower.contains('desenvolvimento') || lower.contains('elevacao') || lower.contains('ombro')) {
+    } else if (lower.contains('desenvolvimento') ||
+        lower.contains('elevacao') ||
+        lower.contains('ombro')) {
       emg = 92;
       secondary = 'Tríceps Braquial, Trapézio Superior';
       stabilizers = 'Manguito Rotador, Core Abdominal';
       glowColor = const Color(0xFFF59E0B); // Amber
-    } else if (lower.contains('triceps') || lower.contains('polia') || lower.contains('testa')) {
+    } else if (lower.contains('triceps') ||
+        lower.contains('polia') ||
+        lower.contains('testa')) {
       emg = 96;
       secondary = 'Ancôneo, Extensores do Punho';
       stabilizers = 'Deltóide Posterior, Core';
       glowColor = const Color(0xFF06B6D4); // Cyan
-    } else if (lower.contains('agachamento') || lower.contains('leg press') || lower.contains('extensora')) {
+    } else if (lower.contains('agachamento') ||
+        lower.contains('leg press') ||
+        lower.contains('extensora')) {
       emg = 95;
       secondary = 'Glúteo Máximo, Isquiotibiais';
       stabilizers = 'Core Abdominal, Eretores da Espinha';
       glowColor = const Color(0xFF10B981); // Emerald
-    } else if (lower.contains('puxada') || lower.contains('remada') || lower.contains('costas')) {
+    } else if (lower.contains('puxada') ||
+        lower.contains('remada') ||
+        lower.contains('costas')) {
       emg = 93;
       secondary = 'Bíceps Braquial, Braquiorradial';
       stabilizers = 'Trapézio Médio/Inferior, Romboides';
@@ -1282,7 +1575,11 @@ class _AnatomicalMuscleCard extends StatelessWidget {
                       color: glowColor.withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(Icons.biotech_rounded, size: 15, color: glowColor),
+                    child: Icon(
+                      Icons.biotech_rounded,
+                      size: 15,
+                      color: glowColor,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Column(
@@ -1355,12 +1652,23 @@ class _AnatomicalMuscleCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Container(width: 6, height: 6, decoration: BoxDecoration(color: glowColor, shape: BoxShape.circle)),
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: glowColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         'Agonista: $targetMuscle',
-                        style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -1368,12 +1676,22 @@ class _AnatomicalMuscleCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 Row(
                   children: [
-                    Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF38BDF8), shape: BoxShape.circle)),
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF38BDF8),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         'Sinergistas: $secondary',
-                        style: const TextStyle(color: Colors.white60, fontSize: 10),
+                        style: const TextStyle(
+                          color: Colors.white60,
+                          fontSize: 10,
+                        ),
                       ),
                     ),
                   ],
@@ -1381,12 +1699,22 @@ class _AnatomicalMuscleCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 Row(
                   children: [
-                    Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFFA78BFA), shape: BoxShape.circle)),
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFA78BFA),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         'Estabilizadores: $stabilizers',
-                        style: const TextStyle(color: Colors.white60, fontSize: 10),
+                        style: const TextStyle(
+                          color: Colors.white60,
+                          fontSize: 10,
+                        ),
                       ),
                     ),
                   ],
@@ -1405,10 +1733,7 @@ class _AnatomicalBodyPainter extends CustomPainter {
   final String exerciseType;
   final Color glowColor;
 
-  _AnatomicalBodyPainter({
-    required this.exerciseType,
-    required this.glowColor,
-  });
+  _AnatomicalBodyPainter({required this.exerciseType, required this.glowColor});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1416,9 +1741,10 @@ class _AnatomicalBodyPainter extends CustomPainter {
     final cy = size.height / 2;
 
     // Grid lines tecnológicas
-    final gridPaint = Paint()
-      ..color = const Color(0xFF161F33)
-      ..strokeWidth = 0.8;
+    final gridPaint =
+        Paint()
+          ..color = const Color(0xFF161F33)
+          ..strokeWidth = 0.8;
     for (double x = cx - 120; x <= cx + 120; x += 30) {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
     }
@@ -1427,10 +1753,11 @@ class _AnatomicalBodyPainter extends CustomPainter {
     }
 
     // Contorno da Silhueta Corporal (Cabeça, Ombros, Peito, Braços, Cintura)
-    final bodyOutlinePaint = Paint()
-      ..color = const Color(0xFF2D3748)
-      ..strokeWidth = 1.2
-      ..style = PaintingStyle.stroke;
+    final bodyOutlinePaint =
+        Paint()
+          ..color = const Color(0xFF2D3748)
+          ..strokeWidth = 1.2
+          ..style = PaintingStyle.stroke;
 
     // Cabeça
     canvas.drawOval(
@@ -1439,71 +1766,80 @@ class _AnatomicalBodyPainter extends CustomPainter {
     );
 
     // Pescoço e Trapézio
-    final trapPath = Path()
-      ..moveTo(cx - 6, cy - 24)
-      ..lineTo(cx - 24, cy - 14)
-      ..lineTo(cx + 24, cy - 14)
-      ..lineTo(cx + 6, cy - 24)
-      ..close();
+    final trapPath =
+        Path()
+          ..moveTo(cx - 6, cy - 24)
+          ..lineTo(cx - 24, cy - 14)
+          ..lineTo(cx + 24, cy - 14)
+          ..lineTo(cx + 6, cy - 24)
+          ..close();
     canvas.drawPath(trapPath, bodyOutlinePaint);
 
     // Tronco e Cintura
-    final torsoPath = Path()
-      ..moveTo(cx - 28, cy - 14)
-      ..lineTo(cx - 36, cy + 2) // Ombro esq
-      ..lineTo(cx - 24, cy + 30) // Costela esq
-      ..lineTo(cx - 18, cy + 50) // Quadril esq
-      ..lineTo(cx + 18, cy + 50) // Quadril dir
-      ..lineTo(cx + 24, cy + 30) // Costela dir
-      ..lineTo(cx + 36, cy + 2) // Ombro dir
-      ..lineTo(cx + 28, cy - 14)
-      ..close();
+    final torsoPath =
+        Path()
+          ..moveTo(cx - 28, cy - 14)
+          ..lineTo(cx - 36, cy + 2) // Ombro esq
+          ..lineTo(cx - 24, cy + 30) // Costela esq
+          ..lineTo(cx - 18, cy + 50) // Quadril esq
+          ..lineTo(cx + 18, cy + 50) // Quadril dir
+          ..lineTo(cx + 24, cy + 30) // Costela dir
+          ..lineTo(cx + 36, cy + 2) // Ombro dir
+          ..lineTo(cx + 28, cy - 14)
+          ..close();
     canvas.drawPath(torsoPath, bodyOutlinePaint);
 
     // Braços
-    final leftArmPath = Path()
-      ..moveTo(cx - 36, cy + 2)
-      ..lineTo(cx - 44, cy + 24)
-      ..lineTo(cx - 38, cy + 48);
-    final rightArmPath = Path()
-      ..moveTo(cx + 36, cy + 2)
-      ..lineTo(cx + 44, cy + 24)
-      ..lineTo(cx + 38, cy + 48);
+    final leftArmPath =
+        Path()
+          ..moveTo(cx - 36, cy + 2)
+          ..lineTo(cx - 44, cy + 24)
+          ..lineTo(cx - 38, cy + 48);
+    final rightArmPath =
+        Path()
+          ..moveTo(cx + 36, cy + 2)
+          ..lineTo(cx + 44, cy + 24)
+          ..lineTo(cx + 38, cy + 48);
     canvas.drawPath(leftArmPath, bodyOutlinePaint);
     canvas.drawPath(rightArmPath, bodyOutlinePaint);
 
     // Pintura e Iluminação do Músculo Ativo
-    final muscleGlowPaint = Paint()
-      ..color = glowColor.withValues(alpha: 0.35)
-      ..style = PaintingStyle.fill
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+    final muscleGlowPaint =
+        Paint()
+          ..color = glowColor.withValues(alpha: 0.35)
+          ..style = PaintingStyle.fill
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
 
-    final muscleSolidPaint = Paint()
-      ..color = glowColor
-      ..style = PaintingStyle.fill;
+    final muscleSolidPaint =
+        Paint()
+          ..color = glowColor
+          ..style = PaintingStyle.fill;
 
-    final muscleBorderPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.9)
-      ..strokeWidth = 1.0
-      ..style = PaintingStyle.stroke;
+    final muscleBorderPaint =
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.9)
+          ..strokeWidth = 1.0
+          ..style = PaintingStyle.stroke;
 
     if (exerciseType.contains('supino') ||
         exerciseType.contains('peito') ||
         exerciseType.contains('crucifixo')) {
       // Peitoral Esquerdo
-      final pecLeft = Path()
-        ..moveTo(cx - 4, cy - 10)
-        ..lineTo(cx - 26, cy - 6)
-        ..quadraticBezierTo(cx - 28, cy + 12, cx - 18, cy + 16)
-        ..quadraticBezierTo(cx - 6, cy + 15, cx - 4, cy + 6)
-        ..close();
+      final pecLeft =
+          Path()
+            ..moveTo(cx - 4, cy - 10)
+            ..lineTo(cx - 26, cy - 6)
+            ..quadraticBezierTo(cx - 28, cy + 12, cx - 18, cy + 16)
+            ..quadraticBezierTo(cx - 6, cy + 15, cx - 4, cy + 6)
+            ..close();
       // Peitoral Direito
-      final pecRight = Path()
-        ..moveTo(cx + 4, cy - 10)
-        ..lineTo(cx + 26, cy - 6)
-        ..quadraticBezierTo(cx + 28, cy + 12, cx + 18, cy + 16)
-        ..quadraticBezierTo(cx + 6, cy + 15, cx + 4, cy + 6)
-        ..close();
+      final pecRight =
+          Path()
+            ..moveTo(cx + 4, cy - 10)
+            ..lineTo(cx + 26, cy - 6)
+            ..quadraticBezierTo(cx + 28, cy + 12, cx + 18, cy + 16)
+            ..quadraticBezierTo(cx + 6, cy + 15, cx + 4, cy + 6)
+            ..close();
 
       canvas.drawPath(pecLeft, muscleGlowPaint);
       canvas.drawPath(pecLeft, muscleSolidPaint);
@@ -1514,13 +1850,30 @@ class _AnatomicalBodyPainter extends CustomPainter {
       canvas.drawPath(pecRight, muscleBorderPaint);
 
       // Fibras musculares internas do peitoral
-      final fiberPaint = Paint()
-        ..color = Colors.white38
-        ..strokeWidth = 1.0;
-      canvas.drawLine(Offset(cx - 6, cy - 5), Offset(cx - 20, cy - 2), fiberPaint);
-      canvas.drawLine(Offset(cx - 6, cy + 2), Offset(cx - 22, cy + 6), fiberPaint);
-      canvas.drawLine(Offset(cx + 6, cy - 5), Offset(cx + 20, cy - 2), fiberPaint);
-      canvas.drawLine(Offset(cx + 6, cy + 2), Offset(cx + 22, cy + 6), fiberPaint);
+      final fiberPaint =
+          Paint()
+            ..color = Colors.white38
+            ..strokeWidth = 1.0;
+      canvas.drawLine(
+        Offset(cx - 6, cy - 5),
+        Offset(cx - 20, cy - 2),
+        fiberPaint,
+      );
+      canvas.drawLine(
+        Offset(cx - 6, cy + 2),
+        Offset(cx - 22, cy + 6),
+        fiberPaint,
+      );
+      canvas.drawLine(
+        Offset(cx + 6, cy - 5),
+        Offset(cx + 20, cy - 2),
+        fiberPaint,
+      );
+      canvas.drawLine(
+        Offset(cx + 6, cy + 2),
+        Offset(cx + 22, cy + 6),
+        fiberPaint,
+      );
     } else if (exerciseType.contains('desenvolvimento') ||
         exerciseType.contains('elevacao') ||
         exerciseType.contains('ombro')) {
@@ -1557,14 +1910,22 @@ class _AnatomicalBodyPainter extends CustomPainter {
       // Braço e Tríceps Esquerdo
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromCenter(center: Offset(cx - 39, cy + 16), width: 10, height: 22),
+          Rect.fromCenter(
+            center: Offset(cx - 39, cy + 16),
+            width: 10,
+            height: 22,
+          ),
           const Radius.circular(5),
         ),
         muscleGlowPaint,
       );
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromCenter(center: Offset(cx - 39, cy + 16), width: 10, height: 22),
+          Rect.fromCenter(
+            center: Offset(cx - 39, cy + 16),
+            width: 10,
+            height: 22,
+          ),
           const Radius.circular(5),
         ),
         muscleSolidPaint,
@@ -1573,43 +1934,52 @@ class _AnatomicalBodyPainter extends CustomPainter {
       // Braço e Tríceps Direito
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromCenter(center: Offset(cx + 39, cy + 16), width: 10, height: 22),
+          Rect.fromCenter(
+            center: Offset(cx + 39, cy + 16),
+            width: 10,
+            height: 22,
+          ),
           const Radius.circular(5),
         ),
         muscleGlowPaint,
       );
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromCenter(center: Offset(cx + 39, cy + 16), width: 10, height: 22),
+          Rect.fromCenter(
+            center: Offset(cx + 39, cy + 16),
+            width: 10,
+            height: 22,
+          ),
           const Radius.circular(5),
         ),
         muscleSolidPaint,
       );
     } else {
       // Grande Dorsal ou Core Central
-      final centerCore = Path()
-        ..moveTo(cx - 14, cy - 4)
-        ..lineTo(cx + 14, cy - 4)
-        ..lineTo(cx + 10, cy + 34)
-        ..lineTo(cx - 10, cy + 34)
-        ..close();
+      final centerCore =
+          Path()
+            ..moveTo(cx - 14, cy - 4)
+            ..lineTo(cx + 14, cy - 4)
+            ..lineTo(cx + 10, cy + 34)
+            ..lineTo(cx - 10, cy + 34)
+            ..close();
       canvas.drawPath(centerCore, muscleGlowPaint);
       canvas.drawPath(centerCore, muscleSolidPaint);
       canvas.drawPath(centerCore, muscleBorderPaint);
     }
 
     // Ponto indicador biomecânico com sensor
-    final sensorPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
+    final sensorPaint =
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset(cx - 16, cy + 4), 3, sensorPaint);
     canvas.drawCircle(Offset(cx + 16, cy + 4), 3, sensorPaint);
   }
 
   @override
   bool shouldRepaint(covariant _AnatomicalBodyPainter oldDelegate) {
-    return oldDelegate.exerciseType != exerciseType || oldDelegate.glowColor != glowColor;
+    return oldDelegate.exerciseType != exerciseType ||
+        oldDelegate.glowColor != glowColor;
   }
 }
-
-

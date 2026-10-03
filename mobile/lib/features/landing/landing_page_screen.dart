@@ -512,7 +512,7 @@ class _HeroSection extends StatelessWidget {
               // 5. Garantias & Microcopy Tranquilizadora
               Wrap(
                 alignment: WrapAlignment.center,
-                crossBytes: WrapCrossAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 spacing: 16,
                 runSpacing: 10,
                 children: [
