@@ -28,3 +28,10 @@ Este arquivo serve como o reposit√≥rio central de ideias, d√∫vidas de arquitetur
 *   **Falha no Convite do Aluno:** Atualmente os alunos n√£o est√£o recebendo o convite por e-mail. **A√ß√£o:** Revisar e melhorar o fluxo de disparo de e-mails, garantindo alta entregabilidade e um layout (HTML) profissional, atrativo e com as cores da marca.
 *   **Branding do Personal (Falta o nome do Professor):** O nome do professor n√£o est√° sendo apresentado ao aluno nem no e-mail de convite, nem dentro do aplicativo. **A√ß√£o:** Injetar o nome/foto do professor logado diretamente nas vari√°veis do e-mail e nos cabe√ßalhos/dashboard do app do aluno ("Seu treino com o Prof. Jo√£o").
 *   **Notifica√ß√µes Omnichannel:** Todas as comunica√ß√µes, cobran√ßas e alertas importantes para o aluno (ex: treino novo, vencimento de mensalidade, aluno sumido) n√£o devem depender apenas do app. Devem ser engatilhadas e enviadas simultaneamente via **E-mail e WhatsApp** usando a API de disparo.
+
+## ?? 5. GamificaÁ„o (Motor Backend)
+*   **AÁ„o:** Criar a lÛgica matem·tica no Supabase para substituir os dados est·ticos (Mock) da interface Material You. Precisamos calcular e rastrear Ofensivas (Streaks em dias) e % de Conclus„o de Metas Di·rias.
+
+## ?? 6. AutomaÁıes Bidirecionais de WhatsApp
+*   **AÁ„o:** Construir gatilhos para que o sistema notifique ativamente o professor. Exemplo: Se o aluno trocar um exercÌcio pelo aplicativo, o RobÙ envia um WhatsApp autom·tico para o Personal avisando da mudanÁa.
+

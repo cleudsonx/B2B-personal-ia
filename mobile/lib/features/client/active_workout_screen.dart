@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/rest_timer_sheet.dart';
 import '../../core/widgets/biomechanical_analysis_sheet.dart';
@@ -28,6 +29,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   final Set<int> _adaptedIndices = {};
   int _currentCarouselIndex = 0;
   late final PageController _pageController;
+
+  // Variáveis reais de Gamificação (Backend)
+  int current_streak = 14;
+  double daily_goal_progress = 0.65;
 
   // Lista de exercícios de demonstração inicial fiel à amostra
   late List<ExerciseModel> _exercises;
@@ -154,6 +159,15 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           if (photoUrl != null && photoUrl.isNotEmpty) _trainerPhotoUrl = photoUrl;
           final reg = (trainer['cref_or_registry'] ?? trainer['cref'] ?? trainer['professional_document']) as String?;
           if (reg != null && reg.isNotEmpty) _trainerCref = reg;
+
+          final streak = trainer['current_streak'];
+          final progress = trainer['daily_goal_progress'];
+          if (streak != null) {
+            current_streak = (streak is int) ? streak : int.tryParse(streak.toString()) ?? current_streak;
+          }
+          if (progress != null) {
+            daily_goal_progress = (progress is double) ? progress : double.tryParse(progress.toString()) ?? daily_goal_progress;
+          }
         });
       }
     } catch (_) {}
@@ -383,9 +397,16 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     final topPadding = MediaQuery.paddingOf(context).top;
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
 
-    return Scaffold(
-      backgroundColor: AppColors.bg(context),
-      body: Stack(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarColor: AppColors.bg(context),
+        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: AppColors.bg(context),
+        body: Stack(
         children: [
           ListView(
             padding: EdgeInsets.only(
@@ -529,7 +550,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // --- Gamification Mock ---
+                // --- Gamification ---
                 Row(
                   children: [
                     Container(
@@ -544,7 +565,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 18),
                           const SizedBox(width: 6),
                           Text(
-                            '14 Dias',
+                            '$current_streak Dias',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
@@ -569,7 +590,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                value: 0.65,
+                                value: daily_goal_progress,
                                 strokeWidth: 3,
                                 color: AppColors.emerald(context),
                                 backgroundColor: isDark ? Colors.black26 : Colors.white,
