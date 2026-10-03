@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/auth_service.dart';
 import '../../core/theme/app_colors.dart';
 
 class StudentProfileScreen extends StatefulWidget {
@@ -14,12 +16,12 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
 
   // Dados Cadastrais
   final _nameCtrl = TextEditingController(text: 'Aluno Silva');
-  
+
   // Anamnese
   final _ageCtrl = TextEditingController(text: '28');
   final _weightCtrl = TextEditingController(text: '76.5');
   final _heightCtrl = TextEditingController(text: '178');
-  
+
   // CondiÃ§Ãµes / RestriÃ§Ãµes
   final List<String> _availableRestrictions = [
     'Nenhuma',
@@ -34,20 +36,29 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
 
   Future<void> _handleSave() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() => _isLoading = true);
-    
+
     try {
-      // SimulaÃ§Ã£o de chamada para salvar perfil e anamnese no back-end
-      await Future.delayed(const Duration(seconds: 2));
-      
+      final client = Supabase.instance.client;
+      final user = AuthService.currentUser;
+      if (user != null) {
+        await client
+            .from('profiles')
+            .update({
+              'full_name': _nameCtrl.text,
+              'clinical_restrictions': _selectedRestrictions.join(', '),
+            })
+            .eq('id', user.id);
+      }
+
       // Regra de NegÃ³cio (IA): O Backend intercepta se a restriÃ§Ã£o mudou.
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text(
-              'Perfil atualizado! A IA estÃ¡ revisando seu treino para garantir a seguranÃ§a com base nos seus novos dados.'
+              'Perfil atualizado! A IA estÃ¡ revisando seu treino para garantir a seguranÃ§a com base nos seus novos dados.',
             ),
             backgroundColor: AppColors.emerald(context),
             duration: const Duration(seconds: 5),
@@ -135,10 +146,13 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               const SizedBox(height: 8),
               Text(
                 'Mantenha atualizado. A IA readapta seu treino automaticamente.',
-                style: TextStyle(color: AppColors.subtext(context), fontSize: 13),
+                style: TextStyle(
+                  color: AppColors.subtext(context),
+                  fontSize: 13,
+                ),
               ),
               const SizedBox(height: 16),
-              
+
               Row(
                 children: [
                   Expanded(
@@ -161,7 +175,9 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _weightCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       style: TextStyle(color: AppColors.text(context)),
                       decoration: InputDecoration(
                         labelText: 'Peso (kg)',
@@ -209,47 +225,55 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               Wrap(
                 spacing: 8,
                 runSpacing: 12,
-                children: _availableRestrictions.map((r) {
-                  final isSelected = _selectedRestrictions.contains(r);
-                  return FilterChip(
-                    label: Text(r),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      setState(() {
-                        if (r == 'Nenhuma') {
-                          _selectedRestrictions.clear();
-                          _selectedRestrictions.add('Nenhuma');
-                        } else {
-                          _selectedRestrictions.remove('Nenhuma');
-                          if (selected) {
-                            _selectedRestrictions.add(r);
-                          } else {
-                            _selectedRestrictions.remove(r);
-                            if (_selectedRestrictions.isEmpty) {
+                children:
+                    _availableRestrictions.map((r) {
+                      final isSelected = _selectedRestrictions.contains(r);
+                      return FilterChip(
+                        label: Text(r),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          setState(() {
+                            if (r == 'Nenhuma') {
+                              _selectedRestrictions.clear();
                               _selectedRestrictions.add('Nenhuma');
+                            } else {
+                              _selectedRestrictions.remove('Nenhuma');
+                              if (selected) {
+                                _selectedRestrictions.add(r);
+                              } else {
+                                _selectedRestrictions.remove(r);
+                                if (_selectedRestrictions.isEmpty) {
+                                  _selectedRestrictions.add('Nenhuma');
+                                }
+                              }
                             }
-                          }
-                        }
-                      });
-                    },
-                    selectedColor: AppColors.danger.withValues(alpha: 0.2),
-                    checkmarkColor: AppColors.danger,
-                    labelStyle: TextStyle(
-                      color: isSelected ? AppColors.danger : AppColors.text(context),
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                    backgroundColor: AppColors.card(context),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(100),
-                      side: BorderSide(
-                        color: isSelected ? AppColors.danger : AppColors.cardBorder(context),
-                      ),
-                    ),
-                  );
-                }).toList(),
+                          });
+                        },
+                        selectedColor: AppColors.danger.withValues(alpha: 0.2),
+                        checkmarkColor: AppColors.danger,
+                        labelStyle: TextStyle(
+                          color:
+                              isSelected
+                                  ? AppColors.danger
+                                  : AppColors.text(context),
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                        backgroundColor: AppColors.card(context),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(100),
+                          side: BorderSide(
+                            color:
+                                isSelected
+                                    ? AppColors.danger
+                                    : AppColors.cardBorder(context),
+                          ),
+                        ),
+                      );
+                    }).toList(),
               ),
               const SizedBox(height: 64),
-              
+
               // BOTÃƒO SALVAR
               SizedBox(
                 width: double.infinity,
@@ -263,16 +287,23 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                       borderRadius: BorderRadius.circular(100),
                     ),
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                        )
-                      : const Text(
-                          'Salvar & Revisar Treino',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
+                  child:
+                      _isLoading
+                          ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                          : const Text(
+                            'Salvar & Revisar Treino',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                 ),
               ),
             ],
@@ -282,5 +313,3 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     );
   }
 }
-
-

@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import workouts, adaptations, assistant, subscriptions, validators, auth
+from app.api.v1.endpoints import workouts, adaptations, assistant, subscriptions, validators, auth, webhooks
 
 api_router = APIRouter()
 
@@ -11,3 +11,5 @@ api_router.include_router(subscriptions.router, prefix="/subscriptions", tags=["
 api_router.include_router(validators.router, prefix="/validators", tags=["Validators"])
 
 
+
+api_router.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])

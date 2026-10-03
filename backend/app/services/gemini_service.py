@@ -10,6 +10,7 @@ from app.schemas.workout import WorkoutPlanResponse, Split, Exercise
 from app.schemas.adaptation import AdaptationResponse
 from app.prompts.plan_generator import SYSTEM_INSTRUCTION_PLAN_GENERATOR, build_plan_prompt
 from app.prompts.exercise_adapter import SYSTEM_INSTRUCTION_EXERCISE_ADAPTER, build_adaptation_prompt
+from app.prompts.biomechanical_safety import SYSTEM_INSTRUCTION_SAFETY_EVALUATOR, build_safety_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -489,6 +490,42 @@ class GeminiService:
             notes=notes,
             biomechanical_rationale=rationale,
         )
+
+
+
+    async def analyze_biomechanical_safety(self, restrictions: str, workout_json_str: str) -> dict:
+        self._ensure_client()
+        prompt = build_safety_prompt(restrictions, workout_json_str)
+        
+        config = types.GenerateContentConfig(
+            system_instruction=SYSTEM_INSTRUCTION_SAFETY_EVALUATOR,
+            response_mime_type="application/json",
+            temperature=0.1,
+        )
+
+        models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+        response = await self._generate_with_fallback_async(
+            candidate_models=models,
+            contents=prompt,
+            config=config,
+            per_model_timeout=15.0
+        )
+        
+        if not response or not response.text:
+            raise ValueError("Não foi possível gerar a análise de segurança com o modelo Gemini.")
+            
+        try:
+            cleaned_text = response.text.strip()
+            if cleaned_text.startswith("`json"):
+                cleaned_text = cleaned_text[7:]
+            if cleaned_text.endswith("`"):
+                cleaned_text = cleaned_text[:-3]
+            
+            return json.loads(cleaned_text.strip())
+        except Exception as e:
+            logger.error(f"[GeminiService] Erro ao parsear JSON de segurança: {response.text}")
+            raise ValueError("A resposta da IA não é um JSON válido.")
+
 
 
 gemini_service = GeminiService()
