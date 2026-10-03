@@ -16,15 +16,15 @@ class AppColors {
   static const Color lightPillBorder = Color(0xFFE2E8F0);
 
   // Acentos Semânticos (Modo Claro) - Pastel Suave
-  static const Color emeraldPrimary = Color(0xFF98FF98); // Pastel Mint
-  static const Color emeraldSurface = Color(0xFFE8FDF0); // Mint 50
+  static const Color emeraldPrimary = Color(0xFF059669); // Pastel Mint
+  static const Color emeraldSurface = Color(0xFFD1FAE5); // Mint 50
   static const Color emeraldBorder = Color(0xFFC1F5D0); // Mint 200
 
-  static const Color tangerinePrimary = Color(0xFFFFDAB9); // Pastel Peach
+  static const Color tangerinePrimary = Color(0xFFEA580C); // Pastel Peach
   static const Color tangerineSurface = Color(0xFFFFF7ED); // Peach 50
   static const Color tangerineBorder = Color(0xFFFED7AA); // Peach 200
 
-  static const Color cobaltPrimary = Color(0xFF87CEEB); // Sky Blue / Pastel Blue
+  static const Color cobaltPrimary = Color(0xFF0284C7); // Sky Blue / Pastel Blue
   static const Color cobaltSurface = Color(0xFFF0F9FF); // Sky 50
 
   // ==========================================
