@@ -31,8 +31,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   late final PageController _pageController;
 
   // Variáveis reais de Gamificação (Backend)
-  int current_streak = 14;
-  double daily_goal_progress = 0.65;
+  int currentStreak = 14;
+  double dailyGoalProgress = 0.65;
 
   // Lista de exercícios de demonstração inicial fiel à amostra
   late List<ExerciseModel> _exercises;
@@ -198,20 +198,20 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   as String?;
           if (reg != null && reg.isNotEmpty) _trainerCref = reg;
 
-          final streak = trainer['current_streak'];
-          final progress = trainer['daily_goal_progress'];
+          final streak = trainer['currentStreak'];
+          final progress = trainer['dailyGoalProgress'];
           if (streak != null) {
-            current_streak =
+            currentStreak =
                 (streak is int)
                     ? streak
-                    : int.tryParse(streak.toString()) ?? current_streak;
+                    : int.tryParse(streak.toString()) ?? currentStreak;
           }
           if (progress != null) {
-            daily_goal_progress =
+            dailyGoalProgress =
                 (progress is double)
                     ? progress
                     : double.tryParse(progress.toString()) ??
-                        daily_goal_progress;
+                        dailyGoalProgress;
           }
         });
       }
@@ -679,7 +679,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            '$current_streak Dias',
+                            '$currentStreak Dias',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
@@ -715,7 +715,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                value: daily_goal_progress,
+                                value: dailyGoalProgress,
                                 strokeWidth: 3,
                                 color: AppColors.emerald(context),
                                 backgroundColor:

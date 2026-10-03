@@ -45,7 +45,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
               physics: const BouncingScrollPhysics(),
               slivers: [
                 SliverAppBar(
-                  backgroundColor: colorScheme.surface.withOpacity(0.9),
+                  backgroundColor: colorScheme.surface.withValues(alpha: 0.9),
                   pinned: true,
                   elevation: 0,
                   scrolledUnderElevation: 0,
@@ -82,7 +82,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                                 decoration: InputDecoration(
                                   hintText: 'Conte um pouco sobre sua trajetória...',
                                   filled: true,
-                                  fillColor: colorScheme.surfaceContainerHighest?.withOpacity(0.3) ?? Colors.grey.withOpacity(0.1),
+                                  fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(16),
                                     borderSide: BorderSide.none,
@@ -110,7 +110,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                                         }
                                       });
                                     },
-                                    backgroundColor: colorScheme.surfaceContainerHighest?.withOpacity(0.3) ?? Colors.grey.withOpacity(0.1),
+                                    backgroundColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                                     selectedColor: colorScheme.primaryContainer,
                                     labelStyle: TextStyle(
                                       color: isSelected 
@@ -136,7 +136,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                                   hintText: '(11) 90000-0000',
                                   prefixIcon: Icon(Icons.phone, color: colorScheme.primary),
                                   filled: true,
-                                  fillColor: colorScheme.surfaceContainerHighest?.withOpacity(0.3) ?? Colors.grey.withOpacity(0.1),
+                                  fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(16),
                                     borderSide: BorderSide.none,
