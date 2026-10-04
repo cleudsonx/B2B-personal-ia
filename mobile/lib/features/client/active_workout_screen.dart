@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'student_profile_screen.dart';
@@ -199,8 +199,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   as String?;
           if (reg != null && reg.isNotEmpty) _trainerCref = reg;
 
-          final streak = trainer['currentStreak'];
-          final progress = trainer['dailyGoalProgress'];
+          final streak = trainer['current_streak'] ?? trainer['currentStreak'];
+          final progress = trainer['daily_goal_progress'] ?? trainer['dailyGoalProgress'];
           if (streak != null) {
             currentStreak =
                 (streak is int)

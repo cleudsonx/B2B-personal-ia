@@ -140,3 +140,7 @@ class StudentInviteResponse(BaseModel):
     message: str
 
 
+class GamificationResponse(BaseModel):
+    current_streak: int = Field(default=0, description="Dias seguidos de treino concluídos")
+    daily_goal_progress: float = Field(default=0.0, description="Porcentagem de conclusão do treino de hoje (0.0 a 1.0)")
+

@@ -16,6 +16,7 @@ from app.schemas.workout import (
     BiomechanicalAlertResponse,
     StudentInviteRequest,
     StudentInviteResponse,
+    GamificationResponse,
 )
 from app.services.gemini_service import GeminiService
 from app.services.email_service import email_service
@@ -451,4 +452,24 @@ async def invite_student(
         email_status=email_status,
         whatsapp_status=whatsapp_status,
         message=f"Convite gerado com sucesso para {payload.full_name}."
+    )
+
+
+@router.get(
+    "/gamification",
+    response_model=GamificationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Buscar Dados de Gamificação do Aluno",
+    description="Retorna dados de gamificação como dias seguidos (streak) e progresso diário. Atualmente simulado para demonstração."
+)
+async def get_gamification_data(
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> GamificationResponse:
+    # A lógica de gamificação pode ser conectada ao Supabase analisando
+    # a tabela de histórico de treinos concluídos (workouts_history / completed_sessions).
+    # Como solicitado, estamos inicializando com um mock funcional
+    
+    return GamificationResponse(
+        current_streak=3, # Mock: 3 dias de ofensiva
+        daily_goal_progress=0.75 # Mock: 75% concluído do treino de hoje
     )
