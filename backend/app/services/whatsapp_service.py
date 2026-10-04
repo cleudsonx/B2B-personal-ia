@@ -1,4 +1,4 @@
-﻿import httpx
+import httpx
 import os
 import logging
 
@@ -10,7 +10,7 @@ EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY", "429683C4C977415CAAFCE14D7735
 
 class WhatsAppService:
     async def create_instance(self, instance_name: str) -> dict:
-        \"\"\"Cria uma nova instância no Evolution API para o Professor.\"\"\"
+        """Cria uma nova instância no Evolution API para o Professor."""
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.post(
@@ -29,7 +29,7 @@ class WhatsAppService:
                 raise
 
     async def get_instance_state(self, instance_name: str) -> dict:
-        \"\"\"Verifica se o WhatsApp do Professor está conectado.\"\"\"
+        """Verifica se o WhatsApp do Professor está conectado."""
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.get(
@@ -43,7 +43,7 @@ class WhatsAppService:
                 raise
 
     async def send_text_message(self, instance_name: str, number: str, text: str) -> dict:
-        \"\"\"Envia uma mensagem de texto simples pelo WhatsApp.\"\"\"
+        """Envia uma mensagem de texto simples pelo WhatsApp."""
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.post(
@@ -67,3 +67,4 @@ class WhatsAppService:
                 raise
 
 whatsapp_service = WhatsAppService()
+

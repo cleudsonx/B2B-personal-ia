@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'whatsapp_connection_screen.dart';
 
 class TrainerProfileSetupScreen extends StatefulWidget {
   const TrainerProfileSetupScreen({super.key});
@@ -144,7 +145,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                                   }).toList(),
                             ),
                             const SizedBox(height: 24),
-                            _buildSectionTitle(context, 'WhatsApp Público'),
+                            _buildSectionTitle(context, 'WhatsApp Público (Atendimento)'),
                             const SizedBox(height: 12),
                             TextField(
                               controller: _whatsappController,
@@ -166,6 +167,38 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                                   horizontal: 16,
                                   vertical: 16,
                                 ),
+                              ),
+                            ),
+                            const SizedBox(height: 32),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: colorScheme.secondaryContainer.withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.qr_code, color: colorScheme.onSecondaryContainer, size: 32),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('Robô Assistente', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                                        Text('Vincule o WhatsApp para disparar notificações.', style: theme.textTheme.bodySmall),
+                                      ],
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (_) => const WhatsappConnectionScreen()),
+                                      );
+                                    },
+                                    child: const Text('Vincular'),
+                                  ),
+                                ],
                               ),
                             ),
                           ],

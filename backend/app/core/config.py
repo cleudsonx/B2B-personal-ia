@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     STRIPE_WEBHOOK_SECRET: str = ""
 
     # WhatsApp / Evolution API (sem valor padrão — configurar como secret no Render)
-    EVOLUTION_API_KEY: str = "B2B_MR_COACH_SECRET_KEY_123"
+    EVOLUTION_API_KEY: str = ""
     EVOLUTION_API_URL: str = "http://193.123.123.34:8080"
     EVOLUTION_INSTANCE: str = "mr_coach_instance"
     

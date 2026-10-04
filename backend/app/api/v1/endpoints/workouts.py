@@ -438,7 +438,7 @@ async def invite_student(
     # Se solicitado disparo direto via WhatsApp service
     whatsapp_status = "ready_url"
     if payload.send_whatsapp and clean_phone:
-        wa_res = await whatsapp_service.send_text_message(clean_phone, whatsapp_msg)
+        wa_res = await whatsapp_service.send_text_message(settings.EVOLUTION_INSTANCE, clean_phone, whatsapp_msg)
         whatsapp_status = wa_res.get("status", "sent")
 
     return StudentInviteResponse(
