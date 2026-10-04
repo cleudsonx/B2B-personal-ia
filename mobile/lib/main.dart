@@ -1,5 +1,6 @@
 import 'features/landing/mrcoach_landing_screen.dart';
 import 'features/landing/shaipados_studio_screen.dart';
+import 'features/landing/trainer_public_landing_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
@@ -75,6 +76,13 @@ class B2BPersonalIaApp extends StatelessWidget {
                         trainerSlug: uri.pathSegments[1],
                         token: uri.pathSegments[2],
                       ),
+                );
+              }
+              if (uri.pathSegments.isNotEmpty &&
+                  uri.pathSegments[0] == 'prof' &&
+                  uri.pathSegments.length >= 2) {
+                return MaterialPageRoute(
+                  builder: (_) => TrainerPublicLandingScreen(username: uri.pathSegments[1]),
                 );
               }
             }
