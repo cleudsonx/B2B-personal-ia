@@ -24,6 +24,44 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
   ];
   final Set<String> _selectedSpecialties = {};
   bool _isSaving = false;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
+
+      final response = await supabase
+          .from('profiles')
+          .select('username, bio, public_whatsapp, specialties')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (response != null && mounted) {
+        setState(() {
+          _usernameController.text = response['username'] ?? '';
+          _bioController.text = response['bio'] ?? '';
+          _whatsappController.text = response['public_whatsapp'] ?? '';
+          
+          if (response['specialties'] != null) {
+            final specs = List<String>.from(response['specialties']);
+            _selectedSpecialties.addAll(specs);
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Erro ao carregar perfil: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   void dispose() {

@@ -28,8 +28,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
 
   Future<void> _fetchTrainerProfile() async {
     try {
-      // Ajuste para usar URL do backend dependendo do ambiente
-      final apiUrl = 'https://api.shaipados.com/api/v1/public/trainers/${widget.username}';
+      final apiUrl = '${AppConfig.apiBaseUrl}/api/v1/public/trainers/${widget.username}';
       
       final response = await http.get(Uri.parse(apiUrl));
 
@@ -40,7 +39,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
         });
       } else if (response.statusCode == 404) {
         setState(() {
-          _errorMessage = 'Treinador não encontrado.';
+          _errorMessage = 'Treinador nÃ£o encontrado.';
           _isLoading = false;
         });
       } else {
@@ -51,18 +50,22 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Falha de conexão. Tente novamente mais tarde.';
+        _errorMessage = 'Falha de conexÃ£o. Tente novamente mais tarde.';
         _isLoading = false;
       });
     }
   }
 
-  void _openWhatsApp() {
+    void _openWhatsApp() {
     if (_trainerData == null || _trainerData!['public_whatsapp'] == null) return;
     
-    final phone = _trainerData!['public_whatsapp'].replaceAll(RegExp(r'[^\d]'), '');
-    final text = Uri.encodeComponent("Olá, prof ${_trainerData!['full_name']}! Acessei sua página e gostaria de saber mais sobre a consultoria.");
-    final url = Uri.parse("https://wa.me/55$phone?text=$text");
+    var phone = _trainerData!['public_whatsapp'].replaceAll(RegExp(r'[^\d]'), '');
+    if (!phone.startsWith('55')) {
+      phone = '55$phone';
+    }
+    
+    final text = Uri.encodeComponent("Olá, Prof. ${_trainerData!['full_name']}! Vi seu método inteligente e cansei de treinos genéricos. Quero saber como funciona a consultoria personalizada para o meu objetivo!");
+    final url = Uri.parse("https://wa.me/$phone?text=$text");
     
     launchUrl(url, mode: LaunchMode.externalApplication);
   }
@@ -96,10 +99,10 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
       );
     }
 
-    // Tela de Conversão B2B
+    // Tela de ConversÃ£o B2B
     final name = _trainerData!['full_name'] ?? 'Personal Trainer';
-    final bio = _trainerData!['bio'] ?? 'Transformando vidas através do movimento e da hipertrofia funcional.';
-    final List<dynamic> specialties = _trainerData!['specialties'] ?? ['Hipertrofia', 'Emagrecimento', 'Saúde'];
+    final bio = _trainerData!['bio'] ?? 'Transformando vidas atravÃ©s do movimento e da hipertrofia funcional.';
+    final List<dynamic> specialties = _trainerData!['specialties'] ?? ['Hipertrofia', 'Emagrecimento', 'SaÃºde'];
     final photoUrl = _trainerData!['photo_url'];
 
     return Scaffold(
@@ -195,11 +198,11 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                   const SizedBox(height: 48),
 
                   // Diferenciais (Social Proof)
-                  _buildProofRow(context, Icons.fitness_center, "Treino Personalizado", "Metodologia única"),
+                  _buildProofRow(context, Icons.fitness_center, "Periodização 100% Sob Medida", "Montada para sua anatomia e rotina."),
                   const SizedBox(height: 16),
-                  _buildProofRow(context, Icons.insights, "Acompanhamento", "Monitoramento de métricas"),
+                  _buildProofRow(context, Icons.insights, "Evolução Monitorada no App", "Acompanhe seus pesos e consistência."),
                   const SizedBox(height: 16),
-                  _buildProofRow(context, Icons.workspace_premium, "Biomecânica 3D", "Exclusivo no app"),
+                  _buildProofRow(context, Icons.workspace_premium, "Aparelho Ocupado? Zero Espera", "App indica substituições com 1 toque."),
                   
                   const SizedBox(height: 120), // Espaço para o botão flutuante
                 ],
@@ -220,9 +223,9 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
             foregroundColor: Colors.white,
             elevation: 0,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            icon: const Icon(Icons.chat_bubble, size: 28),
+            icon: const Icon(Icons.rocket_launch, size: 28),
             label: const Text(
-              'Treine Comigo pelo WhatsApp',
+              'Quero Minha Consultoria',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: -0.5),
             ),
           ),
