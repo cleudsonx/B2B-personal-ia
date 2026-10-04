@@ -31,7 +31,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
       }
 
       // Ambiente de Produção
-      final url = Uri.parse('https://.shaipados.com');
+      final url = Uri.parse('https://$prefix.shaipados.com');
       launchUrl(url, webOnlyWindowName: '_self');
     }
   }
