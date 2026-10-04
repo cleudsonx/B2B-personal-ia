@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'whatsapp_connection_screen.dart';
 
 class TrainerProfileSetupScreen extends StatefulWidget {
@@ -11,6 +12,7 @@ class TrainerProfileSetupScreen extends StatefulWidget {
 }
 
 class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
+  final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
   final TextEditingController _whatsappController = TextEditingController();
 
@@ -21,12 +23,47 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
     'Reabilitação',
   ];
   final Set<String> _selectedSpecialties = {};
+  bool _isSaving = false;
 
   @override
   void dispose() {
+    _usernameController.dispose();
     _bioController.dispose();
     _whatsappController.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveProfile() async {
+    setState(() => _isSaving = true);
+    try {
+      // Aqui usamos o supabase_flutter que já está inicializado no app
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+      if (user == null) throw Exception('Usuário não logado');
+
+      final updates = {
+        'username': _usernameController.text.trim().toLowerCase(),
+        'bio': _bioController.text.trim(),
+        'public_whatsapp': _whatsappController.text.trim(),
+        'specialties': _selectedSpecialties.toList(),
+      };
+
+      await supabase.from('profiles').update(updates).eq('id', user.id);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Vitrine salva com sucesso!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao salvar: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
@@ -81,6 +118,27 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                               ),
                             ),
                             const SizedBox(height: 32),
+                            _buildSectionTitle(context, 'Nome de Usuário (Sua URL)'),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: _usernameController,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'[a-z0-9\-]')),
+                              ],
+                              decoration: InputDecoration(
+                                hintText: 'ex: joao-silva',
+                                prefixText: 'app.shaipados.com/prof/',
+                                prefixStyle: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold),
+                                filled: true,
+                                fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
                             _buildSectionTitle(context, 'Biografia'),
                             const SizedBox(height: 12),
                             TextField(
@@ -215,9 +273,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
               right: 24,
               bottom: padding.bottom > 0 ? padding.bottom : 24,
               child: FilledButton(
-                onPressed: () {
-                  // Action to save
-                },
+                onPressed: _isSaving ? null : _saveProfile,
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   elevation: 0,
@@ -225,10 +281,19 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                child: const Text(
-                  'Salvar Vitrine',
-                  style: TextStyle(fontSize: 16),
-                ),
+                child: _isSaving
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Salvar Vitrine',
+                        style: TextStyle(fontSize: 16),
+                      ),
               ),
             ),
           ],

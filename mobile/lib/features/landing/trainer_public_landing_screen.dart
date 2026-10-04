@@ -267,3 +267,4 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     );
   }
 }
+

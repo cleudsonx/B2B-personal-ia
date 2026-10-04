@@ -1239,6 +1239,7 @@ class SupabaseService:
                     profile_payload["trainer_id"] = to_valid_uuid_str(trainer_id)
                 if photo_url:
                     profile_payload["photo_url"] = photo_url
+                    profile_payload["avatar_url"] = photo_url
 
                 await client.table("profiles").upsert(profile_payload).execute()
             except Exception as e:
