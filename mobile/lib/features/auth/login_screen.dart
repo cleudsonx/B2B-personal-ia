@@ -71,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ? user!.userMetadata!['full_name'] as String
               : (_selectedRole == 'trainer'
                   ? 'Personal Trainer'
-                  : 'Aluno no SalÃ£o');
+                  : 'Aluno no Salão');
 
       final hasCompletedAnamnesis = profile?['has_completed_anamnesis'] == true;
 
@@ -112,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SnackBar(
               backgroundColor: MetaColors.surfaceHighlight,
               content: Text(
-                'AutenticaÃ§Ã£o biomÃ©trica nÃ£o disponÃ­vel neste dispositivo.',
+                'Autenticação biométrica não disponível neste dispositivo.',
                 style: TextStyle(color: MetaColors.textPrimary),
               ),
             ),
@@ -137,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ? user.userMetadata!['full_name'] as String
                   : (_selectedRole == 'trainer'
                       ? 'Personal Trainer'
-                      : 'Aluno no SalÃ£o');
+                      : 'Aluno no Salão');
           final hasCompletedAnamnesis =
               profile?['has_completed_anamnesis'] == true;
           if (_selectedRole == 'client' && !hasCompletedAnamnesis) {
@@ -158,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SnackBar(
                 backgroundColor: MetaColors.surfaceHighlight,
                 content: Text(
-                  'Biometria validada. FaÃ§a o primeiro login com seu e-mail e senha para vincular sua biometria.',
+                  'Biometria validada. Faça o primeiro login com seu e-mail e senha para vincular sua biometria.',
                   style: TextStyle(color: MetaColors.textPrimary),
                 ),
               ),
@@ -171,7 +171,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppColors.danger,
-            content: Text('Falha na autenticaÃ§Ã£o biomÃ©trica: $e'),
+            content: Text('Falha na autenticação biométrica: $e'),
           ),
         );
       }
@@ -231,7 +231,7 @@ class _LoginScreenState extends State<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Informe o e-mail cadastrado para receber o link de redefiniÃ§Ã£o de acesso:',
+                  'Informe o e-mail cadastrado para receber o link de redefinição de acesso:',
                   style: TextStyle(
                     color: MetaColors.textSecondary,
                     fontSize: 13,
@@ -285,7 +285,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     SnackBar(
                       backgroundColor: MetaColors.surfaceHighlight,
                       content: Text(
-                        'InstruÃ§Ãµes enviadas para ${resetEmailCtrl.text}',
+                        'Instruções enviadas para ${resetEmailCtrl.text}',
                         style: const TextStyle(color: MetaColors.textPrimary),
                       ),
                     ),
@@ -374,7 +374,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Text(
                         widget.initialRole == 'client'
                             ? 'Ãrea do Aluno â€¢ Treino Inteligente'
-                            : 'Plataforma para Personal Trainers & IA BiomecÃ¢nica',
+                            : 'Plataforma para Personal Trainers & IA Biomecânica',
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
@@ -385,7 +385,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 28),
 
-                    // Role Selector Tabs (se nÃ£o for link exclusivo de aluno)
+                    // Role Selector Tabs (se não for link exclusivo de aluno)
                     if (widget.initialRole != 'client') ...[
                       Container(
                         padding: const EdgeInsets.all(4),
@@ -407,7 +407,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             Expanded(
                               child: _buildRoleTab(
-                                title: 'Aluno no SalÃ£o',
+                                title: 'Aluno no Salão',
                                 icon: Icons.fitness_center_rounded,
                                 isSelected: !isTrainer,
                                 activeColor: MetaColors.accentBlue,
@@ -430,7 +430,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           return 'Informe seu e-mail';
                         }
                         if (!val.contains('@')) {
-                          return 'Informe um e-mail vÃ¡lido';
+                          return 'Informe um e-mail válido';
                         }
                         return null;
                       },
@@ -473,7 +473,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           return 'Informe sua senha';
                         }
                         if (val.length < 6) {
-                          return 'A senha deve ter no mÃ­nimo 6 dÃ­gitos';
+                          return 'A senha deve ter no mínimo 6 dígitos';
                         }
                         return null;
                       },
@@ -573,7 +573,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // BotÃ£o de entrar: SquircleButton (isPrimary: true, label: "Entrar")
+                    // Botão de entrar: SquircleButton (isPrimary: true, label: "Entrar")
                     SquircleButton(
                       label: 'Entrar',
                       isPrimary: true,
@@ -582,7 +582,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // BotÃ£o secundÃ¡rio para biometria (Face ID / Touch ID)
+                    // Botão secundário para biometria (Face ID / Touch ID)
                     SquircleButton(
                       label: 'Entrar com biometria',
                       icon: Icons.fingerprint,
@@ -598,7 +598,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Text(
-                          'Ainda nÃ£o tem conta? ',
+                          'Ainda não tem conta? ',
                           style: TextStyle(
                             color: MetaColors.textSecondary,
                             fontSize: 13,
@@ -616,7 +616,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             );
                           },
                           child: const Text(
-                            'Cadastre-se grÃ¡tis',
+                            'Cadastre-se grátis',
                             style: TextStyle(
                               color: MetaColors.emerald,
                               fontWeight: FontWeight.bold,
@@ -637,7 +637,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           color: MetaColors.textSecondary,
                         ),
                         label: const Text(
-                          'Conhecer a Plataforma (PÃ¡gina Web & WhatsApp)',
+                          'Conhecer a Plataforma (Página Web & WhatsApp)',
                           style: TextStyle(
                             color: MetaColors.textSecondary,
                             fontSize: 12,

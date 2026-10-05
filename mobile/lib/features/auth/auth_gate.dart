@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
@@ -29,7 +29,7 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   Future<void> _checkAuthAndRedirect() async {
-    // 1. Verificar se hÃ¡ sessÃ£o ativa no Supabase (Persistida via Token)
+    // 1. Verificar se há sessão ativa no Supabase (Persistida via Token)
     final session = AuthService.currentSession;
 
     if (session == null) {
@@ -37,7 +37,7 @@ class _AuthGateState extends State<AuthGate> {
       return;
     }
 
-    // 2. Tentar biometria se estiver em dispositivo mÃ³vel (iOS/Android)
+    // 2. Tentar biometria se estiver em dispositivo móvel (iOS/Android)
     bool biometricSuccess = true;
 
     if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) {
@@ -74,7 +74,7 @@ class _AuthGateState extends State<AuthGate> {
     try {
       final profile = await AuthService.getCurrentProfile();
       final role = profile?['role'] as String? ?? 'client';
-      final name = profile?['full_name'] as String? ?? 'UsuÃ¡rio';
+      final name = profile?['full_name'] as String? ?? 'Usuário';
 
       if (mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
