@@ -150,9 +150,9 @@ class _AuthGateState extends State<AuthGate> {
             ),
           ),
           
-          // Indicador de Carregamento posicionado no rodapé elegante
+          // Indicador de Carregamento
           Positioned(
-            bottom: 60,
+            bottom: 120,
             left: 0,
             right: 0,
             child: Center(
@@ -181,10 +181,51 @@ class _AuthGateState extends State<AuthGate> {
                     ),
             ),
           ),
+          
+          // Branding: "from Shaipados Labs"
+          Positioned(
+            bottom: 30,
+            left: 0,
+            right: 0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'from',
+                  style: TextStyle(
+                    color: MetaColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.science_rounded, // Ícone que remete a "Labs"
+                      color: MetaColors.emerald,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Shaipados Labs',
+                      style: const TextStyle(
+                        color: MetaColors.emerald,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 }
+
 
 

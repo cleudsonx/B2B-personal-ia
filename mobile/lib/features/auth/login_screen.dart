@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
@@ -673,11 +673,34 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           onPressed: () => ServerConfigDialog.show(context),
+                          ),
                         ),
+                      ],
+                      const SizedBox(height: 32),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'from',
+                            style: TextStyle(color: MetaColors.textSecondary, fontSize: 12),
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(Icons.science_rounded, color: MetaColors.emerald, size: 16),
+                              SizedBox(width: 4),
+                              Text(
+                                'Shaipados Labs',
+                                style: TextStyle(color: MetaColors.emerald, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ],
-                  ],
-                ),
+                  ),
+
               ),
             ),
           ),
@@ -730,4 +753,8 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+
+
+
+
 

@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import '../../../../core/widgets/meta_components.dart';
 import '../../../subscription/subscription_screen.dart';
 import 'whatsapp_connection_screen.dart';
-import 'whatsapp_connection_screen.dart';
 
 /// Aba "Ferramentas do Personal" (Vitrine B2B)
 ///
@@ -849,9 +848,43 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
               ),
             ),
 
-            // Padding dinâmico inferior para Edge-to-Edge nativo
+            // Branding Footer
             SliverToBoxAdapter(
-              child: SizedBox(height: bottomPadding + 32),
+              child: Padding(
+                padding: EdgeInsets.only(top: 24, bottom: bottomPadding + 32),
+                child: Column(
+                  children: [
+                    const Text(
+                      'from',
+                      style: TextStyle(
+                        color: MetaColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.science_rounded,
+                          color: MetaColors.textSecondary,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 4),
+                        const Text(
+                          'Shaipados Labs',
+                          style: TextStyle(
+                            color: MetaColors.textSecondary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -892,5 +925,6 @@ class _BusinessToolItem {
     required this.type,
   });
 }
+
 
 
