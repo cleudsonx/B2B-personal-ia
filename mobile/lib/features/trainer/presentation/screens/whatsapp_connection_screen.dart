@@ -144,7 +144,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                       labelText: 'Seu número (Ex: 11999999999)',
                       labelStyle: TextStyle(color: MetaColors.textSecondary),
                       border: InputBorder.none,
-                      prefixIcon: Icon(Icons.whatsapp, color: MetaColors.emerald),
+                      prefixIcon: Icon(Icons.message_rounded, color: MetaColors.emerald),
                     ),
                   ),
                 ),
@@ -214,5 +214,6 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
     );
   }
 }
+
 
 

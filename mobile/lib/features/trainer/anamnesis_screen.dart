@@ -515,10 +515,10 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             icon: Icons.auto_awesome,
             label: _dispatchMode == StudentDispatchMode.individual
                 ? (_selectedIndividualStudent != null
-                    ? 'Gerar para $(_selectedIndividualStudent!['full_name']})'
+                    ? 'Gerar para ${_selectedIndividualStudent!['full_name']}'
                     : 'Gerar Individual')
                 : (_selectedMultipleStudentIds.isNotEmpty
-                    ? 'Gerar para $(_selectedMultipleStudentIds.length}) Alunos'
+                    ? 'Gerar para ${_selectedMultipleStudentIds.length} Alunos'
                     : 'Gerar para Vários'),
             isPrimary: true,
             foregroundColor: Colors.black,
@@ -1503,8 +1503,8 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                   label: _isSavingPlan
                       ? 'Gravando no Supabase...'
                       : (_dispatchMode == StudentDispatchMode.individual
-                          ? 'Aprovar e Liberar para $(_selectedIndividualStudent?['full_name'] ?? 'o Aluno'})'
-                          : 'Aprovar e Liberar para $(_selectedMultipleStudentIds.length}) Alunos'),
+                          ? 'Aprovar e Liberar para ${_selectedIndividualStudent?['full_name'] ?? 'o Aluno'}'
+                          : 'Aprovar e Liberar para ${_selectedMultipleStudentIds.length} Alunos'),
                   icon: _isSavingPlan ? Icons.hourglass_empty : Icons.check_circle_outline,
                   isPrimary: true,
                   onPressed: _isSavingPlan ? () {} : _handleApprovePlan,
@@ -2477,6 +2477,8 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
     );
   }
 }
+
+
 
 
 

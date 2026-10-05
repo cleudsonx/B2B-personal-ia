@@ -936,7 +936,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        backgroundColor: MetaColors.red,
+        backgroundColor: Colors.red.shade800,
         content: Row(
           children: [
             const Icon(Icons.error_outline, color: Colors.white, size: 20),
@@ -1378,5 +1378,6 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
     );
   }
 }
+
 
 
