@@ -194,21 +194,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   as String?;
           if (reg != null && reg.isNotEmpty) _trainerCref = reg;
 
-          final streak = trainer['current_streak'] ?? trainer['currentStreak'];
-          final progress =
-              trainer['daily_goal_progress'] ?? trainer['dailyGoalProgress'];
-          if (streak != null) {
-            currentStreak =
-                (streak is int)
-                    ? streak
-                    : int.tryParse(streak.toString()) ?? currentStreak;
-          }
-          if (progress != null) {
-            dailyGoalProgress =
-                (progress is double)
-                    ? progress
-                    : double.tryParse(progress.toString()) ?? dailyGoalProgress;
-          }
+          // gamification is loaded separately
         });
       }
     } catch (_) {}
@@ -493,6 +479,16 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       }
     } finally {
       if (mounted) {
+        
+    try {
+      final gami = await WorkoutService.getGamificationData();
+      if (gami != null && mounted) {
+        setState(() {
+          currentStreak = (gami['current_streak'] as num?)?.toInt() ?? 14;
+          dailyGoalProgress = (gami['daily_goal_progress'] as num?)?.toDouble() ?? 0.65;
+        });
+      }
+    } catch (_) {}
         setState(() => _isLoading = false);
       }
     }
