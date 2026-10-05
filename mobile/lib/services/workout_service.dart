@@ -64,8 +64,8 @@ class WorkoutService {
     final trainerId = trainer?.id ?? 'current-trainer';
     final trainerName =
         trainer?.userMetadata?['full_name'] as String? ?? 'Personal Trainer';
-    final _rnd = DateTime.now().millisecondsSinceEpoch.toString();
-    final studentId = '11111111-1111-1111-1111-${_rnd.padLeft(12, '0').substring(0, 12)}';
+    final rnd = DateTime.now().millisecondsSinceEpoch.toString();
+    final studentId = '11111111-1111-1111-1111-${rnd.padLeft(12, '0').substring(0, 12)}';
 
     final studentData = {
       'id': studentId,
@@ -122,8 +122,9 @@ class WorkoutService {
         studentData['email_status'] = data['email_status'];
       }
     } catch (e) {
-      if (e.toString().contains('Limite de') || e.toString().contains('403'))
+      if (e.toString().contains('Limite de') || e.toString().contains('403')) {
         rethrow;
+      }
       debugPrint('Aviso Backend inviteStudent: $e');
     }
 
@@ -137,10 +138,12 @@ class WorkoutService {
           'subscription_status': 'trial',
           'updated_at': DateTime.now().toIso8601String(),
         };
-        if (phone != null && phone.trim().isNotEmpty)
+        if (phone != null && phone.trim().isNotEmpty) {
           payload['phone'] = phone.trim();
-        if (trainerId.isNotEmpty && trainerId != 'current-trainer')
+        }
+        if (trainerId.isNotEmpty && trainerId != 'current-trainer') {
           payload['trainer_id'] = trainerId;
+        }
         await _client.from('profiles').upsert(payload);
       } catch (e) {
         debugPrint('Aviso Supabase createStudent: $e');
@@ -576,9 +579,10 @@ class WorkoutService {
       if (email != null) _localStudentsCache[idx]['email'] = email;
       if (phone != null) _localStudentsCache[idx]['phone'] = phone;
       if (goal != null) _localStudentsCache[idx]['goal'] = goal;
-      if (injuriesOrRestrictions != null)
+      if (injuriesOrRestrictions != null) {
         _localStudentsCache[idx]['injuries_or_restrictions'] =
             injuriesOrRestrictions;
+      }
       if (status != null) _localStudentsCache[idx]['status'] = status;
     }
 
@@ -617,8 +621,9 @@ class WorkoutService {
         debugPrint('Aviso backend updateStudent status: ${res.statusCode}');
       }
     } catch (e) {
-      if (e.toString().contains('Limite de') || e.toString().contains('403'))
+      if (e.toString().contains('Limite de') || e.toString().contains('403')) {
         rethrow;
+      }
       debugPrint('Aviso backend updateStudent: $e');
     }
 

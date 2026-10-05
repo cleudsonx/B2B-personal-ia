@@ -14,8 +14,9 @@ class AuthService {
 
   static SupabaseClient get _client {
     final c = _clientOrNull;
-    if (c == null)
+    if (c == null) {
       throw Exception('Serviço de autenticação temporariamente indisponível.');
+    }
     return c;
   }
 
@@ -185,13 +186,16 @@ class AuthService {
       };
       if (user.email != null) payload['email'] = user.email;
       if (phone != null && phone.isNotEmpty) payload['phone'] = phone;
-      if (trainerId != null && trainerId.isNotEmpty)
+      if (trainerId != null && trainerId.isNotEmpty) {
         payload['trainer_id'] = trainerId;
-      if (docType != null && docType.isNotEmpty)
+      }
+      if (docType != null && docType.isNotEmpty) {
         payload['professional_document_type'] = docType;
+      }
       if (doc != null && doc.isNotEmpty) payload['professional_document'] = doc;
-      if (crefOrReg != null && crefOrReg.isNotEmpty)
+      if (crefOrReg != null && crefOrReg.isNotEmpty) {
         payload['cref_or_registry'] = crefOrReg;
+      }
 
       _cachedProfile = Map<String, dynamic>.from(payload);
       await _client.from('profiles').upsert(payload);

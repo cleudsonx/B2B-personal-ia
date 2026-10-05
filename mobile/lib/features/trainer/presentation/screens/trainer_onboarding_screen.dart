@@ -1,7 +1,5 @@
 ﻿import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/meta_components.dart';
-import 'trainer_main_layout.dart';
 import 'trainer_profile_setup_screen.dart'; // Or route to storefront setup
 
 class TrainerOnboardingScreen extends StatefulWidget {

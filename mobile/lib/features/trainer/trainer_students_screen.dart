@@ -662,7 +662,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                           ),
                           itemCount: filteredStudents.length,
                           // Removido qualquer Divider() - separação exclusivamente por espaçamento
-                          separatorBuilder: (_, __) => const SizedBox(height: 6),
+                          separatorBuilder: (_, _) => const SizedBox(height: 6),
                           itemBuilder: (context, index) {
                             final student = filteredStudents[index];
                             final fullName =

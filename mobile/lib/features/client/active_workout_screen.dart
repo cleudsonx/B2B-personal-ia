@@ -875,7 +875,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       _getAnatomicalImage(item.name, item.targetMuscleGroup),
                       fit: BoxFit.cover,
                       errorBuilder:
-                          (ctx, _, __) => _AnatomicalMuscleCard(
+                          (ctx, _, _) => _AnatomicalMuscleCard(
                             exerciseName: item.name,
                             targetMuscle: item.targetMuscleGroup,
                           ),

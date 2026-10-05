@@ -643,7 +643,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                       physics: const BouncingScrollPhysics(),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       itemCount: _studentStories.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      separatorBuilder: (_, _) => const SizedBox(width: 12),
                       itemBuilder: (context, index) {
                         final story = _studentStories[index];
                         final ringColor = story.isViewed

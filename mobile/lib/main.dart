@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
-import 'core/widgets/meta_components.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/auth_gate.dart';
 import 'features/client/active_workout_screen.dart';

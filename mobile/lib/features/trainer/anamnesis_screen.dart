@@ -2219,8 +2219,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                               )
                               .toList(),
                       onChanged: (val) {
-                        if (val != null)
+                        if (val != null) {
                           setModalState(() => selectedMuscle = val);
+                        }
                       },
                     ),
                     const SizedBox(height: 14),
@@ -2334,8 +2335,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                           )
                                           .toList(),
                                   onChanged: (val) {
-                                    if (val != null)
+                                    if (val != null) {
                                       setModalState(() => reps = val);
+                                    }
                                   },
                                 ),
                               ],

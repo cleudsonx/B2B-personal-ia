@@ -1,8 +1,6 @@
 ﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../../core/theme/app_colors.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../models/subscription_model.dart';
 import '../../services/subscription_service.dart';

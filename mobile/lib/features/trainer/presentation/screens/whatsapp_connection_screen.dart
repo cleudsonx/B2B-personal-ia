@@ -17,7 +17,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
   final TextEditingController _phoneController = TextEditingController();
   bool _isLoading = false;
   String? _pairingCode;
-  bool _isConnected = false;
+  final bool _isConnected = false;
   bool _autoGenerating = false;
 
   @override
@@ -206,7 +206,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                           decoration: BoxDecoration(
                             color: MetaColors.surfaceHighlight,
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: MetaColors.emerald.withOpacity(0.3), width: 2),
+                            border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3), width: 2),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
