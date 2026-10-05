@@ -1,8 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/widgets/meta_components.dart';
 import '../../../subscription/subscription_screen.dart';
+import 'whatsapp_connection_screen.dart';
+import 'whatsapp_connection_screen.dart';
 
 /// Aba "Ferramentas do Personal" (Vitrine B2B)
 ///
@@ -609,13 +611,21 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
               _buildFeatureRow(
                 Icons.mark_chat_read_outlined,
                 'Mensagens motivacionais de consistência',
-              ),
-              const SizedBox(height: 24),
-              SquircleButton(
-                label: 'Concluir',
-                isPrimary: true,
-                onPressed: () => Navigator.pop(ctx),
-              ),
+                ),
+                const SizedBox(height: 24),
+                SquircleButton(
+                  label: 'Concluir',
+                  isPrimary: true,
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const WhatsappConnectionScreen(),
+                      ),
+                    );
+                  },
+                ),
             ],
           ),
         );
@@ -882,3 +892,5 @@ class _BusinessToolItem {
     required this.type,
   });
 }
+
+
