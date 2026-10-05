@@ -29,7 +29,7 @@ async def get_public_trainer_profile(username: str):
     try:
         # 1. Tenta buscar pelo username (case-insensitive para máxima usabilidade de URLs)
         response = await client.table("profiles")\
-            .select("id, full_name, bio, specialties, public_whatsapp, photo_url, avatar_url, username, role")\
+            .select("id, full_name, bio, specialties, public_whatsapp, photo_url, avatar_url, username, role, cref, professional_document")\
             .ilike("username", clean_user)\
             .eq("role", "trainer")\
             .maybe_single()\
@@ -38,7 +38,7 @@ async def get_public_trainer_profile(username: str):
         # 2. Fallback: Se não achou por username, tenta por ID (apenas se for UUID válido)
         if (not response or not response.data) and is_valid_uuid(clean_user):
             response = await client.table("profiles")\
-                .select("id, full_name, bio, specialties, public_whatsapp, photo_url, avatar_url, username, role")\
+                .select("id, full_name, bio, specialties, public_whatsapp, photo_url, avatar_url, username, role, cref, professional_document")\
                 .eq("id", clean_user)\
                 .eq("role", "trainer")\
                 .maybe_single()\
@@ -50,6 +50,15 @@ async def get_public_trainer_profile(username: str):
         data = response.data
         if data.get("role") != "trainer":
             raise HTTPException(status_code=403, detail="Perfil não é de um treinador.")
+
+        # Trava de CREF
+        cref_val = data.get("cref") or ""
+        doc_val = data.get("professional_document") or ""
+        if not str(cref_val).strip() and not str(doc_val).strip():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Perfil profissional ainda não validado (CREF pendente)"
+            )
 
         # Garantir que specialties seja lista
         specialties = data.get("specialties")

@@ -1,3 +1,4 @@
+import '../../../../core/widgets/meta_components.dart';
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -14,6 +15,7 @@ class TrainerProfileSetupScreen extends StatefulWidget {
 
 class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
   final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _crefController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
   final TextEditingController _whatsappController = TextEditingController();
 
@@ -41,7 +43,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
 
       final response = await supabase
           .from('profiles')
-          .select('username, bio, public_whatsapp, specialties')
+          .select('username, bio, public_whatsapp, specialties, professional_document')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -50,6 +52,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
           _usernameController.text = response['username'] ?? '';
           _bioController.text = response['bio'] ?? '';
           _whatsappController.text = response['public_whatsapp'] ?? '';
+          _crefController.text = response['professional_document'] ?? '';
           
           if (response['specialties'] != null) {
             final specs = List<String>.from(response['specialties']);
@@ -84,6 +87,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
         'username': _usernameController.text.trim().toLowerCase(),
         'bio': _bioController.text.trim(),
         'public_whatsapp': _whatsappController.text.trim(),
+        'professional_document': _crefController.text.trim(),
         'specialties': _selectedSpecialties.toList(),
       };
 
@@ -93,6 +97,13 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: const Text('Vitrine salva com sucesso!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), backgroundColor: MetaColors.emerald, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), margin: const EdgeInsets.all(16)),
         );
+        
+        // Redireciona para a tela de alunos ou volta
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context);
+        } else {
+          Navigator.pushReplacementNamed(context, '/home');
+        }
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const TrainerMainLayout()));
       }
     } catch (e) {
@@ -100,7 +111,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text('Erro ao salvar: $e', style: const TextStyle(color: Colors.white)),
-              backgroundColor: AppColors.danger,
+              backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               margin: const EdgeInsets.all(16),

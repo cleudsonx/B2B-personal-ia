@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -30,7 +30,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
 
   Future<void> _fetchTrainerProfile() async {
     try {
-      final apiUrl = '\/api/v1/public/trainers/\';
+      final apiUrl = 'http://10.0.2.2:8000/api/v1/public/trainers/${widget.username}';
       
       final response = await http.get(Uri.parse(apiUrl));
 
@@ -71,9 +71,9 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     }
 
     final text = Uri.encodeComponent("Olá! Acessei sua vitrine no Mr. Coach e tenho interesse em iniciar uma consultoria.");
-    final url = Uri.parse("https://wa.me/\=\");
+    final url = Uri.parse("https://wa.me/$phone?text=$text");
     
-    launchUrl(url, mode: LaunchMode.externalApplication);
+    if (await canLaunchUrl(url)) { await launchUrl(url, mode: LaunchMode.externalApplication); }
   }
 
   @override

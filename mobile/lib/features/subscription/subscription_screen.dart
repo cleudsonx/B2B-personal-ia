@@ -1,7 +1,8 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/widgets/meta_components.dart';
+import 'presentation/screens/pix_payment_screen.dart';
 import '../../models/subscription_model.dart';
 import '../../services/subscription_service.dart';
 
@@ -1247,24 +1248,18 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
               ),
               const SizedBox(height: 14),
               SquircleButton(
-                label: 'Copiar Chave PIX',
-                icon: Icons.copy_rounded,
+                label: 'Ir para o Pagamento',
+                icon: Icons.account_balance_wallet_rounded,
                 isPrimary: true,
                 onPressed: () {
-                  Clipboard.setData(
-                    ClipboardData(
-                      text: pixCode.isNotEmpty
-                          ? pixCode
-                          : '00020126580014br.gov.bcb.pix0136mrcoach-subscription-pix',
-                    ),
-                  );
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      backgroundColor: MetaColors.surfaceHighlight,
-                      content: Text(
-                        'Código PIX copiado com sucesso!',
-                        style: TextStyle(color: MetaColors.textPrimary),
-                      ),
+                  final code = pixCode.isNotEmpty
+                      ? pixCode
+                      : '00020126580014br.gov.bcb.pix0136mrcoach-subscription-pix';
+                  Clipboard.setData(ClipboardData(text: code));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PixPaymentScreen(pixCode: code),
                     ),
                   );
                 },

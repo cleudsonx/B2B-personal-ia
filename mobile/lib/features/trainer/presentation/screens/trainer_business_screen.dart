@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../../services/auth_service.dart';
+import '../../../../services/auth_service.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/widgets/meta_components.dart';
 import '../../../subscription/subscription_screen.dart';
 import 'whatsapp_connection_screen.dart';
+import 'trainer_profile_setup_screen.dart';
 
 /// Aba "Ferramentas do Personal" (Vitrine B2B)
 ///
@@ -19,6 +20,7 @@ class TrainerBusinessScreen extends StatefulWidget {
 
 class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
   bool _isProfileIncomplete = false;
+  bool _hasCref = false;
   bool _isLoadingProfile = true;
 
   @override
@@ -34,11 +36,13 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
         final bio = profile['bio'] as String?;
         final specialties = profile['specialties'] as List<dynamic>?;
         final username = profile['username'] as String?;
+        final cref = profile['professional_document'] as String?;
         
         setState(() {
           _isProfileIncomplete = (bio == null || bio.trim().isEmpty) || 
                                  (specialties == null || specialties.isEmpty) ||
                                  (username == null || username.trim().isEmpty);
+          _hasCref = (cref != null && cref.trim().isNotEmpty);
           _isLoadingProfile = false;
         });
       } else {
@@ -216,12 +220,65 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
         _showAiAssistantModal();
         break;
       case _ToolType.publicShowcase:
-        _showPublicShowcaseModal();
+        if (!_hasCref) {
+          _showCrefLockedModal();
+        } else {
+          _showPublicShowcaseModal();
+        }
         break;
       case _ToolType.whatsappIntegration:
         _showWhatsAppIntegrationModal();
         break;
     }
+  }
+
+  void _showCrefLockedModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: MetaColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.lock_person_rounded, color: Colors.amber, size: 48),
+              const SizedBox(height: 16),
+              const Text(
+                'Acesso Bloqueado',
+                style: TextStyle(color: MetaColors.textPrimary, fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Sua Vitrine Pública não pode ser ativada porque seu CREF/Registro Profissional ainda não foi preenchido.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: MetaColors.textSecondary, fontSize: 15),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: SquircleButton(
+                  label: 'Preencher CREF agora',
+                  isPrimary: true,
+                  icon: Icons.badge,
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const TrainerProfileSetupScreen()),
+                    ).then((_) => _checkProfileStatus());
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _showSubscriptionDetailsModal() {
