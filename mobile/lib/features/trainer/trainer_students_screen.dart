@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'presentation/screens/student_details_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -216,142 +217,11 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
       return;
     }
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: MetaColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => StudentDetailsScreen(studentData: student),
       ),
-      builder: (ctx) {
-        final fullName = student['full_name'] as String? ?? 'Aluno';
-        final hasAlert = student['has_alert'] == true;
-
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.paddingOf(ctx).bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: MetaColors.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: MetaColors.surfaceHighlight,
-                    child: Text(
-                      _getInitials(fullName),
-                      style: const TextStyle(
-                        color: MetaColors.emerald,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          fullName,
-                          style: const TextStyle(
-                            color: MetaColors.textPrimary,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 18,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          student['email'] as String? ?? '',
-                          style: const TextStyle(
-                            color: MetaColors.textSecondary,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              if (hasAlert && student['alert_message'] != null) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: MetaColors.surfaceHighlight,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.amber.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.warning_amber_rounded,
-                        color: Colors.amber,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          student['alert_message'] as String,
-                          style: const TextStyle(
-                            color: MetaColors.textPrimary,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              const SizedBox(height: 24),
-              SquircleButton(
-                icon: Icons.auto_awesome,
-                label: 'Criar Prescrição IA',
-                isPrimary: true,
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => TrainerAnamnesisScreen(
-                        initialStudentId: student['id'],
-                        initialStudentName: fullName,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 10),
-              SquircleButton(
-                icon: Icons.chat_rounded,
-                label: 'Conversar no WhatsApp',
-                isPrimary: false,
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  _openWhatsApp(student);
-                },
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 
