@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -53,8 +53,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final allPlans = await SubscriptionService.getPlans();
     final sub = await SubscriptionService.getMySubscription();
     if (mounted) {
-      // Priorizar os 3 planos canônicos: Starter, Pro e Studio
-      final targetIds = ['starter', 'pro', 'studio'];
+      // Priorizar os 4 planos canônicos: Starter, Pro e Studio
+      final targetIds = ['starter', 'pro', 'elite', 'studio'];
       final filteredPlans = <PlanModel>[];
       for (final id in targetIds) {
         final p = allPlans.firstWhere(
@@ -936,7 +936,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        backgroundColor: AppColors.danger,
+        backgroundColor: MetaColors.red,
         content: Row(
           children: [
             const Icon(Icons.error_outline, color: Colors.white, size: 20),
@@ -1378,3 +1378,5 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
     );
   }
 }
+
+

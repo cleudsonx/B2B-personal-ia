@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -43,7 +43,7 @@ class SubscriptionService {
     return null;
   }
 
-  /// Salva a assinatura ativa no armazenamento local para persistência permanente
+  /// Salva a assinatura ativa no armazenamento local para persistÃªncia permanente
   static Future<void> _saveToLocalCache(MySubscriptionModel model) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -69,8 +69,8 @@ class SubscriptionService {
                 .map((p) => PlanModel.fromJson(p as Map<String, dynamic>))
                 .toList();
 
-        // Garante que TODOS os 4 planos canônicos (Starter, Pro, Elite, Studio) estejam presentes,
-        // mesmo se o servidor backend remoto ainda estiver sincronizando uma versão anterior.
+        // Garante que TODOS os 4 planos canÃ´nicos (Starter, Pro, Elite, Studio) estejam presentes,
+        // mesmo se o servidor backend remoto ainda estiver sincronizando uma versÃ£o anterior.
         final Map<String, PlanModel> merged = {
           for (final def in _defaultPlans) def.id: def,
         };
@@ -86,14 +86,14 @@ class SubscriptionService {
             .toList();
       }
     } catch (_) {
-      // Fallback gracioso com planos padrão caso offline
+      // Fallback gracioso com planos padrÃ£o caso offline
     }
     return _defaultPlans;
   }
 
-  /// Retorna o plano atual do Personal Trainer com verificação de persistência
+  /// Retorna o plano atual do Personal Trainer com verificaÃ§Ã£o de persistÃªncia
   static Future<MySubscriptionModel> getMySubscription() async {
-    // 1. Inicializa do cache em disco imediatamente se cache de memória estiver vazio
+    // 1. Inicializa do cache em disco imediatamente se cache de memÃ³ria estiver vazio
     if (_currentSubscriptionCache == null) {
       final local = await _loadFromLocalCache();
       if (local != null) {
@@ -125,7 +125,7 @@ class SubscriptionService {
       // Fallback gracioso para banco de dados ou armazenamento local
     }
 
-    // 3. Fallback para o Supabase se o usuário estiver autenticado
+    // 3. Fallback para o Supabase se o usuÃ¡rio estiver autenticado
     final user = AuthService.currentUser;
     if (user != null) {
       try {
@@ -175,7 +175,7 @@ class SubscriptionService {
       } catch (_) {}
     }
 
-    // 4. Se tiver cache em memória ou em disco, retorna com fidelidade
+    // 4. Se tiver cache em memÃ³ria ou em disco, retorna com fidelidade
     if (_currentSubscriptionCache != null) {
       return _currentSubscriptionCache!;
     }
@@ -202,7 +202,7 @@ class SubscriptionService {
     return defaultModel;
   }
 
-  /// Ativa ou troca o plano do Personal Trainer imediatamente e garante persistência total
+  /// Ativa ou troca o plano do Personal Trainer imediatamente e garante persistÃªncia total
   static Future<MySubscriptionModel> activatePlan({
     required String planId,
     String billingInterval = 'monthly',
@@ -236,7 +236,7 @@ class SubscriptionService {
       canGenerateAi: true,
     );
 
-    // Imediatamente atualiza memória, reatividade e armazenamento persistente do celular
+    // Imediatamente atualiza memÃ³ria, reatividade e armazenamento persistente do celular
     _currentSubscriptionCache = immediateModel;
     activeSubscriptionNotifier.value = immediateModel;
     await _saveToLocalCache(immediateModel);
@@ -291,7 +291,7 @@ class SubscriptionService {
     return immediateModel;
   }
 
-  /// Gera a sessão de pagamento transparente (Pix ou Cartão) via Asaas / InfinitePay
+  /// Gera a sessÃ£o de pagamento transparente (Pix ou CartÃ£o) via Asaas / InfinitePay
   static Future<CheckoutSessionModel> createCheckoutSession({
     required String planId,
     required String billingInterval,
@@ -353,7 +353,7 @@ class SubscriptionService {
       checkoutUrl: 'https://sandbox.asaas.com/c/$sessId',
       provider: provider,
       status: 'pending',
-      expiresAt: 'Hoje às 23:59',
+      expiresAt: 'Hoje Ã s 23:59',
     );
   }
 
@@ -375,9 +375,9 @@ class SubscriptionService {
     return false;
   }
 
-  /// Realiza o pagamento com cartão com Tokenização In-App (Solução 1).
-  /// Envia os dados criptografados para ativação imediata e nativa,
-  /// sem redirecionar para links externos ou páginas genéricas de fatura.
+  /// Realiza o pagamento com cartÃ£o com TokenizaÃ§Ã£o In-App (SoluÃ§Ã£o 1).
+  /// Envia os dados criptografados para ativaÃ§Ã£o imediata e nativa,
+  /// sem redirecionar para links externos ou pÃ¡ginas genÃ©ricas de fatura.
   static Future<Map<String, dynamic>> payWithCardInApp({
     required String planId,
     required String billingInterval,
@@ -414,7 +414,7 @@ class SubscriptionService {
         await getMySubscription();
         return {'success': true, 'data': data};
       } else {
-        String detail = 'Erro no processamento do cartão.';
+        String detail = 'Erro no processamento do cartÃ£o.';
         try {
           final data =
               jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
@@ -452,7 +452,7 @@ class SubscriptionService {
     }
   }
 
-  /// Simula e calcula o impacto financeiro (pró-rata) e as regras de transição de plano (Upgrade / Downgrade)
+  /// Simula e calcula o impacto financeiro (prÃ³-rata) e as regras de transiÃ§Ã£o de plano (Upgrade / Downgrade)
   static Future<PlanChangeSimulationModel> simulatePlanChange({
     required String currentPlanId,
     required String newPlanId,
@@ -515,7 +515,7 @@ class SubscriptionService {
         changeType: 'downgrade',
         isBlocked: true,
         blockReason:
-            'Você possui $activeStudentsCount alunos ativos. O plano ${planNames[newPlanId]} permite no máximo $targetMaxStudents alunos. Desative ou arquive pelo menos $excess aluno(s) antes de mudar.',
+            'VocÃª possui $activeStudentsCount alunos ativos. O plano ${planNames[newPlanId]} permite no mÃ¡ximo $targetMaxStudents alunos. Desative ou arquive pelo menos $excess aluno(s) antes de mudar.',
         currentPlanName: planNames[currentPlanId] ?? 'Plano Atual',
         newPlanName: planNames[newPlanId] ?? 'Novo Plano',
         currentPlanPriceCents: currentPrice,
@@ -548,12 +548,12 @@ class SubscriptionService {
       unusedCreditCents: unusedCredit,
       netChargeCents: netCharge,
       effectiveDate:
-          isUpgrade ? 'Imediato após pagamento' : 'No fim do ciclo atual',
+          isUpgrade ? 'Imediato apÃ³s pagamento' : 'No fim do ciclo atual',
       newStudentLimit: targetMaxStudents,
       newAiLimit: newPlanId == 'starter' ? 10 : -1,
       summaryMessage:
           isUpgrade
-              ? 'Upgrade com crédito pró-rata de R\$ ${(unusedCredit / 100).toStringAsFixed(2)}.'
+              ? 'Upgrade com crÃ©dito prÃ³-rata de R\$ ${(unusedCredit / 100).toStringAsFixed(2)}.'
               : 'Downgrade agendado para o final do ciclo atual.',
     );
   }
@@ -612,16 +612,16 @@ class SubscriptionService {
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'Prescrições IA Ilimitadas (Gemini Flash)',
+          title: 'PrescriÃ§Ãµes IA Ilimitadas (Gemini Flash)',
           included: true,
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'Anamnese clínica profunda e restrições',
+          title: 'Anamnese clÃ­nica profunda e restriÃ§Ãµes',
           included: true,
         ),
         PlanFeatureModel(
-          title: 'Raio-X Muscular com EMG e Análise de Fases',
+          title: 'Raio-X Muscular com EMG e AnÃ¡lise de Fases',
           included: true,
           highlight: true,
         ),
@@ -630,12 +630,12 @@ class SubscriptionService {
           included: true,
         ),
         PlanFeatureModel(
-          title: 'Painel de alertas de adaptação em tempo real',
+          title: 'Painel de alertas de adaptaÃ§Ã£o em tempo real',
           included: true,
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'Suporte prioritário via WhatsApp',
+          title: 'Suporte prioritÃ¡rio via WhatsApp',
           included: true,
         ),
       ],
@@ -658,27 +658,27 @@ class SubscriptionService {
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'Prescrições IA Ilimitadas (Gemini Flash)',
+          title: 'PrescriÃ§Ãµes IA Ilimitadas (Gemini Flash)',
           included: true,
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'Automação WhatsApp (Evolution/Z-API)',
+          title: 'AutomaÃ§Ã£o WhatsApp (Evolution/Z-API)',
           included: true,
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'Alertas automáticos de dor e faltas no WhatsApp',
+          title: 'Alertas automÃ¡ticos de dor e faltas no WhatsApp',
           included: true,
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'Relatórios de assiduidade e retenção',
+          title: 'RelatÃ³rios de assiduidade e retenÃ§Ã£o',
           included: true,
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'Suporte prioritário VIP via WhatsApp',
+          title: 'Suporte prioritÃ¡rio VIP via WhatsApp',
           included: true,
         ),
       ],
@@ -693,7 +693,7 @@ class SubscriptionService {
       maxStudents: 100,
       maxAiGenerationsPerMonth: -1,
       isPopular: false,
-      badge: 'ESCALA MÁXIMA',
+      badge: 'ESCALA MÃXIMA',
       features: [
         PlanFeatureModel(
           title: 'Até 100 alunos ativos na assessoria',
@@ -701,22 +701,22 @@ class SubscriptionService {
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'Prescrições e adaptações IA Ilimitadas',
+          title: 'PrescriÃ§Ãµes e adaptaÃ§Ãµes IA Ilimitadas',
           included: true,
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'Múltiplos personals sob a mesma conta',
+          title: 'MÃºltiplos personals sob a mesma conta',
           included: true,
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'Alertas de dor e evasão no WhatsApp',
+          title: 'Alertas de dor e evasÃ£o no WhatsApp',
           included: true,
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'Relatórios de assiduidade e retenção',
+          title: 'RelatÃ³rios de assiduidade e retenÃ§Ã£o',
           included: true,
           highlight: true,
         ),
@@ -728,3 +728,4 @@ class SubscriptionService {
     ),
   ];
 }
+
