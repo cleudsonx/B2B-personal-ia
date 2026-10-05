@@ -1,6 +1,7 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/ai_generation_stepper.dart';
 import '../../core/widgets/server_config_dialog.dart';
 import '../../core/widgets/theme_toggle_button.dart';
@@ -31,14 +32,14 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
   final ApiService _apiService = ApiService();
 
   String _objective = 'Hipertrofia Muscular';
-  String _trainingLevel = 'Intermediário';
+  String _trainingLevel = 'IntermediÃ¡rio';
   int _daysPerWeek = 4;
-  String _splitType = 'Automático (IA Sugere o Ideal)';
+  String _splitType = 'AutomÃ¡tico (IA Sugere o Ideal)';
   String _targetFocus = 'Geral / Equilibrado';
   String _workoutLocation = 'Academia completa';
   final _restrictionsCtrl = TextEditingController(
     text:
-        'Leve desconforto no ombro direito (evitar abdução acima de 90° com carga pesada)',
+        'Leve desconforto no ombro direito (evitar abduÃ§Ã£o acima de 90Â° com carga pesada)',
   );
   final _notesCtrl = TextEditingController(
     text: 'Foco em peitoral superior e deltoides',
@@ -130,7 +131,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             'Hipertrofia Muscular',
             'Emagrecimento',
             'Condicionamento Geral',
-            'Força Máxima',
+            'ForÃ§a MÃ¡xima',
           ].contains(obj)) {
         _objective = obj as String;
       }
@@ -220,12 +221,12 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
       hintText: hint,
       prefixIcon:
           prefixIcon != null
-              ? Icon(prefixIcon, color: AppColors.emerald(context), size: 20)
+              ? Icon(prefixIcon, color: MetaColors.emerald, size: 20)
               : null,
       filled: true,
-      fillColor: AppColors.card(context),
-      labelStyle: TextStyle(color: AppColors.subtext(context), fontSize: 13),
-      hintStyle: TextStyle(color: AppColors.subtext(context), fontSize: 12),
+      fillColor: MetaColors.surface,
+      labelStyle: TextStyle(color: MetaColors.textSecondary, fontSize: 13),
+      hintStyle: TextStyle(color: MetaColors.textSecondary, fontSize: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide(color: AppColors.cardBorder(context)),
@@ -236,7 +237,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: AppColors.emerald(context), width: 1.5),
+        borderSide: BorderSide(color: MetaColors.emerald, width: 1.5),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
@@ -245,15 +246,15 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.bg(context),
+      backgroundColor: MetaColors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         title: Text(
-          _generatedPlan == null ? 'Nova Anamnese & Ficha' : 'Revisão da Ficha',
+          _generatedPlan == null ? 'Nova Anamnese & Ficha' : 'RevisÃ£o da Ficha',
           style: TextStyle(
-            color: AppColors.text(context),
+            color: MetaColors.textPrimary,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.4,
           ),
@@ -271,9 +272,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             IconButton(
               icon: Icon(
                 Icons.refresh_rounded,
-                color: AppColors.subtext(context),
+                color: MetaColors.textSecondary,
               ),
-              tooltip: 'Recomeçar',
+              tooltip: 'RecomeÃ§ar',
               onPressed: () => setState(() => _generatedPlan = null),
             ),
           const SizedBox(width: 8),
@@ -312,7 +313,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                 ),
                 child: Icon(
                   Icons.assignment_ind_outlined,
-                  color: AppColors.emerald(context),
+                  color: MetaColors.emerald,
                   size: 22,
                 ),
               ),
@@ -321,20 +322,20 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'ANAMNESE CLÍNICA',
+                    'ANAMNESE CLÃNICA',
                     style: TextStyle(
                       fontSize: 11,
                       letterSpacing: 1.2,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.emerald(context),
+                      color: MetaColors.emerald,
                     ),
                   ),
                   Text(
-                    'Parâmetros da Periodização',
+                    'ParÃ¢metros da Periodização',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.text(context),
+                      color: MetaColors.textPrimary,
                     ),
                   ),
                 ],
@@ -344,8 +345,8 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           const SizedBox(height: 20),
           DropdownButtonFormField<String>(
             initialValue: _objective,
-            dropdownColor: AppColors.card(context),
-            style: TextStyle(color: AppColors.text(context)),
+            dropdownColor: MetaColors.surface,
+            style: TextStyle(color: MetaColors.textPrimary),
             decoration: _inputDecoration(
               context,
               'Objetivo Principal',
@@ -356,7 +357,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                       'Hipertrofia Muscular',
                       'Emagrecimento',
                       'Condicionamento Geral',
-                      'Força Máxima',
+                      'ForÃ§a MÃ¡xima',
                     ]
                     .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                     .toList(),
@@ -365,15 +366,15 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
             initialValue: _trainingLevel,
-            dropdownColor: AppColors.card(context),
-            style: TextStyle(color: AppColors.text(context)),
+            dropdownColor: MetaColors.surface,
+            style: TextStyle(color: MetaColors.textPrimary),
             decoration: _inputDecoration(
               context,
-              'Nível de Treino',
+              'NÃ­vel de Treino',
               prefixIcon: Icons.signal_cellular_alt_rounded,
             ),
             items:
-                ['Iniciante', 'Intermediário', 'Avançado']
+                ['Iniciante', 'IntermediÃ¡rio', 'AvanÃ§ado']
                     .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                     .toList(),
             onChanged: (val) => setState(() => _trainingLevel = val!),
@@ -381,11 +382,11 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           const SizedBox(height: 16),
           DropdownButtonFormField<int>(
             initialValue: _daysPerWeek,
-            dropdownColor: AppColors.card(context),
-            style: TextStyle(color: AppColors.text(context)),
+            dropdownColor: MetaColors.surface,
+            style: TextStyle(color: MetaColors.textPrimary),
             decoration: _inputDecoration(
               context,
-              'Frequência Semanal',
+              'FrequÃªncia Semanal',
               prefixIcon: Icons.calendar_today_outlined,
             ),
             items:
@@ -402,26 +403,26 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
             initialValue: _splitType,
-            dropdownColor: AppColors.card(context),
-            style: TextStyle(color: AppColors.text(context), fontSize: 13),
+            dropdownColor: MetaColors.surface,
+            style: TextStyle(color: MetaColors.textPrimary, fontSize: 13),
             isExpanded: true,
             decoration: _inputDecoration(
               context,
-              'Estrutura de Divisão / Split',
+              'Estrutura de DivisÃ£o / Split',
               prefixIcon: Icons.alt_route_rounded,
             ),
             items:
                 [
-                      'Automático (IA Sugere o Ideal)',
+                      'AutomÃ¡tico (IA Sugere o Ideal)',
                       'Full Body (1 a 3 dias - Corpo Inteiro)',
                       'Upper / Lower (2 ou 4 dias - Superiores / Inferiores)',
                       'Push / Pull / Legs (PPL - 3 a 6 dias)',
-                      'Agonista / Antagonista (Superséries eficientes)',
-                      'Divisão ABC Tradicional',
-                      'Divisão ABCD Clássica (4 dias)',
-                      'Divisão ABCDE Avançada (1 grupo/dia)',
-                      'Especialização de Ponto Fraco',
-                      'Reabilitação / Articularmente Poupadora',
+                      'Agonista / Antagonista (SupersÃ©ries eficientes)',
+                      'DivisÃ£o ABC Tradicional',
+                      'DivisÃ£o ABCD ClÃ¡ssica (4 dias)',
+                      'DivisÃ£o ABCDE AvanÃ§ada (1 grupo/dia)',
+                      'EspecializaÃ§Ã£o de Ponto Fraco',
+                      'ReabilitaÃ§Ã£o / Articularmente Poupadora',
                     ]
                     .map(
                       (e) => DropdownMenuItem(
@@ -435,8 +436,8 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
             initialValue: _targetFocus,
-            dropdownColor: AppColors.card(context),
-            style: TextStyle(color: AppColors.text(context), fontSize: 13),
+            dropdownColor: MetaColors.surface,
+            style: TextStyle(color: MetaColors.textPrimary, fontSize: 13),
             isExpanded: true,
             decoration: _inputDecoration(
               context,
@@ -446,12 +447,12 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             items:
                 [
                       'Geral / Equilibrado',
-                      'Glúteos & Posterior de Coxa',
+                      'GlÃºteos & Posterior de Coxa',
                       'Deltoides & Ombros 3D',
                       'Peitoral Superior (Clavicular)',
                       'Dorsais & V-Taper (Largura)',
-                      'Braços (Bíceps e Tríceps)',
-                      'Quadríceps & Vasto Medial',
+                      'BraÃ§os (BÃ­ceps e TrÃ­ceps)',
+                      'QuadrÃ­ceps & Vasto Medial',
                       'Core & Fortalecimento Postural',
                     ]
                     .map(
@@ -466,8 +467,8 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
             initialValue: _workoutLocation,
-            dropdownColor: AppColors.card(context),
-            style: TextStyle(color: AppColors.text(context)),
+            dropdownColor: MetaColors.surface,
+            style: TextStyle(color: MetaColors.textPrimary),
             decoration: _inputDecoration(
               context,
               'Ambiente de Treino',
@@ -476,7 +477,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             items:
                 [
                       'Academia completa',
-                      'Condomínio',
+                      'CondomÃ­nio',
                       'Em casa (Halteres/Peso Corporal)',
                     ]
                     .map((e) => DropdownMenuItem(value: e, child: Text(e)))
@@ -487,10 +488,10 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           TextFormField(
             controller: _restrictionsCtrl,
             maxLines: 2,
-            style: TextStyle(color: AppColors.text(context)),
+            style: TextStyle(color: MetaColors.textPrimary),
             decoration: _inputDecoration(
               context,
-              'Dores, Lesões e Restrições Articulares',
+              'Dores, LesÃµes e Restrições Articulares',
               prefixIcon: Icons.health_and_safety_outlined,
               hint: 'Ex: Evitar supino reto livre devido a impacto no ombro',
             ),
@@ -499,42 +500,28 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           TextFormField(
             controller: _notesCtrl,
             maxLines: 2,
-            style: TextStyle(color: AppColors.text(context)),
+            style: TextStyle(color: MetaColors.textPrimary),
             decoration: _inputDecoration(
               context,
               'Observações / Foco do Treinador',
               prefixIcon: Icons.edit_note_rounded,
-              hint: 'Ex: Dar ênfase a peitoral superior e deltoides',
+              hint: 'Ex: Dar Ãªnfase a peitoral superior e deltoides',
             ),
           ),
           const SizedBox(height: 20),
           _buildDispatchSection(context),
           const SizedBox(height: 10),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.auto_awesome, color: Colors.black),
-            label: Text(
-              _dispatchMode == StudentDispatchMode.individual
-                  ? (_selectedIndividualStudent != null
-                      ? 'Gerar Periodização para ${_selectedIndividualStudent!['full_name']}'
-                      : 'Gerar Periodização Individual')
-                  : (_selectedMultipleStudentIds.isNotEmpty
-                      ? 'Gerar Periodização para ${_selectedMultipleStudentIds.length} Alunos'
-                      : 'Gerar Periodização para Vários Alunos'),
-            ),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              backgroundColor: AppColors.emerald(context),
-              foregroundColor: Colors.black,
-              elevation: 4,
-              shadowColor: AppColors.emerald(context).withValues(alpha: 0.35),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              textStyle: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
+          SquircleButton(
+            icon: Icons.auto_awesome,
+            label: _dispatchMode == StudentDispatchMode.individual
+                ? (_selectedIndividualStudent != null
+                    ? 'Gerar para $(_selectedIndividualStudent!['full_name']})'
+                    : 'Gerar Individual')
+                : (_selectedMultipleStudentIds.isNotEmpty
+                    ? 'Gerar para $(_selectedMultipleStudentIds.length}) Alunos'
+                    : 'Gerar para Vários'),
+            isPrimary: true,
+            foregroundColor: Colors.black,
             onPressed: _handleGenerate,
           ),
         ],
@@ -546,7 +533,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.card(context),
+        color: MetaColors.surface,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color:
@@ -569,7 +556,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                 ),
                 child: Icon(
                   Icons.send_rounded,
-                  color: AppColors.emerald(context),
+                  color: MetaColors.emerald,
                   size: 18,
                 ),
               ),
@@ -579,20 +566,20 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'DESTINATÁRIOS DO TREINO',
+                      'DESTINATÃRIOS DO TREINO',
                       style: TextStyle(
                         fontSize: 11,
                         letterSpacing: 1.1,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.emerald(context),
+                        color: MetaColors.emerald,
                       ),
                     ),
                     Text(
-                      'Modo de Envio & Atribuição',
+                      'Modo de Envio & AtribuiÃ§Ã£o',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.text(context),
+                        color: MetaColors.textPrimary,
                       ),
                     ),
                   ],
@@ -605,9 +592,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: AppColors.pillBg(context),
+              color: MetaColors.surfaceHighlight,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.pillBorder(context)),
+              border: Border.all(color: MetaColors.border),
             ),
             child: Row(
               children: [
@@ -664,7 +651,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.emerald(context) : Colors.transparent,
+          color: isSelected ? MetaColors.emerald : Colors.transparent,
           borderRadius: BorderRadius.circular(11),
         ),
         child: Row(
@@ -673,7 +660,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             Icon(
               icon,
               size: 16,
-              color: isSelected ? Colors.black : AppColors.subtext(context),
+              color: isSelected ? Colors.black : MetaColors.textSecondary,
             ),
             const SizedBox(width: 6),
             Flexible(
@@ -682,7 +669,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                  color: isSelected ? Colors.black : AppColors.text(context),
+                  color: isSelected ? Colors.black : MetaColors.textPrimary,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -700,7 +687,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
-                  color: isSelected ? Colors.black : AppColors.subtext(context),
+                  color: isSelected ? Colors.black : MetaColors.textSecondary,
                 ),
               ),
             ),
@@ -721,18 +708,18 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Selecione o aluno que receberá esta prescrição exclusiva:',
-          style: TextStyle(fontSize: 12, color: AppColors.subtext(context)),
+          'Selecione o aluno que receberÃ¡ esta prescriÃ§Ã£o exclusiva:',
+          style: TextStyle(fontSize: 12, color: MetaColors.textSecondary),
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           initialValue: _selectedIndividualStudentId,
-          dropdownColor: AppColors.card(context),
-          style: TextStyle(color: AppColors.text(context), fontSize: 13),
+          dropdownColor: MetaColors.surface,
+          style: TextStyle(color: MetaColors.textPrimary, fontSize: 13),
           isExpanded: true,
           decoration: _inputDecoration(
             context,
-            'Aluno Destinatário',
+            'Aluno DestinatÃ¡rio',
             prefixIcon: Icons.person_outline_rounded,
           ),
           items:
@@ -751,7 +738,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.emerald(context),
+                            color: MetaColors.emerald,
                           ),
                         ),
                       ),
@@ -779,9 +766,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.pillBg(context),
+              color: MetaColors.surfaceHighlight,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.pillBorder(context)),
+              border: Border.all(color: MetaColors.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -791,7 +778,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                     Icon(
                       Icons.verified_user_outlined,
                       size: 15,
-                      color: AppColors.emerald(context),
+                      color: MetaColors.emerald,
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -799,7 +786,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.text(context),
+                        color: MetaColors.textPrimary,
                       ),
                     ),
                     const Spacer(),
@@ -817,7 +804,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.emerald(context),
+                          color: MetaColors.emerald,
                         ),
                       ),
                     ),
@@ -838,7 +825,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          'Restrição no cadastro: ${selectedStudent['injuries_or_restrictions']}',
+                          'RestriÃ§Ã£o no cadastro: ${selectedStudent['injuries_or_restrictions']}',
                           style: const TextStyle(
                             fontSize: 11,
                             color: Colors.amber,
@@ -877,7 +864,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.subtext(context),
+                    color: MetaColors.textSecondary,
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -895,7 +882,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.emerald(context),
+                      color: MetaColors.emerald,
                     ),
                   ),
                 ),
@@ -911,14 +898,14 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                     ? Icons.check_box_rounded
                     : Icons.select_all_rounded,
                 size: 15,
-                color: AppColors.emerald(context),
+                color: MetaColors.emerald,
               ),
               label: Text(
                 allSelected ? 'Desmarcar Todos' : 'Selecionar Todos',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.emerald(context),
+                  color: MetaColors.emerald,
                 ),
               ),
               onPressed: () {
@@ -963,7 +950,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                         color:
-                            isSelected ? Colors.black : AppColors.text(context),
+                            isSelected ? Colors.black : MetaColors.textPrimary,
                       ),
                     ),
                   ),
@@ -979,7 +966,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                           color:
                               isSelected
                                   ? Colors.black
-                                  : AppColors.text(context),
+                                  : MetaColors.textPrimary,
                         ),
                       ),
                       if (hasAlert) ...[
@@ -992,12 +979,12 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                       ],
                     ],
                   ),
-                  backgroundColor: AppColors.pillBg(context),
-                  selectedColor: AppColors.emerald(context),
+                  backgroundColor: MetaColors.surfaceHighlight,
+                  selectedColor: MetaColors.emerald,
                   side: BorderSide(
                     color:
                         isSelected
-                            ? AppColors.emerald(context)
+                            ? MetaColors.emerald
                             : (hasAlert
                                 ? Colors.amber.shade600
                                 : AppColors.cardBorder(context)),
@@ -1032,7 +1019,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
               color: AppColors.emeraldBg(context),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: AppColors.emerald(context).withValues(alpha: 0.3),
+                color: MetaColors.emerald.withValues(alpha: 0.3),
               ),
             ),
             child: Row(
@@ -1040,15 +1027,15 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                 Icon(
                   Icons.bolt_rounded,
                   size: 16,
-                  color: AppColors.emerald(context),
+                  color: MetaColors.emerald,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'A mesma periodização será sincronizada para os ${_selectedMultipleStudentIds.length} alunos selecionados.',
+                    'A mesma periodização serÃ¡ sincronizada para os ${_selectedMultipleStudentIds.length} alunos selecionados.',
                     style: TextStyle(
                       fontSize: 11,
-                      color: AppColors.emerald(context),
+                      color: MetaColors.emerald,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1075,8 +1062,8 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Nenhum aluno cadastrado ainda. A periodização poderá ser salva e vinculada posteriormente.',
-              style: TextStyle(fontSize: 12, color: AppColors.text(context)),
+              'Nenhum aluno cadastrado ainda. A periodização poderÃ¡ ser salva e vinculada posteriormente.',
+              style: TextStyle(fontSize: 12, color: MetaColors.textPrimary),
             ),
           ),
         ],
@@ -1152,7 +1139,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.card(context),
+              color: MetaColors.surface,
               border: Border(
                 bottom: BorderSide(color: AppColors.cardBorder(context)),
               ),
@@ -1169,7 +1156,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.text(context),
+                          color: MetaColors.textPrimary,
                         ),
                       ),
                     ),
@@ -1190,7 +1177,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                       child: Text(
                         '${plan.splits.length} SPLITS',
                         style: TextStyle(
-                          color: AppColors.emerald(context),
+                          color: MetaColors.emerald,
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
                         ),
@@ -1200,10 +1187,10 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Diretriz Clínica: ${plan.notesForTrainer}',
+                  'Diretriz ClÃ­nica: ${plan.notesForTrainer}',
                   style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.subtext(context),
+                    color: MetaColors.textSecondary,
                     height: 1.3,
                   ),
                 ),
@@ -1214,9 +1201,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.pillBg(context),
+                    color: MetaColors.surfaceHighlight,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.pillBorder(context)),
+                    border: Border.all(color: MetaColors.border),
                   ),
                   child: Row(
                     children: [
@@ -1225,7 +1212,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                             ? Icons.person_rounded
                             : Icons.groups_rounded,
                         size: 18,
-                        color: AppColors.emerald(context),
+                        color: MetaColors.emerald,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -1234,12 +1221,12 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                           children: [
                             Text(
                               _dispatchMode == StudentDispatchMode.individual
-                                  ? 'Destinatário Individual'
-                                  : 'Destinatários em Lote (${_selectedMultipleStudentIds.length} alunos)',
+                                  ? 'DestinatÃ¡rio Individual'
+                                  : 'DestinatÃ¡rios em Lote (${_selectedMultipleStudentIds.length} alunos)',
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.emerald(context),
+                                color: MetaColors.emerald,
                                 letterSpacing: 0.5,
                               ),
                             ),
@@ -1248,7 +1235,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.text(context),
+                                color: MetaColors.textPrimary,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -1267,7 +1254,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                             ),
                           ),
                           style: TextButton.styleFrom(
-                            foregroundColor: AppColors.emerald(context),
+                            foregroundColor: MetaColors.emerald,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 4,
@@ -1284,9 +1271,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           ),
           TabBar(
             isScrollable: true,
-            indicatorColor: AppColors.emerald(context),
-            labelColor: AppColors.emerald(context),
-            unselectedLabelColor: AppColors.subtext(context),
+            indicatorColor: MetaColors.emerald,
+            labelColor: MetaColors.emerald,
+            unselectedLabelColor: MetaColors.textSecondary,
             indicatorWeight: 3,
             tabs:
                 plan.splits
@@ -1305,7 +1292,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                   padding: const EdgeInsets.all(16),
                   itemCount: split.exercises.length + 1,
                   itemBuilder: (ctx, i) {
-                    // BOTÃO INCLUIR NOVO EXERCÍCIO AO FINAL DO SPLIT
+                    // BOTÃƒO INCLUIR NOVO EXERCÃCIO AO FINAL DO SPLIT
                     if (i == split.exercises.length) {
                       return Container(
                         margin: const EdgeInsets.only(top: 8, bottom: 24),
@@ -1313,14 +1300,14 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                         child: OutlinedButton.icon(
                           icon: Icon(
                             Icons.add_circle_outline_rounded,
-                            color: AppColors.emerald(context),
+                            color: MetaColors.emerald,
                             size: 18,
                           ),
                           label: Text(
-                            'Incluir Novo Exercício no Treino ${split.splitIdentifier}',
+                            'Incluir Novo ExercÃ­cio no Treino ${split.splitIdentifier}',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: AppColors.emerald(context),
+                              color: MetaColors.emerald,
                               fontSize: 13,
                             ),
                           ),
@@ -1349,7 +1336,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: AppColors.card(context),
+                        color: MetaColors.surface,
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
                           color: AppColors.cardBorder(context),
@@ -1387,7 +1374,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                   child: Text(
                                     '${i + 1}',
                                     style: TextStyle(
-                                      color: AppColors.emerald(context),
+                                      color: MetaColors.emerald,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 12,
                                     ),
@@ -1404,14 +1391,14 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 15,
-                                        color: AppColors.text(context),
+                                        color: MetaColors.textPrimary,
                                       ),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       ex.targetMuscleGroup,
                                       style: TextStyle(
-                                        color: AppColors.subtext(context),
+                                        color: MetaColors.textSecondary,
                                         fontSize: 12,
                                       ),
                                     ),
@@ -1424,7 +1411,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                   size: 19,
                                 ),
                                 color: Colors.red.shade400,
-                                tooltip: 'Remover exercício',
+                                tooltip: 'Remover exercÃ­cio',
                                 visualDensity: VisualDensity.compact,
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(
@@ -1448,18 +1435,18 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                 ex.notes,
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: AppColors.subtext(context),
+                                  color: MetaColors.textSecondary,
                                   fontStyle: FontStyle.italic,
                                 ),
                               ),
                             ),
                           ],
                           const SizedBox(height: 12),
-                          // CONTROLES DE AJUSTE RÁPIDO: SÉRIES, REPS, DESCANSO
+                          // CONTROLES DE AJUSTE RÃPIDO: SÃ‰RIES, REPS, DESCANSO
                           Row(
                             children: [
                               _buildParamStepper(
-                                label: 'Séries',
+                                label: 'SÃ©ries',
                                 value: '${ex.sets}',
                                 onDecrement:
                                     () =>
@@ -1512,46 +1499,16 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             ),
             child: SizedBox(
               width: double.infinity,
-              child: ElevatedButton.icon(
-                icon:
-                    _isSavingPlan
-                        ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            color: Colors.black,
-                            strokeWidth: 2,
-                          ),
-                        )
-                        : const Icon(
-                          Icons.check_circle_outline,
-                          color: Colors.black,
-                        ),
-                label: Text(
-                  _isSavingPlan
+              child: SquircleButton(
+                  label: _isSavingPlan
                       ? 'Gravando no Supabase...'
                       : (_dispatchMode == StudentDispatchMode.individual
-                          ? 'Aprovar e Liberar para ${_selectedIndividualStudent?['full_name'] ?? 'o Aluno'}'
-                          : 'Aprovar e Liberar para ${_selectedMultipleStudentIds.length} Alunos'),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                  ),
+                          ? 'Aprovar e Liberar para $(_selectedIndividualStudent?['full_name'] ?? 'o Aluno'})'
+                          : 'Aprovar e Liberar para $(_selectedMultipleStudentIds.length}) Alunos'),
+                  icon: _isSavingPlan ? Icons.hourglass_empty : Icons.check_circle_outline,
+                  isPrimary: true,
+                  onPressed: _isSavingPlan ? () {} : _handleApprovePlan,
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.emerald(context),
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  elevation: 4,
-                  shadowColor: AppColors.emerald(
-                    context,
-                  ).withValues(alpha: 0.35),
-                ),
-                onPressed: _isSavingPlan ? null : _handleApprovePlan,
-              ),
             ),
           ),
         ],
@@ -1562,7 +1519,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
   void _showChangeRecipientsSheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.card(context),
+      backgroundColor: MetaColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1585,11 +1542,11 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Destinatários da Prescrição',
+                        'DestinatÃ¡rios da PrescriÃ§Ã£o',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.text(context),
+                          color: MetaColors.textPrimary,
                         ),
                       ),
                       IconButton(
@@ -1602,9 +1559,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: AppColors.pillBg(context),
+                      color: MetaColors.surfaceHighlight,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.pillBorder(context)),
+                      border: Border.all(color: MetaColors.border),
                     ),
                     child: Row(
                       children: [
@@ -1624,7 +1581,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                 color:
                                     _dispatchMode ==
                                             StudentDispatchMode.individual
-                                        ? AppColors.emerald(context)
+                                        ? MetaColors.emerald
                                         : Colors.transparent,
                                 borderRadius: BorderRadius.circular(10),
                               ),
@@ -1638,7 +1595,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                       _dispatchMode ==
                                               StudentDispatchMode.individual
                                           ? Colors.black
-                                          : AppColors.text(context),
+                                          : MetaColors.textPrimary,
                                 ),
                               ),
                             ),
@@ -1661,7 +1618,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                 color:
                                     _dispatchMode ==
                                             StudentDispatchMode.multiple
-                                        ? AppColors.emerald(context)
+                                        ? MetaColors.emerald
                                         : Colors.transparent,
                                 borderRadius: BorderRadius.circular(10),
                               ),
@@ -1675,7 +1632,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                       _dispatchMode ==
                                               StudentDispatchMode.multiple
                                           ? Colors.black
-                                          : AppColors.text(context),
+                                          : MetaColors.textPrimary,
                                 ),
                               ),
                             ),
@@ -1702,8 +1659,8 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                               leading: CircleAvatar(
                                 backgroundColor:
                                     isSel
-                                        ? AppColors.emerald(context)
-                                        : AppColors.pillBg(context),
+                                        ? MetaColors.emerald
+                                        : MetaColors.surfaceHighlight,
                                 child: Text(
                                   (st['full_name'] as String? ?? 'A')[0]
                                       .toUpperCase(),
@@ -1711,7 +1668,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                     color:
                                         isSel
                                             ? Colors.black
-                                            : AppColors.text(context),
+                                            : MetaColors.textPrimary,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -1719,7 +1676,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                               title: Text(
                                 st['full_name'] as String? ?? 'Aluno',
                                 style: TextStyle(
-                                  color: AppColors.text(context),
+                                  color: MetaColors.textPrimary,
                                   fontWeight:
                                       isSel
                                           ? FontWeight.bold
@@ -1729,7 +1686,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                               subtitle: Text(
                                 st['goal'] ?? st['objective'] ?? 'Consultoria',
                                 style: TextStyle(
-                                  color: AppColors.subtext(context),
+                                  color: MetaColors.textSecondary,
                                   fontSize: 12,
                                 ),
                               ),
@@ -1737,7 +1694,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                   isSel
                                       ? Icon(
                                         Icons.check_circle_rounded,
-                                        color: AppColors.emerald(context),
+                                        color: MetaColors.emerald,
                                       )
                                       : null,
                               onTap: () {
@@ -1758,19 +1715,19 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                             );
                             return CheckboxListTile(
                               contentPadding: EdgeInsets.zero,
-                              activeColor: AppColors.emerald(context),
+                              activeColor: MetaColors.emerald,
                               checkColor: Colors.black,
                               value: isSel,
                               title: Text(
                                 st['full_name'] as String? ?? 'Aluno',
                                 style: TextStyle(
-                                  color: AppColors.text(context),
+                                  color: MetaColors.textPrimary,
                                 ),
                               ),
                               subtitle: Text(
                                 st['goal'] ?? st['objective'] ?? 'Consultoria',
                                 style: TextStyle(
-                                  color: AppColors.subtext(context),
+                                  color: MetaColors.textSecondary,
                                   fontSize: 12,
                                 ),
                               ),
@@ -1795,7 +1752,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                     width: double.infinity,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.emerald(context),
+                        backgroundColor: MetaColors.emerald,
                         foregroundColor: Colors.black,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -1804,7 +1761,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                       ),
                       onPressed: () => Navigator.pop(ctx),
                       child: const Text(
-                        'Confirmar Destinatários',
+                        'Confirmar DestinatÃ¡rios',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -1826,7 +1783,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
     '12-15',
     '15-20',
     '20-25',
-    'Até a Falha',
+    'AtÃ© a Falha',
   ];
 
   Widget _buildParamStepper({
@@ -1840,9 +1797,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
         decoration: BoxDecoration(
-          color: AppColors.pillBg(context),
+          color: MetaColors.surfaceHighlight,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.pillBorder(context)),
+          border: Border.all(color: MetaColors.border),
         ),
         child: Column(
           children: [
@@ -1851,7 +1808,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
               style: TextStyle(
                 fontSize: 9,
                 fontWeight: FontWeight.w700,
-                color: AppColors.subtext(context),
+                color: MetaColors.textSecondary,
                 letterSpacing: 0.5,
               ),
             ),
@@ -1866,14 +1823,14 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                     width: 22,
                     height: 22,
                     decoration: BoxDecoration(
-                      color: AppColors.card(context),
+                      color: MetaColors.surface,
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(color: AppColors.cardBorder(context)),
                     ),
                     child: Icon(
                       Icons.remove,
                       size: 13,
-                      color: AppColors.text(context),
+                      color: MetaColors.textPrimary,
                     ),
                   ),
                 ),
@@ -1886,7 +1843,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.text(context),
+                        color: MetaColors.textPrimary,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1899,14 +1856,14 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                     width: 22,
                     height: 22,
                     decoration: BoxDecoration(
-                      color: AppColors.card(context),
+                      color: MetaColors.surface,
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(color: AppColors.cardBorder(context)),
                     ),
                     child: Icon(
                       Icons.add,
                       size: 13,
-                      color: AppColors.text(context),
+                      color: MetaColors.textPrimary,
                     ),
                   ),
                 ),
@@ -1965,22 +1922,22 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
       context: context,
       builder:
           (ctx) => AlertDialog(
-            backgroundColor: AppColors.card(context),
+            backgroundColor: MetaColors.surface,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
             title: Text(
-              'Ajustar Repetições',
-              style: TextStyle(color: AppColors.text(context), fontSize: 16),
+              'Ajustar RepetiÃ§Ãµes',
+              style: TextStyle(color: MetaColors.textPrimary, fontSize: 16),
             ),
             content: TextField(
               controller: ctrl,
               autofocus: true,
-              style: TextStyle(color: AppColors.text(context)),
+              style: TextStyle(color: MetaColors.textPrimary),
               decoration: InputDecoration(
-                hintText: 'Ex: 10-12, 4x8, Até a falha',
+                hintText: 'Ex: 10-12, 4x8, AtÃ© a falha',
                 filled: true,
-                fillColor: AppColors.pillBg(context),
+                fillColor: MetaColors.surfaceHighlight,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -1991,12 +1948,12 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                 onPressed: () => Navigator.pop(ctx),
                 child: Text(
                   'Cancelar',
-                  style: TextStyle(color: AppColors.subtext(context)),
+                  style: TextStyle(color: MetaColors.textSecondary),
                 ),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.emerald(context),
+                  backgroundColor: MetaColors.emerald,
                   foregroundColor: Colors.black,
                 ),
                 onPressed: () {
@@ -2052,24 +2009,24 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
       context: context,
       builder:
           (ctx) => AlertDialog(
-            backgroundColor: AppColors.card(context),
+            backgroundColor: MetaColors.surface,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
             title: Text(
-              'Remover Exercício?',
-              style: TextStyle(color: AppColors.text(context)),
+              'Remover ExercÃ­cio?',
+              style: TextStyle(color: MetaColors.textPrimary),
             ),
             content: Text(
-              'Deseja remover "$exerciseName" desta divisão?',
-              style: TextStyle(color: AppColors.subtext(context)),
+              'Deseja remover "$exerciseName" desta divisÃ£o?',
+              style: TextStyle(color: MetaColors.textSecondary),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: Text(
                   'Cancelar',
-                  style: TextStyle(color: AppColors.subtext(context)),
+                  style: TextStyle(color: MetaColors.textSecondary),
                 ),
               ),
               ElevatedButton(
@@ -2132,32 +2089,32 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
       'Peitoral',
       'Dorsais / Costas',
       'Deltoides / Ombros',
-      'Quadríceps',
+      'QuadrÃ­ceps',
       'Posterior de Coxa',
-      'Glúteos',
-      'Bíceps',
-      'Tríceps',
+      'GlÃºteos',
+      'BÃ­ceps',
+      'TrÃ­ceps',
       'Panturrilhas',
-      'Abdômen / Core',
+      'AbdÃ´men / Core',
       'Geral',
     ];
 
     const suggestions = [
       'Supino Inclinado com Halteres',
       'Puxada Alta (Lat Pulldown)',
-      'Elevação Lateral na Polia',
-      'Agachamento Búlgaro',
-      'Leg Press 45°',
+      'ElevaÃ§Ã£o Lateral na Polia',
+      'Agachamento BÃºlgaro',
+      'Leg Press 45Â°',
       'Cadeira Extensora',
-      'Tríceps na Polia com Corda',
+      'TrÃ­ceps na Polia com Corda',
       'Rosca Direta com Barra W',
       'Mesa Flexora',
-      'Elevação Pélvica',
+      'ElevaÃ§Ã£o PÃ©lvica',
     ];
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.card(context),
+      backgroundColor: MetaColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -2184,16 +2141,16 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                           children: [
                             Icon(
                               Icons.fitness_center_rounded,
-                              color: AppColors.emerald(context),
+                              color: MetaColors.emerald,
                               size: 20,
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'Novo Exercício • Treino ${split.splitIdentifier}',
+                              'Novo ExercÃ­cio â€¢ Treino ${split.splitIdentifier}',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.text(context),
+                                color: MetaColors.textPrimary,
                               ),
                             ),
                           ],
@@ -2207,10 +2164,10 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                     const SizedBox(height: 12),
                     TextField(
                       controller: nameCtrl,
-                      style: TextStyle(color: AppColors.text(context)),
+                      style: TextStyle(color: MetaColors.textPrimary),
                       decoration: _inputDecoration(
                         context,
-                        'Nome do Exercício',
+                        'Nome do ExercÃ­cio',
                         prefixIcon: Icons.edit_outlined,
                         hint: 'Ex: Supino Inclinado com Halteres',
                       ),
@@ -2226,9 +2183,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                 sug,
                                 style: const TextStyle(fontSize: 10),
                               ),
-                              backgroundColor: AppColors.pillBg(context),
+                              backgroundColor: MetaColors.surfaceHighlight,
                               side: BorderSide(
-                                color: AppColors.pillBorder(context),
+                                color: MetaColors.border,
                               ),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 4,
@@ -2244,9 +2201,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                     const SizedBox(height: 14),
                     DropdownButtonFormField<String>(
                       initialValue: selectedMuscle,
-                      dropdownColor: AppColors.card(context),
+                      dropdownColor: MetaColors.surface,
                       style: TextStyle(
-                        color: AppColors.text(context),
+                        color: MetaColors.textPrimary,
                         fontSize: 13,
                       ),
                       decoration: _inputDecoration(
@@ -2273,20 +2230,20 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: AppColors.pillBg(context),
+                              color: MetaColors.surfaceHighlight,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: AppColors.pillBorder(context),
+                                color: MetaColors.border,
                               ),
                             ),
                             child: Column(
                               children: [
                                 Text(
-                                  'SÉRIES',
+                                  'SÃ‰RIES',
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
-                                    color: AppColors.subtext(context),
+                                    color: MetaColors.textSecondary,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -2303,7 +2260,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                       child: Icon(
                                         Icons.remove_circle_outline,
                                         size: 20,
-                                        color: AppColors.text(context),
+                                        color: MetaColors.textPrimary,
                                       ),
                                     ),
                                     Text(
@@ -2311,7 +2268,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                       style: TextStyle(
                                         fontSize: 15,
                                         fontWeight: FontWeight.bold,
-                                        color: AppColors.text(context),
+                                        color: MetaColors.textPrimary,
                                       ),
                                     ),
                                     InkWell(
@@ -2323,7 +2280,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                       child: Icon(
                                         Icons.add_circle_outline,
                                         size: 20,
-                                        color: AppColors.text(context),
+                                        color: MetaColors.textPrimary,
                                       ),
                                     ),
                                   ],
@@ -2337,20 +2294,20 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: AppColors.pillBg(context),
+                              color: MetaColors.surfaceHighlight,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: AppColors.pillBorder(context),
+                                color: MetaColors.border,
                               ),
                             ),
                             child: Column(
                               children: [
                                 Text(
-                                  'REPETIÇÕES',
+                                  'REPETIÃ‡Ã•ES',
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
-                                    color: AppColors.subtext(context),
+                                    color: MetaColors.textSecondary,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -2359,13 +2316,13 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                       _commonRepRanges.contains(reps)
                                           ? reps
                                           : '10-12',
-                                  dropdownColor: AppColors.card(context),
+                                  dropdownColor: MetaColors.surface,
                                   underline: const SizedBox(),
                                   isDense: true,
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
-                                    color: AppColors.text(context),
+                                    color: MetaColors.textPrimary,
                                   ),
                                   items:
                                       _commonRepRanges
@@ -2390,10 +2347,10 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: AppColors.pillBg(context),
+                              color: MetaColors.surfaceHighlight,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: AppColors.pillBorder(context),
+                                color: MetaColors.border,
                               ),
                             ),
                             child: Column(
@@ -2403,7 +2360,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
-                                    color: AppColors.subtext(context),
+                                    color: MetaColors.textSecondary,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -2421,7 +2378,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                       child: Icon(
                                         Icons.remove_circle_outline,
                                         size: 20,
-                                        color: AppColors.text(context),
+                                        color: MetaColors.textPrimary,
                                       ),
                                     ),
                                     Text(
@@ -2429,7 +2386,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.bold,
-                                        color: AppColors.text(context),
+                                        color: MetaColors.textPrimary,
                                       ),
                                     ),
                                     InkWell(
@@ -2442,7 +2399,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                       child: Icon(
                                         Icons.add_circle_outline,
                                         size: 20,
-                                        color: AppColors.text(context),
+                                        color: MetaColors.textPrimary,
                                       ),
                                     ),
                                   ],
@@ -2457,14 +2414,14 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                     TextField(
                       controller: notesCtrl,
                       style: TextStyle(
-                        color: AppColors.text(context),
+                        color: MetaColors.textPrimary,
                         fontSize: 13,
                       ),
                       decoration: _inputDecoration(
                         context,
-                        'Diretriz / Notas de Execução (Opcional)',
+                        'Diretriz / Notas de ExecuÃ§Ã£o (Opcional)',
                         prefixIcon: Icons.notes_rounded,
-                        hint: 'Ex: Cadência 3-0-1-0 com pico de contração',
+                        hint: 'Ex: CadÃªncia 3-0-1-0 com pico de contraÃ§Ã£o',
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -2483,7 +2440,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.emerald(context),
+                          backgroundColor: MetaColors.emerald,
                           foregroundColor: Colors.black,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
@@ -2520,3 +2477,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
     );
   }
 }
+
+
+
+

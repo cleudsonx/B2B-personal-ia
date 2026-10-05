@@ -26,19 +26,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await AuthService.signUp(
-        email: _emailCtrl.text.trim(),
-        password: _passwordCtrl.text.trim(),
-        fullName: _nameCtrl.text.trim(),
-        role: 'trainer',
-      );
-      if (mounted) {
-        // Redireciona para configurar o perfil do treinador
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const TrainerProfileSetupScreen()),
+              final response = await AuthService.signUp(
+          email: _emailCtrl.text.trim(),
+          password: _passwordCtrl.text.trim(),
+          fullName: _nameCtrl.text.trim(),
+          role: 'trainer',
         );
-      }
+        if (mounted) {
+          if (response.session == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Conta criada! Desligue o "Confirm Email" no Supabase ou verifique seu e-mail.'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+            Navigator.pop(context); // volta pro login
+            return;
+          }
+          // Redireciona para configurar o perfil do treinador
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const TrainerProfileSetupScreen()),
+          );
+        }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -278,6 +288,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
+
 
 
 
