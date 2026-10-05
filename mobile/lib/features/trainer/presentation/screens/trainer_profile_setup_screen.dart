@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'trainer_main_layout.dart';
 import 'whatsapp_connection_screen.dart';
 
 class TrainerProfileSetupScreen extends StatefulWidget {
@@ -132,8 +133,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                   elevation: 0,
                   scrolledUnderElevation: 0,
                   title: const Text('Montar Vitrine'),
-                  centerTitle: true,
-                ),
+                  centerTitle: true, actions: [ TextButton(onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const TrainerMainLayout())), child: const Text('Pular', style: TextStyle(color: MetaColors.emerald, fontWeight: FontWeight.bold))) ], ),
                 SliverPadding(
                   padding: EdgeInsets.only(
                     left: 24,
@@ -349,3 +349,6 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
     );
   }
 }
+
+
+
