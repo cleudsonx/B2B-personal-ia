@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -64,7 +64,8 @@ class WorkoutService {
     final trainerId = trainer?.id ?? 'current-trainer';
     final trainerName =
         trainer?.userMetadata?['full_name'] as String? ?? 'Personal Trainer';
-    final studentId = 'st_${DateTime.now().millisecondsSinceEpoch}';
+    final _rnd = DateTime.now().millisecondsSinceEpoch.toString();
+    final studentId = '11111111-1111-1111-1111-${_rnd.padLeft(12, '0').substring(0, 12)}';
 
     final studentData = {
       'id': studentId,
@@ -746,3 +747,7 @@ class WorkoutService {
     return true;
   }
 }
+
+
+
+

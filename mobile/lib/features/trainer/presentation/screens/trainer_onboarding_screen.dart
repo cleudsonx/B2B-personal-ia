@@ -18,22 +18,22 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
     {
       'icon': Icons.auto_awesome,
       'title': 'Boas-vindas ao Mr. Coach',
-      'description': 'A primeira plataforma que une a sua experiÃªncia com a InteligÃªncia Artificial para revolucionar a sua consultoria.',
+      'description': 'A primeira plataforma que une a sua experiência com a Inteligência Artificial para revolucionar a sua consultoria.',
     },
     {
       'icon': Icons.trending_up_rounded,
       'title': 'Escale Seus Ganhos',
-      'description': 'Pare de perder tempo montando planilhas manuais. Prescreva treinos em segundos e deixe a IA cuidar do suporte bÃ¡sico.',
+      'description': 'Pare de perder tempo montando planilhas manuais. Prescreva treinos em segundos e deixe a IA cuidar do suporte básico.',
     },
     {
       'icon': Icons.storefront_rounded,
       'title': 'Sua Vitrine Digital',
-      'description': 'Tenha uma pÃ¡gina exclusiva para vender seus planos. Feche contratos e receba pagamentos enquanto vocÃª dorme.',
+      'description': 'Tenha uma página exclusiva para vender seus planos. Feche contratos e receba pagamentos enquanto você dorme.',
     },
     {
       'icon': Icons.chat_rounded,
       'title': 'Consultor 24h no WhatsApp',
-      'description': 'Nossa IA responde as dÃºvidas dos seus alunos em tempo real, garantindo um atendimento premium sem esgotar o seu tempo.',
+      'description': 'Nossa IA responde as dúvidas dos seus alunos em tempo real, garantindo um atendimento premium sem esgotar o seu tempo.',
     },
   ];
 
@@ -113,7 +113,7 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
               ),
             ),
             
-            // RodapÃ©: Indicadores e BotÃ£o
+            // Rodapé: Indicadores e Botão
             Padding(
               padding: const EdgeInsets.all(32.0),
               child: Column(
@@ -140,7 +140,7 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: SquircleButton(
-                      label: _currentIndex == _slides.length - 1 ? 'Montar Minha Vitrine' : 'AvanÃ§ar',
+                      label: _currentIndex == _slides.length - 1 ? 'Montar Minha Vitrine' : 'Avançar',
                       icon: _currentIndex == _slides.length - 1 ? Icons.rocket_launch : Icons.arrow_forward,
                       isPrimary: true,
                       onPressed: _nextPage,
@@ -155,3 +155,5 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
     );
   }
 }
+
+
