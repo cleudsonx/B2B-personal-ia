@@ -1,7 +1,8 @@
 ﻿import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/meta_components.dart';
-import 'trainer_main_layout.dart'; // Or route to storefront setup
+import 'trainer_main_layout.dart';
+import 'trainer_profile_setup_screen.dart'; // Or route to storefront setup
 
 class TrainerOnboardingScreen extends StatefulWidget {
   const TrainerOnboardingScreen({super.key});
@@ -47,7 +48,7 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
       // Finalizou o onboarding, vai para o Layout Principal
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const TrainerMainLayout()),
+        MaterialPageRoute(builder: (_) => const TrainerProfileSetupScreen()),
       );
     }
   }
@@ -155,5 +156,7 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
     );
   }
 }
+
+
 
 
