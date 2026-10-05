@@ -64,3 +64,4 @@ async def get_status(user: Dict[str, Any] = Depends(get_current_user)):
         raise HTTPException(status_code=502, detail="Erro ao consultar o WhatsApp.")
     except Exception:
         raise HTTPException(status_code=502, detail="Erro ao consultar o WhatsApp.")
+
