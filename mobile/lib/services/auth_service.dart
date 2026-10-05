@@ -4,6 +4,16 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/config/app_config.dart';
 
 class AuthService {
+  static Future<void> updatePassword(String newPassword) async {
+    try {
+      await _client.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+    } catch (e) {
+      debugPrint('UpdatePassword error: ');
+      rethrow;
+    }
+  }
   static SupabaseClient? get _clientOrNull {
     try {
       return Supabase.instance.client;

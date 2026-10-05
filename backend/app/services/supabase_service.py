@@ -634,9 +634,10 @@ class SupabaseService:
             student_id = None
             try:
                 # 1. Cria usuário no Supabase Auth via Admin API
+                temp_password = f"TempPass_{uuid.uuid4().hex[:8]}!"
                 user_res = await client.auth.admin.create_user({
                     "email": req.email,
-                    "password": f"TempPass_{uuid.uuid4().hex[:8]}!",
+                    "password": temp_password,
                     "email_confirm": True,
                     "user_metadata": {
                         "full_name": req.full_name,

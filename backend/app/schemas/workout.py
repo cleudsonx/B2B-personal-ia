@@ -85,6 +85,7 @@ class StudentResponse(BaseModel):
     injuries_or_restrictions: Optional[str] = None
     trainer_name: Optional[str] = None
     trainer_photo_url: Optional[str] = None
+    temp_password: Optional[str] = None
 
 
 class BiomechanicalAlertCreate(BaseModel):
@@ -138,6 +139,7 @@ class StudentInviteResponse(BaseModel):
     email_status: str
     whatsapp_status: str
     message: str
+    temp_password: Optional[str] = None
 
 
 class GamificationResponse(BaseModel):
