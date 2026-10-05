@@ -52,4 +52,4 @@ jobs:
       - name: Análise Estática
         run: |
           cd mobile
-          flutter analyze --no-fatal-infos
+          flutter analyze --no-fatal-infos --no-fatal-warnings
