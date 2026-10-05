@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
@@ -119,40 +119,71 @@ class _AuthGateState extends State<AuthGate> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: MetaColors.background,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/images/mr_coach_logo_full.png',
-              height: 64,
-              errorBuilder: (_, __, ___) => const Icon(
-                Icons.fitness_center_rounded,
-                size: 54,
-                color: MetaColors.emerald,
+      backgroundColor: Colors.black, // Fundo puro preto para mesclar com a logo
+      body: Stack(
+        children: [
+          // Efeito de Entrada da Logo (Fade In e leve Scale)
+          Center(
+            child: TweenAnimationBuilder(
+              duration: const Duration(milliseconds: 1200),
+              tween: Tween<double>(begin: 0.8, end: 1.0),
+              curve: Curves.easeOutCubic,
+              builder: (context, scale, child) {
+                return Opacity(
+                  opacity: (scale - 0.8) / 0.2, // Faz um fade de 0 a 1 junto com o scale
+                  child: Transform.scale(
+                    scale: scale,
+                    child: child,
+                  ),
+                );
+              },
+              child: Image.asset(
+                'assets/images/logo_shaipados_gold.jpg',
+                width: MediaQuery.of(context).size.width * 0.75, // 75% da largura da tela
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.fitness_center_rounded,
+                  size: 80,
+                  color: MetaColors.emerald,
+                ),
               ),
             ),
-            const SizedBox(height: 32),
-            if (_isAuthenticating) ...[
-              const Icon(
-                Icons.fingerprint_rounded,
-                size: 48,
-                color: MetaColors.textSecondary,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Autenticando...',
-                style: TextStyle(color: MetaColors.textSecondary),
-              ),
-            ] else ...[
-              const CircularProgressIndicator(
-                color: MetaColors.emerald,
-              ),
-            ],
-          ],
-        ),
+          ),
+          
+          // Indicador de Carregamento posicionado no rodapé elegante
+          Positioned(
+            bottom: 60,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: _isAuthenticating
+                  ? Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(
+                          Icons.fingerprint_rounded,
+                          size: 48,
+                          color: MetaColors.emerald,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'Desbloqueando...',
+                          style: TextStyle(
+                            color: MetaColors.textSecondary,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ],
+                    )
+                  : const CircularProgressIndicator(
+                      color: MetaColors.emerald,
+                      strokeWidth: 3,
+                    ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
+
