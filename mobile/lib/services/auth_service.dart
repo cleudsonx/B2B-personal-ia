@@ -267,6 +267,15 @@ class AuthService {
   }
 
   /// Desconectar a sessão e limpar caches
+  
+  static Future<void> resetPasswordForEmail(String email) async {
+    try {
+      await Supabase.instance.client.auth.resetPasswordForEmail(email);
+    } catch (e) {
+      throw Exception('Erro ao solicitar recuperaÃ§Ã£o: ');
+    }
+  }
+
   static Future<void> signOut() async {
     _cachedProfile = null;
     try {

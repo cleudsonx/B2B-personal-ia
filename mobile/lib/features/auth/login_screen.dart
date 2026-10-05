@@ -279,17 +279,33 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                onPressed: () {
+                                onPressed: () async {
+                  final email = resetEmailCtrl.text.trim();
+                  if (email.isEmpty) return;
                   Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      backgroundColor: MetaColors.surfaceHighlight,
-                      content: Text(
-                        'Instruções enviadas para ${resetEmailCtrl.text}',
-                        style: const TextStyle(color: MetaColors.textPrimary),
-                      ),
-                    ),
-                  );
+                  try {
+                    await AuthService.resetPasswordForEmail(email);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: MetaColors.surfaceHighlight,
+                          content: Text(
+                            'Instruções enviadas para '.replaceAll('ç', 'Ã§').replaceAll('õ', 'Ãµ'),
+                            style: const TextStyle(color: MetaColors.textPrimary),
+                          ),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          backgroundColor: AppColors.danger,
+                          content: Text('Erro ao enviar e-mail. Verifique se o formato está correto.'),
+                        ),
+                      );
+                    }
+                  }
                 },
                 child: const Text(
                   'Enviar Link',
