@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/meta_components.dart';
 import '../../../../services/auth_service.dart';
+import '../../../../core/config/app_config.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class WhatsappConnectionScreen extends StatefulWidget {
   const WhatsappConnectionScreen({super.key});
@@ -65,35 +67,44 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
     });
 
     try {
-      final response = await http.post(
-        Uri.parse('https://api.shaipados.com/api/v1/whatsapp/connect'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({"instance_name": "trainer_mr_coach", "number": phone}),
-      );
+      final token = Supabase.instance.client.auth.currentSession?.accessToken;
+      if (token == null) throw Exception('Sessão expirada. Faça login novamente.');
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        setState(() {
-          _pairingCode = data['pairingCode'] ?? 'MRCO-ACH1';
-          _isLoading = false;
-        });
-      } else {
-        throw Exception('Erro no servidor HTTP');
+      final response = await http
+          .post(
+            Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/connect'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({'number': phone}),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode != 200) {
+        throw Exception(response.statusCode == 503
+            ? 'Integração WhatsApp ainda não está ativa no servidor.'
+            : 'Não foi possível gerar o código (erro ${response.statusCode}).');
       }
-    } catch (e) {
-      // Mock para a visão do CEO
-      await Future.delayed(const Duration(seconds: 1));
+
+      final data = jsonDecode(response.body);
+      final code = data['pairingCode'];
+      if (code == null || code.toString().isEmpty) {
+        throw Exception('O servidor não retornou o código de pareamento. Tente novamente.');
+      }
       if (mounted) {
         setState(() {
-          _pairingCode = 'A1B2-C3D4'; // Código de pareamento simulado
+          _pairingCode = code.toString();
           _isLoading = false;
         });
-        
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Aviso: Backend offline (SSL). Simulando código para visualização.'),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            backgroundColor: AppColors.danger,
           ),
         );
       }

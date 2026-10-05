@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     EVOLUTION_API_KEY: str = ""
     EVOLUTION_API_URL: str = "http://193.123.123.34:8080"
     EVOLUTION_INSTANCE: str = "mr_coach_instance"
+    # Segredo que a Evolution envia no header "apikey" do webhook (obrigatorio p/ ativar o Consultor IA)
+    EVOLUTION_WEBHOOK_TOKEN: str = ""
+    # URL publica do backend, usada para registrar o webhook na Evolution
+    PUBLIC_BACKEND_URL: str = ""
     
     # CORS (aceita string "*", JSON '["*"]' ou listas sem erro no EnvSettingsSource do Pydantic)
     CORS_ORIGINS: Union[str, List[str]] = "*"

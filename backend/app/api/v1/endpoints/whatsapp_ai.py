@@ -8,17 +8,19 @@ modelo barato (flash-lite). Pensado para custo mínimo e segurança:
 - limite de mensagens por aluno/dia;
 - resposta curta (max tokens) e sem aconselhamento médico.
 """
+import hmac
 import logging
 import time
 from collections import defaultdict
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Request, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
 from google.genai import types
 
+from app.core.config import settings
 from app.services.gemini_service import gemini_service
 from app.services.supabase_service import supabase_service
-from app.services.whatsapp_service import whatsapp_service
+from app.services.whatsapp_service import trainer_id_from_instance, whatsapp_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -57,13 +59,13 @@ def _within_limit(student_id: str) -> bool:
     return True
 
 
-async def _find_student_by_phone(digits: str) -> Optional[Dict[str, Any]]:
+async def _find_student_by_phone(digits: str, trainer_id: str) -> Optional[Dict[str, Any]]:
     client = await supabase_service.get_client()
     if not client or len(digits) < 10:
         return None
     suffix = digits[-9:]  # tolera DDI/DDD e nono dígito
     res = await client.table("profiles").select("id, full_name, trainer_id, role") \
-        .eq("role", "client").ilike("phone", f"%{suffix}").limit(1).execute()
+        .eq("role", "client").eq("trainer_id", trainer_id).ilike("phone", f"%{suffix}").limit(1).execute()
     return res.data[0] if res.data else None
 
 
@@ -77,7 +79,11 @@ def _plan_summary(plan) -> str:
 
 async def _answer(instance: str, number: str, digits: str, question: str) -> None:
     try:
-        student = await _find_student_by_phone(digits)
+        trainer_id = trainer_id_from_instance(instance)
+        if not trainer_id:
+            return
+        # Só atende alunos VINCULADOS ao professor dono desta instância.
+        student = await _find_student_by_phone(digits, trainer_id)
         if not student:
             return  # número desconhecido: silêncio (evita custo e spam)
 
@@ -113,6 +119,12 @@ async def _answer(instance: str, number: str, digits: str, question: str) -> Non
 
 @router.post("/webhook", status_code=status.HTTP_200_OK, summary="Webhook Evolution API (Consultor Ativo)")
 async def evolution_webhook(request: Request, background: BackgroundTasks):
+    # Fail-closed: sem segredo configurado ou com segredo errado, nada é processado.
+    expected = settings.EVOLUTION_WEBHOOK_TOKEN
+    received = request.headers.get("apikey", "")
+    if not expected or not hmac.compare_digest(received.encode(), expected.encode()):
+        raise HTTPException(status_code=401, detail="Webhook não autorizado.")
+
     try:
         body = await request.json()
     except Exception:

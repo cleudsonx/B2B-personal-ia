@@ -5,7 +5,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../core/config/app_config.dart';
 import '../../core/widgets/meta_components.dart';
 
 class TrainerPublicLandingScreen extends StatefulWidget {

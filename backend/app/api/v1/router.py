@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import workouts, adaptations, assistant, subscriptions, validators, auth, webhooks, public, whatsapp_ai
+from app.api.v1.endpoints import workouts, adaptations, assistant, subscriptions, validators, auth, webhooks, public, whatsapp, whatsapp_ai
 
 api_router = APIRouter()
 
@@ -12,4 +12,4 @@ api_router.include_router(subscriptions.router, prefix="/subscriptions", tags=["
 api_router.include_router(validators.router, prefix="/validators", tags=["Validators"])
 api_router.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])
 api_router.include_router(whatsapp_ai.router, prefix="/whatsapp", tags=["WhatsApp AI"])
-
+api_router.include_router(whatsapp.router, prefix="/whatsapp", tags=["WhatsApp"])

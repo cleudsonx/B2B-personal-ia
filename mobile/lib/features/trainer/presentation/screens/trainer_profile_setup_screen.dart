@@ -1,5 +1,5 @@
 import '../../../../core/widgets/meta_components.dart';
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'trainer_main_layout.dart';
