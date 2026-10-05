@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import '../../../services/auth_service.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/widgets/meta_components.dart';
@@ -17,6 +18,37 @@ class TrainerBusinessScreen extends StatefulWidget {
 }
 
 class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
+  bool _isProfileIncomplete = false;
+  bool _isLoadingProfile = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkProfileStatus();
+  }
+
+  Future<void> _checkProfileStatus() async {
+    try {
+      final profile = await AuthService.getCurrentProfile();
+      if (profile != null) {
+        final bio = profile['bio'] as String?;
+        final specialties = profile['specialties'] as List<dynamic>?;
+        final username = profile['username'] as String?;
+        
+        setState(() {
+          _isProfileIncomplete = (bio == null || bio.trim().isEmpty) || 
+                                 (specialties == null || specialties.isEmpty) ||
+                                 (username == null || username.trim().isEmpty);
+          _isLoadingProfile = false;
+        });
+      } else {
+        setState(() => _isLoadingProfile = false);
+      }
+    } catch (e) {
+      if(mounted) setState(() => _isLoadingProfile = false);
+    }
+  }
+
   // Dados dos cards de dicas ("Como")
   final List<_BusinessTip> _tips = const [
     _BusinessTip(
@@ -651,6 +683,60 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
   }
 
   @override
+    Widget _buildIncompleteProfileBanner() {
+    if (_isLoadingProfile || !_isProfileIncomplete) return const SliverToBoxAdapter(child: SizedBox.shrink());
+    
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        child: MetaCard(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: MetaColors.emerald, size: 20),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Perfil Público Incompleto',
+                    style: TextStyle(
+                      color: MetaColors.textPrimary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Sua vitrine pública ainda não tem informações suficientes para atrair alunos. Configure sua bio, especialidades e seu nome de usuário.',
+                style: TextStyle(color: MetaColors.textSecondary, fontSize: 13, height: 1.4),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: MetaColors.surfaceHighlight,
+                    foregroundColor: MetaColors.emerald,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/trainer_profile_setup').then((_) => _checkProfileStatus());
+                  },
+                  child: const Text('Completar Perfil', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.paddingOf(context).top;
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
@@ -689,6 +775,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
               ),
             ),
 
+            _buildIncompleteProfileBanner(),
             // Seção 1: "Como" (Dicas de Negócio em Cards Horizontais)
             SliverToBoxAdapter(
               child: Padding(
