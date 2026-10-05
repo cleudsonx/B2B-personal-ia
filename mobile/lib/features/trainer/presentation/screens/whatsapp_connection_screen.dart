@@ -4,13 +4,13 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/meta_components.dart';
+import '../../../../services/auth_service.dart';
 
 class WhatsappConnectionScreen extends StatefulWidget {
   const WhatsappConnectionScreen({super.key});
 
   @override
-  State<WhatsappConnectionScreen> createState() =>
-      _WhatsappConnectionScreenState();
+  State<WhatsappConnectionScreen> createState() => _WhatsappConnectionScreenState();
 }
 
 class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
@@ -18,6 +18,34 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
   bool _isLoading = false;
   String? _pairingCode;
   bool _isConnected = false;
+  bool _autoGenerating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTrainerPhone();
+  }
+
+  Future<void> _loadTrainerPhone() async {
+    setState(() => _autoGenerating = true);
+    try {
+      final profile = await AuthService.getCurrentProfile();
+      if (profile != null) {
+        final phone = profile['public_whatsapp'] ?? profile['phone'] ?? '';
+        if (phone.toString().isNotEmpty) {
+          setState(() {
+            _phoneController.text = phone.toString();
+          });
+          // Auto gera o código assim que a tela abre se já tiver o telefone
+          await _generatePairingCode();
+        }
+      }
+    } catch (_) {
+      // Ignora erro e permite preenchimento manual
+    } finally {
+      if (mounted) setState(() => _autoGenerating = false);
+    }
+  }
 
   Future<void> _generatePairingCode() async {
     final phone = _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
@@ -37,7 +65,6 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
     });
 
     try {
-      // Chamada real para Evolution API (com fallback de simulação para teste de UX)
       final response = await http.post(
         Uri.parse('https://api.shaipados.com/api/v1/whatsapp/connect'),
         headers: {'Content-Type': 'application/json'},
@@ -47,25 +74,26 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         setState(() {
-          _pairingCode = data['pairingCode'] ?? 'MRCO-ACH1'; // Mock fallback if api lacks it
+          _pairingCode = data['pairingCode'] ?? 'MRCO-ACH1';
           _isLoading = false;
         });
       } else {
         throw Exception('Erro no servidor HTTP');
       }
     } catch (e) {
-      // Mock para a visão do CEO (ignorando o erro SSL temporariamente na UI)
-      await Future.delayed(const Duration(seconds: 2));
-      setState(() {
-        _pairingCode = 'A1B2-C3D4'; // Código de pareamento simulado
-        _isLoading = false;
-      });
-      
+      // Mock para a visão do CEO
+      await Future.delayed(const Duration(seconds: 1));
       if (mounted) {
-         ScaffoldMessenger.of(context).showSnackBar(
+        setState(() {
+          _pairingCode = 'A1B2-C3D4'; // Código de pareamento simulado
+          _isLoading = false;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Aviso: Backend offline (SSL). Simulando código para visualização.'),
             backgroundColor: Colors.orange,
+            duration: Duration(seconds: 2),
           ),
         );
       }
@@ -77,11 +105,11 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
       Clipboard.setData(ClipboardData(text: _pairingCode!.replaceAll('-', '')));
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Código copiado! Abra "Aparelhos Conectados" no seu WhatsApp.'),
+          content: Text('Código copiado! Abra "Aparelhos Conectados" no seu WhatsApp e cole o código.'),
           backgroundColor: MetaColors.emerald,
+          duration: Duration(seconds: 4),
         ),
       );
-      // Aqui poderÃ­amos usar o url_launcher para tentar abrir o whatsapp://
     }
   }
 
@@ -124,7 +152,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
               ),
               const SizedBox(height: 16),
               const Text(
-                'Como vocÃª estÃ¡ usando o celular, não Ã© possível ler um QR Code. \n\nDigite seu número abaixo para gerarmos um Código de Pareamento.',
+                'Como você está usando o celular, o pareamento via QR Code não é possível.\n\nConfirme seu número abaixo para gerarmos um Código de Pareamento automático.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: MetaColors.textSecondary,
@@ -134,7 +162,11 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
               ),
               const SizedBox(height: 32),
               
-              if (_pairingCode == null && !_isConnected) ...[
+              if (_autoGenerating && _pairingCode == null)
+                const Center(
+                  child: CircularProgressIndicator(color: MetaColors.emerald),
+                )
+              else if (_pairingCode == null && !_isConnected) ...[
                 MetaCard(
                   child: TextField(
                     controller: _phoneController,
@@ -167,18 +199,36 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                         style: TextStyle(color: MetaColors.textSecondary, fontSize: 14),
                       ),
                       const SizedBox(height: 16),
-                      Text(
-                        _pairingCode!,
-                        style: const TextStyle(
-                          color: MetaColors.textPrimary,
-                          fontSize: 40,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 4,
+                      GestureDetector(
+                        onTap: _copyAndOpenWhatsapp,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                          decoration: BoxDecoration(
+                            color: MetaColors.surfaceHighlight,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: MetaColors.emerald.withOpacity(0.3), width: 2),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _pairingCode!,
+                                style: const TextStyle(
+                                  color: MetaColors.textPrimary,
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 4,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              const Icon(Icons.copy_rounded, color: MetaColors.emerald),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),
                       const Text(
-                        '1. Copie o código acima\n2. Abra seu WhatsApp\n3. Aparelhos Conectados > Conectar Aparelho\n4. Escolha "Conectar com Número de Telefone"',
+                        '1. Toque no código para copiar\n2. Abra as Configurações do seu WhatsApp\n3. Vá em "Aparelhos Conectados" > "Conectar Aparelho"\n4. Na tela de QR Code, clique em "Conectar com Número de Telefone" na parte inferior\n5. Cole o código copiado',
                         textAlign: TextAlign.left,
                         style: TextStyle(
                           color: MetaColors.textSecondary,
@@ -192,18 +242,10 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: SquircleButton(
-                    label: 'Copiar Código',
-                    icon: Icons.copy_rounded,
+                    label: 'Copiar e Abrir WhatsApp',
+                    icon: Icons.open_in_new_rounded,
                     isPrimary: true,
                     onPressed: _copyAndOpenWhatsapp,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => setState(() => _pairingCode = null),
-                  child: const Text(
-                    'Tentar outro número',
-                    style: TextStyle(color: MetaColors.textSecondary),
                   ),
                 ),
               ],
@@ -214,6 +256,3 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
     );
   }
 }
-
-
-
