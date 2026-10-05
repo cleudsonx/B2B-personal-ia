@@ -6,11 +6,13 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widgets/meta_components.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/auth_gate.dart';
 import 'features/client/active_workout_screen.dart';
 import 'features/trainer/anamnesis_screen.dart';
 import 'features/trainer/trainer_students_screen.dart';
+import 'features/trainer/presentation/screens/trainer_main_layout.dart';
 import 'features/assistant/b2b_assistant_screen.dart';
 import 'features/subscription/subscription_screen.dart';
 import 'models/subscription_model.dart';
@@ -53,9 +55,9 @@ class B2BPersonalIaApp extends StatelessWidget {
         return MaterialApp(
           title: 'Mr. Coach',
           debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme,
+          theme: AppTheme.darkTheme,
           darkTheme: AppTheme.darkTheme,
-          themeMode: ThemeController.instance.themeMode,
+          themeMode: ThemeMode.dark,
           scrollBehavior: const MaterialScrollBehavior().copyWith(
             dragDevices: {
               PointerDeviceKind.mouse,
@@ -85,8 +87,19 @@ class B2BPersonalIaApp extends StatelessWidget {
                   builder: (_) => TrainerPublicLandingScreen(username: uri.pathSegments[1]),
                 );
               }
+              if (name == '/' || name == '/home') {
+                return MaterialPageRoute(
+                  builder: (_) => const AuthGate(),
+                );
+              }
             }
             return null; // Fallback to 'home'
+          },
+          routes: {
+            '/home': (context) => const AuthGate(),
+            '/trainer': (context) => const TrainerMainLayout(),
+            '/login': (context) => const LoginScreen(),
+            '/subscription': (context) => const SubscriptionScreen(),
           },
           home: Builder(
             builder: (context) {

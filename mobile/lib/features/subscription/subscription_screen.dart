@@ -1,10 +1,9 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/widgets/theme_toggle_button.dart';
+import '../../core/widgets/meta_components.dart';
 import '../../models/subscription_model.dart';
 import '../../services/subscription_service.dart';
 
@@ -51,11 +50,24 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    final plans = await SubscriptionService.getPlans();
+    final allPlans = await SubscriptionService.getPlans();
     final sub = await SubscriptionService.getMySubscription();
     if (mounted) {
+      // Priorizar os 3 planos canônicos: Starter, Pro e Studio
+      final targetIds = ['starter', 'pro', 'studio'];
+      final filteredPlans = <PlanModel>[];
+      for (final id in targetIds) {
+        final p = allPlans.firstWhere(
+          (item) => item.id == id,
+          orElse: () => allPlans.first,
+        );
+        if (!filteredPlans.contains(p)) {
+          filteredPlans.add(p);
+        }
+      }
+
       setState(() {
-        _plans = plans;
+        _plans = filteredPlans.isNotEmpty ? filteredPlans : allPlans;
         _mySubscription = sub;
         _isLoading = false;
       });
@@ -75,43 +87,52 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       context: context,
       builder:
           (ctx) => AlertDialog(
-            backgroundColor: AppColors.card(context),
+            backgroundColor: MetaColors.surface,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-              side: BorderSide(color: AppColors.cardBorder(context)),
+              borderRadius: BorderRadius.circular(20),
+              side: const BorderSide(color: MetaColors.border),
             ),
-            title: Row(
+            title: const Row(
               children: [
                 Icon(
                   Icons.rocket_launch_rounded,
-                  color: AppColors.emerald(context),
+                  color: MetaColors.emerald,
+                  size: 24,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 10),
                 Text(
-                  'Ativar ${plan.name}',
+                  'Ativar Plano Starter',
                   style: TextStyle(
-                    color: AppColors.text(context),
-                    fontSize: 16,
+                    color: MetaColors.textPrimary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
             content: Text(
               'Deseja ativar o plano gratuito ${plan.name} com limite de até ${plan.maxStudents} alunos e 10 fichas IA mensais?',
-              style: TextStyle(color: AppColors.subtext(context), fontSize: 13),
+              style: const TextStyle(
+                color: MetaColors.textSecondary,
+                fontSize: 13,
+                height: 1.4,
+              ),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: Text(
+                child: const Text(
                   'Cancelar',
-                  style: TextStyle(color: AppColors.subtext(context)),
+                  style: TextStyle(color: MetaColors.textSecondary),
                 ),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.emerald(context),
-                  foregroundColor: Colors.black,
+                  backgroundColor: MetaColors.emerald,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 onPressed: () => Navigator.pop(ctx, true),
                 child: const Text(
@@ -136,8 +157,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            backgroundColor: Colors.green.shade800,
-            content: Text('🎉 Plano ${plan.name} ativado com sucesso!'),
+            backgroundColor: MetaColors.surfaceHighlight,
+            content: Text(
+              '🎉 Plano ${plan.name} ativado com sucesso!',
+              style: const TextStyle(color: MetaColors.textPrimary),
+            ),
           ),
         );
       }
@@ -167,8 +191,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 });
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    backgroundColor: Colors.green.shade800,
-                    content: Text('🎉 Plano ${plan.name} ativado com sucesso!'),
+                    backgroundColor: MetaColors.surfaceHighlight,
+                    content: Text(
+                      '🎉 Plano ${plan.name} ativado com sucesso!',
+                      style: const TextStyle(color: MetaColors.textPrimary),
+                    ),
                   ),
                 );
               }
@@ -179,100 +206,122 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bg(context),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: Text(
-          'Planos & Assinatura B2B',
-          style: TextStyle(
-            color: AppColors.text(context),
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.4,
-          ),
-        ),
-        actions: [
-          const ThemeToggleButton(),
-          const SizedBox(width: 4),
-          IconButton(
-            icon: Icon(
-              Icons.refresh_rounded,
-              color: AppColors.subtext(context),
-            ),
-            tooltip: 'Atualizar Assinatura',
-            onPressed: _loadData,
-          ),
-          const SizedBox(width: 8),
-        ],
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: Brightness.light,
       ),
-      body:
-          _isLoading
-              ? Center(
+      child: Scaffold(
+        backgroundColor: MetaColors.background,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+            color: MetaColors.textPrimary,
+            onPressed: () {
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              }
+            },
+          ),
+          title: const Text(
+            'Planos & Assinatura',
+            style: TextStyle(
+              color: MetaColors.textPrimary,
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+              letterSpacing: -0.4,
+            ),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(
+                Icons.refresh_rounded,
+                color: MetaColors.textSecondary,
+                size: 22,
+              ),
+              tooltip: 'Atualizar',
+              onPressed: _loadData,
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
+        body: _isLoading
+            ? const Center(
                 child: CircularProgressIndicator(
-                  color: AppColors.emerald(context),
+                  color: MetaColors.emerald,
                 ),
               )
-              : RefreshIndicator(
+            : RefreshIndicator(
                 onRefresh: _loadData,
-                color: AppColors.emerald(context),
+                color: MetaColors.emerald,
+                backgroundColor: MetaColors.surface,
                 child: ListView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 16,
+                  physics: const BouncingScrollPhysics(),
+                  padding: EdgeInsets.only(
+                    left: 20,
+                    right: 20,
+                    top: 12,
+                    bottom: bottomPadding + 32,
                   ),
                   children: [
-                    // Active Plan Status Card
+                    // Card de Status da Assinatura Ativa
                     if (_mySubscription != null) ...[
                       _buildActiveSubscriptionCard(_mySubscription!),
                       const SizedBox(height: 24),
                     ],
 
-                    // Header Titles
+                    // Cabeçalho da Seção de Planos
                     Center(
                       child: Column(
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
+                              horizontal: 12,
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.emeraldBg(context),
+                              color: MetaColors.surfaceHighlight,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: AppColors.emerald(
-                                  context,
-                                ).withValues(alpha: 0.4),
+                                color: MetaColors.emerald.withValues(alpha: 0.3),
                               ),
                             ),
-                            child: Text(
-                              '💎 PLANOS COMERCIAIS B2B',
+                            child: const Text(
+                              '💎 PLANOS B2B MR. COACH',
                               style: TextStyle(
-                                color: AppColors.emerald(context),
-                                fontSize: 10,
+                                color: MetaColors.emerald,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 0.8,
                               ),
                             ),
                           ),
-                          const SizedBox(height: 10),
-                          Text(
-                            'Escale sua Consultoria de Personal',
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Escale sua Consultoria',
                             style: TextStyle(
-                              fontSize: 22,
+                              fontSize: 24,
                               fontWeight: FontWeight.w900,
-                              color: AppColors.text(context),
+                              color: MetaColors.textPrimary,
+                              letterSpacing: -0.5,
                             ),
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 6),
-                          Text(
-                            'Prescrições com IA biomecânica ilimitadas e retenção de alunos no salão.',
+                          const Text(
+                            'Prescrições ilimitadas com IA biomecânica e retenção máxima no salão.',
                             style: TextStyle(
-                              color: AppColors.subtext(context),
+                              color: MetaColors.textSecondary,
                               fontSize: 13,
+                              height: 1.4,
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -281,16 +330,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Billing Interval Toggle (Mensal vs Anual)
+                    // Alternador Mensal / Anual
                     Center(
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: AppColors.card(context),
+                          color: MetaColors.surface,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: AppColors.cardBorder(context),
-                          ),
+                          border: Border.all(color: MetaColors.border),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -313,16 +360,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Plans Cards
-                    ..._plans.map((p) => _buildPlanCard(p)),
-                    const SizedBox(height: 20),
+                    // Cards dos 3 Planos (Starter, Pro, Studio) usando MetaCard
+                    ..._plans.map((p) => _buildPlanMetaCard(p)),
+                    const SizedBox(height: 16),
 
-                    // FAQ Section
+                    // FAQ
                     _buildFaqSection(),
-                    const SizedBox(height: 40),
                   ],
                 ),
               ),
+      ),
     );
   }
 
@@ -339,25 +386,20 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color:
-              isSelected
-                  ? (isHighlighted
-                      ? AppColors.emerald(context)
-                      : AppColors.pillBg(context))
-                  : Colors.transparent,
+          color: isSelected
+              ? (isHighlighted ? MetaColors.emerald : MetaColors.surfaceHighlight)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
-          border:
-              isSelected && !isHighlighted
-                  ? Border.all(color: AppColors.pillBorder(context))
-                  : null,
+          border: isSelected && !isHighlighted
+              ? Border.all(color: MetaColors.border)
+              : null,
         ),
         child: Text(
           label,
           style: TextStyle(
-            color:
-                isSelected
-                    ? (isHighlighted ? Colors.black : AppColors.text(context))
-                    : AppColors.subtext(context),
+            color: isSelected
+                ? (isHighlighted ? Colors.white : MetaColors.textPrimary)
+                : MetaColors.textSecondary,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             fontSize: 12,
           ),
@@ -367,28 +409,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   Widget _buildActiveSubscriptionCard(MySubscriptionModel sub) {
-    final isDark = AppColors.isDark(context);
-    final progress =
-        sub.maxStudents > 0
-            ? (sub.currentStudents / sub.maxStudents).clamp(0.0, 1.0)
-            : 0.0;
+    final progress = sub.maxStudents > 0
+        ? (sub.currentStudents / sub.maxStudents).clamp(0.0, 1.0)
+        : 0.0;
 
-    return Container(
+    return MetaCard(
+      borderColor: MetaColors.emerald.withValues(alpha: 0.5),
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.card(context),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: AppColors.emerald(context).withValues(alpha: 0.5),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: isDark ? Colors.black26 : const Color(0x060F172A),
-            blurRadius: 18,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -397,16 +424,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             children: [
               Row(
                 children: [
-                  Icon(
-                    Icons.verified,
-                    color: AppColors.emerald(context),
+                  const Icon(
+                    Icons.verified_rounded,
+                    color: MetaColors.emerald,
                     size: 20,
                   ),
                   const SizedBox(width: 8),
                   Text(
                     'PLANO ATIVO: ${sub.planName.toUpperCase()}',
-                    style: TextStyle(
-                      color: AppColors.emerald(context),
+                    style: const TextStyle(
+                      color: MetaColors.emerald,
                       fontSize: 12,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0.8,
@@ -417,13 +444,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppColors.emeraldBg(context),
+                  color: MetaColors.surfaceHighlight,
                   borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: MetaColors.emerald.withValues(alpha: 0.4),
+                  ),
                 ),
                 child: Text(
                   sub.status == 'active' ? 'ATIVO' : 'TRIAL',
-                  style: TextStyle(
-                    color: AppColors.emerald(context),
+                  style: const TextStyle(
+                    color: MetaColors.emerald,
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                   ),
@@ -433,22 +463,22 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           ),
           const SizedBox(height: 14),
 
-          // Quota Info
+          // Informações de Cota
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'Alunos Cadastrados: ${sub.currentStudents} / ${sub.maxStudents}',
-                style: TextStyle(
-                  color: AppColors.text(context),
+                style: const TextStyle(
+                  color: MetaColors.textPrimary,
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
                 '${(progress * 100).toInt()}%',
-                style: TextStyle(
-                  color: AppColors.subtext(context),
+                style: const TextStyle(
+                  color: MetaColors.textSecondary,
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),
@@ -461,8 +491,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 8,
-              color: AppColors.emerald(context),
-              backgroundColor: AppColors.pillBg(context),
+              color: MetaColors.emerald,
+              backgroundColor: MetaColors.surfaceHighlight,
             ),
           ),
           const SizedBox(height: 12),
@@ -474,8 +504,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 sub.nextBillingDate != null
                     ? 'Renovação em: ${sub.nextBillingDate}'
                     : 'Período gratuito ativo',
-                style: TextStyle(
-                  color: AppColors.subtext(context),
+                style: const TextStyle(
+                  color: MetaColors.textSecondary,
                   fontSize: 11,
                 ),
               ),
@@ -483,8 +513,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 sub.maxAiGenerations == -1
                     ? '✨ Fichas IA: Ilimitadas'
                     : 'Fichas IA: ${sub.aiGenerationsUsed}/${sub.maxAiGenerations}',
-                style: TextStyle(
-                  color: AppColors.accentBlue(context),
+                style: const TextStyle(
+                  color: MetaColors.accentBlue,
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                 ),
@@ -496,274 +526,230 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
-  Widget _buildPlanCard(PlanModel plan) {
-    final isDark = AppColors.isDark(context);
+  Widget _buildPlanMetaCard(PlanModel plan) {
     final isCurrent = _mySubscription?.planId == plan.id;
-    final isPro = plan.isPopular;
-    final isElite = plan.id == 'elite';
+    final isPro = plan.id == 'pro' || plan.isPopular;
     final isStudio = plan.id == 'studio';
-    final borderColor =
-        isPro
-            ? AppColors.emerald(context)
-            : (isElite
-                ? const Color(0xFFF59E0B)
-                : (isStudio
-                    ? const Color(0xFF8B5CF6)
-                    : AppColors.cardBorder(context)));
     final price =
         _isYearly ? plan.priceYearlyMonthlyEquivalent : plan.priceMonthly;
 
-    return Container(
+    return MetaCard(
+      backgroundColor: MetaColors.surface,
+      borderColor: isPro ? MetaColors.emerald : MetaColors.border,
+      borderRadius: 20.0,
       margin: const EdgeInsets.only(bottom: 20),
-      decoration: BoxDecoration(
-        color: AppColors.card(context),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: borderColor,
-          width: (isPro || isElite || isStudio) ? 1.8 : 1.0,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: isDark ? Colors.black26 : const Color(0x060F172A),
-            blurRadius: 20,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Top Row (Name & Badge)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  plan.name,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.text(context),
-                  ),
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Top Row: Nome do Plano & Badge
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                plan.name,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: MetaColors.textPrimary,
                 ),
-                if (plan.badge != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          isPro
-                              ? AppColors.emerald(context)
-                              : (isElite
-                                  ? const Color(0xFFF59E0B)
-                                  : (isStudio
-                                      ? const Color(0xFF8B5CF6)
-                                      : AppColors.accentBlue(context))),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      plan.badge!,
-                      style: TextStyle(
-                        color: (isPro || isElite) ? Colors.black : Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 10,
-                        letterSpacing: 0.6,
-                      ),
-                    ),
+              ),
+              if (isPro)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
                   ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              plan.tagline,
-              style: TextStyle(color: AppColors.subtext(context), fontSize: 12),
-            ),
-            const SizedBox(height: 16),
-
-            // Price Display
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  price == 0 ? 'Grátis' : 'R\$ ${price.toStringAsFixed(0)}',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w900,
-                    color:
-                        isPro
-                            ? AppColors.emerald(context)
-                            : (isElite
-                                ? const Color(0xFFF59E0B)
-                                : (isStudio
-                                    ? const Color(0xFFA78BFA)
-                                    : AppColors.text(context))),
+                  decoration: BoxDecoration(
+                    color: MetaColors.emerald,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ),
-                if (price > 0)
-                  Text(
-                    ' /mês',
+                  child: const Text(
+                    'MAIS ESCOLHIDO',
                     style: TextStyle(
-                      color: AppColors.subtext(context),
-                      fontSize: 13,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 10,
+                      letterSpacing: 0.6,
                     ),
                   ),
-                if (_isYearly && price > 0) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
+                )
+              else if (plan.badge != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: MetaColors.surfaceHighlight,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: MetaColors.border),
+                  ),
+                  child: Text(
+                    plan.badge!,
+                    style: const TextStyle(
+                      color: MetaColors.textSecondary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
+                      letterSpacing: 0.6,
                     ),
-                    decoration: BoxDecoration(
-                      color: AppColors.tangerineBg(context),
-                      borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            plan.tagline,
+            style: const TextStyle(
+              color: MetaColors.textSecondary,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Preço
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                price == 0 ? 'Grátis' : 'R\$ ${price.toStringAsFixed(0)}',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                  color: isPro ? MetaColors.emerald : MetaColors.textPrimary,
+                ),
+              ),
+              if (price > 0)
+                const Text(
+                  ' /mês',
+                  style: TextStyle(
+                    color: MetaColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+              if (_isYearly && price > 0) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: MetaColors.surfaceHighlight,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: MetaColors.border),
+                  ),
+                  child: Text(
+                    'Cobrado R\$ ${plan.priceYearlyTotal.toStringAsFixed(0)}/ano',
+                    style: const TextStyle(
+                      color: MetaColors.emerald,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
                     ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 18),
+          const Divider(color: MetaColors.border, height: 1),
+          const SizedBox(height: 16),
+
+          // Lista de Recursos / Features
+          ...plan.features.map((f) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: [
+                  Icon(
+                    f.included
+                        ? Icons.check_circle_rounded
+                        : Icons.cancel_outlined,
+                    size: 16,
+                    color: f.included
+                        ? (f.highlight
+                            ? MetaColors.emerald
+                            : MetaColors.accentBlue)
+                        : MetaColors.textSecondary.withValues(alpha: 0.4),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
                     child: Text(
-                      'Cobrado R\$ ${plan.priceYearlyTotal.toStringAsFixed(0)}/ano',
+                      f.title,
                       style: TextStyle(
-                        color: AppColors.tangerine(context),
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: f.included
+                            ? MetaColors.textPrimary
+                            : MetaColors.textSecondary,
+                        fontWeight:
+                            f.highlight ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
                   ),
                 ],
-              ],
-            ),
-            const SizedBox(height: 18),
-            Divider(color: AppColors.cardBorder(context), height: 1),
-            const SizedBox(height: 16),
-
-            // Feature Checklist
-            ...plan.features.map((f) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Row(
-                  children: [
-                    Icon(
-                      f.included
-                          ? Icons.check_circle_rounded
-                          : Icons.cancel_outlined,
-                      size: 16,
-                      color:
-                          f.included
-                              ? (f.highlight
-                                  ? AppColors.emerald(context)
-                                  : AppColors.accentBlue(context))
-                              : AppColors.subtext(
-                                context,
-                              ).withValues(alpha: 0.5),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        f.title,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color:
-                              f.included
-                                  ? AppColors.text(context)
-                                  : AppColors.subtext(context),
-                          fontWeight:
-                              f.highlight ? FontWeight.bold : FontWeight.normal,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-            const SizedBox(height: 18),
-
-            // Action Button
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    isCurrent
-                        ? AppColors.pillBg(context)
-                        : (isPro
-                            ? AppColors.emerald(context)
-                            : (isElite
-                                ? const Color(0xFFF59E0B)
-                                : (isStudio
-                                    ? const Color(0xFF8B5CF6)
-                                    : AppColors.accentBlue(context)))),
-                foregroundColor:
-                    isCurrent
-                        ? AppColors.subtext(context)
-                        : ((isPro || isElite) ? Colors.black : Colors.white),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: (isPro || isElite || isStudio) && !isCurrent ? 4 : 0,
               ),
-              onPressed: isCurrent ? null : () => _selectPlan(plan),
-              child: Text(
-                isCurrent
-                    ? '✓ Seu Plano Atual'
-                    : (plan.priceMonthlyCents == 0
-                        ? 'Começar Grátis'
-                        : 'Assinar ${plan.name}'),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          ],
-        ),
+            );
+          }),
+          const SizedBox(height: 18),
+
+          // Botão de Ação: SquircleButton
+          SquircleButton(
+            label: isCurrent
+                ? '✓ Plano Atual'
+                : (plan.priceMonthlyCents == 0
+                    ? 'Começar Grátis'
+                    : 'Assinar ${plan.name}'),
+            isPrimary: isPro && !isCurrent,
+            backgroundColor: isCurrent
+                ? MetaColors.surfaceHighlight
+                : (isPro ? MetaColors.emerald : MetaColors.surfaceHighlight),
+            foregroundColor: isCurrent
+                ? MetaColors.textSecondary
+                : (isPro ? Colors.white : MetaColors.textPrimary),
+            onPressed: isCurrent ? null : () => _selectPlan(plan),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildFaqSection() {
-    return Container(
+    return MetaCard(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.card(context),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.cardBorder(context)),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
               Icon(
                 Icons.help_outline_rounded,
-                color: AppColors.accentBlue(context),
+                color: MetaColors.accentBlue,
                 size: 18,
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Text(
                 'Perguntas Frequentes',
                 style: TextStyle(
-                  color: AppColors.text(context),
+                  color: MetaColors.textPrimary,
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           _buildFaqItem(
-            'Posso cancelar quando quiser?',
-            'Sim. Não há período de carência ou fidelidade. Você pode cancelar sua assinatura mensal ou anual com 1 clique a qualquer momento.',
+            'Posso mudar de plano a qualquer momento?',
+            'Sim, a alteração é instantânea. Calculamos a diferença de forma proporcional.',
           ),
-          Divider(color: AppColors.cardBorder(context)),
           _buildFaqItem(
-            'O meu aluno paga para usar?',
-            'Não. O aplicativo do aluno no salão é 100% gratuito. Todo o custo do motor de inteligência artificial é coberto pela sua assinatura de Personal Trainer.',
+            'Como funciona o Pix instantâneo?',
+            'A confirmação acontece em segundos e sua liberação de recursos é imediata.',
           ),
-          Divider(color: AppColors.cardBorder(context)),
           _buildFaqItem(
-            'Quais formas de pagamento são aceitas?',
-            'Aceitamos Pix com ativação imediata (chave copia e cola / QR Code) e todos os cartões de crédito com renovação automática.',
+            'Há taxa de cancelamento?',
+            'Não! Não existe fidelidade no plano mensal e você cancela quando quiser.',
           ),
         ],
       ),
@@ -772,24 +758,24 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   Widget _buildFaqItem(String question, String answer) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             question,
-            style: TextStyle(
-              color: AppColors.text(context),
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
+            style: const TextStyle(
+              color: MetaColors.textPrimary,
+              fontWeight: FontWeight.w600,
+              fontSize: 12.5,
             ),
           ),
           const SizedBox(height: 3),
           Text(
             answer,
-            style: TextStyle(
-              color: AppColors.subtext(context),
-              fontSize: 11,
+            style: const TextStyle(
+              color: MetaColors.textSecondary,
+              fontSize: 11.5,
               height: 1.35,
             ),
           ),
@@ -800,7 +786,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 }
 
 // -----------------------------------------------------------------------------
-// CHECKOUT MODAL (PIX & CARTÃO)
+// CHECKOUT BOTTOM SHEET (PIX & CARTÃO)
 // -----------------------------------------------------------------------------
 class _CheckoutBottomSheet extends StatefulWidget {
   final PlanModel plan;
@@ -817,8 +803,7 @@ class _CheckoutBottomSheet extends StatefulWidget {
   State<_CheckoutBottomSheet> createState() => _CheckoutBottomSheetState();
 }
 
-class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
-    with SingleTickerProviderStateMixin {
+class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
   String _paymentMethod = 'pix'; // 'pix' ou 'credit_card'
   bool _isLoading = false;
   bool _isSubmittingCard = false;
@@ -831,48 +816,20 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
   final TextEditingController _cardHolderController = TextEditingController();
   final TextEditingController _expiryController = TextEditingController();
   final TextEditingController _cvvController = TextEditingController();
-  final FocusNode _cvvFocusNode = FocusNode();
-
-  // Animação 3D de Giro do Cartão
-  late AnimationController _flipController;
-  late Animation<double> _flipAnimation;
 
   @override
   void initState() {
     super.initState();
-    _flipController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 450),
-    );
-    _flipAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _flipController, curve: Curves.easeInOutBack),
-    );
-
-    _cvvFocusNode.addListener(() {
-      if (_cvvFocusNode.hasFocus) {
-        _flipController.forward();
-      } else {
-        _flipController.reverse();
-      }
-    });
-
-    _cardNumberController.addListener(() => setState(() {}));
-    _cardHolderController.addListener(() => setState(() {}));
-    _expiryController.addListener(() => setState(() {}));
-    _cvvController.addListener(() => setState(() {}));
-
     _createSession();
   }
 
   @override
   void dispose() {
     _pollingTimer?.cancel();
-    _flipController.dispose();
     _cardNumberController.dispose();
     _cardHolderController.dispose();
     _expiryController.dispose();
     _cvvController.dispose();
-    _cvvFocusNode.dispose();
     super.dispose();
   }
 
@@ -914,63 +871,6 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
       });
       if (_paymentMethod == 'pix' || _paymentMethod == 'credit_card') {
         _startPixPolling();
-      }
-    }
-  }
-
-  Future<void> _openCardCheckout() async {
-    final url = _session?.checkoutUrl;
-    if (url == null || url.isEmpty) {
-      _showError(
-        'Link de checkout seguro não disponível no momento. Tente novamente.',
-      );
-      return;
-    }
-    final uri = Uri.parse(url);
-    try {
-      final launched = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
-      if (!launched) {
-        await launchUrl(uri, mode: LaunchMode.platformDefault);
-      }
-      _startPixPolling();
-    } catch (e) {
-      _showError('Não foi possível abrir o navegador: $e');
-    }
-  }
-
-  Future<void> _verifyCardPayment() async {
-    if (_session == null) return;
-    setState(() => _isSubmittingCard = true);
-    final paid = await SubscriptionService.checkPaymentStatus(
-      _session!.sessionId,
-    );
-    if (mounted) {
-      setState(() => _isSubmittingCard = false);
-      if (paid) {
-        setState(() => _isPaid = true);
-        HapticFeedback.heavyImpact();
-        _showSuccessNotification();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: Color(0xFFD97706),
-            content: Row(
-              children: [
-                Icon(Icons.info_outline, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Pagamento ainda não confirmado pelo Asaas. Se já realizou a transação, aguarde alguns instantes.',
-                    style: TextStyle(color: Colors.white, fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
       }
     }
   }
@@ -1036,7 +936,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        backgroundColor: Colors.red.shade900,
+        backgroundColor: AppColors.danger,
         content: Row(
           children: [
             const Icon(Icons.error_outline, color: Colors.white, size: 20),
@@ -1056,10 +956,10 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
       barrierDismissible: false,
       builder:
           (ctx) => AlertDialog(
-            backgroundColor: AppColors.card(context),
+            backgroundColor: MetaColors.surface,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
-              side: const BorderSide(color: Color(0xFF10B981), width: 2),
+              side: const BorderSide(color: MetaColors.emerald, width: 1.5),
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1068,20 +968,20 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                    color: MetaColors.emerald.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Icons.check_circle_rounded,
-                    color: Color(0xFF10B981),
+                    color: MetaColors.emerald,
                     size: 54,
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text(
+                const Text(
                   '🎉 Pagamento Aprovado!',
                   style: TextStyle(
-                    color: AppColors.text(context),
+                    color: MetaColors.textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
                   ),
@@ -1089,52 +989,25 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
                 const SizedBox(height: 8),
                 Text(
                   'Sua assinatura do plano ${widget.plan.name} já foi ativada com sucesso.',
-                  style: TextStyle(
-                    color: AppColors.subtext(context),
+                  style: const TextStyle(
+                    color: MetaColors.textSecondary,
                     fontSize: 13,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF10B981),
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                  ),
+                SquircleButton(
+                  label: 'Acessar Meu Painel',
+                  isPrimary: true,
                   onPressed: () {
                     Navigator.pop(ctx);
                     widget.onSuccess();
                   },
-                  child: const Text(
-                    'Acessar Meu Painel',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
                 ),
               ],
             ),
           ),
     );
-  }
-
-  String _detectCardBrand(String number) {
-    final clean = number.replaceAll(RegExp(r'\s+'), '');
-    if (clean.startsWith('4')) return 'VISA';
-    if (RegExp(
-      r'^(5[1-5]|222[1-9]|22[3-9]|2[3-6]|27[0-1]|2720)',
-    ).hasMatch(clean))
-      return 'MASTERCARD';
-    if (clean.startsWith('34') || clean.startsWith('37')) return 'AMEX';
-    if (RegExp(r'^(4011|4389|5041|6363|5067|4576|4011)').hasMatch(clean))
-      return 'ELO';
-    if (clean.startsWith('6062')) return 'HIPERCARD';
-    return 'CARTÃO';
   }
 
   @override
@@ -1143,89 +1016,53 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
         widget.isYearly
             ? widget.plan.priceYearlyTotal
             : widget.plan.priceMonthly;
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.90,
-      decoration: BoxDecoration(
-        color: AppColors.card(context),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      height: MediaQuery.of(context).size.height * 0.88,
+      decoration: const BoxDecoration(
+        color: MetaColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         border: Border(
-          top: BorderSide(color: AppColors.cardBorder(context), width: 1.5),
+          top: BorderSide(color: MetaColors.border, width: 1),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.5),
-            blurRadius: 30,
-            offset: const Offset(0, -10),
-          ),
-        ],
       ),
       child: Column(
         children: [
           const SizedBox(height: 12),
           Container(
             width: 44,
-            height: 5,
+            height: 4,
             decoration: BoxDecoration(
-              color: AppColors.subtext(context).withValues(alpha: 0.35),
-              borderRadius: BorderRadius.circular(3),
+              color: MetaColors.border,
+              borderRadius: BorderRadius.circular(2),
             ),
           ),
           const SizedBox(height: 14),
 
-          // Header Topo
+          // Header
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 22),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          'Checkout Seguro',
-                          style: TextStyle(
-                            color: AppColors.text(context),
-                            fontSize: 19,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF10B981,
-                            ).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: const Color(
-                                0xFF10B981,
-                              ).withValues(alpha: 0.4),
-                            ),
-                          ),
-                          child: const Text(
-                            '🛡️ Asaas SSL 256-bit',
-                            style: TextStyle(
-                              color: Color(0xFF10B981),
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
+                    const Text(
+                      'Checkout Seguro',
+                      style: TextStyle(
+                        color: MetaColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.3,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       '${widget.plan.name} • R\$ ${amount.toStringAsFixed(2)}${widget.isYearly ? "/ano (20% OFF)" : "/mês"}',
-                      style: TextStyle(
-                        color: AppColors.emerald(context),
+                      style: const TextStyle(
+                        color: MetaColors.emerald,
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1233,9 +1070,9 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
                   ],
                 ),
                 IconButton(
-                  icon: Icon(
+                  icon: const Icon(
                     Icons.close_rounded,
-                    color: AppColors.subtext(context),
+                    color: MetaColors.textSecondary,
                   ),
                   onPressed: () => Navigator.pop(context),
                 ),
@@ -1246,7 +1083,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
 
           // Seletor de Método de Pagamento
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 22),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
                 Expanded(
@@ -1254,7 +1091,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
                     label: 'PIX Instantâneo',
                     icon: Icons.pix_rounded,
                     isSelected: _paymentMethod == 'pix',
-                    activeColor: AppColors.accentBlue(context),
+                    activeColor: MetaColors.accentBlue,
                     onTap: () {
                       if (_paymentMethod != 'pix') {
                         setState(() => _paymentMethod = 'pix');
@@ -1266,10 +1103,10 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
                 const SizedBox(width: 10),
                 Expanded(
                   child: _buildMethodTab(
-                    label: 'Cartão 3D Recorrente',
+                    label: 'Cartão de Crédito',
                     icon: Icons.credit_card_rounded,
                     isSelected: _paymentMethod == 'credit_card',
-                    activeColor: AppColors.emerald(context),
+                    activeColor: MetaColors.emerald,
                     onTap: () {
                       if (_paymentMethod != 'credit_card') {
                         setState(() => _paymentMethod = 'credit_card');
@@ -1284,106 +1121,26 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
           ),
           const SizedBox(height: 14),
 
-          // Card de ROI de Negócio
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 22),
-            child: _buildRoiCard(context, amount),
-          ),
-          const SizedBox(height: 12),
-
           // Conteúdo Dinâmico
           Expanded(
-            child:
-                _isLoading
-                    ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircularProgressIndicator(
-                            color: AppColors.emerald(context),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Gerando sessão de pagamento segura...',
-                            style: TextStyle(
-                              color: AppColors.subtext(context),
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                    : SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 22),
-                      child:
-                          _paymentMethod == 'pix'
-                              ? _buildPixContent(context)
-                              : _buildCreditCardContent(context, amount),
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: MetaColors.emerald,
                     ),
-          ),
-
-          // Rodapé Fixo de Ação
-          if (_paymentMethod == 'credit_card')
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: AppColors.card(context),
-                border: Border(
-                  top: BorderSide(color: AppColors.cardBorder(context)),
-                ),
-              ),
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.emerald(context),
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                  )
+                : SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: EdgeInsets.only(
+                      left: 20,
+                      right: 20,
+                      bottom: bottomPadding + 20,
+                    ),
+                    child: _paymentMethod == 'pix'
+                        ? _buildPixContent()
+                        : _buildCreditCardContent(amount),
                   ),
-                  elevation: 4,
-                ),
-                onPressed: _isSubmittingCard ? null : _submitInAppCardPayment,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (_isSubmittingCard) ...[
-                      const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.2,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        'Tokenizando e Ativando Assinatura...',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 14,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ] else ...[
-                      const Icon(
-                        Icons.flash_on_rounded,
-                        size: 18,
-                        color: Colors.black,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Ativar Assinatura In-App • R\$ ${amount.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 14,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
+          ),
         ],
       ),
     );
@@ -1400,17 +1157,14 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color:
-              isSelected
-                  ? activeColor.withValues(alpha: 0.16)
-                  : AppColors.card(context),
+          color: isSelected ? MetaColors.surfaceHighlight : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isSelected ? activeColor : AppColors.cardBorder(context),
-            width: isSelected ? 1.5 : 1.0,
+            color: isSelected ? activeColor : MetaColors.border,
+            width: 1.2,
           ),
         ),
         child: Row(
@@ -1419,15 +1173,15 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
             Icon(
               icon,
               size: 18,
-              color: isSelected ? activeColor : AppColors.subtext(context),
+              color: isSelected ? activeColor : MetaColors.textSecondary,
             ),
             const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                color: isSelected ? activeColor : AppColors.text(context),
+                fontSize: 12.5,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? MetaColors.textPrimary : MetaColors.textSecondary,
               ),
             ),
           ],
@@ -1436,153 +1190,83 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
     );
   }
 
-  Widget _buildRoiCard(BuildContext context, double amount) {
-    final netGain = (150.0 - (amount > 150 ? amount / 2 : amount)).clamp(
-      10.0,
-      999.0,
-    );
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF10B981).withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: const Color(0xFF10B981).withValues(alpha: 0.3),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              color: const Color(0xFF10B981).withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.trending_up_rounded,
-              color: Color(0xFF10B981),
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '💡 RETORNO SOBRE O INVESTIMENTO',
-                  style: TextStyle(
-                    color: Color(0xFF10B981),
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Com apenas 1 novo aluno a R\$ 150/mês, seu plano se paga e sobra R\$ ${netGain.toStringAsFixed(0)}/mês de lucro!',
-                  style: TextStyle(
-                    color: AppColors.text(context),
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPixContent(BuildContext context) {
-    final pixCode = _session?.pixCopyPaste ?? 'pix-demo-code';
+  Widget _buildPixContent() {
+    final pixCode = _session?.pixCopyPaste ?? '';
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 6),
-        // QR Code Container
-        Container(
-          width: 180,
-          height: 180,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFF06B6D4), width: 2),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF06B6D4).withValues(alpha: 0.2),
-                blurRadius: 20,
-              ),
-            ],
-          ),
+        MetaCard(
+          backgroundColor: MetaColors.surfaceHighlight,
+          padding: const EdgeInsets.all(16),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.qr_code_2_rounded,
-                size: 110,
-                color: Colors.black,
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'PIX BANCO CENTRAL • ASAAS',
-                style: TextStyle(
-                  color: Colors.black87,
-                  fontSize: 8.5,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        Text(
-          'Escaneie o QR Code no seu banco ou use a chave Copia e Cola:',
-          style: TextStyle(color: AppColors.subtext(context), fontSize: 12),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 10),
-
-        // Copia e Cola
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.card(context),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.cardBorder(context)),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  pixCode,
-                  style: TextStyle(
-                    color: AppColors.subtext(context),
-                    fontSize: 11,
-                    fontFamily: 'monospace',
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.qr_code_2_rounded, color: MetaColors.accentBlue, size: 28),
+                  SizedBox(width: 8),
+                  Text(
+                    'PIX Copia e Cola',
+                    style: TextStyle(
+                      color: MetaColors.textPrimary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
                   ),
-                  maxLines: 1,
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Copie o código abaixo e cole no aplicativo do seu banco para pagamento instantâneo:',
+                style: TextStyle(
+                  color: MetaColors.textSecondary,
+                  fontSize: 12.5,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: MetaColors.background,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: MetaColors.border),
+                ),
+                child: Text(
+                  pixCode.isNotEmpty
+                      ? pixCode
+                      : '00020126580014br.gov.bcb.pix0136mrcoach-subscription-pix...',
+                  maxLines: 3,
                   overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 11,
+                    color: MetaColors.textSecondary,
+                  ),
                 ),
               ),
-              IconButton(
-                icon: const Icon(
-                  Icons.copy_rounded,
-                  color: Color(0xFF06B6D4),
-                  size: 18,
-                ),
-                tooltip: 'Copiar Pix Copia e Cola',
+              const SizedBox(height: 14),
+              SquircleButton(
+                label: 'Copiar Chave PIX',
+                icon: Icons.copy_rounded,
+                isPrimary: true,
                 onPressed: () {
-                  Clipboard.setData(ClipboardData(text: pixCode));
-                  HapticFeedback.lightImpact();
+                  Clipboard.setData(
+                    ClipboardData(
+                      text: pixCode.isNotEmpty
+                          ? pixCode
+                          : '00020126580014br.gov.bcb.pix0136mrcoach-subscription-pix',
+                    ),
+                  );
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      backgroundColor: Color(0xFF10B981),
-                      content: Text('Chave Pix copiada com sucesso!'),
-                      duration: Duration(seconds: 2),
+                      backgroundColor: MetaColors.surfaceHighlight,
+                      content: Text(
+                        'Código PIX copiado com sucesso!',
+                        style: TextStyle(color: MetaColors.textPrimary),
+                      ),
                     ),
                   );
                 },
@@ -1590,607 +1274,107 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet>
             ],
           ),
         ),
-        const SizedBox(height: 12),
-
-        // Radar de Polling Ativo
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
-            ),
-          ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 12,
-                height: 12,
-                child: CircularProgressIndicator(
-                  color: Color(0xFFF59E0B),
-                  strokeWidth: 2,
-                ),
-              ),
-              SizedBox(width: 8),
-              Text(
-                'Aguardando pagamento no banco... Reconhecimento automático!',
-                style: TextStyle(
-                  color: Color(0xFFF59E0B),
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
         const SizedBox(height: 16),
-        TextButton(
-          onPressed: () async {
-            final sessionId = _session?.sessionId;
-            if (sessionId == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Sessão de pagamento não identificada.'),
-                  backgroundColor: Color(0xFFEF4444),
-                ),
-              );
-              return;
-            }
-            final isPaid = await SubscriptionService.checkPaymentStatus(
-              sessionId,
-            );
-            if (isPaid) {
-              widget.onSuccess();
-            } else {
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Aguardando compensação do Pix pelo banco. Tente novamente em alguns segundos.',
-                  ),
-                  backgroundColor: Color(0xFFF59E0B),
-                  duration: Duration(seconds: 4),
-                ),
-              );
-            }
-          },
-          child: Text(
-            'Já paguei pelo aplicativo do banco (Verificar Pagamento)',
-            style: TextStyle(
-              color: AppColors.emerald(context),
-              fontSize: 12.5,
-              fontWeight: FontWeight.bold,
+        const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: MetaColors.emerald,
+              ),
             ),
-          ),
+            SizedBox(width: 8),
+            Text(
+              'Aguardando confirmação do banco...',
+              style: TextStyle(
+                color: MetaColors.textSecondary,
+                fontSize: 12,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 10),
       ],
     );
   }
 
-  Widget _buildCreditCardContent(BuildContext context, double amount) {
+  Widget _buildCreditCardContent(double amount) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 6),
-        // CARTÃO VIRTUAL 3D INTERATIVO (Gira 180° no foco do CVV)
-        _buildInteractive3DCard(context),
-        const SizedBox(height: 20),
-
-        // CAMPOS DE ENTRADA DO CARTÃO (100% IN-APP & NATIVO)
-        Text(
-          'DADOS DO CARTÃO DE CRÉDITO',
-          style: TextStyle(
-            color: AppColors.subtext(context),
-            fontSize: 10.5,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.8,
+        TextFormField(
+          controller: _cardNumberController,
+          keyboardType: TextInputType.number,
+          style: const TextStyle(color: MetaColors.textPrimary),
+          decoration: const InputDecoration(
+            labelText: 'Número do Cartão',
+            prefixIcon: Icon(
+              Icons.credit_card_rounded,
+              color: MetaColors.textSecondary,
+              size: 20,
+            ),
           ),
         ),
-        const SizedBox(height: 10),
-
-        // Número do Cartão
-        _buildCheckoutInputField(
-          context: context,
-          controller: _cardNumberController,
-          label: 'Número do Cartão',
-          hintText: '0000 0000 0000 0000',
-          icon: Icons.credit_card_rounded,
-          keyboardType: TextInputType.number,
-          maxLength: 19,
-          onChanged: (val) {
-            final clean = val.replaceAll(' ', '');
-            if (clean.length <= 16) {
-              final formatted =
-                  clean
-                      .replaceAllMapped(
-                        RegExp(r'.{1,4}'),
-                        (match) => '${match.group(0)} ',
-                      )
-                      .trim();
-              if (formatted != val) {
-                _cardNumberController.value = TextEditingValue(
-                  text: formatted,
-                  selection: TextSelection.collapsed(offset: formatted.length),
-                );
-              }
-            }
-            setState(() {});
-          },
-        ),
         const SizedBox(height: 12),
-
-        // Nome Impresso no Cartão
-        _buildCheckoutInputField(
-          context: context,
+        TextFormField(
           controller: _cardHolderController,
-          label: 'Nome Impresso no Cartão',
-          hintText: 'COMO ESTÁ NO CARTÃO',
-          icon: Icons.person_outline_rounded,
-          keyboardType: TextInputType.name,
-          textCapitalization: TextCapitalization.characters,
-          onChanged: (_) => setState(() {}),
+          style: const TextStyle(color: MetaColors.textPrimary),
+          decoration: const InputDecoration(
+            labelText: 'Nome no Cartão',
+            prefixIcon: Icon(
+              Icons.person_outline_rounded,
+              color: MetaColors.textSecondary,
+              size: 20,
+            ),
+          ),
         ),
         const SizedBox(height: 12),
-
-        // Linha: Validade + CVV
         Row(
           children: [
             Expanded(
-              child: _buildCheckoutInputField(
-                context: context,
+              child: TextFormField(
                 controller: _expiryController,
-                label: 'Validade',
-                hintText: 'MM/AA',
-                icon: Icons.calendar_today_rounded,
-                keyboardType: TextInputType.number,
-                maxLength: 5,
-                onChanged: (val) {
-                  final clean = val.replaceAll('/', '');
-                  if (clean.length == 2 && !val.contains('/')) {
-                    _expiryController.value = TextEditingValue(
-                      text: '$clean/',
-                      selection: const TextSelection.collapsed(offset: 3),
-                    );
-                  }
-                  setState(() {});
-                },
+                keyboardType: TextInputType.datetime,
+                style: const TextStyle(color: MetaColors.textPrimary),
+                decoration: const InputDecoration(
+                  labelText: 'Validade (MM/AA)',
+                  prefixIcon: Icon(
+                    Icons.date_range_outlined,
+                    color: MetaColors.textSecondary,
+                    size: 20,
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _buildCheckoutInputField(
-                context: context,
+              child: TextFormField(
                 controller: _cvvController,
-                focusNode: _cvvFocusNode,
-                label: 'CVV / CVC',
-                hintText: '•••',
-                icon: Icons.lock_outline_rounded,
                 keyboardType: TextInputType.number,
-                maxLength: 4,
-                onChanged: (_) => setState(() {}),
+                obscureText: true,
+                style: const TextStyle(color: MetaColors.textPrimary),
+                decoration: const InputDecoration(
+                  labelText: 'CVV',
+                  prefixIcon: Icon(
+                    Icons.security_outlined,
+                    color: MetaColors.textSecondary,
+                    size: 20,
+                  ),
+                ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
-
-        // Selo de Tokenização Segura In-App
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: const Color(0xFF10B981).withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: const Color(0xFF10B981).withValues(alpha: 0.25),
-            ),
-          ),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.shield_outlined,
-                color: Color(0xFF10B981),
-                size: 18,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Tokenização bancária direta Asaas (TLS 1.3). Seus dados não são gravados no dispositivo.',
-                  style: TextStyle(
-                    color: AppColors.subtext(context),
-                    fontSize: 11,
-                    height: 1.3,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-
-        // Link alternativo para abrir o checkout web se preferir
-        Center(
-          child: TextButton.icon(
-            onPressed: _openCardCheckout,
-            icon: Icon(
-              Icons.open_in_new_rounded,
-              size: 14,
-              color: AppColors.subtext(context),
-            ),
-            label: Text(
-              'Prefiro pagar no checkout web externo da Asaas',
-              style: TextStyle(
-                color: AppColors.subtext(context),
-                fontSize: 11.5,
-                decoration: TextDecoration.underline,
-              ),
-            ),
-          ),
-        ),
-        Center(
-          child: TextButton.icon(
-            onPressed: _isSubmittingCard ? null : _verifyCardPayment,
-            icon: Icon(
-              Icons.refresh_rounded,
-              size: 14,
-              color: AppColors.subtext(context),
-            ),
-            label: Text(
-              'Já paguei pelo link externo (Verificar Aprovação)',
-              style: TextStyle(color: AppColors.subtext(context), fontSize: 11),
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-      ],
-    );
-  }
-
-  Widget _buildCheckoutInputField({
-    required BuildContext context,
-    required TextEditingController controller,
-    required String label,
-    required String hintText,
-    required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
-    FocusNode? focusNode,
-    int? maxLength,
-    TextCapitalization textCapitalization = TextCapitalization.none,
-    ValueChanged<String>? onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: AppColors.text(context),
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          focusNode: focusNode,
-          keyboardType: keyboardType,
-          maxLength: maxLength,
-          textCapitalization: textCapitalization,
-          onChanged: onChanged,
-          buildCounter:
-              (_, {required currentLength, required isFocused, maxLength}) =>
-                  null,
-          style: TextStyle(
-            color: AppColors.text(context),
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-          decoration: InputDecoration(
-            hintText: hintText,
-            hintStyle: TextStyle(
-              color: AppColors.subtext(context).withValues(alpha: 0.5),
-              fontSize: 13,
-            ),
-            prefixIcon: Icon(icon, color: AppColors.emerald(context), size: 18),
-            filled: true,
-            fillColor: AppColors.bg(context),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 12,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.cardBorder(context)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.cardBorder(context)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: AppColors.emerald(context),
-                width: 1.5,
-              ),
-            ),
-          ),
+        const SizedBox(height: 20),
+        SquircleButton(
+          label: 'Confirmar Pagamento de R\$ ${amount.toStringAsFixed(2)}',
+          isPrimary: true,
+          isLoading: _isSubmittingCard,
+          onPressed: _submitInAppCardPayment,
         ),
       ],
-    );
-  }
-
-  Widget _buildInteractive3DCard(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _flipAnimation,
-      builder: (context, child) {
-        final angle = _flipAnimation.value * math.pi;
-        final isFront = angle < (math.pi / 2);
-
-        return Transform(
-          transform:
-              Matrix4.identity()
-                ..setEntry(3, 2, 0.0015)
-                ..rotateY(angle),
-          alignment: Alignment.center,
-          child: isFront ? _buildCardFront(context) : _buildCardBack(context),
-        );
-      },
-    );
-  }
-
-  Widget _buildCardFront(BuildContext context) {
-    final number =
-        _cardNumberController.text.isEmpty
-            ? '•••• •••• •••• ••••'
-            : _cardNumberController.text;
-    final holder =
-        _cardHolderController.text.isEmpty
-            ? 'NOME DO TITULAR'
-            : _cardHolderController.text.toUpperCase();
-    final expiry =
-        _expiryController.text.isEmpty ? 'MM/AA' : _expiryController.text;
-    final brand = _detectCardBrand(_cardNumberController.text);
-
-    return Container(
-      width: 320,
-      height: 185,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0F172A), Color(0xFF064E3B), Color(0xFF047857)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        border: Border.all(
-          color: const Color(0xFF10B981).withValues(alpha: 0.4),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF10B981).withValues(alpha: 0.25),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Topo: Chip + Contactless + Bandeira
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  // Chip Metálico
-                  Container(
-                    width: 36,
-                    height: 26,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEAB308),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: Colors.amber.shade200,
-                        width: 1,
-                      ),
-                      gradient: LinearGradient(
-                        colors: [Colors.amber.shade300, Colors.amber.shade700],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Icon(
-                    Icons.contactless_rounded,
-                    color: Colors.white70,
-                    size: 22,
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.black38,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  brand,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 12,
-                    letterSpacing: 1,
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          // Número
-          Text(
-            number,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              letterSpacing: 2.2,
-              fontFamily: 'monospace',
-              fontWeight: FontWeight.w700,
-              shadows: [Shadow(color: Colors.black, blurRadius: 4)],
-            ),
-          ),
-
-          // Rodapé: Titular e Validade
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'TITULAR',
-                      style: TextStyle(
-                        color: Colors.white54,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      holder,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  const Text(
-                    'VALIDADE',
-                    style: TextStyle(
-                      color: Colors.white54,
-                      fontSize: 8,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    expiry,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCardBack(BuildContext context) {
-    final cvv = _cvvController.text.isEmpty ? '•••' : _cvvController.text;
-
-    return Transform(
-      transform: Matrix4.identity()..rotateY(math.pi),
-      alignment: Alignment.center,
-      child: Container(
-        width: 320,
-        height: 185,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: const Color(0xFF0F172A),
-          border: Border.all(
-            color: const Color(0xFF10B981).withValues(alpha: 0.3),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.4),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            const SizedBox(height: 22),
-            // Faixa Magnética
-            Container(height: 38, color: Colors.black),
-            const SizedBox(height: 18),
-
-            // Tarja de Assinatura + CVV
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: Container(
-                      height: 34,
-                      color: Colors.white70,
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.only(right: 8),
-                      child: const Text(
-                        'MR. COACH',
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontSize: 10,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 1,
-                    child: Container(
-                      height: 34,
-                      color: Colors.white,
-                      alignment: Alignment.center,
-                      child: Text(
-                        cvv,
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 13,
-                          fontFamily: 'monospace',
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Spacer(),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Text(
-                    'ASAAS RECURRENT BILLED',
-                    style: TextStyle(
-                      color: Colors.white38,
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

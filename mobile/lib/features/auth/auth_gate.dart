@@ -3,9 +3,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 
-
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/meta_components.dart';
 import '../../services/auth_service.dart';
+import '../trainer/presentation/screens/trainer_main_layout.dart';
+import '../trainer/presentation/screens/trainer_onboarding_screen.dart';
 import 'login_screen.dart';
 import '../../main.dart';
 
@@ -27,7 +29,7 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   Future<void> _checkAuthAndRedirect() async {
-    // 1. Verificar se hÃƒÂ¡ sessÃƒÂ£o ativa no Supabase (Persistida via Token)
+    // 1. Verificar se hÃ¡ sessÃ£o ativa no Supabase (Persistida via Token)
     final session = AuthService.currentSession;
 
     if (session == null) {
@@ -35,9 +37,8 @@ class _AuthGateState extends State<AuthGate> {
       return;
     }
 
-    // 2. Tentar biometria se estiver em dispositivo mÃƒÂ³vel (iOS/Android)
-    bool biometricSuccess =
-        true; // Por padrÃƒÂ£o, web ou falha no hardware aprova direto (pois jÃƒÂ¡ tem token)
+    // 2. Tentar biometria se estiver em dispositivo mÃ³vel (iOS/Android)
+    bool biometricSuccess = true;
 
     if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) {
       try {
@@ -49,16 +50,13 @@ class _AuthGateState extends State<AuthGate> {
         if (canCheckBiometrics || isDeviceSupported) {
           biometricSuccess = await _auth.authenticate(
             localizedReason: 'Desbloqueie para acessar seus treinos e alunos',
-
             persistAcrossBackgrounding: true,
-
             biometricOnly: false,
           );
         }
       } catch (e) {
         debugPrint('Erro na biometria: $e');
-        biometricSuccess =
-            true; // Fallback para permitir entrada, jÃƒÂ¡ que a sessÃƒÂ£o existe
+        biometricSuccess = true; 
       } finally {
         if (mounted) setState(() => _isAuthenticating = false);
       }
@@ -67,7 +65,6 @@ class _AuthGateState extends State<AuthGate> {
     if (biometricSuccess) {
       _loadProfileAndGoToDashboard();
     } else {
-      // Se usuÃƒÂ¡rio cancelou a biometria, mandamos para o login
       AuthService.signOut();
       _goToLogin();
     }
@@ -77,20 +74,30 @@ class _AuthGateState extends State<AuthGate> {
     try {
       final profile = await AuthService.getCurrentProfile();
       final role = profile?['role'] as String? ?? 'client';
-      final name = profile?['full_name'] as String? ?? 'UsuÃƒÂ¡rio';
+      final name = profile?['full_name'] as String? ?? 'UsuÃ¡rio';
 
       if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder:
-                (_) => MainShellScreen(
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (role == 'trainer') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const TrainerOnboardingScreen(),
+              ),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => MainShellScreen(
                   initialIndex: 0,
                   activeRole: role,
                   userName: name,
                 ),
-          ),
-        );
+              ),
+            );
+          }
+        });
       }
     } catch (e) {
       AuthService.signOut();
@@ -100,36 +107,48 @@ class _AuthGateState extends State<AuthGate> {
 
   void _goToLogin() {
     if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: MetaColors.background,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset('assets/images/mr_coach_logo_full.png', height: 64),
+            Image.asset(
+              'assets/images/mr_coach_logo_full.png',
+              height: 64,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.fitness_center_rounded,
+                size: 54,
+                color: MetaColors.emerald,
+              ),
+            ),
             const SizedBox(height: 32),
             if (_isAuthenticating) ...[
               const Icon(
                 Icons.fingerprint_rounded,
                 size: 48,
-                color: Colors.grey,
+                color: MetaColors.textSecondary,
               ),
               const SizedBox(height: 16),
-              Text(
+              const Text(
                 'Autenticando...',
-                style: TextStyle(color: AppColors.subtext(context)),
+                style: TextStyle(color: MetaColors.textSecondary),
               ),
             ] else ...[
-              const CircularProgressIndicator(),
+              const CircularProgressIndicator(
+                color: MetaColors.emerald,
+              ),
             ],
           ],
         ),

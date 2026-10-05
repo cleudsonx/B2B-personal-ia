@@ -89,7 +89,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Comece a prescrever com InteligÃƒÂªncia Artificial',
+                    'Comece a prescrever com Inteligência Artificial',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,
@@ -232,7 +232,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                             )
                             : const Text(
-                              'Criar Conta GrÃƒÂ¡tis',
+                              'Criar Conta Grátis',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -241,12 +241,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // JÃƒÂ¡ tem conta?
+                  // Já tem conta?
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'JÃƒÂ¡ tem uma conta? ',
+                        'Já tem uma conta? ',
                         style: TextStyle(color: AppColors.subtext(context)),
                       ),
                       TextButton(
@@ -278,6 +278,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
+
 
 
 

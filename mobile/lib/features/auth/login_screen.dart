@@ -1,11 +1,15 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:local_auth/local_auth.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/server_config_dialog.dart';
 import '../../services/auth_service.dart';
 import '../../main.dart';
 import '../client/welcome_onboarding_screen.dart';
 import '../landing/mrcoach_landing_screen.dart';
+import '../trainer/presentation/screens/trainer_main_layout.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -87,7 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            backgroundColor: Colors.red.shade800,
+            backgroundColor: AppColors.danger,
             content: Text(e.toString().replaceAll('Exception: ', '')),
           ),
         );
@@ -97,19 +101,104 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _navigateToDashboard({required String role, required String name}) {
-    final targetIndex = 0;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder:
-            (_) => MainShellScreen(
-              initialIndex: targetIndex,
-              activeRole: role,
-              userName: name,
+  Future<void> _handleBiometricAuth() async {
+    final localAuth = LocalAuthentication();
+    try {
+      final canCheckBiometrics = await localAuth.canCheckBiometrics;
+      final isDeviceSupported = await localAuth.isDeviceSupported();
+      if (!canCheckBiometrics && !isDeviceSupported) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: MetaColors.surfaceHighlight,
+              content: Text(
+                'AutenticaÃ§Ã£o biomÃ©trica nÃ£o disponÃ­vel neste dispositivo.',
+                style: TextStyle(color: MetaColors.textPrimary),
+              ),
             ),
-      ),
-    );
+          );
+        }
+        return;
+      }
+
+      final didAuthenticate = await localAuth.authenticate(
+        localizedReason: 'Autentique-se com biometria para acessar sua conta',
+      );
+
+      if (didAuthenticate && mounted) {
+        final user = AuthService.currentUser;
+        if (user != null) {
+          final profile = await AuthService.getCurrentProfile();
+          final userName =
+              (profile?['full_name'] as String?)?.isNotEmpty == true
+                  ? profile!['full_name'] as String
+                  : (user.userMetadata?['full_name'] as String?)?.isNotEmpty ==
+                      true
+                  ? user.userMetadata!['full_name'] as String
+                  : (_selectedRole == 'trainer'
+                      ? 'Personal Trainer'
+                      : 'Aluno no SalÃ£o');
+          final hasCompletedAnamnesis =
+              profile?['has_completed_anamnesis'] == true;
+          if (_selectedRole == 'client' && !hasCompletedAnamnesis) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => WelcomeOnboardingScreen(studentName: userName),
+              ),
+            );
+          } else {
+            _navigateToDashboard(role: _selectedRole, name: userName);
+          }
+        } else {
+          if (_emailCtrl.text.isNotEmpty && _passwordCtrl.text.isNotEmpty) {
+            await _handleSignIn();
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                backgroundColor: MetaColors.surfaceHighlight,
+                content: Text(
+                  'Biometria validada. FaÃ§a o primeiro login com seu e-mail e senha para vincular sua biometria.',
+                  style: TextStyle(color: MetaColors.textPrimary),
+                ),
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.danger,
+            content: Text('Falha na autenticaÃ§Ã£o biomÃ©trica: $e'),
+          ),
+        );
+      }
+    }
+  }
+
+  void _navigateToDashboard({required String role, required String name}) {
+    if (role == 'trainer') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const TrainerMainLayout(),
+        ),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder:
+              (_) => MainShellScreen(
+                initialIndex: 0,
+                activeRole: role,
+                userName: name,
+              ),
+        ),
+      );
+    }
   }
 
   void _showForgotPasswordDialog() {
@@ -118,18 +207,22 @@ class _LoginScreenState extends State<LoginScreen> {
       context: context,
       builder:
           (ctx) => AlertDialog(
-            backgroundColor: AppColors.trainerSurface,
+            backgroundColor: MetaColors.surface,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-              side: const BorderSide(color: AppColors.trainerBorder),
+              borderRadius: BorderRadius.circular(20),
+              side: const BorderSide(color: MetaColors.border),
             ),
             title: const Row(
               children: [
-                Icon(Icons.lock_reset_rounded, color: AppColors.studentAmber),
-                SizedBox(width: 8),
+                Icon(Icons.lock_reset_rounded, color: MetaColors.emerald, size: 24),
+                SizedBox(width: 10),
                 Text(
                   'Recuperar Senha',
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 18),
+                  style: TextStyle(
+                    color: MetaColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -140,21 +233,31 @@ class _LoginScreenState extends State<LoginScreen> {
                 const Text(
                   'Informe o e-mail cadastrado para receber o link de redefiniÃ§Ã£o de acesso:',
                   style: TextStyle(
-                    color: AppColors.textSecondary,
+                    color: MetaColors.textSecondary,
                     fontSize: 13,
+                    height: 1.4,
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
                 TextField(
                   controller: resetEmailCtrl,
-                  style: const TextStyle(color: AppColors.textPrimary),
+                  style: const TextStyle(color: MetaColors.textPrimary),
                   decoration: InputDecoration(
                     labelText: 'E-mail',
-                    labelStyle: const TextStyle(color: AppColors.textSecondary),
+                    labelStyle: const TextStyle(color: MetaColors.textSecondary),
                     filled: true,
-                    fillColor: AppColors.trainerSurfaceElevated,
+                    fillColor: MetaColors.surfaceHighlight,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: MetaColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: MetaColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Colors.white, width: 1.5),
                     ),
                   ),
                 ),
@@ -165,21 +268,25 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: () => Navigator.pop(ctx),
                 child: const Text(
                   'Cancelar',
-                  style: TextStyle(color: AppColors.textMuted),
+                  style: TextStyle(color: MetaColors.textSecondary),
                 ),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.studentCyan,
-                  foregroundColor: Colors.black,
+                  backgroundColor: MetaColors.emerald,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 onPressed: () {
                   Navigator.pop(ctx);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      backgroundColor: Colors.green.shade800,
+                      backgroundColor: MetaColors.surfaceHighlight,
                       content: Text(
                         'InstruÃ§Ãµes enviadas para ${resetEmailCtrl.text}',
+                        style: const TextStyle(color: MetaColors.textPrimary),
                       ),
                     ),
                   );
@@ -197,130 +304,104 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isTrainer = _selectedRole == 'trainer';
-    final primaryAccent =
-        isTrainer ? AppColors.trainerEmerald : AppColors.studentCyan;
+    final topPadding = MediaQuery.paddingOf(context).top;
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
 
-    return Scaffold(
-      backgroundColor: AppColors.studentBg,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: MetaColors.background,
+        body: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: topPadding + 24,
+            bottom: bottomPadding + 24,
+          ),
+          child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
+              constraints: const BoxConstraints(maxWidth: 420),
               child: Form(
                 key: _formKey,
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Golden Shaipados Brand Logo
+                    const SizedBox(height: 12),
+                    // Logo Icon / Brand
                     Center(
-                      child: Image.asset(
-                        'assets/images/logo_shaipados.png',
-                        height: 105,
-                        fit: BoxFit.contain,
-                        errorBuilder:
-                            (context, error, stackTrace) => Container(
-                              width: 72,
-                              height: 72,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: primaryAccent,
-                                  width: 2,
-                                ),
-                              ),
-                              child: Icon(
-                                isTrainer
-                                    ? Icons.sports_gymnastics
-                                    : Icons.fitness_center_rounded,
-                                color: primaryAccent,
-                                size: 36,
-                              ),
-                            ),
+                      child: Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          color: MetaColors.surfaceHighlight,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isTrainer ? MetaColors.emerald : MetaColors.accentBlue,
+                            width: 2,
+                          ),
+                        ),
+                        child: Icon(
+                          isTrainer
+                              ? Icons.sports_gymnastics
+                              : Icons.fitness_center_rounded,
+                          color: isTrainer ? MetaColors.emerald : MetaColors.accentBlue,
+                          size: 36,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    Center(
+                    const SizedBox(height: 16),
+                    // Title
+                    const Center(
                       child: Text(
-                        'SHAIPADOS',
+                        'MR. COACH',
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: 2.2,
-                          color: AppColors.textPrimary,
-                          shadows: [
-                            Shadow(
-                              color: primaryAccent.withValues(alpha: 0.4),
-                              blurRadius: 18,
-                            ),
-                          ],
+                          letterSpacing: 1.5,
+                          color: MetaColors.textPrimary,
                         ),
                       ),
                     ),
                     const SizedBox(height: 6),
                     Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: primaryAccent.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: primaryAccent.withValues(alpha: 0.35),
-                          ),
-                        ),
-                        child: Text(
-                          widget.initialRole == 'client'
-                              ? 'ÃREA EXCLUSIVA DO ALUNO'
-                              : (isTrainer
-                                  ? 'PORTAL DO PERSONAL TRAINER'
-                                  : 'ÃREA DO ALUNO'),
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.0,
-                            color: primaryAccent,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Center(
                       child: Text(
                         widget.initialRole == 'client'
-                            ? 'Acesse seu treino personalizado prescrito pelo seu treinador.'
-                            : 'PrescriÃ§Ã£o BiomecÃ¢nica & AdaptaÃ§Ã£o no SalÃ£o com IA',
+                            ? 'Ãrea do Aluno â€¢ Treino Inteligente'
+                            : 'Plataforma para Personal Trainers & IA BiomecÃ¢nica',
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
-                          color: AppColors.textSecondary,
+                          color: MetaColors.textSecondary,
                         ),
                         textAlign: TextAlign.center,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 28),
 
-                    // Role Selector Toggle (Apenas se nÃ£o for link exclusivo de aluno)
+                    // Role Selector Tabs (se nÃ£o for link exclusivo de aluno)
                     if (widget.initialRole != 'client') ...[
                       Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: AppColors.studentSurface,
+                          color: MetaColors.surface,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.studentBorder),
+                          border: Border.all(color: MetaColors.border),
                         ),
                         child: Row(
                           children: [
                             Expanded(
                               child: _buildRoleTab(
                                 title: 'Treinador Pro',
-                                icon: Icons.assignment_ind_outlined,
+                                icon: Icons.sports_gymnastics,
                                 isSelected: isTrainer,
-                                activeColor: AppColors.trainerEmerald,
+                                activeColor: MetaColors.emerald,
                                 onTap: () => _onRoleChanged('trainer'),
                               ),
                             ),
@@ -329,73 +410,54 @@ class _LoginScreenState extends State<LoginScreen> {
                                 title: 'Aluno no SalÃ£o',
                                 icon: Icons.fitness_center_rounded,
                                 isSelected: !isTrainer,
-                                activeColor: AppColors.studentCyan,
+                                activeColor: MetaColors.accentBlue,
                                 onTap: () => _onRoleChanged('client'),
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      Center(
-                        child: Text(
-                          isTrainer
-                              ? 'Acesso Ã  gestÃ£o de alunos, anamnese clÃ­nica e prescriÃ§Ã£o IA'
-                              : 'Acesso ao treino do dia, timer de descanso e troca rÃ¡pida',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: primaryAccent,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
                     ],
 
                     // Email Input
                     TextFormField(
                       controller: _emailCtrl,
-                      style: const TextStyle(color: AppColors.textPrimary),
+                      style: const TextStyle(color: MetaColors.textPrimary),
                       keyboardType: TextInputType.emailAddress,
                       validator: (val) {
-                        if (val == null || val.trim().isEmpty)
+                        if (val == null || val.trim().isEmpty) {
                           return 'Informe seu e-mail';
-                        if (!val.contains('@'))
+                        }
+                        if (!val.contains('@')) {
                           return 'Informe um e-mail vÃ¡lido';
+                        }
                         return null;
                       },
                       decoration: InputDecoration(
                         labelText: 'E-mail',
                         labelStyle: const TextStyle(
-                          color: AppColors.textSecondary,
+                          color: MetaColors.textSecondary,
                           fontSize: 13,
                         ),
-                        prefixIcon: Icon(
+                        prefixIcon: const Icon(
                           Icons.email_outlined,
-                          color: primaryAccent,
+                          color: MetaColors.textSecondary,
                           size: 20,
                         ),
                         filled: true,
-                        fillColor: AppColors.studentSurface,
+                        fillColor: MetaColors.surfaceHighlight,
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: AppColors.studentBorder,
-                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: MetaColors.border),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: AppColors.studentBorder,
-                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: MetaColors.border),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(
-                            color: primaryAccent,
-                            width: 1.5,
-                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Colors.white, width: 1.5),
                         ),
                       ),
                     ),
@@ -405,23 +467,25 @@ class _LoginScreenState extends State<LoginScreen> {
                     TextFormField(
                       controller: _passwordCtrl,
                       obscureText: _obscurePassword,
-                      style: const TextStyle(color: AppColors.textPrimary),
+                      style: const TextStyle(color: MetaColors.textPrimary),
                       validator: (val) {
-                        if (val == null || val.trim().isEmpty)
+                        if (val == null || val.trim().isEmpty) {
                           return 'Informe sua senha';
-                        if (val.length < 6)
+                        }
+                        if (val.length < 6) {
                           return 'A senha deve ter no mÃ­nimo 6 dÃ­gitos';
+                        }
                         return null;
                       },
                       decoration: InputDecoration(
                         labelText: 'Senha',
                         labelStyle: const TextStyle(
-                          color: AppColors.textSecondary,
+                          color: MetaColors.textSecondary,
                           fontSize: 13,
                         ),
-                        prefixIcon: Icon(
+                        prefixIcon: const Icon(
                           Icons.lock_outline,
-                          color: primaryAccent,
+                          color: MetaColors.textSecondary,
                           size: 20,
                         ),
                         suffixIcon: IconButton(
@@ -429,124 +493,114 @@ class _LoginScreenState extends State<LoginScreen> {
                             _obscurePassword
                                 ? Icons.visibility_outlined
                                 : Icons.visibility_off_outlined,
-                            color: AppColors.textMuted,
+                            color: MetaColors.textSecondary,
                             size: 20,
                           ),
-                          onPressed:
-                              () => setState(
-                                () => _obscurePassword = !_obscurePassword,
-                              ),
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
                         ),
                         filled: true,
-                        fillColor: AppColors.studentSurface,
+                        fillColor: MetaColors.surfaceHighlight,
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: AppColors.studentBorder,
-                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: MetaColors.border),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: AppColors.studentBorder,
-                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: MetaColors.border),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(
-                            color: primaryAccent,
-                            width: 1.5,
-                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Colors.white, width: 1.5),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
 
                     // Remember Me & Forgot Password Row
-                    Wrap(
-                      alignment: WrapAlignment.spaceBetween,
-                      crossAxisAlignment: WrapCrossAlignment.center,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Checkbox(
-                              value: _rememberMe,
-                              activeColor: primaryAccent,
-                              checkColor: Colors.black,
-                              side: const BorderSide(
-                                color: AppColors.textMuted,
+                            SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: Checkbox(
+                                value: _rememberMe,
+                                activeColor: MetaColors.emerald,
+                                checkColor: Colors.black,
+                                side: const BorderSide(
+                                  color: MetaColors.textSecondary,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                onChanged: (val) =>
+                                    setState(() => _rememberMe = val ?? true),
                               ),
-                              onChanged:
-                                  (val) =>
-                                      setState(() => _rememberMe = val ?? true),
                             ),
+                            const SizedBox(width: 8),
                             const Text(
                               'Lembrar acesso',
                               style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 12,
+                                color: MetaColors.textSecondary,
+                                fontSize: 13,
                               ),
                             ),
                           ],
                         ),
                         TextButton(
                           onPressed: _showForgotPasswordDialog,
-                          child: Text(
+                          style: TextButton.styleFrom(
+                            foregroundColor: MetaColors.textSecondary,
+                            padding: EdgeInsets.zero,
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text(
                             'Esqueceu a senha?',
                             style: TextStyle(
-                              color: primaryAccent,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                              color: MetaColors.textSecondary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 24),
 
-                    // Primary Submit Button
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryAccent,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        elevation: 4,
-                        shadowColor: primaryAccent.withValues(alpha: 0.4),
-                      ),
-                      onPressed: _isLoading ? null : _handleSignIn,
-                      child:
-                          _isLoading
-                              ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.black,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                              : Text(
-                                'Entrar como ${isTrainer ? 'Treinador Pro' : 'Aluno no SalÃ£o'}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 15,
-                                ),
-                              ),
+                    // BotÃ£o de entrar: SquircleButton (isPrimary: true, label: "Entrar")
+                    SquircleButton(
+                      label: 'Entrar',
+                      isPrimary: true,
+                      isLoading: _isLoading,
+                      onPressed: _handleSignIn,
+                    ),
+                    const SizedBox(height: 12),
+
+                    // BotÃ£o secundÃ¡rio para biometria (Face ID / Touch ID)
+                    SquircleButton(
+                      label: 'Entrar com biometria',
+                      icon: Icons.fingerprint,
+                      isPrimary: false,
+                      backgroundColor: MetaColors.surfaceHighlight,
+                      foregroundColor: MetaColors.textSecondary,
+                      onPressed: _handleBiometricAuth,
                     ),
                     const SizedBox(height: 24),
 
                     // Register Link
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      crossAxisAlignment: WrapCrossAlignment.center,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Text(
                           'Ainda nÃ£o tem conta? ',
                           style: TextStyle(
-                            color: AppColors.textSecondary,
+                            color: MetaColors.textSecondary,
                             fontSize: 13,
                           ),
                         ),
@@ -555,17 +609,16 @@ class _LoginScreenState extends State<LoginScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder:
-                                    (_) => RegisterScreen(
-                                      initialRole: _selectedRole,
-                                    ),
+                                builder: (_) => RegisterScreen(
+                                  initialRole: _selectedRole,
+                                ),
                               ),
                             );
                           },
-                          child: Text(
+                          child: const Text(
                             'Cadastre-se grÃ¡tis',
                             style: TextStyle(
-                              color: primaryAccent,
+                              color: MetaColors.emerald,
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
                             ),
@@ -573,46 +626,50 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    TextButton.icon(
-                      icon: Icon(
-                        Icons.public_rounded,
-                        size: 16,
-                        color: primaryAccent,
-                      ),
-                      label: Text(
-                        'Conhecer a Plataforma (PÃ¡gina Web & WhatsApp)',
-                        style: TextStyle(
-                          color: primaryAccent,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                    const SizedBox(height: 16),
+
+                    // Landing Web Link
+                    Center(
+                      child: TextButton.icon(
+                        icon: const Icon(
+                          Icons.public_rounded,
+                          size: 16,
+                          color: MetaColors.textSecondary,
                         ),
-                      ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const MrCoachLandingScreen(),
+                        label: const Text(
+                          'Conhecer a Plataforma (PÃ¡gina Web & WhatsApp)',
+                          style: TextStyle(
+                            color: MetaColors.textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
                           ),
-                        );
-                      },
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const MrCoachLandingScreen(),
+                            ),
+                          );
+                        },
+                      ),
                     ),
 
-                    // API Server Config Shortcut (Only displayed in Debug / Development Mode)
+                    // API Server Config Shortcut (Only in Debug Mode)
                     if (kDebugMode) ...[
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
                       Center(
                         child: TextButton.icon(
                           icon: const Icon(
                             Icons.settings_ethernet,
-                            size: 16,
-                            color: AppColors.textMuted,
+                            size: 14,
+                            color: MetaColors.textSecondary,
                           ),
                           label: const Text(
                             'Configurar IP da API Backend (Dev)',
                             style: TextStyle(
-                              color: AppColors.textMuted,
-                              fontSize: 12,
+                              color: MetaColors.textSecondary,
+                              fontSize: 11,
                             ),
                           ),
                           onPressed: () => ServerConfigDialog.show(context),
@@ -640,17 +697,14 @@ class _LoginScreenState extends State<LoginScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color:
-              isSelected
-                  ? activeColor.withValues(alpha: 0.15)
-                  : Colors.transparent,
+          color: isSelected ? MetaColors.surfaceHighlight : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? activeColor : Colors.transparent,
-            width: 1.5,
+            width: 1.2,
           ),
         ),
         child: Row(
@@ -659,7 +713,7 @@ class _LoginScreenState extends State<LoginScreen> {
             Icon(
               icon,
               size: 18,
-              color: isSelected ? activeColor : AppColors.textMuted,
+              color: isSelected ? activeColor : MetaColors.textSecondary,
             ),
             const SizedBox(width: 8),
             Text(
@@ -667,7 +721,7 @@ class _LoginScreenState extends State<LoginScreen> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? activeColor : AppColors.textSecondary,
+                color: isSelected ? MetaColors.textPrimary : MetaColors.textSecondary,
               ),
             ),
           ],
@@ -676,3 +730,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+

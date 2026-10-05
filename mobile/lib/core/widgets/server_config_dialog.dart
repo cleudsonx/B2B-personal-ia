@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../config/app_config.dart';
 
 class ServerConfigDialog extends StatefulWidget {
@@ -35,7 +35,7 @@ class _ServerConfigDialogState extends State<ServerConfigDialog> {
       AppConfig.apiBaseUrl = url.trim();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Servidor configurado: ${AppConfig.apiBaseUrl}'),
+          content: Text('Servidor configurado: "$"AppConfig.apiBaseUrl}'),
           backgroundColor: Colors.green.shade800,
         ),
       );
@@ -50,7 +50,12 @@ class _ServerConfigDialogState extends State<ServerConfigDialog> {
         children: [
           Icon(Icons.dns_rounded, color: Colors.blueAccent),
           SizedBox(width: 8),
-          Text('Configurar Servidor API'),
+          Expanded(
+            child: Text(
+              'Configurar Servidor API',
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
       content: SingleChildScrollView(
