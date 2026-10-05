@@ -1,10 +1,12 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/widgets/meta_components.dart';
 
 class TrainerPublicLandingScreen extends StatefulWidget {
   final String username;
@@ -28,7 +30,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
 
   Future<void> _fetchTrainerProfile() async {
     try {
-      final apiUrl = '${AppConfig.apiBaseUrl}/api/v1/public/trainers/${widget.username}';
+      final apiUrl = '\/api/v1/public/trainers/\';
       
       final response = await http.get(Uri.parse(apiUrl));
 
@@ -39,7 +41,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
         });
       } else if (response.statusCode == 404) {
         setState(() {
-          _errorMessage = 'Treinador nÃ£o encontrado.';
+          _errorMessage = 'Treinador não encontrado.';
           _isLoading = false;
         });
       } else {
@@ -50,70 +52,85 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Falha de conexÃ£o. Tente novamente mais tarde.';
+        _errorMessage = 'Falha de conexão com o servidor.';
         _isLoading = false;
       });
     }
   }
 
-    void _openWhatsApp() {
-    if (_trainerData == null || _trainerData!['public_whatsapp'] == null) return;
-    
-    var phone = _trainerData!['public_whatsapp'].replaceAll(RegExp(r'[^\d]'), '');
-    if (!phone.startsWith('55')) {
-      phone = '55$phone';
+  void _openWhatsApp() async {
+    final phone = _trainerData!['public_whatsapp'];
+    if (phone == null || phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('WhatsApp não configurado por este treinador.'),
+          backgroundColor: MetaColors.surfaceHighlight,
+        )
+      );
+      return;
     }
-    
-    final text = Uri.encodeComponent("Olá, Prof. ${_trainerData!['full_name']}! Vi seu método inteligente e cansei de treinos genéricos. Quero saber como funciona a consultoria personalizada para o meu objetivo!");
-    final url = Uri.parse("https://wa.me/$phone?text=$text");
+
+    final text = Uri.encodeComponent("Olá! Acessei sua vitrine no Mr. Coach e tenho interesse em iniciar uma consultoria.");
+    final url = Uri.parse("https://wa.me/\=\");
     
     launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+      ),
+    );
+
     // Fallback UI para Loading / Erro
     if (_isLoading) {
-      return Scaffold(
-        backgroundColor: colorScheme.surface,
-        body: const Center(child: CircularProgressIndicator()),
+      return const Scaffold(
+        backgroundColor: MetaColors.background,
+        body: Center(
+          child: CircularProgressIndicator(color: MetaColors.emerald),
+        ),
       );
     }
 
     if (_errorMessage != null) {
       return Scaffold(
-        backgroundColor: colorScheme.surface,
+        backgroundColor: MetaColors.background,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.person_off, size: 80, color: colorScheme.error),
+              const Icon(Icons.person_off, size: 80, color: MetaColors.textSecondary),
               const SizedBox(height: 16),
-              Text(_errorMessage!, style: theme.textTheme.headlineSmall),
+              Text(
+                _errorMessage!, 
+                style: const TextStyle(color: MetaColors.textPrimary, fontSize: 20, fontWeight: FontWeight.bold),
+              ),
             ],
           ),
         ),
       );
     }
 
-    // Tela de ConversÃ£o B2B
+    // Tela de Conversão B2B - High Performance Theme
     final name = _trainerData!['full_name'] ?? 'Personal Trainer';
-    final bio = _trainerData!['bio'] ?? 'Transformando vidas atravÃ©s do movimento e da hipertrofia funcional.';
-    final List<dynamic> specialties = _trainerData!['specialties'] ?? ['Hipertrofia', 'Emagrecimento', 'SaÃºde'];
+    final bio = _trainerData!['bio'] ?? 'Software de alta performance e produtos digitais escaláveis movidos a Inteligência Artificial.';
+    final List<dynamic> specialties = _trainerData!['specialties'] ?? ['Alta Performance', 'Hipertrofia'];
     final photoUrl = _trainerData!['photo_url'];
 
     return Scaffold(
-      backgroundColor: colorScheme.surface,
+      backgroundColor: MetaColors.background,
       body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
         slivers: [
           SliverAppBar(
-            expandedHeight: 350.0,
+            expandedHeight: 400.0,
             floating: false,
             pinned: true,
-            backgroundColor: colorScheme.surface,
+            backgroundColor: MetaColors.background,
+            elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 fit: StackFit.expand,
@@ -122,12 +139,12 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                     Image.network(
                       photoUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (ctx, err, stack) => _buildPlaceholderPhoto(colorScheme),
+                      errorBuilder: (ctx, err, stack) => _buildPlaceholderPhoto(),
                     )
                   else
-                    _buildPlaceholderPhoto(colorScheme),
+                    _buildPlaceholderPhoto(),
                   
-                  // Gradiente escuro para legibilidade
+                  // Gradiente super escuro para fundo (Estilo Shaipados Labs)
                   DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -135,8 +152,8 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          colorScheme.surface.withValues(alpha: 0.8),
-                          colorScheme.surface,
+                          MetaColors.background.withValues(alpha: 0.6),
+                          MetaColors.background,
                         ],
                       ),
                     ),
@@ -147,63 +164,148 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 0.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(
-                    name,
-                    style: theme.textTheme.headlineLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: colorScheme.onSurface,
-                      letterSpacing: -1,
+                  // Badge Estilo "SOFTWARE STUDIO & VENTURE BUILDER"
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: MetaColors.emerald.withValues(alpha: 0.1),
+                      border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
+                      borderRadius: BorderRadius.circular(50),
                     ),
-                    textAlign: TextAlign.center,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.rocket_launch_rounded, color: MetaColors.emerald, size: 14),
+                        SizedBox(width: 8),
+                        Text(
+                          'ALTA PERFORMANCE & RESULTADOS',
+                          style: TextStyle(
+                            color: MetaColors.emerald,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ],
+                    ),
                   ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2, end: 0),
                   
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
+
+                  // Headline Principal (Nome) "Nós esculpimos ideias." -> "Nome do Treinador"
+                  Text(
+                    name.toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 42,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -1.5,
+                      height: 1.1,
+                    ),
+                    textAlign: TextAlign.center,
+                  ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0),
                   
-                  // Tags de Especialidade
+                  const SizedBox(height: 20),
+                  
+                  // Tags de Especialidade (Pills minimalistas)
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     alignment: WrapAlignment.center,
-                    children: specialties.map((spec) => Chip(
-                      label: Text(spec.toString(), style: TextStyle(fontWeight: FontWeight.bold, color: colorScheme.primary)),
-                      backgroundColor: colorScheme.primaryContainer.withValues(alpha: 0.3),
-                      side: BorderSide.none,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+                    children: specialties.map((spec) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: MetaColors.surfaceHighlight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        spec.toString().toUpperCase(), 
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700, 
+                          color: MetaColors.textSecondary,
+                          fontSize: 10,
+                          letterSpacing: 1.0,
+                        )
+                      ),
                     )).toList(),
-                  ).animate().fadeIn(delay: 200.ms).scale(),
+                  ).animate().fadeIn(delay: 300.ms).scale(),
 
                   const SizedBox(height: 32),
                   
-                  // Bio
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(32),
+                  // Bio - Focada no texto elegante (como o subtítulo do site)
+                  Text(
+                    bio,
+                    style: const TextStyle(
+                      color: MetaColors.textSecondary,
+                      fontSize: 18,
+                      height: 1.5,
+                      fontWeight: FontWeight.w400,
                     ),
-                    child: Text(
-                      bio,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        height: 1.6,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
+                    textAlign: TextAlign.center,
                   ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1, end: 0),
 
                   const SizedBox(height: 48),
 
-                  // Diferenciais (Social Proof)
-                  _buildProofRow(context, Icons.fitness_center, "Periodização 100% Sob Medida", "Montada para sua anatomia e rotina."),
-                  const SizedBox(height: 16),
-                  _buildProofRow(context, Icons.insights, "Evolução Monitorada no App", "Acompanhe seus pesos e consistência."),
-                  const SizedBox(height: 16),
-                  _buildProofRow(context, Icons.workspace_premium, "Aparelho Ocupado? Zero Espera", "App indica substituições com 1 toque."),
+                  // Diferenciais (Social Proof) - Layout MetaCard escuro
+                  MetaCard(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      children: [
+                        _buildProofRow(Icons.fitness_center_rounded, "Periodização Sob Medida", "Treinos esculpidos para sua anatomia e rotina."),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: Divider(color: MetaColors.surfaceHighlight, height: 1),
+                        ),
+                        _buildProofRow(Icons.insights_rounded, "Evolução Movida a Dados", "Acompanhe seus pesos e progressão no app."),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: Divider(color: MetaColors.surfaceHighlight, height: 1),
+                        ),
+                        _buildProofRow(Icons.auto_awesome_rounded, "Inteligência Artificial", "Zero espera. Aparelho ocupado? O app substitui em 1 toque."),
+                      ],
+                    ),
+                  ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.1, end: 0),
                   
+                  const SizedBox(height: 64),
+
+                  // Branding Footer "Tecnologia Mr. Coach | Shaipados Labs"
+                  Column(
+                    children: [
+                      const Text(
+                        'Tecnologia Mr. Coach',
+                        style: TextStyle(
+                          color: MetaColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.science_rounded,
+                            color: MetaColors.textSecondary.withValues(alpha: 0.5),
+                            size: 14,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'by Shaipados Labs',
+                            style: TextStyle(
+                              color: MetaColors.textSecondary.withValues(alpha: 0.5),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+
                   const SizedBox(height: 120), // Espaço para o botão flutuante
                 ],
               ),
@@ -216,17 +318,20 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
         padding: const EdgeInsets.symmetric(horizontal: 24.0),
         child: SizedBox(
           width: double.infinity,
-          height: 64,
-          child: FloatingActionButton.extended(
+          height: 60,
+          child: ElevatedButton.icon(
             onPressed: _openWhatsApp,
-            backgroundColor: const Color(0xFF25D366), // WhatsApp Green
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            icon: const Icon(Icons.rocket_launch, size: 28),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: MetaColors.emerald,
+              foregroundColor: Colors.white,
+              elevation: 4,
+              shadowColor: MetaColors.emerald.withValues(alpha: 0.4),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            icon: const Icon(Icons.bolt_rounded, size: 28),
             label: const Text(
-              'Quero Minha Consultoria',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: -0.5),
+              'COMEÇAR AGORA',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.0),
             ),
           ),
         ).animate(onPlay: (controller) => controller.repeat(reverse: true))
@@ -235,34 +340,50 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     );
   }
 
-  Widget _buildPlaceholderPhoto(ColorScheme colorScheme) {
+  Widget _buildPlaceholderPhoto() {
     return Container(
-      color: colorScheme.primaryContainer,
-      child: Center(
-        child: Icon(Icons.person, size: 120, color: colorScheme.onPrimaryContainer.withValues(alpha: 0.2)),
+      color: MetaColors.surfaceHighlight,
+      child: const Center(
+        child: Icon(Icons.fitness_center_rounded, size: 120, color: MetaColors.background),
       ),
     );
   }
 
-  Widget _buildProofRow(BuildContext context, IconData icon, String title, String subtitle) {
-    final theme = Theme.of(context);
+  Widget _buildProofRow(IconData icon, String title, String subtitle) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.4),
-            shape: BoxShape.circle,
+            color: MetaColors.emerald.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(icon, color: theme.colorScheme.onSecondaryContainer),
+          child: Icon(icon, color: MetaColors.emerald, size: 22),
         ),
         const SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-              Text(subtitle, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              Text(
+                title, 
+                style: const TextStyle(
+                  color: Colors.white, 
+                  fontSize: 16, 
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.3,
+                )
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle, 
+                style: const TextStyle(
+                  color: MetaColors.textSecondary, 
+                  fontSize: 14,
+                  height: 1.3,
+                )
+              ),
             ],
           ),
         ),
@@ -270,4 +391,3 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     );
   }
 }
-
