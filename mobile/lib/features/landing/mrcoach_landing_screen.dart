@@ -59,14 +59,16 @@ class MrCoachLandingScreen extends StatelessWidget {
                     subtitle: 'Gere periodizações completas em 30 segundos, atraia mais alunos online e tenha a mesma tecnologia dos maiores estúdios do país.',
                   ),
                   const SizedBox(height: 32),
-                  SizedBox(
-                    width: double.infinity,
-                    child: SquircleButton(
-                      label: 'Criar Conta Grátis via WhatsApp',
-                      icon: Icons.chat_bubble,
-                      onPressed: _openWhatsApp,
+                    SizedBox(
+                      width: double.infinity,
+                      child: SquircleButton(
+                        label: 'Criar Conta Grátis',
+                        icon: Icons.person_add,
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/register');
+                        },
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 48),
 
                   // FEATURES SECTION
@@ -146,7 +148,9 @@ class MrCoachLandingScreen extends StatelessWidget {
                           child: SquircleButton(
                             label: 'Ativar Plano',
                             isPrimary: false,
-                            onPressed: _openWhatsApp,
+                            onPressed: () {
+                              Navigator.pushNamed(context, '/register');
+                            },
                           ),
                         ),
                       ],
