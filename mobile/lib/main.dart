@@ -7,6 +7,7 @@ import 'dart:ui';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/login_screen.dart';
+import 'features/auth/register_screen.dart';
 import 'features/auth/auth_gate.dart';
 import 'features/client/active_workout_screen.dart';
 import 'features/trainer/anamnesis_screen.dart';
@@ -99,6 +100,7 @@ class B2BPersonalIaApp extends StatelessWidget {
             '/home': (context) => const AuthGate(),
             '/trainer': (context) => const TrainerMainLayout(),
             '/login': (context) => const LoginScreen(),
+        '/register': (context) => const RegisterScreen(),
             '/subscription': (context) => const SubscriptionScreen(),
           },
           home: Builder(
