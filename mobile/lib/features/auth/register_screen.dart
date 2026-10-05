@@ -44,10 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             return;
           }
           // Redireciona para configurar o perfil do treinador
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const TrainerProfileSetupScreen()),
-          );
+          Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
         }
     } catch (e) {
       if (mounted) {
