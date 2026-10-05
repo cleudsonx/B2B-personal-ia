@@ -32,14 +32,14 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
   final ApiService _apiService = ApiService();
 
   String _objective = 'Hipertrofia Muscular';
-  String _trainingLevel = 'IntermediÃ¡rio';
+  String _trainingLevel = 'Intermediário';
   int _daysPerWeek = 4;
-  String _splitType = 'AutomÃ¡tico (IA Sugere o Ideal)';
+  String _splitType = 'Automático (IA Sugere o Ideal)';
   String _targetFocus = 'Geral / Equilibrado';
   String _workoutLocation = 'Academia completa';
   final _restrictionsCtrl = TextEditingController(
     text:
-        'Leve desconforto no ombro direito (evitar abduÃ§Ã£o acima de 90Â° com carga pesada)',
+        'Leve desconforto no ombro direito (evitar abdução acima de 90Â° com carga pesada)',
   );
   final _notesCtrl = TextEditingController(
     text: 'Foco em peitoral superior e deltoides',
@@ -131,7 +131,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             'Hipertrofia Muscular',
             'Emagrecimento',
             'Condicionamento Geral',
-            'ForÃ§a MÃ¡xima',
+            'Força Máxima',
           ].contains(obj)) {
         _objective = obj as String;
       }
@@ -252,7 +252,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         title: Text(
-          _generatedPlan == null ? 'Nova Anamnese & Ficha' : 'RevisÃ£o da Ficha',
+          _generatedPlan == null ? 'Nova Anamnese & Ficha' : 'Revisão da Ficha',
           style: TextStyle(
             color: MetaColors.textPrimary,
             fontWeight: FontWeight.w800,
@@ -322,7 +322,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'ANAMNESE CLÃNICA',
+                    'ANAMNESE CLÍNICA',
                     style: TextStyle(
                       fontSize: 11,
                       letterSpacing: 1.2,
@@ -331,7 +331,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                     ),
                   ),
                   Text(
-                    'ParÃ¢metros da Periodização',
+                    'Parâmetros da Periodização',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -357,7 +357,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                       'Hipertrofia Muscular',
                       'Emagrecimento',
                       'Condicionamento Geral',
-                      'ForÃ§a MÃ¡xima',
+                      'Força Máxima',
                     ]
                     .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                     .toList(),
@@ -370,11 +370,11 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             style: TextStyle(color: MetaColors.textPrimary),
             decoration: _inputDecoration(
               context,
-              'NÃ­vel de Treino',
+              'Nível de Treino',
               prefixIcon: Icons.signal_cellular_alt_rounded,
             ),
             items:
-                ['Iniciante', 'IntermediÃ¡rio', 'AvanÃ§ado']
+                ['Iniciante', 'Intermediário', 'Avançado']
                     .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                     .toList(),
             onChanged: (val) => setState(() => _trainingLevel = val!),
@@ -386,7 +386,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             style: TextStyle(color: MetaColors.textPrimary),
             decoration: _inputDecoration(
               context,
-              'FrequÃªncia Semanal',
+              'Frequência Semanal',
               prefixIcon: Icons.calendar_today_outlined,
             ),
             items:
@@ -408,21 +408,21 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             isExpanded: true,
             decoration: _inputDecoration(
               context,
-              'Estrutura de DivisÃ£o / Split',
+              'Estrutura de Divisão / Split',
               prefixIcon: Icons.alt_route_rounded,
             ),
             items:
                 [
-                      'AutomÃ¡tico (IA Sugere o Ideal)',
+                      'Automático (IA Sugere o Ideal)',
                       'Full Body (1 a 3 dias - Corpo Inteiro)',
                       'Upper / Lower (2 ou 4 dias - Superiores / Inferiores)',
                       'Push / Pull / Legs (PPL - 3 a 6 dias)',
                       'Agonista / Antagonista (SupersÃ©ries eficientes)',
-                      'DivisÃ£o ABC Tradicional',
-                      'DivisÃ£o ABCD ClÃ¡ssica (4 dias)',
-                      'DivisÃ£o ABCDE AvanÃ§ada (1 grupo/dia)',
-                      'EspecializaÃ§Ã£o de Ponto Fraco',
-                      'ReabilitaÃ§Ã£o / Articularmente Poupadora',
+                      'Divisão ABC Tradicional',
+                      'Divisão ABCD Clássica (4 dias)',
+                      'Divisão ABCDE AvanÃ§ada (1 grupo/dia)',
+                      'Especialização de Ponto Fraco',
+                      'Reabilitação / Articularmente Poupadora',
                     ]
                     .map(
                       (e) => DropdownMenuItem(
@@ -447,7 +447,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             items:
                 [
                       'Geral / Equilibrado',
-                      'GlÃºteos & Posterior de Coxa',
+                      'Glúteos & Posterior de Coxa',
                       'Deltoides & Ombros 3D',
                       'Peitoral Superior (Clavicular)',
                       'Dorsais & V-Taper (Largura)',
@@ -477,7 +477,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             items:
                 [
                       'Academia completa',
-                      'CondomÃ­nio',
+                      'Condomínio',
                       'Em casa (Halteres/Peso Corporal)',
                     ]
                     .map((e) => DropdownMenuItem(value: e, child: Text(e)))
@@ -491,7 +491,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             style: TextStyle(color: MetaColors.textPrimary),
             decoration: _inputDecoration(
               context,
-              'Dores, LesÃµes e Restrições Articulares',
+              'Dores, Lesões e Restrições Articulares',
               prefixIcon: Icons.health_and_safety_outlined,
               hint: 'Ex: Evitar supino reto livre devido a impacto no ombro',
             ),
@@ -575,7 +575,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                       ),
                     ),
                     Text(
-                      'Modo de Envio & AtribuiÃ§Ã£o',
+                      'Modo de Envio & Atribuição',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -708,18 +708,18 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Selecione o aluno que receberÃ¡ esta prescriÃ§Ã£o exclusiva:',
+          'Selecione o aluno que receberÃ¡ esta prescrição exclusiva:',
           style: TextStyle(fontSize: 12, color: MetaColors.textSecondary),
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          initialValue: _selectedIndividualStudentId,
+          initialValue: _students.any((s) => s['id'] == _selectedIndividualStudentId) ? _selectedIndividualStudentId : null,
           dropdownColor: MetaColors.surface,
           style: TextStyle(color: MetaColors.textPrimary, fontSize: 13),
           isExpanded: true,
           decoration: _inputDecoration(
             context,
-            'Aluno DestinatÃ¡rio',
+            'Aluno Destinatário',
             prefixIcon: Icons.person_outline_rounded,
           ),
           items:
@@ -825,7 +825,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          'RestriÃ§Ã£o no cadastro: ${selectedStudent['injuries_or_restrictions']}',
+                          'Restrição no cadastro: ${selectedStudent['injuries_or_restrictions']}',
                           style: const TextStyle(
                             fontSize: 11,
                             color: Colors.amber,
@@ -1187,7 +1187,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Diretriz ClÃ­nica: ${plan.notesForTrainer}',
+                  'Diretriz Clínica: ${plan.notesForTrainer}',
                   style: TextStyle(
                     fontSize: 12,
                     color: MetaColors.textSecondary,
@@ -1221,8 +1221,8 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                           children: [
                             Text(
                               _dispatchMode == StudentDispatchMode.individual
-                                  ? 'DestinatÃ¡rio Individual'
-                                  : 'DestinatÃ¡rios em Lote (${_selectedMultipleStudentIds.length} alunos)',
+                                  ? 'Destinatário Individual'
+                                  : 'Destinatários em Lote (${_selectedMultipleStudentIds.length} alunos)',
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
@@ -1542,7 +1542,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'DestinatÃ¡rios da PrescriÃ§Ã£o',
+                        'Destinatários da Prescrição',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -1761,7 +1761,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                       ),
                       onPressed: () => Navigator.pop(ctx),
                       child: const Text(
-                        'Confirmar DestinatÃ¡rios',
+                        'Confirmar Destinatários',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -2091,7 +2091,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
       'Deltoides / Ombros',
       'QuadrÃ­ceps',
       'Posterior de Coxa',
-      'GlÃºteos',
+      'Glúteos',
       'BÃ­ceps',
       'TrÃ­ceps',
       'Panturrilhas',
@@ -2102,14 +2102,14 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
     const suggestions = [
       'Supino Inclinado com Halteres',
       'Puxada Alta (Lat Pulldown)',
-      'ElevaÃ§Ã£o Lateral na Polia',
+      'Elevação Lateral na Polia',
       'Agachamento BÃºlgaro',
       'Leg Press 45Â°',
       'Cadeira Extensora',
       'TrÃ­ceps na Polia com Corda',
       'Rosca Direta com Barra W',
       'Mesa Flexora',
-      'ElevaÃ§Ã£o PÃ©lvica',
+      'Elevação PÃ©lvica',
     ];
 
     showModalBottomSheet(
@@ -2419,9 +2419,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                       ),
                       decoration: _inputDecoration(
                         context,
-                        'Diretriz / Notas de ExecuÃ§Ã£o (Opcional)',
+                        'Diretriz / Notas de Execução (Opcional)',
                         prefixIcon: Icons.notes_rounded,
-                        hint: 'Ex: CadÃªncia 3-0-1-0 com pico de contraÃ§Ã£o',
+                        hint: 'Ex: CadÃªncia 3-0-1-0 com pico de contração',
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -2477,6 +2477,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
     );
   }
 }
+
+
+
 
 
 
