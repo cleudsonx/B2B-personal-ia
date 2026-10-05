@@ -138,7 +138,7 @@ class _AuthGateState extends State<AuthGate> {
                 );
               },
               child: Image.asset(
-                'assets/images/logo_shaipados_gold.jpg',
+                'assets/images/mr_coach_logo_gold.jpg',
                 width: MediaQuery.of(context).size.width * 0.75, // 75% da largura da tela
                 fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) => const Icon(
@@ -186,4 +186,5 @@ class _AuthGateState extends State<AuthGate> {
     );
   }
 }
+
 
