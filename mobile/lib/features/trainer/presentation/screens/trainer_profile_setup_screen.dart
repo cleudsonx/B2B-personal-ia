@@ -91,13 +91,20 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Vitrine salva com sucesso!')),
+          SnackBar(content: const Text('Vitrine salva com sucesso!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), backgroundColor: MetaColors.emerald, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), margin: const EdgeInsets.all(16)),
         );
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const TrainerMainLayout()));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao salvar: $e')),
+          SnackBar(
+              content: Text('Erro ao salvar: $e', style: const TextStyle(color: Colors.white)),
+              backgroundColor: AppColors.danger,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              margin: const EdgeInsets.all(16),
+            ),
         );
       }
     } finally {
@@ -349,6 +356,11 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
     );
   }
 }
+
+
+
+
+
 
 
 
