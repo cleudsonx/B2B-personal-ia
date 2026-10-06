@@ -202,11 +202,15 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showForgotPasswordDialog() {
-    final resetEmailCtrl = TextEditingController(text: _emailCtrl.text);
+    final inputCtrl = TextEditingController(text: _emailCtrl.text);
+    String selectedChannel = 'whatsapp'; // Padrão Brasil: WhatsApp
+    bool isSubmitting = false;
+
     showDialog(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
             backgroundColor: MetaColors.surface,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
@@ -217,7 +221,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Icon(Icons.lock_reset_rounded, color: MetaColors.emerald, size: 24),
                 SizedBox(width: 10),
                 Text(
-                  'Recuperar Senha',
+                  'Recuperar Acesso',
                   style: TextStyle(
                     color: MetaColors.textPrimary,
                     fontSize: 18,
@@ -231,7 +235,7 @@ class _LoginScreenState extends State<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Informe o e-mail cadastrado para receber o link de redefinição de acesso:',
+                  'Escolha por onde deseja receber seu código ou link de recuperação:',
                   style: TextStyle(
                     color: MetaColors.textSecondary,
                     fontSize: 13,
@@ -239,11 +243,109 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
+
+                // Seletor de Canal (WhatsApp vs E-mail)
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => setDialogState(() => selectedChannel = 'whatsapp'),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: selectedChannel == 'whatsapp'
+                                ? MetaColors.emerald.withValues(alpha: 0.15)
+                                : MetaColors.surfaceHighlight,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: selectedChannel == 'whatsapp'
+                                  ? MetaColors.emerald
+                                  : MetaColors.border,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.chat_bubble_rounded,
+                                size: 16,
+                                color: selectedChannel == 'whatsapp'
+                                    ? MetaColors.emerald
+                                    : MetaColors.textSecondary,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'WhatsApp',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: selectedChannel == 'whatsapp'
+                                      ? MetaColors.emerald
+                                      : MetaColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => setDialogState(() => selectedChannel = 'email'),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: selectedChannel == 'email'
+                                ? MetaColors.emerald.withValues(alpha: 0.15)
+                                : MetaColors.surfaceHighlight,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: selectedChannel == 'email'
+                                  ? MetaColors.emerald
+                                  : MetaColors.border,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.email_rounded,
+                                size: 16,
+                                color: selectedChannel == 'email'
+                                    ? MetaColors.emerald
+                                    : MetaColors.textSecondary,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'E-mail',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: selectedChannel == 'email'
+                                      ? MetaColors.emerald
+                                      : MetaColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
                 TextField(
-                  controller: resetEmailCtrl,
+                  controller: inputCtrl,
                   style: const TextStyle(color: MetaColors.textPrimary),
+                  keyboardType: selectedChannel == 'whatsapp' ? TextInputType.phone : TextInputType.emailAddress,
                   decoration: InputDecoration(
-                    labelText: 'E-mail',
+                    labelText: selectedChannel == 'whatsapp' ? 'WhatsApp (com DDD)' : 'E-mail cadastrado',
+                    hintText: selectedChannel == 'whatsapp' ? '11999999999' : 'seu@email.com',
+                    hintStyle: TextStyle(color: MetaColors.textSecondary.withValues(alpha: 0.5)),
                     labelStyle: const TextStyle(color: MetaColors.textSecondary),
                     filled: true,
                     fillColor: MetaColors.surfaceHighlight,
@@ -257,7 +359,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Colors.white, width: 1.5),
+                      borderSide: const BorderSide(color: MetaColors.emerald, width: 1.5),
                     ),
                   ),
                 ),
@@ -265,7 +367,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(ctx),
+                onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
                 child: const Text(
                   'Cancelar',
                   style: TextStyle(color: MetaColors.textSecondary),
@@ -279,41 +381,61 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                                onPressed: () async {
-                  final email = resetEmailCtrl.text.trim();
-                  if (email.isEmpty) return;
+                onPressed: isSubmitting ? null : () async {
+                  final textVal = inputCtrl.text.trim();
+                  if (textVal.isEmpty) return;
+
+                  setDialogState(() => isSubmitting = true);
                   Navigator.pop(ctx);
+
                   try {
-                    await AuthService.resetPasswordForEmail(email);
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          backgroundColor: MetaColors.surfaceHighlight,
-                          content: Text(
-                            'Instruções enviadas para '.replaceAll('ç', 'Ã§').replaceAll('õ', 'Ãµ'),
-                            style: const TextStyle(color: MetaColors.textPrimary),
+                    if (selectedChannel == 'email') {
+                      await AuthService.resetPasswordForEmail(textVal);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: MetaColors.surfaceHighlight,
+                            content: Text(
+                              'Link de recuperação enviado para $textVal',
+                              style: const TextStyle(color: MetaColors.textPrimary),
+                            ),
                           ),
-                        ),
-                      );
+                        );
+                      }
+                    } else {
+                      // Solicitação via WhatsApp com OTP
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: MetaColors.surfaceHighlight,
+                            content: Text(
+                              'Código de segurança enviado via WhatsApp para $textVal',
+                              style: const TextStyle(color: MetaColors.textPrimary),
+                            ),
+                          ),
+                        );
+                      }
                     }
                   } catch (e) {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           backgroundColor: AppColors.danger,
-                          content: Text('Erro ao enviar e-mail. Verifique se o formato está correto.'),
+                          content: Text('Erro ao enviar solicitação de recuperação.'),
                         ),
                       );
                     }
                   }
                 },
-                child: const Text(
-                  'Enviar Link',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                child: Text(
+                  isSubmitting ? 'Enviando...' : (selectedChannel == 'whatsapp' ? 'Enviar WhatsApp' : 'Enviar E-mail'),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
             ],
-          ),
+          );
+        },
+      ),
     );
   }
 

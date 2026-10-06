@@ -1255,6 +1255,22 @@ class SupabaseService:
             "message": "Usuário criado e confirmado com sucesso."
         }
 
+    async def admin_update_user_password(self, user_id: str, new_password: str) -> bool:
+        """Atualiza a senha do usuário via Supabase Admin API."""
+        client = await self.get_client()
+        if client and hasattr(client, "auth") and hasattr(client.auth, "admin"):
+            try:
+                await client.auth.admin.update_user_by_id(
+                    user_id,
+                    {"password": new_password}
+                )
+                logger.info(f"[SupabaseService] Senha do usuário {user_id} redefinida com sucesso.")
+                return True
+            except Exception as e:
+                logger.error(f"[SupabaseService] Erro ao redefinir senha via Admin API: {e}")
+                raise e
+        return False
+
     async def get_user_profile(self, user_id: str) -> Optional[Dict[str, Any]]:
         """Busca o perfil do usuário, com JOIN no professor para retornar nome e foto."""
         client = await self.get_client()
