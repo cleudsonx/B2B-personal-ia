@@ -25,7 +25,7 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
   Future<void> _launchWhatsApp(String phone, String name) async {
     final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
     final text = Uri.encodeComponent(
-      "Oi $name, vi que você ainda não acessou seu treino. Clica aqui no link para ativarmos sua periodização: https://mrcoach.app/convite"
+      "Oi $name, vi que você ainda não acessou seu treino. Clica aqui no link para ativarmos sua periodização: https://app.shaipados.com/convite"
     );
     final url = Uri.parse("https://wa.me/$cleanPhone?text=$text");
     if (!await launchUrl(url)) {

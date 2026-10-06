@@ -567,7 +567,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                   children: [
                     const Expanded(
                       child: Text(
-                        'mrcoach.app/prof/consultoria',
+                        'mrcoach.shaipados.com/prof/consultoria',
                         style: TextStyle(
                           color: MetaColors.textPrimary,
                           fontSize: 14,
@@ -583,7 +583,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                       onPressed: () {
                         Clipboard.setData(
                           const ClipboardData(
-                            text: 'https://mrcoach.app/prof/consultoria',
+                            text: 'https://mrcoach.shaipados.com/prof/consultoria',
                           ),
                         );
                         ScaffoldMessenger.of(context).showSnackBar(
