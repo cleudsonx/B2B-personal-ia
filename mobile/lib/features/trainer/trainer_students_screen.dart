@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
+import '../../services/invite_service.dart';
 
 class TrainerStudentsScreen extends StatefulWidget {
   final Function(String studentId, String studentName)? onSelectStudentForPlan;
@@ -165,18 +166,39 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
 
   Future<void> _openWhatsApp(Map<String, dynamic> student) async {
     final phone = student['phone'] as String? ?? '';
+    final email = student['email'] as String? ?? '';
     final name = student['full_name'] as String? ?? 'Aluno';
     final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
     final isPending = (student['status'] as String? ?? '').toLowerCase().contains('pendente');
     final user = AuthService.currentUser;
     final trainerName =
         user?.userMetadata?['full_name'] as String? ?? 'Seu Treinador';
+    final trainerSlug = trainerName.toLowerCase().replaceAll(RegExp(r'\s+'), '-');
+
+    String inviteLink = 'https://mrcoach.app/convite/$trainerSlug/demo-invite';
+
+    // Se estiver pendente, gera convite com token criptográfico de 24h e auditoria
+    if (isPending) {
+      try {
+        final inviteData = await InviteService.createInvite(
+          channel: cleanPhone.isNotEmpty ? 'whatsapp' : 'email',
+          targetPhone: cleanPhone.isNotEmpty ? cleanPhone : null,
+          targetEmail: email.isNotEmpty ? email : null,
+        );
+        final token = inviteData['token'];
+        if (token != null) {
+          inviteLink = 'https://mrcoach.app/convite/$trainerSlug/$token';
+        }
+      } catch (e) {
+        debugPrint('[WhatsApp] Erro ao gerar token de convite via API, usando fallback: $e');
+      }
+    }
 
     final String textMessage = isPending
         ? 'Olá, $name! 💪\n\n'
-            'Aqui é o Prof. $trainerName. Convidei você para o app de treinos e acompanhamento biomecânico!\n\n'
-            'Clique no link para ativar seu acesso:\n'
-            'https://cleudsonx.github.io/B2B-personal-ia/#onboarding?student_id=${student['id']}\n\n'
+            'Aqui é o Prof. $trainerName. Convidei você para o app Mr. Coach com periodização inteligente e biomecânica!\n\n'
+            'Toque no link exclusivo abaixo para ativar seu acesso (válido por 24h):\n'
+            '$inviteLink\n\n'
             'Bons treinos!'
         : 'Olá $name! 💪 Aqui é o Prof. $trainerName. Como estão os treinos essa semana?';
 
@@ -352,10 +374,15 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                         : null,
                     goal: 'Geral',
                   );
+
+                  // Se tiver telefone, já oferece a abertura do WhatsApp com o link de 24h
+                  if (phoneCtrl.text.trim().isNotEmpty && mounted) {
+                    _openWhatsApp(newStudent);
+                  }
                 } catch (_) {}
               },
               child: const Text(
-                'Cadastrar',
+                'Cadastrar e Convidar',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),

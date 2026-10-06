@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/widgets/meta_components.dart';
+import '../../services/invite_service.dart';
 import 'invite_success_screen.dart';
 
 class InviteLandingScreen extends StatefulWidget {
@@ -46,15 +47,47 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
     }
   }
 
-  void _acceptInvite() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => InviteSuccessScreen(
-          trainerName: _trainerName,
-        ),
-      ),
-    );
+  bool _isConsuming = false;
+
+  Future<void> _acceptInvite() async {
+    if (_isConsuming) return;
+    setState(() => _isConsuming = true);
+
+    try {
+      final res = await InviteService.consumeInvite(widget.token);
+      final trainerName = res['trainer_name'] ?? _trainerName;
+      final targetEmail = res['target_email'];
+      final targetPhone = res['target_phone'];
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => InviteSuccessScreen(
+              trainerName: trainerName,
+              targetEmail: targetEmail,
+              targetPhone: targetPhone,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.red.shade900,
+            content: Text(
+              e.toString().replaceAll('Exception: ', ''),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isConsuming = false);
+      }
+    }
   }
 
   @override
@@ -242,10 +275,10 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: SquircleButton(
-                          label: 'Aceitar Convite e Começar',
-                          icon: Icons.check_circle_outline,
+                          label: _isConsuming ? 'Validando...' : 'Aceitar Convite e Começar',
+                          icon: _isConsuming ? Icons.hourglass_top_rounded : Icons.check_circle_outline,
                           isPrimary: true,
-                          onPressed: _acceptInvite,
+                          onPressed: _isConsuming ? () {} : _acceptInvite,
                         ),
                       ),
                     ],

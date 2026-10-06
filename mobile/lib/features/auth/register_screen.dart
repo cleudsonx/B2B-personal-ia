@@ -40,12 +40,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
-              final response = await AuthService.signUp(
-          email: _emailCtrl.text.trim(),
-          password: _passwordCtrl.text.trim(),
-          fullName: _nameCtrl.text.trim(),
-          role: 'trainer',
-        );
+      final response = await AuthService.signUp(
+        email: _emailCtrl.text.trim(),
+        password: _passwordCtrl.text.trim(),
+        fullName: _nameCtrl.text.trim(),
+        role: widget.initialRole,
+      );
         if (mounted) {
           if (response.session == null) {
             ScaffoldMessenger.of(context).showSnackBar(

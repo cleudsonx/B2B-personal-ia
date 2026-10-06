@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -15,26 +14,18 @@ class ShaipadosStudioScreen extends StatefulWidget {
 }
 
 class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
-  void _navigateToSubdomain(BuildContext context, String prefix) {
-    if (kIsWeb) {
-      final currentHost = Uri.base.host;
-      if (currentHost.contains('localhost') ||
-          currentHost.contains('render.com')) {
-        // Fallback para ambiente de desenvolvimento local
-        if (prefix == 'mrcoach') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const MrCoachLandingScreen()),
-          );
-        } else if (prefix == 'app') {
-          Navigator.pushNamed(context, '/');
-        }
-        return;
-      }
-
-      // Ambiente de Produção
-      final url = Uri.parse('https://$prefix.shaipados.com');
-      launchUrl(url, webOnlyWindowName: '_self');
+  void _navigateToDestination(BuildContext context, String destination) {
+    if (destination == 'mrcoach') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const MrCoachLandingScreen()),
+      );
+    } else if (destination == 'app' || destination == 'login') {
+      Navigator.pushNamed(context, '/login');
+    } else if (destination == 'register') {
+      Navigator.pushNamed(context, '/register');
+    } else if (destination.startsWith('http')) {
+      launchUrl(Uri.parse(destination), mode: LaunchMode.externalApplication);
     }
   }
 
@@ -53,174 +44,303 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
         systemNavigationBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: MetaColors.background,
-        body: SingleChildScrollView(
-          padding: EdgeInsets.only(
-            top: topPadding,
-            bottom: bottomPadding + 48,
-          ),
-          child: Column(
-            children: [
-              // ==========================================
-              // HEADER
-              // ==========================================
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: MetaColors.emerald.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: MetaColors.emerald.withValues(alpha: 0.25),
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.layers_rounded,
-                            color: MetaColors.emerald,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'SHAIPADOS LABS',
-                          style: TextStyle(
-                            color: MetaColors.textPrimary,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 2.0,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SquircleButton(
-                      label: 'Login Ecossistema',
-                      icon: Icons.login_rounded,
-                      isPrimary: false,
-                      height: 42,
-                      borderRadius: 12,
-                      onPressed: () => _navigateToSubdomain(context, 'app'),
-                    ),
-                  ],
-                ),
-              ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.15, end: 0),
-
-              // ==========================================
-              // HERO SECTION
-              // ==========================================
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 56),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 820),
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: MetaColors.emerald.withValues(alpha: 0.1),
-                          border: Border.all(
-                            color: MetaColors.emerald.withValues(alpha: 0.3),
-                          ),
-                          borderRadius: BorderRadius.circular(100),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.rocket_launch_rounded,
-                              color: MetaColors.emerald,
-                              size: 15,
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              'SOFTWARE STUDIO & VENTURE BUILDER',
-                              style: TextStyle(
-                                color: MetaColors.emerald,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.2,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ).animate().fadeIn(delay: 150.ms).scale(),
-
-                      const SizedBox(height: 28),
-
-                      Text(
-                        'Nós esculpimos ideias.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: MetaColors.textPrimary,
-                          fontSize: isDesktop ? 68 : 42,
-                          fontWeight: FontWeight.w900,
-                          height: 1.1,
-                          letterSpacing: -2.0,
-                        ),
-                      ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1, end: 0),
-
-                      const SizedBox(height: 20),
-
-                      Text(
-                        'Software de alta performance e produtos digitais escaláveis movidos a Inteligência Artificial.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: MetaColors.textSecondary,
-                          fontSize: isDesktop ? 22 : 16,
-                          height: 1.5,
-                        ),
-                      ).animate().fadeIn(delay: 450.ms).slideY(begin: 0.1, end: 0),
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            // ==========================================
+            // AMBIENT GRADIENT MESH / GLOW DE FUNDO
+            // ==========================================
+            Positioned(
+              top: -120,
+              left: mediaQuery.size.width * 0.2,
+              child: Container(
+                width: 500,
+                height: 500,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      MetaColors.emerald.withValues(alpha: 0.18),
+                      Colors.transparent,
                     ],
                   ),
                 ),
               ),
+            ).animate(onPlay: (c) => c.repeat(reverse: true))
+             .scale(begin: const Offset(0.9, 0.9), end: const Offset(1.2, 1.2), duration: 4000.ms),
 
-              // ==========================================
-              // BENTO GRID
-              // ==========================================
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1100),
-                  child: isDesktop
-                      ? _buildDesktopGrid(context)
-                      : _buildMobileGrid(context),
-                ),
-              ).animate().fadeIn(delay: 600.ms, duration: 600.ms).slideY(begin: 0.08, end: 0),
-
-              const SizedBox(height: 80),
-
-              // ==========================================
-              // FOOTER
-              // ==========================================
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  border: Border(
-                    top: BorderSide(color: MetaColors.border, width: 1.0),
+            Positioned(
+              top: 350,
+              right: -100,
+              child: Container(
+                width: 450,
+                height: 450,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0xFFD4AF37).withValues(alpha: 0.12), // Ouro suave Shaipados
+                      Colors.transparent,
+                    ],
                   ),
                 ),
-                child: const Center(
-                  child: Text(
-                    '© 2026 Shaipados Labs. Todos os direitos reservados.',
-                    style: TextStyle(
-                      color: MetaColors.textSecondary,
-                      fontSize: 13,
+              ),
+            ).animate(onPlay: (c) => c.repeat(reverse: true))
+             .scale(begin: const Offset(1.1, 1.1), end: const Offset(0.85, 0.85), duration: 5000.ms),
+
+            // ==========================================
+            // CONTEÚDO PRINCIPAL (SCROLL)
+            // ==========================================
+            SingleChildScrollView(
+              padding: EdgeInsets.only(
+                top: topPadding,
+                bottom: bottomPadding + 48,
+              ),
+              child: Column(
+                children: [
+                  // ==========================================
+                  // HEADER ELEGANTE
+                  // ==========================================
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1200),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: MetaColors.emerald.withValues(alpha: 0.3),
+                                  ),
+                                  image: const DecorationImage(
+                                    image: AssetImage('assets/images/logo_shaipados_gold.jpg'),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'SHAIPADOS LABS',
+                                    style: TextStyle(
+                                      color: MetaColors.textPrimary,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 2.2,
+                                    ),
+                                  ),
+                                  Text(
+                                    'VENTURE BUILDER & AI STUDIO',
+                                    style: TextStyle(
+                                      color: MetaColors.textSecondary.withValues(alpha: 0.7),
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              SquircleButton(
+                                label: 'Login',
+                                icon: Icons.login_rounded,
+                                isPrimary: false,
+                                height: 42,
+                                borderRadius: 12,
+                                onPressed: () => _navigateToDestination(context, 'login'),
+                              ),
+                              const SizedBox(width: 12),
+                              if (isDesktop)
+                                SquircleButton(
+                                  label: 'Mr. Coach IA',
+                                  icon: Icons.auto_awesome,
+                                  isPrimary: true,
+                                  height: 42,
+                                  borderRadius: 12,
+                                  onPressed: () => _navigateToDestination(context, 'mrcoach'),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.15, end: 0),
+
+                  // ==========================================
+                  // HERO SECTION COM PROPOSTA DE VALOR
+                  // ==========================================
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 900),
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: MetaColors.emerald.withValues(alpha: 0.12),
+                              border: Border.all(
+                                color: MetaColors.emerald.withValues(alpha: 0.35),
+                              ),
+                              borderRadius: BorderRadius.circular(100),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.bolt_rounded,
+                                  color: MetaColors.emerald,
+                                  size: 16,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'A NOVA GERAÇÃO DE SOFTWARE FITNESS',
+                                  style: TextStyle(
+                                    color: MetaColors.emerald,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.2,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ).animate().fadeIn(delay: 150.ms).scale(),
+
+                          const SizedBox(height: 28),
+
+                          Text(
+                            'Onde a Biomecânica\nencontra a Inteligência Artificial.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: MetaColors.textPrimary,
+                              fontSize: isDesktop ? 62 : 38,
+                              fontWeight: FontWeight.w900,
+                              height: 1.12,
+                              letterSpacing: -1.8,
+                            ),
+                          ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1, end: 0),
+
+                          const SizedBox(height: 22),
+
+                          Text(
+                            'Desenvolvemos produtos digitais de alta precisão científica para personal trainers, academias e praticantes avançados de musculação.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: MetaColors.textSecondary,
+                              fontSize: isDesktop ? 20 : 16,
+                              height: 1.55,
+                            ),
+                          ).animate().fadeIn(delay: 450.ms).slideY(begin: 0.1, end: 0),
+
+                          const SizedBox(height: 36),
+
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 16,
+                            runSpacing: 14,
+                            children: [
+                              SquircleButton(
+                                label: 'Explorar Mr. Coach B2B',
+                                icon: Icons.arrow_forward_rounded,
+                                isPrimary: true,
+                                height: 52,
+                                borderRadius: 14,
+                                onPressed: () => _navigateToDestination(context, 'mrcoach'),
+                              ),
+                              SquircleButton(
+                                label: 'Acessar Plataforma',
+                                icon: Icons.lock_outline_rounded,
+                                isPrimary: false,
+                                height: 52,
+                                borderRadius: 14,
+                                onPressed: () => _navigateToDestination(context, 'login'),
+                              ),
+                            ],
+                          ).animate().fadeIn(delay: 550.ms).slideY(begin: 0.1, end: 0),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ).animate().fadeIn(delay: 800.ms),
-            ],
-          ),
+
+                  const SizedBox(height: 16),
+
+                  // ==========================================
+                  // BENTO GRID ULTRA-REALISTA & ANIMADO
+                  // ==========================================
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1140),
+                      child: isDesktop
+                          ? _buildDesktopGrid(context)
+                          : _buildMobileGrid(context),
+                    ),
+                  ).animate().fadeIn(delay: 600.ms, duration: 600.ms).slideY(begin: 0.08, end: 0),
+
+                  const SizedBox(height: 80),
+
+                  // ==========================================
+                  // FOOTER
+                  // ==========================================
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+                    width: double.infinity,
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: MetaColors.border, width: 1.0),
+                      ),
+                    ),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1140),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                '© 2026 Shaipados Labs. Todos os direitos reservados.',
+                                style: TextStyle(
+                                  color: MetaColors.textSecondary,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  TextButton(
+                                    onPressed: () => _navigateToDestination(context, 'mrcoach'),
+                                    child: const Text('Mr. Coach', style: TextStyle(color: MetaColors.textSecondary)),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  TextButton(
+                                    onPressed: () => _navigateToDestination(context, 'login'),
+                                    child: const Text('Entrar', style: TextStyle(color: MetaColors.textSecondary)),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ).animate().fadeIn(delay: 800.ms),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -230,19 +350,19 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Coluna Esquerda
+        // Coluna Esquerda: Showcase Biomecânico 3D e Nutri IA
         Expanded(
-          flex: 4,
+          flex: 5,
           child: Column(
             children: [
-              _buildTechCard(),
+              _buildBiomech3DCard(),
               const SizedBox(height: 24),
-              _buildComingSoonCard(),
+              _buildNutriIACard(),
             ],
           ),
         ),
         const SizedBox(width: 24),
-        // Coluna Direita (Flagship Mr. Coach)
+        // Coluna Direita: Flagship Mr. Coach
         Expanded(
           flex: 6,
           child: _buildFlagshipCard(context),
@@ -256,13 +376,14 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
       children: [
         _buildFlagshipCard(context),
         const SizedBox(height: 24),
-        _buildTechCard(),
+        _buildBiomech3DCard(),
         const SizedBox(height: 24),
-        _buildComingSoonCard(),
+        _buildNutriIACard(),
       ],
     );
   }
 
+  // Card do Produto Flagship: Mr. Coach
   Widget _buildFlagshipCard(BuildContext context) {
     return MetaCard(
       padding: const EdgeInsets.all(36),
@@ -291,7 +412,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                     ),
                     SizedBox(width: 6),
                     Text(
-                      'PRODUTO B2B DESTAQUE',
+                      'PRODUTO FLAGSHIP (NO AR)',
                       style: TextStyle(
                         color: MetaColors.emerald,
                         fontSize: 11,
@@ -306,48 +427,52 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
           ),
           const SizedBox(height: 28),
 
-          // Logo / Marca Destaque
+          // Imagem Dourada / Logo Oficial em Alta Resolução
           Center(
-            child: Image.asset(
-              'assets/images/mr_coach_logo_full.png',
-              height: 90,
-              errorBuilder: (context, error, stackTrace) => Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: MetaColors.emerald.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Icon(
-                      Icons.fitness_center_rounded,
-                      size: 36,
-                      color: MetaColors.emerald,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  const Text(
-                    'Mr. Coach',
-                    style: TextStyle(
-                      color: MetaColors.textPrimary,
-                      fontSize: 32,
-                      fontWeight: FontWeight.w900,
-                    ),
+            child: Container(
+              height: 140,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: MetaColors.emerald.withValues(alpha: 0.15),
+                    blurRadius: 30,
+                    spreadRadius: 2,
                   ),
                 ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.asset(
+                  'assets/images/mr_coach_logo_gold.jpg',
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => Image.asset(
+                    'assets/images/mr_coach_logo_full.png',
+                    fit: BoxFit.contain,
+                  ),
+                ),
               ),
             ),
           ),
           const SizedBox(height: 28),
 
           const Text(
-            'A primeira plataforma inteligente que gera periodizações completas para personal trainers em apenas 30 segundos.',
+            'Mr. Coach: Plataforma B2B para Personais de Alta Performance',
             style: TextStyle(
               color: MetaColors.textPrimary,
-              fontSize: 18,
-              height: 1.5,
-              fontWeight: FontWeight.w500,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          const Text(
+            'Prescrição biomecânica individualizada, substituição inteligente de aparelhos em tempo real e vitrine profissional para captação de novos alunos.',
+            style: TextStyle(
+              color: MetaColors.textSecondary,
+              fontSize: 15,
+              height: 1.55,
             ),
           ),
           const SizedBox(height: 28),
@@ -355,15 +480,17 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
           SizedBox(
             width: double.infinity,
             child: SquircleButton(
-              label: 'Conhecer o Produto →',
+              label: 'Ver Demonstração do Mr. Coach →',
               icon: Icons.open_in_new_rounded,
               isPrimary: true,
-              onPressed: () => _navigateToSubdomain(context, 'mrcoach'),
+              height: 52,
+              borderRadius: 14,
+              onPressed: () => _navigateToDestination(context, 'mrcoach'),
             ),
           ),
           const SizedBox(height: 24),
 
-          // Métrica em tempo real
+          // Métrica ao vivo
           MetaCard(
             backgroundColor: MetaColors.background,
             padding: const EdgeInsets.all(20),
@@ -386,7 +513,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'BUILD IN PUBLIC',
+                        'METRICAS DO ECOSSISTEMA',
                         style: TextStyle(
                           color: MetaColors.emerald,
                           fontSize: 11,
@@ -396,18 +523,18 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        '+2.400',
+                        '+2.400 Treinos Prescritos',
                         style: TextStyle(
                           color: MetaColors.textPrimary,
-                          fontSize: 28,
+                          fontSize: 20,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
                       Text(
-                        'Treinos gerados via IA nesta semana',
+                        'Com proteção automática contra lesões articulares',
                         style: TextStyle(
                           color: MetaColors.textSecondary,
-                          fontSize: 13,
+                          fontSize: 12,
                         ),
                       ),
                     ],
@@ -421,52 +548,101 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
     );
   }
 
-  Widget _buildTechCard() {
+  // Card do Laboratório 3D Biomecânico
+  Widget _buildBiomech3DCard() {
     return MetaCard(
       padding: const EdgeInsets.all(28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const MetaSectionTitle(
-            title: 'Arquitetura Serverless',
-            subtitle: 'Infraestrutura moderna que suporta milhares de requisições simultâneas com latência ultrabaixa.',
-          ),
-          const SizedBox(height: 24),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildTechChip('Flutter'),
-              _buildTechChip('Google Gemini'),
-              _buildTechChip('FastAPI'),
-              _buildTechChip('Supabase'),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: MetaColors.surfaceHighlight,
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(color: MetaColors.border),
+                ),
+                child: const Text(
+                  'MOTOR BIOMECÂNICO',
+                  style: TextStyle(
+                    color: MetaColors.emerald,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+              ),
+              const Icon(Icons.hub_outlined, color: MetaColors.textSecondary, size: 20),
             ],
+          ),
+          const SizedBox(height: 20),
+
+          // Renderização Ultra-realista da Anatomia 3D
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox(
+              height: 180,
+              width: double.infinity,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.asset(
+                    'assets/images/biomech_3d_chest.jpg',
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Image.asset(
+                      'assets/images/anatomical_model_chest.png',
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.85),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const Positioned(
+                    bottom: 14,
+                    left: 16,
+                    right: 16,
+                    child: Text(
+                      'Mapeamento Eletromiográfico em 3D',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          const Text(
+            'IA treinada com mais de 300 estudos eletromiográficos para garantir torque ótimo e curvas de resistência seguras.',
+            style: TextStyle(
+              color: MetaColors.textSecondary,
+              fontSize: 14,
+              height: 1.5,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTechChip(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: MetaColors.surfaceHighlight,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: MetaColors.border),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: MetaColors.textPrimary,
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildComingSoonCard() {
+  // Card do Nutri IA (Em Breve)
+  Widget _buildNutriIACard() {
     return MetaCard(
       padding: const EdgeInsets.all(28),
       child: Column(
@@ -480,27 +656,33 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
               border: Border.all(color: MetaColors.border),
             ),
             child: const Text(
-              'EM BREVE',
+              'EM DESENVOLVIMENTO',
               style: TextStyle(
-                color: MetaColors.accentBlue,
-                fontSize: 11,
+                color: Color(0xFF60A5FA),
+                fontSize: 10,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1.1,
               ),
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Nutri IA',
-            style: TextStyle(
-              color: MetaColors.textPrimary,
-              fontSize: 26,
-              fontWeight: FontWeight.w900,
-            ),
+          const Row(
+            children: [
+              Icon(Icons.restaurant_menu_rounded, color: Color(0xFF60A5FA), size: 28),
+              SizedBox(width: 12),
+              Text(
+                'Nutri IA Studio',
+                style: TextStyle(
+                  color: MetaColors.textPrimary,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           const Text(
-            'O próximo lançamento da fábrica: planejamento nutricional e contagem de macros com inteligência artificial.',
+            'Planejamento de macronutrientes adaptativo e contagem calórica visual via visão computacional.',
             style: TextStyle(
               color: MetaColors.textSecondary,
               fontSize: 14,
