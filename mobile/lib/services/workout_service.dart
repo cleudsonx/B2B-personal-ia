@@ -1,4 +1,3 @@
-import 'api_service.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -356,7 +355,7 @@ class WorkoutService {
   
   static Future<Map<String, dynamic>?> getGamificationData() async {
     try {
-      final uri = Uri.parse('\/workouts/gamification');
+      final uri = Uri.parse('/workouts/gamification');
       final res = await http.get(uri, headers: _apiHeaders).timeout(const Duration(seconds: 4));
       if (res.statusCode == 200) {
         final data = json.decode(res.body);

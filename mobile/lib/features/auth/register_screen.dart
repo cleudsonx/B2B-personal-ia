@@ -2,7 +2,6 @@
 import '../../core/theme/app_colors.dart';
 import '../../services/auth_service.dart';
 import 'login_screen.dart';
-import '../trainer/presentation/screens/trainer_profile_setup_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   final String initialRole;

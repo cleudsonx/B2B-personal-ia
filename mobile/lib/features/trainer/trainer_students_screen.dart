@@ -6,7 +6,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
-import 'anamnesis_screen.dart';
 
 class TrainerStudentsScreen extends StatefulWidget {
   final Function(String studentId, String studentName)? onSelectStudentForPlan;

@@ -26,7 +26,6 @@ import 'core/widgets/theme_toggle_button.dart';
 
 import 'package:flutter/services.dart';
 import 'features/invite/invite_landing_screen.dart';
-import 'features/invite/student_invite_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

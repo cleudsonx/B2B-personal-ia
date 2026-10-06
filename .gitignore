@@ -74,3 +74,7 @@ ephemeral/
 *~
 .DS_Store
 Thumbs.db
+
+# Supabase CLI Local Cache
+supabase/.temp/
+supabase/.branches/

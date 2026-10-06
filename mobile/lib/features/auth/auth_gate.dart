@@ -3,10 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 
-import '../../core/theme/app_colors.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../services/auth_service.dart';
-import '../trainer/presentation/screens/trainer_main_layout.dart';
 import '../trainer/presentation/screens/trainer_onboarding_screen.dart';
 import 'login_screen.dart';
 import '../../main.dart';
@@ -141,7 +139,7 @@ class _AuthGateState extends State<AuthGate> {
                 'assets/images/mr_coach_logo_gold.jpg',
                 width: MediaQuery.of(context).size.width * 0.75, // 75% da largura da tela
                 fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const Icon(
+                errorBuilder: (_, _, _) => const Icon(
                   Icons.fitness_center_rounded,
                   size: 80,
                   color: MetaColors.emerald,
