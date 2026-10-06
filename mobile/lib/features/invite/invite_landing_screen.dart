@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/widgets/meta_components.dart';
-import '../auth/register_screen.dart';
 import 'invite_success_screen.dart';
 
 class InviteLandingScreen extends StatefulWidget {

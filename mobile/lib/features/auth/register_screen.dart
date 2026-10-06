@@ -1,12 +1,19 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../services/auth_service.dart';
 import 'login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   final String initialRole;
+  final String? initialEmail;
+  final String? initialPhone;
 
-  const RegisterScreen({super.key, this.initialRole = 'trainer'});
+  const RegisterScreen({
+    super.key,
+    this.initialRole = 'trainer',
+    this.initialEmail,
+    this.initialPhone,
+  });
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -14,11 +21,19 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameCtrl = TextEditingController();
-  final _emailCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _emailCtrl;
+  late final TextEditingController _passwordCtrl;
   bool _isLoading = false;
   bool _obscurePassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController();
+    _emailCtrl = TextEditingController(text: widget.initialEmail ?? '');
+    _passwordCtrl = TextEditingController();
+  }
 
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
