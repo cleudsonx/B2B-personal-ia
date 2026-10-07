@@ -146,24 +146,39 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
     if (confirm == true && mounted) {
       setState(() => _isLoading = true);
-      final updated = await SubscriptionService.activatePlan(
-        planId: plan.id,
-        billingInterval: _isYearly ? 'yearly' : 'monthly',
-      );
-      if (mounted) {
-        setState(() {
-          _mySubscription = updated;
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: MetaColors.surfaceHighlight,
-            content: Text(
-              '🎉 Plano ${plan.name} ativado com sucesso!',
-              style: const TextStyle(color: MetaColors.textPrimary),
-            ),
-          ),
+      try {
+        final updated = await SubscriptionService.activatePlan(
+          planId: plan.id,
+          billingInterval: _isYearly ? 'yearly' : 'monthly',
         );
+        if (mounted) {
+          setState(() {
+            _mySubscription = updated;
+            _isLoading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: MetaColors.surfaceHighlight,
+              content: Text(
+                '🎉 Plano ${plan.name} ativado com sucesso!',
+                style: const TextStyle(color: MetaColors.textPrimary),
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.red.shade800,
+              content: Text(
+                e.toString().replaceFirst('Exception: ', ''),
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          );
+        }
       }
     }
   }
@@ -180,24 +195,36 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             onSuccess: () async {
               Navigator.pop(ctx);
               setState(() => _isLoading = true);
-              final updated = await SubscriptionService.activatePlan(
-                planId: plan.id,
-                billingInterval: _isYearly ? 'yearly' : 'monthly',
-              );
-              if (mounted) {
-                setState(() {
-                  _mySubscription = updated;
-                  _isLoading = false;
-                });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    backgroundColor: MetaColors.surfaceHighlight,
-                    content: Text(
-                      '🎉 Plano ${plan.name} ativado com sucesso!',
-                      style: const TextStyle(color: MetaColors.textPrimary),
+              try {
+                final updated = await SubscriptionService.getMySubscription();
+                if (mounted) {
+                  setState(() {
+                    _mySubscription = updated;
+                    _isLoading = false;
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      backgroundColor: MetaColors.surfaceHighlight,
+                      content: Text(
+                        '🎉 Plano ${plan.name} ativado com sucesso!',
+                        style: const TextStyle(color: MetaColors.textPrimary),
+                      ),
                     ),
-                  ),
-                );
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  setState(() => _isLoading = false);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      backgroundColor: Colors.red.shade800,
+                      content: Text(
+                        e.toString().replaceFirst('Exception: ', ''),
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  );
+                }
               }
             },
           ),

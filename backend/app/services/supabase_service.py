@@ -5,6 +5,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
 from supabase import AsyncClient, create_async_client
 from app.core.config import settings
+from app.services.payment_service import PaymentProviderService
 from app.schemas.workout import (
     StudentResponse,
     StudentCreateRequest,
@@ -16,6 +17,19 @@ from app.schemas.workout import (
     BiomechanicalAlertResponse,
 )
 from app.schemas.subscription import MySubscriptionResponse
+
+# Compatibilidade de cache local: o serviço usa MySubscriptionResponse mas alguns
+# fluxos e testes ainda leem o cache como dict (['status']). A classe Pydantic
+# aceita esse acesso via __getitem__/__setitem__ sem mudar o contrato público.
+if not hasattr(MySubscriptionResponse, "__getitem__"):
+    def _subscription_getitem(self, key):
+        return self.__dict__[key]
+
+    def _subscription_setitem(self, key, value):
+        setattr(self, key, value)
+
+    MySubscriptionResponse.__getitem__ = _subscription_getitem
+    MySubscriptionResponse.__setitem__ = _subscription_setitem
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +76,37 @@ class SupabaseService:
         self._mem_ai_usage: Dict[str, int] = {}
         self._mem_processed_events: Dict[str, Dict[str, Any]] = {}
         self._mem_checkout_sessions: Dict[str, Dict[str, Any]] = {}
+
+    @staticmethod
+    def _normalize_rpc_bool(value: Any, default: bool = False) -> bool:
+        if isinstance(value, bool):
+            return value
+        if value is None:
+            return default
+        if isinstance(value, (int, float)):
+            return bool(value)
+        if isinstance(value, str):
+            lowered = value.strip().lower()
+            if lowered in {"true", "t", "1", "yes", "y", "success", "completed"}:
+                return True
+            if lowered in {"false", "f", "0", "no", "n", "null", "none", ""}:
+                return False
+        return bool(value) if value not in (None, "", "null", "none") else default
+
+    @staticmethod
+    def _extract_rpc_row(res_data: Any) -> tuple[Dict[str, Any], Any]:
+        if isinstance(res_data, dict):
+            return res_data, res_data
+        if isinstance(res_data, list):
+            if not res_data:
+                return {}, None
+            first = res_data[0]
+            if isinstance(first, dict):
+                return first, first
+            return {}, first
+        if isinstance(res_data, (bool, int, float, str)):
+            return {}, res_data
+        return {}, None
 
     @staticmethod
     def _is_production() -> bool:
@@ -303,83 +348,504 @@ class SupabaseService:
         provider: str,
         event_type: str,
         payload: Optional[Dict[str, Any]] = None,
-    ) -> bool:
+        lease_seconds: int = 300,
+        max_attempts: int = 5,
+    ) -> Dict[str, Any]:
         """
-        Reivindica atomicamente o processamento de um evento de webhook (PAY-004).
-        Retorna True se este processo obteve a posse exclusiva do evento.
-        Retorna False se o evento já foi processado ou está sendo processado concorrentemente.
+        Reivindica um evento de webhook em modo durable lease.
+        Retorna um dicionário estruturado com disposition, claim_token e metadata.
+        Se não houver event_id, preserva a compatibilidade do comportamento legado.
         """
+        generated_token = str(uuid.uuid4())
         if not event_id:
-            return True
+            return {
+                "disposition": "claimed",
+                "claim_token": generated_token,
+                "event_id": event_id,
+                "legacy": True,
+            }
 
-        # 1. Modo de desenvolvimento / memória local
         if not self._is_production():
-            if event_id in self._mem_processed_events:
-                return False
+            record = self._mem_processed_events.get(event_id)
+            now = datetime.now(timezone.utc)
+            now_iso = now.isoformat()
+            attempts = int(record.get("attempts", 0)) if record else 0
+            lease = int(record.get("lease_seconds", lease_seconds)) if record else lease_seconds
+            max_attempts_value = int(record.get("max_attempts", max_attempts)) if record else max_attempts
+
+            if record and record.get("status") == "completed":
+                return {"disposition": "duplicate", "claim_token": record.get("claim_token") or generated_token, "event_id": event_id}
+
+            if record and record.get("status") in ("processing", "leased", "released"):
+                claimed_at_raw = record.get("claimed_at")
+                claimed_at = None
+                if claimed_at_raw:
+                    try:
+                        claimed_at = datetime.fromisoformat(str(claimed_at_raw).replace("Z", "+00:00"))
+                    except ValueError:
+                        claimed_at = now
+                lease_expired = bool(claimed_at and (now - claimed_at).total_seconds() >= lease)
+                if lease_expired:
+                    if attempts >= max_attempts_value:
+                        record.update({
+                            "status": "failed",
+                            "last_error": "lease_expired",
+                            "claim_token": None,
+                            "failed_at": now_iso,
+                        })
+                        return {"disposition": "failed", "claim_token": record.get("claim_token") or generated_token, "event_id": event_id}
+                    record.update({
+                        "status": "processing",
+                        "attempts": attempts + 1,
+                        "provider": provider,
+                        "event_type": event_type,
+                        "payload": payload or record.get("payload") or {},
+                        "claim_token": generated_token,
+                        "claimed_at": now_iso,
+                        "lease_seconds": lease_seconds,
+                        "max_attempts": max_attempts,
+                    })
+                    return {"disposition": "claimed", "claim_token": generated_token, "event_id": event_id}
+                if attempts >= max_attempts_value:
+                    record.update({"status": "failed", "last_error": "max_attempts_reached", "claim_token": None})
+                    return {"disposition": "failed", "claim_token": record.get("claim_token") or generated_token, "event_id": event_id}
+                if record.get("status") == "released":
+                    record.update({
+                        "status": "processing",
+                        "attempts": attempts + 1,
+                        "provider": provider,
+                        "event_type": event_type,
+                        "payload": payload or record.get("payload") or {},
+                        "claim_token": generated_token,
+                        "claimed_at": now_iso,
+                        "lease_seconds": lease_seconds,
+                        "max_attempts": max_attempts,
+                    })
+                    return {"disposition": "claimed", "claim_token": generated_token, "event_id": event_id}
+                return {"disposition": "busy", "claim_token": record.get("claim_token") or generated_token, "event_id": event_id}
+
             self._mem_processed_events[event_id] = {
                 "event_id": event_id,
                 "provider": provider,
                 "event_type": event_type,
                 "status": "processing",
-                "claimed_at": datetime.now(timezone.utc).isoformat(),
+                "payload": payload or {},
+                "claim_token": generated_token,
+                "attempts": 1,
+                "claimed_at": now_iso,
+                "lease_seconds": lease_seconds,
+                "max_attempts": max_attempts,
             }
-            return True
+            return {"disposition": "claimed", "claim_token": generated_token, "event_id": event_id}
 
-        # 2. Modo produção com Supabase
         client = await self.get_client()
         if not client:
             raise RuntimeError("Cliente Supabase indisponível para claim atômico de webhook em produção.")
 
         try:
-            # Tenta inserção com ignore_duplicates (ON CONFLICT (event_id) DO NOTHING)
-            res = await client.table("processed_webhook_events").upsert(
+            token = str(uuid.uuid4())
+            res = await client.rpc(
+                "claim_webhook_event_v2",
                 {
-                    "event_id": event_id,
-                    "provider": provider,
-                    "event_type": event_type,
-                    "payload": payload or {},
-                    "processed_at": datetime.now(timezone.utc).isoformat(),
+                    "p_event_id": event_id,
+                    "p_provider": provider,
+                    "p_event_type": event_type,
+                    "p_payload": payload or {},
+                    "p_token": token,
+                    "p_lease_seconds": lease_seconds,
+                    "p_max_attempts": max_attempts,
                 },
-                on_conflict="event_id",
-                ignore_duplicates=True,
             ).execute()
-            if res.data and len(res.data) > 0:
-                self._mem_processed_events[event_id] = {"event_id": event_id, "status": "processing"}
-                return True
-            else:
-                # Conflito atômico: outro worker já reivindicou o evento
-                return False
+            rows = res.data if isinstance(res.data, list) else ([res.data] if res.data else [])
+            if not rows:
+                raise RuntimeError(f"claim_webhook_event_v2 retornou vazio para {event_id}: contrato/integridade inválidos.")
+            row = rows[0] if rows else {}
+            disposition = str(row.get("disposition") or "failed").lower()
+            claim_token = row.get("claim_token") or token
+            return {"disposition": disposition, "claim_token": str(claim_token), "event_id": event_id}
         except Exception as e:
-            err_msg = str(e).lower()
-            if "duplicate" in err_msg or "conflict" in err_msg or "unique" in err_msg:
-                return False
-            logger.error(f"Erro ao reivindicar webhook atomicamente {event_id}: {e}")
-            self._raise_if_production("reivindicar evento de webhook atomicamente", e)
-            return False
+            logger.warning(f"RPC claim_webhook_event_v2 falhou para {event_id}: {e}")
+            raise
 
-    async def release_webhook_claim(self, event_id: str) -> None:
-        """
-        Libera o claim atômico de um evento de webhook caso seu processamento
-        tenha sido interrompido por ausência de metadados, permitindo que retries
-        legítimos do gateway de pagamento sejam processados futuramente.
-        """
-        if not event_id:
-            return
+    async def claim_webhook_event_v2(
+        self,
+        event_id: str,
+        provider: str,
+        event_type: str,
+        payload: Optional[Dict[str, Any]] = None,
+        lease_seconds: int = 300,
+        max_attempts: int = 5,
+    ) -> Dict[str, Any]:
+        """Alias explícito para o contrato v2 de durable lease."""
+        return await self.claim_webhook_event(
+            event_id=event_id,
+            provider=provider,
+            event_type=event_type,
+            payload=payload,
+            lease_seconds=lease_seconds,
+            max_attempts=max_attempts,
+        )
 
-        self._mem_processed_events.pop(event_id, None)
+    async def complete_paid_checkout_session_v2(
+        self,
+        session_id: Optional[str],
+        event_id: Optional[str] = None,
+        claim_token: Optional[str] = None,
+        provider_payment_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Completa checkout pago de forma idempotente e atômica em produção e em memória."""
+        if not session_id:
+            return {"session_id": session_id, "paid": False, "completed": False, "disposition": "failed", "error": "missing_session_id"}
+
+        if bool(event_id) != bool(claim_token):
+            return {"session_id": session_id, "paid": False, "completed": False, "disposition": "failed", "error": "invalid_event_claim_pair"}
+
+        token_uuid = None
+        if claim_token is not None:
+            try:
+                token_uuid = uuid.UUID(str(claim_token))
+            except (TypeError, ValueError, AttributeError):
+                return {"session_id": session_id, "paid": False, "completed": False, "event_id": event_id, "disposition": "failed", "error": "invalid_claim_token"}
 
         if not self._is_production():
-            return
+            session = self._mem_checkout_sessions.get(session_id) or PaymentProviderService._PENDING_ORDERS.get(session_id)
+            if session is None:
+                return {"session_id": session_id, "paid": False, "completed": False, "event_id": event_id, "disposition": "failed", "error": "session_not_found"}
+
+            current_status = str(session.get("status", "pending") or "pending").lower()
+            trainer_id = session.get("trainer_id")
+            plan_id = session.get("plan_id")
+            billing_interval = str(session.get("billing_interval") or "monthly").lower()
+            if billing_interval not in {"monthly", "yearly"}:
+                return {"session_id": session_id, "paid": False, "completed": False, "event_id": event_id, "disposition": "failed", "error": "invalid_billing_interval"}
+
+            if event_id:
+                record = self._mem_processed_events.get(event_id)
+                if record is None or str(record.get("status", "")).lower() != "processing":
+                    return {
+                        "session_id": session_id,
+                        "event_id": event_id,
+                        "paid": False,
+                        "completed": False,
+                        "disposition": "failed",
+                        "error": "invalid_event_claim_pair",
+                    }
+                record_claim = record.get("claim_token")
+                if record_claim is None or str(record_claim) != str(token_uuid):
+                    return {
+                        "session_id": session_id,
+                        "event_id": event_id,
+                        "paid": False,
+                        "completed": False,
+                        "disposition": "failed",
+                        "error": "invalid_claim_token",
+                    }
+
+            if current_status in {"failed", "canceled", "cancelled", "expired"}:
+                return {"session_id": session_id, "paid": False, "completed": False, "event_id": event_id, "disposition": "failed", "error": "checkout_session_status_not_activable"}
+
+            if current_status == "pending":
+                if not trainer_id or not plan_id:
+                    return {"session_id": session_id, "paid": False, "completed": False, "event_id": event_id, "disposition": "failed", "error": "missing_checkout_metadata"}
+
+                payment_method = str(session.get("payment_method") or session.get("provider") or "asaas").strip() or "asaas"
+                await self.activate_subscription(
+                    trainer_id=str(trainer_id),
+                    plan_id=str(plan_id),
+                    billing_interval=billing_interval,
+                    payment_method=payment_method,
+                )
+
+                session["status"] = "paid"
+                session["paid"] = True
+                session["billing_interval"] = billing_interval
+                session["payment_method"] = payment_method
+                session["payment_provider"] = session.get("payment_provider") or session.get("provider") or payment_method
+                session["completed_at"] = datetime.now(timezone.utc).isoformat()
+            elif current_status in {"paid", "completed", "active"}:
+                if event_id:
+                    record = self._mem_processed_events.get(event_id)
+                    if record is not None:
+                        record.update({
+                            "status": "completed",
+                            "claim_token": None,
+                            "completed_at": datetime.now(timezone.utc).isoformat(),
+                            "last_error": None,
+                        })
+                self._mem_checkout_sessions[session_id] = session
+                return {"session_id": session_id, "event_id": event_id, "paid": True, "completed": True, "disposition": "completed"}
+            else:
+                return {"session_id": session_id, "paid": False, "completed": False, "event_id": event_id, "disposition": "failed", "error": "invalid_checkout_session_status"}
+
+            if provider_payment_id:
+                session["provider_payment_id"] = provider_payment_id
+                session["payment_method"] = session.get("payment_method") or session.get("provider") or "asaas"
+                session["payment_provider"] = session.get("payment_provider") or session.get("provider") or session.get("payment_method") or "asaas"
+
+            if event_id:
+                record = self._mem_processed_events.get(event_id)
+                if record is not None:
+                    record.update({
+                        "status": "completed",
+                        "claim_token": None,
+                        "completed_at": datetime.now(timezone.utc).isoformat(),
+                        "last_error": None,
+                    })
+
+            self._mem_checkout_sessions[session_id] = session
+            return {"session_id": session_id, "event_id": event_id, "paid": True, "completed": True, "disposition": "completed"}
 
         client = await self.get_client()
         if not client:
-            return
+            return {"session_id": session_id, "paid": False, "completed": False, "event_id": event_id, "disposition": "failed", "error": "supabase_unavailable"}
 
         try:
-            await client.table("processed_webhook_events").delete().eq("event_id", event_id).execute()
-            logger.info(f"[Supabase] Claim do evento de webhook {event_id} liberado para retry.")
+            res = await client.rpc(
+                "complete_paid_checkout_session_v2",
+                {
+                    "p_session_id": session_id,
+                    "p_event_id": event_id,
+                    "p_claim_token": token_uuid,
+                    "p_provider_payment_id": provider_payment_id,
+                },
+            ).execute()
+            row, payload = self._extract_rpc_row(res.data)
+            ok = False
+            if isinstance(payload, bool):
+                ok = payload
+            elif isinstance(payload, dict):
+                ok = self._normalize_rpc_bool(payload.get("completed", payload.get("success", payload.get("paid"))), default=False)
+            elif isinstance(payload, str):
+                ok = self._normalize_rpc_bool(payload, default=False)
+            elif isinstance(payload, (int, float)):
+                ok = self._normalize_rpc_bool(payload, default=False)
+            elif row:
+                ok = self._normalize_rpc_bool(row.get("completed", row.get("success", row.get("paid"))), default=False)
+            disposition = "completed" if ok else "failed"
+            if isinstance(row, dict) and row.get("disposition"):
+                disposition = str(row.get("disposition", disposition)).lower()
+            return {
+                "session_id": session_id,
+                "event_id": event_id,
+                "paid": ok,
+                "completed": ok,
+                "disposition": disposition,
+                "error": row.get("error") if isinstance(row, dict) else None,
+            }
         except Exception as e:
-            logger.warning(f"Erro ao liberar claim de webhook {event_id} no Supabase: {e}")
+            logger.warning(f"Falha ao concluir checkout pago {session_id} via RPC v2: {e}")
+            return {"session_id": session_id, "paid": False, "completed": False, "event_id": event_id, "disposition": "failed", "error": "rpc_complete_unavailable"}
+
+    async def release_webhook_event_v2(
+        self,
+        event_id: str,
+        token: Optional[str] = None,
+        error: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Libera somente o lease atual para retry, preservando contagem de tentativas."""
+        if not event_id:
+            return {"released": False, "event_id": event_id, "claim_token": token}
+
+        if not self._is_production():
+            record = self._mem_processed_events.get(event_id)
+            if not record:
+                return {"released": True, "event_id": event_id, "claim_token": token, "legacy": True}
+            if token and record.get("claim_token") and str(record.get("claim_token")) != str(token):
+                return {"released": False, "event_id": event_id, "claim_token": token}
+
+            attempts = int(record.get("attempts", 0) or 0)
+            max_attempts = int(record.get("max_attempts", 5) or 5)
+            record["last_error"] = error
+            record["released_at"] = datetime.now(timezone.utc).isoformat()
+            if attempts >= max_attempts:
+                record["status"] = "failed"
+                record["claim_token"] = None
+                return {"released": True, "event_id": event_id, "claim_token": token, "disposition": "failed"}
+            record["status"] = "released"
+            record["claim_token"] = None
+            return {"released": True, "event_id": event_id, "claim_token": token}
+
+        client = await self.get_client()
+        if not client:
+            return {"released": False, "event_id": event_id, "claim_token": token}
+
+        try:
+            res = await client.rpc(
+                "release_webhook_event_v2",
+                {
+                    "p_event_id": event_id,
+                    "p_token": token,
+                    "p_error": error,
+                },
+            ).execute()
+            row, payload = self._extract_rpc_row(res.data)
+            released = False
+            if isinstance(payload, bool):
+                released = payload
+            elif isinstance(payload, dict):
+                released = self._normalize_rpc_bool(payload.get("released", payload.get("success")), default=False)
+            elif isinstance(payload, str):
+                released = self._normalize_rpc_bool(payload, default=False)
+            elif isinstance(payload, (int, float)):
+                released = self._normalize_rpc_bool(payload, default=False)
+            elif row:
+                released = self._normalize_rpc_bool(row.get("released", row.get("success")), default=False)
+            return {
+                "released": released,
+                "event_id": event_id,
+                "claim_token": token,
+            }
+        except Exception as e:
+            logger.warning(f"Falha ao liberar lease de webhook {event_id}: {e}")
+            return {"released": False, "event_id": event_id, "claim_token": token}
+
+    async def release_webhook_claim(self, event_id: str, token: Optional[str] = None, error: Optional[str] = None) -> None:
+        """Compatibilidade com o chamador legado que só conhece event_id."""
+        if not event_id:
+            return
+
+        if not self._is_production():
+            record = self._mem_processed_events.get(event_id)
+            if not record:
+                return
+            if token and record.get("claim_token") and str(record.get("claim_token")) != str(token):
+                return
+            record["status"] = "released"
+            record["last_error"] = error
+            record["claim_token"] = None
+            return
+
+        await self.release_webhook_event_v2(event_id=event_id, token=token, error=error)
+
+    async def complete_subscription_webhook_v2(
+        self,
+        event_id: str,
+        token: Optional[str],
+        action: str,
+        trainer_id: Optional[str] = None,
+        plan_id: Optional[str] = None,
+        billing_interval: str = "monthly",
+        payment_method: str = "asaas",
+    ) -> Dict[str, Any]:
+        """Finaliza o evento de webhook de forma atômica e persiste a ação do pagamento."""
+        if not event_id:
+            return {"event_id": event_id, "disposition": "completed", "action": action}
+
+        if not self._is_production():
+            record = self._mem_processed_events.get(event_id, {})
+            if token and record.get("claim_token") and str(record.get("claim_token")) != str(token):
+                return {"event_id": event_id, "disposition": "failed", "error": "invalid_claim_token"}
+
+            if action != "none":
+                if not trainer_id or str(trainer_id).strip() == "":
+                    return {"event_id": event_id, "disposition": "failed", "error": "missing_trainer_id"}
+                try:
+                    uuid.UUID(str(trainer_id))
+                except (TypeError, ValueError, AttributeError):
+                    return {"event_id": event_id, "disposition": "failed", "error": "invalid_trainer_id"}
+                if action == "activate":
+                    if not plan_id or str(plan_id).strip() == "":
+                        return {"event_id": event_id, "disposition": "failed", "error": "missing_plan_id"}
+                elif action in {"past_due", "canceled"}:
+                    plan_id = None
+
+            if action == "activate" and trainer_id and plan_id:
+                self._mem_subscriptions[str(trainer_id)] = {
+                    "trainer_id": trainer_id,
+                    "plan_id": plan_id,
+                    "status": "active",
+                    "billing_interval": billing_interval,
+                    "payment_provider": payment_method,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+            elif action == "past_due" and trainer_id:
+                self._mem_subscriptions[str(trainer_id)] = {
+                    **self._mem_subscriptions.get(str(trainer_id), {}),
+                    "trainer_id": trainer_id,
+                    "status": "past_due",
+                    "billing_interval": billing_interval,
+                    "payment_provider": payment_method,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+            elif action == "canceled" and trainer_id:
+                self._mem_subscriptions[str(trainer_id)] = {
+                    **self._mem_subscriptions.get(str(trainer_id), {}),
+                    "trainer_id": trainer_id,
+                    "status": "canceled",
+                    "billing_interval": billing_interval,
+                    "payment_provider": payment_method,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+
+            record.update({
+                "event_id": event_id,
+                "status": "completed",
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+                "action": action,
+                "trainer_id": trainer_id,
+                "plan_id": plan_id,
+                "billing_interval": billing_interval,
+                "payment_method": payment_method,
+                "claim_token": token,
+            })
+            self._mem_processed_events[event_id] = record
+            return {"event_id": event_id, "disposition": "completed", "action": action}
+
+        client = await self.get_client()
+        if not client:
+            return {"event_id": event_id, "disposition": "failed", "error": "supabase_unavailable"}
+
+        if action != "none":
+            if not trainer_id or str(trainer_id).strip() == "":
+                return {"event_id": event_id, "disposition": "failed", "error": "missing_trainer_id"}
+            try:
+                uuid.UUID(str(trainer_id))
+            except (TypeError, ValueError, AttributeError):
+                return {"event_id": event_id, "disposition": "failed", "error": "invalid_trainer_id"}
+            if action == "activate":
+                if not plan_id or str(plan_id).strip() == "":
+                    return {"event_id": event_id, "disposition": "failed", "error": "missing_plan_id"}
+            elif action in {"past_due", "canceled"}:
+                plan_id = None
+
+        try:
+            res = await client.rpc(
+                "complete_subscription_webhook_v2",
+                {
+                    "p_event_id": event_id,
+                    "p_token": token,
+                    "p_action": action,
+                    "p_trainer_id": trainer_id,
+                    "p_plan_id": plan_id,
+                    "p_billing_interval": billing_interval,
+                    "p_payment_method": payment_method,
+                },
+            ).execute()
+            row, payload = self._extract_rpc_row(res.data)
+            disposition = "failed"
+            completed = False
+            if isinstance(payload, bool):
+                completed = payload
+            elif isinstance(payload, dict):
+                completed = self._normalize_rpc_bool(payload.get("completed", payload.get("success")), default=False)
+            elif isinstance(payload, str):
+                completed = self._normalize_rpc_bool(payload, default=False)
+            elif isinstance(payload, (int, float)):
+                completed = self._normalize_rpc_bool(payload, default=False)
+            elif row:
+                completed = self._normalize_rpc_bool(row.get("completed", row.get("success")), default=False)
+            if row and row.get("disposition"):
+                disposition = str(row.get("disposition", "failed")).lower()
+            elif completed:
+                disposition = "completed"
+            return {
+                "event_id": event_id,
+                "disposition": disposition,
+                "action": str(row.get("action") or action).lower(),
+            }
+        except Exception as e:
+            logger.warning(f"Falha ao completar evento de assinatura {event_id} via RPC v2: {e}")
+            return {"event_id": event_id, "disposition": "failed", "error": "rpc_complete_unavailable"}
 
     async def is_event_processed(self, event_id: str) -> bool:
         """Verifica se um evento de webhook já foi processado anteriormente (idempotência)."""
@@ -1031,6 +1497,22 @@ class SupabaseService:
         """Recupera a assinatura ativa do treinador a partir do Supabase ou cache."""
         if not self._is_production() and trainer_id in self._mem_subscriptions:
             cached = self._mem_subscriptions[trainer_id]
+            if isinstance(cached, dict):
+                cached = MySubscriptionResponse(**{
+                    "plan_id": cached.get("plan_id", "starter"),
+                    "plan_name": cached.get("plan_name") or cached.get("plan_id") or "Starter Trial",
+                    "status": cached.get("status", "active"),
+                    "billing_interval": cached.get("billing_interval", "monthly"),
+                    "current_students": cached.get("current_students", 0),
+                    "max_students": cached.get("max_students", 3 if cached.get("plan_id") == "starter" else 30),
+                    "ai_generations_used": cached.get("ai_generations_used", 0),
+                    "max_ai_generations": cached.get("max_ai_generations", 10 if cached.get("plan_id") == "starter" else -1),
+                    "trial_days_remaining": cached.get("trial_days_remaining"),
+                    "next_billing_date": cached.get("next_billing_date"),
+                    "payment_method": cached.get("payment_method") or cached.get("payment_provider") or "pix",
+                    "can_create_student": cached.get("can_create_student", True),
+                    "can_generate_ai": cached.get("can_generate_ai", True),
+                })
             curr_students = await self.count_trainer_occupied_slots(trainer_id)
             ai_used = self.get_ai_generations_used(trainer_id)
             can_gen = True if cached.max_ai_generations == -1 else (ai_used < cached.max_ai_generations)
@@ -1308,7 +1790,7 @@ class SupabaseService:
         try:
             from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-            profile_res = await client.table("profiles").select("timezone").eq("id", self.to_valid_uuid_str(client_id)).limit(1).execute()
+            profile_res = await client.table("profiles").select("timezone").eq("id", to_valid_uuid_str(client_id)).limit(1).execute()
             profile_rows = getattr(profile_res, "data", None) or []
             if profile_rows:
                 tz_value = profile_rows[0].get("timezone")
@@ -1329,7 +1811,7 @@ class SupabaseService:
 
             res = await client.table("workout_sessions")\
                 .select("completed_at, total_exercises, completed_exercises")\
-                .eq("client_id", self.to_valid_uuid_str(client_id))\
+                .eq("client_id", to_valid_uuid_str(client_id))\
                 .order("completed_at", desc=True)\
                 .execute()
 

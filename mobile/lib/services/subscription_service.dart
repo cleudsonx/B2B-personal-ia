@@ -202,7 +202,18 @@ class SubscriptionService {
     return defaultModel;
   }
 
-  /// Ativa ou troca o plano do Personal Trainer imediatamente e garante persistÃªncia total
+  static String _humanReadableErrorMessage(Object error, {String fallback = 'Não foi possível completar a ativação do plano.'}) {
+    final message = error.toString();
+    if (message.startsWith('Exception: ')) {
+      return message.replaceFirst('Exception: ', '');
+    }
+    if (message.startsWith('FormatException: ')) {
+      return message.replaceFirst('FormatException: ', '');
+    }
+    return fallback;
+  }
+
+  /// Ativa ou troca o plano do Personal Trainer somente quando o backend confirmar.
   static Future<MySubscriptionModel> activatePlan({
     required String planId,
     String billingInterval = 'monthly',
@@ -213,55 +224,9 @@ class SubscriptionService {
       (p) => p.id == planId,
       orElse: () => _defaultPlans[0],
     );
-    final isTrial = plan.id == 'starter';
-    final now = DateTime.now();
-    final nextDate =
-        '${now.day.toString().padLeft(2, '0')}/${((now.month + 1) > 12 ? 1 : now.month + 1).toString().padLeft(2, '0')}/${now.year}';
-    final currentStudentsCount =
-        _currentSubscriptionCache?.currentStudents ?? 4;
-
-    final immediateModel = MySubscriptionModel(
-      planId: plan.id,
-      planName: plan.name,
-      status: isTrial ? 'trialing' : 'active',
-      billingInterval: billingInterval,
-      currentStudents: currentStudentsCount,
-      maxStudents: plan.maxStudents,
-      aiGenerationsUsed: isTrial ? 3 : 12,
-      maxAiGenerations: plan.maxAiGenerationsPerMonth,
-      trialDaysRemaining: isTrial ? 14 : null,
-      nextBillingDate: nextDate,
-      paymentMethod: paymentMethod,
-      canCreateStudent: currentStudentsCount < plan.maxStudents,
-      canGenerateAi: true,
-    );
-
-    // Imediatamente atualiza memÃ³ria, reatividade e armazenamento persistente do celular
-    _currentSubscriptionCache = immediateModel;
-    activeSubscriptionNotifier.value = immediateModel;
-    await _saveToLocalCache(immediateModel);
 
     final trainerId = AuthService.currentUser?.id ?? 'current-trainer';
 
-    // 1. Tenta persistir no Supabase (se autenticado)
-    final user = AuthService.currentUser;
-    if (user != null) {
-      try {
-        final client = Supabase.instance.client;
-        await client.from('subscriptions').upsert({
-          'trainer_id': user.id,
-          'plan_id': plan.id,
-          'status': isTrial ? 'trialing' : 'active',
-          'billing_interval': billingInterval,
-          'payment_provider': paymentMethod,
-          'updated_at': DateTime.now().toIso8601String(),
-        }, onConflict: 'trainer_id');
-      } catch (e) {
-        debugPrint('Aviso ao sincronizar assinatura com Supabase: $e');
-      }
-    }
-
-    // 2. Notifica o backend FastAPI para atualizar o estado e limites em tempo real
     try {
       final uri = Uri.parse(
         '${AppConfig.apiBaseUrl}/subscriptions/activate-plan',
@@ -275,20 +240,41 @@ class SubscriptionService {
       final res = await _client
           .post(uri, headers: _headers, body: body)
           .timeout(const Duration(seconds: 5));
+
       if (res.statusCode == 200) {
-        final data =
-            jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-        final backendModel = MySubscriptionModel.fromJson(data);
+        final decoded = jsonDecode(utf8.decode(res.bodyBytes));
+        if (decoded is! Map<String, dynamic>) {
+          throw const FormatException('Resposta do backend não é um objeto válido.');
+        }
+
+        final backendModel = MySubscriptionModel.fromJson(decoded);
         _currentSubscriptionCache = backendModel;
         activeSubscriptionNotifier.value = backendModel;
         await _saveToLocalCache(backendModel);
         return backendModel;
       }
-    } catch (e) {
-      debugPrint('Aviso ao sincronizar plano com backend: $e');
-    }
 
-    return immediateModel;
+      final detail = (() {
+        try {
+          final decoded = jsonDecode(utf8.decode(res.bodyBytes));
+          if (decoded is Map) {
+            final value = decoded['detail'] ?? decoded['message'];
+            if (value != null) return value.toString();
+          }
+        } catch (_) {}
+        return 'Status ${res.statusCode} ao ativar o plano.';
+      })();
+
+      throw Exception('Ativação do plano falhou: $detail');
+    } on TimeoutException {
+      throw Exception('Tempo limite ao ativar o plano. Tente novamente.');
+    } on http.ClientException catch (e) {
+      throw Exception('Erro de rede ao ativar o plano: ${e.message}');
+    } on FormatException catch (e) {
+      throw Exception('Resposta inválida do servidor ao ativar o plano: ${e.message}');
+    } catch (e) {
+      throw Exception(_humanReadableErrorMessage(e));
+    }
   }
 
   /// Gera a sessÃ£o de pagamento transparente (Pix ou CartÃ£o) via Asaas / InfinitePay

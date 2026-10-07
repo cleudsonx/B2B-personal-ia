@@ -46,12 +46,14 @@ class _TrainerPlanSelectionScreenState
     required String planId,
     required String planName,
   }) async {
-    await SubscriptionService.activatePlan(
-      planId: planId,
-      billingInterval: _isYearly ? 'yearly' : 'monthly',
-    );
+    try {
+      await SubscriptionService.activatePlan(
+        planId: planId,
+        billingInterval: _isYearly ? 'yearly' : 'monthly',
+      );
 
-    if (mounted) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.green.shade800,
@@ -60,20 +62,31 @@ class _TrainerPlanSelectionScreenState
           ),
         ),
       );
-    }
 
-    if (mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder:
-              (_) => MainShellScreen(
-                initialIndex: 0,
-                activeRole: 'trainer',
-                userName: widget.trainerName,
-              ),
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder:
+                (_) => MainShellScreen(
+                  initialIndex: 0,
+                  activeRole: 'trainer',
+                  userName: widget.trainerName,
+                ),
+          ),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red.shade800,
+          content: Text(
+            e.toString().replaceFirst('Exception: ', ''),
+            style: const TextStyle(color: Colors.white),
+          ),
         ),
-        (route) => false,
       );
     }
   }
@@ -94,9 +107,35 @@ class _TrainerPlanSelectionScreenState
             isYearly: _isYearly,
             trainerName: widget.trainerName,
             trainerEmail: widget.trainerEmail ?? 'treinador@demo.com',
-            onSuccess: () {
+            onSuccess: () async {
               Navigator.pop(ctx);
-              _proceedToApp(planId: plan.id, planName: plan.name);
+              try {
+                await SubscriptionService.getMySubscription();
+                if (!mounted) return;
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (_) => MainShellScreen(
+                          initialIndex: 0,
+                          activeRole: 'trainer',
+                          userName: widget.trainerName,
+                        ),
+                  ),
+                  (route) => false,
+                );
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    backgroundColor: Colors.red.shade800,
+                    content: Text(
+                      e.toString().replaceFirst('Exception: ', ''),
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                );
+              }
             },
           ),
     );

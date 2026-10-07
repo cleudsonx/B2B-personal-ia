@@ -10,7 +10,14 @@ Cobre os itens implementados:
   - Segurança: chave Evolution API não possui valor padrão hardcoded
 """
 
+import asyncio
+
 import pytest
+
+
+def run_async(coro):
+    """Executa coroutines em testes sem depender de um event loop global do interprete."""
+    return asyncio.run(coro)
 
 
 # ---------------------------------------------------------------------------
@@ -171,6 +178,138 @@ def test_check_status_blocks_activation_without_full_metadata(monkeypatch):
         PaymentProviderService._PENDING_ORDERS.pop(nsu, None)
 
 
+def test_check_status_rejects_paid_without_checkout_metadata(monkeypatch):
+    """Pagamento aprovado sem checkout metadata deve falhar fechado e não responder paid=true."""
+    from unittest.mock import AsyncMock
+
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.core.config import settings
+    from app.api.deps import get_current_user
+    from app.services import payment_service, supabase_service
+
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(settings, "ASAAS_API_KEY", "")
+    monkeypatch.setattr(payment_service.PaymentProviderService, "check_payment", classmethod(lambda cls, order_nsu: True))
+    monkeypatch.setattr(supabase_service.supabase_service, "get_checkout_session", AsyncMock(return_value=None))
+
+    nsu = "sess_test_paid_without_meta_001"
+    trainer_id = "trainer-safe-002"
+
+    app.dependency_overrides[get_current_user] = lambda: {"sub": trainer_id, "role": "authenticated"}
+    try:
+        client = TestClient(app)
+        res = client.get(f"/api/v1/subscriptions/check-status/{nsu}")
+        assert res.status_code == 422, (
+            f"Esperado 422 (metadata ausente), obteve {res.status_code}: {res.json()}"
+        )
+        detail = res.json().get("detail", "")
+        assert "metadados" in detail.lower()
+        assert "paid" not in res.json()
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_check_status_returns_paid_after_successful_completion_wrapper(monkeypatch):
+    """Com metadados válidos, /check-status só retorna paid=true após o wrapper de conclusão confirmar sucesso."""
+    from unittest.mock import AsyncMock
+
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.core.config import settings
+    from app.api.deps import get_current_user
+    from app.services import payment_service, supabase_service
+
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(settings, "ASAAS_API_KEY", "")
+    monkeypatch.setattr(payment_service.PaymentProviderService, "check_payment", classmethod(lambda cls, order_nsu: True))
+
+    nsu = "sess_test_paid_after_completion_001"
+    trainer_id = "trainer-safe-003"
+    checkout_meta = {
+        "session_id": nsu,
+        "trainer_id": trainer_id,
+        "plan_id": "pro",
+        "billing_interval": "monthly",
+        "payment_method": "pix",
+    }
+    monkeypatch.setattr(supabase_service.supabase_service, "get_checkout_session", AsyncMock(return_value=checkout_meta))
+
+    completion_calls = {}
+
+    async def fake_complete(*args, **kwargs):
+        completion_calls["session_id"] = kwargs.get("session_id")
+        completion_calls["provider_payment_id"] = kwargs.get("provider_payment_id")
+        return {"session_id": nsu, "paid": True, "completed": True, "disposition": "completed"}
+
+    async def fake_activate(*args, **kwargs):
+        raise AssertionError("/check-status não deve chamar activate_subscription quando wrapper de conclusão já confirmou pagamento")
+
+    monkeypatch.setattr(supabase_service.supabase_service, "complete_paid_checkout_session_v2", fake_complete)
+    monkeypatch.setattr(supabase_service.supabase_service, "activate_subscription", fake_activate)
+
+    app.dependency_overrides[get_current_user] = lambda: {"sub": trainer_id, "role": "authenticated"}
+    try:
+        client = TestClient(app)
+        res = client.get(f"/api/v1/subscriptions/check-status/{nsu}")
+        assert res.status_code == 200, res.text
+        body = res.json()
+        assert body["paid"] is True
+        assert body["plan_id"] == "pro"
+        assert completion_calls == {
+            "session_id": nsu,
+            "provider_payment_id": None,
+        }
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_check_status_does_not_return_paid_when_completion_wrapper_fails(monkeypatch):
+    """Se o wrapper de conclusão falhar, /check-status deve responder 503 e não activar assinatura direta."""
+    from unittest.mock import AsyncMock
+
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.core.config import settings
+    from app.api.deps import get_current_user
+    from app.services import payment_service, supabase_service
+
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(settings, "ASAAS_API_KEY", "")
+    monkeypatch.setattr(payment_service.PaymentProviderService, "check_payment", classmethod(lambda cls, order_nsu: True))
+
+    nsu = "sess_test_paid_completion_failure_001"
+    trainer_id = "trainer-safe-004"
+    checkout_meta = {
+        "session_id": nsu,
+        "trainer_id": trainer_id,
+        "plan_id": "pro",
+        "billing_interval": "monthly",
+        "payment_method": "pix",
+    }
+    monkeypatch.setattr(supabase_service.supabase_service, "get_checkout_session", AsyncMock(return_value=checkout_meta))
+
+    async def fake_complete(*args, **kwargs):
+        return {"session_id": nsu, "paid": False, "completed": False, "disposition": "failed", "error": "checkout_session_status_not_activable"}
+
+    async def fake_activate(*args, **kwargs):
+        raise AssertionError("/check-status não deve tentar ativar assinatura se o wrapper falhou")
+
+    monkeypatch.setattr(supabase_service.supabase_service, "complete_paid_checkout_session_v2", fake_complete)
+    monkeypatch.setattr(supabase_service.supabase_service, "activate_subscription", fake_activate)
+
+    app.dependency_overrides[get_current_user] = lambda: {"sub": trainer_id, "role": "authenticated"}
+    try:
+        client = TestClient(app, raise_server_exceptions=False)
+        res = client.get(f"/api/v1/subscriptions/check-status/{nsu}")
+        assert res.status_code == 503, res.text
+        body = res.json()
+        assert "detail" in body
+        assert "paid" not in body
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
 # ---------------------------------------------------------------------------
 # 9.1.5 — /assistant/chat exige auth
 # ---------------------------------------------------------------------------
@@ -225,11 +364,8 @@ def test_evolution_api_in_mock_mode_without_key():
 def test_update_subscription_status_dev_mode():
     """update_subscription_status em dev não deve lançar exceção."""
     from app.services.supabase_service import supabase_service
-    import asyncio
 
-    asyncio.get_event_loop().run_until_complete(
-        supabase_service.update_subscription_status("current-trainer", "canceled")
-    )
+    run_async(supabase_service.update_subscription_status("current-trainer", "canceled"))
     # Sem exceção = sucesso
 
 
@@ -240,7 +376,6 @@ def test_update_subscription_status_dev_mode():
 def test_webhook_idempotency_service_methods():
     """Testa is_event_processed e record_processed_event em modo de desenvolvimento."""
     from app.services.supabase_service import supabase_service
-    import asyncio
 
     evt_id = "test_evt_unique_12345"
 
@@ -258,7 +393,7 @@ def test_webhook_idempotency_service_methods():
         # Agora deve ser True
         assert await supabase_service.is_event_processed(evt_id) is True
 
-    asyncio.get_event_loop().run_until_complete(run())
+    run_async(run())
 
 
 def test_webhook_asaas_ignores_duplicate_event():
@@ -266,13 +401,12 @@ def test_webhook_asaas_ignores_duplicate_event():
     from fastapi.testclient import TestClient
     from app.main import app
     from app.services.supabase_service import supabase_service
-    import asyncio
 
     client = TestClient(app)
     evt_id = "evt_asaas_duplicate_check_999"
 
     # Pré-registra o evento como já processado
-    asyncio.get_event_loop().run_until_complete(
+    run_async(
         supabase_service.record_processed_event(
             event_id=evt_id,
             provider="asaas",
@@ -296,7 +430,9 @@ def test_webhook_asaas_ignores_duplicate_event():
     assert res.status_code == 200
     data = res.json()
     assert data.get("idempotent") is True
-    assert "já processado anteriormente" in data.get("message", "")
+    assert data.get("event_id") == evt_id
+    assert data.get("disposition") in {"duplicate", "busy"}
+    assert "duplicata" in data.get("message", "").lower() or "processamento" in data.get("message", "").lower()
 
 
 # ---------------------------------------------------------------------------
@@ -304,9 +440,8 @@ def test_webhook_asaas_ignores_duplicate_event():
 # ---------------------------------------------------------------------------
 
 def test_atomic_ai_quota_reservation_and_release():
-    """Testa que a cota é reservada atomicamente e liberada em caso de falha."""
+    """Testa a reserva e liberação da cota em memória; a garantia concorrente atômica exige PostgreSQL em produção, não um fallback em memória."""
     from app.services.supabase_service import supabase_service
-    import asyncio
 
     trainer_id = "tr-atomic-quota-test-01"
 
@@ -328,7 +463,7 @@ def test_atomic_ai_quota_reservation_and_release():
         # E bloquear em seguida
         assert await supabase_service.reserve_monthly_ai_quota(trainer_id, max_quota) is False
 
-    asyncio.get_event_loop().run_until_complete(run())
+    run_async(run())
 
 
 def test_ai_quota_reservation_fails_closed_in_production_if_rpc_fails(monkeypatch):
@@ -336,7 +471,6 @@ def test_ai_quota_reservation_fails_closed_in_production_if_rpc_fails(monkeypatc
     from app.services.supabase_service import supabase_service
     from app.core.config import settings
     import pytest
-    import asyncio
 
     monkeypatch.setattr(settings, "ENVIRONMENT", "production")
 
@@ -357,7 +491,7 @@ def test_ai_quota_reservation_fails_closed_in_production_if_rpc_fails(monkeypatc
             await supabase_service.reserve_monthly_ai_quota("tr-fail-closed-ai", 10)
         assert "Falha ao reservar cota de IA via RPC no Supabase" in str(exc_info.value)
 
-    asyncio.get_event_loop().run_until_complete(run())
+    run_async(run())
 
 
 # ---------------------------------------------------------------------------
@@ -418,7 +552,7 @@ def test_durable_checkout_session_storage():
         assert retrieved["billing_interval"] == "yearly"
         assert retrieved["amount_cents"] == 142800
 
-    asyncio.get_event_loop().run_until_complete(run())
+    run_async(run())
 
 
 def test_checkout_session_fails_closed_in_production_if_persistence_fails(monkeypatch):
@@ -473,13 +607,18 @@ def test_webhook_does_not_mark_event_processed_if_metadata_missing():
             }
         }
     )
-    assert res.status_code == 200
+    assert res.status_code == 503
+    detail = res.json().get("detail", "").lower()
+    assert "retry programado" in detail or "metadata" in detail
 
-    # Como não tinha metadados para persistir a assinatura, o evento NÃO deve ter sido gravado
+    # O evento foi reivindicado para retry, mas não foi finalizado; a falta de metadados
+    # deve impedir a ativação e manter o estado em processamento/release, não como completed.
     async def check():
-        assert await supabase_service.is_event_processed(unmatched_evt_id) is False
+        record = supabase_service._mem_processed_events.get(unmatched_evt_id, {})
+        assert record.get("status") in {"processing", "released", "failed"}
+        assert record.get("status") != "completed"
 
-    asyncio.get_event_loop().run_until_complete(check())
+    run_async(check())
 
 
 def test_webhook_atomic_claim_blocks_concurrent_duplicate():
@@ -499,7 +638,7 @@ def test_webhook_atomic_claim_blocks_concurrent_duplicate():
             provider="asaas",
             event_type="PAYMENT_RECEIVED"
         )
-    asyncio.get_event_loop().run_until_complete(pre_claim())
+    run_async(pre_claim())
 
     # Segunda requisição concorrente com o mesmo event_id
     res = client.post(
@@ -519,5 +658,7 @@ def test_webhook_atomic_claim_blocks_concurrent_duplicate():
     data = res.json()
     assert data.get("idempotent") is True
     assert data.get("event_id") == claimed_evt_id
+    assert data.get("disposition") in {"duplicate", "busy"}
+    assert "duplicata" in data.get("message", "").lower() or "processamento" in data.get("message", "").lower()
 
 
