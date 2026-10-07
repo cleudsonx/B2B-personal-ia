@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -48,8 +48,40 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
         body: Stack(
           children: [
             // ==========================================
-            // AMBIENT GRADIENT MESH / GLOW DE FUNDO
+            // ULTRA-REALISTIC BACKGROUND HERO IMAGE
             // ==========================================
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.25,
+                child: Image.network(
+                  'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2000&auto=format&fit=crop',
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return const Center(child: CircularProgressIndicator(color: MetaColors.emerald));
+                  },
+                ),
+              ).animate().fadeIn(duration: 1200.ms),
+            ),
+            // Gradient Overlay to blend image into background
+            Positioned.fill(
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.black,
+                      Colors.transparent,
+                      Colors.black,
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: [0.0, 0.4, 0.9],
+                  ),
+                ),
+              ),
+            ),
+
+            // AMBIENT GRADIENT MESH / GLOW
             Positioned(
               top: -120,
               left: mediaQuery.size.width * 0.2,
@@ -60,7 +92,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      MetaColors.emerald.withValues(alpha: 0.18),
+                      MetaColors.emerald.withValues(alpha: 0.15),
                       Colors.transparent,
                     ],
                   ),
@@ -68,25 +100,6 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
               ),
             ).animate(onPlay: (c) => c.repeat(reverse: true))
              .scale(begin: const Offset(0.9, 0.9), end: const Offset(1.2, 1.2), duration: 4000.ms),
-
-            Positioned(
-              top: 350,
-              right: -100,
-              child: Container(
-                width: 450,
-                height: 450,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      const Color(0xFFD4AF37).withValues(alpha: 0.12), // Ouro suave Shaipados
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ).animate(onPlay: (c) => c.repeat(reverse: true))
-             .scale(begin: const Offset(1.1, 1.1), end: const Offset(0.85, 0.85), duration: 5000.ms),
 
             // ==========================================
             // CONTEÚDO PRINCIPAL (SCROLL)
@@ -116,12 +129,12 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(10),
                                   border: Border.all(
-                                    color: MetaColors.emerald.withValues(alpha: 0.3),
+                                    color: MetaColors.emerald.withValues(alpha: 0.5),
                                   ),
-                                  image: const DecorationImage(
-                                    image: AssetImage('assets/images/logo_shaipados_gold.jpg'),
-                                    fit: BoxFit.cover,
-                                  ),
+                                  color: Colors.black,
+                                ),
+                                child: const Center(
+                                  child: Icon(Icons.science_outlined, color: MetaColors.emerald, size: 22),
                                 ),
                               ),
                               const SizedBox(width: 14),
@@ -140,7 +153,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                                   Text(
                                     'VENTURE BUILDER & AI STUDIO',
                                     style: TextStyle(
-                                      color: MetaColors.textSecondary.withValues(alpha: 0.7),
+                                      color: MetaColors.emerald,
                                       fontSize: 9,
                                       fontWeight: FontWeight.bold,
                                       letterSpacing: 1.5,
@@ -181,7 +194,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                   // HERO SECTION COM PROPOSTA DE VALOR
                   // ==========================================
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 80),
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 900),
                       child: Column(
@@ -220,33 +233,46 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                             ),
                           ).animate().fadeIn(delay: 150.ms).scale(),
 
-                          const SizedBox(height: 28),
+                          const SizedBox(height: 32),
 
                           Text(
                             'Onde a Biomecânica\nencontra a Inteligência Artificial.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: MetaColors.textPrimary,
-                              fontSize: isDesktop ? 62 : 38,
+                              fontSize: isDesktop ? 72 : 42,
                               fontWeight: FontWeight.w900,
-                              height: 1.12,
-                              letterSpacing: -1.8,
+                              height: 1.1,
+                              letterSpacing: -2.0,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black.withValues(alpha: 0.5),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                )
+                              ]
                             ),
                           ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1, end: 0),
 
-                          const SizedBox(height: 22),
+                          const SizedBox(height: 28),
 
                           Text(
-                            'Desenvolvemos produtos digitais de alta precisão científica para personal trainers, academias e praticantes avançados de musculação.',
+                            'Desenvolvemos produtos digitais de alta precisão científica para personal trainers, academias e praticantes avançados de musculação. Potencialize seus resultados com modelos preditivos reais.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: MetaColors.textSecondary,
-                              fontSize: isDesktop ? 20 : 16,
-                              height: 1.55,
+                              fontSize: isDesktop ? 22 : 18,
+                              height: 1.6,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black.withValues(alpha: 0.8),
+                                  blurRadius: 5,
+                                )
+                              ]
                             ),
                           ).animate().fadeIn(delay: 450.ms).slideY(begin: 0.1, end: 0),
 
-                          const SizedBox(height: 36),
+                          const SizedBox(height: 48),
 
                           Wrap(
                             alignment: WrapAlignment.center,
@@ -257,7 +283,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                                 label: 'Explorar Mr. Coach B2B',
                                 icon: Icons.arrow_forward_rounded,
                                 isPrimary: true,
-                                height: 52,
+                                height: 56,
                                 borderRadius: 14,
                                 onPressed: () => _navigateToDestination(context, 'mrcoach'),
                               ),
@@ -265,7 +291,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                                 label: 'Acessar Plataforma',
                                 icon: Icons.lock_outline_rounded,
                                 isPrimary: false,
-                                height: 52,
+                                height: 56,
                                 borderRadius: 14,
                                 onPressed: () => _navigateToDestination(context, 'login'),
                               ),
@@ -348,21 +374,21 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
 
   Widget _buildDesktopGrid(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Coluna Esquerda: Showcase Biomecânico 3D e Nutri IA
+        // Coluna Esquerda
         Expanded(
           flex: 5,
           child: Column(
             children: [
-              _buildBiomech3DCard(),
+              Expanded(child: _buildBiomech3DCard()),
               const SizedBox(height: 24),
-              _buildNutriIACard(),
+              Expanded(child: _buildNutriIACard()),
             ],
           ),
         ),
         const SizedBox(width: 24),
-        // Coluna Direita: Flagship Mr. Coach
+        // Coluna Direita: Flagship
         Expanded(
           flex: 6,
           child: _buildFlagshipCard(context),
@@ -386,155 +412,158 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
   // Card do Produto Flagship: Mr. Coach
   Widget _buildFlagshipCard(BuildContext context) {
     return MetaCard(
-      padding: const EdgeInsets.all(36),
+      padding: const EdgeInsets.all(0), // Removido para a imagem colar nas bordas
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: MetaColors.emerald.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(100),
-                  border: Border.all(
-                    color: MetaColors.emerald.withValues(alpha: 0.25),
-                  ),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.star_rounded,
-                      color: MetaColors.emerald,
-                      size: 14,
-                    ),
-                    SizedBox(width: 6),
-                    Text(
-                      'PRODUTO FLAGSHIP (NO AR)',
-                      style: TextStyle(
-                        color: MetaColors.emerald,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.1,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 28),
-
-          // Imagem Dourada / Logo Oficial em Alta Resolução
-          Center(
-            child: Container(
-              height: 140,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: MetaColors.emerald.withValues(alpha: 0.15),
-                    blurRadius: 30,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Image.asset(
-                  'assets/images/mr_coach_logo_gold.jpg',
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) => Image.asset(
-                    'assets/images/mr_coach_logo_full.png',
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 28),
-
-          const Text(
-            'Mr. Coach: Plataforma B2B para Personais de Alta Performance',
-            style: TextStyle(
-              color: MetaColors.textPrimary,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          const Text(
-            'Prescrição biomecânica individualizada, substituição inteligente de aparelhos em tempo real e vitrine profissional para captação de novos alunos.',
-            style: TextStyle(
-              color: MetaColors.textSecondary,
-              fontSize: 15,
-              height: 1.55,
-            ),
-          ),
-          const SizedBox(height: 28),
-
+          // Header Image Ultra-realista
           SizedBox(
+            height: 260,
             width: double.infinity,
-            child: SquircleButton(
-              label: 'Ver Demonstração do Mr. Coach →',
-              icon: Icons.open_in_new_rounded,
-              isPrimary: true,
-              height: 52,
-              borderRadius: 14,
-              onPressed: () => _navigateToDestination(context, 'mrcoach'),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
+                  child: Image.network(
+                    'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?q=80&w=1000&auto=format&fit=crop',
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.transparent, MetaColors.surface.withValues(alpha: 1.0)],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: const [0.4, 1.0]
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 24,
+                  left: 24,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(100),
+                      border: Border.all(
+                        color: MetaColors.emerald.withValues(alpha: 0.8),
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.star_rounded, color: MetaColors.emerald, size: 14),
+                        SizedBox(width: 6),
+                        Text(
+                          'PRODUTO FLAGSHIP',
+                          style: TextStyle(
+                            color: MetaColors.emerald,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 24),
-
-          // Métrica ao vivo
-          MetaCard(
-            backgroundColor: MetaColors.background,
-            padding: const EdgeInsets.all(20),
-            borderRadius: 16,
-            child: Row(
+          
+          Padding(
+            padding: const EdgeInsets.fromLTRB(36, 12, 36, 36),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: const BoxDecoration(
-                    color: MetaColors.emerald,
-                    shape: BoxShape.circle,
+                const Text(
+                  'Mr. Coach: Plataforma B2B para Personais de Alta Performance',
+                  style: TextStyle(
+                    color: MetaColors.textPrimary,
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
                   ),
-                )
-                    .animate(onPlay: (c) => c.repeat(reverse: true))
-                    .fade(begin: 0.3, end: 1.0, duration: 800.ms),
-                const SizedBox(width: 14),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                ),
+                const SizedBox(height: 12),
+
+                const Text(
+                  'Prescrição biomecânica individualizada, substituição inteligente de aparelhos em tempo real e vitrine profissional para captação de novos alunos.',
+                  style: TextStyle(
+                    color: MetaColors.textSecondary,
+                    fontSize: 16,
+                    height: 1.55,
+                  ),
+                ),
+                const SizedBox(height: 28),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: SquircleButton(
+                    label: 'Ver Demonstração do Mr. Coach →',
+                    icon: Icons.open_in_new_rounded,
+                    isPrimary: true,
+                    height: 52,
+                    borderRadius: 14,
+                    onPressed: () => _navigateToDestination(context, 'mrcoach'),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Métrica ao vivo
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: MetaColors.border.withValues(alpha: 0.5)),
+                  ),
+                  child: Row(
                     children: [
-                      Text(
-                        'METRICAS DO ECOSSISTEMA',
-                        style: TextStyle(
+                      Container(
+                        width: 12,
+                        height: 12,
+                        decoration: const BoxDecoration(
                           color: MetaColors.emerald,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.1,
+                          shape: BoxShape.circle,
                         ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        '+2.400 Treinos Prescritos',
-                        style: TextStyle(
-                          color: MetaColors.textPrimary,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      Text(
-                        'Com proteção automática contra lesões articulares',
-                        style: TextStyle(
-                          color: MetaColors.textSecondary,
-                          fontSize: 12,
+                      )
+                          .animate(onPlay: (c) => c.repeat(reverse: true))
+                          .fade(begin: 0.3, end: 1.0, duration: 800.ms),
+                      const SizedBox(width: 14),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'MÉTRICAS DO ECOSSISTEMA',
+                              style: TextStyle(
+                                color: MetaColors.emerald,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.1,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              '+2.400 Treinos Prescritos',
+                              style: TextStyle(
+                                color: MetaColors.textPrimary,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            Text(
+                              'Com proteção automática contra lesões articulares',
+                              style: TextStyle(
+                                color: MetaColors.textSecondary,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -580,7 +609,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Renderização Ultra-realista da Anatomia 3D
+          // Imagem Ultra-realista
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: SizedBox(
@@ -589,47 +618,40 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.asset(
-                    'assets/images/biomech_3d_chest.jpg',
+                  Image.network(
+                    'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=800&auto=format&fit=crop', // Restaurant/Lab or similar dark aesthetic
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Image.asset(
-                      'assets/images/anatomical_model_chest.png',
-                      fit: BoxFit.contain,
-                    ),
                   ),
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
+                        colors: [Colors.transparent, MetaColors.surface.withValues(alpha: 0.9)],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.85),
-                        ],
                       ),
                     ),
                   ),
                   const Positioned(
-                    bottom: 14,
-                    left: 16,
-                    right: 16,
-                    child: Text(
-                      'Mapeamento Eletromiográfico em 3D',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    bottom: 12,
+                    left: 12,
+                    child: Icon(Icons.science, color: MetaColors.emerald, size: 32),
                   ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 20),
-
           const Text(
-            'IA treinada com mais de 300 estudos eletromiográficos para garantir torque ótimo e curvas de resistência seguras.',
+            'Mapeamento Articular 3D',
+            style: TextStyle(
+              color: MetaColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Modelagem anatômica que avalia vetores de força e previne lesões antes que aconteçam.',
             style: TextStyle(
               color: MetaColors.textSecondary,
               fontSize: 14,
@@ -641,48 +663,77 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
     );
   }
 
-  // Card do Nutri IA (Em Breve)
+  // Card de Nutrição e Visão Computacional
   Widget _buildNutriIACard() {
     return MetaCard(
       padding: const EdgeInsets.all(28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: MetaColors.surfaceHighlight,
-              borderRadius: BorderRadius.circular(100),
-              border: Border.all(color: MetaColors.border),
-            ),
-            child: const Text(
-              'EM DESENVOLVIMENTO',
-              style: TextStyle(
-                color: Color(0xFF60A5FA),
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.1,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: MetaColors.surfaceHighlight,
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(color: MetaColors.border),
+                ),
+                child: const Text(
+                  'EM BREVE',
+                  style: TextStyle(
+                    color: MetaColors.textSecondary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+              ),
+              const Icon(Icons.restaurant_menu_rounded, color: MetaColors.textSecondary, size: 20),
+            ],
+          ),
+          const SizedBox(height: 20),
+          
+          // Imagem Ultra-realista Nutrição
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox(
+              height: 140,
+              width: double.infinity,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.network(
+                    'https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=800&auto=format&fit=crop',
+                    fit: BoxFit.cover,
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.transparent, MetaColors.surface.withValues(alpha: 0.9)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
           const SizedBox(height: 20),
-          const Row(
-            children: [
-              Icon(Icons.restaurant_menu_rounded, color: Color(0xFF60A5FA), size: 28),
-              SizedBox(width: 12),
-              Text(
-                'Nutri IA Studio',
-                style: TextStyle(
-                  color: MetaColors.textPrimary,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
+
           const Text(
-            'Planejamento de macronutrientes adaptativo e contagem calórica visual via visão computacional.',
+            'Diet Tracker Vision',
+            style: TextStyle(
+              color: MetaColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Envie uma foto do prato e nossa rede neural calcula macros e calorias em segundos com 98% de precisão.',
             style: TextStyle(
               color: MetaColors.textSecondary,
               fontSize: 14,

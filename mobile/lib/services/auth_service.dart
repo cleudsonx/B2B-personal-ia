@@ -268,11 +268,56 @@ class AuthService {
 
   /// Desconectar a sessão e limpar caches
   
-  static Future<void> resetPasswordForEmail(String email) async {
-    try {
-      await Supabase.instance.client.auth.resetPasswordForEmail(email);
-    } catch (e) {
-      throw Exception('Erro ao solicitar recuperaÃ§Ã£o: ');
+  static Future<void> requestRecoveryOtp(String identifier, String channel) async {
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/auth/recovery/request-otp');
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        'phone_or_email': identifier.trim(),
+        'channel': channel,
+      }),
+    ).timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      String msg = 'Erro ao solicitar recuperação (${response.statusCode})';
+      try {
+        final err = jsonDecode(response.body);
+        if (err is Map && err.containsKey('detail')) {
+          msg = err['detail'].toString();
+        }
+      } catch (_) {}
+      throw Exception(msg);
+    }
+  }
+
+  static Future<void> verifyRecoveryOtp(String identifier, String otpCode, String newPassword) async {
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/auth/recovery/verify-otp');
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        'phone_or_email': identifier.trim(),
+        'otp_code': otpCode.trim(),
+        'new_password': newPassword,
+      }),
+    ).timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      String msg = 'Erro ao verificar código (${response.statusCode})';
+      try {
+        final err = jsonDecode(response.body);
+        if (err is Map && err.containsKey('detail')) {
+          msg = err['detail'].toString();
+        }
+      } catch (_) {}
+      throw Exception(msg);
     }
   }
 

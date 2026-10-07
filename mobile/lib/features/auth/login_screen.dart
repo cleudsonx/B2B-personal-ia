@@ -201,6 +201,115 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _showVerifyOtpDialog(String identifier) {
+    final otpCtrl = TextEditingController();
+    final passwordCtrl = TextEditingController();
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: MetaColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: const BorderSide(color: MetaColors.border),
+            ),
+            title: const Text(
+              'Verificar Código',
+              style: TextStyle(color: MetaColors.textPrimary, fontWeight: FontWeight.bold),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Insira o código de 6 dígitos enviado no WhatsApp para  e sua nova senha.',
+                  style: const TextStyle(color: MetaColors.textSecondary, fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: otpCtrl,
+                  style: const TextStyle(color: MetaColors.textPrimary),
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Código OTP',
+                    hintText: '123456',
+                    labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                    filled: true,
+                    fillColor: MetaColors.surfaceHighlight,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: passwordCtrl,
+                  obscureText: true,
+                  style: const TextStyle(color: MetaColors.textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Nova Senha',
+                    labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                    filled: true,
+                    fillColor: MetaColors.surfaceHighlight,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
+                child: const Text('Cancelar', style: TextStyle(color: MetaColors.textSecondary)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: MetaColors.emerald,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: isSubmitting ? null : () async {
+                  final otp = otpCtrl.text.trim();
+                  final pwd = passwordCtrl.text;
+                  if (otp.length != 6 || pwd.length < 6) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Código inválido ou senha muito curta (min 6).')),
+                    );
+                    return;
+                  }
+                  
+                  setDialogState(() => isSubmitting = true);
+                  try {
+                    await AuthService.verifyRecoveryOtp(identifier, otp, pwd);
+                    if (mounted) {
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          backgroundColor: MetaColors.emerald,
+                          content: Text('Senha redefinida com sucesso! Pode entrar.'),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    setDialogState(() => isSubmitting = false);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: AppColors.danger,
+                          content: Text(e.toString().replaceAll('Exception: ', '')),
+                        ),
+                      );
+                    }
+                  }
+                },
+                child: Text(isSubmitting ? 'Verificando...' : 'Redefinir'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   void _showForgotPasswordDialog() {
     final inputCtrl = TextEditingController(text: _emailCtrl.text);
     String selectedChannel = 'whatsapp'; // Padrão Brasil: WhatsApp
@@ -386,42 +495,33 @@ class _LoginScreenState extends State<LoginScreen> {
                   if (textVal.isEmpty) return;
 
                   setDialogState(() => isSubmitting = true);
-                  Navigator.pop(ctx);
 
                   try {
-                    if (selectedChannel == 'email') {
-                      await AuthService.resetPasswordForEmail(textVal);
-                      if (mounted) {
+                    await AuthService.requestRecoveryOtp(textVal, selectedChannel);
+                    if (mounted) {
+                      Navigator.pop(ctx);
+                      if (selectedChannel == 'email') {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             backgroundColor: MetaColors.surfaceHighlight,
                             content: Text(
-                              'Link de recuperação enviado para $textVal',
+                              'Instruções enviadas para ',
                               style: const TextStyle(color: MetaColors.textPrimary),
                             ),
                           ),
                         );
-                      }
-                    } else {
-                      // Solicitação via WhatsApp com OTP
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            backgroundColor: MetaColors.surfaceHighlight,
-                            content: Text(
-                              'Código de segurança enviado via WhatsApp para $textVal',
-                              style: const TextStyle(color: MetaColors.textPrimary),
-                            ),
-                          ),
-                        );
+                      } else {
+                        // Show OTP verification modal
+                        _showVerifyOtpDialog(textVal);
                       }
                     }
                   } catch (e) {
+                    setDialogState(() => isSubmitting = false);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
+                        SnackBar(
                           backgroundColor: AppColors.danger,
-                          content: Text('Erro ao enviar solicitação de recuperação.'),
+                          content: Text(e.toString().replaceAll('Exception: ', '')),
                         ),
                       );
                     }
