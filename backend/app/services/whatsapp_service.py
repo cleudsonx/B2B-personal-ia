@@ -26,18 +26,26 @@ def trainer_id_from_instance(instance: str) -> Optional[str]:
 
 
 class WhatsAppService:
+    def __init__(self, provider: str = "evolution", api_key: Optional[str] = None):
+        self.provider = provider.lower()
+        self.evolution_key = api_key if api_key is not None else settings.EVOLUTION_API_KEY
+
     @staticmethod
     def _base() -> str:
         return settings.EVOLUTION_API_URL.rstrip("/")
 
-    @staticmethod
-    def _headers() -> dict:
-        if not settings.EVOLUTION_API_KEY:
+    def _headers(self) -> dict:
+        if self.provider == "mock":
+            return {}
+        if not self.evolution_key:
             raise RuntimeError("EVOLUTION_API_KEY não configurada.")
-        return {"apikey": settings.EVOLUTION_API_KEY}
+        return {"apikey": self.evolution_key}
 
     async def create_instance(self, instance_name: str, number: Optional[str] = None) -> dict:
         """Cria a instância do professor e registra o webhook do Consultor IA."""
+        if self.provider == "mock":
+            return {"status": "mock", "instanceName": instance_name, "mode": "mock"}
+
         payload: dict = {
             "instanceName": instance_name,
             "qrcode": True,
@@ -60,6 +68,8 @@ class WhatsAppService:
 
     async def connect_instance(self, instance_name: str, number: Optional[str] = None) -> dict:
         """Gera novo pairingCode/QR para uma instância já existente."""
+        if self.provider == "mock":
+            return {"status": "mock", "instanceName": instance_name, "mode": "mock"}
         params = {"number": number} if number else None
         async with httpx.AsyncClient(timeout=20) as client:
             r = await client.get(
@@ -69,6 +79,8 @@ class WhatsAppService:
             return r.json()
 
     async def get_instance_state(self, instance_name: str) -> dict:
+        if self.provider == "mock":
+            return {"status": "connected", "instanceName": instance_name, "mode": "mock"}
         async with httpx.AsyncClient(timeout=15) as client:
             r = await client.get(
                 f"{self._base()}/instance/connectionState/{instance_name}", headers=self._headers()
@@ -78,6 +90,8 @@ class WhatsAppService:
 
     async def send_text_message(self, instance_name: str, number: str, text: str) -> dict:
         """Envia texto (payload Evolution v2)."""
+        if self.provider == "mock":
+            return {"status": "success", "mode": "mock", "instanceName": instance_name, "number": number, "text": text}
         async with httpx.AsyncClient(timeout=20) as client:
             r = await client.post(
                 f"{self._base()}/message/sendText/{instance_name}",

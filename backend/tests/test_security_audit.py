@@ -211,8 +211,8 @@ def test_evolution_api_in_mock_mode_without_key():
     import asyncio
 
     svc = WhatsAppService(provider="mock")
-    result = asyncio.get_event_loop().run_until_complete(
-        svc.send_text_message("11999999999", "Teste de mensagem mock")
+    result = asyncio.new_event_loop().run_until_complete(
+        svc.send_text_message("mr_coach_instance", "11999999999", "Teste de mensagem mock")
     )
     assert result["status"] == "success"
     assert result["mode"] == "mock"

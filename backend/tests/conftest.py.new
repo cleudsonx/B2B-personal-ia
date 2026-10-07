@@ -1,11 +1,11 @@
-﻿import asyncio
+import asyncio
 
 import httpx
 import pytest
 
 
 def _patch_httpx_asyncclient_compat():
-    """Compatibiliza clientes HTTPX antigos usados pelos testes com a API atual."""
+    """Compatibiliza clientes HTTPX antigos usados nos testes com a API atual."""
     original_init = httpx.AsyncClient.__init__
     if getattr(original_init, "_b2b_compat", False):
         return
@@ -19,11 +19,7 @@ def _patch_httpx_asyncclient_compat():
     httpx.AsyncClient.__init__ = compat_init
 
 
-try:
-    asyncio.get_running_loop()
-except RuntimeError:
-    asyncio.set_event_loop(asyncio.new_event_loop())
-
+asyncio.set_event_loop(asyncio.new_event_loop())
 _patch_httpx_asyncclient_compat()
 
 
