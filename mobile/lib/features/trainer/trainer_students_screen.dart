@@ -23,81 +23,13 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
   bool _isLoading = false;
 
   // Lista mockada de alunos no estilo WhatsApp / Meta
-  final List<Map<String, dynamic>> _mockStudents = [
-    {
-      'id': 'st-1',
-      'full_name': 'Rodrigo Silveira',
-      'email': 'rodrigo.silveira@email.com',
-      'phone': '(11) 98765-4321',
-      'goal': 'Hipertrofia Muscular',
-      'recent_status': 'Treino pendente hoje • Peito & Tríceps',
-      'last_session': 'Hoje, 07:45',
-      'status': 'Ativo',
-      'has_alert': true,
-      'alert_message':
-          'Relatou leve desconforto no ombro direito durante supino reto',
-      'avatar_url': null,
-    },
-    {
-      'id': 'st-2',
-      'full_name': 'Camila Vasconcelos',
-      'email': 'camila.vasconcelos@email.com',
-      'phone': '(21) 99876-5432',
-      'goal': 'Emagrecimento & Definição',
-      'recent_status': 'Concluiu Treino B com êxito',
-      'last_session': 'Hoje, 09:15',
-      'status': 'Ativo',
-      'has_alert': false,
-      'alert_message': null,
-      'avatar_url': null,
-    },
-    {
-      'id': 'st-3',
-      'full_name': 'Lucas Andrade Mendes',
-      'email': 'lucas.mendes@email.com',
-      'phone': '(11) 91234-5678',
-      'goal': 'Condicionamento Geral',
-      'recent_status': 'Aguardando primeiro acesso (Convite enviado)',
-      'last_session': 'Ontem',
-      'status': 'Pendente',
-      'has_alert': false,
-      'alert_message': null,
-      'avatar_url': null,
-    },
-    {
-      'id': 'st-4',
-      'full_name': 'Mariana Castro',
-      'email': 'mariana.castro@email.com',
-      'phone': '(31) 97654-3210',
-      'goal': 'Reabilitação Postural',
-      'recent_status': 'Periodização concluída • Aguardando renovação',
-      'last_session': 'Segunda',
-      'status': 'Ativo',
-      'has_alert': false,
-      'alert_message': null,
-      'avatar_url': null,
-    },
-    {
-      'id': 'st-5',
-      'full_name': 'Felipe Guimarães',
-      'email': 'felipe.guimaraes@email.com',
-      'phone': '(11) 98111-2233',
-      'goal': 'Hipertrofia & Força',
-      'recent_status': 'Novo recorde no Agachamento (120kg)',
-      'last_session': '15/09',
-      'status': 'Ativo',
-      'has_alert': false,
-      'alert_message': null,
-      'avatar_url': null,
-    },
-  ];
-
-  late List<Map<String, dynamic>> _students;
+  List<Map<String, dynamic>> _students = [];
+  bool _hasError = false;
+  String _errorMessage = '';
 
   @override
   void initState() {
     super.initState();
-    _students = List.from(_mockStudents);
     _loadStudentsFromDb();
   }
 
@@ -108,12 +40,16 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
   }
 
   Future<void> _loadStudentsFromDb() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = '';
+    });
     try {
       final dbStudents = await WorkoutService.getTrainerStudents();
       final alerts = await WorkoutService.getTrainerAlerts();
 
-      if (dbStudents.isNotEmpty && mounted) {
+      if (mounted) {
         setState(() {
           _students = dbStudents.map((st) {
             final stId = st['id'] ?? 'db-id';
@@ -136,29 +72,31 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
             final activeSplit = st['active_split'] as String?;
             final lastSession = st['last_session'] as String? ?? 'Sincronizado';
 
-            final recentStatus = activeSplit != null && activeSplit.isNotEmpty
-                ? '$activeSplit • $lastSession'
-                : 'Treino pendente hoje • $lastSession';
-
             return {
               'id': stId,
               'full_name': st['full_name'] ?? 'Aluno',
               'email': st['email'] ?? '',
               'phone': st['phone'] ?? '',
-              'goal': st['goal'] ?? 'Consultoria',
-              'recent_status': recentStatus,
+              'goal': st['goal'] ?? 'Treino',
+              'recent_status': activeSplit != null
+                  ? 'Ficha ativa: '
+                  : 'Aguardando ficha',
               'last_session': lastSession,
               'status': st['status'] ?? 'Ativo',
               'has_alert': hasAlert,
-              'alert_id': hasAlert ? matchingAlert['id'] : null,
               'alert_message': alertMsg,
               'avatar_url': st['avatar_url'],
             };
           }).toList();
         });
       }
-    } catch (_) {
-      // Caso não consiga conectar ao DB, mantém elegante os mock students
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = e.toString().replaceAll('Exception: ', '');
+        });
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -538,17 +476,42 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
 
                 // Lista de Alunos (ListView)
                 Expanded(
-                  child: filteredStudents.isEmpty
+                  child: _hasError 
                       ? Center(
-                          child: Text(
-                            'Nenhum aluno encontrado.',
-                            style: const TextStyle(
-                              color: MetaColors.textSecondary,
-                              fontSize: 15,
+                          child: Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Erro ao carregar alunos:\n\${_errorMessage}',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(color: MetaColors.textSecondary, fontSize: 14),
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton(
+                                  onPressed: _loadStudentsFromDb,
+                                  child: const Text('Tentar Novamente'),
+                                )
+                              ],
                             ),
                           ),
                         )
-                      : ListView.separated(
+                      : _isLoading && _students.isEmpty
+                        ? const Center(child: CircularProgressIndicator(color: MetaColors.emerald))
+                        : filteredStudents.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'Nenhum aluno cadastrado.',
+                                style: TextStyle(
+                                  color: MetaColors.textSecondary,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            )
+                          : ListView.separated(
                           // Padding dinâmico respeitando a Safe Area inferior e o SquircleButton
                           padding: EdgeInsets.only(
                             top: 4,
