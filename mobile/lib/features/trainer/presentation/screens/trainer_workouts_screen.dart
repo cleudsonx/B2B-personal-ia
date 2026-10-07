@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/widgets/meta_components.dart';
+import '../../../../services/workout_service.dart';
 import '../../anamnesis_screen.dart';
 
 /// Modelo de dados mockado para fichas de treino recentes
@@ -11,11 +12,13 @@ class _RecentWorkoutItem {
   final String workoutTitle;
   final String splitInfo;
   final String statusText;
-  final bool isExpired; // false = no prazo (verde), true = vencida (vermelho)
+  final bool isExpired;
   final String initials;
   final bool useClipboardIcon;
+  final Map<String, dynamic>? rawWorkout;
 
   const _RecentWorkoutItem({
+    this.rawWorkout,
     required this.id,
     required this.studentName,
     required this.workoutTitle,
@@ -36,39 +39,87 @@ class TrainerWorkoutsScreen extends StatefulWidget {
 }
 
 class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
-  // 3 Fichas de treino simuladas (Recent Workouts)
-  final List<_RecentWorkoutItem> _recentWorkouts = const [
-    _RecentWorkoutItem(
-      id: 'w-1',
-      studentName: 'Rodrigo Silveira',
-      workoutTitle: 'Hipertrofia A/B/C',
-      splitInfo: 'A: Peito & Tríceps • B: Costas & Bíceps • C: Pernas',
-      statusText: 'Atualizada hoje, 09:40',
-      isExpired: false,
-      initials: 'RS',
-      useClipboardIcon: false,
-    ),
-    _RecentWorkoutItem(
-      id: 'w-2',
-      studentName: 'Camila Vasconcelos',
-      workoutTitle: 'Emagrecimento & Glúteo',
-      splitInfo: 'Treino Funcional + Musculação Periodizada',
-      statusText: 'Vencida há 3 dias',
-      isExpired: true,
-      initials: 'CV',
-      useClipboardIcon: true,
-    ),
-    _RecentWorkoutItem(
-      id: 'w-3',
-      studentName: 'Lucas Andrade Mendes',
-      workoutTitle: 'Adaptação Anatômica',
-      splitInfo: 'Full Body 3x com foco corretivo biomecânico',
-      statusText: 'Atualizada ontem, 16:15',
-      isExpired: false,
-      initials: 'LM',
-      useClipboardIcon: false,
-    ),
-  ];
+  List<_RecentWorkoutItem> _recentWorkouts = [];
+  bool _isLoading = true;
+  bool _hasError = false;
+  String _errorMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWorkouts();
+  }
+
+  Future<void> _loadWorkouts() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = '';
+    });
+    try {
+      final workouts = await WorkoutService.getTrainerWorkouts();
+      if (mounted) {
+        setState(() {
+          _recentWorkouts = workouts.map((w) {
+            final client = w['profiles'] ?? {};
+            final clientName = client['full_name'] as String? ?? 'Aluno';
+            final title = w['title'] as String? ?? 'Ficha de Treino';
+            final updatedAt = w['updated_at'] as String?;
+            
+            // Format updated_at roughly
+            String status = 'Atualizada recentemente';
+            bool expired = false;
+            if (updatedAt != null) {
+              final date = DateTime.tryParse(updatedAt);
+              if (date != null) {
+                final diff = DateTime.now().difference(date);
+                if (diff.inDays > 30) {
+                  expired = true;
+                  status = 'Vencida há ${diff.inDays} dias';
+                } else if (diff.inDays > 0) {
+                  status = 'Atualizada há ${diff.inDays} dias';
+                } else {
+                  status = 'Atualizada hoje';
+                }
+              }
+            }
+
+            // Initials
+            String initials = 'AL';
+            final parts = clientName.trim().split(RegExp(r'\s+'));
+            if (parts.isNotEmpty) {
+              if (parts.length == 1) {
+                initials = parts[0].substring(0, parts[0].length >= 2 ? 2 : 1).toUpperCase();
+              } else {
+                initials = '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+              }
+            }
+
+            return _RecentWorkoutItem(
+              id: w['id'] ?? '',
+              studentName: clientName,
+              workoutTitle: title,
+              splitInfo: w['notes_for_trainer'] as String? ?? 'Sem notas',
+              statusText: status,
+              isExpired: expired,
+              initials: initials,
+              useClipboardIcon: clientName == 'Aluno',
+              rawWorkout: w,
+            );
+          }).toList();
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = e.toString();
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   void _navigateToCreateWorkout({String? studentName}) {
     Navigator.push(
@@ -436,7 +487,37 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                     right: 8,
                     bottom: bottomPadding + 88,
                   ),
-                  sliver: SliverList(
+                  sliver: _isLoading 
+                  ? const SliverFillRemaining(
+                      child: Center(
+                        child: CircularProgressIndicator(color: MetaColors.emerald),
+                      ),
+                    )
+                  : _hasError
+                    ? SliverFillRemaining(
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
+                              const SizedBox(height: 16),
+                              Text('Erro ao carregar treinos:\n$_errorMessage', textAlign: TextAlign.center, style: const TextStyle(color: MetaColors.textSecondary)),
+                              const SizedBox(height: 16),
+                              ElevatedButton(onPressed: _loadWorkouts, child: const Text('Tentar Novamente')),
+                            ],
+                          ),
+                        ),
+                      )
+                    : _recentWorkouts.isEmpty 
+                      ? const SliverFillRemaining(
+                          child: Center(
+                            child: Text(
+                              'Nenhum treino encontrado.',
+                              style: TextStyle(color: MetaColors.textSecondary, fontSize: 16),
+                            ),
+                          ),
+                        )
+                      : SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         final workout = _recentWorkouts[index];

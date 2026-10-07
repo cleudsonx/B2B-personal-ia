@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_colors.dart';
+
+import '../../core/widgets/meta_components.dart';
 import '../../services/auth_service.dart';
 import 'login_screen.dart';
 
@@ -35,6 +36,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _passwordCtrl = TextEditingController();
   }
 
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
@@ -46,26 +55,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
         fullName: _nameCtrl.text.trim(),
         role: widget.initialRole,
       );
-        if (mounted) {
-          if (response.session == null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Conta criada! Desligue o "Confirm Email" no Supabase ou verifique seu e-mail.'),
-                backgroundColor: Colors.orange,
-              ),
-            );
-            Navigator.pop(context); // volta pro login
-            return;
-          }
-          // Redireciona para configurar o perfil do treinador
-          Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+      if (mounted) {
+        if (response.session == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Conta criada! Verifique seu e-mail.'),
+              backgroundColor: MetaColors.surfaceHighlight,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          Navigator.pop(context); // volta pro login
+          return;
         }
+        // Redireciona para o fluxo inicial do app
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceAll('Exception:', '').trim()),
-            backgroundColor: AppColors.danger,
+            content: Text(
+              e.toString().replaceAll('Exception:', '').trim(),
+              style: const TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Colors.red.shade800,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
         );
       }
@@ -76,14 +93,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-      backgroundColor: AppColors.bg(context),
+      backgroundColor: MetaColors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: AppColors.text(context)),
+          icon: const Icon(Icons.arrow_back_rounded, color: MetaColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -98,23 +114,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 20),
-                  Text(
+                  const Text(
                     'Criar Conta',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.w900,
-                      color: AppColors.text(context),
+                      color: MetaColors.textPrimary,
                       letterSpacing: -1,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
+                  const Text(
                     'Comece a prescrever com Inteligência Artificial',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,
-                      color: AppColors.subtext(context),
+                      color: MetaColors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 48),
@@ -122,31 +138,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   // Nome
                   TextFormField(
                     controller: _nameCtrl,
-                    style: TextStyle(color: AppColors.text(context)),
+                    style: const TextStyle(color: MetaColors.textPrimary),
                     decoration: InputDecoration(
                       labelText: 'Nome Completo',
-                      prefixIcon: Icon(
+                      labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                      prefixIcon: const Icon(
                         Icons.person_outline,
-                        color: AppColors.emerald(context),
+                        color: MetaColors.emerald,
                       ),
                       filled: true,
-                      fillColor: AppColors.card(context),
+                      fillColor: MetaColors.surfaceHighlight,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: AppColors.cardBorder(context),
-                        ),
+                        borderSide: BorderSide.none,
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: AppColors.cardBorder(context),
-                        ),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: MetaColors.emerald),
                       ),
                     ),
-                    validator:
-                        (v) =>
-                            v == null || v.isEmpty ? 'Informe seu nome' : null,
+                    validator: (v) => v == null || v.isEmpty ? 'Informe seu nome' : null,
                   ),
                   const SizedBox(height: 16),
 
@@ -154,33 +169,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   TextFormField(
                     controller: _emailCtrl,
                     keyboardType: TextInputType.emailAddress,
-                    style: TextStyle(color: AppColors.text(context)),
+                    style: const TextStyle(color: MetaColors.textPrimary),
                     decoration: InputDecoration(
                       labelText: 'E-mail',
-                      prefixIcon: Icon(
+                      labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                      prefixIcon: const Icon(
                         Icons.email_outlined,
-                        color: AppColors.emerald(context),
+                        color: MetaColors.emerald,
                       ),
                       filled: true,
-                      fillColor: AppColors.card(context),
+                      fillColor: MetaColors.surfaceHighlight,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: AppColors.cardBorder(context),
-                        ),
+                        borderSide: BorderSide.none,
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: AppColors.cardBorder(context),
-                        ),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: MetaColors.emerald),
                       ),
                     ),
-                    validator:
-                        (v) =>
-                            v == null || !v.contains('@')
-                                ? 'E-mail invÃƒÂ¡lido'
-                                : null,
+                    validator: (v) => v == null || !v.contains('@') ? 'E-mail inválido' : null,
                   ),
                   const SizedBox(height: 16),
 
@@ -188,77 +200,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   TextFormField(
                     controller: _passwordCtrl,
                     obscureText: _obscurePassword,
-                    style: TextStyle(color: AppColors.text(context)),
+                    style: const TextStyle(color: MetaColors.textPrimary),
                     decoration: InputDecoration(
                       labelText: 'Senha',
-                      prefixIcon: Icon(
+                      labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                      prefixIcon: const Icon(
                         Icons.lock_outline,
-                        color: AppColors.emerald(context),
+                        color: MetaColors.emerald,
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                          color: AppColors.subtext(context),
+                          _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                          color: MetaColors.textSecondary,
                         ),
-                        onPressed:
-                            () => setState(
-                              () => _obscurePassword = !_obscurePassword,
-                            ),
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                       ),
                       filled: true,
-                      fillColor: AppColors.card(context),
+                      fillColor: MetaColors.surfaceHighlight,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: AppColors.cardBorder(context),
-                        ),
+                        borderSide: BorderSide.none,
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: AppColors.cardBorder(context),
-                        ),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: MetaColors.emerald),
                       ),
                     ),
-                    validator:
-                        (v) =>
-                            v == null || v.length < 6
-                                ? 'A senha deve ter no mÃƒÂ­nimo 6 caracteres'
-                                : null,
+                    validator: (v) => v == null || v.length < 6 ? 'A senha deve ter no mínimo 6 caracteres' : null,
                   ),
                   const SizedBox(height: 32),
 
-                  // BotÃƒÂ£o Criar Conta
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _handleRegister,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.emerald(context),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(100),
-                      ),
-                      elevation: 4,
+                  // Botão Criar Conta
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: SquircleButton(
+                      label: 'Criar Conta Grátis',
+                      isPrimary: true,
+                      isLoading: _isLoading,
+                      onPressed: _isLoading ? () {} : _handleRegister,
                     ),
-                    child:
-                        _isLoading
-                            ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                            : const Text(
-                              'Criar Conta Grátis',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
                   ),
                   const SizedBox(height: 24),
 
@@ -266,9 +251,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
+                      const Text(
                         'Já tem uma conta? ',
-                        style: TextStyle(color: AppColors.subtext(context)),
+                        style: TextStyle(color: MetaColors.textSecondary),
                       ),
                       TextButton(
                         onPressed: () {
@@ -279,10 +264,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                           );
                         },
-                        child: Text(
+                        child: const Text(
                           'Entrar',
                           style: TextStyle(
-                            color: AppColors.emerald(context),
+                            color: MetaColors.emerald,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -299,8 +284,3 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
-
-
-
-
-

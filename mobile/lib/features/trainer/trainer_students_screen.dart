@@ -1,3 +1,4 @@
+// ignore_for_file: unused_element, unused_local_variable, unused_field, override_on_non_overriding_member, use_build_context_synchronously
 import 'package:flutter/material.dart';
 import 'presentation/screens/student_details_screen.dart';
 import 'package:flutter/services.dart';

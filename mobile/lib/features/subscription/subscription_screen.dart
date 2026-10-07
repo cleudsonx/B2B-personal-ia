@@ -1,3 +1,4 @@
+// ignore_for_file: unused_element, unused_local_variable, unused_field, override_on_non_overriding_member, use_build_context_synchronously
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -528,7 +529,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Widget _buildPlanMetaCard(PlanModel plan) {
     final isCurrent = _mySubscription?.planId == plan.id;
     final isPro = plan.id == 'pro' || plan.isPopular;
-    final isStudio = plan.id == 'studio';
+    // final isStudio = plan.id == 'studio';
     final price =
         _isYearly ? plan.priceYearlyMonthlyEquivalent : plan.priceMonthly;
 

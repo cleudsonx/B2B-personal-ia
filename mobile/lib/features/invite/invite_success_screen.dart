@@ -49,9 +49,9 @@ class InviteSuccessScreen extends StatelessWidget {
                       width: 80,
                       height: 80,
                       decoration: BoxDecoration(
-                        color: MetaColors.emerald.withOpacity(0.15),
+                        color: MetaColors.emerald.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
-                        border: Border.all(color: MetaColors.emerald.withOpacity(0.3), width: 2),
+                        border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3), width: 2),
                       ),
                       child: const Center(
                         child: Icon(

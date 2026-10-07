@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
-import '../../core/theme/app_colors.dart';
+
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/server_config_dialog.dart';
 import '../../services/auth_service.dart';
@@ -90,8 +90,8 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppColors.danger,
+          SnackBar(behavior: SnackBarBehavior.floating, 
+            backgroundColor: Colors.red.shade800,
             content: Text(e.toString().replaceAll('Exception: ', '')),
           ),
         );
@@ -109,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!canCheckBiometrics && !isDeviceSupported) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            const SnackBar(behavior: SnackBarBehavior.floating, 
               backgroundColor: MetaColors.surfaceHighlight,
               content: Text(
                 'Autenticação biométrica não disponível neste dispositivo.',
@@ -155,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
             await _handleSignIn();
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
+              const SnackBar(behavior: SnackBarBehavior.floating, 
                 backgroundColor: MetaColors.surfaceHighlight,
                 content: Text(
                   'Biometria validada. Faça o primeiro login com seu e-mail e senha para vincular sua biometria.',
@@ -169,8 +169,8 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppColors.danger,
+          SnackBar(behavior: SnackBarBehavior.floating, 
+            backgroundColor: Colors.red.shade800,
             content: Text('Falha na autenticação biométrica: $e'),
           ),
         );
@@ -272,7 +272,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   final pwd = passwordCtrl.text;
                   if (otp.length != 6 || pwd.length < 6) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Código inválido ou senha muito curta (min 6).')),
+                      const SnackBar(behavior: SnackBarBehavior.floating, content: Text('Código inválido ou senha muito curta (min 6).')),
                     );
                     return;
                   }
@@ -283,7 +283,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (mounted) {
                       Navigator.pop(ctx);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
+                        const SnackBar(behavior: SnackBarBehavior.floating, 
                           backgroundColor: MetaColors.emerald,
                           content: Text('Senha redefinida com sucesso! Pode entrar.'),
                         ),
@@ -293,8 +293,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     setDialogState(() => isSubmitting = false);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          backgroundColor: AppColors.danger,
+                        SnackBar(behavior: SnackBarBehavior.floating, 
+                          backgroundColor: Colors.red.shade800,
                           content: Text(e.toString().replaceAll('Exception: ', '')),
                         ),
                       );
@@ -502,7 +502,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Navigator.pop(ctx);
                       if (selectedChannel == 'email') {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
+                          SnackBar(behavior: SnackBarBehavior.floating, 
                             backgroundColor: MetaColors.surfaceHighlight,
                             content: Text(
                               'Instruções enviadas para ',
@@ -519,8 +519,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     setDialogState(() => isSubmitting = false);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          backgroundColor: AppColors.danger,
+                        SnackBar(behavior: SnackBarBehavior.floating, 
+                          backgroundColor: Colors.red.shade800,
                           content: Text(e.toString().replaceAll('Exception: ', '')),
                         ),
                       );

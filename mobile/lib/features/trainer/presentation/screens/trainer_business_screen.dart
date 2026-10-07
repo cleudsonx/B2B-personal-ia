@@ -1,3 +1,4 @@
+// ignore_for_file: unused_element, unused_local_variable, unused_field, override_on_non_overriding_member, use_build_context_synchronously
 import 'package:flutter/material.dart';
 import '../../../../services/auth_service.dart';
 import 'package:flutter/services.dart';
@@ -739,8 +740,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
     );
   }
 
-  @override
-    Widget _buildIncompleteProfileBanner() {
+  Widget _buildIncompleteProfileBanner() {
     if (_isLoadingProfile || !_isProfileIncomplete) return const SliverToBoxAdapter(child: SizedBox.shrink());
     
     return SliverToBoxAdapter(

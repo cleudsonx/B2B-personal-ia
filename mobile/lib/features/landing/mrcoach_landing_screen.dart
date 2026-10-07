@@ -1,3 +1,4 @@
+// ignore_for_file: unused_element, unused_import, unused_local_variable, unused_field, override_on_non_overriding_member, use_build_context_synchronously
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -6,12 +7,12 @@ import '../../core/widgets/meta_components.dart';
 class MrCoachLandingScreen extends StatelessWidget {
   const MrCoachLandingScreen({super.key});
 
-  Future<void> _openWhatsApp() async {
-    final Uri url = Uri.parse('https://wa.me/5511999999999?text=Ol%C3%A1%2C%20quero%20conhecer%20o%20Mr.%20Coach!');
-    if (!await launchUrl(url)) {
-      debugPrint('Não foi possível abrir o WhatsApp');
-    }
-  }
+  // Future<void> _openWhatsApp() async {
+  //   final Uri url = Uri.parse('https://wa.me/5511999999999?text=Ol%C3%A1%2C%20quero%20conhecer%20o%20Mr.%20Coach!');
+  //   if (!await launchUrl(url)) {
+  //     debugPrint('Não foi possível abrir o WhatsApp');
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
