@@ -50,3 +50,4 @@ CREATE POLICY "Trainers read their students sessions"
               AND p.trainer_id = auth.uid()
         )
     );
+
