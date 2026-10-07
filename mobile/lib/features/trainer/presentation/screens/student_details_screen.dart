@@ -1,3 +1,4 @@
+import '../../../../services/workout_service.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/widgets/meta_components.dart';
@@ -12,14 +13,33 @@ class StudentDetailsScreen extends StatefulWidget {
 }
 
 class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
-  late Map<String, dynamic> student;
-  bool _hasActiveWorkout = false; // Mock, in the future this will be fetched from API
+late Map<String, dynamic> student;
+  bool _isLoadingWorkout = true;
+  dynamic _activeWorkout;
 
   @override
   void initState() {
     super.initState();
     student = widget.studentData;
-    _hasActiveWorkout = student['status'] == 'Ativo'; 
+    _fetchWorkout();
+  }
+
+  Future<void> _fetchWorkout() async {
+    try {
+      final workout = await WorkoutService.getActiveWorkoutForClient(clientId: student['id']);
+      if (mounted) {
+        setState(() {
+          _activeWorkout = workout;
+          _isLoadingWorkout = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingWorkout = false;
+        });
+      }
+    }
   }
 
   Future<void> _launchWhatsApp(String phone, String name) async {
@@ -96,7 +116,7 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    if (_hasActiveWorkout)
+                    if (!_isLoadingWorkout && _activeWorkout != null)
                       const Text(
                         '🔥 14 Dias de Ofensiva',
                         style: TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold, fontSize: 16),
@@ -139,7 +159,9 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
               // 3. PERIODIZAÇÃO (Treino)
               const MetaSectionTitle(title: 'Periodização'),
               const SizedBox(height: 16),
-              if (!_hasActiveWorkout)
+              if (_isLoadingWorkout)
+                const Center(child: CircularProgressIndicator(color: MetaColors.emerald))
+              else if (_activeWorkout == null)
                 MetaCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -157,7 +179,7 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                           label: '✨ Prescrever com IA em 30s',
                           isPrimary: true,
                           onPressed: () {
-                            // TODO: Navegar para geração de treino
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Integração em andamento...')));
                           },
                         ),
                       ),
@@ -174,13 +196,13 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                         style: TextStyle(color: MetaColors.textSecondary, fontSize: 14),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'Treino ABC - Hipertrofia',
-                        style: TextStyle(color: MetaColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+                      Text(
+                        _activeWorkout.workoutPlanTitle ?? 'Periodização',
+                        style: const TextStyle(color: MetaColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
                       const Text(
-                        'Atualizada há 12 dias',
+                        'Ativa',
                         style: TextStyle(color: MetaColors.emerald, fontSize: 14),
                       ),
                       const SizedBox(height: 24),
@@ -191,7 +213,9 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                               label: 'Ver/Ajustar',
                               icon: Icons.visibility,
                               isPrimary: true,
-                              onPressed: () {},
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Visualização em breve')));
+                              },
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -200,7 +224,9 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                               label: 'Renovar',
                               icon: Icons.refresh,
                               isPrimary: false,
-                              onPressed: () {},
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Em breve')));
+                              },
                             ),
                           ),
                         ],
@@ -209,7 +235,9 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: TextButton.icon(
-                          onPressed: () {},
+                          onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Não suportado ainda')));
+                          },
                           icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                           label: const Text('Excluir Ficha', style: TextStyle(color: Colors.redAccent)),
                         ),
