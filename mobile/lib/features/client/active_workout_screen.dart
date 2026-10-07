@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,6 +13,7 @@ import '../../models/adaptation_model.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
+import '../../services/workout_session_service.dart';
 
 class ActiveWorkoutScreen extends StatefulWidget {
   const ActiveWorkoutScreen({super.key});
@@ -23,76 +25,40 @@ class ActiveWorkoutScreen extends StatefulWidget {
 class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
-  String _workoutTitle = 'Treino A: Membros Superiores (Ênfase Empurrar)';
+  String _workoutTitle = '';
   String _trainerName = 'Carregando treinador...';
   String _trainerCref = 'CREF Ativo';
   String? _trainerPhotoUrl;
   final Set<int> _adaptedIndices = {};
   final Set<int> _completedExerciseIndices = {};
+  final WorkoutSessionService _sessionService = WorkoutSessionService();
+  bool _isLoadingWorkout = true;
+  DateTime? _startedAt;
+  String? _splitIdentifier;
+  String? _splitName;
+  Timer? _ticker;
 
   // Variáveis reais de Gamificação (Backend)
   int currentStreak = 14;
   double dailyGoalProgress = 0.65;
 
-  // Lista de exercícios de demonstração inicial fiel à amostra
+  // Exercícios da ficha ativa real do aluno (vazio = sem ficha)
   late List<ExerciseModel> _exercises;
 
   @override
   void initState() {
     super.initState();
-    _exercises = [
-      const ExerciseModel(
-        order: 1,
-        name: 'Supino Inclinado com Halteres',
-        targetMuscleGroup: 'Peitoral Clavicular',
-        sets: 4,
-        reps: '8-10',
-        restSeconds: 90,
-        notes: 'Manter escápulas aduzidas e banco regulado a 30°.',
-        substitutionVector: 'Empurrar inclinado livre',
-      ),
-      const ExerciseModel(
-        order: 2,
-        name: 'Desenvolvimento com Halteres',
-        targetMuscleGroup: 'Deltoide Anterior',
-        sets: 4,
-        reps: '8-10',
-        restSeconds: 60,
-        notes: 'Ajustar banco a 75° e cotovelos no plano escapular.',
-        substitutionVector: 'Empurrar vertical livre',
-      ),
-      const ExerciseModel(
-        order: 3,
-        name: 'Elevação Lateral na Polia',
-        targetMuscleGroup: 'Deltoide Lateral',
-        sets: 3,
-        reps: '12-15',
-        restSeconds: 45,
-        notes: 'Manter ligeira flexão de cotovelos sem impulso do tronco.',
-        substitutionVector: 'Abdução de ombros cabo',
-      ),
-      const ExerciseModel(
-        order: 4,
-        name: 'Tríceps Polia com Barra',
-        targetMuscleGroup: 'Tríceps Braquial',
-        sets: 4,
-        reps: '10-12',
-        restSeconds: 60,
-        notes: 'Cotovelos fixos ao lado do tronco durante toda a extensão.',
-        substitutionVector: 'Extensão de cotovelos cabo',
-      ),
-      const ExerciseModel(
-        order: 5,
-        name: 'Agachamento Livre com Barra',
-        targetMuscleGroup: 'Quadríceps & Glúteo',
-        sets: 4,
-        reps: '8-10',
-        restSeconds: 90,
-        notes: 'Coluna neutra, escápulas travadas e pés na largura dos ombros.',
-        substitutionVector: 'Padrão agachamento bilateral',
-      ),
-    ];
+    _exercises = [];
+    _ticker = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted && _startedAt != null) setState(() {});
+    });
     _loadActiveWorkout();
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
   }
 
   String _getTrainerInitials() {
@@ -166,15 +132,33 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   }
 
   Future<void> _loadActiveWorkout() async {
+    if (mounted) setState(() => _isLoadingWorkout = true);
+    final uid = AuthService.currentUser?.id;
+    if (uid != null) {
+      try {
+        await _sessionService.flushPending(uid);
+      } catch (_) {}
+    }
     final activePlan = await WorkoutService.getActiveWorkoutForClient();
-    if (activePlan != null && activePlan.splits.isNotEmpty && mounted) {
-      setState(() {
+    if (!mounted) return;
+    setState(() {
+      if (activePlan != null && activePlan.splits.isNotEmpty) {
         final firstSplit = activePlan.splits.first;
+        _splitIdentifier = firstSplit.splitIdentifier;
+        _splitName = firstSplit.splitName;
         _workoutTitle =
             'Treino ${firstSplit.splitIdentifier}: ${firstSplit.splitName}';
         _exercises = List.from(firstSplit.exercises);
-      });
-    }
+        _completedExerciseIndices.removeWhere((i) => i >= _exercises.length);
+        _startedAt ??= DateTime.now();
+      } else {
+        _exercises = [];
+        _workoutTitle = '';
+        _completedExerciseIndices.clear();
+        _startedAt = null;
+      }
+      _isLoadingWorkout = false;
+    });
 
     try {
       final trainer = await AuthService.getTrainerForStudent();
@@ -195,6 +179,18 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           if (reg != null && reg.isNotEmpty) _trainerCref = reg;
 
           // gamification is loaded separately
+        });
+      }
+    } catch (_) {}
+
+    try {
+      final gami = await WorkoutService.getGamificationData();
+      if (gami != null && mounted) {
+        setState(() {
+          currentStreak = (gami['current_streak'] as num?)?.toInt() ?? currentStreak;
+          dailyGoalProgress =
+              (gami['daily_goal_progress'] as num?)?.toDouble() ??
+                  dailyGoalProgress;
         });
       }
     } catch (_) {}
@@ -478,25 +474,117 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         );
       }
     } finally {
-      if (mounted) {
-        
-    try {
-      final gami = await WorkoutService.getGamificationData();
-      if (gami != null && mounted) {
-        setState(() {
-          currentStreak = (gami['current_streak'] as num?)?.toInt() ?? 14;
-          dailyGoalProgress = (gami['daily_goal_progress'] as num?)?.toDouble() ?? 0.65;
-        });
-      }
-    } catch (_) {}
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  String _elapsedLabel() {
+    final s = _startedAt;
+    if (s == null) return '--';
+    return '${DateTime.now().difference(s).inMinutes} min';
+  }
+
+  Widget _buildNoWorkoutScaffold(double topPadding) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: MetaColors.background,
+        body: Padding(
+          padding: EdgeInsets.fromLTRB(24, topPadding + 14, 24, 24),
+          child: _isLoadingWorkout
+              ? const Center(
+                  child: CircularProgressIndicator(color: MetaColors.emerald),
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.person_outline_rounded,
+                          color: MetaColors.textSecondary,
+                        ),
+                        tooltip: 'Meu Perfil & Anamnese',
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const StudentProfileScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const Spacer(),
+                    const Icon(
+                      Icons.fitness_center_rounded,
+                      size: 56,
+                      color: MetaColors.textSecondary,
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Nenhuma ficha ativa',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: MetaColors.textPrimary,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Quando seu professor liberar sua ficha, ela aparece aqui. '
+                      'Se você está sem conexão, conecte-se e atualize.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: MetaColors.textSecondary,
+                        fontSize: 14,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    SquircleButton(
+                      label: 'Atualizar',
+                      icon: Icons.refresh_rounded,
+                      isPrimary: true,
+                      onPressed: _loadActiveWorkout,
+                    ),
+                    const Spacer(),
+                  ],
+                ),
+        ),
+      ),
+    );
   }
 
   void _finishWorkout() {
     final completedCount = _completedExerciseIndices.length;
     final totalCount = _exercises.length;
+    final uid = AuthService.currentUser?.id;
+    final completedAt = DateTime.now();
+    final record = uid == null
+        ? null
+        : WorkoutSessionRecord(
+            id: WorkoutSessionRecord.newId(),
+            clientId: uid,
+            splitIdentifier: _splitIdentifier,
+            splitName: _splitName,
+            totalExercises: totalCount,
+            completedExercises: completedCount,
+            startedAt: _startedAt ?? completedAt,
+            completedAt: completedAt,
+          );
+    final minutes = (record?.durationSeconds ?? 0) ~/ 60;
+    final messenger = ScaffoldMessenger.of(context);
+    bool saving = false;
+    String? error;
 
     showModalBottomSheet(
       context: context,
@@ -507,160 +595,176 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         side: BorderSide(color: MetaColors.border),
       ),
       builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color: MetaColors.emerald.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: MetaColors.emerald, width: 2),
-                    ),
-                    child: const Icon(
-                      Icons.emoji_events_rounded,
-                      color: MetaColors.emerald,
-                      size: 40,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                const Center(
-                  child: Text(
-                    'Treino Concluído! 🔥',
-                    style: TextStyle(
-                      color: MetaColors.textPrimary,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Center(
-                  child: Text(
-                    'Excelente trabalho! Você completou $completedCount de $totalCount exercícios hoje.',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: MetaColors.textSecondary,
-                      fontSize: 14,
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                // Resumo HUD do Treino
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: MetaColors.surfaceHighlight,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: MetaColors.border),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      Column(
-                        children: [
-                          const Text(
-                            'OFENSIVA',
-                            style: TextStyle(
-                              color: MetaColors.textSecondary,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '🔥 ${currentStreak + 1} Dias',
-                            style: const TextStyle(
-                              color: Color(0xFFF59E0B),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ],
+        return StatefulBuilder(
+          builder: (ctx, setSheet) {
+            Future<void> save() async {
+              if (record == null) {
+                setSheet(() => error = 'Sessão expirada. Faça login novamente.');
+                return;
+              }
+              setSheet(() {
+                saving = true;
+                error = null;
+              });
+              try {
+                final status = await _sessionService.complete(record);
+                if (ctx.mounted) Navigator.pop(ctx);
+                messenger.showSnackBar(
+                  SnackBar(
+                    backgroundColor: status == SessionSaveStatus.synced
+                        ? MetaColors.emerald
+                        : const Color(0xFFF59E0B),
+                    content: Text(
+                      status == SessionSaveStatus.synced
+                          ? 'Treino registrado no diário do seu professor.'
+                          : 'Sem conexão: treino guardado no aparelho. '
+                              'Ele ainda NÃO foi enviado e será sincronizado '
+                              'quando houver internet.',
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
                       ),
-                      Container(height: 36, width: 1, color: MetaColors.border),
-                      const Column(
-                        children: [
-                          Text(
-                            'TEMPO',
-                            style: TextStyle(
-                              color: MetaColors.textSecondary,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            '48 min',
-                            style: TextStyle(
-                              color: MetaColors.textPrimary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Container(height: 36, width: 1, color: MetaColors.border),
-                      Column(
-                        children: [
-                          const Text(
-                            'EXERCÍCIOS',
-                            style: TextStyle(
-                              color: MetaColors.textSecondary,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '$completedCount/$totalCount',
-                            style: const TextStyle(
-                              color: MetaColors.emerald,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                SquircleButton(
-                  label: 'Salvar e Concluir',
-                  icon: Icons.check_circle_outline_rounded,
-                  isPrimary: true,
-                  backgroundColor: MetaColors.emerald,
-                  foregroundColor: Colors.black,
-                  height: 56,
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        backgroundColor: MetaColors.emerald,
-                        content: Text(
-                          '✓ Treino salvo com sucesso no diário do treinador!',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
-                          ),
+                );
+                if (mounted) {
+                  setState(() {
+                    _completedExerciseIndices.clear();
+                    _startedAt = DateTime.now();
+                  });
+                }
+              } catch (_) {
+                setSheet(() {
+                  saving = false;
+                  error =
+                      'Não foi possível registrar o treino. Tente novamente.';
+                });
+              }
+            }
+
+            return SafeArea(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Center(
+                      child: Text(
+                        'Concluir treino',
+                        style: TextStyle(
+                          color: MetaColors.textPrimary,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
                         ),
                       ),
-                    );
-                  },
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        completedCount == 0
+                            ? 'Marque ao menos um exercício como feito para registrar o treino.'
+                            : 'Você completou $completedCount de $totalCount exercícios.',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: MetaColors.textSecondary,
+                          fontSize: 14,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: MetaColors.surfaceHighlight,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: MetaColors.border),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          Column(
+                            children: [
+                              const Text(
+                                'TEMPO',
+                                style: TextStyle(
+                                  color: MetaColors.textSecondary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '$minutes min',
+                                style: const TextStyle(
+                                  color: MetaColors.textPrimary,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Container(
+                              height: 36, width: 1, color: MetaColors.border),
+                          Column(
+                            children: [
+                              const Text(
+                                'EXERCÍCIOS',
+                                style: TextStyle(
+                                  color: MetaColors.textSecondary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '$completedCount/$totalCount',
+                                style: const TextStyle(
+                                  color: MetaColors.emerald,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (error != null) ...[
+                      const SizedBox(height: 14),
+                      Text(
+                        error!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFFEF4444),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    SquircleButton(
+                      label: saving
+                          ? 'Salvando...'
+                          : (error != null
+                              ? 'Tentar novamente'
+                              : 'Salvar e Concluir'),
+                      icon: Icons.check_circle_outline_rounded,
+                      isPrimary: true,
+                      backgroundColor: MetaColors.emerald,
+                      foregroundColor: Colors.black,
+                      height: 56,
+                      onPressed:
+                          (saving || completedCount == 0) ? null : save,
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -1072,6 +1176,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     final topPadding = MediaQuery.paddingOf(context).top;
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
 
+    if (_isLoadingWorkout || _exercises.isEmpty) {
+      return _buildNoWorkoutScaffold(topPadding);
+    }
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -1377,9 +1485,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: MetaColors.border),
                         ),
-                        child: const Text(
-                          '48 min',
-                          style: TextStyle(
+                        child: Text(
+                          _elapsedLabel(),
+                          style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: MetaColors.textPrimary,

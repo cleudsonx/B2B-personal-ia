@@ -363,6 +363,17 @@ class WorkoutService {
     }
   }
 
+  /// Remove o treino em cache de um aluno (ex.: ficha desativada no servidor).
+  static Future<void> clearOfflineCachedWorkout(String clientId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('$_kOfflineWorkoutPrefix$clientId');
+      await prefs.remove('${_kOfflineWorkoutPrefix}last_active');
+    } catch (e) {
+      debugPrint('Aviso ao limpar cache offline: $e');
+    }
+  }
+
   /// Recupera a ficha ativa do armazenamento local se o aluno estiver offline
   static Future<WorkoutPlanModel?> getOfflineCachedWorkout({
     String? clientId,
@@ -373,8 +384,9 @@ class WorkoutService {
       String? raw;
       if (target != null) {
         raw = prefs.getString('$_kOfflineWorkoutPrefix$target');
+      } else {
+        raw = prefs.getString('${_kOfflineWorkoutPrefix}last_active');
       }
-      raw ??= prefs.getString('${_kOfflineWorkoutPrefix}last_active');
       if (raw != null && raw.isNotEmpty) {
         final map = jsonDecode(raw) as Map<String, dynamic>;
         return WorkoutPlanModel.fromJson(map);
@@ -426,6 +438,9 @@ class WorkoutService {
           await _saveWorkoutToOfflineCache(targetId, plan);
           return plan;
         }
+        // Consulta bem-sucedida e sem ficha ativa: o cache está obsoleto.
+        await clearOfflineCachedWorkout(targetId);
+        return null;
       } catch (e) {
         debugPrint(
           'Aviso Supabase getActiveWorkoutForClient: $e. Tentando cache offline.',
