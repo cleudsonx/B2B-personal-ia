@@ -462,16 +462,17 @@ async def invite_student(
     response_model=GamificationResponse,
     status_code=status.HTTP_200_OK,
     summary="Buscar Dados de Gamificação do Aluno",
-    description="Retorna dados de gamificação como dias seguidos (streak) e progresso diário. Atualmente simulado para demonstração."
+    description="Retorna dados de gamificação baseados na tabela workout_sessions do Supabase."
 )
 async def get_gamification_data(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> GamificationResponse:
-    # A lógica de gamificação pode ser conectada ao Supabase analisando
-    # a tabela de histórico de treinos concluídos (workouts_history / completed_sessions).
-    # Como solicitado, estamos inicializando com um mock funcional
-    
+    client_id = current_user.get("sub")
+    if not client_id:
+        return GamificationResponse(current_streak=0, daily_goal_progress=0.0)
+        
+    data = await supabase_service.get_gamification_data(client_id)
     return GamificationResponse(
-        current_streak=3, # Mock: 3 dias de ofensiva
-        daily_goal_progress=0.75 # Mock: 75% concluído do treino de hoje
+        current_streak=data.get("current_streak", 0),
+        daily_goal_progress=data.get("daily_goal_progress", 0.0)
     )

@@ -1300,5 +1300,78 @@ class SupabaseService:
         return None
 
 # Instância singleton global do serviço
+
+    async def get_gamification_data(self, client_id: str) -> dict:
+        client = await self.get_client()
+        if not client:
+            return {"current_streak": 0, "daily_goal_progress": 0.0}
+            
+        try:
+            from datetime import datetime, timezone, timedelta
+            # Pega as sessões ordenadas por data descendente para calcular a ofensiva
+            res = await client.table("workout_sessions")\
+                .select("completed_at, total_exercises, completed_exercises")\
+                .eq("client_id", self.to_valid_uuid_str(client_id))\
+                .order("completed_at", desc=True)\
+                .limit(50)\
+                .execute()
+                
+            sessions = res.data if res and res.data else []
+            
+            if not sessions:
+                return {"current_streak": 0, "daily_goal_progress": 0.0}
+                
+            now = datetime.now(timezone.utc)
+            today_date = now.date()
+            
+            daily_progress = 0.0
+            distinct_dates = set()
+            today_progress_set = False
+            
+            for s in sessions:
+                try:
+                    dt = datetime.fromisoformat(s['completed_at'].replace("Z", "+00:00"))
+                    d = dt.date()
+                    distinct_dates.add(d)
+                    
+                    if d == today_date and not today_progress_set:
+                        t_ex = s.get("total_exercises", 0)
+                        c_ex = s.get("completed_exercises", 0)
+                        if t_ex > 0:
+                            daily_progress = min(1.0, c_ex / t_ex)
+                        today_progress_set = True
+                except Exception:
+                    pass
+            
+            sorted_dates = sorted(list(distinct_dates), reverse=True)
+            streak = 0
+            current_date = today_date
+            
+            if sorted_dates and sorted_dates[0] == current_date:
+                streak = 1
+                current_date = current_date - timedelta(days=1)
+                idx = 1
+            elif sorted_dates and sorted_dates[0] == current_date - timedelta(days=1):
+                streak = 0 
+                current_date = current_date - timedelta(days=1)
+                idx = 0
+            else:
+                return {"current_streak": 0, "daily_goal_progress": daily_progress}
+            
+            while idx < len(sorted_dates):
+                if sorted_dates[idx] == current_date:
+                    streak += 1
+                    current_date -= timedelta(days=1)
+                    idx += 1
+                else:
+                    break
+                    
+            return {"current_streak": streak, "daily_goal_progress": daily_progress}
+            
+        except Exception as e:
+            print(f"Erro ao calcular gamificacao: {e}")
+            return {"current_streak": 0, "daily_goal_progress": 0.0}
+
 supabase_service = SupabaseService()
+
 
