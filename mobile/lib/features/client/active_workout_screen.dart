@@ -39,8 +39,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   Timer? _ticker;
 
   // Variáveis reais de Gamificação (Backend)
-  int currentStreak = 14;
-  double dailyGoalProgress = 0.65;
+  int? currentStreak;
+  double? dailyGoalProgress;
+  bool _isDailyGoalPendingSync = false;
 
   // Exercícios da ficha ativa real do aluno (vazio = sem ficha)
   late List<ExerciseModel> _exercises;
@@ -131,6 +132,32 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     return '92% EMG';
   }
 
+  Future<void> _refreshGamification() async {
+    try {
+      final gami = await WorkoutService.getGamificationData();
+      if (!mounted) return;
+      setState(() {
+        _isDailyGoalPendingSync = false;
+        if (gami != null) {
+          currentStreak = (gami['current_streak'] as num?)?.toInt();
+          final goal = gami['daily_goal_progress'];
+          dailyGoalProgress = goal == null ? null : (goal as num).toDouble();
+        } else {
+          currentStreak = null;
+          dailyGoalProgress = null;
+        }
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isDailyGoalPendingSync = false;
+          currentStreak = null;
+          dailyGoalProgress = null;
+        });
+      }
+    }
+  }
+
   Future<void> _loadActiveWorkout() async {
     if (mounted) setState(() => _isLoadingWorkout = true);
     final uid = AuthService.currentUser?.id;
@@ -183,17 +210,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       }
     } catch (_) {}
 
-    try {
-      final gami = await WorkoutService.getGamificationData();
-      if (gami != null && mounted) {
-        setState(() {
-          currentStreak = (gami['current_streak'] as num?)?.toInt() ?? currentStreak;
-          dailyGoalProgress =
-              (gami['daily_goal_progress'] as num?)?.toDouble() ??
-                  dailyGoalProgress;
-        });
-      }
-    } catch (_) {}
+    await _refreshGamification();
   }
 
   void _showAdaptationModal(int exerciseIndex) {
@@ -632,6 +649,18 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     _completedExerciseIndices.clear();
                     _startedAt = DateTime.now();
                   });
+                }
+
+                if (status == SessionSaveStatus.synced) {
+                  await _refreshGamification();
+                } else {
+                  if (mounted) {
+                    setState(() {
+                      _isDailyGoalPendingSync = true;
+                      currentStreak = null;
+                      dailyGoalProgress = null;
+                    });
+                  }
                 }
               } catch (_) {
                 setSheet(() {
@@ -1351,10 +1380,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // 2. Topo: Barra de Progresso do Treino em Pílula + Indicador de Streak 🔥
+                // 2. Topo: indicadores de gamificação e progresso local do treino
                 Row(
                   children: [
-                    // Indicador de "Streak 🔥" (ofensiva)
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 14,
@@ -1374,7 +1402,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           const Text('🔥', style: TextStyle(fontSize: 16)),
                           const SizedBox(width: 6),
                           Text(
-                            '$currentStreak Dias',
+                            currentStreak != null
+                                ? '$currentStreak Dias'
+                                : 'Indisponível',
                             style: const TextStyle(
                               fontWeight: FontWeight.w900,
                               fontSize: 13,
@@ -1385,13 +1415,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       ),
                     ),
                     const SizedBox(width: 10),
-
-                    // Barra de progresso do treino em formato de pílula
                     Expanded(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 9,
+                          horizontal: 14,
+                          vertical: 10,
                         ),
                         decoration: BoxDecoration(
                           color: MetaColors.surface,
@@ -1401,44 +1429,63 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                             width: 1.0,
                           ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
+                        child: Row(
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Progresso do Treino',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: MetaColors.textSecondary,
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text(
+                                    'Meta diária',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: MetaColors.textSecondary,
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  '${_completedExerciseIndices.length}/${_exercises.length}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w900,
-                                    color: MetaColors.emerald,
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _isDailyGoalPendingSync
+                                        ? 'Pendente'
+                                        : dailyGoalProgress == null
+                                            ? 'Indisponível'
+                                            : '${(dailyGoalProgress! * 100).clamp(0.0, 100.0).round()}%',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w900,
+                                      color: MetaColors.textPrimary,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                            const SizedBox(height: 6),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: LinearProgressIndicator(
-                                value:
-                                    _exercises.isEmpty
-                                        ? 0.0
-                                        : (_completedExerciseIndices.length /
-                                            _exercises.length),
-                                minHeight: 6,
-                                backgroundColor: MetaColors.surfaceHighlight,
-                                valueColor: const AlwaysStoppedAnimation<Color>(
-                                  MetaColors.emerald,
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _isDailyGoalPendingSync
+                                    ? const Color(0xFFF59E0B).withValues(alpha: 0.12)
+                                    : MetaColors.surfaceHighlight,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: _isDailyGoalPendingSync
+                                      ? const Color(0xFFF59E0B).withValues(alpha: 0.35)
+                                      : MetaColors.border,
+                                ),
+                              ),
+                              child: Text(
+                                _isDailyGoalPendingSync
+                                    ? 'Pendente'
+                                    : dailyGoalProgress == null
+                                        ? 'N/A'
+                                        : '${(dailyGoalProgress! * 100).clamp(0.0, 100.0).round()}%',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: MetaColors.textPrimary,
                                 ),
                               ),
                             ),
@@ -1447,6 +1494,64 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: MetaColors.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: MetaColors.border,
+                      width: 1.0,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Progresso do Treino',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: MetaColors.textSecondary,
+                            ),
+                          ),
+                          Text(
+                            '${_completedExerciseIndices.length}/${_exercises.length}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                              color: MetaColors.emerald,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: LinearProgressIndicator(
+                          value:
+                              _exercises.isEmpty
+                                  ? 0.0
+                                  : (_completedExerciseIndices.length /
+                                      _exercises.length),
+                          minHeight: 6,
+                          backgroundColor: MetaColors.surfaceHighlight,
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            MetaColors.emerald,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 16),
 

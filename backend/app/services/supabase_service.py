@@ -1299,78 +1299,105 @@ class SupabaseService:
                 
         return None
 
-# Instância singleton global do serviço
-
     async def get_gamification_data(self, client_id: str) -> dict:
         client = await self.get_client()
         if not client:
-            return {"current_streak": 0, "daily_goal_progress": 0.0}
-            
+            raise RuntimeError("Cliente Supabase indisponível para consultar gamificação do aluno.")
+
+        timezone_name = "UTC"
         try:
-            from datetime import datetime, timezone, timedelta
-            # Pega as sessões ordenadas por data descendente para calcular a ofensiva
+            from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+            profile_res = await client.table("profiles").select("timezone").eq("id", self.to_valid_uuid_str(client_id)).limit(1).execute()
+            profile_rows = getattr(profile_res, "data", None) or []
+            if profile_rows:
+                tz_value = profile_rows[0].get("timezone")
+                if isinstance(tz_value, str):
+                    candidate = tz_value.strip()
+                    if candidate:
+                        try:
+                            ZoneInfo(candidate)
+                            timezone_name = candidate
+                        except ZoneInfoNotFoundError:
+                            timezone_name = "UTC"
+        except Exception as exc:
+            logger.warning(f"Timezone do perfil indisponível para gamificação; usando UTC: {exc}")
+            timezone_name = "UTC"
+
+        try:
+            from zoneinfo import ZoneInfo
+
             res = await client.table("workout_sessions")\
                 .select("completed_at, total_exercises, completed_exercises")\
                 .eq("client_id", self.to_valid_uuid_str(client_id))\
                 .order("completed_at", desc=True)\
-                .limit(50)\
                 .execute()
-                
-            sessions = res.data if res and res.data else []
-            
+
+            sessions = res.data if res and getattr(res, "data", None) else []
             if not sessions:
                 return {"current_streak": 0, "daily_goal_progress": 0.0}
-                
-            now = datetime.now(timezone.utc)
-            today_date = now.date()
-            
-            daily_progress = 0.0
-            distinct_dates = set()
-            today_progress_set = False
-            
-            for s in sessions:
+
+            local_tz = ZoneInfo(timezone_name)
+            today_local = datetime.now(timezone.utc).astimezone(local_tz).date()
+
+            valid_day_progress = {}
+            valid_days = set()
+
+            for session in sessions:
+                if not isinstance(session, dict):
+                    continue
+
+                total_exercises = session.get("total_exercises")
+                completed_exercises = session.get("completed_exercises")
                 try:
-                    dt = datetime.fromisoformat(s['completed_at'].replace("Z", "+00:00"))
-                    d = dt.date()
-                    distinct_dates.add(d)
-                    
-                    if d == today_date and not today_progress_set:
-                        t_ex = s.get("total_exercises", 0)
-                        c_ex = s.get("completed_exercises", 0)
-                        if t_ex > 0:
-                            daily_progress = min(1.0, c_ex / t_ex)
-                        today_progress_set = True
+                    total_value = int(total_exercises)
+                    completed_value = int(completed_exercises)
+                except (TypeError, ValueError):
+                    continue
+
+                if total_value <= 0 or completed_value <= 0:
+                    continue
+
+                completed_at = session.get("completed_at")
+                if not isinstance(completed_at, str) or not completed_at.strip():
+                    continue
+
+                try:
+                    dt = datetime.fromisoformat(completed_at.replace("Z", "+00:00"))
                 except Exception:
-                    pass
-            
-            sorted_dates = sorted(list(distinct_dates), reverse=True)
-            streak = 0
-            current_date = today_date
-            
-            if sorted_dates and sorted_dates[0] == current_date:
-                streak = 1
-                current_date = current_date - timedelta(days=1)
-                idx = 1
-            elif sorted_dates and sorted_dates[0] == current_date - timedelta(days=1):
-                streak = 0 
-                current_date = current_date - timedelta(days=1)
-                idx = 0
-            else:
+                    continue
+
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+
+                local_dt = dt.astimezone(local_tz)
+                local_day = local_dt.date()
+                valid_days.add(local_day)
+
+                ratio = completed_value / total_value
+                current_total = valid_day_progress.get(local_day, 0.0)
+                valid_day_progress[local_day] = min(1.0, current_total + ratio)
+
+            if not valid_days:
+                return {"current_streak": 0, "daily_goal_progress": 0.0}
+
+            daily_progress = min(1.0, valid_day_progress.get(today_local, 0.0))
+
+            if today_local not in valid_days:
                 return {"current_streak": 0, "daily_goal_progress": daily_progress}
-            
-            while idx < len(sorted_dates):
-                if sorted_dates[idx] == current_date:
-                    streak += 1
-                    current_date -= timedelta(days=1)
-                    idx += 1
-                else:
-                    break
-                    
+
+            streak = 1
+            current_day = today_local - timedelta(days=1)
+            while current_day in valid_days:
+                streak += 1
+                current_day -= timedelta(days=1)
+
             return {"current_streak": streak, "daily_goal_progress": daily_progress}
-            
-        except Exception as e:
-            print(f"Erro ao calcular gamificacao: {e}")
-            return {"current_streak": 0, "daily_goal_progress": 0.0}
+
+        except Exception as exc:
+            logger.error(f"Erro ao consultar sessões de treino para gamificação: {exc}")
+            raise RuntimeError("Falha ao consultar sessões de treino para gamificação do aluno.") from exc
+
 
 supabase_service = SupabaseService()
 

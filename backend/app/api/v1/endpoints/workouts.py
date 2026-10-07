@@ -1,3 +1,4 @@
+import logging
 import uuid
 import urllib.parse
 from datetime import datetime, timezone
@@ -469,9 +470,20 @@ async def get_gamification_data(
 ) -> GamificationResponse:
     client_id = current_user.get("sub")
     if not client_id:
-        return GamificationResponse(current_streak=0, daily_goal_progress=0.0)
-        
-    data = await supabase_service.get_gamification_data(client_id)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Autenticação necessária para consultar gamificação."
+        )
+
+    try:
+        data = await supabase_service.get_gamification_data(client_id)
+    except Exception as exc:
+        logging.exception("Gamificação indisponível por falha de persistência.")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Serviço de persistência indisponível no momento. Tente novamente mais tarde."
+        ) from exc
+
     return GamificationResponse(
         current_streak=data.get("current_streak", 0),
         daily_goal_progress=data.get("daily_goal_progress", 0.0)
