@@ -19,8 +19,11 @@ class InviteLandingScreen extends StatefulWidget {
 }
 
 class _InviteLandingScreenState extends State<InviteLandingScreen> {
+  
   bool _isLoading = true;
   String _trainerName = 'Carregando...';
+  String? _targetEmail;
+  String? _targetPhone;
 
   @override
   void initState() {
@@ -29,56 +32,54 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
   }
 
   Future<void> _fetchTrainerData() async {
-    // Simulação de busca dos dados públicos do personal
-    await Future.delayed(const Duration(milliseconds: 600));
-
-    // Converte slug no formato 'joao-silva' para 'Joao Silva'
-    final formattedName = widget.trainerSlug
-        .split('-')
-        .where((segment) => segment.isNotEmpty)
-        .map((segment) => segment[0].toUpperCase() + segment.substring(1))
-        .join(' ');
-
-    if (mounted) {
-      setState(() {
-        _trainerName = formattedName.isEmpty ? 'Seu Personal Trainer' : formattedName;
-        _isLoading = false;
-      });
+    try {
+      final res = await InviteService.validateInvite(widget.token);
+      if (mounted) {
+        setState(() {
+          _trainerName = res['trainer_name'] ?? 'Seu Personal Trainer';
+          _targetEmail = res['target_email'];
+          _targetPhone = res['target_phone'];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        // Se der erro, mostra erro e esconde botão
+        setState(() {
+          _trainerName = 'Convite inválido ou expirado';
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.red.shade900,
+            content: const Text(
+              'Este convite não é mais válido.',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+        );
+      }
     }
   }
 
   bool _isConsuming = false;
 
   Future<void> _acceptInvite() async {
+    if (_trainerName == 'Convite inválido ou expirado') return;
     if (_isConsuming) return;
     setState(() => _isConsuming = true);
 
     try {
-      final res = await InviteService.consumeInvite(widget.token);
-      final trainerName = res['trainer_name'] ?? _trainerName;
-      final targetEmail = res['target_email'];
-      final targetPhone = res['target_phone'];
-
+      // Agora não consumimos aqui! Apenas avançamos.
       if (mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (_) => InviteSuccessScreen(
-              trainerName: trainerName,
-              targetEmail: targetEmail,
-              targetPhone: targetPhone,
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Colors.red.shade900,
-            content: Text(
-              e.toString().replaceAll('Exception: ', ''),
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              trainerName: _trainerName,
+              targetEmail: _targetEmail,
+              targetPhone: _targetPhone,
+              inviteToken: widget.token,
             ),
           ),
         );
@@ -89,6 +90,7 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
       }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

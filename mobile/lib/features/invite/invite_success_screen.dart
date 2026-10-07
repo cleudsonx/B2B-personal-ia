@@ -7,12 +7,14 @@ class InviteSuccessScreen extends StatelessWidget {
   final String trainerName;
   final String? targetEmail;
   final String? targetPhone;
+  final String? inviteToken;
 
   const InviteSuccessScreen({
     super.key,
     required this.trainerName,
     this.targetEmail,
     this.targetPhone,
+    this.inviteToken,
   });
 
   @override
@@ -152,6 +154,7 @@ class InviteSuccessScreen extends StatelessWidget {
                             MaterialPageRoute(
                               builder: (_) => RegisterScreen(
                                 initialRole: 'client',
+                                inviteToken: inviteToken,
                                 initialEmail: targetEmail,
                                 initialPhone: targetPhone,
                               ),

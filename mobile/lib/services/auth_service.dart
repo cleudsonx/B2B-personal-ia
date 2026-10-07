@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/config/app_config.dart';
+import 'invite_service.dart';
 
 class AuthService {
   static Future<void> updatePassword(String newPassword) async {
@@ -77,6 +78,7 @@ class AuthService {
     String? professionalDocumentType, // 'CREF', 'CBMF', 'CPF'
     String?
     professionalDocument, // Ex: 'CREF 019284-G/SP', 'CBMF-10294', '123.456.789-00'
+    String? inviteToken,
   }) async {
     try {
       final response = await _client.auth.signUp(
@@ -102,6 +104,13 @@ class AuthService {
       if (response.user != null) {
         await _ensureProfileUpserted(response.user!);
       }
+      if (inviteToken != null && inviteToken.isNotEmpty) {
+        try {
+          await InviteService.consumeInvite(inviteToken);
+        } catch (e) {
+          debugPrint("Erro ao consumir convite: $e");
+        }
+      }
       return response;
     } catch (e) {
       final errStr = e.toString().toLowerCase();
@@ -119,7 +128,15 @@ class AuthService {
             professionalDocumentType: professionalDocumentType,
             professionalDocument: professionalDocument,
           );
-          return await signIn(email: email, password: password);
+          final authRes = await signIn(email: email, password: password);
+          if (inviteToken != null && inviteToken.isNotEmpty) {
+            try {
+              await InviteService.consumeInvite(inviteToken);
+            } catch (e) {
+              debugPrint("Erro ao consumir convite fallback: $e");
+            }
+          }
+          return authRes;
         } catch (backendErr) {
           throw Exception(
             'Falha ao criar conta: ${_formatAuthError(backendErr)}',

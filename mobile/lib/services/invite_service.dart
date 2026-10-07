@@ -49,6 +49,27 @@ class InviteService {
     }
   }
 
+  /// Valida o token de convite no backend (verifica se não expirou ou foi usado)
+  static Future<Map<String, dynamic>> validateInvite(String token) async {
+    final url = Uri.parse('${AppConfig.apiBaseUrl}/invites/validate/$token');
+    
+    try {
+      final res = await http.get(
+        url,
+        headers: {'Accept': 'application/json'},
+      );
+
+      if (res.statusCode == 200) {
+        return jsonDecode(res.body) as Map<String, dynamic>;
+      } else {
+        final err = jsonDecode(res.body);
+        throw Exception(err['detail'] ?? 'Convite inválido ou expirado.');
+      }
+    } catch (e) {
+      debugPrint('[InviteService] Erro ao validar convite: $e');
+      rethrow;
+    }
+  }
   /// Consome e valida o token de convite quando o aluno abre o link
   static Future<Map<String, dynamic>> consumeInvite(String token) async {
     final url = Uri.parse('${AppConfig.apiBaseUrl}/invites/consume');

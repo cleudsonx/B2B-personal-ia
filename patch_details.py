@@ -219,3 +219,4 @@ content = content.replace(old_chunk, new_chunk)
 
 with open(path, 'w', encoding='utf-8') as f:
     f.write(content)
+

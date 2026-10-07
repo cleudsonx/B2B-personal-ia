@@ -8,12 +8,14 @@ class RegisterScreen extends StatefulWidget {
   final String initialRole;
   final String? initialEmail;
   final String? initialPhone;
+  final String? inviteToken;
 
   const RegisterScreen({
     super.key,
     this.initialRole = 'trainer',
     this.initialEmail,
     this.initialPhone,
+    this.inviteToken,
   });
 
   @override

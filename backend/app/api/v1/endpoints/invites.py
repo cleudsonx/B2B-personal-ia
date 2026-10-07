@@ -26,6 +26,14 @@ class CreateInviteResponse(BaseModel):
     channel: str
     expires_at: str
 
+class ValidateInviteResponse(BaseModel):
+    is_valid: bool
+    trainer_id: str
+    trainer_name: str
+    target_email: Optional[str] = None
+    target_phone: Optional[str] = None
+    channel: str
+
 class ConsumeInviteRequest(BaseModel):
     token: str
 
@@ -106,7 +114,129 @@ async def create_invite(
     )
 
 
-@router.post("/consume", response_model=ConsumeInviteResponse, summary="Validar e Consumir Convite de Aluno")
+@router.get("/validate/{token}", response_model=ValidateInviteResponse, summary="Validar Convite sem Consumir")
+async def validate_invite(token: str):
+    token = token.strip()
+    client = await supabase_service.get_client()
+    if not client:
+        raise HTTPException(status_code=500, detail="Falha na conexão com banco de dados.")
+
+    res = await client.table("invite_tokens").select("*").eq("token", token).maybe_single().execute()
+    if not res or not res.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Convite não encontrado ou inválido.")
+
+    invite_data = res.data
+    if invite_data.get("used_at"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Este convite já foi utilizado.")
+
+    expires_at_val = invite_data.get("expires_at")
+    if expires_at_val:
+        expires_dt = datetime.fromisoformat(expires_at_val.replace("Z", "+00:00"))
+        if datetime.now(timezone.utc) > expires_dt:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Este convite expirou.")
+
+    trainer_id = invite_data.get("trainer_id")
+    trainer_res = await client.table("profiles").select("id, full_name").eq("id", trainer_id).maybe_single().execute()
+    trainer_name = "Seu Personal Trainer"
+    if trainer_res and trainer_res.data:
+        trainer_name = trainer_res.data.get("full_name") or trainer_name
+
+    return ValidateInviteResponse(
+        is_valid=True,
+        trainer_id=str(trainer_id),
+        trainer_name=trainer_name,
+        target_email=invite_data.get("target_email"),
+        target_phone=invite_data.get("target_phone"),
+        channel=invite_data.get("channel") or "email",
+    )
+
+@router.post("/consume", response_model=ConsumeInviteResponse, summary="Consumir Convite e Vincular Aluno")
+async def consume_invite(
+    body: ConsumeInviteRequest,
+    request: Request,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Aluno consome o convite após criar a conta e estar autenticado.
+    Verifica se o token é válido, marca como usado e vincula o trainer_id ao perfil do aluno.
+    """
+    student_id = current_user.get("id") or current_user.get("sub")
+    if not student_id:
+        raise HTTPException(status_code=401, detail="Usuário não autenticado.")
+
+    token = body.token.strip()
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+
+    client = await supabase_service.get_client()
+    if not client:
+        raise HTTPException(status_code=500, detail="Falha na conexão com banco de dados.")
+
+    res = await client.table("invite_tokens").select("*").eq("token", token).maybe_single().execute()
+    if not res or not res.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Convite não encontrado ou inválido.")
+
+    invite_data = res.data
+    trainer_id = invite_data.get("trainer_id")
+    channel = invite_data.get("channel") or "email"
+    target_email = invite_data.get("target_email")
+    target_phone = invite_data.get("target_phone")
+
+    if invite_data.get("used_at"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Este convite já foi utilizado.")
+
+    expires_at_val = invite_data.get("expires_at")
+    if expires_at_val:
+        expires_dt = datetime.fromisoformat(expires_at_val.replace("Z", "+00:00"))
+        if datetime.now(timezone.utc) > expires_dt:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Este convite expirou.")
+
+    # Verifica se o e-mail/telefone do aluno bate com o do convite (opcional/fortemente recomendado)
+    student_email = current_user.get("email")
+    student_phone = current_user.get("phone")
+
+    # Regra: se o convite foi direcionado, o alvo deve coincidir
+    if channel == "email" and target_email and student_email:
+        if target_email.lower() != student_email.lower():
+            raise HTTPException(status_code=403, detail="Este convite foi destinado a outro e-mail.")
+    
+    if channel == "whatsapp" and target_phone and student_phone:
+        # Simplificação de verificação de telefone (poderia remover pontuação)
+        if target_phone not in student_phone and student_phone not in target_phone:
+            raise HTTPException(status_code=403, detail="Este convite foi destinado a outro telefone.")
+
+    # Vincula o trainer_id ao perfil do aluno
+    await client.table("profiles").update({"trainer_id": trainer_id}).eq("id", student_id).execute()
+
+    # Marca o token como consumido
+    now_utc = datetime.now(timezone.utc).isoformat()
+    await client.table("invite_tokens").update({"used_at": now_utc}).eq("token", token).execute()
+
+    # Busca nome do treinador
+    trainer_res = await client.table("profiles").select("full_name").eq("id", trainer_id).maybe_single().execute()
+    trainer_name = "Seu Personal Trainer"
+    if trainer_res and trainer_res.data:
+        trainer_name = trainer_res.data.get("full_name") or trainer_name
+
+    await log_audit_event(
+        event_type="invite_consumed",
+        token=token,
+        trainer_id=trainer_id,
+        channel=channel,
+        target_email=target_email,
+        target_phone=target_phone,
+        ip_address=client_ip,
+        user_agent=user_agent,
+        details={"status": "success", "trainer_name": trainer_name, "student_id": student_id}
+    )
+
+    return ConsumeInviteResponse(
+        status="consumed",
+        trainer_id=str(trainer_id),
+        trainer_name=trainer_name,
+        target_email=target_email,
+        target_phone=target_phone,
+    )
 async def consume_invite(
     body: ConsumeInviteRequest,
     request: Request,
@@ -208,4 +338,5 @@ async def consume_invite(
         target_email=target_email,
         target_phone=target_phone,
     )
+
 
