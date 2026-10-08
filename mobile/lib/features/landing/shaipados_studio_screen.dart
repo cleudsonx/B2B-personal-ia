@@ -20,6 +20,8 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
         context,
         MaterialPageRoute(builder: (_) => const MrCoachLandingScreen()),
       );
+    } else if (destination == 'entry') {
+      Navigator.pushNamed(context, '/home');
     } else if (destination == 'app' || destination == 'login') {
       Navigator.pushNamed(context, '/login');
     } else if (destination == 'register') {
@@ -166,12 +168,12 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                           Row(
                             children: [
                               SquircleButton(
-                                label: 'Login',
+                                label: 'Entrar',
                                 icon: Icons.login_rounded,
                                 isPrimary: false,
                                 height: 42,
                                 borderRadius: 12,
-                                onPressed: () => _navigateToDestination(context, 'login'),
+                                onPressed: () => _navigateToDestination(context, 'entry'),
                               ),
                               const SizedBox(width: 12),
                               if (isDesktop)
@@ -287,14 +289,6 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                                 borderRadius: 14,
                                 onPressed: () => _navigateToDestination(context, 'mrcoach'),
                               ),
-                              SquircleButton(
-                                label: 'Acessar Plataforma',
-                                icon: Icons.lock_outline_rounded,
-                                isPrimary: false,
-                                height: 56,
-                                borderRadius: 14,
-                                onPressed: () => _navigateToDestination(context, 'login'),
-                              ),
                             ],
                           ).animate().fadeIn(delay: 550.ms).slideY(begin: 0.1, end: 0),
                         ],
@@ -349,11 +343,6 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                                   TextButton(
                                     onPressed: () => _navigateToDestination(context, 'mrcoach'),
                                     child: const Text('Mr. Coach', style: TextStyle(color: MetaColors.textSecondary)),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  TextButton(
-                                    onPressed: () => _navigateToDestination(context, 'login'),
-                                    child: const Text('Entrar', style: TextStyle(color: MetaColors.textSecondary)),
                                   ),
                                 ],
                               ),
