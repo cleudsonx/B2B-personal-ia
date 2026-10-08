@@ -1,5 +1,6 @@
-import 'features/landing/mrcoach_landing_screen.dart';
 import 'features/landing/shaipados_studio_screen.dart';
+import 'features/landing/b2b_landing_screen.dart';
+import 'features/landing/ai_news_screen.dart';
 import 'features/landing/trainer_public_landing_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -97,6 +98,8 @@ class B2BPersonalIaApp extends StatelessWidget {
           },
           routes: {
             '/home': (context) => const AuthGate(),
+            '/b2b': (context) => const B2BLandingScreen(),
+            '/ai': (context) => const AiNewsScreen(),
             '/trainer': (context) => const TrainerMainLayout(),
             '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
@@ -107,7 +110,7 @@ class B2BPersonalIaApp extends StatelessWidget {
               if (kIsWeb) {
                 final host = Uri.base.host;
                 if (host.contains('mrcoach')) {
-                  return const MrCoachLandingScreen();
+                  return const B2BLandingScreen();
                 } else if (host.contains('app') || host.contains('localhost')) {
                   return const AuthGate();
                 } else {

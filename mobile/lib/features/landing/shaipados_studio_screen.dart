@@ -4,8 +4,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/widgets/meta_components.dart';
-import 'mrcoach_landing_screen.dart';
-
 class ShaipadosStudioScreen extends StatefulWidget {
   const ShaipadosStudioScreen({super.key});
 
@@ -16,14 +14,11 @@ class ShaipadosStudioScreen extends StatefulWidget {
 class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
   void _navigateToDestination(BuildContext context, String destination) {
     if (destination == 'mrcoach') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const MrCoachLandingScreen()),
-      );
+      Navigator.pushNamed(context, '/b2b');
+    } else if (destination == 'ai') {
+      Navigator.pushNamed(context, '/ai');
     } else if (destination == 'entry') {
       Navigator.pushNamed(context, '/home');
-    } else if (destination == 'app' || destination == 'login') {
-      Navigator.pushNamed(context, '/login');
     } else if (destination == 'register') {
       Navigator.pushNamed(context, '/register');
     } else if (destination.startsWith('http')) {
@@ -125,18 +120,13 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                         children: [
                           Row(
                             children: [
-                              Container(
-                                width: 38,
-                                height: 38,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: MetaColors.emerald.withValues(alpha: 0.5),
-                                  ),
-                                  color: Colors.black,
-                                ),
-                                child: const Center(
-                                  child: Icon(Icons.science_outlined, color: MetaColors.emerald, size: 22),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.asset(
+                                  'assets/images/app_icon_black.png',
+                                  width: 38,
+                                  height: 38,
+                                  fit: BoxFit.cover,
                                 ),
                               ),
                               const SizedBox(width: 14),
@@ -167,15 +157,6 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                           ),
                           Row(
                             children: [
-                              SquircleButton(
-                                label: 'Entrar',
-                                icon: Icons.login_rounded,
-                                isPrimary: false,
-                                height: 42,
-                                borderRadius: 12,
-                                onPressed: () => _navigateToDestination(context, 'entry'),
-                              ),
-                              const SizedBox(width: 12),
                               if (isDesktop)
                                 SquircleButton(
                                   label: 'Mr. Coach IA',
@@ -183,7 +164,13 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                                   isPrimary: true,
                                   height: 42,
                                   borderRadius: 12,
-                                  onPressed: () => _navigateToDestination(context, 'mrcoach'),
+                                  onPressed: () => _navigateToDestination(context, 'ai'),
+                                )
+                              else
+                                IconButton(
+                                  tooltip: 'Mr. Coach IA',
+                                  onPressed: () => _navigateToDestination(context, 'ai'),
+                                  icon: const Icon(Icons.auto_awesome, color: MetaColors.emerald),
                                 ),
                             ],
                           ),
@@ -259,7 +246,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                           const SizedBox(height: 28),
 
                           Text(
-                            'Desenvolvemos produtos digitais de alta precisão científica para personal trainers, academias e praticantes avançados de musculação. Potencialize seus resultados com modelos preditivos reais.',
+                            'Criamos produtos digitais para profissionais do movimento, academias e pessoas que treinam, conectando tecnologia e ferramentas práticas para o dia a dia.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: MetaColors.textSecondary,
@@ -288,6 +275,14 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                                 height: 56,
                                 borderRadius: 14,
                                 onPressed: () => _navigateToDestination(context, 'mrcoach'),
+                              ),
+                              SquircleButton(
+                                label: 'Acessar plataforma',
+                                icon: Icons.login_rounded,
+                                isPrimary: false,
+                                height: 56,
+                                borderRadius: 14,
+                                onPressed: () => _navigateToDestination(context, 'entry'),
                               ),
                             ],
                           ).animate().fadeIn(delay: 550.ms).slideY(begin: 0.1, end: 0),
@@ -546,7 +541,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                               ),
                             ),
                             Text(
-                              'Com proteção automática contra lesões articulares',
+                                'Treinadores e alunos em uma plataforma compartilhada',
                               style: TextStyle(
                                 color: MetaColors.textSecondary,
                                 fontSize: 12,
@@ -640,7 +635,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Modelagem anatômica que avalia vetores de força e previne lesões antes que aconteçam.',
+            'Ferramentas digitais para apoiar a organização e a consulta de informações de treino.',
             style: TextStyle(
               color: MetaColors.textSecondary,
               fontSize: 14,
@@ -722,7 +717,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Envie uma foto do prato e nossa rede neural calcula macros e calorias em segundos com 98% de precisão.',
+            'Uma experiência de apoio à organização alimentar em desenvolvimento.',
             style: TextStyle(
               color: MetaColors.textSecondary,
               fontSize: 14,

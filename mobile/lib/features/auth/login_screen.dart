@@ -8,7 +8,6 @@ import '../../core/widgets/server_config_dialog.dart';
 import '../../services/auth_service.dart';
 import '../../main.dart';
 import '../client/welcome_onboarding_screen.dart';
-import '../landing/mrcoach_landing_screen.dart';
 import '../trainer/presentation/screens/trainer_main_layout.dart';
 import 'register_screen.dart';
 
@@ -62,6 +61,10 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordCtrl.text.trim(),
       );
       final profile = await AuthService.getCurrentProfile();
+        final accountRole = profile?['role'] as String?;
+        final role = accountRole == 'trainer' || accountRole == 'client'
+          ? accountRole
+          : _selectedRole;
       final user = AuthService.currentUser;
       final userName =
           (profile?['full_name'] as String?)?.isNotEmpty == true
@@ -69,14 +72,14 @@ class _LoginScreenState extends State<LoginScreen> {
               : (user?.userMetadata?['full_name'] as String?)?.isNotEmpty ==
                   true
               ? user!.userMetadata!['full_name'] as String
-              : (_selectedRole == 'trainer'
+                : (role == 'trainer'
                   ? 'Personal Trainer'
                   : 'Aluno no Salão');
 
       final hasCompletedAnamnesis = profile?['has_completed_anamnesis'] == true;
 
       if (mounted) {
-        if (_selectedRole == 'client' && !hasCompletedAnamnesis) {
+        if (role == 'client' && !hasCompletedAnamnesis) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -84,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
         } else {
-          _navigateToDashboard(role: _selectedRole, name: userName);
+          _navigateToDashboard(role: role, name: userName);
         }
       }
     } catch (e) {
@@ -129,18 +132,22 @@ class _LoginScreenState extends State<LoginScreen> {
         final user = AuthService.currentUser;
         if (user != null) {
           final profile = await AuthService.getCurrentProfile();
+            final accountRole = profile?['role'] as String?;
+            final role = accountRole == 'trainer' || accountRole == 'client'
+              ? accountRole
+              : _selectedRole;
           final userName =
               (profile?['full_name'] as String?)?.isNotEmpty == true
                   ? profile!['full_name'] as String
                   : (user.userMetadata?['full_name'] as String?)?.isNotEmpty ==
                       true
                   ? user.userMetadata!['full_name'] as String
-                  : (_selectedRole == 'trainer'
+                    : (role == 'trainer'
                       ? 'Personal Trainer'
                       : 'Aluno no Salão');
           final hasCompletedAnamnesis =
               profile?['has_completed_anamnesis'] == true;
-          if (_selectedRole == 'client' && !hasCompletedAnamnesis) {
+          if (role == 'client' && !hasCompletedAnamnesis) {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
@@ -148,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             );
           } else {
-            _navigateToDashboard(role: _selectedRole, name: userName);
+            _navigateToDashboard(role: role, name: userName);
           }
         } else {
           if (_emailCtrl.text.isNotEmpty && _passwordCtrl.text.isNotEmpty) {
@@ -875,7 +882,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           color: MetaColors.textSecondary,
                         ),
                         label: const Text(
-                          'Conhecer a Plataforma (Página Web & WhatsApp)',
+                          'Conhecer o Mr. Coach B2B',
                           style: TextStyle(
                             color: MetaColors.textSecondary,
                             fontSize: 12,
@@ -883,12 +890,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const MrCoachLandingScreen(),
-                            ),
-                          );
+                          Navigator.pushNamed(context, '/b2b');
                         },
                       ),
                     ),

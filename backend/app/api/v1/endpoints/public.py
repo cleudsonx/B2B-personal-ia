@@ -2,8 +2,14 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 from typing import List, Optional, Any
 from app.services.supabase_service import supabase_service, is_valid_uuid
+from app.services.ai_news_service import get_ai_news
 
 router = APIRouter()
+
+
+@router.get("/ai-news", summary="Notícias oficiais recentes sobre IA")
+async def list_ai_news():
+    return await get_ai_news()
 
 class TrainerPublicProfile(BaseModel):
     id: str
