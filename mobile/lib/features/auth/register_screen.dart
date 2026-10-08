@@ -54,6 +54,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  String _normalizePhone(String? phone) {
+    final digits = (phone ?? '').replaceAll(RegExp(r'\D'), '');
+    return digits.startsWith('55') && digits.length > 11
+        ? digits.substring(2)
+        : digits;
+  }
+
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
@@ -153,7 +160,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     widget.initialRole == 'client'
                       ? 'Informe seus dados para falar com seu treinador'
                       : 'Comece a prescrever com Inteligência Artificial',
@@ -277,13 +284,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       }
                       return null;
                     },
-
-                    String _normalizePhone(String? phone) {
-                      final digits = (phone ?? '').replaceAll(RegExp(r'\D'), '');
-                      return digits.startsWith('55') && digits.length > 11
-                          ? digits.substring(2)
-                          : digits;
-                    }
                   ),
                   const SizedBox(height: 16),
 

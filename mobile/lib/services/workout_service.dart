@@ -829,7 +829,4 @@ class WorkoutService {
 
     return true;
   }
-
-
-
-
+}

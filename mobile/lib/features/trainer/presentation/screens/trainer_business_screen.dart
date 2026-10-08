@@ -569,7 +569,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         showcaseUrl.replaceFirst('https://', ''),
                         style: TextStyle(
