@@ -29,6 +29,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
   final Set<String> _selectedSpecialties = {};
   bool _isSaving = false;
   bool _isLoading = true;
+  bool _profileLoadFailed = false;
   bool _publishInDirectory = false;
 
   @override
@@ -38,10 +39,16 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
   }
 
   Future<void> _loadProfile() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _profileLoadFailed = false;
+      });
+    }
     try {
       final supabase = Supabase.instance.client;
       final user = supabase.auth.currentUser;
-      if (user == null) return;
+      if (user == null) throw StateError('Usuário não autenticado.');
 
       final response = await supabase
           .from('profiles')
@@ -49,7 +56,10 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
           .eq('id', user.id)
           .maybeSingle();
 
-      if (response != null && mounted) {
+      if (response == null) {
+        throw StateError('Perfil profissional não encontrado.');
+      }
+      if (mounted) {
         setState(() {
           _usernameController.text = response['username'] ?? '';
           _bioController.text = response['bio'] ?? '';
@@ -65,6 +75,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
       }
     } catch (e) {
       debugPrint('Erro ao carregar perfil: $e');
+      if (mounted) setState(() => _profileLoadFailed = true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -79,7 +90,32 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
     super.dispose();
   }
 
+  void _leaveProfileSetup() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+    } else {
+      navigator.pushReplacement(
+        MaterialPageRoute(builder: (_) => const TrainerMainLayout()),
+      );
+    }
+  }
+
   Future<void> _saveProfile() async {
+    if (_isLoading || _profileLoadFailed) return;
+    if (_publishInDirectory &&
+        (_usernameController.text.trim().isEmpty ||
+            _bioController.text.trim().isEmpty ||
+            !_crefController.text.trim().toUpperCase().startsWith('CREF'))) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Para publicar, informe username, biografia e registro CREF válido.',
+          ),
+        ),
+      );
+      return;
+    }
     setState(() => _isSaving = true);
     try {
       // Aqui usamos o supabase_flutter que já está inicializado no app
@@ -103,13 +139,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
           SnackBar(content: const Text('Vitrine salva com sucesso!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), backgroundColor: MetaColors.emerald, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), margin: const EdgeInsets.all(16)),
         );
         
-        // Redireciona para a tela de alunos ou volta
-        if (Navigator.canPop(context)) {
-          Navigator.pop(context);
-        } else {
-          Navigator.pushReplacementNamed(context, '/home');
-        }
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const TrainerMainLayout()));
+        _leaveProfileSetup();
       }
     } catch (e) {
       if (mounted) {
@@ -156,7 +186,20 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                   elevation: 0,
                   scrolledUnderElevation: 0,
                   title: const Text('Montar Vitrine'),
-                  centerTitle: true, actions: [ TextButton(onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const TrainerMainLayout())), child: const Text('Pular', style: TextStyle(color: MetaColors.emerald, fontWeight: FontWeight.bold))) ], ),
+                  centerTitle: true,
+                  actions: [
+                    TextButton(
+                      onPressed: _leaveProfileSetup,
+                      child: const Text(
+                        'Pular',
+                        style: TextStyle(
+                          color: MetaColors.emerald,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 SliverPadding(
                   padding: EdgeInsets.only(
                     left: 24,
@@ -172,6 +215,33 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            if (_profileLoadFailed) ...[
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.red.withValues(alpha: 0.35),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Não foi possível carregar os dados salvos. Salvar está bloqueado para evitar sobrescrevê-los.',
+                                    ),
+                                    TextButton.icon(
+                                      onPressed: _loadProfile,
+                                      icon: const Icon(Icons.refresh),
+                                      label: const Text('Tentar novamente'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                            ],
                             Text(
                               'Configure seu perfil público. Estes dados serão visíveis na sua Landing Page.',
                               style: theme.textTheme.bodyMedium?.copyWith(
@@ -360,7 +430,9 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
               right: 24,
               bottom: padding.bottom > 0 ? padding.bottom : 24,
               child: FilledButton(
-                onPressed: _isSaving ? null : _saveProfile,
+                onPressed: _isSaving || _isLoading || _profileLoadFailed
+                  ? null
+                  : _saveProfile,
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   elevation: 0,

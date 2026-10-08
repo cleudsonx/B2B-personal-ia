@@ -5,7 +5,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_trainer
 from app.services.whatsapp_service import instance_name_for, whatsapp_service
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ def _trainer_id(user: Dict[str, Any]) -> str:
 
 
 @router.post("/connect")
-async def connect_whatsapp(req: ConnectRequest, user: Dict[str, Any] = Depends(get_current_user)):
+async def connect_whatsapp(req: ConnectRequest, user: Dict[str, Any] = Depends(get_current_trainer)):
     """Conecta o WhatsApp do professor autenticado (instância dele, nunca de outro)."""
     instance = instance_name_for(_trainer_id(user))
     number = "".join(c for c in (req.number or "") if c.isdigit()) or None
@@ -52,7 +52,7 @@ async def connect_whatsapp(req: ConnectRequest, user: Dict[str, Any] = Depends(g
 
 
 @router.get("/status")
-async def get_status(user: Dict[str, Any] = Depends(get_current_user)):
+async def get_status(user: Dict[str, Any] = Depends(get_current_trainer)):
     """Estado da conexão do WhatsApp do professor autenticado."""
     instance = instance_name_for(_trainer_id(user))
     try:

@@ -26,8 +26,8 @@ def trainer_id_from_instance(instance: str) -> Optional[str]:
 
 
 class WhatsAppService:
-    def __init__(self, provider: str = "evolution", api_key: Optional[str] = None):
-        self.provider = provider.lower()
+    def __init__(self, provider: Optional[str] = None, api_key: Optional[str] = None):
+        self.provider = (provider or settings.WHATSAPP_PROVIDER).lower()
         self.evolution_key = api_key if api_key is not None else settings.EVOLUTION_API_KEY
 
     @staticmethod

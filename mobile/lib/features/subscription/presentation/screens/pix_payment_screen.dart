@@ -13,7 +13,7 @@ class PixPaymentScreen extends StatefulWidget {
 }
 
 class _PixPaymentScreenState extends State<PixPaymentScreen> {
-  bool _copied = true; // Assume it was copied when entering the screen
+  bool _copied = false;
 
   @override
   void initState() {
@@ -22,29 +22,77 @@ class _PixPaymentScreenState extends State<PixPaymentScreen> {
   }
 
   Future<void> _copyToClipboard() async {
-    await Clipboard.setData(ClipboardData(text: widget.pixCode));
-    setState(() => _copied = true);
+    if (widget.pixCode.trim().isEmpty) return;
+    try {
+      await Clipboard.setData(ClipboardData(text: widget.pixCode));
+      if (mounted) setState(() => _copied = true);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não foi possível copiar o código Pix.')),
+        );
+      }
+    }
   }
 
   void _openBankApp(String scheme, String fallbackUrl) async {
     final uri = Uri.parse(scheme);
     try {
       if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
+        final launched = await launchUrl(uri);
+        if (!launched && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Não foi possível abrir o aplicativo do banco.')),
+          );
+        }
       } else {
         // Fallback for when the scheme is not found (app not installed)
         final fallbackUri = Uri.parse(fallbackUrl);
         if (await canLaunchUrl(fallbackUri)) {
-          await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
+          final launched = await launchUrl(
+            fallbackUri,
+            mode: LaunchMode.externalApplication,
+          );
+          if (!launched && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Não foi possível abrir o aplicativo do banco.')),
+            );
+          }
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Não foi possível abrir o aplicativo do banco.')),
+          );
         }
       }
     } catch (e) {
       debugPrint('Não foi possível abrir o app do banco: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não foi possível abrir o aplicativo do banco.')),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.pixCode.trim().isEmpty) {
+      return Scaffold(
+        backgroundColor: MetaColors.background,
+        appBar: AppBar(title: const Text('Pagamento Pix')),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'O código Pix não está disponível. Nenhum pagamento foi iniciado.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: MetaColors.textSecondary),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: MetaColors.background,
       appBar: AppBar(
@@ -58,7 +106,7 @@ class _PixPaymentScreenState extends State<PixPaymentScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text(
-              'Finalizar',
+              'Voltar ao checkout',
               style: TextStyle(
                 color: MetaColors.emerald, // Tonalidade Meta de ação positiva
                 fontSize: 16,
@@ -77,11 +125,17 @@ class _PixPaymentScreenState extends State<PixPaymentScreen> {
             // Header Success
             Row(
               children: [
-                const Icon(Icons.check_circle_rounded, color: MetaColors.emerald, size: 32),
+                Icon(
+                  _copied ? Icons.check_circle_rounded : Icons.copy_rounded,
+                  color: _copied ? MetaColors.emerald : MetaColors.textSecondary,
+                  size: 32,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Seu código Pix foi copiado\ncom sucesso!',
+                      _copied
+                        ? 'Seu código Pix foi copiado\ncom sucesso!'
+                        : 'Código Pix pronto para copiar',
                     style: const TextStyle(
                       color: MetaColors.textPrimary,
                       fontSize: 22,
@@ -99,7 +153,10 @@ class _PixPaymentScreenState extends State<PixPaymentScreen> {
             _buildStepRow('2', 'Escolha a opção "Pix Copia e Cola".'),
             _buildStepRow('3', 'Cole o código Pix copiado.'),
             _buildStepRow('4', 'Confirme o pagamento.'),
-            _buildStepRow('5', 'Será enviado um e-mail de confirmação e a plataforma será liberada.'),
+            _buildStepRow(
+              '5',
+              'A confirmação e a liberação do plano acontecem após a aprovação do pagamento pelo banco.',
+            ),
 
             const SizedBox(height: 40),
 

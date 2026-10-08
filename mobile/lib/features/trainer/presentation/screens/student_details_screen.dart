@@ -2,6 +2,8 @@ import '../../../../services/workout_service.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/widgets/meta_components.dart';
+import '../../../../services/invite_service.dart';
+import '../../anamnesis_screen.dart';
 
 class StudentDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> studentData;
@@ -15,6 +17,7 @@ class StudentDetailsScreen extends StatefulWidget {
 class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
 late Map<String, dynamic> student;
   bool _isLoadingWorkout = true;
+  bool _isResendingInvite = false;
   dynamic _activeWorkout;
 
   @override
@@ -43,14 +46,105 @@ late Map<String, dynamic> student;
   }
 
   Future<void> _launchWhatsApp(String phone, String name) async {
-    final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
-    final text = Uri.encodeComponent(
-      "Oi $name, vi que você ainda não acessou seu treino. Clica aqui no link para ativarmos sua periodização: https://app.shaipados.com/convite"
-    );
-    final url = Uri.parse("https://wa.me/$cleanPhone?text=$text");
-    if (!await launchUrl(url)) {
-      debugPrint("Não foi possível abrir o WhatsApp");
+    final digits = phone.replaceAll(RegExp(r'\D'), '');
+    if (digits.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Telefone não cadastrado. Nenhuma mensagem foi enviada.')),
+        );
+      }
+      return;
     }
+    final cleanPhone = digits.startsWith('55') ? digits : '55$digits';
+    setState(() => _isResendingInvite = true);
+    try {
+      final invite = await InviteService.createInvite(
+        channel: 'whatsapp',
+        targetPhone: phone,
+      );
+      final inviteUrl = invite['invite_url'] as String?;
+      if (inviteUrl == null || inviteUrl.isEmpty) {
+        throw StateError('O servidor não retornou o link do convite.');
+      }
+      final text = Uri.encodeComponent(
+        'Oi $name, segue seu convite para acessar seu treino: $inviteUrl',
+      );
+      final url = Uri.parse('https://wa.me/$cleanPhone?text=$text');
+      if (!await launchUrl(url, mode: LaunchMode.externalApplication) && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Convite gerado, mas não foi possível abrir o WhatsApp.')),
+        );
+      }
+    } catch (error) {
+      debugPrint('Falha ao reenviar convite pelo WhatsApp: $error');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não foi possível gerar o convite para WhatsApp.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isResendingInvite = false);
+    }
+  }
+
+  Future<void> _resendInvitationEmail(String name, String phone) async {
+    final email = student['email'] as String?;
+    if (email == null || email.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Este aluno não possui e-mail cadastrado.')),
+      );
+      return;
+    }
+    setState(() => _isResendingInvite = true);
+    try {
+      final sent = await WorkoutService.resendInvitationEmail(
+        fullName: name,
+        email: email,
+        phone: phone,
+        goal: student['goal'] as String?,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(sent
+                ? 'Convite reenviado para $email.'
+                : 'Não foi possível reenviar o convite por e-mail.'),
+          ),
+        );
+      }
+    } catch (error) {
+      debugPrint('Falha ao reenviar convite por e-mail: $error');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não foi possível reenviar o convite por e-mail.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isResendingInvite = false);
+    }
+  }
+
+  Future<void> _openWorkoutPrescription() async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TrainerAnamnesisScreen(
+          initialStudentId: student['id'] as String?,
+          initialStudentName: student['full_name'] as String?,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _isLoadingWorkout = true);
+    await _fetchWorkout();
+  }
+
+  void _showUnavailableAdminAction(String action) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$action ainda não disponível. Nenhuma alteração foi feita.'),
+      ),
+    );
   }
 
   @override
@@ -116,11 +210,6 @@ late Map<String, dynamic> student;
                       ),
                     ),
                     const SizedBox(height: 12),
-                    if (!_isLoadingWorkout && _activeWorkout != null)
-                      const Text(
-                        '🔥 14 Dias de Ofensiva',
-                        style: TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
                   ],
                 ),
               ),
@@ -136,7 +225,9 @@ late Map<String, dynamic> student;
                     label: 'Reenviar via WhatsApp',
                     icon: Icons.chat_bubble,
                     isPrimary: true,
-                    onPressed: () => _launchWhatsApp(phone, name),
+                    onPressed: _isResendingInvite
+                      ? null
+                      : () => _launchWhatsApp(phone, name),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -146,11 +237,9 @@ late Map<String, dynamic> student;
                     label: 'Reenviar via E-mail',
                     icon: Icons.email,
                     isPrimary: false,
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('E-mail reenviado com sucesso!')),
-                      );
-                    },
+                    onPressed: _isResendingInvite
+                        ? null
+                        : () => _resendInvitationEmail(name, phone),
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -178,9 +267,7 @@ late Map<String, dynamic> student;
                         child: SquircleButton(
                           label: '✨ Prescrever com IA em 30s',
                           isPrimary: true,
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Integração em andamento...')));
-                          },
+                          onPressed: _openWorkoutPrescription,
                         ),
                       ),
                     ],
@@ -210,12 +297,10 @@ late Map<String, dynamic> student;
                         children: [
                           Expanded(
                             child: SquircleButton(
-                              label: 'Ver/Ajustar',
+                              label: 'Criar ficha com IA',
                               icon: Icons.visibility,
                               isPrimary: true,
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Visualização em breve')));
-                              },
+                              onPressed: _openWorkoutPrescription,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -225,7 +310,11 @@ late Map<String, dynamic> student;
                               icon: Icons.refresh,
                               isPrimary: false,
                               onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Em breve')));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Renovação de ficha ainda não disponível. Nada foi alterado.'),
+                                  ),
+                                );
                               },
                             ),
                           ),
@@ -236,7 +325,11 @@ late Map<String, dynamic> student;
                         width: double.infinity,
                         child: TextButton.icon(
                           onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Não suportado ainda')));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Exclusão de ficha ainda não disponível. Nenhum dado foi excluído.'),
+                              ),
+                            );
                           },
                           icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                           label: const Text('Excluir Ficha', style: TextStyle(color: Colors.redAccent)),
@@ -258,20 +351,20 @@ late Map<String, dynamic> student;
                       leading: const Icon(Icons.edit, color: MetaColors.textSecondary),
                       title: const Text('Editar Perfil do Aluno', style: TextStyle(color: MetaColors.textPrimary)),
                       trailing: const Icon(Icons.chevron_right, color: MetaColors.textSecondary),
-                      onTap: () {},
+                      onTap: () => _showUnavailableAdminAction('Editar perfil'),
                     ),
                     const Divider(color: MetaColors.surfaceHighlight, height: 1),
                     ListTile(
                       leading: const Icon(Icons.pause_circle_outline, color: MetaColors.textSecondary),
                       title: const Text('Arquivar Aluno', style: TextStyle(color: MetaColors.textPrimary)),
                       trailing: const Icon(Icons.chevron_right, color: MetaColors.textSecondary),
-                      onTap: () {},
+                      onTap: () => _showUnavailableAdminAction('Arquivar aluno'),
                     ),
                     const Divider(color: MetaColors.surfaceHighlight, height: 1),
                     ListTile(
                       leading: const Icon(Icons.delete_forever, color: Colors.redAccent),
                       title: const Text('Excluir Definitivamente', style: TextStyle(color: Colors.redAccent)),
-                      onTap: () {},
+                      onTap: () => _showUnavailableAdminAction('Excluir aluno'),
                     ),
                   ],
                 ),

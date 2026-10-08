@@ -6,7 +6,7 @@ from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, HTTPException, Depends, Request, status
 from pydantic import BaseModel, EmailStr, Field
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_trainer
 from app.core.config import settings
 from app.services.supabase_service import supabase_service, is_valid_uuid
 from app.services.audit_service import log_audit_event
@@ -59,7 +59,7 @@ class ConsumeInviteResponse(BaseModel):
 @router.post("/create", response_model=CreateInviteResponse, summary="Gerar Convite Único Intransferível")
 async def create_invite(
     body: CreateInviteRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: Dict[str, Any] = Depends(get_current_trainer),
 ):
     """
     Treinador autenticado gera um convite único atrelado ao e-mail ou WhatsApp do aluno.
@@ -225,8 +225,17 @@ async def consume_invite(
         if not registered_phone or invited_phone != registered_phone:
             raise HTTPException(status_code=403, detail="Este convite foi destinado a outro telefone.")
 
-    # Vincula o trainer_id ao perfil do aluno
-    await client.table("profiles").update({"trainer_id": trainer_id}).eq("id", student_id).execute()
+    profile_res = await client.table("profiles").select("role, roles").eq("id", student_id).maybe_single().execute()
+    if not profile_res or not profile_res.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Perfil do usuário não encontrado.")
+    profile = profile_res.data
+    roles = profile.get("roles") or [profile.get("role")]
+    updated_roles = list(dict.fromkeys([*roles, "client"]))
+
+    await client.table("profiles").update({
+        "trainer_id": trainer_id,
+        "roles": updated_roles,
+    }).eq("id", student_id).execute()
 
     # Marca o token como consumido
     now_utc = datetime.now(timezone.utc).isoformat()

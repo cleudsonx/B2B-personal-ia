@@ -7,7 +7,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
-import '../../services/invite_service.dart';
 
 class TrainerStudentsScreen extends StatefulWidget {
   final Function(String studentId, String studentName)? onSelectStudentForPlan;
@@ -71,6 +70,9 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                 : null;
 
             final activeSplit = st['active_split'] as String?;
+            final hasActivePrescription =
+              st['has_active_prescription'] as bool? ??
+              (activeSplit?.isNotEmpty == true ? true : null);
             final lastSession = st['last_session'] as String? ?? 'Sincronizado';
 
             return {
@@ -79,9 +81,13 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
               'email': st['email'] ?? '',
               'phone': st['phone'] ?? '',
               'goal': st['goal'] ?? 'Treino',
-              'recent_status': activeSplit != null
-                  ? 'Ficha ativa: '
-                  : 'Aguardando ficha',
+                'recent_status': hasActivePrescription == true
+                  ? (activeSplit?.isNotEmpty == true
+                    ? 'Ficha ativa: $activeSplit'
+                    : 'Ficha ativa')
+                  : hasActivePrescription == false
+                    ? 'Aguardando ficha'
+                    : 'Status da ficha indisponível',
               'last_session': lastSession,
               'status': st['status'] ?? 'Ativo',
               'has_alert': hasAlert,
@@ -105,7 +111,6 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
 
   Future<void> _openWhatsApp(Map<String, dynamic> student) async {
     final phone = student['phone'] as String? ?? '';
-    final email = student['email'] as String? ?? '';
     final name = student['full_name'] as String? ?? 'Aluno';
     final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
     final isPending = (student['status'] as String? ?? '').toLowerCase().contains('pendente');
@@ -113,47 +118,27 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     final trainerName =
         user?.userMetadata?['full_name'] as String? ?? 'Seu Treinador';
 
-    String inviteLink = '';
-
-    // Se estiver pendente, gera convite com token criptográfico de 24h e auditoria
-    if (isPending) {
-      try {
-        final inviteData = await InviteService.createInvite(
-          channel: cleanPhone.isNotEmpty ? 'whatsapp' : 'email',
-          targetPhone: cleanPhone.isNotEmpty ? cleanPhone : null,
-          targetEmail: email.isNotEmpty ? email : null,
-        );
-        final token = inviteData['token'];
-        if (token is! String || token.isEmpty) {
-          throw Exception('O servidor não retornou um token de convite válido.');
-        }
-        inviteLink = inviteData['invite_url'] as String? ??
-            'https://shaipados.com/#/invite/$token';
-      } catch (e) {
-        debugPrint('[WhatsApp] Erro ao gerar token de convite via API, usando fallback: $e');
+    if (cleanPhone.isNotEmpty) {
+      final inviteUrl = student['whatsapp_url'] as String?;
+      if (isPending && (inviteUrl == null || inviteUrl.isEmpty)) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Não foi possível gerar um convite válido. Tente novamente.')),
+            const SnackBar(
+              content: Text('O link do convite não está disponível. Copie o link do cadastro e tente novamente.'),
+            ),
           );
         }
         return;
       }
-    }
 
-    final String textMessage = isPending
-        ? 'Olá, $name! 💪\n\n'
-            'Aqui é o Prof. $trainerName. Convidei você para o app Mr. Coach com periodização inteligente e biomecânica!\n\n'
-            'Toque no link exclusivo abaixo para ativar seu acesso (válido por 24h):\n'
-            '$inviteLink\n\n'
-            'Bons treinos!'
-        : 'Olá $name! 💪 Aqui é o Prof. $trainerName. Como estão os treinos essa semana?';
-
-    final msg = Uri.encodeComponent(textMessage);
-
-    if (cleanPhone.isNotEmpty) {
-      final finalNumber =
-          cleanPhone.startsWith('55') ? cleanPhone : '55$cleanPhone';
-      final url = Uri.parse('https://wa.me/$finalNumber?text=$msg');
+      final finalNumber = cleanPhone.startsWith('55') ? cleanPhone : '55$cleanPhone';
+      final message = isPending
+          ? inviteUrl
+          : 'Olá $name! 💪 Aqui é o Prof. $trainerName. Como estão os treinos essa semana?';
+      final url = isPending
+          ? Uri.tryParse(inviteUrl!)
+          : Uri.parse('https://wa.me/$finalNumber?text=${Uri.encodeComponent(message)}');
+      if (url == null) return;
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
         return;
@@ -173,6 +158,97 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
         ),
       );
     }
+  }
+
+  Future<void> _showInviteCreatedDialog(Map<String, dynamic> student) async {
+    final emailStatus = (student['email_status'] as String? ?? 'unknown').toLowerCase();
+    final emailWasSent = emailStatus == 'sent';
+      final emailFailed = emailStatus == 'error' || emailStatus == 'failed';
+      final emailIsMock = emailStatus == 'success';
+    final inviteLink = student['invitation_link'] as String? ?? '';
+    final hasWhatsApp = (student['whatsapp_url'] as String? ?? '').isNotEmpty;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: MetaColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: MetaColors.border),
+        ),
+        icon: Icon(
+          emailFailed ? Icons.mark_email_unread_outlined : Icons.check_circle_outline_rounded,
+          color: emailFailed ? Colors.orangeAccent : MetaColors.emerald,
+          size: 42,
+        ),
+        title: Text(
+          emailFailed ? 'Aluno adicionado' : 'Convite criado',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: MetaColors.textPrimary, fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              emailWasSent
+                  ? 'Enviamos o convite para ${student['email']}. O aluno está aguardando a confirmação do cadastro.'
+                    : emailFailed
+                      ? 'O aluno foi cadastrado, mas o email não foi enviado. Compartilhe o link por WhatsApp ou copie para enviar por outro canal.'
+                        : emailIsMock
+                            ? 'O cadastro foi criado, mas o envio está em modo de teste e não confirma a entrega do email. Compartilhe o link diretamente com o aluno.'
+                            : 'O cadastro foi criado. Status do email: $emailStatus. Compartilhe o link diretamente se o aluno não receber a mensagem.',
+              style: const TextStyle(color: MetaColors.textSecondary, height: 1.45),
+            ),
+            if (inviteLink.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: MetaColors.surfaceHighlight,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: MetaColors.border),
+                ),
+                child: SelectableText(
+                  inviteLink,
+                  style: const TextStyle(color: MetaColors.textPrimary, fontSize: 12),
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          if (inviteLink.isNotEmpty)
+            TextButton.icon(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: inviteLink));
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Link do convite copiado.')),
+                  );
+                }
+              },
+              icon: const Icon(Icons.copy_rounded),
+              label: const Text('Copiar link'),
+            ),
+          if (hasWhatsApp)
+            TextButton.icon(
+              onPressed: () async {
+                Navigator.pop(dialogContext);
+                await _openWhatsApp(student);
+              },
+              icon: const Icon(Icons.chat_rounded),
+              label: const Text('Abrir WhatsApp'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Concluir'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showStudentDetails(Map<String, dynamic> student) {
@@ -197,18 +273,21 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     final emailCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    var isSubmitting = false;
+    String? submitError;
 
-    showDialog(
+    showDialog<void>(
       context: context,
-      builder: (ctx) {
-        return AlertDialog(
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
           backgroundColor: MetaColors.surface,
+          scrollable: true,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(18),
             side: const BorderSide(color: MetaColors.border),
           ),
           title: const Text(
-            'Novo Aluno',
+            'Convidar aluno',
             style: TextStyle(
               color: MetaColors.textPrimary,
               fontWeight: FontWeight.bold,
@@ -222,9 +301,11 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
               children: [
                 TextFormField(
                   controller: nameCtrl,
+                  textCapitalization: TextCapitalization.words,
+                  textInputAction: TextInputAction.next,
                   style: const TextStyle(color: MetaColors.textPrimary),
                   decoration: InputDecoration(
-                    labelText: 'Nome Completo',
+                    labelText: 'Nome completo',
                     labelStyle: const TextStyle(color: MetaColors.textSecondary),
                     filled: true,
                     fillColor: MetaColors.surfaceHighlight,
@@ -233,16 +314,18 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                       borderSide: BorderSide.none,
                     ),
                   ),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Nome obrigatório' : null,
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Informe o nome do aluno.'
+                      : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: emailCtrl,
                   keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
                   style: const TextStyle(color: MetaColors.textPrimary),
                   decoration: InputDecoration(
-                    labelText: 'E-mail',
+                    labelText: 'Email para receber o convite',
                     labelStyle: const TextStyle(color: MetaColors.textSecondary),
                     filled: true,
                     fillColor: MetaColors.surfaceHighlight,
@@ -251,17 +334,22 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                       borderSide: BorderSide.none,
                     ),
                   ),
-                  validator: (v) =>
-                      (v == null || !v.contains('@')) ? 'E-mail válido obrigatório' : null,
+                  validator: (value) => value == null ||
+                          !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                              .hasMatch(value.trim())
+                      ? 'Informe um email válido.'
+                      : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: phoneCtrl,
                   keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.done,
                   style: const TextStyle(color: MetaColors.textPrimary),
                   decoration: InputDecoration(
-                    labelText: 'WhatsApp / Telefone',
+                    labelText: 'WhatsApp (opcional)',
                     labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                    hintText: '(61) 99999-9999',
                     filled: true,
                     fillColor: MetaColors.surfaceHighlight,
                     border: OutlineInputBorder(
@@ -270,12 +358,33 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                     ),
                   ),
                 ),
+                if (submitError != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: Colors.redAccent.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: Text(
+                      submitError!,
+                      style: const TextStyle(
+                        color: MetaColors.textPrimary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: isSubmitting ? null : () => Navigator.pop(dialogContext),
               child: const Text(
                 'Cancelar',
                 style: TextStyle(color: MetaColors.textSecondary),
@@ -289,53 +398,80 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              onPressed: () async {
-                if (!formKey.currentState!.validate()) return;
-                final newStudent = {
-                  'id': 'st-${DateTime.now().millisecondsSinceEpoch}',
-                  'full_name': nameCtrl.text.trim(),
-                  'email': emailCtrl.text.trim(),
-                  'phone': phoneCtrl.text.trim(),
-                  'goal': 'Geral',
-                  'recent_status': 'Aguardando primeiro treino',
-                  'last_session': 'Agora',
-                  'status': 'Ativo',
-                  'has_alert': false,
-                  'alert_message': null,
-                  'avatar_url': null,
-                };
+              onPressed: isSubmitting
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setDialogState(() {
+                        isSubmitting = true;
+                        submitError = null;
+                      });
 
-                setState(() {
-                  _students.insert(0, newStudent);
-                });
+                      try {
+                        final result = await WorkoutService.createStudent(
+                          fullName: nameCtrl.text.trim(),
+                          email: emailCtrl.text.trim().toLowerCase(),
+                          phone: phoneCtrl.text.trim().isNotEmpty
+                              ? phoneCtrl.text.trim()
+                              : null,
+                          goal: 'Geral',
+                        );
+                        final newStudent = {
+                          ...result,
+                          'full_name': nameCtrl.text.trim(),
+                          'email': emailCtrl.text.trim().toLowerCase(),
+                          'phone': phoneCtrl.text.trim(),
+                          'goal': 'Geral',
+                          'recent_status': 'Convite enviado; aguardando cadastro',
+                          'last_session': 'Agora',
+                          'status': result['status'] ?? 'Pendente Confirmação',
+                          'has_alert': false,
+                          'alert_message': null,
+                          'avatar_url': null,
+                        };
 
-                Navigator.pop(ctx);
-
-                try {
-                  await WorkoutService.createStudent(
-                    fullName: nameCtrl.text.trim(),
-                    email: emailCtrl.text.trim(),
-                    phone: phoneCtrl.text.trim().isNotEmpty
-                        ? phoneCtrl.text.trim()
-                        : null,
-                    goal: 'Geral',
-                  );
-
-                  // Se tiver telefone, já oferece a abertura do WhatsApp com o link de 24h
-                  if (phoneCtrl.text.trim().isNotEmpty && mounted) {
-                    _openWhatsApp(newStudent);
-                  }
-                } catch (_) {}
-              },
-              child: const Text(
-                'Cadastrar e Convidar',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
+                        if (!mounted) return;
+                        setState(() => _students.insert(0, newStudent));
+                        Navigator.pop(dialogContext);
+                        await _showInviteCreatedDialog(newStudent);
+                      } catch (error) {
+                        setDialogState(() {
+                          isSubmitting = false;
+                          submitError = error
+                              .toString()
+                              .replaceFirst('Exception: ', '');
+                        });
+                      }
+                    },
+              child: isSubmitting
+                  ? const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(width: 10),
+                        Text('Enviando...'),
+                      ],
+                    )
+                  : const Text(
+                      'Enviar convite',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
             ),
           ],
-        );
-      },
-    );
+        ),
+      ),
+    ).whenComplete(() {
+      nameCtrl.dispose();
+      emailCtrl.dispose();
+      phoneCtrl.dispose();
+    });
   }
 
   String _getInitials(String name) {
@@ -494,7 +630,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                 const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
                                 const SizedBox(height: 16),
                                 Text(
-                                  'Erro ao carregar alunos:\n\${_errorMessage}',
+                                  'Não foi possível carregar os alunos.\n$_errorMessage',
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(color: MetaColors.textSecondary, fontSize: 14),
                                 ),
@@ -511,11 +647,28 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                         ? const Center(child: CircularProgressIndicator(color: MetaColors.emerald))
                         : filteredStudents.isEmpty
                           ? const Center(
-                              child: Text(
-                                'Nenhum aluno cadastrado.',
-                                style: TextStyle(
-                                  color: MetaColors.textSecondary,
-                                  fontSize: 15,
+                              child: Padding(
+                                padding: EdgeInsets.all(24),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.people_outline_rounded,
+                                      size: 48,
+                                      color: MetaColors.textSecondary,
+                                    ),
+                                    SizedBox(height: 12),
+                                    Text(
+                                      'Sua lista começa aqui',
+                                      style: TextStyle(color: MetaColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w600),
+                                    ),
+                                    SizedBox(height: 6),
+                                    Text(
+                                      'Adicione um aluno para enviar o convite e iniciar o acompanhamento.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(color: MetaColors.textSecondary, fontSize: 14, height: 1.4),
+                                    ),
+                                  ],
                                 ),
                               ),
                             )

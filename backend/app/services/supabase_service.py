@@ -1001,8 +1001,9 @@ class SupabaseService:
                 alerts.append(BiomechanicalAlertResponse(**a))
         return alerts
 
-    async def acknowledge_alert(self, alert_id: str) -> bool:
+    async def acknowledge_alert(self, alert_id: str, trainer_id: str) -> bool:
         """Marca o alerta como visto/reconhecido pelo treinador."""
+        t_uuid = to_valid_uuid_str(trainer_id)
         client = await self.get_client()
 
         if client and is_valid_uuid(alert_id):
@@ -1010,6 +1011,7 @@ class SupabaseService:
                 res = await client.table("adaptation_logs")\
                     .update({"viewed_by_trainer": True})\
                     .eq("id", alert_id)\
+                    .eq("trainer_id", t_uuid)\
                     .execute()
                 if res.data:
                     return True
@@ -1017,11 +1019,15 @@ class SupabaseService:
                 logger.error(f"Erro ao marcar alerta no Supabase: {e}")
                 self._raise_if_production("reconhecer alerta biomecânico", e)
 
-        if not self._is_production() and alert_id in self._mem_alerts:
+        if (
+            not self._is_production()
+            and alert_id in self._mem_alerts
+            and self._mem_alerts[alert_id].get("trainer_id") in (trainer_id, t_uuid)
+        ):
             self._mem_alerts[alert_id]["acknowledged"] = True
             self._mem_alerts[alert_id]["status"] = "acknowledged"
             return True
-        return True
+        return False
 
     # =========================================================================
     # ASSINATURAS SAAS (SUBSCRIPTIONS + PLANS)

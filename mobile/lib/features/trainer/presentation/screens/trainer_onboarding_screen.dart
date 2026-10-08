@@ -1,6 +1,8 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/widgets/meta_components.dart';
-import 'trainer_profile_setup_screen.dart'; // Or route to storefront setup
+import '../../../../services/auth_service.dart';
+import 'trainer_profile_setup_screen.dart';
 
 class TrainerOnboardingScreen extends StatefulWidget {
   const TrainerOnboardingScreen({super.key});
@@ -36,14 +38,19 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
     },
   ];
 
-  void _nextPage() {
+  Future<void> _nextPage() async {
     if (_currentIndex < _slides.length - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
     } else {
-      // Finalizou o onboarding, vai para o Layout Principal
+      final userId = AuthService.currentUser?.id;
+      if (userId != null) {
+        final preferences = await SharedPreferences.getInstance();
+        await preferences.setBool('trainer_onboarding_completed_$userId', true);
+      }
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const TrainerProfileSetupScreen()),

@@ -58,7 +58,12 @@ def test_checkout_session_uses_auth_trainer_id(monkeypatch):
     auth_id = "auth-trainer-prod-001"
     body_id = "attacker-trainer-999"
 
-    app.dependency_overrides[get_current_user] = lambda: {"sub": auth_id, "role": "authenticated"}
+    app.dependency_overrides[get_current_user] = lambda: {
+        "sub": auth_id,
+        "role": "authenticated",
+        "aal": "aal2",
+        "profile": {"role": "trainer", "roles": ["trainer"]},
+    }
     try:
         client = TestClient(app)
         res = client.post("/api/v1/subscriptions/checkout-session", json={
@@ -126,7 +131,12 @@ def test_check_status_blocks_cross_trainer_access(monkeypatch):
     }
 
     # Treinador A tenta fazer polling da sessão do treinador B
-    app.dependency_overrides[get_current_user] = lambda: {"sub": "trainer-A-attacker", "role": "authenticated"}
+    app.dependency_overrides[get_current_user] = lambda: {
+        "sub": "trainer-A-attacker",
+        "role": "authenticated",
+        "aal": "aal2",
+        "profile": {"role": "trainer", "roles": ["trainer"]},
+    }
     try:
         client = TestClient(app)
         res = client.get(f"/api/v1/subscriptions/check-status/{nsu}")
@@ -159,7 +169,12 @@ def test_check_status_blocks_activation_without_full_metadata(monkeypatch):
         "status": "active",
     }
 
-    app.dependency_overrides[get_current_user] = lambda: {"sub": trainer_id, "role": "authenticated"}
+    app.dependency_overrides[get_current_user] = lambda: {
+        "sub": trainer_id,
+        "role": "authenticated",
+        "aal": "aal2",
+        "profile": {"role": "trainer", "roles": ["trainer"]},
+    }
     try:
         client = TestClient(app)
         res = client.get(f"/api/v1/subscriptions/check-status/{nsu}")
@@ -430,7 +445,12 @@ def test_checkout_session_fails_closed_in_production_if_persistence_fails(monkey
     from app.services.supabase_service import supabase_service
 
     monkeypatch.setattr(settings, "ENVIRONMENT", "production")
-    app.dependency_overrides[get_current_user] = lambda: {"sub": "tr-fail-closed-test", "role": "authenticated"}
+    app.dependency_overrides[get_current_user] = lambda: {
+        "sub": "tr-fail-closed-test",
+        "role": "authenticated",
+        "aal": "aal2",
+        "profile": {"role": "trainer", "roles": ["trainer"]},
+    }
 
     async def mock_save_fail(data):
         raise RuntimeError("Falha ao salvar sessão de checkout no Supabase.")

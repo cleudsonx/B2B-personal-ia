@@ -19,6 +19,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   bool _isYearly = false;
   List<PlanModel> _plans = [];
   MySubscriptionModel? _mySubscription;
+  String? _loadError;
 
   @override
   void initState() {
@@ -49,10 +50,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-    final allPlans = await SubscriptionService.getPlans();
-    final sub = await SubscriptionService.getMySubscription();
-    if (mounted) {
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
+    try {
+      final allPlans = await SubscriptionService.getPlans();
+      final sub = await SubscriptionService.refreshMySubscription();
+      if (!mounted) return;
       // Priorizar os 4 planos canônicos: Starter, Pro e Studio
       final targetIds = ['starter', 'pro', 'elite', 'studio'];
       final filteredPlans = <PlanModel>[];
@@ -69,6 +74,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       setState(() {
         _plans = filteredPlans.isNotEmpty ? filteredPlans : allPlans;
         _mySubscription = sub;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loadError = 'Não foi possível carregar sua assinatura.';
         _isLoading = false;
       });
     }
@@ -146,24 +157,27 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
     if (confirm == true && mounted) {
       setState(() => _isLoading = true);
-      final updated = await SubscriptionService.activatePlan(
-        planId: plan.id,
-        billingInterval: _isYearly ? 'yearly' : 'monthly',
-      );
-      if (mounted) {
-        setState(() {
-          _mySubscription = updated;
-          _isLoading = false;
-        });
+      try {
+        final updated = await SubscriptionService.activatePlan(
+          planId: plan.id,
+          billingInterval: _isYearly ? 'yearly' : 'monthly',
+        );
+        if (!mounted) return;
+        setState(() => _mySubscription = updated);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: MetaColors.surfaceHighlight,
-            content: Text(
-              '🎉 Plano ${plan.name} ativado com sucesso!',
-              style: const TextStyle(color: MetaColors.textPrimary),
-            ),
+            content: Text('Plano ${plan.name} ativado pelo servidor.'),
           ),
         );
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Não foi possível ativar o plano: $error')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
       }
     }
   }
@@ -173,34 +187,46 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder:
-          (ctx) => _CheckoutBottomSheet(
+      builder: (ctx) {
+        final sheetRoute = ModalRoute.of(ctx);
+        return _CheckoutBottomSheet(
             plan: plan,
             isYearly: _isYearly,
             onSuccess: () async {
-              Navigator.pop(ctx);
+              final navigator = Navigator.of(ctx);
+              if (sheetRoute != null) {
+                navigator.popUntil((route) => route == sheetRoute);
+              }
+              navigator.pop();
               setState(() => _isLoading = true);
-              final updated = await SubscriptionService.activatePlan(
-                planId: plan.id,
-                billingInterval: _isYearly ? 'yearly' : 'monthly',
-              );
-              if (mounted) {
-                setState(() {
-                  _mySubscription = updated;
-                  _isLoading = false;
-                });
+              try {
+                final updated =
+                    await SubscriptionService.refreshMySubscription();
+                if (updated.planId != plan.id) {
+                  throw StateError(
+                    'O pagamento foi confirmado, mas o plano ainda está sendo atualizado.',
+                  );
+                }
+                if (!mounted) return;
+                setState(() => _mySubscription = updated);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     backgroundColor: MetaColors.surfaceHighlight,
-                    content: Text(
-                      '🎉 Plano ${plan.name} ativado com sucesso!',
-                      style: const TextStyle(color: MetaColors.textPrimary),
-                    ),
+                    content: Text('Plano ${plan.name} confirmado pelo servidor.'),
                   ),
                 );
+              } catch (error) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(error.toString().replaceFirst('Bad state: ', ''))),
+                  );
+                }
+              } finally {
+                if (mounted) setState(() => _isLoading = false);
               }
             },
-          ),
+          );
+      },
     );
   }
 
@@ -259,6 +285,28 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   color: MetaColors.emerald,
                 ),
               )
+            : _loadError != null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _loadError!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: MetaColors.textSecondary),
+                          ),
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                            onPressed: _loadData,
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Tentar novamente'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
             : RefreshIndicator(
                 onRefresh: _loadData,
                 color: MetaColors.emerald,
@@ -808,8 +856,13 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
   bool _isLoading = false;
   bool _isSubmittingCard = false;
   bool _isPaid = false;
+  bool _isCheckingPayment = false;
+  bool _pollingExpired = false;
+  int _pollAttempts = 0;
   CheckoutSessionModel? _session;
+  String? _checkoutError;
   Timer? _pollingTimer;
+  static const int _maxPixPollAttempts = 100;
 
   // Controladores do Cartão
   final TextEditingController _cardNumberController = TextEditingController();
@@ -835,43 +888,89 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
 
   void _startPixPolling() {
     _pollingTimer?.cancel();
-    if (_session == null) return;
-
-    _pollingTimer = Timer.periodic(const Duration(milliseconds: 2500), (
-      timer,
-    ) async {
+    _pollAttempts = 0;
+    _pollingExpired = false;
+    if (_session == null || _paymentMethod != 'pix') return;
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
       if (!mounted || _isPaid) {
         timer.cancel();
         return;
       }
-      final paid = await SubscriptionService.checkPaymentStatus(
-        _session!.sessionId,
-      );
-      if (paid && mounted) {
+      if (_pollAttempts >= _maxPixPollAttempts) {
         timer.cancel();
-        setState(() => _isPaid = true);
-        HapticFeedback.heavyImpact();
-        _showSuccessNotification();
+        if (mounted) setState(() => _pollingExpired = true);
+        return;
       }
+      await _checkPaymentStatus();
     });
   }
 
+  Future<void> _checkPaymentStatus({bool manual = false}) async {
+    final session = _session;
+    if (session == null || _isCheckingPayment || _isPaid) return;
+    setState(() => _isCheckingPayment = true);
+    _pollAttempts++;
+    try {
+      final paid = await SubscriptionService.checkPaymentStatus(
+        session.sessionId,
+      );
+      if (!mounted) return;
+      if (paid) {
+        _pollingTimer?.cancel();
+        setState(() => _isPaid = true);
+        HapticFeedback.heavyImpact();
+        _showSuccessNotification();
+      } else if (manual) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('O banco ainda não confirmou o pagamento.')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCheckingPayment = false;
+          if (_pollAttempts >= _maxPixPollAttempts && !_isPaid) {
+            _pollingTimer?.cancel();
+            _pollingExpired = true;
+          }
+        });
+      }
+    }
+  }
+
   Future<void> _createSession() async {
-    setState(() => _isLoading = true);
-    final session = await SubscriptionService.createCheckoutSession(
-      planId: widget.plan.id,
-      billingInterval: widget.isYearly ? 'yearly' : 'monthly',
-      paymentMethod: _paymentMethod,
-      provider: 'asaas',
-    );
-    if (mounted) {
+    setState(() {
+      _isLoading = true;
+      _checkoutError = null;
+    });
+    try {
+      final session = await SubscriptionService.createCheckoutSession(
+        planId: widget.plan.id,
+        billingInterval: widget.isYearly ? 'yearly' : 'monthly',
+        paymentMethod: _paymentMethod,
+        provider: 'asaas',
+      );
+      if (session.sessionId.isEmpty ||
+          (_paymentMethod == 'pix' &&
+              (session.pixCopyPaste == null ||
+                  session.pixCopyPaste!.trim().isEmpty))) {
+        throw const FormatException('O provedor retornou dados de pagamento incompletos.');
+      }
+      if (!mounted) return;
       setState(() {
         _session = session;
         _isLoading = false;
       });
-      if (_paymentMethod == 'pix' || _paymentMethod == 'credit_card') {
+      if (_paymentMethod == 'pix') {
         _startPixPolling();
       }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _session = null;
+        _checkoutError = 'Não foi possível iniciar o pagamento. Tente novamente.';
+        _isLoading = false;
+      });
     }
   }
 
@@ -1129,7 +1228,37 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                       color: MetaColors.emerald,
                     ),
                   )
-                : SingleChildScrollView(
+                : _checkoutError != null
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                color: Colors.orange,
+                                size: 40,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                _checkoutError!,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: MetaColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              OutlinedButton.icon(
+                                onPressed: _createSession,
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Tentar novamente'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
                     padding: EdgeInsets.only(
                       left: 20,
@@ -1193,6 +1322,16 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
   Widget _buildPixContent() {
     final pixCode = _session?.pixCopyPaste ?? '';
 
+    if (pixCode.trim().isEmpty) {
+      return const Center(
+        child: Text(
+          'O provedor não retornou um código Pix. Nenhum pagamento foi iniciado.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: MetaColors.textSecondary),
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1235,9 +1374,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                   border: Border.all(color: MetaColors.border),
                 ),
                 child: Text(
-                  pixCode.isNotEmpty
-                      ? pixCode
-                      : '00020126580014br.gov.bcb.pix0136mrcoach-subscription-pix...',
+                    pixCode,
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -1253,14 +1390,10 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                 icon: Icons.account_balance_wallet_rounded,
                 isPrimary: true,
                 onPressed: () {
-                  final code = pixCode.isNotEmpty
-                      ? pixCode
-                      : '00020126580014br.gov.bcb.pix0136mrcoach-subscription-pix';
-                  Clipboard.setData(ClipboardData(text: code));
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => PixPaymentScreen(pixCode: code),
+                      builder: (_) => PixPaymentScreen(pixCode: pixCode),
                     ),
                   );
                 },
@@ -1269,27 +1402,52 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
           ),
         ),
         const SizedBox(height: 16),
-        const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: MetaColors.emerald,
+        if (_pollingExpired)
+          Column(
+            children: [
+              const Text(
+                'Ainda não recebemos a confirmação. Confira o pagamento no banco e tente verificar novamente.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: MetaColors.textSecondary, fontSize: 12),
               ),
-            ),
-            SizedBox(width: 8),
-            Text(
-              'Aguardando confirmação do banco...',
-              style: TextStyle(
-                color: MetaColors.textSecondary,
-                fontSize: 12,
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: _isCheckingPayment
+                    ? null
+                    : () => _checkPaymentStatus(manual: true),
+                icon: _isCheckingPayment
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh),
+                label: const Text('Verificar pagamento'),
               ),
-            ),
-          ],
-        ),
+            ],
+          )
+        else
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: MetaColors.emerald,
+                ),
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Aguardando confirmação do banco...',
+                style: TextStyle(
+                  color: MetaColors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
       ],
     );
   }

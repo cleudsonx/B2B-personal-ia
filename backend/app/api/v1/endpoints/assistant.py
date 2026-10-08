@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from app.schemas.assistant import AssistantChatRequest, AssistantChatResponse
 from app.services.gemini_service import gemini_service
 from app.services.supabase_service import supabase_service
-from app.api.deps import get_current_user
+from app.api.deps import get_current_trainer
 import logging
 
 logger = logging.getLogger(__name__)
@@ -14,7 +14,7 @@ router = APIRouter()
 @router.post("/chat", response_model=AssistantChatResponse, summary="Conversar com o Assistente B2B Gemini")
 async def chat_with_assistant(
     request: AssistantChatRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: Dict[str, Any] = Depends(get_current_trainer),
 ):
     """
     Endpoint para consultoria e assistência B2B a personais trainers.
@@ -56,7 +56,7 @@ async def chat_with_assistant(
 @router.post("/generate", response_model=AssistantChatResponse, summary="Compatibilidade com gateway de geração")
 async def generate_text(
     request: AssistantChatRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: Dict[str, Any] = Depends(get_current_trainer),
 ):
     """Alias para compatibilidade direta com rotas /api/generate."""
     return await chat_with_assistant(request, current_user)

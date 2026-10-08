@@ -86,7 +86,7 @@ async def get_public_trainer_profile(username: str):
     try:
         # 1. Tenta buscar pelo username (case-insensitive para máxima usabilidade de URLs)
         response = await client.table("profiles")\
-            .select("id, full_name, bio, specialties, public_whatsapp, photo_url, avatar_url, username, role, professional_document")\
+            .select("id, full_name, bio, specialties, public_whatsapp, photo_url, avatar_url, username, role, professional_document, public_directory_enabled")\
             .ilike("username", clean_user)\
             .eq("role", "trainer")\
             .maybe_single()\
@@ -95,7 +95,7 @@ async def get_public_trainer_profile(username: str):
         # 2. Fallback: Se não achou por username, tenta por ID (apenas se for UUID válido)
         if (not response or not response.data) and is_valid_uuid(clean_user):
             response = await client.table("profiles")\
-                .select("id, full_name, bio, specialties, public_whatsapp, photo_url, avatar_url, username, role, professional_document")\
+                .select("id, full_name, bio, specialties, public_whatsapp, photo_url, avatar_url, username, role, professional_document, public_directory_enabled")\
                 .eq("id", clean_user)\
                 .eq("role", "trainer")\
                 .maybe_single()\
@@ -107,6 +107,13 @@ async def get_public_trainer_profile(username: str):
         data = response.data
         if data.get("role") != "trainer":
             raise HTTPException(status_code=403, detail="Perfil não é de um treinador.")
+
+        if (
+            not data.get("public_directory_enabled")
+            or not (data.get("username") or "").strip()
+            or not (data.get("bio") or "").strip()
+        ):
+            raise HTTPException(status_code=404, detail="Treinador não encontrado.")
 
         # Trava de CREF
         doc_val = data.get("professional_document") or ""

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../services/invite_service.dart';
-import 'invite_success_screen.dart';
+import '../auth/register_screen.dart';
 
 class InviteLandingScreen extends StatefulWidget {
   final String trainerSlug;
@@ -21,6 +21,7 @@ class InviteLandingScreen extends StatefulWidget {
 class _InviteLandingScreenState extends State<InviteLandingScreen> {
   
   bool _isLoading = true;
+  bool _hasValidationError = false;
   String _trainerName = 'Carregando...';
   String? _targetEmail;
   String? _targetPhone;
@@ -32,6 +33,12 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
   }
 
   Future<void> _fetchTrainerData() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _hasValidationError = false;
+      });
+    }
     try {
       final res = await InviteService.validateInvite(widget.token);
       if (mounted) {
@@ -39,6 +46,7 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
           _trainerName = res['trainer_name'] ?? 'Seu Personal Trainer';
           _targetEmail = res['target_email'];
           _targetPhone = res['target_phone'];
+          _hasValidationError = false;
           _isLoading = false;
         });
       }
@@ -47,17 +55,9 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
         // Se der erro, mostra erro e esconde botão
         setState(() {
           _trainerName = 'Convite inválido ou expirado';
+          _hasValidationError = true;
           _isLoading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Colors.red.shade900,
-            content: const Text(
-              'Este convite não é mais válido.',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ),
-        );
       }
     }
   }
@@ -65,21 +65,21 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
   bool _isConsuming = false;
 
   Future<void> _acceptInvite() async {
-    if (_trainerName == 'Convite inválido ou expirado') return;
+    if (_hasValidationError) return;
     if (_isConsuming) return;
     setState(() => _isConsuming = true);
 
     try {
-      // Agora não consumimos aqui! Apenas avançamos.
       if (mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => InviteSuccessScreen(
-              trainerName: _trainerName,
-              targetEmail: _targetEmail,
-              targetPhone: _targetPhone,
+            builder: (_) => RegisterScreen(
+              initialRole: 'client',
+              initialEmail: _targetEmail,
+              initialPhone: _targetPhone,
               inviteToken: widget.token,
+              trainerName: _trainerName,
             ),
           ),
         );
@@ -173,9 +173,13 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
                     const SizedBox(height: 24),
 
                     // Título e subtítulo
-                    const MetaSectionTitle(
-                      title: 'Seu Convite Chegou!',
-                      subtitle: 'Você recebeu acesso exclusivo a uma rotina de treinos de alta performance.',
+                    MetaSectionTitle(
+                      title: _hasValidationError
+                          ? 'Este convite não está disponível'
+                          : 'Seu convite chegou',
+                      subtitle: _hasValidationError
+                          ? 'O link pode ter expirado ou já ter sido usado. Tente validar novamente ou peça um novo convite ao treinador.'
+                          : 'Confirme o convite do seu treinador para criar sua conta e preparar seu plano de treino.',
                       textAlign: TextAlign.center,
                       crossAxisAlignment: CrossAxisAlignment.center,
                     ),
@@ -189,7 +193,24 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
                           valueColor: AlwaysStoppedAnimation<Color>(MetaColors.emerald),
                         ),
                       )
-                    else ...[
+                    else if (_hasValidationError) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: SquircleButton(
+                          label: 'Tentar novamente',
+                          icon: Icons.refresh_rounded,
+                          isPrimary: true,
+                          onPressed: _fetchTrainerData,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton.icon(
+                        onPressed: () => Navigator.maybePop(context),
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        label: const Text('Voltar'),
+                      ),
+                    ] else ...[
                       // Card do Personal
                       MetaCard(
                         backgroundColor: MetaColors.surfaceHighlight,
@@ -256,20 +277,20 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
                       // Diferenciais do convite
                       _buildBenefitItem(
                         icon: Icons.tune_rounded,
-                        title: 'Periodização Científica',
-                        description: 'Treinos planejados com Inteligência Artificial baseada nos seus objetivos.',
+                        title: 'Plano alinhado ao seu objetivo',
+                        description: 'Seu treinador prepara uma rotina considerando sua avaliação inicial.',
                       ),
                       const SizedBox(height: 12),
                       _buildBenefitItem(
                         icon: Icons.speed_rounded,
-                        title: 'Acompanhamento de Cargas',
-                        description: 'Monitore evolução, séries e tempo de descanso na ponta dos dedos.',
+                        title: 'Acompanhamento de evolução',
+                        description: 'Veja suas sessões, cargas e orientações em um só lugar.',
                       ),
                       const SizedBox(height: 12),
                       _buildBenefitItem(
                         icon: Icons.swap_calls_rounded,
-                        title: 'Substituição Inteligente',
-                        description: 'Aparelho ocupado na academia? Troque por outro equivalente com um toque.',
+                        title: 'Treino adaptável',
+                        description: 'Ajuste o exercício quando precisar e mantenha sua rotina em movimento.',
                       ),
                       const SizedBox(height: 32),
 
@@ -277,7 +298,7 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: SquircleButton(
-                          label: _isConsuming ? 'Validando...' : 'Aceitar Convite e Começar',
+                          label: _isConsuming ? 'Abrindo cadastro...' : 'Aceitar convite',
                           icon: _isConsuming ? Icons.hourglass_top_rounded : Icons.check_circle_outline,
                           isPrimary: true,
                           onPressed: _isConsuming ? () {} : _acceptInvite,

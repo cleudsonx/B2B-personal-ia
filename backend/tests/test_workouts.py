@@ -168,32 +168,71 @@ def test_student_update_archive_and_delete():
 
 
 def test_biomechanical_alert_flow():
-    # 1. Aluno registra alerta de dor articular no salão
-    alert_res = client.post("/api/v1/workouts/adaptations/alert", json={
-        "student_id": "st-1",
-        "student_name": "Rodrigo Silveira",
-        "trainer_id": "current-trainer",
-        "original_exercise": "Supino Reto com Barra",
-        "adapted_exercise": "Supino Máquina",
-        "reason": "Desconforto ou Dor Articular",
-        "pain_location": "Ombro Anterior",
-        "severity": "Moderada"
-    })
-    assert alert_res.status_code == 201
-    alert_data = alert_res.json()
-    alert_id = alert_data["id"]
-    assert alert_data["acknowledged"] is False
+    from app.api.deps import get_current_user
+    from app.services.supabase_service import to_valid_uuid_str
 
-    # 2. Treinador lista alertas
-    list_res = client.get("/api/v1/workouts/trainer/current-trainer/alerts")
-    assert list_res.status_code == 200
-    alerts = list_res.json()
-    assert any(a["id"] == alert_id for a in alerts)
+    app.dependency_overrides[get_current_user] = lambda: {
+        "sub": "st-1",
+        "aal": "aal2",
+        "profile": {
+            "role": "client",
+            "roles": ["client", "trainer"],
+            "trainer_id": "current-trainer",
+        },
+    }
+    try:
+        # 1. Rejeita tentativa de registrar alerta em nome de outro aluno.
+        forged_res = client.post("/api/v1/workouts/adaptations/alert", json={
+            "student_id": "other-student",
+            "student_name": "Rodrigo Silveira",
+            "trainer_id": "attacker-trainer",
+            "original_exercise": "Supino Reto com Barra",
+            "adapted_exercise": "Supino Máquina",
+            "reason": "Desconforto ou Dor Articular",
+        })
+        assert forged_res.status_code == 403
 
-    # 3. Treinador marca como ciente
-    ack_res = client.patch(f"/api/v1/workouts/alerts/{alert_id}/acknowledge")
-    assert ack_res.status_code == 200
-    assert ack_res.json()["acknowledged"] is True
+        # 2. Aluno registra alerta; o treinador é derivado do perfil, não do corpo.
+        alert_res = client.post("/api/v1/workouts/adaptations/alert", json={
+            "student_id": "st-1",
+            "student_name": "Rodrigo Silveira",
+            "trainer_id": "attacker-trainer",
+            "original_exercise": "Supino Reto com Barra",
+            "adapted_exercise": "Supino Máquina",
+            "reason": "Desconforto ou Dor Articular",
+            "pain_location": "Ombro Anterior",
+            "severity": "Moderada"
+        })
+        assert alert_res.status_code == 201
+        alert_data = alert_res.json()
+        alert_id = alert_data["id"]
+        assert alert_data["trainer_id"] == to_valid_uuid_str("current-trainer")
+        assert alert_data["acknowledged"] is False
+
+        app.dependency_overrides[get_current_user] = lambda: {
+            "sub": "current-trainer",
+            "aal": "aal2",
+            "profile": {"role": "trainer", "roles": ["trainer", "client"]},
+        }
+
+        # 3. Treinador não acessa alertas de outro treinador.
+        denied_list = client.get("/api/v1/workouts/trainer/attacker-trainer/alerts")
+        assert denied_list.status_code == 403
+
+        denied_ack = client.patch("/api/v1/workouts/alerts/not-owned-alert/acknowledge")
+        assert denied_ack.status_code == 404
+
+        # 4. Treinador lista e confirma seus alertas
+        list_res = client.get("/api/v1/workouts/trainer/current-trainer/alerts")
+        assert list_res.status_code == 200
+        alerts = list_res.json()
+        assert any(a["id"] == alert_id for a in alerts)
+
+        ack_res = client.patch(f"/api/v1/workouts/alerts/{alert_id}/acknowledge")
+        assert ack_res.status_code == 200
+        assert ack_res.json()["acknowledged"] is True
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
 
 
 def test_student_invitation_flow(monkeypatch):

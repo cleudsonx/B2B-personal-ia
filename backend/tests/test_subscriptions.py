@@ -343,7 +343,12 @@ async def test_ai_generation_limit_enforcement_on_starter_plan():
 
     # 4. Tenta invocar o endpoint /generate-plan com esse treinador
     client = TestClient(app)
-    app.dependency_overrides[get_current_user] = lambda: {"sub": test_trainer_id, "role": "trainer"}
+    app.dependency_overrides[get_current_user] = lambda: {
+        "sub": test_trainer_id,
+        "role": "authenticated",
+        "aal": "aal2",
+        "profile": {"role": "trainer", "roles": ["trainer"]},
+    }
     try:
         res = client.post("/api/v1/workouts/generate-plan", json={
             "objective": "Hipertrofia",
@@ -528,7 +533,12 @@ def test_production_activate_plan_blocks_unpaid_tiers(monkeypatch):
 
     # Se injetarmos usuário autenticado válido em produção, plano pro ainda deve ser bloqueado com 400
     from app.api.deps import get_current_user
-    app.dependency_overrides[get_current_user] = lambda: {"sub": "tr-prod-authenticated-1", "role": "authenticated"}
+    app.dependency_overrides[get_current_user] = lambda: {
+        "sub": "tr-prod-authenticated-1",
+        "role": "authenticated",
+        "aal": "aal2",
+        "profile": {"role": "trainer", "roles": ["trainer"]},
+    }
     try:
         res_blocked = client.post(
             "/api/v1/subscriptions/activate-plan",
@@ -567,7 +577,12 @@ def test_production_process_card_requires_asaas_confirmation(monkeypatch):
     monkeypatch.setattr(settings, "ENVIRONMENT", "production")
     client = TestClient(app)
 
-    app.dependency_overrides[get_current_user] = lambda: {"sub": "tr-card-tester-1", "role": "authenticated"}
+    app.dependency_overrides[get_current_user] = lambda: {
+        "sub": "tr-card-tester-1",
+        "role": "authenticated",
+        "aal": "aal2",
+        "profile": {"role": "trainer", "roles": ["trainer"]},
+    }
     try:
         # Em conformidade com PCI DSS, /process-card está desativado (410 Gone)
         res = client.post("/api/v1/subscriptions/process-card", json={
@@ -616,7 +631,9 @@ def test_in_app_card_tokenization_and_subscription_activation():
         "sub": trainer_test_id,
         "email": "inapp_trainer@sheipados.com",
         "name": "Treinador In-App",
-        "role": "authenticated"
+        "role": "authenticated",
+        "aal": "aal2",
+        "profile": {"role": "trainer", "roles": ["trainer"]},
     }
     try:
         # 1. Requisição com dados de cartão válidos para plano Pro anual

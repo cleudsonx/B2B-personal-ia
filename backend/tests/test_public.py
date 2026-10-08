@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-from app.api.v1.endpoints.public import list_public_trainers
+from app.api.v1.endpoints.public import get_public_trainer_profile, list_public_trainers
 
 
 @pytest.mark.asyncio
@@ -67,3 +67,36 @@ async def test_public_trainer_directory_only_returns_complete_public_profiles():
 async def test_public_trainer_directory_caps_requested_limit():
     with pytest.raises(HTTPException):
         await list_public_trainers(limit=51)
+
+
+@pytest.mark.asyncio
+async def test_unpublished_trainer_profile_is_not_public_by_direct_url():
+    query = MagicMock()
+    query.select.return_value = query
+    query.ilike.return_value = query
+    query.eq.return_value = query
+    query.maybe_single.return_value = query
+    query.execute = AsyncMock(
+        return_value=SimpleNamespace(
+            data={
+                "id": "trainer-2",
+                "role": "trainer",
+                "full_name": "Sem vitrine",
+                "username": "sem-vitrine",
+                "bio": "Perfil ainda não publicado.",
+                "professional_document": "CREF 98765-G/SP",
+                "public_directory_enabled": False,
+            }
+        )
+    )
+    client = MagicMock()
+    client.table.return_value = query
+
+    with patch(
+        "app.api.v1.endpoints.public.supabase_service.get_client",
+        new=AsyncMock(return_value=client),
+    ):
+        with pytest.raises(HTTPException) as error:
+            await get_public_trainer_profile("sem-vitrine")
+
+    assert error.value.status_code == 404

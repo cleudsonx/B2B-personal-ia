@@ -138,6 +138,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                 : AiPrompts.expertTrainerPersona,
         model: _selectedModelId,
       );
+      if (!mounted) return;
       final replyExercise = detectedExercise ?? _detectExerciseInText(reply);
 
       setState(() {
@@ -150,10 +151,12 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
         );
       });
     } catch (e) {
+      if (!mounted) return;
+      debugPrint('Falha ao consultar assistente: $e');
       setState(() {
         _messages.add(
           _ChatMessage(
-            text: 'Falha ao consultar assistente: $e',
+            text: 'Não foi possível falar com o assistente. Verifique sua conexão e tente novamente.',
             isUser: false,
             isError: true,
           ),
@@ -204,37 +207,39 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
           ],
         ),
         actions: [
-          PopupMenuButton<String>(
-            icon: Icon(
-              _selectedModelId.contains('pro') ? Icons.psychology : Icons.bolt,
-              color: accentColor,
+          if (!widget.isStudentView)
+            PopupMenuButton<String>(
+              icon: Icon(
+                _selectedModelId.contains('pro')
+                    ? Icons.psychology
+                    : Icons.bolt,
+                color: accentColor,
+              ),
+              tooltip: 'Selecionar Modelo de IA',
+              onSelected: (val) => setState(() => _selectedModelId = val),
+              itemBuilder: (ctx) => [
+                const PopupMenuItem(
+                  value: 'gemini-3.1-pro-preview',
+                  child: Row(
+                    children: [
+                      Icon(Icons.psychology, size: 18),
+                      SizedBox(width: 8),
+                      Text('Gemini 3.1 Pro (Deep Thinking)'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'gemini-2.5-flash',
+                  child: Row(
+                    children: [
+                      Icon(Icons.bolt, size: 18),
+                      SizedBox(width: 8),
+                      Text('Gemini 2.5 Flash (Fast)'),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            tooltip: 'Selecionar Modelo de IA',
-            onSelected: (val) => setState(() => _selectedModelId = val),
-            itemBuilder:
-                (ctx) => [
-                  const PopupMenuItem(
-                    value: 'gemini-3.1-pro-preview',
-                    child: Row(
-                      children: [
-                        Icon(Icons.psychology, size: 18),
-                        SizedBox(width: 8),
-                        Text('Gemini 3.1 Pro (Deep Thinking)'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'gemini-2.5-flash',
-                    child: Row(
-                      children: [
-                        Icon(Icons.bolt, size: 18),
-                        SizedBox(width: 8),
-                        Text('Gemini 2.5 Flash (Fast)'),
-                      ],
-                    ),
-                  ),
-                ],
-          ),
           if (kDebugMode)
             IconButton(
               icon: const Icon(Icons.settings_ethernet_rounded),
@@ -559,7 +564,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                               ),
                             ),
                           ],
-                          if (msg.isError) ...[
+                          if (msg.isError && kDebugMode) ...[
                             const SizedBox(height: 8),
                             InkWell(
                               onTap: () => ServerConfigDialog.show(context),

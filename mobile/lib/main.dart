@@ -11,10 +11,13 @@ import 'core/theme/app_theme.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
 import 'features/auth/auth_gate.dart';
+import 'features/auth/account_screen.dart';
+import 'features/auth/auth_gate.dart';
 import 'features/client/active_workout_screen.dart';
 import 'features/client/student_demo_screen.dart';
 import 'features/trainer/anamnesis_screen.dart';
 import 'features/trainer/trainer_students_screen.dart';
+import 'features/trainer/presentation/screens/trainer_profile_setup_screen.dart';
 import 'features/trainer/presentation/screens/trainer_main_layout.dart';
 import 'features/assistant/b2b_assistant_screen.dart';
 import 'features/subscription/subscription_screen.dart';
@@ -50,6 +53,68 @@ Future<void> main() async {
 class B2BPersonalIaApp extends StatelessWidget {
   const B2BPersonalIaApp({super.key});
 
+  Widget _homeScreen() {
+    if (kIsWeb) {
+      final host = Uri.base.host;
+      if (host.contains('mrcoach')) return const B2BLandingScreen();
+      if (host.contains('app') || host.contains('localhost')) {
+        return const AuthGate();
+      }
+      return const ShaipadosStudioScreen();
+    }
+    return const AuthGate();
+  }
+
+  Route<dynamic> _routeFor(RouteSettings settings) {
+    final name = settings.name ?? '/';
+    final uri = Uri.parse(name);
+    final segments = uri.pathSegments;
+    final WidgetBuilder builder;
+
+    if (segments.length >= 3 && segments[0] == 'convite') {
+      builder = (_) => InviteLandingScreen(
+            trainerSlug: segments[1],
+            token: segments[2],
+          );
+    } else if (segments.length == 2 && segments[0] == 'invite') {
+      builder = (_) => InviteLandingScreen(
+            trainerSlug: '',
+            token: segments[1],
+          );
+    } else if (segments.length >= 2 && segments[0] == 'prof') {
+      builder = (_) => TrainerPublicLandingScreen(username: segments[1]);
+    } else if (uri.path == '/prof') {
+      builder = (_) => const PublicTrainerDirectoryScreen();
+    } else {
+      switch (uri.path) {
+        case '/':
+          builder = (_) => _homeScreen();
+        case '/home':
+          builder = (_) => const AuthGate();
+        case '/b2b':
+          builder = (_) => const B2BLandingScreen();
+        case '/ai':
+          builder = (_) => const AiNewsScreen();
+        case '/demo':
+          builder = (_) => const StudentDemoScreen();
+        case '/trainer':
+          builder = (_) => const TrainerMainLayout();
+        case '/trainer_profile_setup':
+          builder = (_) => const TrainerProfileSetupScreen();
+        case '/login':
+          builder = (_) => const LoginScreen();
+        case '/register':
+          builder = (_) => const RegisterScreen();
+        case '/subscription':
+          builder = (_) => const SubscriptionScreen();
+        default:
+          builder = (_) => _homeScreen();
+      }
+    }
+
+    return MaterialPageRoute<dynamic>(settings: settings, builder: builder);
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -69,75 +134,11 @@ class B2BPersonalIaApp extends StatelessWidget {
               PointerDeviceKind.trackpad,
             },
           ),
-          onGenerateRoute: (settings) {
-            final name = settings.name;
-            if (name != null) {
-              final uri = Uri.parse(name);
-              if (uri.pathSegments.length >= 3 &&
-                  uri.pathSegments[0] == 'convite') {
-                return MaterialPageRoute(
-                  builder:
-                      (_) => InviteLandingScreen(
-                        trainerSlug: uri.pathSegments[1],
-                        token: uri.pathSegments[2],
-                      ),
-                );
-              }
-              if (uri.pathSegments.length == 2 &&
-                  uri.pathSegments[0] == 'invite') {
-                return MaterialPageRoute(
-                  builder: (_) => InviteLandingScreen(
-                    trainerSlug: '',
-                    token: uri.pathSegments[1],
-                  ),
-                );
-              }
-              if (uri.pathSegments.isNotEmpty &&
-                  uri.pathSegments[0] == 'prof' &&
-                  uri.pathSegments.length >= 2) {
-                return MaterialPageRoute(
-                  builder: (_) => TrainerPublicLandingScreen(username: uri.pathSegments[1]),
-                );
-              }
-              if (uri.pathSegments.length == 1 && uri.pathSegments[0] == 'prof') {
-                return MaterialPageRoute(
-                  builder: (_) => const PublicTrainerDirectoryScreen(),
-                );
-              }
-              if (name == '/' || name == '/home') {
-                return MaterialPageRoute(
-                  builder: (_) => const AuthGate(),
-                );
-              }
-            }
-            return null; // Fallback to 'home'
-          },
-          routes: {
-            '/home': (context) => const AuthGate(),
-            '/b2b': (context) => const B2BLandingScreen(),
-            '/ai': (context) => const AiNewsScreen(),
-            '/demo': (context) => const StudentDemoScreen(),
-            '/trainer': (context) => const TrainerMainLayout(),
-            '/login': (context) => const LoginScreen(),
-        '/register': (context) => const RegisterScreen(),
-            '/subscription': (context) => const SubscriptionScreen(),
-          },
-          home: Builder(
-            builder: (context) {
-              if (kIsWeb) {
-                final host = Uri.base.host;
-                if (host.contains('mrcoach')) {
-                  return const B2BLandingScreen();
-                } else if (host.contains('app') || host.contains('localhost')) {
-                  return const AuthGate();
-                } else {
-                  return const ShaipadosStudioScreen();
-                }
-              }
-              // Fallback for native apps
-              return const AuthGate();
-            },
-          ),
+          onGenerateRoute: _routeFor,
+          onGenerateInitialRoutes: (initialRouteName) => [
+            _routeFor(RouteSettings(name: initialRouteName)),
+          ],
+          home: _homeScreen(),
         );
       },
     );
@@ -162,14 +163,16 @@ class MainShellScreen extends StatefulWidget {
 
 class _MainShellScreenState extends State<MainShellScreen> {
   late int _currentIndex;
+  late String _activeRole;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    _activeRole = widget.activeRole;
   }
 
-  bool get _isTrainer => widget.activeRole == 'trainer';
+  bool get _isTrainer => _activeRole == 'trainer';
 
   List<Widget> _buildScreens() {
     if (_isTrainer) {
@@ -183,11 +186,21 @@ class _MainShellScreenState extends State<MainShellScreen> {
         const B2BAssistantScreen(isStudentView: false),
         const SubscriptionScreen(),
         const ActiveWorkoutScreen(), // Simulated student view
+        AccountScreen(
+          currentRole: _activeRole,
+          onRoleSelected: _switchRole,
+          onSignOut: _signOut,
+        ),
       ];
     } else {
-      return const [
+      return [
         ActiveWorkoutScreen(),
         B2BAssistantScreen(isStudentView: true),
+        AccountScreen(
+          currentRole: _activeRole,
+          onRoleSelected: _switchRole,
+          onSignOut: _signOut,
+        ),
       ];
     }
   }
@@ -225,6 +238,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
           label: 'Treino Presencial',
           activeColor: AppColors.studentCyan,
         ),
+        _NavDestinationItem(
+          icon: Icons.manage_accounts_outlined,
+          activeIcon: Icons.manage_accounts,
+          label: 'Conta',
+          activeColor: AppColors.studentAmber,
+        ),
       ];
     } else {
       return const [
@@ -240,76 +259,45 @@ class _MainShellScreenState extends State<MainShellScreen> {
           label: 'Mr. Coach AI',
           activeColor: AppColors.studentCyan,
         ),
+        _NavDestinationItem(
+          icon: Icons.manage_accounts_outlined,
+          activeIcon: Icons.manage_accounts,
+          label: 'Conta',
+          activeColor: AppColors.studentAmber,
+        ),
       ];
     }
   }
 
-  Future<void> _logout() async {
-    final shouldLogout = await showDialog<bool>(
-      context: context,
-      builder:
-          (ctx) => AlertDialog(
-            backgroundColor: AppColors.trainerSurface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-              side: const BorderSide(color: AppColors.trainerBorder),
-            ),
-            title: const Row(
-              children: [
-                Icon(Icons.logout_rounded, color: AppColors.studentAmber),
-                SizedBox(width: 8),
-                Text(
-                  'Trocar Perfil / Sair',
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 18),
-                ),
-              ],
-            ),
-            content: Text(
-              'Deseja sair da conta de ${widget.userName} e voltar para a tela de autenticaÃƒÂ§ÃƒÂ£o?',
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text(
-                  'Cancelar',
-                  style: TextStyle(color: AppColors.textMuted),
-                ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.studentAmber,
-                  foregroundColor: Colors.black,
-                ),
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text(
-                  'Sair e Trocar',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-    );
+  void _openAccount() {
+    setState(() => _currentIndex = _buildScreens().length - 1);
+  }
 
-    if (shouldLogout == true && mounted) {
-      await AuthService.signOut();
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (_) => LoginScreen(initialRole: widget.activeRole),
-          ),
-          (route) => false,
-        );
-      }
-    }
+  Future<void> _switchRole(String role) async {
+    if (role == _activeRole) return;
+    await AuthService.setActiveRole(role);
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const AuthGate(skipBiometric: true)),
+      (_) => false,
+    );
+  }
+
+  Future<void> _signOut(bool allDevices) async {
+    await AuthService.signOut(allDevices: allDevices);
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => LoginScreen(initialRole: _activeRole)),
+      (route) => false,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isTrainer) return const TrainerMainLayout();
+
     final screens = _buildScreens();
     final navItems = _buildNavItems();
 
@@ -653,12 +641,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
                         ),
                         IconButton(
                           icon: Icon(
-                            Icons.logout_rounded,
+                            Icons.person_outline_rounded,
                             size: 18,
                             color: AppColors.subtext(context),
                           ),
-                          tooltip: 'Sair / Trocar Perfil',
-                          onPressed: _logout,
+                          tooltip: 'Conta',
+                          onPressed: _openAccount,
                         ),
                       ],
                     ),
@@ -827,18 +815,18 @@ class _MainShellScreenState extends State<MainShellScreen> {
                           visualDensity: VisualDensity.compact,
                         ),
                         icon: Icon(
-                          Icons.logout_rounded,
+                          Icons.person_outline_rounded,
                           size: 14,
                           color: AppColors.subtext(context),
                         ),
                         label: Text(
-                          'Sair',
+                          'Conta',
                           style: TextStyle(
                             color: AppColors.subtext(context),
                             fontSize: 11,
                           ),
                         ),
-                        onPressed: _logout,
+                        onPressed: _openAccount,
                       ),
                     ],
                   ),

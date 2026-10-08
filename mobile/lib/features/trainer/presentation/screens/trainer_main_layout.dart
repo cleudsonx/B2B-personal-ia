@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/widgets/meta_components.dart';
+import '../../../../services/auth_service.dart';
+import '../../../auth/auth_gate.dart';
+import '../../../auth/account_screen.dart';
+import '../../../auth/login_screen.dart';
 import '../../trainer_students_screen.dart';
 import 'trainer_workouts_screen.dart';
 import 'trainer_social_screen.dart';
@@ -44,18 +48,44 @@ class _TrainerMainLayoutState extends State<TrainerMainLayout> {
     }
   }
 
-  List<Widget> get _screens =>
-      widget.screens ??
-      const [
+  List<Widget> _buildScreens() => [
+        ...(widget.screens ?? [
         TrainerStudentsScreen(),
         TrainerWorkoutsScreen(),
         TrainerSocialScreen(),
         TrainerBusinessScreen(),
+        ]),
+        AccountScreen(
+          currentRole: 'trainer',
+          onRoleSelected: _switchRole,
+          onSignOut: _signOut,
+        ),
       ];
+
+  Future<void> _switchRole(String role) async {
+    if (role == 'trainer') return;
+    await AuthService.setActiveRole(role);
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const AuthGate(skipBiometric: true)),
+      (_) => false,
+      ),
+  }
+
+  Future<void> _signOut(bool allDevices) async {
+    await AuthService.signOut(allDevices: allDevices);
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen(initialRole: 'trainer')),
+      (_) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final screens = _screens;
+    final screens = _buildScreens();
     final activeIndex = _currentIndex.clamp(0, screens.length - 1);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -130,6 +160,11 @@ class _TrainerMainLayoutState extends State<TrainerMainLayout> {
                 icon: Icon(Icons.store_outlined),
                 selectedIcon: Icon(Icons.store),
                 label: 'Vitrine',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.manage_accounts_outlined),
+                selectedIcon: Icon(Icons.manage_accounts),
+                label: 'Conta',
               ),
             ],
           ),

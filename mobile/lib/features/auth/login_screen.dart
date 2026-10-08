@@ -6,9 +6,9 @@ import 'package:local_auth/local_auth.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/server_config_dialog.dart';
 import '../../services/auth_service.dart';
-import '../../main.dart';
+import 'auth_gate.dart';
 import '../client/welcome_onboarding_screen.dart';
-import '../trainer/presentation/screens/trainer_main_layout.dart';
+import 'teacher_mfa_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -77,42 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailCtrl.text.trim(),
         password: _passwordCtrl.text.trim(),
       );
-      final profile = await AuthService.getCurrentProfile();
-        final accountRole = profile?['role'] as String?;
-      final role = switch (accountRole) {
-        'trainer' => 'trainer',
-        'client' => 'client',
-        _ => _selectedRole,
-      };
-      final user = AuthService.currentUser;
-      final userName =
-          (profile?['full_name'] as String?)?.isNotEmpty == true
-              ? profile!['full_name'] as String
-              : (user?.userMetadata?['full_name'] as String?)?.isNotEmpty ==
-                  true
-              ? user!.userMetadata!['full_name'] as String
-                : (role == 'trainer'
-                  ? 'Personal Trainer'
-                  : 'Aluno no Salão');
-
-      final hasCompletedAnamnesis = profile?['has_completed_anamnesis'] == true;
-
-      if (mounted) {
-        if (role == 'client' && !hasCompletedAnamnesis) {
-          final trainer = await AuthService.getTrainerForStudent();
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => WelcomeOnboardingScreen(
-                studentName: userName,
-                trainerName: trainer?['full_name'] as String?,
-              ),
-            ),
-          );
-        } else {
-          _navigateToDashboard(role: role, name: userName);
-        }
-      }
+      await _continueAfterAuthentication();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -124,6 +89,59 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _continueAfterAuthentication() async {
+    var profile = await AuthService.getCurrentProfile();
+    await AuthService.completePendingInvite();
+    profile = await AuthService.getCurrentProfile();
+    final roles = AuthService.availableRoles(profile);
+    if (!roles.contains(_selectedRole)) {
+      throw StateError('Esta conta não possui acesso ao perfil selecionado.');
+    }
+    await AuthService.setActiveRole(_selectedRole);
+    if (roles.contains('trainer') &&
+        !await AuthService.isCurrentSessionAal2()) {
+      if (!mounted) return;
+      final verified = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(builder: (_) => const TeacherMfaScreen()),
+      );
+      if (verified != true) {
+        await AuthService.signOut();
+        return;
+      }
+      if (!mounted) return;
+    }
+
+    profile = await AuthService.getCurrentProfile();
+    final role = _selectedRole;
+    final user = AuthService.currentUser;
+    final userName = (profile?['full_name'] as String?)?.isNotEmpty == true
+        ? profile!['full_name'] as String
+        : (user?.userMetadata?['full_name'] as String?)?.isNotEmpty == true
+            ? user!.userMetadata!['full_name'] as String
+            : role == 'trainer'
+                ? 'Personal Trainer'
+                : 'Aluno no Salão';
+    final hasCompletedAnamnesis = profile?['has_completed_anamnesis'] == true;
+
+    if (!mounted) return;
+    if (role == 'client' && !hasCompletedAnamnesis) {
+      final trainer = await AuthService.getTrainerForStudent();
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => WelcomeOnboardingScreen(
+            studentName: userName,
+            trainerName: trainer?['full_name'] as String?,
+          ),
+        ),
+      );
+    } else {
+      _navigateToDashboard();
     }
   }
 
@@ -154,38 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (didAuthenticate && mounted) {
         final user = AuthService.currentUser;
         if (user != null) {
-          final profile = await AuthService.getCurrentProfile();
-            final accountRole = profile?['role'] as String?;
-          final role = switch (accountRole) {
-            'trainer' => 'trainer',
-            'client' => 'client',
-            _ => _selectedRole,
-          };
-          final userName =
-              (profile?['full_name'] as String?)?.isNotEmpty == true
-                  ? profile!['full_name'] as String
-                  : (user.userMetadata?['full_name'] as String?)?.isNotEmpty ==
-                      true
-                  ? user.userMetadata!['full_name'] as String
-                    : (role == 'trainer'
-                      ? 'Personal Trainer'
-                      : 'Aluno no Salão');
-          final hasCompletedAnamnesis =
-              profile?['has_completed_anamnesis'] == true;
-          if (role == 'client' && !hasCompletedAnamnesis) {
-            final trainer = await AuthService.getTrainerForStudent();
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => WelcomeOnboardingScreen(
-                  studentName: userName,
-                  trainerName: trainer?['full_name'] as String?,
-                ),
-              ),
-            );
-          } else {
-            _navigateToDashboard(role: role, name: userName);
-          }
+          await _continueAfterAuthentication();
         } else {
           if (_emailCtrl.text.isNotEmpty && _passwordCtrl.text.isNotEmpty) {
             await _handleSignIn();
@@ -214,27 +201,12 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _navigateToDashboard({required String role, required String name}) {
-    if (role == 'trainer') {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const TrainerMainLayout(),
-        ),
-      );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder:
-              (_) => MainShellScreen(
-                initialIndex: 0,
-                activeRole: role,
-                userName: name,
-              ),
-        ),
-      );
-    }
+  void _navigateToDashboard() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const AuthGate(skipBiometric: true)),
+      (_) => false,
+    );
   }
 
   void _showVerifyOtpDialog(String identifier) {

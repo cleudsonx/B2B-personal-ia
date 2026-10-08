@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.schemas.adaptation import AdaptationInput, AdaptationResponse
 from app.services.gemini_service import GeminiService
 from app.services.supabase_service import supabase_service
-from app.api.deps import get_gemini_service, get_current_user
+from app.api.deps import get_gemini_service, get_current_trainer
 
 router = APIRouter()
 
@@ -18,7 +18,7 @@ router = APIRouter()
 async def adapt_exercise(
     data: AdaptationInput,
     gemini_svc: GeminiService = Depends(get_gemini_service),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: Dict[str, Any] = Depends(get_current_trainer),
 ) -> AdaptationResponse:
     trainer_id = current_user.get("sub") or "current-trainer"
 

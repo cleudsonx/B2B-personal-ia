@@ -92,114 +92,32 @@ class SubscriptionService {
   }
 
   /// Retorna o plano atual do Personal Trainer com verificaÃ§Ã£o de persistÃªncia
-  static Future<MySubscriptionModel> getMySubscription() async {
-    // 1. Inicializa do cache em disco imediatamente se cache de memÃ³ria estiver vazio
-    if (_currentSubscriptionCache == null) {
-      final local = await _loadFromLocalCache();
-      if (local != null) {
-        _currentSubscriptionCache = local;
-        activeSubscriptionNotifier.value = local;
-      }
+  static Future<MySubscriptionModel> getMySubscription() =>
+      refreshMySubscription();
+
+  static Future<MySubscriptionModel> refreshMySubscription() async {
+    final trainerId = AuthService.currentUser?.id;
+    if (trainerId == null) {
+      throw StateError('Sessão expirada. Entre novamente para consultar o plano.');
     }
 
-    final trainerId = AuthService.currentUser?.id ?? 'current-trainer';
-
-    // 2. Consulta a API FastAPI backend com o identificador do treinador
-    try {
-      final uri = Uri.parse(
-        '${AppConfig.apiBaseUrl}/subscriptions/my-subscription?trainer_id=$trainerId',
-      );
-      final res = await _client
-          .get(uri, headers: _headers)
-          .timeout(const Duration(seconds: 5));
-      if (res.statusCode == 200) {
-        final data =
-            jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-        final model = MySubscriptionModel.fromJson(data);
-        _currentSubscriptionCache = model;
-        activeSubscriptionNotifier.value = model;
-        await _saveToLocalCache(model);
-        return model;
-      }
-    } catch (_) {
-      // Fallback gracioso para banco de dados ou armazenamento local
-    }
-
-    // 3. Fallback para o Supabase se o usuÃ¡rio estiver autenticado
-    final user = AuthService.currentUser;
-    if (user != null) {
-      try {
-        final client = Supabase.instance.client;
-        final subData =
-            await client
-                .from('subscriptions')
-                .select()
-                .eq('trainer_id', user.id)
-                .maybeSingle();
-
-        if (subData != null) {
-          final planId = subData['plan_id'] as String? ?? 'pro';
-          final plans = await getPlans();
-          final plan = plans.firstWhere(
-            (p) => p.id == planId,
-            orElse: () => _defaultPlans[1],
-          );
-          final isTrial = plan.id == 'starter';
-          final currentStudents =
-              _currentSubscriptionCache?.currentStudents ?? 4;
-
-          final model = MySubscriptionModel(
-            planId: plan.id,
-            planName: plan.name,
-            status:
-                subData['status'] as String? ??
-                (isTrial ? 'trialing' : 'active'),
-            billingInterval:
-                subData['billing_interval'] as String? ?? 'monthly',
-            currentStudents: currentStudents,
-            maxStudents: plan.maxStudents,
-            aiGenerationsUsed: isTrial ? 3 : 12,
-            maxAiGenerations: plan.maxAiGenerationsPerMonth,
-            trialDaysRemaining: isTrial ? 14 : null,
-            nextBillingDate: '24/10/2026',
-            paymentMethod: subData['payment_provider'] as String? ?? 'pix',
-            canCreateStudent: currentStudents < plan.maxStudents,
-            canGenerateAi: true,
-          );
-
-          _currentSubscriptionCache = model;
-          activeSubscriptionNotifier.value = model;
-          await _saveToLocalCache(model);
-          return model;
-        }
-      } catch (_) {}
-    }
-
-    // 4. Se tiver cache em memÃ³ria ou em disco, retorna com fidelidade
-    if (_currentSubscriptionCache != null) {
-      return _currentSubscriptionCache!;
-    }
-
-    // 5. Default: Personal Pro ativo
-    final defaultModel = MySubscriptionModel(
-      planId: 'pro',
-      planName: 'Personal Pro',
-      status: 'active',
-      billingInterval: 'monthly',
-      currentStudents: 4,
-      maxStudents: 30,
-      aiGenerationsUsed: 12,
-      maxAiGenerations: -1,
-      trialDaysRemaining: null,
-      nextBillingDate: '24/10/2026',
-      paymentMethod: 'pix',
-      canCreateStudent: true,
-      canGenerateAi: true,
+    final uri = Uri.parse(
+      '${AppConfig.apiBaseUrl}/subscriptions/my-subscription?trainer_id=$trainerId',
     );
-    _currentSubscriptionCache = defaultModel;
-    activeSubscriptionNotifier.value = defaultModel;
-    await _saveToLocalCache(defaultModel);
-    return defaultModel;
+    final response = await _client
+        .get(uri, headers: _headers)
+        .timeout(const Duration(seconds: 5));
+    if (response.statusCode != 200) {
+      throw Exception('Não foi possível atualizar a assinatura (${response.statusCode}).');
+    }
+
+    final payload = jsonDecode(utf8.decode(response.bodyBytes))
+        as Map<String, dynamic>;
+    final model = MySubscriptionModel.fromJson(payload);
+    _currentSubscriptionCache = model;
+    activeSubscriptionNotifier.value = model;
+    await _saveToLocalCache(model);
+    return model;
   }
 
   /// Ativa ou troca o plano do Personal Trainer imediatamente e garante persistÃªncia total
@@ -208,60 +126,11 @@ class SubscriptionService {
     String billingInterval = 'monthly',
     String paymentMethod = 'pix',
   }) async {
-    final plans = await getPlans();
-    final plan = plans.firstWhere(
-      (p) => p.id == planId,
-      orElse: () => _defaultPlans[0],
-    );
-    final isTrial = plan.id == 'starter';
-    final now = DateTime.now();
-    final nextDate =
-        '${now.day.toString().padLeft(2, '0')}/${((now.month + 1) > 12 ? 1 : now.month + 1).toString().padLeft(2, '0')}/${now.year}';
-    final currentStudentsCount =
-        _currentSubscriptionCache?.currentStudents ?? 4;
-
-    final immediateModel = MySubscriptionModel(
-      planId: plan.id,
-      planName: plan.name,
-      status: isTrial ? 'trialing' : 'active',
-      billingInterval: billingInterval,
-      currentStudents: currentStudentsCount,
-      maxStudents: plan.maxStudents,
-      aiGenerationsUsed: isTrial ? 3 : 12,
-      maxAiGenerations: plan.maxAiGenerationsPerMonth,
-      trialDaysRemaining: isTrial ? 14 : null,
-      nextBillingDate: nextDate,
-      paymentMethod: paymentMethod,
-      canCreateStudent: currentStudentsCount < plan.maxStudents,
-      canGenerateAi: true,
-    );
-
-    // Imediatamente atualiza memÃ³ria, reatividade e armazenamento persistente do celular
-    _currentSubscriptionCache = immediateModel;
-    activeSubscriptionNotifier.value = immediateModel;
-    await _saveToLocalCache(immediateModel);
-
-    final trainerId = AuthService.currentUser?.id ?? 'current-trainer';
-
-    // 1. Tenta persistir no Supabase (se autenticado)
-    final user = AuthService.currentUser;
-    if (user != null) {
-      try {
-        final client = Supabase.instance.client;
-        await client.from('subscriptions').upsert({
-          'trainer_id': user.id,
-          'plan_id': plan.id,
-          'status': isTrial ? 'trialing' : 'active',
-          'billing_interval': billingInterval,
-          'payment_provider': paymentMethod,
-          'updated_at': DateTime.now().toIso8601String(),
-        }, onConflict: 'trainer_id');
-      } catch (e) {
-        debugPrint('Aviso ao sincronizar assinatura com Supabase: $e');
-      }
+    final trainerId = AuthService.currentUser?.id;
+    if (trainerId == null) {
+      throw StateError('Sessão expirada. Entre novamente para ativar o plano.');
     }
 
-    // 2. Notifica o backend FastAPI para atualizar o estado e limites em tempo real
     try {
       final uri = Uri.parse(
         '${AppConfig.apiBaseUrl}/subscriptions/activate-plan',
@@ -284,11 +153,15 @@ class SubscriptionService {
         await _saveToLocalCache(backendModel);
         return backendModel;
       }
+      String detail = 'O servidor recusou a ativação do plano (${res.statusCode}).';
+      try {
+        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        detail = data['detail'] as String? ?? detail;
+      } catch (_) {}
+      throw Exception(detail);
     } catch (e) {
-      debugPrint('Aviso ao sincronizar plano com backend: $e');
+      rethrow;
     }
-
-    return immediateModel;
   }
 
   /// Gera a sessÃ£o de pagamento transparente (Pix ou CartÃ£o) via Asaas / InfinitePay
@@ -321,40 +194,10 @@ class SubscriptionService {
             jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
         return CheckoutSessionModel.fromJson(data);
       }
+      throw Exception('O servidor recusou a criação do checkout (${res.statusCode}).');
     } catch (_) {
-      // Fallback simulado
+      rethrow;
     }
-
-    final isYearly = billingInterval == 'yearly';
-    final amount =
-        planId == 'studio'
-            ? (isYearly ? 190800 : 19900)
-            : (planId == 'elite'
-                ? (isYearly ? 142800 : 14900)
-                : (planId == 'pro' ? (isYearly ? 85200 : 8900) : 0));
-
-    final planName =
-        planId == 'studio'
-            ? 'Studio Scale'
-            : (planId == 'elite'
-                ? 'Elite Coach'
-                : (planId == 'pro' ? 'Personal Pro' : 'Starter Trial'));
-
-    final sessId = 'sess_asaas_${DateTime.now().millisecondsSinceEpoch}';
-    return CheckoutSessionModel(
-      sessionId: sessId,
-      planId: planId,
-      planName: planName,
-      amountCents: amount,
-      billingInterval: billingInterval,
-      paymentMethod: paymentMethod,
-      pixCopyPaste:
-          '00020126580014br.gov.bcb.pix0136b2b-personal-ia-demo520400005303986540${(amount / 100).toStringAsFixed(2)}5802BR5920B2B PERSONAL IA6009SAO PAULO62070503***6304ABCD',
-      checkoutUrl: 'https://sandbox.asaas.com/c/$sessId',
-      provider: provider,
-      status: 'pending',
-      expiresAt: 'Hoje Ã s 23:59',
-    );
   }
 
   /// Consulta em tempo real se o Pix ou pagamento foi compensado pelo gateway
@@ -411,7 +254,6 @@ class SubscriptionService {
       if (res.statusCode == 200) {
         final data =
             jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-        await getMySubscription();
         return {'success': true, 'data': data};
       } else {
         String detail = 'Erro no processamento do cartÃ£o.';
@@ -423,32 +265,10 @@ class SubscriptionService {
         return {'success': false, 'error': detail};
       }
     } catch (e) {
-      // Fallback gracioso para modo de testes/offline
-      final plans = await getPlans();
-      final plan = plans.firstWhere(
-        (p) => p.id == planId,
-        orElse: () => _defaultPlans[1],
-      );
-      final model = MySubscriptionModel(
-        planId: plan.id,
-        planName: plan.name,
-        status: 'active',
-        billingInterval: billingInterval,
-        currentStudents: _currentSubscriptionCache?.currentStudents ?? 4,
-        maxStudents: plan.maxStudents,
-        aiGenerationsUsed: 0,
-        maxAiGenerations: plan.maxAiGenerationsPerMonth,
-        trialDaysRemaining: null,
-        nextBillingDate:
-            billingInterval == 'yearly' ? '01/10/2027' : '01/11/2026',
-        paymentMethod: 'credit_card',
-        canCreateStudent: true,
-        canGenerateAi: true,
-      );
-      _currentSubscriptionCache = model;
-      activeSubscriptionNotifier.value = model;
-      await _saveToLocalCache(model);
-      return {'success': true, 'simulated': true};
+      return {
+        'success': false,
+        'error': 'Não foi possível confirmar o pagamento. Tente novamente.',
+      };
     }
   }
 

@@ -9,6 +9,7 @@ import '../../core/widgets/rest_timer_sheet.dart';
 import '../../core/widgets/biomechanical_analysis_sheet.dart';
 import '../../core/widgets/server_config_dialog.dart';
 import '../../models/exercise_model.dart';
+import '../../models/split_model.dart';
 import '../../models/adaptation_model.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
@@ -26,6 +27,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
   String _workoutTitle = '';
+  String _workoutLocation = 'Academia completa e espaço de musculação';
   String _trainerName = 'Carregando treinador...';
   String _trainerCref = 'CREF Ativo';
   String? _trainerPhotoUrl;
@@ -36,11 +38,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   DateTime? _startedAt;
   String? _splitIdentifier;
   String? _splitName;
+  List<SplitModel> _splits = [];
+  int _selectedSplitIndex = 0;
   Timer? _ticker;
 
   // Variáveis reais de Gamificação (Backend)
-  int currentStreak = 14;
-  double dailyGoalProgress = 0.65;
+  int? currentStreak;
 
   // Exercícios da ficha ativa real do aluno (vazio = sem ficha)
   late List<ExerciseModel> _exercises;
@@ -143,22 +146,33 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     if (!mounted) return;
     setState(() {
       if (activePlan != null && activePlan.splits.isNotEmpty) {
-        final firstSplit = activePlan.splits.first;
+        _splits = List.of(activePlan.splits);
+        _selectedSplitIndex = 0;
+        final firstSplit = _splits[_selectedSplitIndex];
         _splitIdentifier = firstSplit.splitIdentifier;
         _splitName = firstSplit.splitName;
         _workoutTitle =
             'Treino ${firstSplit.splitIdentifier}: ${firstSplit.splitName}';
         _exercises = List.from(firstSplit.exercises);
-        _completedExerciseIndices.removeWhere((i) => i >= _exercises.length);
+        _completedExerciseIndices.clear();
+        _adaptedIndices.clear();
         _startedAt ??= DateTime.now();
       } else {
+        _splits = [];
+        _selectedSplitIndex = 0;
         _exercises = [];
         _workoutTitle = '';
         _completedExerciseIndices.clear();
+        _adaptedIndices.clear();
         _startedAt = null;
       }
       _isLoadingWorkout = false;
     });
+
+    final workoutLocation = await WorkoutService.getClientWorkoutLocation();
+    if (mounted && workoutLocation != null) {
+      setState(() => _workoutLocation = workoutLocation);
+    }
 
     try {
       final trainer = await AuthService.getTrainerForStudent();
@@ -187,13 +201,27 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       final gami = await WorkoutService.getGamificationData();
       if (gami != null && mounted) {
         setState(() {
-          currentStreak = (gami['current_streak'] as num?)?.toInt() ?? currentStreak;
-          dailyGoalProgress =
-              (gami['daily_goal_progress'] as num?)?.toDouble() ??
-                  dailyGoalProgress;
+            currentStreak = (gami['current_streak'] as num?)?.toInt();
         });
       }
     } catch (_) {}
+  }
+
+  void _selectSplit(int index) {
+    if (index < 0 || index >= _splits.length || index == _selectedSplitIndex) {
+      return;
+    }
+    final split = _splits[index];
+    setState(() {
+      _selectedSplitIndex = index;
+      _splitIdentifier = split.splitIdentifier;
+      _splitName = split.splitName;
+      _workoutTitle = 'Treino ${split.splitIdentifier}: ${split.splitName}';
+      _exercises = List.from(split.exercises);
+      _completedExerciseIndices.clear();
+      _adaptedIndices.clear();
+      _startedAt = DateTime.now();
+    });
   }
 
   void _showAdaptationModal(int exerciseIndex) {
@@ -349,7 +377,6 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     fontSize: 13,
                   ),
                 ),
-                const SizedBox(height: 18),
                 ...locations.map((item) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 10),
@@ -419,9 +446,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       final AdaptationModel result = await _apiService.adaptExercise(
         currentExercise: target.name,
         reason: reason,
-        workoutLocation: 'Academia completa e espaço de musculação',
+        workoutLocation: _workoutLocation,
         injuriesOrRestrictions: restrictionsDesc,
       );
+      if (!mounted) return;
 
       setState(() {
         _adaptedIndices.add(index);
@@ -436,7 +464,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       });
 
       // Dispara persistência e alerta em tempo real para o professor
-      WorkoutService.logAdaptation(
+      await WorkoutService.logAdaptation(
         originalExercise: target.name,
         adaptedExercise: result.adaptedExercise,
         reason: reason,
@@ -449,7 +477,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           SnackBar(
             backgroundColor: MetaColors.emerald,
             content: Text(
-              '✓ Substituído com sucesso: ${result.adaptedExercise} (Treinador notificado)',
+              'Substituído: ${result.adaptedExercise}',
               style: const TextStyle(
                 color: Colors.black,
                 fontWeight: FontWeight.bold,
@@ -461,15 +489,20 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       }
     } catch (e) {
       if (mounted) {
+        debugPrint('Erro ao adaptar exercício: $e');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppColors.danger,
-            content: Text('Erro ao adaptar exercício: $e'),
-            action: SnackBarAction(
-              label: 'Mudar IP',
-              textColor: Colors.yellow,
-              onPressed: () => ServerConfigDialog.show(context),
+            content: const Text(
+              'Não foi possível adaptar este exercício. Tente novamente.',
             ),
+            action: kDebugMode
+                ? SnackBarAction(
+                    label: 'Mudar IP',
+                    textColor: Colors.yellow,
+                    onPressed: () => ServerConfigDialog.show(context),
+                  )
+                : null,
           ),
         );
       }
@@ -1375,7 +1408,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           const Text('🔥', style: TextStyle(fontSize: 16)),
                           const SizedBox(width: 6),
                           Text(
-                            '$currentStreak Dias',
+                            currentStreak == null ? '—' : '$currentStreak dias',
+                            semanticsLabel: currentStreak == null
+                                ? 'Sequência indisponível'
+                                : '$currentStreak dias',
                             style: const TextStyle(
                               fontWeight: FontWeight.w900,
                               fontSize: 13,
@@ -1498,6 +1534,25 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     ],
                   ),
                 ),
+                if (_splits.length > 1) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (var index = 0; index < _splits.length; index++)
+                        ChoiceChip(
+                          label: Text(
+                            '${_splits[index].splitIdentifier} · ${_splits[index].splitName}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          selected: index == _selectedSplitIndex,
+                          onSelected: (_) => _selectSplit(index),
+                        ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 18),
 
                 // 4. Lista de Exercícios (MetaCards)

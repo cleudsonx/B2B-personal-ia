@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/config/app_config.dart';
 import 'invite_service.dart';
@@ -60,11 +61,6 @@ class AuthService {
       );
       if (response.user != null) {
         await _ensureProfileUpserted(response.user!);
-        try {
-          await _consumePendingInvite(response.user!);
-        } catch (e) {
-          debugPrint('Convite pendente não consumido: $e');
-        }
       }
       return response;
     } catch (e) {
@@ -206,6 +202,7 @@ class AuthService {
     final updatedMetadata = Map<String, dynamic>.from(user.userMetadata ?? {});
     updatedMetadata.remove('invite_token');
     await _client.auth.updateUser(UserAttributes(data: updatedMetadata));
+    _cachedProfile = null;
   }
 
   static Future<void> completePendingInvite() async {
@@ -284,6 +281,69 @@ class AuthService {
         };
   }
 
+  static List<String> availableRoles(Map<String, dynamic>? profile) {
+    final roles = profile?['roles'];
+    if (roles is List) {
+      final normalized = roles.whereType<String>().toSet().toList();
+      if (normalized.isNotEmpty) return normalized;
+    }
+    final role = profile?['role'];
+    return role is String && role.isNotEmpty ? [role] : ['client'];
+  }
+
+  static Future<String> getActiveRole(Map<String, dynamic>? profile) async {
+    final roles = availableRoles(profile);
+    final userId = currentUser?.id;
+    if (userId == null) return roles.first;
+    final prefs = await SharedPreferences.getInstance();
+    final savedRole = prefs.getString('active_role_$userId');
+    return roles.contains(savedRole) ? savedRole! : roles.first;
+  }
+
+  static Future<void> setActiveRole(String role) async {
+    final userId = currentUser?.id;
+    if (userId == null) return;
+    final profile = await getCurrentProfile();
+    if (!availableRoles(profile).contains(role)) {
+      throw StateError('Este perfil não possui acesso ao contexto selecionado.');
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('active_role_$userId', role);
+  }
+
+  static Future<String?> getVerifiedTotpFactorId() async {
+    final factors = await _client.auth.mfa.listFactors();
+    for (final factor in factors.totp) {
+      if (factor.status == FactorStatus.verified) return factor.id;
+    }
+    return null;
+  }
+
+  static Future<AuthMFAEnrollResponse> enrollTeacherTotp() {
+    return _client.auth.mfa.enroll(
+      factorType: FactorType.totp,
+      issuer: 'Mr. Coach',
+      friendlyName: 'Mr. Coach Trainer',
+    );
+  }
+
+  static Future<void> verifyTotp({
+    required String factorId,
+    required String code,
+  }) async {
+    final challenge = await _client.auth.mfa.challenge(factorId: factorId);
+    await _client.auth.mfa.verify(
+      factorId: factorId,
+      challengeId: challenge.id,
+      code: code.trim(),
+    );
+  }
+
+  static Future<bool> isCurrentSessionAal2() async {
+    final assurance = await _client.auth.mfa.getAuthenticatorAssuranceLevel();
+    return assurance.currentLevel?.name == 'aal2';
+  }
+
   /// Busca os dados do professor vinculado ao aluno atual
   static Future<Map<String, dynamic>?> getTrainerForStudent() async {
     try {
@@ -357,11 +417,29 @@ class AuthService {
     }
   }
 
-  static Future<void> signOut() async {
+  static Future<void> signOut({bool allDevices = false}) async {
     _cachedProfile = null;
-    try {
-      await _clientOrNull?.auth.signOut();
-    } catch (_) {}
+    final client = _clientOrNull;
+    if (client == null) return;
+    if (allDevices) {
+      final token = client.auth.currentSession?.accessToken;
+      if (token == null) throw StateError('Não há sessão autenticada.');
+      final response = await http
+          .post(
+            Uri.parse('${AppConfig.apiBaseUrl}/auth/revoke-sessions'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode != 200) {
+        throw Exception('Não foi possível revogar as sessões da conta.');
+      }
+      await client.auth.signOut(scope: SignOutScope.global);
+      return;
+    }
+    await client.auth.signOut(scope: SignOutScope.local);
   }
 
   static String _formatAuthError(Object error) {

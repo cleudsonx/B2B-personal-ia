@@ -30,10 +30,19 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
   }
 
   Future<void> _fetchTrainerProfile() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
     try {
       final apiUrl = '${AppConfig.apiBaseUrl}/public/trainers/${Uri.encodeComponent(widget.username)}';
       
-      final response = await http.get(Uri.parse(apiUrl));
+        final response = await http
+          .get(Uri.parse(apiUrl))
+          .timeout(const Duration(seconds: 15));
+        if (!mounted) return;
 
       if (response.statusCode == 200) {
         setState(() {
@@ -52,6 +61,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Falha de conexão com o servidor.';
         _isLoading = false;
@@ -95,6 +105,10 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     if (_errorMessage != null) {
       return Scaffold(
         backgroundColor: MetaColors.background,
+        appBar: AppBar(
+          title: const Text('Perfil do treinador'),
+          backgroundColor: MetaColors.background,
+        ),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -102,8 +116,14 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
               const Icon(Icons.person_off, size: 80, color: MetaColors.textSecondary),
               const SizedBox(height: 16),
               Text(
-                _errorMessage!, 
+                _errorMessage!,
                 style: const TextStyle(color: MetaColors.textPrimary, fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: _fetchTrainerProfile,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Tentar novamente'),
               ),
             ],
           ),
@@ -113,8 +133,9 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
 
     // Tela de Conversão B2B - High Performance Theme
     final name = _trainerData!['full_name'] ?? 'Personal Trainer';
-    final bio = _trainerData!['bio'] ?? 'Software de alta performance e produtos digitais escaláveis movidos a Inteligência Artificial.';
-    final List<dynamic> specialties = _trainerData!['specialties'] ?? ['Alta Performance', 'Hipertrofia'];
+    final bio = _trainerData!['bio'] as String?;
+    final List<dynamic> specialties =
+      _trainerData!['specialties'] as List<dynamic>? ?? const [];
     final photoUrl = _trainerData!['photo_url'];
 
     return Scaffold(
@@ -234,16 +255,17 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                   const SizedBox(height: 32),
                   
                   // Bio - Focada no texto elegante (como o subtítulo do site)
-                  Text(
-                    bio,
-                    style: const TextStyle(
-                      color: MetaColors.textSecondary,
-                      fontSize: 18,
-                      height: 1.5,
-                      fontWeight: FontWeight.w400,
-                    ),
-                    textAlign: TextAlign.center,
-                  ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1, end: 0),
+                  if (bio != null && bio.trim().isNotEmpty)
+                    Text(
+                      bio,
+                      style: const TextStyle(
+                        color: MetaColors.textSecondary,
+                        fontSize: 18,
+                        height: 1.5,
+                        fontWeight: FontWeight.w400,
+                      ),
+                      textAlign: TextAlign.center,
+                    ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1, end: 0),
 
                   if ((_trainerData!['cref'] as String?)?.isNotEmpty == true) ...[
                     const SizedBox(height: 16),

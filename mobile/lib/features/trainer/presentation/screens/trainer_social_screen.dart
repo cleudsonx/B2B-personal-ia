@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/widgets/meta_components.dart';
 import '../../../../services/auth_service.dart';
@@ -12,7 +11,6 @@ class _StreakStudentItem {
   final int streakDays;
   final String lastActivity;
   final String category; // 'Ouro', 'Prata', 'Bronze', 'Normal'
-  final String? phone;
   final String initials;
 
   const _StreakStudentItem({
@@ -22,7 +20,6 @@ class _StreakStudentItem {
     required this.lastActivity,
     required this.category,
     required this.initials,
-    this.phone,
   });
 }
 
@@ -58,104 +55,8 @@ class TrainerSocialScreen extends StatefulWidget {
 }
 
 class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
-  // Lista dos alunos mais consistentes no Ranking de Streaks
-  final List<_StreakStudentItem> _rankingStudents = const [
-    _StreakStudentItem(
-      rank: 1,
-      name: 'Rafael Cunha',
-      streakDays: 52,
-      lastActivity: 'Treino A concluído hoje • 07:15',
-      category: 'Ouro',
-      initials: 'RC',
-      phone: '5511987654321',
-    ),
-    _StreakStudentItem(
-      rank: 2,
-      name: 'Beatriz Lima',
-      streakDays: 38,
-      lastActivity: 'Treino C concluído hoje • 08:30',
-      category: 'Prata',
-      initials: 'BL',
-      phone: '5511987654322',
-    ),
-    _StreakStudentItem(
-      rank: 3,
-      name: 'Rodrigo Silveira',
-      streakDays: 29,
-      lastActivity: 'Treino B concluído ontem • 19:40',
-      category: 'Bronze',
-      initials: 'RS',
-      phone: '5511987654323',
-    ),
-    _StreakStudentItem(
-      rank: 4,
-      name: 'Camila Vasconcelos',
-      streakDays: 24,
-      lastActivity: 'Treino concluído hoje • 09:15',
-      category: 'Normal',
-      initials: 'CV',
-      phone: '5521998765432',
-    ),
-    _StreakStudentItem(
-      rank: 5,
-      name: 'Lucas Andrade Mendes',
-      streakDays: 18,
-      lastActivity: 'Treino Funcional ontem • 18:00',
-      category: 'Normal',
-      initials: 'LM',
-      phone: '5511912345678',
-    ),
-    _StreakStudentItem(
-      rank: 6,
-      name: 'Mariana Castro',
-      streakDays: 15,
-      lastActivity: 'Alongamento & Postura • Segunda',
-      category: 'Normal',
-      initials: 'MC',
-      phone: '5531976543210',
-    ),
-    _StreakStudentItem(
-      rank: 7,
-      name: 'Felipe Guimarães',
-      streakDays: 12,
-      lastActivity: 'Agachamento pesado • 15/09',
-      category: 'Normal',
-      initials: 'FG',
-      phone: '5511981112233',
-    ),
-  ];
-
-  // Histórias/Status recentes de alunos
-  final List<_StudentStoryItem> _studentStories = const [
-    _StudentStoryItem(
-      name: 'Rafael',
-      caption: 'Bateu PR no supino: 110kg! 🔥',
-      timeAgo: 'Há 25 min',
-      initials: 'RC',
-      isViewed: false,
-    ),
-    _StudentStoryItem(
-      name: 'Beatriz',
-      caption: 'Treino pago das 06:00 cumprido! 💪',
-      timeAgo: 'Há 1 hora',
-      initials: 'BL',
-      isViewed: false,
-    ),
-    _StudentStoryItem(
-      name: 'Rodrigo',
-      caption: 'Sem dor no ombro hoje, postura 100%!',
-      timeAgo: 'Há 3 horas',
-      initials: 'RS',
-      isViewed: true,
-    ),
-    _StudentStoryItem(
-      name: 'Camila',
-      caption: '30 dias ininterruptos de foco!',
-      timeAgo: 'Hoje, 07:20',
-      initials: 'CV',
-      isViewed: true,
-    ),
-  ];
+  final List<_StreakStudentItem> _rankingStudents = const [];
+  final List<_StudentStoryItem> _studentStories = const [];
 
   String _getTrainerName() {
     final user = AuthService.currentUser;
@@ -175,32 +76,13 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
     return parts[0].substring(0, parts[0].length >= 2 ? 2 : 1).toUpperCase();
   }
 
-  Future<void> _congratulateStudent(_StreakStudentItem student) async {
-    final trainerName = _getTrainerName();
-    final message =
-        'Parabéns pela dedicação, ${student.name}! 🔥💪\n\n'
-        'Você está com uma ofensiva de ${student.streakDays} dias seguidos no topo do ranking! '
-        'Continue focado na consistência.\n\n'
-        '— $trainerName';
-
-    final cleanPhone = (student.phone ?? '').replaceAll(RegExp(r'\D'), '');
-    if (cleanPhone.isNotEmpty) {
-      final finalNumber =
-          cleanPhone.startsWith('55') ? cleanPhone : '55$cleanPhone';
-      final encodedMsg = Uri.encodeComponent(message);
-      final url = Uri.parse('https://wa.me/$finalNumber?text=$encodedMsg');
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-        return;
-      }
-    }
-
+  void _congratulateStudent(_StreakStudentItem student) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: MetaColors.surfaceHighlight,
           content: Text(
-            'Mensagem para ${student.name}: ${student.streakDays} dias de ofensiva!',
+            'O contato de ${student.name} não está vinculado a estes dados de demonstração. Nenhuma mensagem foi enviada.',
             style: const TextStyle(color: MetaColors.textPrimary),
           ),
         ),
@@ -286,7 +168,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                     const SnackBar(
                       backgroundColor: MetaColors.surfaceHighlight,
                       content: Text(
-                        'Status publicado para todos os seus alunos!',
+                        'Publicação de status ainda não disponível. Nenhum status foi enviado.',
                         style: TextStyle(color: MetaColors.textPrimary),
                       ),
                     ),
@@ -397,7 +279,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                     SnackBar(
                       backgroundColor: MetaColors.surfaceHighlight,
                       content: Text(
-                        'Você aplaudiu a evolução de ${story.name}!',
+                        'Reações ainda não são enviadas aos alunos.',
                         style: const TextStyle(color: MetaColors.textPrimary),
                       ),
                     ),
@@ -479,7 +361,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                                 size: 22,
                               ),
                               tooltip: 'Pesquisar',
-                              onPressed: () {},
+                              onPressed: null,
                               splashRadius: 20,
                             ),
                             IconButton(
@@ -489,7 +371,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                                 size: 22,
                               ),
                               tooltip: 'Opções',
-                              onPressed: () {},
+                              onPressed: null,
                               splashRadius: 20,
                             ),
                           ],
@@ -638,7 +520,14 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                 SliverToBoxAdapter(
                   child: SizedBox(
                     height: 98,
-                    child: ListView.separated(
+                    child: _studentStories.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'As atualizações dos alunos aparecerão aqui.',
+                              style: TextStyle(color: MetaColors.textSecondary),
+                            ),
+                          )
+                        : ListView.separated(
                       scrollDirection: Axis.horizontal,
                       physics: const BouncingScrollPhysics(),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -777,7 +666,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                             const SnackBar(
                               backgroundColor: MetaColors.surfaceHighlight,
                               content: Text(
-                                'Canal do Treinador: Transmissão aberta para todos os alunos.',
+                                'Canal ainda não configurado. Nenhum aviso foi enviado.',
                                 style: TextStyle(color: MetaColors.textPrimary),
                               ),
                             ),
@@ -862,7 +751,18 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                     right: 12,
                     bottom: bottomPadding + 88, // Padding dinâmico Edge-to-Edge
                   ),
-                  sliver: SliverList(
+                  sliver: _rankingStudents.isEmpty
+                      ? const SliverToBoxAdapter(
+                          child: Padding(
+                            padding: EdgeInsets.all(20),
+                            child: Text(
+                              'O ranking ficará disponível quando houver atividades registradas.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: MetaColors.textSecondary),
+                            ),
+                          ),
+                        )
+                      : SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         final student = _rankingStudents[index];

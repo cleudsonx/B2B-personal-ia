@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_colors.dart';
+import '../../main.dart' show MainShellScreen;
 import '../../services/auth_service.dart';
+import '../../services/student_profile_service.dart';
 import '../../services/workout_service.dart';
-import 'active_workout_screen.dart';
 
 class WelcomeOnboardingScreen extends StatefulWidget {
   final String? studentName;
@@ -23,11 +24,12 @@ class WelcomeOnboardingScreen extends StatefulWidget {
 class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
   int _currentStep = 0; // 0: Boas-vindas viral, 1..5: Anamnese, 6: Sucesso
   bool _isSubmitting = false;
+  final _stepFormKey = GlobalKey<FormState>();
 
   // Step 1: Biometria & Rotina
-  final _ageCtrl = TextEditingController(text: '28');
-  final _weightCtrl = TextEditingController(text: '76.5');
-  final _heightCtrl = TextEditingController(text: '178');
+  final _ageCtrl = TextEditingController();
+  final _weightCtrl = TextEditingController();
+  final _heightCtrl = TextEditingController();
   String _dailyActivity = 'Sedentário (Trabalho em escritório/computador)';
   String _sleepHours = '7 a 8 horas';
 
@@ -37,7 +39,7 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
   String _sessionDuration = '60 minutos';
 
   // Step 3: Articulações & Lesões
-  final Set<String> _selectedInjuries = {};
+  final Set<String> _selectedInjuries = {kNoRestriction};
   final _injuriesDetailsCtrl = TextEditingController();
 
   // Step 4: Espaço de Treino
@@ -50,6 +52,7 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
   String _resolvedTrainerName = 'Seu Treinador';
   String _resolvedTrainerRegistry = 'Registro Profissional Ativo';
   String? _trainerId;
+  bool _isLoadingTrainerInfo = true;
 
   String _getTrainerInitials() {
     final clean = _resolvedTrainerName.replaceAll('Prof.', '').trim();
@@ -64,7 +67,9 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
   @override
   void initState() {
     super.initState();
-    _loadTrainerInfo();
+    _loadTrainerInfo().whenComplete(() {
+      if (mounted) setState(() => _isLoadingTrainerInfo = false);
+    });
   }
 
   Future<void> _loadTrainerInfo() async {
@@ -189,26 +194,24 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
       final user = AuthService.currentUser!;
       final clientId = user.id;
 
-      final injuriesSummary =
-          _selectedInjuries.isEmpty ||
-                  _selectedInjuries.contains('Nenhuma dor ou restrição')
-              ? 'Nenhuma dor ou restrição articular reportada.'
-              : _selectedInjuries.join(', ') +
-                  (_injuriesDetailsCtrl.text.isNotEmpty
-                      ? ' (${_injuriesDetailsCtrl.text.trim()})'
-                      : '');
+        final selectedInjuries = _selectedInjuries.isEmpty
+          ? {kNoRestriction}
+          : _selectedInjuries;
+        final injuriesSummary = selectedInjuries.contains(kNoRestriction)
+          ? kNoRestriction
+          : selectedInjuries.join(', ');
 
       final anamnesisPayload = {
         'client_id': clientId,
-        'age': int.tryParse(_ageCtrl.text) ?? 28,
-        'weight': double.tryParse(_weightCtrl.text) ?? 75.0,
-        'height': double.tryParse(_heightCtrl.text) ?? 175.0,
+        'age': int.parse(_ageCtrl.text.trim()),
+        'weight': double.parse(_weightCtrl.text.trim().replaceAll(',', '.')),
+        'height': double.parse(_heightCtrl.text.trim().replaceAll(',', '.')),
         'daily_activity': _dailyActivity,
         'sleep_hours': _sleepHours,
         'training_level': _trainingLevel,
         'weekly_days': _weeklyDays,
         'session_duration': _sessionDuration,
-        'injuries': _selectedInjuries.toList(),
+        'injuries': selectedInjuries.toList(),
         'injuries_details': _injuriesDetailsCtrl.text.trim(),
         'injuries_summary': injuriesSummary,
         'workout_location': _workoutLocation,
@@ -258,7 +261,12 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
   void _finishAndEnterApp() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const ActiveWorkoutScreen()),
+      MaterialPageRoute(
+        builder: (_) => MainShellScreen(
+          activeRole: 'client',
+          userName: widget.studentName ?? 'Aluno',
+        ),
+      ),
     );
   }
 
@@ -507,6 +515,19 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                           color: AppColors.subtext(context),
                         ),
                       ),
+                      if (_isLoadingTrainerInfo) ...[
+                        const SizedBox(height: 8),
+                        const LinearProgressIndicator(),
+                      ] else if (_trainerId == null || _trainerId!.isEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Não encontramos o vínculo com seu treinador. Abra o convite recebido ou peça um novo link antes de iniciar.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.danger(context),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -539,7 +560,11 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              onPressed: () => setState(() => _currentStep = 1),
+                onPressed: _isLoadingTrainerInfo ||
+                    _trainerId == null ||
+                    _trainerId!.isEmpty
+                  ? null
+                  : () => setState(() => _currentStep = 1),
             ),
           ),
           const SizedBox(height: 12),
@@ -611,15 +636,18 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
 
         // Step Content Body
         Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(24),
-            children: [
-              if (_currentStep == 1) _buildStep1Biometrics(),
-              if (_currentStep == 2) _buildStep2Experience(),
-              if (_currentStep == 3) _buildStep3Injuries(),
-              if (_currentStep == 4) _buildStep4Environment(),
-              if (_currentStep == 5) _buildStep5Goals(),
-            ],
+          child: Form(
+            key: _stepFormKey,
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                if (_currentStep == 1) _buildStep1Biometrics(),
+                if (_currentStep == 2) _buildStep2Experience(),
+                if (_currentStep == 3) _buildStep3Injuries(),
+                if (_currentStep == 4) _buildStep4Environment(),
+                if (_currentStep == 5) _buildStep5Goals(),
+              ],
+            ),
           ),
         ),
 
@@ -653,6 +681,10 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                       _isSubmitting
                           ? null
                           : () {
+                            if (_currentStep == 1 &&
+                                !_stepFormKey.currentState!.validate()) {
+                              return;
+                            }
                             if (_currentStep < 5) {
                               setState(() => _currentStep++);
                             } else {
@@ -709,6 +741,12 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                 'Idade (anos)',
                 _ageCtrl,
                 keyboardType: TextInputType.number,
+                validator: (input) {
+                  final age = int.tryParse(input?.trim() ?? '');
+                  if (age == null) return 'Informe a idade.';
+                  if (age < 10 || age > 100) return 'Use uma idade entre 10 e 100.';
+                  return null;
+                },
               ),
             ),
             const SizedBox(width: 12),
@@ -716,7 +754,15 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
               child: _buildTextField(
                 'Peso (kg)',
                 _weightCtrl,
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                validator: (input) {
+                  final weight = double.tryParse(
+                    (input ?? '').trim().replaceAll(',', '.'),
+                  );
+                  if (weight == null) return 'Informe o peso.';
+                  if (weight < 20 || weight > 300) return 'Use 20 a 300 kg.';
+                  return null;
+                },
               ),
             ),
             const SizedBox(width: 12),
@@ -725,6 +771,12 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                 'Altura (cm)',
                 _heightCtrl,
                 keyboardType: TextInputType.number,
+                validator: (input) {
+                  final height = int.tryParse(input?.trim() ?? '');
+                  if (height == null) return 'Informe a altura em centímetros.';
+                  if (height < 100 || height > 250) return 'Use 100 a 250 cm.';
+                  return null;
+                },
               ),
             ),
           ],
@@ -814,15 +866,7 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
 
   // ETAPA 3: Articulações & Lesões
   Widget _buildStep3Injuries() {
-    final options = [
-      'Nenhuma dor ou restrição',
-      'Ombro / Manguito Rotador',
-      'Joelho / Patela',
-      'Coluna Lombar / Hérnia',
-      'Cotovelo / Tendinopatia',
-      'Punho',
-      'Quadril',
-    ];
+    final options = kStudentRestrictionOptions;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -871,15 +915,18 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                   ),
                   onSelected: (selected) {
                     setState(() {
-                      if (opt == 'Nenhuma dor ou restrição') {
+                      if (opt == kNoRestriction) {
                         _selectedInjuries.clear();
                         if (selected) _selectedInjuries.add(opt);
                       } else {
-                        _selectedInjuries.remove('Nenhuma dor ou restrição');
+                        _selectedInjuries.remove(kNoRestriction);
                         if (selected) {
                           _selectedInjuries.add(opt);
                         } else {
                           _selectedInjuries.remove(opt);
+                          if (_selectedInjuries.isEmpty) {
+                            _selectedInjuries.add(kNoRestriction);
+                          }
                         }
                       }
                     });
@@ -1093,7 +1140,7 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Uma notificação de confirmação e resumo foi preparada para o seu WhatsApp.',
+                    'Sua avaliação foi salva e está disponível para o seu treinador.',
                     style: TextStyle(
                       fontSize: 12,
                       color: AppColors.text(context),
@@ -1133,10 +1180,12 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
     String label,
     TextEditingController ctrl, {
     TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: ctrl,
       keyboardType: keyboardType,
+      validator: validator,
       style: TextStyle(color: AppColors.text(context), fontSize: 14),
       decoration: InputDecoration(
         labelText: label,

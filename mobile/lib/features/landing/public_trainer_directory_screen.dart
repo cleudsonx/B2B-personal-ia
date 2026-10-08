@@ -176,10 +176,17 @@ class _PublicTrainerDirectoryScreenState
                                     borderRadius: BorderRadius.circular(8),
                                     child: InkWell(
                                       borderRadius: BorderRadius.circular(8),
-                                      onTap: () => Navigator.pushNamed(
-                                        context,
-                                        '/prof/${Uri.encodeComponent(trainer['username'] as String)}',
-                                      ),
+                                      onTap: () {
+                                        final username = trainer['username'] as String?;
+                                        final identifier = username?.trim().isNotEmpty == true
+                                            ? username!.trim()
+                                            : trainer['id']?.toString();
+                                        if (identifier == null || identifier.isEmpty) return;
+                                        Navigator.pushNamed(
+                                          context,
+                                          '/prof/${Uri.encodeComponent(identifier)}',
+                                        );
+                                      },
                                       child: Padding(
                                         padding: const EdgeInsets.all(14),
                                         child: Row(

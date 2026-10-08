@@ -28,15 +28,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
   final _weightCtrl = TextEditingController();
   final _heightCtrl = TextEditingController();
 
-  final List<String> _availableRestrictions = [
-    kNoRestriction,
-    'Dor Lombar',
-    'Condromalácia (Joelho)',
-    'Manguito Rotador (Ombro)',
-    'Hérnia de Disco',
-    'Gestante',
-    'Hipertensão',
-  ];
+  final List<String> _availableRestrictions = [...kStudentRestrictionOptions];
   final Set<String> _selectedRestrictions = {kNoRestriction};
 
   String? get _userId => widget.userId ?? AuthService.currentUser?.id;

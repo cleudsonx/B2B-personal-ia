@@ -79,11 +79,7 @@ class WorkoutService {
       'has_active_prescription': false,
     };
 
-    // 1. Armazena no cache local imediatamente
-    _localStudentsCache.removeWhere((s) => s['email'] == studentData['email']);
-    _localStudentsCache.insert(0, studentData);
-
-    // 2. Sincroniza com a API do Backend e dispara convite oficial por e-mail via Resend
+    // Sincroniza com o backend antes de exibir o convite como criado.
     try {
       final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/students/invite');
       final res = await http
@@ -103,36 +99,35 @@ class WorkoutService {
           )
           .timeout(const Duration(seconds: 8));
 
-      if (res.statusCode == 403) {
-        _localStudentsCache.removeWhere((s) => s['id'] == studentId);
+      if (res.statusCode != 200 && res.statusCode != 201) {
         final err =
             jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
         throw Exception(
           err['detail'] ??
-              'Limite de alunos ativos atingido no seu plano atual.',
+              'Não foi possível criar o convite (${res.statusCode}).',
         );
       }
 
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        final data =
-            jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-        studentData['id'] = data['id'] ?? studentId;
-        studentData['invitation_link'] = data['invitation_link'];
-        studentData['whatsapp_url'] = data['whatsapp_url'];
-        studentData['email_status'] = data['email_status'];
-      }
+      final data =
+          jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+      studentData['id'] = data['id'] ?? studentId;
+      studentData['status'] = data['status'] ?? studentData['status'];
+      studentData['invitation_link'] = data['invitation_link'];
+      studentData['whatsapp_url'] = data['whatsapp_url'];
+      studentData['email_status'] = data['email_status'];
     } catch (e) {
-      if (e.toString().contains('Limite de') || e.toString().contains('403')) {
-        rethrow;
-      }
-      debugPrint('Aviso Backend inviteStudent: $e');
+      _localStudentsCache.removeWhere((s) => s['id'] == studentId);
+      rethrow;
     }
 
-    // 3. Persiste na tabela 'profiles' do Supabase
+    _localStudentsCache.removeWhere((s) => s['email'] == studentData['email']);
+    _localStudentsCache.insert(0, studentData);
+
+    // Persiste na tabela 'profiles' do Supabase
     if (_clientOrNull != null) {
       try {
         final payload = <String, dynamic>{
-          'id': studentId,
+          'id': studentData['id'],
           'full_name': fullName.trim(),
           'role': 'client',
           'subscription_status': 'trial',
@@ -423,10 +418,7 @@ class WorkoutService {
       debugPrint('Erro ao buscar gamificacao: $e');
     }
 
-    return {
-      'current_streak': 14,
-      'daily_goal_progress': 0.65,
-    };
+    return null;
   }
 
   static Future<WorkoutPlanModel?> getActiveWorkoutForClient({
@@ -828,5 +820,27 @@ class WorkoutService {
     }
 
     return true;
+  }
+
+  static Future<String?> getClientWorkoutLocation() async {
+    final client = _clientOrNull;
+    final clientId = AuthService.currentUser?.id;
+    if (client == null || clientId == null) return null;
+
+    try {
+      final anamnesis =
+          await client
+              .from('anamnesis')
+              .select('workout_location')
+              .eq('client_id', clientId)
+              .order('created_at', ascending: false)
+              .limit(1)
+              .maybeSingle();
+      final location = anamnesis?['workout_location'] as String?;
+      return location?.trim().isNotEmpty == true ? location!.trim() : null;
+    } catch (e) {
+      debugPrint('Aviso ao carregar local de treino do aluno: $e');
+      return null;
+    }
   }
 }

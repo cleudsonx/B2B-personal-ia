@@ -23,7 +23,7 @@ from app.services.email_service import email_service
 from app.services.whatsapp_service import whatsapp_service
 from app.services.supabase_service import supabase_service, is_valid_uuid, to_valid_uuid_str
 from app.core.config import settings
-from app.api.deps import get_gemini_service, get_current_user
+from app.api.deps import get_gemini_service, get_current_user, get_current_client, get_current_trainer
 
 router = APIRouter()
 
@@ -43,7 +43,7 @@ _ALERTS_STORE = supabase_service._mem_alerts
 async def generate_workout_plan(
     data: AnamnesisInput,
     gemini_svc: GeminiService = Depends(get_gemini_service),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_trainer)
 ) -> WorkoutPlanResponse:
     trainer_id = current_user.get("sub") or "current-trainer"
     sub = await supabase_service.get_trainer_subscription(trainer_id)
@@ -92,7 +92,7 @@ async def generate_workout_plan(
 )
 async def save_prescription(
     data: PrescriptionSaveRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_trainer)
 ) -> PrescriptionSaveResponse:
     trainer_id = data.trainer_id or current_user.get("sub") or "current-trainer"
     return await supabase_service.save_prescription(trainer_id, data)
@@ -107,7 +107,7 @@ async def save_prescription(
 )
 async def get_active_prescription_for_client(
     client_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_trainer)
 ) -> WorkoutPlanResponse:
     plan = await supabase_service.get_active_prescription(client_id)
     if not plan:
@@ -143,7 +143,7 @@ async def _get_trainer_max_students(trainer_id: str) -> int:
 )
 async def create_student(
     data: StudentCreateRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_trainer)
 ) -> StudentResponse:
     # Validação simples de integridade de e-mail
     if "@" not in data.email or "." not in data.email:
@@ -184,7 +184,7 @@ async def create_student(
     description="Retorna a lista de alunos com status de confirmação e vínculo ao personal logado."
 )
 async def list_students(
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_trainer)
 ) -> List[StudentResponse]:
     trainer_id = current_user.get("sub") or "current-trainer"
     return await supabase_service.list_students(trainer_id)
@@ -200,7 +200,7 @@ async def list_students(
 async def update_student(
     student_id: str,
     data: StudentUpdateRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_trainer)
 ) -> StudentResponse:
     existing_student = await supabase_service.get_student_by_id(student_id)
     if not existing_student:
@@ -236,7 +236,7 @@ async def update_student(
 async def update_student_status(
     student_id: str,
     data: StudentStatusUpdateRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_trainer)
 ) -> StudentResponse:
     existing_student = await supabase_service.get_student_by_id(student_id)
     if not existing_student:
@@ -271,7 +271,7 @@ async def update_student_status(
 )
 async def delete_student(
     student_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_trainer)
 ) -> Dict[str, Any]:
     trainer_id = current_user.get("sub") or "current-trainer"
     await supabase_service.delete_student(student_id, trainer_id)
@@ -291,10 +291,14 @@ async def delete_student(
 )
 async def register_biomechanical_alert(
     data: BiomechanicalAlertCreate,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_client)
 ) -> BiomechanicalAlertResponse:
-    if not data.trainer_id:
-        data.trainer_id = current_user.get("sub") or "current-trainer"
+    if data.student_id != current_user.get("sub"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="O alerta deve pertencer ao aluno autenticado.")
+    trainer_id = (current_user.get("profile") or {}).get("trainer_id")
+    if not trainer_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Aluno sem treinador vinculado.")
+    data.trainer_id = trainer_id
     return await supabase_service.create_biomechanical_alert(data)
 
 
@@ -307,9 +311,14 @@ async def register_biomechanical_alert(
 )
 async def list_trainer_alerts(
     trainer_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_trainer)
 ) -> List[BiomechanicalAlertResponse]:
-    return await supabase_service.list_trainer_alerts(trainer_id)
+    authenticated_trainer_id = current_user.get("sub")
+    if not authenticated_trainer_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário não autenticado.")
+    if trainer_id != authenticated_trainer_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado aos alertas deste treinador.")
+    return await supabase_service.list_trainer_alerts(authenticated_trainer_id)
 
 
 @router.patch(
@@ -321,9 +330,12 @@ async def list_trainer_alerts(
 )
 async def acknowledge_alert(
     alert_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_trainer)
 ) -> BiomechanicalAlertResponse:
-    success = await supabase_service.acknowledge_alert(alert_id)
+    trainer_id = current_user.get("sub")
+    if not trainer_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário não autenticado.")
+    success = await supabase_service.acknowledge_alert(alert_id, trainer_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -335,7 +347,7 @@ async def acknowledge_alert(
         id=alert_id,
         student_id="student",
         student_name="Aluno",
-        trainer_id="trainer",
+        trainer_id=trainer_id,
         original_exercise="",
         adapted_exercise="",
         reason="Adaptação ciente",
@@ -355,7 +367,7 @@ async def acknowledge_alert(
 )
 async def invite_student(
     payload: StudentInviteRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_trainer)
 ) -> StudentInviteResponse:
     trainer_id = payload.trainer_id or current_user.get("id") or current_user.get("sub") or "current-trainer"
     trainer_name = payload.trainer_name or current_user.get("user_metadata", {}).get("full_name") or current_user.get("full_name")
@@ -465,7 +477,7 @@ async def invite_student(
     description="Retorna dados de gamificação baseados na tabela workout_sessions do Supabase."
 )
 async def get_gamification_data(
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_client)
 ) -> GamificationResponse:
     client_id = current_user.get("sub")
     if not client_id:

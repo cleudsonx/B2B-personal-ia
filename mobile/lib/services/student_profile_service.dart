@@ -7,6 +7,18 @@ import '../core/config/app_config.dart';
 import 'auth_service.dart';
 
 const String kNoRestriction = 'Nenhuma';
+const List<String> kStudentRestrictionOptions = [
+  kNoRestriction,
+  'Dor Lombar',
+  'Condromalácia (Joelho)',
+  'Manguito Rotador (Ombro)',
+  'Hérnia de Disco',
+  'Gestante',
+  'Hipertensão',
+  'Cotovelo / Tendinopatia',
+  'Punho',
+  'Quadril',
+];
 
 /// Dados persistidos do perfil/anamnese do aluno autenticado.
 class StudentProfileData {

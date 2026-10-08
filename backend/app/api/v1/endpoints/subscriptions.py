@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends, Request, status
-from app.api.deps import get_current_user
+from app.api.deps import get_current_trainer
 from app.core.config import settings
 from app.schemas.subscription import (
     PlanResponse,
@@ -53,7 +53,7 @@ async def list_subscription_plans():
 @router.get("/my-subscription", response_model=MySubscriptionResponse)
 async def get_my_subscription(
     trainer_id: str = "current-trainer",
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_trainer)
 ):
     """
     Retorna o plano ativo e consumo de cotas do Personal Trainer autenticado.
@@ -70,7 +70,7 @@ async def get_my_subscription(
 @router.post("/activate-plan", response_model=MySubscriptionResponse)
 async def activate_subscription_plan(
     req: PlanActivationRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_trainer)
 ):
     """
     Ativa ou troca o plano do Personal Trainer imediatamente, persistindo no Supabase.
@@ -128,7 +128,7 @@ async def simulate_plan_change(request: PlanChangeSimulationRequest):
 @router.post("/checkout-session", response_model=CheckoutSessionResponse)
 async def create_checkout_session(
     request: CheckoutSessionRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: Dict[str, Any] = Depends(get_current_trainer),
 ):
     """
     Gera uma sessão de checkout para assinatura do plano escolhido via Pix ou Cartão.
@@ -198,7 +198,7 @@ async def create_checkout_session(
 @router.post("/pay-with-card", response_model=InAppCardPaymentResponse)
 async def pay_with_card_in_app(
     request: InAppCardPaymentRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_trainer),
 ):
     """
     [Solução 1: Tokenização In-App Transparente & Nativa]
@@ -450,7 +450,7 @@ async def webhook_infinitepay(payload: dict, request: Request):
 @router.get("/check-status/{order_nsu}")
 async def check_payment_status(
     order_nsu: str,
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: Dict[str, Any] = Depends(get_current_trainer),
 ):
     """
     Consulta o status da transação no Asaas, InfinitePay ou gateway associado.

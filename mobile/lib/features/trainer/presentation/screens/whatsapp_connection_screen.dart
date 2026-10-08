@@ -32,7 +32,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
     setState(() => _autoGenerating = true);
     try {
       final profile = await AuthService.getCurrentProfile();
-      if (profile != null) {
+      if (profile != null && mounted) {
         final phone = profile['public_whatsapp'] ?? profile['phone'] ?? '';
         if (phone.toString().isNotEmpty) {
           setState(() {
@@ -111,9 +111,12 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
     }
   }
 
-  void _copyAndOpenWhatsapp() {
+  Future<void> _copyPairingCode() async {
     if (_pairingCode != null) {
-      Clipboard.setData(ClipboardData(text: _pairingCode!.replaceAll('-', '')));
+      await Clipboard.setData(
+        ClipboardData(text: _pairingCode!.replaceAll('-', '')),
+      );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Código copiado! Abra "Aparelhos Conectados" no seu WhatsApp e cole o código.'),
@@ -198,7 +201,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                     label: _isLoading ? 'Gerando...' : 'Gerar Código',
                     icon: Icons.vpn_key_rounded,
                     isPrimary: true,
-                    onPressed: _isLoading ? () {} : _generatePairingCode,
+                    onPressed: _isLoading ? null : _generatePairingCode,
                   ),
                 ),
               ] else if (_pairingCode != null) ...[
@@ -211,7 +214,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                       ),
                       const SizedBox(height: 16),
                       GestureDetector(
-                        onTap: _copyAndOpenWhatsapp,
+                        onTap: _copyPairingCode,
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
                           decoration: BoxDecoration(
@@ -253,10 +256,10 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: SquircleButton(
-                    label: 'Copiar e Abrir WhatsApp',
+                    label: 'Copiar código',
                     icon: Icons.open_in_new_rounded,
                     isPrimary: true,
-                    onPressed: _copyAndOpenWhatsapp,
+                    onPressed: _copyPairingCode,
                   ),
                 ),
               ],

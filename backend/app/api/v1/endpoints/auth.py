@@ -1,5 +1,6 @@
-from typing import Optional
-from fastapi import APIRouter, HTTPException
+from datetime import datetime, timezone
+from typing import Optional, Dict, Any
+from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, Field
 from app.services.supabase_service import supabase_service
 
@@ -71,6 +72,23 @@ async def get_my_profile(current_user: Dict[str, Any] = Depends(get_current_user
         raise HTTPException(status_code=404, detail="Perfil não encontrado.")
         
     return profile
+
+
+@router.post("/revoke-sessions")
+async def revoke_all_sessions(current_user: Dict[str, Any] = Depends(get_current_user)):
+    user_id = current_user.get("sub")
+    client = await supabase_service.get_client()
+    if not user_id or client is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Não foi possível revogar as sessões.")
+    result = await (
+        client.table("profiles")
+        .update({"session_revoked_at": datetime.now(timezone.utc).isoformat()})
+        .eq("id", user_id)
+        .execute()
+    )
+    if not result or not result.data:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Falha ao revogar as sessões da conta.")
+    return {"success": True, "revoked_at": result.data[0].get("session_revoked_at")}
 
 
 # ==============================================================================

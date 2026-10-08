@@ -3,6 +3,7 @@ import 'package:personal_ia/main.dart';
 import 'package:personal_ia/models/workout_plan_model.dart';
 import 'package:personal_ia/models/split_model.dart';
 import 'package:personal_ia/models/exercise_model.dart';
+import 'package:personal_ia/features/trainer/presentation/screens/trainer_main_layout.dart';
 
 void main() {
   testWidgets('B2BPersonalIaApp loads LoginScreen without overflow', (WidgetTester tester) async {
@@ -13,6 +14,44 @@ void main() {
     expect(find.text('Treinador Pro'), findsOneWidget);
     expect(find.text('Aluno no Salão'), findsOneWidget);
     expect(find.text('Lembrar acesso'), findsOneWidget);
+  });
+
+  testWidgets('trainer shell navigates across all five tabs', (WidgetTester tester) async {
+    const tabs = ['Alunos', 'Treinos', 'Social', 'Vitrine'];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TrainerMainLayout(
+          screens: [
+            for (final tab in tabs)
+              Scaffold(body: Center(child: Text('$tab body'))),
+          ],
+        ),
+      ),
+    );
+
+    expect(find.text('Alunos body'), findsOneWidget);
+    for (final tab in tabs.skip(1)) {
+      await tester.tap(find.text(tab));
+      await tester.pumpAndSettle();
+      expect(find.text('$tab body'), findsOneWidget);
+    }
+
+    await tester.tap(find.text('Conta').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Verificação em duas etapas'), findsOneWidget);
+  });
+
+  testWidgets('legacy trainer entry resolves to the canonical shell', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: MainShellScreen(activeRole: 'trainer')),
+    );
+    await tester.pump();
+
+    expect(find.text('Alunos'), findsOneWidget);
+    expect(find.text('Treinos'), findsOneWidget);
+    expect(find.text('Social'), findsOneWidget);
+    expect(find.text('Vitrine'), findsOneWidget);
+    expect(find.text('Prescrição IA'), findsNothing);
   });
 
   test('WorkoutPlanModel JSON serialization for offline caching', () {

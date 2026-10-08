@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
-import '../../main.dart';
 import '../../models/subscription_model.dart';
 import '../../services/subscription_service.dart';
+import 'presentation/screens/trainer_main_layout.dart';
 
 class TrainerPlanSelectionScreen extends StatefulWidget {
   final String trainerName;
@@ -67,11 +67,7 @@ class _TrainerPlanSelectionScreenState
         context,
         MaterialPageRoute(
           builder:
-              (_) => MainShellScreen(
-                initialIndex: 0,
-                activeRole: 'trainer',
-                userName: widget.trainerName,
-              ),
+              (_) => const TrainerMainLayout(),
         ),
         (route) => false,
       );

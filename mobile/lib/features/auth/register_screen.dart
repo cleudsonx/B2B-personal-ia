@@ -128,6 +128,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isInviteRegistration = widget.inviteToken != null;
+
     return Scaffold(
       backgroundColor: MetaColors.background,
       appBar: AppBar(
@@ -150,7 +152,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 children: [
                   const SizedBox(height: 20),
                   const Text(
-                    'Criar cadastro',
+                    'Criar sua conta',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 32,
@@ -161,21 +163,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    widget.initialRole == 'client'
-                      ? 'Informe seus dados para falar com seu treinador'
-                      : 'Comece a prescrever com Inteligência Artificial',
+                    isInviteRegistration
+                        ? 'Complete seus dados para continuar com ${widget.trainerName ?? 'seu treinador'}.'
+                        : widget.initialRole == 'client'
+                            ? 'Informe seus dados para falar com seu treinador.'
+                            : 'Comece a prescrever com Inteligência Artificial.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,
                       color: MetaColors.textSecondary,
                     ),
                   ),
-                  if (widget.trainerName != null) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      'Cadastro para consultoria com ${widget.trainerName}',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: MetaColors.emerald, fontSize: 14),
+                  if (isInviteRegistration) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: MetaColors.emerald.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.25)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.verified_user_outlined, color: MetaColors.emerald, size: 18),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'Convite de ${widget.trainerName ?? 'seu treinador'}',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: MetaColors.emerald, fontSize: 14),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                   const SizedBox(height: 48),
@@ -214,10 +235,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   TextFormField(
                     controller: _emailCtrl,
                     keyboardType: TextInputType.emailAddress,
+                    readOnly: isInviteRegistration && widget.initialEmail != null,
                     style: const TextStyle(color: MetaColors.textPrimary),
                     decoration: InputDecoration(
-                      labelText: 'E-mail',
+                      labelText: 'Email',
                       labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                      helperText: isInviteRegistration && widget.initialEmail != null
+                          ? 'Vinculado a este convite'
+                          : null,
                       prefixIcon: const Icon(
                         Icons.email_outlined,
                         color: MetaColors.emerald,
@@ -238,7 +263,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     validator: (value) {
-                      if (value == null || !value.contains('@')) return 'E-mail inválido';
+                      if (value == null ||
+                          !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                              .hasMatch(value.trim())) {
+                        return 'Informe um email válido.';
+                      }
                       if (widget.inviteToken != null &&
                           widget.initialEmail != null &&
                           value.trim().toLowerCase() != widget.initialEmail!.trim().toLowerCase()) {
@@ -252,10 +281,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   TextFormField(
                     controller: _phoneCtrl,
                     keyboardType: TextInputType.phone,
+                    readOnly: isInviteRegistration && widget.initialPhone != null,
                     style: const TextStyle(color: MetaColors.textPrimary),
                     decoration: InputDecoration(
                       labelText: 'Telefone / WhatsApp',
                       labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                      helperText: isInviteRegistration && widget.initialPhone != null
+                          ? 'Vinculado a este convite'
+                          : null,
                       prefixIcon: const Icon(Icons.phone_outlined, color: MetaColors.emerald),
                       filled: true,
                       fillColor: MetaColors.surfaceHighlight,
@@ -330,7 +363,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     width: double.infinity,
                     height: 54,
                     child: SquircleButton(
-                      label: 'Criar Conta Grátis',
+                      label: _isLoading
+                          ? 'Criando sua conta...'
+                          : isInviteRegistration
+                              ? 'Criar conta e continuar'
+                              : 'Criar conta grátis',
                       isPrimary: true,
                       isLoading: _isLoading,
                       onPressed: _isLoading ? () {} : _handleRegister,

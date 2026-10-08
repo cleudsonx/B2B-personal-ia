@@ -8,6 +8,7 @@ import '../../anamnesis_screen.dart';
 /// Modelo de dados mockado para fichas de treino recentes
 class _RecentWorkoutItem {
   final String id;
+  final String? studentId;
   final String studentName;
   final String workoutTitle;
   final String splitInfo;
@@ -20,6 +21,7 @@ class _RecentWorkoutItem {
   const _RecentWorkoutItem({
     this.rawWorkout,
     required this.id,
+    this.studentId,
     required this.studentName,
     required this.workoutTitle,
     required this.splitInfo,
@@ -97,6 +99,7 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
 
             return _RecentWorkoutItem(
               id: w['id'] ?? '',
+              studentId: w['client_id'] as String?,
               studentName: clientName,
               workoutTitle: title,
               splitInfo: w['notes_for_trainer'] as String? ?? 'Sem notas',
@@ -121,15 +124,20 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
     }
   }
 
-  void _navigateToCreateWorkout({String? studentName}) {
-    Navigator.push(
+  Future<void> _navigateToCreateWorkout({
+    String? studentId,
+    String? studentName,
+  }) async {
+    await Navigator.push<void>(
       context,
       MaterialPageRoute(
         builder: (_) => TrainerAnamnesisScreen(
+          initialStudentId: studentId,
           initialStudentName: studentName,
         ),
       ),
     );
+    if (mounted) await _loadWorkouts();
   }
 
   void _showAssessmentDialog() {
@@ -333,7 +341,10 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                 isPrimary: true,
                 onPressed: () {
                   Navigator.pop(ctx);
-                  _navigateToCreateWorkout(studentName: workout.studentName);
+                  _navigateToCreateWorkout(
+                    studentId: workout.studentId,
+                    studentName: workout.studentName,
+                  );
                 },
               ),
             ],

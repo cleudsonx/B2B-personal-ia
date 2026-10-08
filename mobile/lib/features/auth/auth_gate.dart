@@ -2,16 +2,21 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/widgets/meta_components.dart';
 import '../../services/auth_service.dart';
 import '../trainer/presentation/screens/trainer_onboarding_screen.dart';
+import '../trainer/presentation/screens/trainer_main_layout.dart';
 import '../client/welcome_onboarding_screen.dart';
 import 'login_screen.dart';
+import 'teacher_mfa_screen.dart';
 import '../../main.dart';
 
 class AuthGate extends StatefulWidget {
-  const AuthGate({super.key});
+  final bool skipBiometric;
+
+  const AuthGate({super.key, this.skipBiometric = false});
 
   @override
   State<AuthGate> createState() => _AuthGateState();
@@ -39,7 +44,9 @@ class _AuthGateState extends State<AuthGate> {
     // 2. Tentar biometria se estiver em dispositivo móvel (iOS/Android)
     bool biometricSuccess = true;
 
-    if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) {
+    if (!widget.skipBiometric &&
+      !kIsWeb &&
+      (Platform.isIOS || Platform.isAndroid)) {
       try {
         setState(() => _isAuthenticating = true);
 
@@ -64,27 +71,39 @@ class _AuthGateState extends State<AuthGate> {
     if (biometricSuccess) {
       _loadProfileAndGoToDashboard();
     } else {
-      AuthService.signOut();
+      await AuthService.signOut();
       _goToLogin();
     }
   }
 
   Future<void> _loadProfileAndGoToDashboard() async {
     try {
-      final profile = await AuthService.getCurrentProfile();
-      final role = profile?['role'] as String? ?? 'client';
+      var profile = await AuthService.getCurrentProfile();
+      final roles = AuthService.availableRoles(profile);
+      if (roles.contains('trainer') &&
+          !await AuthService.isCurrentSessionAal2()) {
+        if (!mounted) return;
+        final verified = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(builder: (_) => const TeacherMfaScreen()),
+        );
+        if (!mounted) return;
+        if (verified != true) {
+          await AuthService.signOut();
+          _goToLogin();
+          return;
+        }
+      }
+      await AuthService.completePendingInvite();
+      profile = await AuthService.getCurrentProfile();
+      final role = await AuthService.getActiveRole(profile);
       final name = profile?['full_name'] as String? ?? 'Usuário';
       final hasCompletedAnamnesis = profile?['has_completed_anamnesis'] == true;
 
       if (mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (role == 'trainer') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const TrainerOnboardingScreen(),
-              ),
-            );
+            _openTrainerDestination();
           } else {
             if (!hasCompletedAnamnesis) {
               Navigator.pushReplacement(
@@ -109,9 +128,25 @@ class _AuthGateState extends State<AuthGate> {
         });
       }
     } catch (e) {
-      AuthService.signOut();
+      await AuthService.signOut();
       _goToLogin();
     }
+  }
+
+  Future<void> _openTrainerDestination() async {
+    final userId = AuthService.currentUser?.id;
+    final preferences = await SharedPreferences.getInstance();
+    final hasCompletedOnboarding = userId != null &&
+        preferences.getBool('trainer_onboarding_completed_$userId') == true;
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => hasCompletedOnboarding
+            ? const TrainerMainLayout()
+            : const TrainerOnboardingScreen(),
+      ),
+    );
   }
 
   void _goToLogin() {
