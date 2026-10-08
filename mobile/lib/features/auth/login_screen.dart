@@ -62,9 +62,11 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       final profile = await AuthService.getCurrentProfile();
         final accountRole = profile?['role'] as String?;
-        final role = accountRole == 'trainer' || accountRole == 'client'
-          ? accountRole
-          : _selectedRole;
+      final role = switch (accountRole) {
+        'trainer' => 'trainer',
+        'client' => 'client',
+        _ => _selectedRole,
+      };
       final user = AuthService.currentUser;
       final userName =
           (profile?['full_name'] as String?)?.isNotEmpty == true
@@ -133,9 +135,11 @@ class _LoginScreenState extends State<LoginScreen> {
         if (user != null) {
           final profile = await AuthService.getCurrentProfile();
             final accountRole = profile?['role'] as String?;
-            final role = accountRole == 'trainer' || accountRole == 'client'
-              ? accountRole
-              : _selectedRole;
+          final role = switch (accountRole) {
+            'trainer' => 'trainer',
+            'client' => 'client',
+            _ => _selectedRole,
+          };
           final userName =
               (profile?['full_name'] as String?)?.isNotEmpty == true
                   ? profile!['full_name'] as String
