@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/widgets/meta_components.dart';
 import '../../services/auth_service.dart';
+import '../client/welcome_onboarding_screen.dart';
 import 'login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -9,6 +10,8 @@ class RegisterScreen extends StatefulWidget {
   final String? initialEmail;
   final String? initialPhone;
   final String? inviteToken;
+  final String? trainerId;
+  final String? trainerName;
 
   const RegisterScreen({
     super.key,
@@ -16,6 +19,8 @@ class RegisterScreen extends StatefulWidget {
     this.initialEmail,
     this.initialPhone,
     this.inviteToken,
+    this.trainerId,
+    this.trainerName,
   });
 
   @override
@@ -26,6 +31,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameCtrl;
   late final TextEditingController _emailCtrl;
+  late final TextEditingController _phoneCtrl;
   late final TextEditingController _passwordCtrl;
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -35,6 +41,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.initState();
     _nameCtrl = TextEditingController();
     _emailCtrl = TextEditingController(text: widget.initialEmail ?? '');
+    _phoneCtrl = TextEditingController(text: widget.initialPhone ?? '');
     _passwordCtrl = TextEditingController();
   }
 
@@ -42,6 +49,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void dispose() {
     _nameCtrl.dispose();
     _emailCtrl.dispose();
+    _phoneCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
   }
@@ -56,21 +64,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
         password: _passwordCtrl.text.trim(),
         fullName: _nameCtrl.text.trim(),
         role: widget.initialRole,
+        phone: _phoneCtrl.text.trim(),
+        trainerId: widget.trainerId,
+        inviteToken: widget.inviteToken,
       );
       if (mounted) {
         if (response.session == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Conta criada! Verifique seu e-mail.'),
-              backgroundColor: MetaColors.surfaceHighlight,
-              behavior: SnackBarBehavior.floating,
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (_) => LoginScreen(
+                initialRole: widget.initialRole,
+                initialEmail: _emailCtrl.text.trim(),
+                confirmationRequired: true,
+              ),
             ),
+            (route) => false,
           );
-          Navigator.pop(context); // volta pro login
           return;
         }
-        // Redireciona para o fluxo inicial do app
-        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+        if (widget.initialRole == 'client') {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (_) => WelcomeOnboardingScreen(
+                studentName: _nameCtrl.text.trim(),
+                trainerName: widget.trainerName,
+              ),
+            ),
+            (route) => false,
+          );
+        } else {
+          Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -117,7 +143,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 children: [
                   const SizedBox(height: 20),
                   const Text(
-                    'Criar Conta',
+                    'Criar cadastro',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 32,
@@ -128,13 +154,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Comece a prescrever com Inteligência Artificial',
+                    widget.initialRole == 'client'
+                      ? 'Informe seus dados para falar com seu treinador'
+                      : 'Comece a prescrever com Inteligência Artificial',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,
                       color: MetaColors.textSecondary,
                     ),
                   ),
+                  if (widget.trainerName != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      'Cadastro para consultoria com ${widget.trainerName}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: MetaColors.emerald, fontSize: 14),
+                    ),
+                  ],
                   const SizedBox(height: 48),
 
                   // Nome
@@ -194,7 +230,60 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         borderSide: const BorderSide(color: MetaColors.emerald),
                       ),
                     ),
-                    validator: (v) => v == null || !v.contains('@') ? 'E-mail inválido' : null,
+                    validator: (value) {
+                      if (value == null || !value.contains('@')) return 'E-mail inválido';
+                      if (widget.inviteToken != null &&
+                          widget.initialEmail != null &&
+                          value.trim().toLowerCase() != widget.initialEmail!.trim().toLowerCase()) {
+                        return 'Use o e-mail indicado no convite';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  TextFormField(
+                    controller: _phoneCtrl,
+                    keyboardType: TextInputType.phone,
+                    style: const TextStyle(color: MetaColors.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Telefone / WhatsApp',
+                      labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                      prefixIcon: const Icon(Icons.phone_outlined, color: MetaColors.emerald),
+                      filled: true,
+                      fillColor: MetaColors.surfaceHighlight,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: MetaColors.emerald),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (widget.initialRole == 'client' &&
+                          (value == null || value.trim().isEmpty)) {
+                        return 'Informe seu telefone para contato do treinador';
+                      }
+                      if (widget.inviteToken != null &&
+                          widget.initialPhone != null &&
+                          _normalizePhone(value) != _normalizePhone(widget.initialPhone)) {
+                        return 'Confirme o telefone indicado no convite';
+                      }
+                      return null;
+                    },
+
+                    String _normalizePhone(String? phone) {
+                      final digits = (phone ?? '').replaceAll(RegExp(r'\D'), '');
+                      return digits.startsWith('55') && digits.length > 11
+                          ? digits.substring(2)
+                          : digits;
+                    }
                   ),
                   const SizedBox(height: 16),
 
@@ -262,7 +351,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const LoginScreen(),
+                              builder: (_) => LoginScreen(
+                                initialRole: widget.initialRole,
+                                initialEmail: _emailCtrl.text.trim(),
+                              ),
                             ),
                           );
                         },

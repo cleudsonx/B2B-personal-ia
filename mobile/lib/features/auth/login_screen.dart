@@ -13,8 +13,15 @@ import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final String initialRole;
+  final String? initialEmail;
+  final bool confirmationRequired;
 
-  const LoginScreen({super.key, this.initialRole = 'trainer'});
+  const LoginScreen({
+    super.key,
+    this.initialRole = 'trainer',
+    this.initialEmail,
+    this.confirmationRequired = false,
+  });
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -33,8 +40,18 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _selectedRole = widget.initialRole;
-    _emailCtrl = TextEditingController();
+    _emailCtrl = TextEditingController(text: widget.initialEmail ?? '');
     _passwordCtrl = TextEditingController();
+    if (widget.confirmationRequired) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Confirme o e-mail enviado e depois entre com sua senha.'),
+          ),
+        );
+      });
+    }
   }
 
   @override
@@ -82,10 +99,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (mounted) {
         if (role == 'client' && !hasCompletedAnamnesis) {
+          final trainer = await AuthService.getTrainerForStudent();
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (_) => WelcomeOnboardingScreen(studentName: userName),
+              builder: (_) => WelcomeOnboardingScreen(
+                studentName: userName,
+                trainerName: trainer?['full_name'] as String?,
+              ),
             ),
           );
         } else {
@@ -152,10 +173,14 @@ class _LoginScreenState extends State<LoginScreen> {
           final hasCompletedAnamnesis =
               profile?['has_completed_anamnesis'] == true;
           if (role == 'client' && !hasCompletedAnamnesis) {
+            final trainer = await AuthService.getTrainerForStudent();
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (_) => WelcomeOnboardingScreen(studentName: userName),
+                builder: (_) => WelcomeOnboardingScreen(
+                  studentName: userName,
+                  trainerName: trainer?['full_name'] as String?,
+                ),
               ),
             );
           } else {

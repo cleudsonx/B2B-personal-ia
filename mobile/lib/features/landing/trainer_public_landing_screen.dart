@@ -5,7 +5,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/widgets/meta_components.dart';
+import '../auth/register_screen.dart';
 
 class TrainerPublicLandingScreen extends StatefulWidget {
   final String username;
@@ -29,7 +31,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
 
   Future<void> _fetchTrainerProfile() async {
     try {
-      final apiUrl = 'http://10.0.2.2:8000/api/v1/public/trainers/${widget.username}';
+      final apiUrl = '${AppConfig.apiBaseUrl}/public/trainers/${Uri.encodeComponent(widget.username)}';
       
       final response = await http.get(Uri.parse(apiUrl));
 
@@ -57,22 +59,18 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     }
   }
 
-  void _openWhatsApp() async {
-    final phone = _trainerData!['public_whatsapp'];
-    if (phone == null || phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('WhatsApp não configurado por este treinador.'),
-          backgroundColor: MetaColors.surfaceHighlight,
-        )
-      );
-      return;
-    }
-
-    final text = Uri.encodeComponent("Olá! Acessei sua vitrine no Mr. Coach e tenho interesse em iniciar uma consultoria.");
-    final url = Uri.parse("https://wa.me/$phone?text=$text");
-    
-    if (await canLaunchUrl(url)) { await launchUrl(url, mode: LaunchMode.externalApplication); }
+  void _startConsultation() {
+    final trainer = _trainerData!;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RegisterScreen(
+          initialRole: 'client',
+          trainerId: trainer['id'] as String?,
+          trainerName: trainer['full_name'] as String?,
+        ),
+      ),
+    );
   }
 
   @override
@@ -167,7 +165,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Badge Estilo "SOFTWARE STUDIO & VENTURE BUILDER"
+                  // Apresentação profissional do treinador
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
@@ -181,7 +179,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                         Icon(Icons.rocket_launch_rounded, color: MetaColors.emerald, size: 14),
                         SizedBox(width: 8),
                         Text(
-                          'ALTA PERFORMANCE & RESULTADOS',
+                          'TREINADOR COM REGISTRO PROFISSIONAL',
                           style: TextStyle(
                             color: MetaColors.emerald,
                             fontSize: 11,
@@ -247,7 +245,31 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                     textAlign: TextAlign.center,
                   ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1, end: 0),
 
-                  const SizedBox(height: 48),
+                  if ((_trainerData!['cref'] as String?)?.isNotEmpty == true) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      'Registro profissional: ${_trainerData!['cref']}',
+                      style: const TextStyle(color: MetaColors.textSecondary, fontSize: 13),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+
+                  const SizedBox(height: 32),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Sua experiência no app',
+                      style: TextStyle(color: MetaColors.textPrimary, fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildProofRow(Icons.assignment_outlined, 'Avaliação inicial', 'Compartilhe sua rotina, objetivos e restrições com seu treinador.'),
+                  const SizedBox(height: 14),
+                  _buildProofRow(Icons.fitness_center_rounded, 'Treinos acompanhados', 'Acesse sua ficha e registre sua evolução quando o treinador liberar o plano.'),
+                  const SizedBox(height: 14),
+                  _buildProofRow(Icons.chat_bubble_outline_rounded, 'Contato antes do plano', 'Após o cadastro, aguarde o contato do treinador para conversar sobre a consultoria.'),
+
+                  const SizedBox(height: 40),
 
                   // Diferenciais (Social Proof) - Layout MetaCard escuro
                   MetaCard(
@@ -319,7 +341,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
           width: double.infinity,
           height: 60,
           child: ElevatedButton.icon(
-            onPressed: _openWhatsApp,
+            onPressed: _startConsultation,
             style: ElevatedButton.styleFrom(
               backgroundColor: MetaColors.emerald,
               foregroundColor: Colors.white,
@@ -327,9 +349,9 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
               shadowColor: MetaColors.emerald.withValues(alpha: 0.4),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
-            icon: const Icon(Icons.bolt_rounded, size: 28),
+            icon: const Icon(Icons.person_add_alt_1_rounded, size: 24),
             label: const Text(
-              'COMEÇAR AGORA',
+              'TENHO INTERESSE NA CONSULTORIA',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.0),
             ),
           ),

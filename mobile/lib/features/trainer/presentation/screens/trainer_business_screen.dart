@@ -23,6 +23,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
   bool _isProfileIncomplete = false;
   bool _hasCref = false;
   bool _isLoadingProfile = true;
+  String? _username;
 
   @override
   void initState() {
@@ -43,7 +44,8 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
           _isProfileIncomplete = (bio == null || bio.trim().isEmpty) || 
                                  (specialties == null || specialties.isEmpty) ||
                                  (username == null || username.trim().isEmpty);
-          _hasCref = (cref != null && cref.trim().isNotEmpty);
+          _username = username?.trim();
+          _hasCref = (cref != null && cref.trim().toUpperCase().startsWith('CREF'));
           _isLoadingProfile = false;
         });
       } else {
@@ -485,6 +487,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
   }
 
   void _showPublicShowcaseModal() {
+    final showcaseUrl = 'https://shaipados.com/#/prof/${Uri.encodeComponent(_username ?? '')}';
     showModalBottomSheet(
       context: context,
       backgroundColor: MetaColors.surface,
@@ -568,7 +571,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                   children: [
                     const Expanded(
                       child: Text(
-                        'mrcoach.shaipados.com/prof/consultoria',
+                        showcaseUrl.replaceFirst('https://', ''),
                         style: TextStyle(
                           color: MetaColors.textPrimary,
                           fontSize: 14,
@@ -583,9 +586,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                       tooltip: 'Copiar link',
                       onPressed: () {
                         Clipboard.setData(
-                          const ClipboardData(
-                            text: 'https://mrcoach.shaipados.com/prof/consultoria',
-                          ),
+                          ClipboardData(text: showcaseUrl),
                         );
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(

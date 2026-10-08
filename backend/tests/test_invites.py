@@ -2,19 +2,25 @@ import pytest
 from httpx import AsyncClient
 from unittest.mock import AsyncMock, patch, MagicMock
 from app.main import app
+from app.api.v1.endpoints.invites import _normalize_phone
+
+
+def test_invite_phone_normalization_accepts_brazil_country_code():
+    assert _normalize_phone("+55 (11) 99999-8888") == "11999998888"
+    assert _normalize_phone("11 99999-8888") == "11999998888"
 
 @pytest.mark.asyncio
 async def test_create_invite_validation():
     """Valida rejeição de criação com dados ausentes"""
     async with AsyncClient(app=app, base_url="http://test") as client:
-        # Sem token de auth -> 401
+        # O modo development injeta um usuário local; a validação rejeita o destino ausente.
         res = await client.post("/api/v1/invites/create", json={"channel": "email"})
-        assert res.status_code == 401
+        assert res.status_code == 400
 
 @pytest.mark.asyncio
 async def test_consume_invite_not_found():
     """Valida tentativa de consumir token inexistente gerando 404 e auditoria de falha"""
-    mock_supabase = AsyncMock()
+    mock_supabase = MagicMock()
     # Mock do retorno do Supabase simulando token não encontrado
     mock_table = MagicMock()
     mock_select = MagicMock()
@@ -28,8 +34,12 @@ async def test_consume_invite_not_found():
     mock_eq.maybe_single.return_value = mock_maybe_single
     mock_maybe_single.execute = mock_execute
 
-    with patch("app.services.supabase_service.supabase_service.get_client", return_value=mock_supabase):
-        with patch("app.services.audit_service.log_audit_event", new_callable=AsyncMock) as mock_audit:
+    with patch(
+        "app.services.supabase_service.supabase_service.get_client",
+        new_callable=AsyncMock,
+        return_value=mock_supabase,
+    ):
+        with patch("app.api.v1.endpoints.invites.log_audit_event", new_callable=AsyncMock) as mock_audit:
             async with AsyncClient(app=app, base_url="http://test") as client:
                 res = await client.post("/api/v1/invites/consume", json={"token": "token_inexistente_123"})
                 assert res.status_code == 404

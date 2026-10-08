@@ -45,5 +45,5 @@ services:
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
       - key: CORS_ORIGINS
-        value: '["https://shaipados.com", "https://mrcoach.shaipados.com", "https://app.shaipados.com"]'
+        value: '["https://shaipados.com", "https://shaipados-labs.web.app", "https://mrcoach.shaipados.com", "https://mrcoach.app", "https://app.shaipados.com"]'
 

@@ -769,6 +769,10 @@ class WorkoutService {
     required String clientId,
     required Map<String, dynamic> data,
   }) async {
+    if (_clientOrNull == null) {
+      throw Exception('Entre na sua conta para salvar sua avaliação.');
+    }
+
     // 1. Atualiza cache de alunos localmente para refletir imediatamente
     final index = _localStudentsCache.indexWhere((s) => s['id'] == clientId);
     if (index != -1) {
@@ -779,35 +783,29 @@ class WorkoutService {
     }
 
     // 2. Persiste na tabela 'anamnesis' e atualiza 'profiles' no Supabase
-    if (_clientOrNull != null) {
-      try {
-        await _client.from('anamnesis').insert({
-          'client_id': clientId,
-          'objective': data['objective'] ?? 'Hipertrofia Muscular',
-          'training_level': data['level'] ?? 'Iniciante',
-          'days_per_week': data['days_per_week'] ?? 3,
-          'workout_location': data['location'] ?? 'Academia Convencional',
-          'injuries_or_restrictions': data['injuries_summary'] ?? 'Nenhuma',
-          if (data['trainer_id'] != null) 'trainer_id': data['trainer_id'],
-        });
-      } catch (e) {
-        debugPrint('Aviso Supabase saveClientAnamnesis: $e');
-      }
+    await _client.from('anamnesis').insert({
+      'client_id': clientId,
+      'objective': data['objective'] ?? 'Hipertrofia Muscular',
+      'training_level': data['training_level'] ?? 'Iniciante',
+      'days_per_week': data['weekly_days'] ?? 3,
+      'workout_location': data['workout_location'] ?? 'Academia Convencional',
+      'injuries_or_restrictions': data['injuries_summary'] ?? 'Nenhuma',
+      if (data['trainer_id'] != null) 'trainer_id': data['trainer_id'],
+    });
 
-      try {
-        final profileUpdate = <String, dynamic>{
-          'subscription_status': 'active',
-          'updated_at': DateTime.now().toIso8601String(),
-        };
-        if (data['trainer_id'] != null &&
-            (data['trainer_id'] as String).isNotEmpty) {
-          profileUpdate['trainer_id'] = data['trainer_id'];
-        }
-        await _client.from('profiles').update(profileUpdate).eq('id', clientId);
-      } catch (e) {
-        debugPrint('Aviso Supabase update profile anamnesis: $e');
-      }
+    final profileUpdate = <String, dynamic>{
+      'has_completed_anamnesis': true,
+      'age': data['age'],
+      'weight_kg': data['weight'],
+      'height_cm': data['height'],
+      'clinical_restrictions': data['injuries_summary'],
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+    if (data['trainer_id'] != null &&
+        (data['trainer_id'] as String).isNotEmpty) {
+      profileUpdate['trainer_id'] = data['trainer_id'];
     }
+    await _client.from('profiles').update(profileUpdate).eq('id', clientId);
 
     // 3. Atualiza no Backend FastAPI
     try {
@@ -831,7 +829,6 @@ class WorkoutService {
 
     return true;
   }
-}
 
 
 

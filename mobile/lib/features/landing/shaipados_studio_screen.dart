@@ -19,6 +19,8 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
       Navigator.pushNamed(context, '/ai');
     } else if (destination == 'entry') {
       Navigator.pushNamed(context, '/home');
+    } else if (destination == 'directory') {
+      Navigator.pushNamed(context, '/prof');
     } else if (destination == 'register') {
       Navigator.pushNamed(context, '/register');
     } else if (destination.startsWith('http')) {
@@ -277,6 +279,14 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                                 onPressed: () => _navigateToDestination(context, 'mrcoach'),
                               ),
                               SquircleButton(
+                                label: 'Encontrar treinador',
+                                icon: Icons.search_rounded,
+                                isPrimary: false,
+                                height: 56,
+                                borderRadius: 14,
+                                onPressed: () => _navigateToDestination(context, 'directory'),
+                              ),
+                              SquircleButton(
                                 label: 'Acessar plataforma',
                                 icon: Icons.login_rounded,
                                 isPrimary: false,
@@ -464,7 +474,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Mr. Coach: Plataforma B2B para Personais de Alta Performance',
+                  'Mr. Coach: espaço de trabalho para treinadores e alunos',
                   style: TextStyle(
                     color: MetaColors.textPrimary,
                     fontSize: 26,
@@ -475,7 +485,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                 const SizedBox(height: 12),
 
                 const Text(
-                  'Prescrição biomecânica individualizada, substituição inteligente de aparelhos em tempo real e vitrine profissional para captação de novos alunos.',
+                  'Treinadores organizam alunos e treinos. Alunos entram por convite ou encontram profissionais no diretório, preenchem seus dados e aguardam o alinhamento antes de receber um treino.',
                   style: TextStyle(
                     color: MetaColors.textSecondary,
                     fontSize: 16,
@@ -492,12 +502,11 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                     isPrimary: true,
                     height: 52,
                     borderRadius: 14,
-                    onPressed: () => _navigateToDestination(context, 'mrcoach'),
+                    onPressed: () => Navigator.pushNamed(context, '/demo'),
                   ),
                 ),
                 const SizedBox(height: 24),
 
-                // Métrica ao vivo
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -505,52 +514,13 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: MetaColors.border.withValues(alpha: 0.5)),
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 12,
-                        height: 12,
-                        decoration: const BoxDecoration(
-                          color: MetaColors.emerald,
-                          shape: BoxShape.circle,
-                        ),
-                      )
-                          .animate(onPlay: (c) => c.repeat(reverse: true))
-                          .fade(begin: 0.3, end: 1.0, duration: 800.ms),
-                      const SizedBox(width: 14),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'MÉTRICAS DO ECOSSISTEMA',
-                              style: TextStyle(
-                                color: MetaColors.emerald,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.1,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              '+2.400 Treinos Prescritos',
-                              style: TextStyle(
-                                color: MetaColors.textPrimary,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            Text(
-                                'Treinadores e alunos em uma plataforma compartilhada',
-                              style: TextStyle(
-                                color: MetaColors.textSecondary,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  child: const Text(
+                    'Convites preservam o vínculo com o treinador. A avaliação fica na conta do aluno; a liberação do treino acontece depois do alinhamento profissional.',
+                    style: TextStyle(
+                      color: MetaColors.textSecondary,
+                      fontSize: 13,
+                      height: 1.5,
+                    ),
                   ),
                 ),
               ],

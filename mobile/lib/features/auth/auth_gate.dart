@@ -6,6 +6,7 @@ import 'package:local_auth/local_auth.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../services/auth_service.dart';
 import '../trainer/presentation/screens/trainer_onboarding_screen.dart';
+import '../client/welcome_onboarding_screen.dart';
 import 'login_screen.dart';
 import '../../main.dart';
 
@@ -73,6 +74,7 @@ class _AuthGateState extends State<AuthGate> {
       final profile = await AuthService.getCurrentProfile();
       final role = profile?['role'] as String? ?? 'client';
       final name = profile?['full_name'] as String? ?? 'Usuário';
+      final hasCompletedAnamnesis = profile?['has_completed_anamnesis'] == true;
 
       if (mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -84,16 +86,25 @@ class _AuthGateState extends State<AuthGate> {
               ),
             );
           } else {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => MainShellScreen(
-                  initialIndex: 0,
-                  activeRole: role,
-                  userName: name,
+            if (!hasCompletedAnamnesis) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => WelcomeOnboardingScreen(studentName: name),
                 ),
-              ),
-            );
+              );
+            } else {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MainShellScreen(
+                    initialIndex: 0,
+                    activeRole: role,
+                    userName: name,
+                  ),
+                ),
+              );
+            }
           }
         });
       }

@@ -1182,6 +1182,7 @@ class SupabaseService:
         role: str = "trainer",
         phone: Optional[str] = None,
         trainer_id: Optional[str] = None,
+        invite_token: Optional[str] = None,
         professional_document_type: Optional[str] = None,
         professional_document: Optional[str] = None,
         photo_url: Optional[str] = None,
@@ -1199,6 +1200,8 @@ class SupabaseService:
             user_metadata["phone"] = phone
         if trainer_id and is_valid_uuid(trainer_id):
             user_metadata["trainer_id"] = trainer_id
+        if invite_token:
+            user_metadata["invite_token"] = invite_token
         if professional_document_type:
             user_metadata["professional_document_type"] = professional_document_type
         if professional_document:

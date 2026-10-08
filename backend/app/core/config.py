@@ -55,17 +55,24 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> List[str]:
+        production_origins = [
+            "https://shaipados.com",
+            "https://shaipados-labs.web.app",
+            "https://mrcoach.shaipados.com",
+            "https://mrcoach.app",
+            "https://app.shaipados.com",
+        ]
         val = self.CORS_ORIGINS
         if isinstance(val, list):
             origins = [str(item) for item in val]
             if "*" in origins and self.ENVIRONMENT.lower() == "production":
-                return ["https://shaipados.com"]
+                return production_origins
             return origins
         if isinstance(val, str):
             v_clean = val.strip()
             if not v_clean or v_clean == "*":
                 if self.ENVIRONMENT.lower() == "production":
-                    return ["https://shaipados.com"]
+                    return production_origins
                 return ["*"]
             if v_clean.startswith("[") and v_clean.endswith("]"):
                 try:
@@ -73,13 +80,13 @@ class Settings(BaseSettings):
                     if isinstance(parsed, list):
                         origins = [str(item) for item in parsed]
                         if "*" in origins and self.ENVIRONMENT.lower() == "production":
-                            return ["https://shaipados.com"]
+                            return production_origins
                         return origins
                 except Exception:
                     pass
             origins = [i.strip() for i in v_clean.split(",") if i.strip()]
             if "*" in origins and self.ENVIRONMENT.lower() == "production":
-                return ["https://shaipados.com"]
+                return production_origins
             return origins
         return ["*"]
 

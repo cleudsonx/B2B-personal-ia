@@ -68,6 +68,12 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
   }
 
   Future<void> _loadTrainerInfo() async {
+    try {
+      await AuthService.completePendingInvite();
+    } catch (e) {
+      debugPrint('Convite não pôde ser concluído durante o onboarding: $e');
+    }
+
     // 1. Prioriza o nome passado explicitamente para o widget
     if (widget.trainerName != null && widget.trainerName!.isNotEmpty) {
       _resolvedTrainerName = widget.trainerName!;
@@ -105,7 +111,7 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
           final trainerData =
               await client
                   .from('profiles')
-                  .select()
+                  .select('id, full_name, professional_document')
                   .eq('id', _trainerId!)
                   .maybeSingle();
 
@@ -136,6 +142,7 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
       final trainer = await AuthService.getTrainerForStudent();
       if (trainer != null && mounted) {
         setState(() {
+          _trainerId = trainer['id'] as String?;
           final name = trainer['full_name'] as String?;
           if (name != null && name.isNotEmpty) {
             _resolvedTrainerName =
@@ -164,11 +171,23 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
   }
 
   Future<void> _submitAnamnesis() async {
+    if (AuthService.currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Entre na sua conta para salvar sua avaliação.')),
+      );
+      return;
+    }
+    if (_trainerId == null || _trainerId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vincule-se a um treinador antes de enviar sua avaliação.')),
+      );
+      return;
+    }
     setState(() => _isSubmitting = true);
 
     try {
-      final user = AuthService.currentUser;
-      final clientId = user?.id ?? 'client-demo';
+      final user = AuthService.currentUser!;
+      final clientId = user.id;
 
       final injuriesSummary =
           _selectedInjuries.isEmpty ||
@@ -200,10 +219,11 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
       };
 
       // Persiste na tabela client_anamnesis e atualiza perfil do aluno
-      await WorkoutService.saveClientAnamnesis(
+      final saved = await WorkoutService.saveClientAnamnesis(
         clientId: clientId,
         data: anamnesisPayload,
       );
+      if (!saved) throw Exception('Não foi possível salvar sua avaliação. Tente novamente.');
 
       // Garante o vínculo relacional do aluno com o personal trainer no Supabase
       if (_trainerId != null && _trainerId!.isNotEmpty && user != null) {

@@ -1,5 +1,6 @@
 import secrets
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, HTTPException, Depends, Request, status
@@ -11,6 +12,11 @@ from app.services.audit_service import log_audit_event
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _normalize_phone(phone: str) -> str:
+    digits = re.sub(r"\D", "", phone)
+    return digits[2:] if digits.startswith("55") and len(digits) > 11 else digits
 
 # ---------------------------------------------------------
 # Schemas Pydantic
@@ -104,7 +110,7 @@ async def create_invite(
 
     # Constrói o link de convite (deeplink / landing page)
     # Por padrão aponta para o domínio web ou deeplink do app
-    invite_url = f"https://mrcoach.app/invite/{token}"
+    invite_url = f"https://mrcoach.app/#/invite/{token}"
 
     return CreateInviteResponse(
         token=token,
@@ -174,6 +180,15 @@ async def consume_invite(
 
     res = await client.table("invite_tokens").select("*").eq("token", token).maybe_single().execute()
     if not res or not res.data:
+        await log_audit_event(
+            event_type="invite_failed",
+            token=token,
+            trainer_id="00000000-0000-0000-0000-000000000000",
+            channel="email",
+            ip_address=client_ip,
+            user_agent=user_agent,
+            details={"reason": "token_not_found"},
+        )
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Convite não encontrado ou inválido.")
 
     invite_data = res.data
@@ -193,16 +208,21 @@ async def consume_invite(
 
     # Verifica se o e-mail/telefone do aluno bate com o do convite (opcional/fortemente recomendado)
     student_email = current_user.get("email")
-    student_phone = current_user.get("phone")
+    user_metadata = current_user.get("user_metadata") or {}
+    student_phone = current_user.get("phone") or user_metadata.get("phone")
+    if not student_phone:
+        profile_res = await client.table("profiles").select("phone").eq("id", student_id).maybe_single().execute()
+        student_phone = profile_res.data.get("phone") if profile_res and profile_res.data else None
 
     # Regra: se o convite foi direcionado, o alvo deve coincidir
-    if channel == "email" and target_email and student_email:
-        if target_email.lower() != student_email.lower():
+    if channel == "email" and target_email:
+        if not student_email or target_email.strip().lower() != student_email.strip().lower():
             raise HTTPException(status_code=403, detail="Este convite foi destinado a outro e-mail.")
     
-    if channel == "whatsapp" and target_phone and student_phone:
-        # Simplificação de verificação de telefone (poderia remover pontuação)
-        if target_phone not in student_phone and student_phone not in target_phone:
+    if channel == "whatsapp" and target_phone:
+        invited_phone = _normalize_phone(target_phone)
+        registered_phone = _normalize_phone(student_phone or "")
+        if not registered_phone or invited_phone != registered_phone:
             raise HTTPException(status_code=403, detail="Este convite foi destinado a outro telefone.")
 
     # Vincula o trainer_id ao perfil do aluno
@@ -228,107 +248,6 @@ async def consume_invite(
         ip_address=client_ip,
         user_agent=user_agent,
         details={"status": "success", "trainer_name": trainer_name, "student_id": student_id}
-    )
-
-    return ConsumeInviteResponse(
-        status="consumed",
-        trainer_id=str(trainer_id),
-        trainer_name=trainer_name,
-        target_email=target_email,
-        target_phone=target_phone,
-    )
-async def consume_invite(
-    body: ConsumeInviteRequest,
-    request: Request,
-):
-    """
-    Aluno abre o convite no app ou web.
-    Valida token, verifica expiração e se já foi consumido.
-    Marca como used_at e audita o consumo.
-    """
-    token = body.token.strip()
-    client_ip = request.client.host if request.client else None
-    user_agent = request.headers.get("user-agent")
-
-    client = await supabase_service.get_client()
-    if not client:
-        raise HTTPException(status_code=500, detail="Falha na conexão com banco de dados.")
-
-    # 1. Busca token no banco
-    res = await client.table("invite_tokens").select("*").eq("token", token).maybe_single().execute()
-    if not res or not res.data:
-        # Registra falha de auditoria
-        await log_audit_event(
-            event_type="invite_failed",
-            token=token,
-            trainer_id="00000000-0000-0000-0000-000000000000",
-            channel="email",
-            ip_address=client_ip,
-            user_agent=user_agent,
-            details={"reason": "token_not_found"}
-        )
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Convite não encontrado ou inválido.")
-
-    invite_data = res.data
-    trainer_id = invite_data.get("trainer_id")
-    channel = invite_data.get("channel") or "email"
-    target_email = invite_data.get("target_email")
-    target_phone = invite_data.get("target_phone")
-
-    # 2. Verifica se já foi usado
-    if invite_data.get("used_at"):
-        await log_audit_event(
-            event_type="invite_failed",
-            token=token,
-            trainer_id=trainer_id,
-            channel=channel,
-            target_email=target_email,
-            target_phone=target_phone,
-            ip_address=client_ip,
-            user_agent=user_agent,
-            details={"reason": "already_used", "used_at": invite_data.get("used_at")}
-        )
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Este convite já foi utilizado.")
-
-    # 3. Verifica expiração
-    expires_at_val = invite_data.get("expires_at")
-    if expires_at_val:
-        expires_dt = datetime.fromisoformat(expires_at_val.replace("Z", "+00:00"))
-        if datetime.now(timezone.utc) > expires_dt:
-            await log_audit_event(
-                event_type="invite_failed",
-                token=token,
-                trainer_id=trainer_id,
-                channel=channel,
-                target_email=target_email,
-                target_phone=target_phone,
-                ip_address=client_ip,
-                user_agent=user_agent,
-                details={"reason": "expired", "expires_at": expires_at_val}
-            )
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Este convite expirou.")
-
-    # 4. Busca dados públicos do treinador para acolhimento
-    trainer_res = await client.table("profiles").select("id, full_name").eq("id", trainer_id).maybe_single().execute()
-    trainer_name = "Seu Personal Trainer"
-    if trainer_res and trainer_res.data:
-        trainer_name = trainer_res.data.get("full_name") or trainer_name
-
-    # 5. Marca o token como consumido
-    now_utc = datetime.now(timezone.utc).isoformat()
-    await client.table("invite_tokens").update({"used_at": now_utc}).eq("token", token).execute()
-
-    # 6. Grava auditoria de sucesso
-    await log_audit_event(
-        event_type="invite_consumed",
-        token=token,
-        trainer_id=trainer_id,
-        channel=channel,
-        target_email=target_email,
-        target_phone=target_phone,
-        ip_address=client_ip,
-        user_agent=user_agent,
-        details={"status": "success", "trainer_name": trainer_name}
     )
 
     return ConsumeInviteResponse(

@@ -60,6 +60,11 @@ class AuthService {
       );
       if (response.user != null) {
         await _ensureProfileUpserted(response.user!);
+        try {
+          await _consumePendingInvite(response.user!);
+        } catch (e) {
+          debugPrint('Convite pendente não consumido: $e');
+        }
       }
       return response;
     } catch (e) {
@@ -99,16 +104,18 @@ class AuthService {
           if (professionalDocument != null &&
               professionalDocumentType == 'CREF')
             'cref': professionalDocument,
+          if (inviteToken != null && inviteToken.isNotEmpty)
+            'invite_token': inviteToken,
         },
       );
       if (response.user != null) {
         await _ensureProfileUpserted(response.user!);
       }
-      if (inviteToken != null && inviteToken.isNotEmpty) {
+      if (response.session != null && response.user != null) {
         try {
-          await InviteService.consumeInvite(inviteToken);
+          await _consumePendingInvite(response.user!);
         } catch (e) {
-          debugPrint("Erro ao consumir convite: $e");
+          debugPrint('Convite pendente será tentado novamente no onboarding: $e');
         }
       }
       return response;
@@ -125,17 +132,11 @@ class AuthService {
             role: role,
             phone: phone,
             trainerId: trainerId,
+            inviteToken: inviteToken,
             professionalDocumentType: professionalDocumentType,
             professionalDocument: professionalDocument,
           );
           final authRes = await signIn(email: email, password: password);
-          if (inviteToken != null && inviteToken.isNotEmpty) {
-            try {
-              await InviteService.consumeInvite(inviteToken);
-            } catch (e) {
-              debugPrint("Erro ao consumir convite fallback: $e");
-            }
-          }
           return authRes;
         } catch (backendErr) {
           throw Exception(
@@ -155,6 +156,7 @@ class AuthService {
     required String role,
     String? phone,
     String? trainerId,
+    String? inviteToken,
     String? professionalDocumentType,
     String? professionalDocument,
   }) async {
@@ -174,6 +176,8 @@ class AuthService {
             if (phone != null && phone.isNotEmpty) 'phone': phone.trim(),
             if (trainerId != null && trainerId.isNotEmpty)
               'trainer_id': trainerId,
+            if (inviteToken != null && inviteToken.isNotEmpty)
+              'invite_token': inviteToken,
             if (professionalDocumentType != null)
               'professional_document_type': professionalDocumentType,
             if (professionalDocument != null)
@@ -192,6 +196,21 @@ class AuthService {
       } catch (_) {}
       throw Exception(msg);
     }
+  }
+
+  static Future<void> _consumePendingInvite(User user) async {
+    final token = user.userMetadata?['invite_token'] as String?;
+    if (token == null || token.isEmpty) return;
+
+    await InviteService.consumeInvite(token);
+    final updatedMetadata = Map<String, dynamic>.from(user.userMetadata ?? {});
+    updatedMetadata.remove('invite_token');
+    await _client.auth.updateUser(UserAttributes(data: updatedMetadata));
+  }
+
+  static Future<void> completePendingInvite() async {
+    final user = currentUser;
+    if (user != null) await _consumePendingInvite(user);
   }
 
   /// Garante que o registro na tabela 'profiles' existe e está atualizado
@@ -274,7 +293,7 @@ class AuthService {
         final trainer =
             await _client
                 .from('profiles')
-                .select()
+            .select('id, full_name, professional_document')
                 .eq('id', trainerId)
                 .maybeSingle();
         return trainer;

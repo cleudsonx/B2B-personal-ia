@@ -126,10 +126,17 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
         );
         final token = inviteData['token'];
         if (token != null) {
-          inviteLink = 'https://mrcoach.app/convite/$trainerSlug/$token';
+          inviteLink = inviteData['invite_url'] as String? ??
+              'https://mrcoach.app/#/invite/$token';
         }
       } catch (e) {
         debugPrint('[WhatsApp] Erro ao gerar token de convite via API, usando fallback: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Não foi possível gerar um convite válido. Tente novamente.')),
+          );
+        }
+        return;
       }
     }
 

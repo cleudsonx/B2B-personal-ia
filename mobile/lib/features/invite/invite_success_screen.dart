@@ -67,7 +67,7 @@ class InviteSuccessScreen extends StatelessWidget {
 
                     // Título de Boas-Vindas
                     const Text(
-                      'Convite Confirmado!',
+                      'Convite recebido',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: MetaColors.textPrimary,
@@ -80,7 +80,7 @@ class InviteSuccessScreen extends StatelessWidget {
 
                     // Mensagem Personalizada
                     Text(
-                      'Você agora está conectado com seu Personal Trainer:',
+                      'Você foi convidado por este treinador para iniciar uma consultoria:',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: MetaColors.textSecondary,
@@ -129,7 +129,7 @@ class InviteSuccessScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Sua ficha e anamnese serão sincronizadas em tempo real com o motor de IA e com seu treinador.',
+                            'Após confirmar seus dados e concluir o cadastro, você preencherá a avaliação inicial. O treinador entrará em contato para alinhar a consultoria e liberar seu treino.',
                             style: TextStyle(
                               color: MetaColors.textSecondary,
                               fontSize: 12,

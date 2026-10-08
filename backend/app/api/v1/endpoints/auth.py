@@ -13,6 +13,7 @@ class DirectRegisterRequest(BaseModel):
     role: str = Field("trainer", description="'trainer' ou 'client'")
     phone: Optional[str] = None
     trainer_id: Optional[str] = None
+    invite_token: Optional[str] = None
     professional_document_type: Optional[str] = None
     professional_document: Optional[str] = None
     photo_url: Optional[str] = None
@@ -40,6 +41,7 @@ async def register_user_direct(req: DirectRegisterRequest):
             role=req.role,
             phone=req.phone,
             trainer_id=req.trainer_id,
+            invite_token=req.invite_token,
             professional_document_type=req.professional_document_type,
             professional_document=req.professional_document,
             photo_url=req.photo_url,

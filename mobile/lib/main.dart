@@ -2,6 +2,7 @@ import 'features/landing/shaipados_studio_screen.dart';
 import 'features/landing/b2b_landing_screen.dart';
 import 'features/landing/ai_news_screen.dart';
 import 'features/landing/trainer_public_landing_screen.dart';
+import 'features/landing/public_trainer_directory_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
@@ -11,6 +12,7 @@ import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
 import 'features/auth/auth_gate.dart';
 import 'features/client/active_workout_screen.dart';
+import 'features/client/student_demo_screen.dart';
 import 'features/trainer/anamnesis_screen.dart';
 import 'features/trainer/trainer_students_screen.dart';
 import 'features/trainer/presentation/screens/trainer_main_layout.dart';
@@ -81,11 +83,25 @@ class B2BPersonalIaApp extends StatelessWidget {
                       ),
                 );
               }
+              if (uri.pathSegments.length == 2 &&
+                  uri.pathSegments[0] == 'invite') {
+                return MaterialPageRoute(
+                  builder: (_) => InviteLandingScreen(
+                    trainerSlug: '',
+                    token: uri.pathSegments[1],
+                  ),
+                );
+              }
               if (uri.pathSegments.isNotEmpty &&
                   uri.pathSegments[0] == 'prof' &&
                   uri.pathSegments.length >= 2) {
                 return MaterialPageRoute(
                   builder: (_) => TrainerPublicLandingScreen(username: uri.pathSegments[1]),
+                );
+              }
+              if (uri.pathSegments.length == 1 && uri.pathSegments[0] == 'prof') {
+                return MaterialPageRoute(
+                  builder: (_) => const PublicTrainerDirectoryScreen(),
                 );
               }
               if (name == '/' || name == '/home') {
@@ -100,6 +116,7 @@ class B2BPersonalIaApp extends StatelessWidget {
             '/home': (context) => const AuthGate(),
             '/b2b': (context) => const B2BLandingScreen(),
             '/ai': (context) => const AiNewsScreen(),
+            '/demo': (context) => const StudentDemoScreen(),
             '/trainer': (context) => const TrainerMainLayout(),
             '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),

@@ -78,7 +78,7 @@ class InviteService {
     try {
       final res = await http.post(
         url,
-        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        headers: _headers,
         body: jsonEncode(payload),
       );
 

@@ -79,6 +79,13 @@ class B2BLandingScreen extends StatelessWidget {
                   style: TextButton.styleFrom(foregroundColor: Colors.white),
                   child: const Text('Mr. Coach IA'),
                 ),
+              if (wide)
+                TextButton.icon(
+                  onPressed: () => Navigator.pushNamed(context, '/prof'),
+                  style: TextButton.styleFrom(foregroundColor: Colors.white),
+                  icon: const Icon(Icons.search_rounded, size: 17),
+                  label: const Text('Encontrar treinador'),
+                ),
               const SizedBox(width: 8),
               _PlatformAccessButton(compact: !wide),
             ],
@@ -162,9 +169,9 @@ class B2BLandingScreen extends StatelessWidget {
               ),
             ),
             OutlinedButton.icon(
-              onPressed: () => Navigator.pushNamed(context, '/ai'),
-              icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-              label: const Text('Mr. Coach IA'),
+              onPressed: () => Navigator.pushNamed(context, '/prof'),
+              icon: const Icon(Icons.search_rounded, size: 18),
+              label: const Text('Encontrar treinador'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,
                 minimumSize: const Size(0, 48),
@@ -190,7 +197,7 @@ class B2BLandingScreen extends StatelessWidget {
       number: '02',
       title: 'Para quem treina',
       description:
-          'Acesse os treinos compartilhados pelo treinador e use as ferramentas disponíveis durante sua jornada.',
+          'Conheça o treinador, confirme seu contato e preencha a avaliação. O treino aparece depois da conversa e da liberação profissional.',
       icon: Icons.fitness_center_rounded,
     );
     return Container(
@@ -231,9 +238,10 @@ class B2BLandingScreen extends StatelessWidget {
 
   Widget _buildWorkflow(BuildContext context, bool wide) {
     final steps = [
-      ('01', 'Acesse sua conta', 'Treinadores e alunos usam o mesmo ponto de entrada.'),
-      ('02', 'Entre no seu espaço', 'A plataforma direciona cada conta conforme o perfil salvo.'),
-      ('03', 'Siga o vínculo', 'Alunos convidados continuam pelo link recebido do treinador.'),
+      ('01', 'Conheça o treinador', 'Abra o convite recebido ou encontre um profissional no diretório público.'),
+      ('02', 'Confirme seus contatos e cadastre-se', 'No convite, use o e-mail ou telefone para o qual ele foi enviado.'),
+      ('03', 'Preencha sua avaliação', 'As informações ficam vinculadas à sua conta para o treinador consultar.'),
+      ('04', 'Converse e aguarde', 'O treinador alinha a consultoria e libera o treino quando estiver pronto.'),
     ];
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 56, 22, 58),
@@ -275,9 +283,9 @@ class B2BLandingScreen extends StatelessWidget {
                 ),
               const SizedBox(height: 22),
               FilledButton.icon(
-                onPressed: () => Navigator.pushNamed(context, '/home'),
-                icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                label: const Text('Acessar plataforma'),
+                onPressed: () => Navigator.pushNamed(context, '/prof'),
+                icon: const Icon(Icons.search_rounded, size: 18),
+                label: const Text('Encontrar treinador'),
                 style: FilledButton.styleFrom(
                   backgroundColor: _green,
                   foregroundColor: Colors.white,

@@ -541,6 +541,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     const SizedBox(height: 10),
                     const Text(
                       'Quando seu professor liberar sua ficha, ela aparece aqui. '
+                      'Enquanto isso, aguarde o contato dele para conversar sobre a consultoria. '
                       'Se você está sem conexão, conecte-se e atualize.',
                       textAlign: TextAlign.center,
                       style: TextStyle(

@@ -11,7 +11,13 @@ def test_cors_origins_validator():
     assert s2.cors_origins_list == ["*"]
 
     production_wildcard = Settings(ENVIRONMENT="production", CORS_ORIGINS="*")
-    assert production_wildcard.cors_origins_list == ["https://shaipados.com"]
+    assert production_wildcard.cors_origins_list == [
+        "https://shaipados.com",
+        "https://shaipados-labs.web.app",
+        "https://mrcoach.shaipados.com",
+        "https://mrcoach.app",
+        "https://app.shaipados.com",
+    ]
     
     # JSON array string
     s3 = Settings(ENVIRONMENT="development", CORS_ORIGINS='["https://app.com", "http://localhost:5000"]')

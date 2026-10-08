@@ -29,6 +29,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
   final Set<String> _selectedSpecialties = {};
   bool _isSaving = false;
   bool _isLoading = true;
+  bool _publishInDirectory = false;
 
   @override
   void initState() {
@@ -44,7 +45,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
 
       final response = await supabase
           .from('profiles')
-          .select('username, bio, public_whatsapp, specialties, professional_document')
+          .select('username, bio, public_whatsapp, specialties, professional_document, public_directory_enabled')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -54,6 +55,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
           _bioController.text = response['bio'] ?? '';
           _whatsappController.text = response['public_whatsapp'] ?? '';
           _crefController.text = response['professional_document'] ?? '';
+          _publishInDirectory = response['public_directory_enabled'] == true;
           
           if (response['specialties'] != null) {
             final specs = List<String>.from(response['specialties']);
@@ -71,6 +73,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
   @override
   void dispose() {
     _usernameController.dispose();
+    _crefController.dispose();
     _bioController.dispose();
     _whatsappController.dispose();
     super.dispose();
@@ -89,6 +92,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
         'bio': _bioController.text.trim(),
         'public_whatsapp': _whatsappController.text.trim(),
         'professional_document': _crefController.text.trim(),
+        'public_directory_enabled': _publishInDirectory,
         'specialties': _selectedSpecialties.toList(),
       };
 
@@ -184,7 +188,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                               ],
                               decoration: InputDecoration(
                                 hintText: 'ex: joao-silva',
-                                prefixText: 'app.shaipados.com/prof/',
+                                prefixText: 'shaipados.com/#/prof/',
                                 prefixStyle: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold),
                                 filled: true,
                                 fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
@@ -216,6 +220,32 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                               ),
                             ),
                             const SizedBox(height: 24),
+                            _buildSectionTitle(context, 'Registro CREF'),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: _crefController,
+                              decoration: InputDecoration(
+                                hintText: 'CREF 00000-G/UF',
+                                helperText: 'Exibido no diretório público para identificação profissional.',
+                                filled: true,
+                                fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            SwitchListTile.adaptive(
+                              contentPadding: EdgeInsets.zero,
+                              value: _publishInDirectory,
+                              activeColor: colorScheme.primary,
+                              title: const Text('Exibir no diretório Shaipados'),
+                              subtitle: const Text('Seu perfil e registro CREF poderão ser encontrados publicamente.'),
+                              onChanged: (value) => setState(() => _publishInDirectory = value),
+                            ),
+                            const SizedBox(height: 16),
                             _buildSectionTitle(context, 'Especialidades'),
                             const SizedBox(height: 12),
                             Wrap(
