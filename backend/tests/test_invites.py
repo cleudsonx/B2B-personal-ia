@@ -9,6 +9,43 @@ def test_invite_phone_normalization_accepts_brazil_country_code():
     assert _normalize_phone("+55 (11) 99999-8888") == "11999998888"
     assert _normalize_phone("11 99999-8888") == "11999998888"
 
+
+@pytest.mark.asyncio
+async def test_create_invite_uses_configured_frontend_url(monkeypatch):
+    from app.api.v1.endpoints import invites as invite_endpoints
+
+    monkeypatch.setattr(
+        invite_endpoints.settings,
+        "APP_FRONTEND_URL",
+        "https://frontend.example/",
+    )
+    mock_supabase = MagicMock()
+    mock_supabase.table.return_value.insert.return_value.execute = AsyncMock(
+        return_value=MagicMock(data=[{"expires_at": "2026-10-09T00:00:00Z"}])
+    )
+
+    with patch(
+        "app.services.supabase_service.supabase_service.get_client",
+        new_callable=AsyncMock,
+        return_value=mock_supabase,
+    ):
+        with patch(
+            "app.api.v1.endpoints.invites.log_audit_event",
+            new_callable=AsyncMock,
+        ):
+            response = await invite_endpoints.create_invite(
+                invite_endpoints.CreateInviteRequest(
+                    channel="email",
+                    target_email="student@example.com",
+                ),
+                {"id": "trainer-test-id"},
+            )
+
+    assert response.invite_url == (
+        f"https://frontend.example/#/invite/{response.token}"
+    )
+
+
 @pytest.mark.asyncio
 async def test_create_invite_validation():
     """Valida rejeição de criação com dados ausentes"""

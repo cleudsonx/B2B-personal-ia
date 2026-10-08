@@ -112,9 +112,8 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     final user = AuthService.currentUser;
     final trainerName =
         user?.userMetadata?['full_name'] as String? ?? 'Seu Treinador';
-    final trainerSlug = trainerName.toLowerCase().replaceAll(RegExp(r'\s+'), '-');
 
-    String inviteLink = 'https://mrcoach.app/convite/$trainerSlug/demo-invite';
+    String inviteLink = '';
 
     // Se estiver pendente, gera convite com token criptográfico de 24h e auditoria
     if (isPending) {
@@ -125,10 +124,11 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
           targetEmail: email.isNotEmpty ? email : null,
         );
         final token = inviteData['token'];
-        if (token != null) {
-          inviteLink = inviteData['invite_url'] as String? ??
-              'https://mrcoach.app/#/invite/$token';
+        if (token is! String || token.isEmpty) {
+          throw Exception('O servidor não retornou um token de convite válido.');
         }
+        inviteLink = inviteData['invite_url'] as String? ??
+            'https://shaipados.com/#/invite/$token';
       } catch (e) {
         debugPrint('[WhatsApp] Erro ao gerar token de convite via API, usando fallback: $e');
         if (mounted) {

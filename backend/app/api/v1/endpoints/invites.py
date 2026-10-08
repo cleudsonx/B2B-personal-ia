@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request, status
 from pydantic import BaseModel, EmailStr, Field
 
 from app.api.deps import get_current_user
+from app.core.config import settings
 from app.services.supabase_service import supabase_service, is_valid_uuid
 from app.services.audit_service import log_audit_event
 
@@ -108,9 +109,8 @@ async def create_invite(
         details={"origin": "trainer_dashboard"}
     )
 
-    # Constrói o link de convite (deeplink / landing page)
-    # Por padrão aponta para o domínio web ou deeplink do app
-    invite_url = f"https://mrcoach.app/#/invite/{token}"
+    # Constrói o link de convite usando o domínio web configurado.
+    invite_url = f"{settings.APP_FRONTEND_URL.rstrip('/')}/#/invite/{token}"
 
     return CreateInviteResponse(
         token=token,
