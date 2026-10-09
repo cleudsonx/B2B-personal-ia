@@ -317,10 +317,18 @@ class AuthService {
   }
 
   static Future<String?> getVerifiedTotpFactorId() async {
-    final factors = await _client.auth.mfa.listFactors();
-    for (final factor in factors.totp) {
-      if (factor.status == FactorStatus.verified) return factor.id;
-    }
+    try {
+      final factors = await _client.auth.mfa.listFactors();
+      for (final factor in factors.totp) {
+        if (factor.status == FactorStatus.verified) return factor.id;
+      }
+      for (final factor in factors.all) {
+        if (factor.factorType == FactorType.totp &&
+            factor.status == FactorStatus.verified) {
+          return factor.id;
+        }
+      }
+    } catch (_) {}
     return null;
   }
 
@@ -329,8 +337,7 @@ class AuthService {
     try {
       final factors = await _client.auth.mfa.listFactors();
       for (final factor in factors.all) {
-        if (factor.factorType == FactorType.totp &&
-            factor.status == FactorStatus.unverified) {
+        if (factor.status == FactorStatus.unverified) {
           try {
             await _client.auth.mfa.unenroll(factor.id);
           } catch (_) {}
@@ -341,11 +348,23 @@ class AuthService {
 
   static Future<AuthMFAEnrollResponse> enrollTeacherTotp() async {
     await cleanupUnverifiedFactors();
-    return _client.auth.mfa.enroll(
-      factorType: FactorType.totp,
-      issuer: 'Mr. Coach',
-      friendlyName: 'Mr. Coach Trainer',
-    );
+    try {
+      // Omitir friendlyName fixo elimina qualquer risco de mfa_factor_name_conflict
+      return await _client.auth.mfa.enroll(
+        factorType: FactorType.totp,
+        issuer: 'Mr. Coach',
+      );
+    } on AuthApiException catch (e) {
+      if (e.code == 'mfa_factor_name_conflict' ||
+          e.message.contains('already exists')) {
+        await cleanupUnverifiedFactors();
+        return await _client.auth.mfa.enroll(
+          factorType: FactorType.totp,
+          issuer: 'Mr. Coach',
+        );
+      }
+      rethrow;
+    }
   }
 
   static Future<void> verifyTotp({
@@ -372,6 +391,10 @@ class AuthService {
 
   static String formatMfaError(Object error) {
     if (error is AuthApiException) {
+      if (error.code == 'mfa_factor_name_conflict' ||
+          error.message.toLowerCase().contains('already exists')) {
+        return 'Chave anterior em conflito detectada. Toque em "Tentar novamente" para gerar uma chave limpa.';
+      }
       if (error.code == 'mfa_verification_failed' ||
           error.message.toLowerCase().contains('invalid totp')) {
         return 'Código do autenticador inválido ou expirado. Verifique os 6 dígitos gerados no seu aplicativo autenticador ou sincronize a hora do celular.';
@@ -379,6 +402,10 @@ class AuthService {
       return error.message;
     }
     final str = error.toString().toLowerCase();
+    if (str.contains('mfa_factor_name_conflict') ||
+        str.contains('already exists')) {
+      return 'Chave anterior em conflito detectada. Toque em "Tentar novamente" para gerar uma chave limpa.';
+    }
     if (str.contains('invalid totp') ||
         str.contains('mfa_verification_failed') ||
         str.contains('422')) {

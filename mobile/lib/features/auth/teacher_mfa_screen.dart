@@ -176,6 +176,8 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
     final secret = _enrollment?.totp?.secret;
     final isDark = MetaColors.isDark(context);
 
+    final isConfirming = _factorId != null && !_isEnrolling;
+
     return Scaffold(
       backgroundColor: MetaColors.bg(context),
       appBar: AppBar(
@@ -219,31 +221,31 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
                   color: MetaColors.emerald,
                 ),
               ),
-              const SizedBox(height: 20),
-              Text(
-                _isEnrolling
-                    ? 'Ative a verificação em duas etapas'
-                    : 'Confirme sua identidade',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: MetaColors.text(context),
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                _isEnrolling
-                    ? 'Adicione a chave abaixo ao seu aplicativo autenticador (Google Authenticator, Microsoft ou 1Password) para proteger o acesso às ferramentas de treinador.'
-                    : 'Digite o código de 6 dígitos gerado pelo seu aplicativo autenticador para liberar o painel do treinador.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: MetaColors.subtext(context),
-                  height: 1.45,
-                  fontSize: 14,
-                ),
-              ),
+                      const SizedBox(height: 20),
+                      Text(
+                        isConfirming
+                            ? 'Confirme sua identidade'
+                            : 'Ative a verificação em duas etapas',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: MetaColors.text(context),
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        isConfirming
+                            ? 'Digite o código de 6 dígitos gerado pelo seu aplicativo autenticador para liberar o painel do treinador.'
+                            : 'Adicione a chave abaixo ao seu aplicativo autenticador (Google Authenticator, Microsoft ou 1Password) para proteger o acesso às ferramentas de treinador.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: MetaColors.subtext(context),
+                          height: 1.45,
+                          fontSize: 14,
+                        ),
+                      ),
               if (_loading) ...[
                 const SizedBox(height: 40),
                 const Center(
@@ -475,6 +477,15 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
                     ],
                   ),
                 ),
+                if (_factorId == null && _enrollment == null) ...[
+                  const SizedBox(height: 16),
+                  SquircleButton(
+                    label: 'Tentar novamente',
+                    icon: Icons.refresh,
+                    isPrimary: true,
+                    onPressed: _prepare,
+                  ),
+                ],
               ],
               if (!_loading && !_alreadyEnabled) ...[
                 const SizedBox(height: 20),
