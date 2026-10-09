@@ -1,10 +1,9 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/ai_generation_stepper.dart';
 import '../../core/widgets/server_config_dialog.dart';
-import '../../core/widgets/theme_toggle_button.dart';
 import '../../models/exercise_model.dart';
 import '../../models/split_model.dart';
 import '../../models/workout_plan_model.dart';
@@ -260,8 +259,6 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           ),
         ),
         actions: [
-          const ThemeToggleButton(),
-          const SizedBox(width: 4),
           if (kDebugMode)
             IconButton(
               icon: const Icon(Icons.settings_ethernet_rounded),
