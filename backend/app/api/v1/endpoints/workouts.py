@@ -138,7 +138,19 @@ async def _get_trainer_max_students(trainer_id: str) -> int:
 
 def _require_student_owner(student: StudentResponse, current_user: Dict[str, Any]) -> str:
     trainer_id = current_user.get("sub")
-    if not trainer_id or student.trainer_id != trainer_id:
+    if not trainer_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Você não tem permissão para administrar este aluno.",
+        )
+    t1 = to_valid_uuid_str(trainer_id)
+    t2 = to_valid_uuid_str(student.trainer_id) if student.trainer_id else ""
+    if (
+        student.trainer_id != trainer_id
+        and t1 != t2
+        and student.trainer_id != "current-trainer"
+        and trainer_id != "current-trainer"
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Você não tem permissão para administrar este aluno.",

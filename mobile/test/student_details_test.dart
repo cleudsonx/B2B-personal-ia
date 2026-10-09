@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_ia/features/trainer/presentation/screens/student_details_screen.dart';
@@ -148,5 +149,25 @@ void main() {
     await tester.tap(find.byKey(const Key('confirm_delete_student')));
     await tester.pumpAndSettle();
     expect(deleteCalls, 1);
+  });
+
+  testWidgets('handles delete timeout gracefully with clean message', (tester) async {
+    await _openDetails(
+      tester,
+      onDeleteStudent: (studentId) async {
+        throw TimeoutException('Future not completed', const Duration(seconds: 4));
+      },
+    );
+
+    await _tapAdministrationAction(tester, 'Excluir Definitivamente');
+    await tester.tap(find.byKey(const Key('confirm_delete_student')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(
+      find.text('Não foi possível excluir o aluno: Tempo limite esgotado ao contatar o servidor. Tente novamente.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('TimeoutException after'), findsNothing);
   });
 }

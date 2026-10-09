@@ -496,4 +496,45 @@ def test_student_quota_enforcement_and_unarchive_blockage(monkeypatch):
     assert reactivate_pro.json()["status"] == "Ativo"
 
 
+def test_delete_pending_invite_student():
+    from app.services.supabase_service import supabase_service
+    from app.api.deps import get_current_trainer
+
+    pending_id = "inv-pending-uuid-0001"
+    trainer_id = "test-trainer-id"
+    supabase_service._mem_students[pending_id] = {
+        "id": pending_id,
+        "full_name": "Victor AC",
+        "email": "victor@example.com",
+        "phone": "11988887777",
+        "goal": "Hipertrofia Muscular",
+        "status": "Convite Pendente",
+        "trainer_id": trainer_id,
+        "created_at": "2026-10-09T00:00:00+00:00",
+        "has_active_prescription": False,
+        "last_session": "Aguardando cadastro",
+        "active_split": "Convite enviado",
+        "injuries_or_restrictions": "Nenhuma restrição",
+    }
+
+    app.dependency_overrides[get_current_trainer] = lambda: {
+        "sub": trainer_id,
+        "aal": "aal2",
+        "profile": {"role": "trainer", "roles": ["trainer"]},
+    }
+
+    try:
+        # Verifica se o endpoint de deletar aluno remove o convite pendente com sucesso
+        del_res = client.delete(f"/api/v1/workouts/students/{pending_id}")
+        assert del_res.status_code == 200
+        assert del_res.json()["status"] == "success"
+        assert del_res.json()["student_id"] == pending_id
+
+        # Confirma que não existe mais na memória
+        assert pending_id not in supabase_service._mem_students
+    finally:
+        app.dependency_overrides.pop(get_current_trainer, None)
+        supabase_service._mem_students.pop(pending_id, None)
+
+
 

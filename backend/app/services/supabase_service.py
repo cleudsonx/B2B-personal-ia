@@ -1108,6 +1108,25 @@ class SupabaseService:
                             created_at=p.get("created_at") or datetime.now(timezone.utc).isoformat(),
                             has_active_prescription=False,
                         )
+
+                    # Se não encontrado em profiles, verifica se é um convite pendente em invite_tokens
+                    inv_res = await client.table("invite_tokens").select("*").eq("id", s_uuid).execute()
+                    if inv_res.data:
+                        inv = inv_res.data[0]
+                        return StudentResponse(
+                            id=inv["id"],
+                            full_name=inv.get("target_name") or "Novo aluno",
+                            email=inv.get("target_email") or "",
+                            phone=inv.get("target_phone"),
+                            goal=inv.get("objective") or "Hipertrofia Muscular",
+                            status="Convite Pendente",
+                            trainer_id=inv.get("trainer_id") or "current-trainer",
+                            created_at=inv.get("created_at") or datetime.now(timezone.utc).isoformat(),
+                            has_active_prescription=False,
+                            last_session="Aguardando cadastro",
+                            active_split="Convite enviado",
+                            injuries_or_restrictions=inv.get("injuries_or_restrictions"),
+                        )
                 except Exception as e:
                     logger.error(f"Erro ao buscar aluno por ID no Supabase: {e}")
                     self._raise_if_production("buscar aluno", e)
@@ -1235,6 +1254,19 @@ class SupabaseService:
                 if anam_updates:
                     await client.table("anamnesis").update(anam_updates).eq("client_id", s_uuid).execute()
 
+                # Se for um convite pendente em invite_tokens, sincroniza dados
+                inv_updates = {}
+                if req.full_name is not None:
+                    inv_updates["target_name"] = req.full_name
+                if req.phone is not None:
+                    inv_updates["target_phone"] = req.phone
+                if req.goal is not None:
+                    inv_updates["objective"] = req.goal
+                if req.injuries_or_restrictions is not None:
+                    inv_updates["injuries_or_restrictions"] = req.injuries_or_restrictions
+                if inv_updates:
+                    await client.table("invite_tokens").update(inv_updates).eq("id", s_uuid).execute()
+
             except Exception as e:
                 logger.error(f"Erro ao atualizar aluno no Supabase: {e}")
                 self._raise_if_production("atualizar aluno", e)
@@ -1277,18 +1309,29 @@ class SupabaseService:
     async def delete_student(self, student_id: str, trainer_id: str) -> bool:
         """Exclui um aluno do sistema."""
         s_uuid = to_valid_uuid_str(student_id)
+        t_uuid = to_valid_uuid_str(trainer_id)
         client = await self.get_client()
 
+        deleted = False
         if client and is_valid_uuid(student_id):
             try:
+                # 1. Tenta excluir de profiles (aluno cadastrado)
                 # O DELETE CASCADE do schema Postgres remove automaticamente anamnesis, workouts e logs
                 res = await client.table("profiles").delete().eq("id", s_uuid).execute()
-                if self._is_production() and not res.data:
+                if res.data:
+                    deleted = True
+                    try:
+                        await client.auth.admin.delete_user(s_uuid)
+                    except Exception:
+                        pass
+
+                # 2. Tenta excluir de invite_tokens (se for um convite pendente)
+                inv_res = await client.table("invite_tokens").delete().eq("id", s_uuid).execute()
+                if inv_res.data:
+                    deleted = True
+
+                if self._is_production() and not deleted:
                     return False
-                try:
-                    await client.auth.admin.delete_user(s_uuid)
-                except Exception:
-                    pass
             except Exception as e:
                 logger.error(f"Erro ao excluir aluno do Supabase: {e}")
                 self._raise_if_production("excluir aluno", e)

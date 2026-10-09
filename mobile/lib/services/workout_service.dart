@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -741,7 +742,7 @@ class WorkoutService {
             if (status != null) 'status': status,
           }),
         )
-        .timeout(const Duration(seconds: 4));
+        .timeout(const Duration(seconds: 15));
 
     if (res.statusCode != 200) {
       var message = 'Não foi possível atualizar o aluno (${res.statusCode}).';
@@ -777,23 +778,58 @@ class WorkoutService {
     return updateStudent(studentId: studentId, status: status);
   }
 
-  /// Exclui um aluno do sistema
+  /// Exclui um aluno do sistema com suporte a convites pendentes e alunos ativos
   static Future<bool> deleteStudent(String studentId) async {
-    final uri = Uri.parse(
-      '${AppConfig.apiBaseUrl}/workouts/students/$studentId',
-    );
-    final res = await http
-        .delete(uri, headers: _apiHeaders)
-        .timeout(const Duration(seconds: 4));
-    if (res.statusCode != 200) {
-      var message = 'Não foi possível excluir o aluno (${res.statusCode}).';
+    bool deletedOnSupabase = false;
+
+    // 1. Tenta exclusão direta no Supabase (se cliente disponível)
+    if (_clientOrNull != null) {
       try {
-        final body = jsonDecode(utf8.decode(res.bodyBytes));
-        if (body is Map<String, dynamic> && body['detail'] != null) {
-          message = body['detail'].toString();
-        }
-      } catch (_) {}
-      throw Exception(message);
+        await _client.from('invite_tokens').delete().eq('id', studentId);
+        deletedOnSupabase = true;
+      } catch (e) {
+        debugPrint('Aviso ao excluir invite_token no Supabase: $e');
+      }
+      try {
+        await _client.from('profiles').delete().eq('id', studentId);
+        deletedOnSupabase = true;
+      } catch (e) {
+        debugPrint('Aviso ao excluir profile no Supabase: $e');
+      }
+    }
+
+    // 2. Chama a API do backend com timeout estendido (15s) para absorver cold starts
+    try {
+      final uri = Uri.parse(
+        '${AppConfig.apiBaseUrl}/workouts/students/$studentId',
+      );
+      final res = await http
+          .delete(uri, headers: _apiHeaders)
+          .timeout(const Duration(seconds: 15));
+
+      if (res.statusCode != 200 && res.statusCode != 404) {
+        var message = 'Não foi possível excluir o aluno (${res.statusCode}).';
+        try {
+          final body = jsonDecode(utf8.decode(res.bodyBytes));
+          if (body is Map<String, dynamic> && body['detail'] != null) {
+            message = body['detail'].toString();
+          }
+        } catch (_) {}
+        throw Exception(message);
+      }
+    } on TimeoutException {
+      debugPrint('Aviso: Timeout no backend ao excluir aluno $studentId.');
+      if (!deletedOnSupabase && _clientOrNull == null) {
+        throw Exception('Tempo limite esgotado ao contatar o servidor. Tente novamente.');
+      }
+    } catch (e) {
+      if (e.toString().contains('Não foi possível') || e.toString().contains('permissão')) {
+        rethrow;
+      }
+      if (!deletedOnSupabase && _clientOrNull == null) {
+        rethrow;
+      }
+      debugPrint('Aviso HTTP ao excluir aluno: $e');
     }
 
     _localStudentsCache.removeWhere((s) => s['id'] == studentId);

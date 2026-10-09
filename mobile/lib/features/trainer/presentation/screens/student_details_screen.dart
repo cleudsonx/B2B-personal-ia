@@ -280,9 +280,7 @@ late Map<String, dynamic> student;
                       } catch (error) {
                         setDialogState(() {
                           isSaving = false;
-                          errorMessage = error
-                              .toString()
-                              .replaceFirst('Exception: ', '');
+                          errorMessage = _formatErrorMessage(error);
                         });
                       }
                     },
@@ -309,6 +307,14 @@ late Map<String, dynamic> student;
       await Future<void>.delayed(Duration.zero);
       if (mounted) Navigator.pop(context, true);
     }
+  }
+
+  String _formatErrorMessage(Object error) {
+    final str = error.toString();
+    if (str.contains('TimeoutException')) {
+      return 'Tempo limite esgotado ao contatar o servidor. Tente novamente.';
+    }
+    return str.replaceFirst(RegExp(r'^(Exception|StateError):\s*'), '');
   }
 
   Future<void> _archiveStudent() async {
@@ -346,8 +352,9 @@ late Map<String, dynamic> student;
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
       if (mounted) {
+        final message = _formatErrorMessage(error);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Não foi possível arquivar o aluno: $error')),
+          SnackBar(content: Text('Não foi possível arquivar o aluno: $message')),
         );
       }
     }
@@ -385,8 +392,9 @@ late Map<String, dynamic> student;
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
       if (mounted) {
+        final message = _formatErrorMessage(error);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Não foi possível excluir o aluno: $error')),
+          SnackBar(content: Text('Não foi possível excluir o aluno: $message')),
         );
       }
     }
