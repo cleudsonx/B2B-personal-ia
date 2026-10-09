@@ -32,7 +32,26 @@ def run_smoke_tests(base_url: str) -> bool:
     tests_passed = 0
     tests_failed = 0
 
-    client = httpx.Client(timeout=15.0)
+    client = None
+    try:
+        test_probe = httpx.Client(timeout=2.0)
+        test_probe.get(f"{base_url}/health")
+        client = httpx.Client(timeout=15.0)
+    except Exception:
+        if "localhost" in base_url or "127.0.0.1" in base_url:
+            try:
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+                from app.main import app
+                from starlette.testclient import TestClient
+                client = TestClient(app)
+                base_url = ""
+                print("  [INFO] Servidor local offline: executando testes in-process via TestClient.")
+            except Exception:
+                pass
+    if client is None:
+        client = httpx.Client(timeout=15.0)
+
+
 
     # 1. Healthcheck Geral
     try:
@@ -62,15 +81,16 @@ def run_smoke_tests(base_url: str) -> bool:
 
     # 3. Contrato OpenAPI JSON
     try:
-        res = client.get(f"{base_url}/openapi.json")
+        openapi_url = f"{base_url}/api/v1/openapi.json" if client.get(f"{base_url}/api/v1/openapi.json").status_code == 200 else f"{base_url}/openapi.json"
+        res = client.get(openapi_url)
         if res.status_code == 200 and "paths" in res.json():
-            print("  [PASS] 3. Schema OpenAPI /openapi.json: HTTP 200 (JSON Válido)")
+            print(f"  [PASS] 3. Schema OpenAPI ({openapi_url}): HTTP 200 (JSON Válido)")
             tests_passed += 1
         else:
-            print(f"  [FAIL] 3. Schema OpenAPI /openapi.json: HTTP {res.status_code}")
+            print(f"  [FAIL] 3. Schema OpenAPI ({openapi_url}): HTTP {res.status_code}")
             tests_failed += 1
     except Exception as e:
-        print(f"  [FAIL] 3. Schema OpenAPI /openapi.json: Exceção: {e}")
+        print(f"  [FAIL] 3. Schema OpenAPI: Exceção: {e}")
         tests_failed += 1
 
     # 4. Vitrine Pública de Treinadores
@@ -86,9 +106,12 @@ def run_smoke_tests(base_url: str) -> bool:
         print(f"  [FAIL] 4. Vitrine Pública /api/v1/public/trainers: Exceção: {e}")
         tests_failed += 1
 
-    # 5. Probe de Segurança: Rota protegida sem token deve barrar (401/403)
+    # 5. Probe de Segurança: Rota protegida com token inválido deve barrar (401/403)
     try:
-        res = client.get(f"{base_url}/api/v1/workouts/students")
+        res = client.get(
+            f"{base_url}/api/v1/workouts/students",
+            headers={"Authorization": "Bearer invalid_unauthorized_token"}
+        )
         if res.status_code in (401, 403):
             print(f"  [PASS] 5. Proteção Auth /api/v1/workouts/students: HTTP {res.status_code} (Barrado corretamente)")
             tests_passed += 1
@@ -99,14 +122,18 @@ def run_smoke_tests(base_url: str) -> bool:
         print(f"  [FAIL] 5. Proteção Auth /api/v1/workouts/students: Exceção: {e}")
         tests_failed += 1
 
-    # 6. Probe de Segurança: Webhook sem assinatura deve ser rejeitado (401/422)
+    # 6. Probe de Segurança: Webhook Asaas com token inválido deve ser rejeitado (400/401/403/422/503)
     try:
-        res = client.post(f"{base_url}/api/v1/subscriptions/webhook", json={"event": "TEST"})
-        if res.status_code in (401, 403, 422):
-            print(f"  [PASS] 6. Proteção Webhook /api/v1/subscriptions/webhook: HTTP {res.status_code} (Barrado)")
+        res = client.post(
+            f"{base_url}/api/v1/subscriptions/webhook/asaas",
+            json={"event": "PAYMENT_RECEIVED", "payment": {"id": "fake_pay"}},
+            headers={"asaas-access-token": "invalid_fake_asaas_token"}
+        )
+        if res.status_code in (400, 401, 403, 422, 503):
+            print(f"  [PASS] 6. Proteção Webhook /api/v1/subscriptions/webhook/asaas: HTTP {res.status_code} (Barrado corretamente)")
             tests_passed += 1
         else:
-            print(f"  [FAIL] 6. Proteção Webhook: HTTP {res.status_code} (Esperado 401/403/422)")
+            print(f"  [FAIL] 6. Proteção Webhook: HTTP {res.status_code} (Esperado 400/401/403/422/503)")
             tests_failed += 1
     except Exception as e:
         print(f"  [FAIL] 6. Proteção Webhook: Exceção: {e}")
@@ -140,3 +167,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

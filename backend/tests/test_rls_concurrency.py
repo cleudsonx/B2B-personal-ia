@@ -136,3 +136,4 @@ async def test_concurrency_releases_quota_on_gemini_failure():
                     )
                 assert exc_info.value.status_code == 500
                 mock_release.assert_awaited_once_with("trainer-uuid-001")
+

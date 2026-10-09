@@ -39,3 +39,4 @@ Execute o script em lote:
 ```powershell
 .\tests\performance\run_stress_tests.bat
 ```
+

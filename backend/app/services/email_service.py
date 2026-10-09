@@ -131,5 +131,85 @@ class EmailService:
             logger.error(f"Erro ao disparar e-mail via Resend: {e}")
             return {"status": "failed", "error": str(e)}
 
+    async def send_recovery_otp_email(
+        self,
+        recipient_email: str,
+        user_name: str,
+        otp_code: str,
+    ) -> Dict[str, Any]:
+        """
+        Dispara o e-mail com código de segurança (OTP) de recuperação de senha.
+        """
+        subject = f"Seu código de recuperação Mr. Coach: {otp_code} 🔑"
+        html_body = f"""
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 32px 24px; background: #0b141a; color: #e9edef; max-width: 520px; margin: 0 auto; border-radius: 16px;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <h1 style="color: #25d366; font-size: 22px; font-weight: 800; letter-spacing: 0.5px; margin: 0;">MR. COACH</h1>
+            <p style="color: #8696a0; font-size: 13px; margin: 4px 0 0 0;">Segurança da Conta</p>
+          </div>
+          <div style="background: #111b21; border: 1px solid #202c33; border-radius: 12px; padding: 24px; text-align: center;">
+            <p style="color: #e9edef; font-size: 15px; margin: 0 0 16px 0;">Olá, <strong>{user_name}</strong>!</p>
+            <p style="color: #8696a0; font-size: 14px; line-height: 1.5; margin: 0 0 20px 0;">
+              Recebemos uma solicitação para redefinir o acesso à sua conta. Use o código de verificação abaixo:
+            </p>
+            <div style="display: inline-block; padding: 14px 28px; background: #202c33; border: 1px solid #25d366; border-radius: 10px; font-size: 28px; font-weight: 800; letter-spacing: 6px; color: #25d366;">
+              {otp_code}
+            </div>
+            <p style="color: #8696a0; font-size: 12px; margin: 20px 0 0 0;">
+              Este código é válido por <strong>10 minutos</strong>.<br/>
+              Se você não solicitou a redefinição, ignore este e-mail.
+            </p>
+          </div>
+          <p style="text-align: center; font-size: 11px; color: #8696a0; margin-top: 24px;">
+            Mr. Coach • Plataforma B2B para Personal Trainers &amp; Alunos
+          </p>
+        </div>
+        """
+
+        if not self.api_key:
+            logger.info(
+                f"[Email Mock] OTP de recuperação para {recipient_email} (Código: {otp_code})"
+            )
+            return {
+                "status": "success",
+                "mode": "mock",
+                "recipient": recipient_email,
+                "subject": subject,
+                "otp_code": otp_code,
+            }
+
+        try:
+            url = "https://api.resend.com/emails"
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "from": self.email_from,
+                "to": [recipient_email],
+                "subject": subject,
+                "html": html_body,
+            }
+
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                res = await client.post(url, headers=headers, json=payload)
+                if res.status_code in (200, 201):
+                    logger.info(f"OTP de recuperação enviado via Resend para {recipient_email}")
+                    return {"status": "sent", "provider": "resend", "data": res.json()}
+                elif res.status_code == 403 and "not verified" in res.text.lower():
+                    payload["from"] = "Mr. Coach <onboarding@resend.dev>"
+                    fallback_res = await client.post(url, headers=headers, json=payload)
+                    if fallback_res.status_code in (200, 201):
+                        logger.info(f"OTP enviado via sandbox Resend para {recipient_email}")
+                        return {"status": "sent", "provider": "resend", "data": fallback_res.json()}
+                    return {"status": "error", "code": fallback_res.status_code, "detail": fallback_res.text}
+                else:
+                    logger.warning(f"Resend retornou status {res.status_code} no envio do OTP: {res.text}")
+                    return {"status": "error", "code": res.status_code, "detail": res.text}
+        except Exception as e:
+            logger.error(f"Erro ao disparar OTP via Resend: {e}")
+            return {"status": "failed", "error": str(e)}
+
 
 email_service = EmailService()
+

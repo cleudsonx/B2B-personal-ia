@@ -34,3 +34,4 @@ supabase db reset
 ```
 
 Isso garante um banco completamente limpo, com todas as 23 migrations aplicadas e usuários/treinadores de teste populados para testes determinísticos.
+

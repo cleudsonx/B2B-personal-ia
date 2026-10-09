@@ -23,3 +23,4 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo.
 echo [SUCESSO] Smoke test validado com exito!
+

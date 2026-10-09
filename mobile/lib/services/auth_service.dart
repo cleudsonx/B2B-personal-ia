@@ -390,17 +390,6 @@ class AuthService {
   }
 
   static String formatMfaError(Object error) {
-    if (error is AuthApiException) {
-      if (error.code == 'mfa_factor_name_conflict' ||
-          error.message.toLowerCase().contains('already exists')) {
-        return 'Chave anterior em conflito detectada. Toque em "Tentar novamente" para gerar uma chave limpa.';
-      }
-      if (error.code == 'mfa_verification_failed' ||
-          error.message.toLowerCase().contains('invalid totp')) {
-        return 'Código do autenticador inválido ou expirado. Verifique os 6 dígitos gerados no seu aplicativo autenticador ou sincronize a hora do celular.';
-      }
-      return error.message;
-    }
     final str = error.toString().toLowerCase();
     if (str.contains('mfa_factor_name_conflict') ||
         str.contains('already exists')) {
@@ -408,14 +397,20 @@ class AuthService {
     }
     if (str.contains('invalid totp') ||
         str.contains('mfa_verification_failed') ||
+        str.contains('verification_failed') ||
+        str.contains('invalid code') ||
+        str.contains('invalid_grant') ||
         str.contains('422')) {
-      return 'Código do autenticador inválido ou expirado. Verifique os 6 dígitos gerados no seu aplicativo autenticador ou sincronize a hora do celular.';
+      return 'Código do autenticador inválido ou expirado. Verifique os 6 dígitos gerados no seu aplicativo autenticador ou sincronize a hora do celular (Data e Hora automáticas).';
     }
     if (str.contains('socketexception') ||
         str.contains('failed host lookup') ||
         str.contains('network') ||
         str.contains('timeout')) {
       return 'Falha de conexão com a internet. Verifique sua rede e tente novamente.';
+    }
+    if (error is AuthException) {
+      return error.message;
     }
     return 'Não foi possível validar o código do autenticador. Tente novamente.';
   }

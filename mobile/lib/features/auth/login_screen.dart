@@ -248,24 +248,26 @@ class _LoginScreenState extends State<LoginScreen> {
               side: const BorderSide(color: MetaColors.border),
             ),
             title: const Text(
-              'Verificar Código',
+              'Verificar Código OTP',
               style: TextStyle(color: MetaColors.textPrimary, fontWeight: FontWeight.bold),
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Insira o código de 6 dígitos enviado no WhatsApp para  e sua nova senha.',
+                  'Insira o código de 6 dígitos enviado para $identifier e defina sua nova senha.',
                   style: const TextStyle(color: MetaColors.textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: otpCtrl,
-                  style: const TextStyle(color: MetaColors.textPrimary),
+                  style: const TextStyle(color: MetaColors.textPrimary, letterSpacing: 4, fontWeight: FontWeight.bold),
                   keyboardType: TextInputType.number,
+                  maxLength: 6,
                   decoration: InputDecoration(
-                    labelText: 'Código OTP',
+                    labelText: 'Código de 6 dígitos',
                     hintText: '123456',
+                    counterText: '',
                     labelStyle: const TextStyle(color: MetaColors.textSecondary),
                     filled: true,
                     fillColor: MetaColors.surfaceHighlight,
@@ -278,7 +280,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   obscureText: true,
                   style: const TextStyle(color: MetaColors.textPrimary),
                   decoration: InputDecoration(
-                    labelText: 'Nova Senha',
+                    labelText: 'Nova Senha (mín. 6 caracteres)',
                     labelStyle: const TextStyle(color: MetaColors.textSecondary),
                     filled: true,
                     fillColor: MetaColors.surfaceHighlight,
@@ -298,11 +300,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   foregroundColor: Colors.white,
                 ),
                 onPressed: isSubmitting ? null : () async {
-                  final otp = otpCtrl.text.trim();
-                  final pwd = passwordCtrl.text;
+                  final otp = otpCtrl.text.replaceAll(RegExp(r'\D'), '').trim();
+                  final pwd = passwordCtrl.text.trim();
                   if (otp.length != 6 || pwd.length < 6) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(behavior: SnackBarBehavior.floating, content: Text('Código inválido ou senha muito curta (min 6).')),
+                      const SnackBar(
+                        behavior: SnackBarBehavior.floating,
+                        content: Text('Digite o código de 6 dígitos e uma nova senha com no mínimo 6 caracteres.'),
+                      ),
                     );
                     return;
                   }
@@ -313,9 +318,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (mounted) {
                       Navigator.pop(ctx);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(behavior: SnackBarBehavior.floating, 
+                        const SnackBar(
+                          behavior: SnackBarBehavior.floating, 
                           backgroundColor: MetaColors.emerald,
-                          content: Text('Senha redefinida com sucesso! Pode entrar.'),
+                          content: Text('Senha redefinida com sucesso! Você já pode entrar com sua nova senha.'),
                         ),
                       );
                     }
@@ -323,7 +329,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     setDialogState(() => isSubmitting = false);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(behavior: SnackBarBehavior.floating, 
+                        SnackBar(
+                          behavior: SnackBarBehavior.floating, 
                           backgroundColor: Colors.red.shade800,
                           content: Text(e.toString().replaceAll('Exception: ', '')),
                         ),
@@ -530,20 +537,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     await AuthService.requestRecoveryOtp(textVal, selectedChannel);
                     if (mounted) {
                       Navigator.pop(ctx);
-                      if (selectedChannel == 'email') {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(behavior: SnackBarBehavior.floating, 
-                            backgroundColor: MetaColors.surfaceHighlight,
-                            content: Text(
-                              'Instruções enviadas para ',
-                              style: const TextStyle(color: MetaColors.textPrimary),
-                            ),
+                      _showVerifyOtpDialog(textVal);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          behavior: SnackBarBehavior.floating, 
+                          backgroundColor: MetaColors.emerald,
+                          content: Text(
+                            selectedChannel == 'email'
+                                ? 'Código enviado para o e-mail $textVal'
+                                : 'Código enviado via WhatsApp para $textVal',
+                            style: const TextStyle(color: Colors.white),
                           ),
-                        );
-                      } else {
-                        // Show OTP verification modal
-                        _showVerifyOtpDialog(textVal);
-                      }
+                        ),
+                      );
                     }
                   } catch (e) {
                     setDialogState(() => isSubmitting = false);
