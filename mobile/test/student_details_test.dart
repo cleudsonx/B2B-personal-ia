@@ -75,12 +75,18 @@ void main() {
     await _tapAdministrationAction(tester, 'Editar Perfil do Aluno');
 
     expect(find.byKey(const Key('student_email_read_only')), findsOneWidget);
-    final nameField = tester.widget<TextFormField>(
-      find.byKey(const Key('student_full_name')),
+    final nameField = tester.widget<TextField>(
+      find.descendant(
+        of: find.byKey(const Key('student_full_name')),
+        matching: find.byType(TextField),
+      ),
     );
     expect(nameField.readOnly, isFalse);
-    final emailField = tester.widget<TextFormField>(
-      find.byKey(const Key('student_email_read_only')),
+    final emailField = tester.widget<TextField>(
+      find.descendant(
+        of: find.byKey(const Key('student_email_read_only')),
+        matching: find.byType(TextField),
+      ),
     );
     expect(emailField.readOnly, isTrue);
 

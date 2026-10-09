@@ -12,7 +12,6 @@ import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
 import 'features/auth/auth_gate.dart';
 import 'features/auth/account_screen.dart';
-import 'features/auth/auth_gate.dart';
 import 'features/client/active_workout_screen.dart';
 import 'features/client/student_demo_screen.dart';
 import 'features/trainer/anamnesis_screen.dart';

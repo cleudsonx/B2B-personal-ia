@@ -138,9 +138,8 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
       }
 
       final finalNumber = cleanPhone.startsWith('55') ? cleanPhone : '55$cleanPhone';
-      final message = isPending
-          ? inviteUrl
-          : 'Olá $name! 💪 Aqui é o Prof. $trainerName. Como estão os treinos essa semana?';
+      final message =
+          'Olá $name! 💪 Aqui é o Prof. $trainerName. Como estão os treinos essa semana?';
       final url = isPending
           ? Uri.tryParse(inviteUrl!)
           : Uri.parse('https://wa.me/$finalNumber?text=${Uri.encodeComponent(message)}');

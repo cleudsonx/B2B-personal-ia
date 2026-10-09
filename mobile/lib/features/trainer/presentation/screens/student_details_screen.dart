@@ -426,9 +426,9 @@ late Map<String, dynamic> student;
                       radius: 40,
                       backgroundColor: MetaColors.surfaceHighlight,
                       child: Text(
-                        name.substring(0, 1).toUpperCase(),
-                        style: const TextStyle(color: MetaColors.textPrimary, fontSize: 32, fontWeight: FontWeight.bold),
                         name.trim().isEmpty ? 'A' : name.trim().substring(0, 1).toUpperCase(),
+                        style: const TextStyle(color: MetaColors.textPrimary, fontSize: 32, fontWeight: FontWeight.bold),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(

@@ -70,7 +70,7 @@ class _TrainerMainLayoutState extends State<TrainerMainLayout> {
       context,
       MaterialPageRoute(builder: (_) => const AuthGate(skipBiometric: true)),
       (_) => false,
-      ),
+    );
   }
 
   Future<void> _signOut(bool allDevices) async {

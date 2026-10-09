@@ -524,7 +524,7 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                           'Não encontramos o vínculo com seu treinador. Abra o convite recebido ou peça um novo link antes de iniciar.',
                           style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.danger(context),
+                            color: AppColors.danger,
                           ),
                         ),
                       ],
