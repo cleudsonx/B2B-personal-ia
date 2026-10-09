@@ -1,23 +1,25 @@
 # Plano de Testes Mestre - B2B Personal IA (Mr. Coach)
 
-**Versão:** 2.0 (Atualizada em Outubro/2026)  
+**Versão:** 2.1 (Atualizada em Outubro/2026)  
 **Escopo:** Backend FastAPI (Python 3.12), Mobile/Web Flutter 3.x, Supabase Auth/DB (RLS/MFA), Evolution API (WhatsApp), Gateway de Pagamentos (Asaas/Pix) e Motor de IA (Gemini).  
-**Status Atual de Execução:** Baseline Verde — 108/108 testes backend aprovados | 41/41 testes Flutter aprovados.  
+**Status Atual de Execução:** Baseline Verde — 112/112 testes backend aprovados | 41/41 testes Flutter aprovados.  
 **Regra Operacional Crítica:** Testes de regressão e suites completas devem ser executados após grandes mudanças ou alterações críticas no sistema, **sempre solicitando autorização prévia ao usuário** antes de sua aplicação.
 
 ---
 
 ## 1. Sumário Executivo & Baseline Atual
 
-O sistema conta com cobertura automatizada nas camadas unitária, integração de serviços, schemas e regras de segurança (MFA AAL2, controle de quotas de IA, idempotência de webhooks, trava educativa de convites e travas profissionais de CREF).
+O sistema conta com cobertura automatizada nas camadas unitária, integração de serviços, schemas, concorrência RLS e regras de segurança (MFA AAL2, controle de quotas de IA, idempotência de webhooks, trava educativa de convites e travas profissionais de CREF).
 
 | Camada / Componente | Qtd. Testes Automatizados | Status Atual | Ferramenta |
 |---|---|---|---|
-| **Backend Unitário & API** | 108 testes | **100% Aprovado (108/108)** | `pytest` + `pytest-asyncio` |
+| **Backend Unitário & API** | 112 testes | **100% Aprovado (112/112)** | `pytest` + `pytest-asyncio` |
 | **Mobile Flutter Widgets & Services** | 41 testes | **100% Aprovado (41/41)** | `flutter test` |
-| **Segurança & Controle de Acesso (MFA/RLS)** | 24 testes específicos | **100% Aprovado** | `test_auth_capabilities.py` + `teacher_mfa_test.dart` |
+| **Segurança & Controle de Acesso (MFA/RLS)** | 28 testes específicos | **100% Aprovado** | `test_auth_capabilities.py` + `test_rls_concurrency.py` + `teacher_mfa_test.dart` |
 | **Auditoria e Webhooks Idempotentes** | 38 testes específicos | **100% Aprovado** | `test_security_audit.py` + `test_webhook_leases.py` |
-| **Testes de Stress & Carga (Performance)** | Em planejamento (k6) | *Pendente implementação* | k6 / Locust |
+| **Testes de Stress & Carga (Performance)** | 2 scripts k6 (Webhooks e Leitura) | **Implementado** (`backend/tests/performance/`) | k6 |
+| **Smoke Test Pós-Deploy** | 6 probes automatizados | **Implementado** (`backend/scripts/smoke_test.py`) | Python (`httpx`) |
+| **Ambiente Local Supabase + Seed** | Seed idempotente + Migrations | **Implementado** (`supabase/seed.sql`) | Supabase CLI / Postgres |
 | **Testes E2E (End-to-End em dispositivos/browser)** | Manuais estruturados | *Pendente automação* | Patrol (Mobile) / Playwright (Web) |
 
 ---
