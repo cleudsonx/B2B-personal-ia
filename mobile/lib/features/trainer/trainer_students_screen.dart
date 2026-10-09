@@ -168,8 +168,8 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
   Future<void> _showInviteCreatedDialog(Map<String, dynamic> student) async {
     final emailStatus = (student['email_status'] as String? ?? 'unknown').toLowerCase();
     final emailWasSent = emailStatus == 'sent';
-      final emailFailed = emailStatus == 'error' || emailStatus == 'failed';
-      final emailIsMock = emailStatus == 'success';
+    final emailFailed = emailStatus == 'error' || emailStatus == 'failed';
+    final emailIsMock = emailStatus == 'success';
     final inviteLink = student['invitation_link'] as String? ?? '';
     final hasWhatsApp = (student['whatsapp_url'] as String? ?? '').isNotEmpty;
 
@@ -187,7 +187,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
           size: 42,
         ),
         title: Text(
-          emailFailed ? 'Aluno adicionado' : 'Convite criado',
+          emailWasSent ? 'Convite enviado' : 'Aluno adicionado',
           textAlign: TextAlign.center,
           style: const TextStyle(color: MetaColors.textPrimary, fontWeight: FontWeight.bold),
         ),
@@ -197,12 +197,12 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
           children: [
             Text(
               emailWasSent
-                  ? 'Enviamos o convite para ${student['email']}. O aluno está aguardando a confirmação do cadastro.'
-                    : emailFailed
-                      ? 'O aluno foi cadastrado, mas o email não foi enviado. Compartilhe o link por WhatsApp ou copie para enviar por outro canal.'
-                        : emailIsMock
-                            ? 'O cadastro foi criado, mas o envio está em modo de teste e não confirma a entrega do email. Compartilhe o link diretamente com o aluno.'
-                            : 'O cadastro foi criado. Status do email: $emailStatus. Compartilhe o link diretamente se o aluno não receber a mensagem.',
+                  ? 'Enviamos o convite para ${student['email']}. O aluno já pode acessar o link e concluir o cadastro.'
+                  : emailFailed
+                      ? 'Tudo certo: ${student['full_name']} já está na sua lista. Não conseguimos enviar o e-mail agora. Compartilhe o link abaixo para ele começar.'
+                      : emailIsMock
+                          ? 'Tudo certo: ${student['full_name']} já está na sua lista. O envio automático de e-mail ainda não está disponível. Compartilhe o link abaixo para ele começar.'
+                          : 'Tudo certo: ${student['full_name']} já está na sua lista. Não foi possível confirmar o envio do e-mail. Compartilhe o link abaixo para ele começar.',
               style: const TextStyle(color: MetaColors.textSecondary, height: 1.45),
             ),
             if (inviteLink.isNotEmpty) ...[
