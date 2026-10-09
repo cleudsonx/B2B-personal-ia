@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:personal_ia/core/theme/app_theme.dart';
 import 'package:personal_ia/core/theme/theme_controller.dart';
 import 'package:personal_ia/core/widgets/meta_components.dart';
@@ -8,6 +9,33 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Meta Theme System & ThemeController Tests', () {
+    test('ThemeController initializes with ThemeMode.system on fresh install without saved preference', () async {
+      SharedPreferences.setMockInitialValues({});
+      final controller = ThemeController.instance;
+      await controller.reloadFromPrefs();
+
+      expect(controller.themeMode, equals(ThemeMode.system));
+      expect(controller.isSystemMode, isTrue);
+      expect(controller.isDarkMode, isFalse);
+      expect(controller.isLightMode, isFalse);
+      expect(controller.themeModeName, equals('Automático (Sistema)'));
+    });
+
+    test('ThemeController restores saved dark or light preferences correctly', () async {
+      final controller = ThemeController.instance;
+
+      SharedPreferences.setMockInitialValues({'app_theme_mode_v2': 'dark'});
+      await controller.reloadFromPrefs();
+      expect(controller.themeMode, equals(ThemeMode.dark));
+      expect(controller.isDarkMode, isTrue);
+      expect(controller.isSystemMode, isFalse);
+
+      SharedPreferences.setMockInitialValues({'app_theme_mode_v2': 'light'});
+      await controller.reloadFromPrefs();
+      expect(controller.themeMode, equals(ThemeMode.light));
+      expect(controller.isLightMode, isTrue);
+      expect(controller.isSystemMode, isFalse);
+    });
     test('AppTheme definitions match Meta Light and Dark specifications', () {
       final lightTheme = AppTheme.lightTheme;
       final darkTheme = AppTheme.darkTheme;

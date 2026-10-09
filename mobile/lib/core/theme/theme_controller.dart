@@ -10,11 +10,13 @@ class ThemeController extends ChangeNotifier {
     _loadFromPrefs();
   }
 
-  // Padrão do sistema: inicia em Dark Mode para máxima consistência
-  ThemeMode _themeMode = ThemeMode.dark;
+  // Padrão de fábrica: inicia em ThemeMode.system (segue o sistema operacional do aparelho)
+  ThemeMode _themeMode = ThemeMode.system;
 
   ThemeMode get themeMode => _themeMode;
   bool get isDarkMode => _themeMode == ThemeMode.dark;
+  bool get isLightMode => _themeMode == ThemeMode.light;
+  bool get isSystemMode => _themeMode == ThemeMode.system;
 
   String get themeModeName {
     switch (_themeMode) {
@@ -29,11 +31,11 @@ class ThemeController extends ChangeNotifier {
 
   /// Alterna diretamente entre Claro e Escuro
   Future<void> toggleTheme() async {
-    _themeMode = isDarkMode ? ThemeMode.light : ThemeMode.dark;
+    _themeMode = (_themeMode == ThemeMode.dark) ? ThemeMode.light : ThemeMode.dark;
     notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_prefKey, isDarkMode ? 'dark' : 'light');
+      await prefs.setString(_prefKey, _themeMode == ThemeMode.dark ? 'dark' : 'light');
     } catch (_) {}
   }
 
@@ -63,8 +65,13 @@ class ThemeController extends ChangeNotifier {
         } else if (saved == 'system') {
           _themeMode = ThemeMode.system;
         }
-        notifyListeners();
+      } else {
+        _themeMode = ThemeMode.system;
       }
+      notifyListeners();
     } catch (_) {}
   }
+
+  /// Recarrega as preferências do SharedPreferences (usado em testes automatizados)
+  Future<void> reloadFromPrefs() => _loadFromPrefs();
 }
