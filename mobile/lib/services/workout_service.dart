@@ -723,7 +723,36 @@ class WorkoutService {
       }
     }
 
-    // 1. Atualiza no cache local
+    final uri = Uri.parse(
+      '${AppConfig.apiBaseUrl}/workouts/students/$studentId',
+    );
+    final res = await http
+        .put(
+          uri,
+          headers: _apiHeaders,
+          body: jsonEncode({
+            if (fullName != null) 'full_name': fullName,
+            if (email != null) 'email': email,
+            if (phone != null) 'phone': phone,
+            if (goal != null) 'goal': goal,
+            if (injuriesOrRestrictions != null)
+              'injuries_or_restrictions': injuriesOrRestrictions,
+            if (status != null) 'status': status,
+          }),
+        )
+        .timeout(const Duration(seconds: 4));
+
+    if (res.statusCode != 200) {
+      var message = 'Não foi possível atualizar o aluno (${res.statusCode}).';
+      try {
+        final body = jsonDecode(utf8.decode(res.bodyBytes));
+        if (body is Map<String, dynamic> && body['detail'] != null) {
+          message = body['detail'].toString();
+        }
+      } catch (_) {}
+      throw Exception(message);
+    }
+
     if (idx != -1) {
       if (fullName != null) _localStudentsCache[idx]['full_name'] = fullName;
       if (email != null) _localStudentsCache[idx]['email'] = email;
@@ -734,64 +763,6 @@ class WorkoutService {
             injuriesOrRestrictions;
       }
       if (status != null) _localStudentsCache[idx]['status'] = status;
-    }
-
-    // 2. Atualiza no Backend FastAPI
-    try {
-      final uri = Uri.parse(
-        '${AppConfig.apiBaseUrl}/workouts/students/$studentId',
-      );
-      final res = await http
-          .put(
-            uri,
-            headers: _apiHeaders,
-            body: jsonEncode({
-              if (fullName != null) 'full_name': fullName,
-              if (email != null) 'email': email,
-              if (phone != null) 'phone': phone,
-              if (goal != null) 'goal': goal,
-              if (injuriesOrRestrictions != null)
-                'injuries_or_restrictions': injuriesOrRestrictions,
-              if (status != null) 'status': status,
-            }),
-          )
-          .timeout(const Duration(seconds: 4));
-
-      if (res.statusCode == 403) {
-        if (idx != -1 && prevStudent != null) {
-          _localStudentsCache[idx] = prevStudent;
-        }
-        final err =
-            jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-        throw Exception(
-          err['detail'] ?? 'Limite de alunos ativos atingido no plano.',
-        );
-      }
-      if (res.statusCode != 200) {
-        debugPrint('Aviso backend updateStudent status: ${res.statusCode}');
-      }
-    } catch (e) {
-      if (e.toString().contains('Limite de') || e.toString().contains('403')) {
-        rethrow;
-      }
-      debugPrint('Aviso backend updateStudent: $e');
-    }
-
-    // 3. Atualiza no Supabase
-    if (_clientOrNull != null) {
-      try {
-        final updateMap = <String, dynamic>{};
-        if (fullName != null) updateMap['full_name'] = fullName;
-        if (email != null) updateMap['email'] = email;
-        if (phone != null) updateMap['phone'] = phone;
-        if (goal != null) updateMap['goal'] = goal;
-        if (status != null) updateMap['status'] = status;
-        if (updateMap.isNotEmpty) {
-          await _client.from('profiles').update(updateMap).eq('id', studentId);
-        }
-      } catch (e) {
-        debugPrint('Aviso Supabase updateStudent: $e');
-      }
     }
 
     return true;
@@ -807,30 +778,24 @@ class WorkoutService {
 
   /// Exclui um aluno do sistema
   static Future<bool> deleteStudent(String studentId) async {
-    // 1. Remove do cache local
-    _localStudentsCache.removeWhere((s) => s['id'] == studentId);
-
-    // 2. Remove do Supabase
-    if (_clientOrNull != null) {
+    final uri = Uri.parse(
+      '${AppConfig.apiBaseUrl}/workouts/students/$studentId',
+    );
+    final res = await http
+        .delete(uri, headers: _apiHeaders)
+        .timeout(const Duration(seconds: 4));
+    if (res.statusCode != 200) {
+      var message = 'Não foi possível excluir o aluno (${res.statusCode}).';
       try {
-        await _client.from('profiles').delete().eq('id', studentId);
-      } catch (e) {
-        debugPrint('Aviso Supabase deleteStudent: $e');
-      }
+        final body = jsonDecode(utf8.decode(res.bodyBytes));
+        if (body is Map<String, dynamic> && body['detail'] != null) {
+          message = body['detail'].toString();
+        }
+      } catch (_) {}
+      throw Exception(message);
     }
 
-    // 3. Remove do Backend FastAPI
-    try {
-      final uri = Uri.parse(
-        '${AppConfig.apiBaseUrl}/workouts/students/$studentId',
-      );
-      final res = await http
-          .delete(uri, headers: _apiHeaders)
-          .timeout(const Duration(seconds: 4));
-      return res.statusCode == 200;
-    } catch (e) {
-      debugPrint('Aviso backend deleteStudent: $e');
-    }
+    _localStudentsCache.removeWhere((s) => s['id'] == studentId);
     return true;
   }
 

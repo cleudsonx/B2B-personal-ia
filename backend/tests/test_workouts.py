@@ -43,13 +43,15 @@ def test_student_creation_and_validation():
         "full_name": "João da Silva",
         "email": "joao.silva@exemplo.com",
         "phone": "(11) 97777-6666",
-        "goal": "Hipertrofia Muscular"
+        "goal": "Hipertrofia Muscular",
+        "trainer_id": "attacker-trainer",
     })
     assert good_res.status_code == 201
     data = good_res.json()
     assert data["full_name"] == "João da Silva"
     assert data["status"] == "Pendente Confirmação"
     assert data["has_active_prescription"] is False
+    assert data["trainer_id"] != "attacker-trainer"
 
 
 @pytest.mark.asyncio
@@ -167,6 +169,46 @@ def test_student_update_archive_and_delete():
     assert del_res.json()["status"] == "success"
 
 
+def test_trainer_cannot_update_archive_or_delete_another_trainers_student():
+    from app.api.deps import get_current_trainer
+    from app.services.supabase_service import supabase_service
+
+    student_id = "st-owned-by-trainer-a"
+    supabase_service._mem_students[student_id] = {
+        "id": student_id,
+        "full_name": "Aluno do Treinador A",
+        "email": "aluno.a@example.com",
+        "goal": "Hipertrofia Muscular",
+        "status": "Ativo",
+        "trainer_id": "trainer-a",
+        "created_at": "2026-10-08T00:00:00+00:00",
+    }
+    app.dependency_overrides[get_current_trainer] = lambda: {
+        "sub": "trainer-b",
+        "aal": "aal2",
+        "profile": {"role": "trainer", "roles": ["trainer"]},
+    }
+    try:
+        update_res = client.put(
+            f"/api/v1/workouts/students/{student_id}",
+            json={"full_name": "Nome alterado"},
+        )
+        archive_res = client.patch(
+            f"/api/v1/workouts/students/{student_id}/status",
+            json={"status": "Arquivado"},
+        )
+        delete_res = client.delete(f"/api/v1/workouts/students/{student_id}")
+
+        assert update_res.status_code == 403
+        assert archive_res.status_code == 403
+        assert delete_res.status_code == 403
+        assert supabase_service._mem_students[student_id]["full_name"] == "Aluno do Treinador A"
+        assert supabase_service._mem_students[student_id]["status"] == "Ativo"
+    finally:
+        app.dependency_overrides.pop(get_current_trainer, None)
+        supabase_service._mem_students.pop(student_id, None)
+
+
 def test_biomechanical_alert_flow():
     from app.api.deps import get_current_user
     from app.services.supabase_service import to_valid_uuid_str
@@ -250,11 +292,13 @@ def test_student_invitation_flow(monkeypatch):
         "injuries_or_restrictions": "Desconforto leve no manguito rotador",
         "send_email": True,
         "send_whatsapp": True,
+        "trainer_id": "attacker-trainer",
     })
     assert invite_res.status_code == 201
     data = invite_res.json()
     assert data["status"] == "Pendente Confirmação"
     assert "onboarding" in data["invitation_link"]
+    assert "trainer_id=attacker-trainer" not in data["invitation_link"]
     assert "wa.me/5511988887777" in data["whatsapp_url"]
     assert data["email_status"] in ("sent", "success")
     assert data["whatsapp_status"] in ("sent", "success", "ready_url")
@@ -305,7 +349,7 @@ def test_assistant_chat_specialist_knowledge():
     assert "torque" in data["text"].lower() or "polia" in data["text"].lower() or "emg" in data["text"].lower()
 
 
-def test_student_quota_enforcement_and_unarchive_blockage():
+def test_student_quota_enforcement_and_unarchive_blockage(monkeypatch):
     """
     Testa a regra negocial estrita de limites de alunos por plano SaaS:
     - Plano Starter (limite 3 alunos)
@@ -320,9 +364,19 @@ def test_student_quota_enforcement_and_unarchive_blockage():
     from app.api.v1.endpoints.subscriptions import ACTIVE_TRAINER_SUBSCRIPTIONS
     from app.schemas.subscription import MySubscriptionResponse
     from app.api.v1.endpoints.workouts import _STUDENTS_STORE
+    from app.api.deps import get_current_trainer
     from datetime import datetime, timezone
 
     trainer_id = "trainer-starter-quota-test"
+    monkeypatch.setitem(
+        app.dependency_overrides,
+        get_current_trainer,
+        lambda: {
+            "sub": trainer_id,
+            "aal": "aal2",
+            "profile": {"role": "trainer", "roles": ["trainer"]},
+        },
+    )
 
     # 1. Configura assinatura Starter (3 alunos)
     ACTIVE_TRAINER_SUBSCRIPTIONS[trainer_id] = MySubscriptionResponse(

@@ -94,7 +94,7 @@ async def save_prescription(
     data: PrescriptionSaveRequest,
     current_user: Dict[str, Any] = Depends(get_current_trainer)
 ) -> PrescriptionSaveResponse:
-    trainer_id = data.trainer_id or current_user.get("sub") or "current-trainer"
+    trainer_id = current_user.get("sub") or "current-trainer"
     return await supabase_service.save_prescription(trainer_id, data)
 
 
@@ -134,6 +134,16 @@ async def _get_trainer_max_students(trainer_id: str) -> int:
     return sub.max_students
 
 
+def _require_student_owner(student: StudentResponse, current_user: Dict[str, Any]) -> str:
+    trainer_id = current_user.get("sub")
+    if not trainer_id or student.trainer_id != trainer_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Você não tem permissão para administrar este aluno.",
+        )
+    return trainer_id
+
+
 @router.post(
     "/students",
     response_model=StudentResponse,
@@ -152,7 +162,7 @@ async def create_student(
             detail="Endereço de e-mail inválido."
         )
 
-    trainer_id = data.trainer_id or current_user.get("sub") or "current-trainer"
+    trainer_id = current_user.get("sub") or "current-trainer"
 
     # Verifica duplicidade no treinador
     existing_students = await supabase_service.list_students(trainer_id)
@@ -209,7 +219,7 @@ async def update_student(
             detail=f"Aluno com ID '{student_id}' não encontrado."
         )
 
-    trainer_id = existing_student.trainer_id or current_user.get("sub") or "current-trainer"
+    trainer_id = _require_student_owner(existing_student, current_user)
 
     if data.status is not None and data.status.lower() not in ("arquivado", "inativo"):
         occupied = await _count_trainer_occupied_slots(trainer_id, exclude_student_id=student_id)
@@ -245,7 +255,7 @@ async def update_student_status(
             detail=f"Aluno com ID '{student_id}' não encontrado."
         )
 
-    trainer_id = existing_student.trainer_id or current_user.get("sub") or "current-trainer"
+    trainer_id = _require_student_owner(existing_student, current_user)
     new_status = data.status.lower()
 
     if new_status not in ("arquivado", "inativo"):
@@ -273,8 +283,19 @@ async def delete_student(
     student_id: str,
     current_user: Dict[str, Any] = Depends(get_current_trainer)
 ) -> Dict[str, Any]:
-    trainer_id = current_user.get("sub") or "current-trainer"
-    await supabase_service.delete_student(student_id, trainer_id)
+    existing_student = await supabase_service.get_student_by_id(student_id)
+    if not existing_student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Aluno com ID '{student_id}' não encontrado.",
+        )
+    trainer_id = _require_student_owner(existing_student, current_user)
+    deleted = await supabase_service.delete_student(student_id, trainer_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Não foi possível excluir o aluno.",
+        )
     return {
         "status": "success",
         "message": f"Aluno '{student_id}' excluído com sucesso.",
@@ -369,8 +390,10 @@ async def invite_student(
     payload: StudentInviteRequest,
     current_user: Dict[str, Any] = Depends(get_current_trainer)
 ) -> StudentInviteResponse:
-    trainer_id = payload.trainer_id or current_user.get("id") or current_user.get("sub") or "current-trainer"
-    trainer_name = payload.trainer_name or current_user.get("user_metadata", {}).get("full_name") or current_user.get("full_name")
+    trainer_id = current_user.get("sub") or "current-trainer"
+    trainer_profile = current_user.get("profile") or {}
+    trainer_metadata = current_user.get("user_metadata") or {}
+    trainer_name = trainer_metadata.get("full_name") or trainer_profile.get("full_name")
     trainer_cref = ""
 
     # Se for UUID válido, busca perfil no Supabase para garantir nome e registro reais do professor

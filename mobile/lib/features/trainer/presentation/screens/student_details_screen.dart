@@ -5,10 +5,35 @@ import '../../../../core/widgets/meta_components.dart';
 import '../../../../services/invite_service.dart';
 import '../../anamnesis_screen.dart';
 
+typedef StudentUpdateAction = Future<bool> Function({
+  required String studentId,
+  String? fullName,
+  String? phone,
+  String? goal,
+  String? injuriesOrRestrictions,
+});
+typedef StudentStatusAction = Future<bool> Function({
+  required String studentId,
+  required String status,
+});
+typedef StudentDeleteAction = Future<bool> Function(String studentId);
+typedef ActiveWorkoutLoader = Future<dynamic> Function(String studentId);
+
 class StudentDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> studentData;
+  final StudentUpdateAction? onUpdateStudent;
+  final StudentStatusAction? onUpdateStudentStatus;
+  final StudentDeleteAction? onDeleteStudent;
+  final ActiveWorkoutLoader? loadActiveWorkout;
 
-  const StudentDetailsScreen({super.key, required this.studentData});
+  const StudentDetailsScreen({
+    super.key,
+    required this.studentData,
+    this.onUpdateStudent,
+    this.onUpdateStudentStatus,
+    this.onDeleteStudent,
+    this.loadActiveWorkout,
+  });
 
   @override
   State<StudentDetailsScreen> createState() => _StudentDetailsScreenState();
@@ -29,7 +54,10 @@ late Map<String, dynamic> student;
 
   Future<void> _fetchWorkout() async {
     try {
-      final workout = await WorkoutService.getActiveWorkoutForClient(clientId: student['id']);
+      final studentId = student['id'] as String;
+      final workout = widget.loadActiveWorkout != null
+          ? await widget.loadActiveWorkout!(studentId)
+          : await WorkoutService.getActiveWorkoutForClient(clientId: studentId);
       if (mounted) {
         setState(() {
           _activeWorkout = workout;
@@ -139,12 +167,222 @@ late Map<String, dynamic> student;
     await _fetchWorkout();
   }
 
-  void _showUnavailableAdminAction(String action) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$action ainda não disponível. Nenhuma alteração foi feita.'),
+  Future<void> _editStudent() async {
+    final formKey = GlobalKey<FormState>();
+    final nameController = TextEditingController(
+      text: student['full_name'] as String? ?? '',
+    );
+    final phoneController = TextEditingController(
+      text: student['phone'] as String? ?? '',
+    );
+    final goalController = TextEditingController(
+      text: student['goal'] as String? ?? '',
+    );
+    final restrictionsController = TextEditingController(
+      text: student['injuries_or_restrictions'] as String? ?? '',
+    );
+    var isSaving = false;
+    String? errorMessage;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Editar Perfil do Aluno'),
+          scrollable: true,
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  key: const Key('student_full_name'),
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Nome completo'),
+                  textCapitalization: TextCapitalization.words,
+                  validator: (value) => value == null || value.trim().length < 2
+                      ? 'Informe o nome do aluno.'
+                      : null,
+                ),
+                TextFormField(
+                  key: const Key('student_email_read_only'),
+                  initialValue: student['email'] as String? ?? '',
+                  readOnly: true,
+                  decoration: const InputDecoration(
+                    labelText: 'E-mail de acesso',
+                    helperText: 'A alteração do e-mail exige confirmação da conta.',
+                  ),
+                ),
+                TextFormField(
+                  key: const Key('student_phone'),
+                  controller: phoneController,
+                  decoration: const InputDecoration(labelText: 'Telefone'),
+                  keyboardType: TextInputType.phone,
+                ),
+                TextFormField(
+                  key: const Key('student_goal'),
+                  controller: goalController,
+                  decoration: const InputDecoration(labelText: 'Objetivo'),
+                ),
+                TextFormField(
+                  key: const Key('student_restrictions'),
+                  controller: restrictionsController,
+                  decoration: const InputDecoration(
+                    labelText: 'Lesões e restrições',
+                  ),
+                  maxLines: 3,
+                ),
+                if (errorMessage != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    errorMessage!,
+                    key: const Key('student_edit_error'),
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(dialogContext),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              key: const Key('save_student_profile'),
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setDialogState(() {
+                        isSaving = true;
+                        errorMessage = null;
+                      });
+                      try {
+                        final update = widget.onUpdateStudent ??
+                            WorkoutService.updateStudent;
+                        final success = await update(
+                          studentId: student['id'] as String,
+                          fullName: nameController.text.trim(),
+                          phone: phoneController.text.trim(),
+                          goal: goalController.text.trim(),
+                          injuriesOrRestrictions:
+                              restrictionsController.text.trim(),
+                        );
+                        if (!success) {
+                          throw StateError('O servidor não confirmou a atualização.');
+                        }
+                        if (dialogContext.mounted) {
+                          Navigator.pop(dialogContext, true);
+                        }
+                      } catch (error) {
+                        setDialogState(() {
+                          isSaving = false;
+                          errorMessage = error
+                              .toString()
+                              .replaceFirst('Exception: ', '');
+                        });
+                      }
+                    },
+              child: isSaving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Salvar'),
+            ),
+          ],
+        ),
       ),
     );
+    nameController.dispose();
+    phoneController.dispose();
+    goalController.dispose();
+    restrictionsController.dispose();
+
+    if (saved == true && mounted) Navigator.pop(context, true);
+  }
+
+  Future<void> _archiveStudent() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Arquivar aluno?'),
+        content: Text(
+          'O histórico de ${student['full_name'] ?? 'este aluno'} será preservado, '
+          'mas ele deixará de ocupar uma vaga ativa.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            key: const Key('confirm_archive_student'),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Arquivar aluno'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final updateStatus =
+          widget.onUpdateStudentStatus ?? WorkoutService.updateStudentStatus;
+      final success = await updateStatus(
+        studentId: student['id'] as String,
+        status: 'Arquivado',
+      );
+      if (!success) throw StateError('O servidor não confirmou o arquivamento.');
+      if (mounted) Navigator.pop(context, true);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Não foi possível arquivar o aluno: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteStudent() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Excluir aluno definitivamente?'),
+        content: Text(
+          'Esta ação remove ${student['full_name'] ?? 'o aluno'} e não pode ser desfeita. '
+          'O histórico associado também poderá ser removido.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            key: const Key('confirm_delete_student'),
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Excluir definitivamente'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final delete = widget.onDeleteStudent ?? WorkoutService.deleteStudent;
+      final success = await delete(student['id'] as String);
+      if (!success) throw StateError('O servidor não confirmou a exclusão.');
+      if (mounted) Navigator.pop(context, true);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Não foi possível excluir o aluno: $error')),
+        );
+      }
+    }
   }
 
   @override
@@ -190,7 +428,7 @@ late Map<String, dynamic> student;
                       child: Text(
                         name.substring(0, 1).toUpperCase(),
                         style: const TextStyle(color: MetaColors.textPrimary, fontSize: 32, fontWeight: FontWeight.bold),
-                      ),
+                        name.trim().isEmpty ? 'A' : name.trim().substring(0, 1).toUpperCase(),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -351,20 +589,20 @@ late Map<String, dynamic> student;
                       leading: const Icon(Icons.edit, color: MetaColors.textSecondary),
                       title: const Text('Editar Perfil do Aluno', style: TextStyle(color: MetaColors.textPrimary)),
                       trailing: const Icon(Icons.chevron_right, color: MetaColors.textSecondary),
-                      onTap: () => _showUnavailableAdminAction('Editar perfil'),
+                      onTap: _editStudent,
                     ),
                     const Divider(color: MetaColors.surfaceHighlight, height: 1),
                     ListTile(
                       leading: const Icon(Icons.pause_circle_outline, color: MetaColors.textSecondary),
                       title: const Text('Arquivar Aluno', style: TextStyle(color: MetaColors.textPrimary)),
                       trailing: const Icon(Icons.chevron_right, color: MetaColors.textSecondary),
-                      onTap: () => _showUnavailableAdminAction('Arquivar aluno'),
+                      onTap: _archiveStudent,
                     ),
                     const Divider(color: MetaColors.surfaceHighlight, height: 1),
                     ListTile(
                       leading: const Icon(Icons.delete_forever, color: Colors.redAccent),
                       title: const Text('Excluir Definitivamente', style: TextStyle(color: Colors.redAccent)),
-                      onTap: () => _showUnavailableAdminAction('Excluir aluno'),
+                      onTap: _deleteStudent,
                     ),
                   ],
                 ),

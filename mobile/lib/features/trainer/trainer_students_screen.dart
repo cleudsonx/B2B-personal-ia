@@ -74,6 +74,10 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
               st['has_active_prescription'] as bool? ??
               (activeSplit?.isNotEmpty == true ? true : null);
             final lastSession = st['last_session'] as String? ?? 'Sincronizado';
+            final status = st['status'] as String? ?? 'Ativo';
+            final isArchived =
+                status.toLowerCase().contains('arquivado') ||
+                status.toLowerCase().contains('inativo');
 
             return {
               'id': stId,
@@ -81,7 +85,9 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
               'email': st['email'] ?? '',
               'phone': st['phone'] ?? '',
               'goal': st['goal'] ?? 'Treino',
-                'recent_status': hasActivePrescription == true
+                'recent_status': isArchived
+                  ? 'Arquivado'
+                  : hasActivePrescription == true
                   ? (activeSplit?.isNotEmpty == true
                     ? 'Ficha ativa: $activeSplit'
                     : 'Ficha ativa')
@@ -89,7 +95,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                     ? 'Aguardando ficha'
                     : 'Status da ficha indisponível',
               'last_session': lastSession,
-              'status': st['status'] ?? 'Ativo',
+              'status': status,
               'has_alert': hasAlert,
               'alert_message': alertMsg,
               'avatar_url': st['avatar_url'],
@@ -251,7 +257,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     );
   }
 
-  void _showStudentDetails(Map<String, dynamic> student) {
+  Future<void> _showStudentDetails(Map<String, dynamic> student) async {
     if (widget.onSelectStudentForPlan != null) {
       widget.onSelectStudentForPlan!(
         student['id'] as String,
@@ -260,12 +266,13 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
       return;
     }
 
-    Navigator.push(
+    final changed = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => StudentDetailsScreen(studentData: student),
       ),
     );
+    if (changed == true && mounted) await _loadStudentsFromDb();
   }
 
   void _showAddStudentDialog() {
