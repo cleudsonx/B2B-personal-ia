@@ -9,7 +9,9 @@ import '../../../../core/config/app_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class WhatsappConnectionScreen extends StatefulWidget {
-  const WhatsappConnectionScreen({super.key});
+  final String? initialPhone;
+
+  const WhatsappConnectionScreen({super.key, this.initialPhone});
 
   @override
   State<WhatsappConnectionScreen> createState() => _WhatsappConnectionScreenState();
@@ -25,12 +27,25 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
   @override
   void initState() {
     super.initState();
+    final initialPhone = widget.initialPhone?.trim();
+    if (initialPhone != null && initialPhone.isNotEmpty) {
+      _phoneController.text = initialPhone;
+    }
     _loadTrainerPhone();
   }
 
   Future<void> _loadTrainerPhone() async {
     setState(() => _autoGenerating = true);
     try {
+      if (widget.initialPhone != null) {
+        final initialPhone = widget.initialPhone!.trim();
+        if (initialPhone.isNotEmpty) {
+          _phoneController.text = initialPhone;
+          await _generatePairingCode();
+        }
+        return;
+      }
+
       final profile = await AuthService.getCurrentProfile();
       if (profile != null && mounted) {
         final phone = profile['public_whatsapp'] ?? profile['phone'] ?? '';

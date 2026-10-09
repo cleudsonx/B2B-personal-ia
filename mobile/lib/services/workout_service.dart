@@ -421,6 +421,84 @@ class WorkoutService {
     return null;
   }
 
+  static Future<List<Map<String, dynamic>>>
+  getTrainerGamificationRanking() async {
+    final client = _clientOrNull;
+    final trainerId = AuthService.currentUser?.id;
+    if (client == null || trainerId == null) {
+      throw StateError('Sessão do treinador indisponível.');
+    }
+
+    final profiles = await client
+        .from('profiles')
+        .select('id, full_name')
+        .eq('trainer_id', trainerId);
+    if (profiles.isEmpty) return [];
+
+    final namesById = {
+      for (final profile in profiles)
+        profile['id'] as String: profile['full_name'] as String? ?? 'Aluno',
+    };
+    final now = DateTime.now().toUtc();
+    final cutoff = now.subtract(const Duration(days: 100));
+    final sessions = await client
+        .from('workout_sessions')
+        .select('client_id, completed_at')
+        .inFilter('client_id', namesById.keys.toList())
+        .gte('completed_at', cutoff.toIso8601String())
+        .order('completed_at', ascending: false)
+        .limit(1000);
+
+    final sessionsByClient = {
+      for (final clientId in namesById.keys) clientId: <DateTime>[],
+    };
+    for (final session in sessions) {
+      final clientId = session['client_id'] as String?;
+      final completedAt = DateTime.tryParse(
+        session['completed_at']?.toString() ?? '',
+      )?.toUtc();
+      if (clientId == null || completedAt == null) continue;
+      sessionsByClient.putIfAbsent(clientId, () => []).add(completedAt);
+    }
+
+    final today = DateTime.utc(now.year, now.month, now.day);
+    final ranking = <Map<String, dynamic>>[];
+    for (final entry in sessionsByClient.entries) {
+      final activityDates = entry.value
+          .map((date) => DateTime.utc(date.year, date.month, date.day))
+          .toSet()
+          .toList()
+        ..sort((a, b) => b.compareTo(a));
+      var streak = 0;
+      if (activityDates.isNotEmpty &&
+          !activityDates.first.isBefore(today.subtract(const Duration(days: 1)))) {
+        var expectedDate = activityDates.first;
+        for (final activityDate in activityDates) {
+          if (activityDate != expectedDate) break;
+          streak++;
+          expectedDate = expectedDate.subtract(const Duration(days: 1));
+        }
+      }
+      ranking.add({
+        'client_id': entry.key,
+        'full_name': namesById[entry.key] ?? 'Aluno',
+        'current_streak': streak,
+        'sessions_in_window': entry.value.length,
+        'last_activity_date': activityDates.isEmpty
+          ? null
+          : activityDates.first.toIso8601String(),
+      });
+    }
+    ranking.sort((a, b) {
+      final streakOrder =
+          (b['current_streak'] as int).compareTo(a['current_streak'] as int);
+      if (streakOrder != 0) return streakOrder;
+      return (b['sessions_in_window'] as int)
+          .compareTo(a['sessions_in_window'] as int);
+    });
+    return ranking;
+  }
+
   static Future<WorkoutPlanModel?> getActiveWorkoutForClient({
     String? clientId,
   }) async {

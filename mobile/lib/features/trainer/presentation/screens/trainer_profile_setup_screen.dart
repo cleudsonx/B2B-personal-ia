@@ -101,18 +101,43 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
     }
   }
 
+  void _showValidationError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   Future<void> _saveProfile() async {
     if (_isLoading || _profileLoadFailed) return;
+    final username = _usernameController.text.trim().toLowerCase();
+    final usernamePattern = RegExp(r'^[a-z0-9][a-z0-9_.-]{1,28}[a-z0-9]$');
+    if (username.isNotEmpty && !usernamePattern.hasMatch(username)) {
+      _showValidationError(
+        'O username deve ter de 3 a 30 caracteres, começar e terminar com letra ou número, e pode conter ponto, hífen ou sublinhado.',
+      );
+      return;
+    }
+
+    final whatsapp = _whatsappController.text.trim();
+    final whatsappDigits = whatsapp.replaceAll(RegExp(r'\D'), '');
+    final validBrazilianPhone =
+        whatsapp.isEmpty ||
+        ((whatsappDigits.length == 10 || whatsappDigits.length == 11) ||
+            ((whatsappDigits.length == 12 || whatsappDigits.length == 13) &&
+                whatsappDigits.startsWith('55')));
+    if (!validBrazilianPhone) {
+      _showValidationError(
+        'Informe um WhatsApp brasileiro com DDD, usando opcionalmente o código 55.',
+      );
+      return;
+    }
+
     if (_publishInDirectory &&
-        (_usernameController.text.trim().isEmpty ||
+        (username.isEmpty ||
             _bioController.text.trim().isEmpty ||
             !_crefController.text.trim().toUpperCase().startsWith('CREF'))) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Para publicar, informe username, biografia e registro CREF válido.',
-          ),
-        ),
+      _showValidationError(
+        'Para publicar, informe username, biografia e registro CREF válido.',
       );
       return;
     }
@@ -124,15 +149,25 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
       if (user == null) throw Exception('Usuário não logado');
 
       final updates = {
-        'username': _usernameController.text.trim().toLowerCase(),
-        'bio': _bioController.text.trim(),
-        'public_whatsapp': _whatsappController.text.trim(),
+        'username': username.isEmpty ? null : username,
+        'bio': _bioController.text.trim().isEmpty
+            ? null
+            : _bioController.text.trim(),
+        'public_whatsapp': whatsappDigits.isEmpty ? null : whatsappDigits,
         'professional_document': _crefController.text.trim(),
         'public_directory_enabled': _publishInDirectory,
         'specialties': _selectedSpecialties.toList(),
       };
 
-      await supabase.from('profiles').update(updates).eq('id', user.id);
+      final savedProfile = await supabase
+          .from('profiles')
+          .update(updates)
+          .eq('id', user.id)
+          .select('id')
+          .maybeSingle();
+      if (savedProfile == null) {
+        throw StateError('Nenhum perfil foi atualizado.');
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -143,9 +178,13 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final message =
+            e is PostgrestException && e.code == '23505'
+                ? 'Este username já está em uso. Escolha outro endereço para sua vitrine.'
+                : 'Não foi possível salvar a vitrine. Verifique os dados e tente novamente.';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Erro ao salvar: $e', style: const TextStyle(color: Colors.white)),
+              content: Text(message, style: const TextStyle(color: Colors.white)),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -253,11 +292,17 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                             const SizedBox(height: 12),
                             TextField(
                               controller: _usernameController,
+                              textCapitalization: TextCapitalization.none,
                               inputFormatters: [
-                                FilteringTextInputFormatter.allow(RegExp(r'[a-z0-9\-]')),
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'[a-z0-9_.-]'),
+                                ),
                               ],
+                              maxLength: 30,
                               decoration: InputDecoration(
                                 hintText: 'ex: joao-silva',
+                                helperText:
+                                    '3 a 30 caracteres; use letras minúsculas, números, ponto, hífen ou sublinhado.',
                                 prefixText: 'shaipados.com/#/prof/',
                                 prefixStyle: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold),
                                 filled: true,
@@ -408,7 +453,11 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                                     onPressed: () {
                                       Navigator.push(
                                         context,
-                                        MaterialPageRoute(builder: (_) => const WhatsappConnectionScreen()),
+                                        MaterialPageRoute(
+                                          builder: (_) => WhatsappConnectionScreen(
+                                            initialPhone: _whatsappController.text,
+                                          ),
+                                        ),
                                       );
                                     },
                                     child: const Text('Vincular'),

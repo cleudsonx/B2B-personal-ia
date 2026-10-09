@@ -83,6 +83,36 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     );
   }
 
+  Future<void> _openTrainerWhatsapp() async {
+    final rawNumber = _trainerData?['public_whatsapp']?.toString() ?? '';
+    var number = rawNumber.replaceAll(RegExp(r'\D'), '');
+    if (number.length == 10 || number.length == 11) {
+      number = '55$number';
+    }
+    if (number.length != 12 && number.length != 13) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('O WhatsApp deste treinador está inválido.')),
+      );
+      return;
+    }
+
+    final uri = Uri.https('wa.me', '/$number', {
+      'text': 'Olá! Vi sua vitrine e tenho interesse na consultoria.',
+    });
+    try {
+      if (!await canLaunchUrl(uri) ||
+          !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        throw StateError('Não foi possível abrir o WhatsApp.');
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não foi possível abrir o WhatsApp.')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
@@ -290,6 +320,25 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                   _buildProofRow(Icons.fitness_center_rounded, 'Treinos acompanhados', 'Acesse sua ficha e registre sua evolução quando o treinador liberar o plano.'),
                   const SizedBox(height: 14),
                   _buildProofRow(Icons.chat_bubble_outline_rounded, 'Contato antes do plano', 'Após o cadastro, aguarde o contato do treinador para conversar sobre a consultoria.'),
+                  if ((_trainerData!['public_whatsapp'] as String?)
+                          ?.trim()
+                          .isNotEmpty ==
+                      true) ...[
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: _openTrainerWhatsapp,
+                      icon: const Icon(Icons.chat_outlined),
+                      label: const Text('Conversar pelo WhatsApp'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: MetaColors.emerald,
+                        side: const BorderSide(color: MetaColors.emerald),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 14,
+                        ),
+                      ),
+                    ),
+                  ],
 
                   const SizedBox(height: 40),
 
