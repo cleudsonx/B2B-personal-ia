@@ -562,14 +562,58 @@ late Map<String, dynamic> student;
                         style: TextStyle(color: MetaColors.textSecondary, fontSize: 16),
                       ),
                       const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        child: SquircleButton(
-                          label: '✨ Prescrever com IA em 30s',
-                          isPrimary: true,
-                          onPressed: _openWorkoutPrescription,
+                      if (isPendingInvite) ...[
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.lock_clock_rounded,
+                                color: Color(0xFFF59E0B),
+                                size: 24,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Aguardando $name ativar o convite. Para proteger seus créditos de IA, a prescrição será liberada assim que o cadastro for ativado.',
+                                  style: const TextStyle(
+                                    color: MetaColors.textPrimary,
+                                    fontSize: 13,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: SquircleButton(
+                            label: 'Lembrar Aluno no WhatsApp',
+                            icon: Icons.chat_bubble_outline_rounded,
+                            isPrimary: true,
+                            foregroundColor: Colors.black,
+                            onPressed: () => _launchWhatsApp(phone, name),
+                          ),
+                        ),
+                      ] else ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: SquircleButton(
+                            label: '✨ Prescrever com IA em 30s',
+                            isPrimary: true,
+                            onPressed: _openWorkoutPrescription,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 )

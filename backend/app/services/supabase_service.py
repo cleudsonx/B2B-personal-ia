@@ -1355,6 +1355,12 @@ class SupabaseService:
 
         if client and is_valid_uuid(c_uuid) and is_valid_uuid(t_uuid):
             try:
+                # 0. Verifica se o aluno possui perfil ativo ou se é convite pendente
+                prof_res = await client.table("profiles").select("id").eq("id", c_uuid).execute()
+                if not prof_res.data:
+                    logger.warning(f"[save_prescription] Aluno '{c_uuid}' possui convite pendente ou conta inexistente.")
+                    raise ValueError("O aluno ainda possui convite pendente e não ativou a conta. A prescrição será liberada após a ativação.")
+
                 # 1. Desativa prescrições anteriores deste aluno
                 await client.table("workouts")\
                     .update({"is_active": False})\

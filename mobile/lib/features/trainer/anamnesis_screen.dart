@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/ai_generation_stepper.dart';
@@ -8,6 +10,7 @@ import '../../models/exercise_model.dart';
 import '../../models/split_model.dart';
 import '../../models/workout_plan_model.dart';
 import '../../services/api_service.dart';
+import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
 
 enum StudentDispatchMode { individual, multiple }
@@ -144,6 +147,119 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
     super.dispose();
   }
 
+  bool _isStudentPending(Map<String, dynamic>? st) {
+    if (st == null || st.isEmpty) return false;
+    final status = (st['status'] as String? ?? '').toLowerCase();
+    final recent = (st['recent_status'] as String? ?? '').toLowerCase();
+    return status.contains('pendente') ||
+        status.contains('aguardando') ||
+        recent.contains('pendente') ||
+        recent.contains('aguardando');
+  }
+
+  Future<void> _openWhatsAppReminder(Map<String, dynamic> student) async {
+    final phone = student['phone'] as String? ?? '';
+    final name = student['full_name'] as String? ?? 'Aluno';
+    final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+    final trainer = AuthService.currentUser;
+    final trainerName =
+        trainer?.userMetadata?['full_name'] as String? ?? 'Seu Treinador';
+
+    final message = Uri.encodeComponent(
+      'Olá $name! Aqui é o seu treinador $trainerName. '
+      'Estou pronto para montar sua periodização personalizada no Mr. Coach. '
+      'Acesse o link do convite para concluir seu cadastro e liberar seu treino!',
+    );
+
+    if (cleanPhone.isNotEmpty) {
+      final url = Uri.parse('https://wa.me/$cleanPhone?text=$message');
+      try {
+        if (await canLaunchUrl(url)) {
+          await launchUrl(url, mode: LaunchMode.externalApplication);
+          return;
+        }
+      } catch (_) {}
+    }
+
+    if (mounted) {
+      final inviteLink = student['invitation_link'] as String? ?? '';
+      if (inviteLink.isNotEmpty) {
+        await Clipboard.setData(ClipboardData(text: inviteLink));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: MetaColors.emerald,
+            content: Text('Link do convite copiado para a área de transferência!'),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.amber.shade900,
+            content: Text('Aluno $name ainda não cadastrou telefone WhatsApp.'),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showPendingStudentWarningDialog(List<Map<String, dynamic>> pendingStudents) {
+    final firstName = pendingStudents.first['full_name'] as String? ?? 'o aluno';
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: MetaColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.lock_clock_rounded, color: Color(0xFFF59E0B)),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Proteção de Créditos IA',
+                style: TextStyle(
+                  color: MetaColors.textPrimary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          pendingStudents.length == 1
+              ? '$firstName ainda não concluiu o cadastro através do link de convite.\n\nPara proteger seus créditos de IA e garantir que a periodização seja salva com segurança, a prescrição será liberada assim que o aluno ativar a conta.'
+              : 'Alguns alunos selecionados ainda possuem convites pendentes de confirmação.\n\nPara proteger seus créditos de IA, desmarque os alunos pendentes para gerar a periodização da turma.',
+          style: const TextStyle(
+            color: MetaColors.textSecondary,
+            fontSize: 13,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          if (pendingStudents.length == 1)
+            TextButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _openWhatsAppReminder(pendingStudents.first);
+              },
+              icon: const Icon(Icons.chat_bubble_outline, size: 16, color: Color(0xFFF59E0B)),
+              label: const Text(
+                'Lembrar no WhatsApp',
+                style: TextStyle(
+                  color: Color(0xFFF59E0B),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Entendi', style: TextStyle(color: MetaColors.emerald)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handleGenerate() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -158,6 +274,16 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           ),
         ),
       );
+      return;
+    }
+
+    final pendingStudents = _students.where((st) {
+      if (!_selectedStudentIds.contains(st['id'])) return false;
+      return _isStudentPending(st);
+    }).toList();
+
+    if (pendingStudents.isNotEmpty) {
+      _showPendingStudentWarningDialog(pendingStudents);
       return;
     }
 
@@ -508,18 +634,47 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           const SizedBox(height: 20),
           _buildDispatchSection(context),
           const SizedBox(height: 10),
-          SquircleButton(
-            icon: Icons.auto_awesome,
-            label: _dispatchMode == StudentDispatchMode.individual
-                ? (_selectedIndividualStudent != null
-                    ? 'Gerar para ${_selectedIndividualStudent!['full_name']}'
-                    : 'Gerar Individual')
-                : (_selectedMultipleStudentIds.isNotEmpty
-                    ? 'Gerar para ${_selectedMultipleStudentIds.length} Alunos'
-                    : 'Gerar para Vários'),
-            isPrimary: true,
-            foregroundColor: Colors.black,
-            onPressed: _handleGenerate,
+          Builder(
+            builder: (ctx) {
+              final selectedStudent = _selectedIndividualStudent;
+              final isPendingIndividual = _dispatchMode == StudentDispatchMode.individual &&
+                  _isStudentPending(selectedStudent);
+              final hasPendingInMultiple = _dispatchMode == StudentDispatchMode.multiple &&
+                  _selectedMultipleStudentIds.any((id) {
+                    final st = _students.firstWhere((s) => s['id'] == id, orElse: () => {});
+                    return _isStudentPending(st);
+                  });
+              final isBlockedByPending = isPendingIndividual || hasPendingInMultiple;
+
+              return SquircleButton(
+                icon: isBlockedByPending ? Icons.lock_clock_rounded : Icons.auto_awesome,
+                label: isBlockedByPending
+                    ? (isPendingIndividual
+                        ? 'Aguardando Ativação de ${selectedStudent?['full_name'] ?? 'Aluno'}'
+                        : 'Remova Alunos Pendentes para Gerar')
+                    : (_dispatchMode == StudentDispatchMode.individual
+                        ? (selectedStudent != null
+                            ? 'Gerar para ${selectedStudent['full_name']}'
+                            : 'Gerar Individual')
+                        : (_selectedMultipleStudentIds.isNotEmpty
+                            ? 'Gerar para ${_selectedMultipleStudentIds.length} Alunos'
+                            : 'Gerar para Vários')),
+                isPrimary: !isBlockedByPending,
+                foregroundColor: isBlockedByPending ? const Color(0xFFF59E0B) : Colors.black,
+                onPressed: isBlockedByPending
+                    ? () {
+                        final pendingList = isPendingIndividual && selectedStudent != null
+                            ? [selectedStudent]
+                            : _students
+                                .where((s) =>
+                                    _selectedMultipleStudentIds.contains(s['id']) &&
+                                    _isStudentPending(s))
+                                .toList();
+                        _showPendingStudentWarningDialog(pendingList);
+                      }
+                    : _handleGenerate,
+              );
+            },
           ),
         ],
       ),
@@ -787,23 +942,34 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                       ),
                     ),
                     const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.emeraldBg(context),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        selectedStudent['status'] as String? ?? 'Ativo',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: MetaColors.emerald,
-                        ),
-                      ),
+                    Builder(
+                      builder: (_) {
+                        final isPending = _isStudentPending(selectedStudent);
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isPending
+                                ? const Color(0xFFF59E0B).withValues(alpha: 0.15)
+                                : AppColors.emeraldBg(context),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            isPending
+                                ? 'Pendente'
+                                : (selectedStudent['status'] as String? ?? 'Ativo'),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: isPending
+                                  ? const Color(0xFFF59E0B)
+                                  : MetaColors.emerald,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -836,6 +1002,65 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
               ],
             ),
           ),
+          if (_isStudentPending(selectedStudent)) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.lock_clock_rounded,
+                        color: Color(0xFFF59E0B),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Aguardando Ativação do Convite',
+                          style: const TextStyle(
+                            color: Color(0xFFF59E0B),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${selectedStudent['full_name']} ainda não concluiu o cadastro no app. Para proteger seus créditos e garantir dados precisos, a prescrição com IA será liberada assim que o aluno ativar a conta.',
+                    style: const TextStyle(
+                      color: MetaColors.textSecondary,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: SquircleButton(
+                      icon: Icons.chat_bubble_outline_rounded,
+                      label: 'Lembrar Aluno no WhatsApp',
+                      isPrimary: false,
+                      foregroundColor: const Color(0xFFF59E0B),
+                      onPressed: () => _openWhatsAppReminder(selectedStudent),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ],
     );
@@ -972,6 +1197,26 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                           Icons.warning_amber_rounded,
                           size: 14,
                           color: isSelected ? Colors.black : Colors.amber,
+                        ),
+                      ],
+                      if (_isStudentPending(st)) ...[
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? Colors.black26
+                                : const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'Pendente',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? Colors.black : const Color(0xFFF59E0B),
+                            ),
+                          ),
                         ),
                       ],
                     ],

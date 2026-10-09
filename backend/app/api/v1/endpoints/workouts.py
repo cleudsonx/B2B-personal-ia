@@ -97,7 +97,13 @@ async def save_prescription(
     current_user: Dict[str, Any] = Depends(get_current_trainer)
 ) -> PrescriptionSaveResponse:
     trainer_id = current_user.get("sub") or "current-trainer"
-    return await supabase_service.save_prescription(trainer_id, data)
+    try:
+        return await supabase_service.save_prescription(trainer_id, data)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 
 @router.get(
