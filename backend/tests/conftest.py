@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 
 import httpx
 import pytest
@@ -33,6 +33,10 @@ def isolate_supabase_from_tests(monkeypatch):
     from app.services.supabase_service import supabase_service
 
     monkeypatch.setattr(settings, "ENVIRONMENT", "development")
+    monkeypatch.setattr(settings, "WHATSAPP_PROVIDER", "mock")
+
+    from app.services.whatsapp_service import whatsapp_service
+    monkeypatch.setattr(whatsapp_service, "provider", "mock")
 
     async def no_supabase_client():
         return None

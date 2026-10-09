@@ -298,12 +298,17 @@ late Map<String, dynamic> student;
         ),
       ),
     );
-    nameController.dispose();
-    phoneController.dispose();
-    goalController.dispose();
-    restrictionsController.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      nameController.dispose();
+      phoneController.dispose();
+      goalController.dispose();
+      restrictionsController.dispose();
+    });
 
-    if (saved == true && mounted) Navigator.pop(context, true);
+    if (saved == true && mounted) {
+      await Future<void>.delayed(Duration.zero);
+      if (mounted) Navigator.pop(context, true);
+    }
   }
 
   Future<void> _archiveStudent() async {

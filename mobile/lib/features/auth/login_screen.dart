@@ -800,8 +800,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 12),
 
                     // Remember Me & Forgot Password Row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      runSpacing: 8,
                       children: [
                         Row(
                           mainAxisSize: MainAxisSize.min,
@@ -876,8 +878,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
 
                     // Register Link
-                    if (widget.invitedStudentId == null) Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    if (widget.invitedStudentId == null) Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         const Text(
                           'Ainda não tem conta? ',
@@ -1016,12 +1019,15 @@ class _LoginScreenState extends State<LoginScreen> {
               color: isSelected ? activeColor : MetaColors.textSecondary,
             ),
             const SizedBox(width: 8),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? MetaColors.textPrimary : MetaColors.textSecondary,
+            Flexible(
+              child: Text(
+                title,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected ? MetaColors.textPrimary : MetaColors.textSecondary,
+                ),
               ),
             ),
           ],

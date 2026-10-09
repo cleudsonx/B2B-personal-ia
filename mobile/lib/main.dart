@@ -145,7 +145,6 @@ class B2BPersonalIaApp extends StatelessWidget {
           onGenerateInitialRoutes: (initialRouteName) => [
             _routeFor(RouteSettings(name: initialRouteName)),
           ],
-          home: _homeScreen(),
         );
       },
     );

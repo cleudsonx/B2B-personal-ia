@@ -280,7 +280,11 @@ class SupabaseService:
             t_uuid = to_valid_uuid_str(trainer_id)
             for key in (trainer_id, t_uuid):
                 if key in self._mem_subscriptions:
-                    self._mem_subscriptions[key]["status"] = new_status
+                    sub = self._mem_subscriptions[key]
+                    if isinstance(sub, dict):
+                        sub["status"] = new_status
+                    elif hasattr(sub, "status"):
+                        sub.status = new_status
             logger.info(f"[Dev] Assinatura {trainer_id} -> status={new_status}")
             return
 

@@ -229,7 +229,7 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
       if (!saved) throw Exception('Não foi possível salvar sua avaliação. Tente novamente.');
 
       // Garante o vínculo relacional do aluno com o personal trainer no Supabase
-      if (_trainerId != null && _trainerId!.isNotEmpty && user != null) {
+      if (_trainerId != null && _trainerId!.isNotEmpty) {
         try {
           final client = Supabase.instance.client;
           await client

@@ -11,7 +11,7 @@ void main() {
     await tester.pumpWidget(const B2BPersonalIaApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('SHAIPADOS'), findsOneWidget);
+    expect(find.text('MR. COACH'), findsOneWidget);
     expect(find.text('Treinador Pro'), findsOneWidget);
     expect(find.text('Aluno no Salão'), findsOneWidget);
     expect(find.text('Lembrar acesso'), findsOneWidget);
@@ -48,7 +48,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Alunos'), findsOneWidget);
+    expect(find.text('Alunos'), findsNWidgets(2));
     expect(find.text('Treinos'), findsOneWidget);
     expect(find.text('Social'), findsOneWidget);
     expect(find.text('Vitrine'), findsOneWidget);

@@ -35,7 +35,9 @@ class _AccountScreenState extends State<AccountScreen> {
   Future<void> _loadAccount() async {
     try {
       final profile = await AuthService.getCurrentProfile();
-      final roles = AuthService.availableRoles(profile);
+      final roles = profile != null
+          ? AuthService.availableRoles(profile)
+          : [widget.currentRole];
       final factorId = roles.contains('trainer')
           ? await AuthService.getVerifiedTotpFactorId()
           : null;

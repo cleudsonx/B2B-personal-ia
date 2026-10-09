@@ -1,8 +1,7 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/config/app_config.dart';
 import '../models/subscription_model.dart';
 import 'auth_service.dart';
@@ -12,9 +11,10 @@ class SubscriptionService {
   static const String _kSubscriptionStorageKey =
       'b2b_trainer_active_subscription';
 
-  static MySubscriptionModel? _currentSubscriptionCache;
   static final ValueNotifier<MySubscriptionModel?> activeSubscriptionNotifier =
       ValueNotifier<MySubscriptionModel?>(null);
+  static MySubscriptionModel? _currentSubscriptionCache;
+  static MySubscriptionModel? get currentSubscription => _currentSubscriptionCache;
 
   static Map<String, String> get _headers {
     final headers = {
@@ -26,21 +26,6 @@ class SubscriptionService {
       headers['Authorization'] = 'Bearer $token';
     }
     return headers;
-  }
-
-  /// Carrega a assinatura persistida no armazenamento local do dispositivo
-  static Future<MySubscriptionModel?> _loadFromLocalCache() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_kSubscriptionStorageKey);
-      if (raw != null && raw.isNotEmpty) {
-        final data = jsonDecode(raw) as Map<String, dynamic>;
-        return MySubscriptionModel.fromJson(data);
-      }
-    } catch (e) {
-      debugPrint('Aviso ao carregar assinatura do cache local: $e');
-    }
-    return null;
   }
 
   /// Salva a assinatura ativa no armazenamento local para persistÃªncia permanente

@@ -47,7 +47,10 @@ class MetaCard extends StatelessWidget {
           width: 1.0,
         ),
       ),
-      child: child,
+      child: Material(
+        color: Colors.transparent,
+        child: child,
+      ),
     );
 
     if (onTap != null) {

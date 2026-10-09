@@ -242,7 +242,7 @@ def test_update_subscription_status_dev_mode():
     from app.services.supabase_service import supabase_service
     import asyncio
 
-    asyncio.get_event_loop().run_until_complete(
+    asyncio.run(
         supabase_service.update_subscription_status("current-trainer", "canceled")
     )
     # Sem exceção = sucesso
@@ -273,7 +273,7 @@ def test_webhook_idempotency_service_methods():
         # Agora deve ser True
         assert await supabase_service.is_event_processed(evt_id) is True
 
-    asyncio.get_event_loop().run_until_complete(run())
+    asyncio.run(run())
 
 
 def test_webhook_asaas_ignores_duplicate_event():
@@ -287,7 +287,7 @@ def test_webhook_asaas_ignores_duplicate_event():
     evt_id = "evt_asaas_duplicate_check_999"
 
     # Pré-registra o evento como já processado
-    asyncio.get_event_loop().run_until_complete(
+    asyncio.run(
         supabase_service.record_processed_event(
             event_id=evt_id,
             provider="asaas",
@@ -343,7 +343,7 @@ def test_atomic_ai_quota_reservation_and_release():
         # E bloquear em seguida
         assert await supabase_service.reserve_monthly_ai_quota(trainer_id, max_quota) is False
 
-    asyncio.get_event_loop().run_until_complete(run())
+    asyncio.run(run())
 
 
 def test_ai_quota_reservation_fails_closed_in_production_if_rpc_fails(monkeypatch):
@@ -372,7 +372,7 @@ def test_ai_quota_reservation_fails_closed_in_production_if_rpc_fails(monkeypatc
             await supabase_service.reserve_monthly_ai_quota("tr-fail-closed-ai", 10)
         assert "Falha ao reservar cota de IA via RPC no Supabase" in str(exc_info.value)
 
-    asyncio.get_event_loop().run_until_complete(run())
+    asyncio.run(run())
 
 
 # ---------------------------------------------------------------------------
@@ -433,7 +433,7 @@ def test_durable_checkout_session_storage():
         assert retrieved["billing_interval"] == "yearly"
         assert retrieved["amount_cents"] == 142800
 
-    asyncio.get_event_loop().run_until_complete(run())
+    asyncio.run(run())
 
 
 def test_checkout_session_fails_closed_in_production_if_persistence_fails(monkeypatch):
@@ -499,7 +499,7 @@ def test_webhook_does_not_mark_event_processed_if_metadata_missing():
     async def check():
         assert await supabase_service.is_event_processed(unmatched_evt_id) is False
 
-    asyncio.get_event_loop().run_until_complete(check())
+    asyncio.run(check())
 
 
 def test_webhook_atomic_claim_blocks_concurrent_duplicate():
@@ -519,7 +519,7 @@ def test_webhook_atomic_claim_blocks_concurrent_duplicate():
             provider="asaas",
             event_type="PAYMENT_RECEIVED"
         )
-    asyncio.get_event_loop().run_until_complete(pre_claim())
+    asyncio.run(pre_claim())
 
     # Segunda requisição concorrente com o mesmo event_id
     res = client.post(

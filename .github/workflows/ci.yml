@@ -29,10 +29,10 @@ jobs:
       - name: Executar Testes Pytest
         run: |
           cd backend
-          python -m pytest tests/ -v || echo "Testes concluídos com sucesso"
+          python -m pytest tests/ -v
 
-  flutter-analyze:
-    name: Flutter Análise Estática
+  flutter-tests:
+    name: Flutter Análise & Testes
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Código
@@ -53,3 +53,8 @@ jobs:
         run: |
           cd mobile
           flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Executar Testes Flutter
+        run: |
+          cd mobile
+          flutter test
