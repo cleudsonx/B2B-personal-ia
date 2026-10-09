@@ -4,6 +4,7 @@ import '../../../../services/auth_service.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/widgets/meta_components.dart';
+import '../../../../core/theme/theme_controller.dart';
 import '../../../subscription/subscription_screen.dart';
 import 'whatsapp_connection_screen.dart';
 import 'trainer_profile_setup_screen.dart';
@@ -126,6 +127,12 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
       icon: Icons.chat_outlined,
       type: _ToolType.whatsappIntegration,
     ),
+    _BusinessToolItem(
+      title: 'Aparência do App',
+      subtitle: 'Alterne entre Modo Escuro (Meta Dark) e Claro (Meta Light)',
+      icon: Icons.palette_outlined,
+      type: _ToolType.themeMode,
+    ),
   ];
 
   void _showTipModal(_BusinessTip tip) {
@@ -232,7 +239,176 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
       case _ToolType.whatsappIntegration:
         _showWhatsAppIntegrationModal();
         break;
+      case _ToolType.themeMode:
+        _showThemeModal();
+        break;
     }
+  }
+
+  void _showThemeModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: MetaColors.card(context),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return ListenableBuilder(
+          listenable: ThemeController.instance,
+          builder: (ctx, _) {
+            final currentMode = ThemeController.instance.themeMode;
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 16,
+                bottom: MediaQuery.paddingOf(ctx).bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: MetaColors.cardBorder(ctx),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Aparência do App',
+                    style: TextStyle(
+                      color: MetaColors.text(ctx),
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Selecione o padrão visual Meta para o aplicativo:',
+                    style: TextStyle(
+                      color: MetaColors.subtext(ctx),
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _buildThemeOption(
+                    ctx: ctx,
+                    title: 'Modo Escuro (Meta Dark)',
+                    subtitle: 'Obsidian e Esmeralda fosco. Ideal para academias e telas OLED.',
+                    icon: Icons.dark_mode_rounded,
+                    isSelected: currentMode == ThemeMode.dark,
+                    onTap: () {
+                      ThemeController.instance.setThemeMode(ThemeMode.dark);
+                      Navigator.pop(ctx);
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  _buildThemeOption(
+                    ctx: ctx,
+                    title: 'Modo Claro (Meta Light)',
+                    subtitle: 'Canvas neutro e Teal WhatsApp. Ideal para uso sob luz do sol.',
+                    icon: Icons.light_mode_rounded,
+                    isSelected: currentMode == ThemeMode.light,
+                    onTap: () {
+                      ThemeController.instance.setThemeMode(ThemeMode.light);
+                      Navigator.pop(ctx);
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  _buildThemeOption(
+                    ctx: ctx,
+                    title: 'Automático (Padrão do Sistema)',
+                    subtitle: 'Acompanha automaticamente as preferências do seu aparelho.',
+                    icon: Icons.brightness_auto_rounded,
+                    isSelected: currentMode == ThemeMode.system,
+                    onTap: () {
+                      ThemeController.instance.setThemeMode(ThemeMode.system);
+                      Navigator.pop(ctx);
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildThemeOption({
+    required BuildContext ctx,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? MetaColors.highlight(ctx)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected
+                ? MetaColors.primaryColor(ctx)
+                : MetaColors.cardBorder(ctx),
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected
+                  ? MetaColors.primaryColor(ctx)
+                  : MetaColors.subtext(ctx),
+              size: 24,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: MetaColors.text(ctx),
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: MetaColors.subtext(ctx),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              Icon(
+                Icons.check_circle_rounded,
+                color: MetaColors.primaryColor(ctx),
+                size: 20,
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showCrefLockedModal() {
@@ -798,17 +974,18 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.paddingOf(context).top;
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
+    final isDark = MetaColors.isDark(context);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
+      value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
         systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: MetaColors.background,
+        backgroundColor: MetaColors.bg(context),
         body: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
@@ -821,10 +998,10 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                   right: 20,
                   bottom: 20,
                 ),
-                child: const Text(
+                child: Text(
                   'Ferramentas do Personal',
                   style: TextStyle(
-                    color: MetaColors.textPrimary,
+                    color: MetaColors.text(context),
                     fontSize: 28,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.6,
@@ -838,10 +1015,10 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: const Text(
+                child: Text(
                   'Como',
                   style: TextStyle(
-                    color: MetaColors.textPrimary,
+                    color: MetaColors.text(context),
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     letterSpacing: -0.3,
@@ -898,10 +1075,10 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                                   ),
                                 ),
                               ),
-                              // Metade inferior: fundo MetaColors.surfaceHighlight com o texto
+                              // Metade inferior: fundo dinâmico com o texto
                               Container(
                                 height: 68,
-                                color: MetaColors.surfaceHighlight,
+                                color: MetaColors.highlight(context),
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 12,
                                   vertical: 10,
@@ -911,8 +1088,8 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                                   tip.title,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: MetaColors.textPrimary,
+                                  style: TextStyle(
+                                    color: MetaColors.text(context),
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                     height: 1.25,
@@ -937,10 +1114,10 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: const Text(
+                child: Text(
                   'Expanda sua empresa',
                   style: TextStyle(
-                    color: MetaColors.textPrimary,
+                    color: MetaColors.text(context),
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     letterSpacing: -0.3,
@@ -965,13 +1142,13 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                     ),
                     leading: Icon(
                       item.icon,
-                      color: MetaColors.textSecondary,
+                      color: MetaColors.subtext(context),
                       size: 26,
                     ),
                     title: Text(
                       item.title,
-                      style: const TextStyle(
-                        color: MetaColors.textPrimary,
+                      style: TextStyle(
+                        color: MetaColors.text(context),
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
@@ -980,8 +1157,8 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
                         item.subtitle,
-                        style: const TextStyle(
-                          color: MetaColors.textSecondary,
+                        style: TextStyle(
+                          color: MetaColors.subtext(context),
                           fontSize: 13,
                           height: 1.3,
                         ),
@@ -1043,6 +1220,7 @@ enum _ToolType {
   aiAssistant,
   publicShowcase,
   whatsappIntegration,
+  themeMode,
 }
 
 class _BusinessTip {

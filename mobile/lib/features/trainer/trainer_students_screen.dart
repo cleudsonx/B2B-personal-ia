@@ -541,16 +541,18 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
       return name.contains(q) || status.contains(q);
     }).toList();
 
+    final isDark = MetaColors.isDark(context);
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
+      value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
         systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: MetaColors.background,
+        backgroundColor: MetaColors.bg(context),
         body: Stack(
           children: [
             Column(
@@ -569,23 +571,23 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             'Alunos',
                             style: TextStyle(
-                              color: MetaColors.textPrimary,
+                              color: MetaColors.text(context),
                               fontSize: 26,
                               fontWeight: FontWeight.w700,
                               letterSpacing: -0.5,
                             ),
                           ),
                           if (_isLoading)
-                            const SizedBox(
+                            SizedBox(
                               width: 18,
                               height: 18,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  MetaColors.emerald,
+                                  MetaColors.primaryColor(context),
                                 ),
                               ),
                             )
@@ -607,15 +609,15 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                       Container(
                         height: 46,
                         decoration: BoxDecoration(
-                          color: MetaColors.surfaceHighlight,
+                          color: MetaColors.highlight(context),
                           borderRadius: BorderRadius.circular(50),
                         ),
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.search,
-                              color: MetaColors.textSecondary,
+                              color: MetaColors.subtext(context),
                               size: 20,
                             ),
                             const SizedBox(width: 10),
@@ -627,14 +629,14 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                     _searchQuery = val;
                                   });
                                 },
-                                style: const TextStyle(
-                                  color: MetaColors.textPrimary,
+                                style: TextStyle(
+                                  color: MetaColors.text(context),
                                   fontSize: 15,
                                 ),
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   hintText: 'Pesquisar...',
                                   hintStyle: TextStyle(
-                                    color: MetaColors.textSecondary,
+                                    color: MetaColors.subtext(context),
                                     fontSize: 15,
                                   ),
                                   border: InputBorder.none,
@@ -762,15 +764,15 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                     leading: CircleAvatar(
                                       radius: 24,
                                       backgroundColor:
-                                          MetaColors.surfaceHighlight,
+                                          MetaColors.highlight(context),
                                       backgroundImage: avatarUrl != null
                                           ? NetworkImage(avatarUrl)
                                           : null,
                                       child: avatarUrl == null
                                           ? Text(
                                               _getInitials(fullName),
-                                              style: const TextStyle(
-                                                color: MetaColors.emerald,
+                                              style: TextStyle(
+                                                color: MetaColors.primaryColor(context),
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 15,
                                               ),
@@ -782,8 +784,8 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                         Expanded(
                                           child: Text(
                                             fullName,
-                                            style: const TextStyle(
-                                              color: MetaColors.textPrimary,
+                                            style: TextStyle(
+                                              color: MetaColors.text(context),
                                               fontWeight: FontWeight.w500,
                                               fontSize: 16,
                                             ),
@@ -797,8 +799,8 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                     ),
                                     subtitle: Text(
                                       recentStatus,
-                                      style: const TextStyle(
-                                        color: MetaColors.textSecondary,
+                                      style: TextStyle(
+                                        color: MetaColors.subtext(context),
                                         fontSize: 13,
                                       ),
                                       maxLines: 1,

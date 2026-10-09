@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// Tokens de cor para a identidade visual "Meta" (Dark Mode, sem sombras).
+/// Tokens de cor para a identidade visual "Meta" (Dark Mode e Light Mode WhatsApp Business).
 class MetaColors {
+  // Tokens Escuros Oficiais (Meta Dark / Obsidian)
   static const Color background = Color(0xFF090D16); // Obsidian fosco
   static const Color surface = Color(0xFF131B2E); // Card elevado
   static const Color surfaceHighlight = Color(0xFF1E293B); // Superfície interativa
@@ -11,6 +12,41 @@ class MetaColors {
   static const Color accentBlue = Color(0xFF38BDF8); // Sky blue
   static const Color emerald = Color(0xFF10B981); // Emerald glow
   static const Color primary = emerald;
+
+  // Tokens Claros Oficiais (Meta / WhatsApp Business Light Mode)
+  static const Color lightBackground = Color(0xFFF0F2F5); // WhatsApp Canvas
+  static const Color lightSurface = Color(0xFFFFFFFF); // Pure White Flat Card
+  static const Color lightSurfaceHighlight = Color(0xFFE9EDEF); // Pílula e busca WhatsApp
+  static const Color lightBorder = Color(0xFFE9EDEF); // 1px borda neutra
+  static const Color lightTextPrimary = Color(0xFF111B21); // Charcoal Black
+  static const Color lightTextSecondary = Color(0xFF667781); // Slate Muted
+  static const Color lightEmerald = Color(0xFF008069); // WhatsApp Corporate Teal/Emerald
+  static const Color lightAccentBlue = Color(0xFF0284C7); // Sky Blue
+
+  // Helpers Dinâmicos Reativos ao Tema Ativo
+  static bool isDark(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark;
+
+  static Color bg(BuildContext context) =>
+      isDark(context) ? background : lightBackground;
+
+  static Color card(BuildContext context) =>
+      isDark(context) ? surface : lightSurface;
+
+  static Color highlight(BuildContext context) =>
+      isDark(context) ? surfaceHighlight : lightSurfaceHighlight;
+
+  static Color cardBorder(BuildContext context) =>
+      isDark(context) ? border : lightBorder;
+
+  static Color text(BuildContext context) =>
+      isDark(context) ? textPrimary : lightTextPrimary;
+
+  static Color subtext(BuildContext context) =>
+      isDark(context) ? textSecondary : lightTextSecondary;
+
+  static Color primaryColor(BuildContext context) =>
+      isDark(context) ? emerald : lightEmerald;
 }
 
 /// Card padrão Meta: Dark surface, borda sutil de 1px e zero sombras.
@@ -36,14 +72,17 @@ class MetaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bg = backgroundColor ?? MetaColors.card(context);
+    final bColor = borderColor ?? MetaColors.cardBorder(context);
+
     Widget content = Container(
       margin: margin,
       padding: padding ?? const EdgeInsets.all(24.0),
       decoration: BoxDecoration(
-        color: backgroundColor ?? MetaColors.surface,
+        color: bg,
         borderRadius: BorderRadius.circular(borderRadius),
         border: Border.all(
-          color: borderColor ?? MetaColors.border,
+          color: bColor,
           width: 1.0,
         ),
       ),
@@ -96,10 +135,16 @@ class SquircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = MetaColors.isDark(context);
+    final activeEmerald = isDark ? MetaColors.emerald : MetaColors.lightEmerald;
+    final activeHighlight = isDark ? MetaColors.surfaceHighlight : MetaColors.lightSurfaceHighlight;
+    final activeText = isDark ? MetaColors.textPrimary : MetaColors.lightTextPrimary;
+    final activeBorder = isDark ? MetaColors.border : MetaColors.lightBorder;
+
     final bg = backgroundColor ??
-        (isPrimary ? MetaColors.emerald : MetaColors.surfaceHighlight);
+        (isPrimary ? activeEmerald : activeHighlight);
     final fg = foregroundColor ??
-        (isPrimary ? Colors.white : MetaColors.textPrimary);
+        (isPrimary ? Colors.white : activeText);
 
     return SizedBox(
       height: height,
@@ -116,7 +161,7 @@ class SquircleButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(borderRadius),
             side: isPrimary
                 ? BorderSide.none
-                : const BorderSide(color: MetaColors.border, width: 1.0),
+                : BorderSide(color: activeBorder, width: 1.0),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         ),
@@ -174,14 +219,15 @@ class MetaSectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = MetaColors.isDark(context);
     return Column(
       crossAxisAlignment: crossAxisAlignment,
       children: [
         Text(
           title,
           textAlign: textAlign,
-          style: const TextStyle(
-            color: MetaColors.textPrimary,
+          style: TextStyle(
+            color: isDark ? MetaColors.textPrimary : MetaColors.lightTextPrimary,
             fontSize: 26,
             fontWeight: FontWeight.w900,
             letterSpacing: -0.8,
@@ -193,8 +239,8 @@ class MetaSectionTitle extends StatelessWidget {
           Text(
             subtitle!,
             textAlign: textAlign,
-            style: const TextStyle(
-              color: MetaColors.textSecondary,
+            style: TextStyle(
+              color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary,
               fontSize: 15,
               height: 1.5,
             ),

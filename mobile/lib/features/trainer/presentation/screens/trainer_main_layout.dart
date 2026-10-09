@@ -87,48 +87,52 @@ class _TrainerMainLayoutState extends State<TrainerMainLayout> {
   Widget build(BuildContext context) {
     final screens = _buildScreens();
     final activeIndex = _currentIndex.clamp(0, screens.length - 1);
+    final isDark = MetaColors.isDark(context);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
+      value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
         systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         systemNavigationBarDividerColor: Colors.transparent,
       ),
       child: NavigationBarTheme(
         data: NavigationBarThemeData(
-          backgroundColor: MetaColors.background,
-          indicatorColor: MetaColors.surfaceHighlight,
+          backgroundColor: isDark ? MetaColors.background : MetaColors.lightSurface,
+          indicatorColor: isDark ? MetaColors.surfaceHighlight : MetaColors.lightSurfaceHighlight,
           elevation: 0,
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           iconTheme: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {
-              return const IconThemeData(color: MetaColors.emerald, size: 24);
+              return IconThemeData(
+                color: isDark ? MetaColors.emerald : MetaColors.lightEmerald,
+                size: 24,
+              );
             }
-            return const IconThemeData(
-              color: MetaColors.textSecondary,
+            return IconThemeData(
+              color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary,
               size: 24,
             );
           }),
           labelTextStyle: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {
-              return const TextStyle(
-                color: MetaColors.textPrimary,
+              return TextStyle(
+                color: isDark ? MetaColors.textPrimary : MetaColors.lightTextPrimary,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               );
             }
-            return const TextStyle(
-              color: MetaColors.textSecondary,
+            return TextStyle(
+              color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary,
               fontSize: 12,
               fontWeight: FontWeight.w500,
             );
           }),
         ),
         child: Scaffold(
-          backgroundColor: MetaColors.background,
+          backgroundColor: isDark ? MetaColors.background : MetaColors.lightBackground,
           body: IndexedStack(
             index: activeIndex,
             children: screens,
@@ -136,8 +140,8 @@ class _TrainerMainLayoutState extends State<TrainerMainLayout> {
           bottomNavigationBar: NavigationBar(
             selectedIndex: activeIndex,
             onDestinationSelected: _onDestinationSelected,
-            backgroundColor: MetaColors.background,
-            indicatorColor: MetaColors.surfaceHighlight,
+            backgroundColor: isDark ? MetaColors.background : MetaColors.lightSurface,
+            indicatorColor: isDark ? MetaColors.surfaceHighlight : MetaColors.lightSurfaceHighlight,
             elevation: 0,
             labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
             destinations: const [

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
+import '../../core/theme/theme_controller.dart';
 import 'teacher_mfa_screen.dart';
 
 class AccountScreen extends StatefulWidget {
@@ -141,6 +142,41 @@ class _AccountScreenState extends State<AccountScreen> {
           ),
           if (_isSwitchingRole) const LinearProgressIndicator(),
         ],
+        const SizedBox(height: 28),
+        Text('Aparência', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 12),
+        ListenableBuilder(
+          listenable: ThemeController.instance,
+          builder: (context, _) {
+            final currentMode = ThemeController.instance.themeMode;
+            return SegmentedButton<ThemeMode>(
+              segments: const [
+                ButtonSegment<ThemeMode>(
+                  value: ThemeMode.dark,
+                  label: Text('Escuro'),
+                  icon: Icon(Icons.dark_mode_rounded),
+                ),
+                ButtonSegment<ThemeMode>(
+                  value: ThemeMode.light,
+                  label: Text('Claro'),
+                  icon: Icon(Icons.light_mode_rounded),
+                ),
+                ButtonSegment<ThemeMode>(
+                  value: ThemeMode.system,
+                  label: Text('Sistema'),
+                  icon: Icon(Icons.brightness_auto_rounded),
+                ),
+              ],
+              selected: {currentMode},
+              onSelectionChanged: (selection) {
+                if (selection.isNotEmpty) {
+                  ThemeController.instance.setThemeMode(selection.first);
+                }
+              },
+              emptySelectionAllowed: false,
+            );
+          },
+        ),
         if (roles.contains('trainer')) ...[
           const SizedBox(height: 32),
           ListTile(

@@ -130,9 +130,9 @@ class B2BPersonalIaApp extends StatelessWidget {
         return MaterialApp(
           title: 'Mr. Coach',
           debugShowCheckedModeBanner: false,
-          theme: AppTheme.darkTheme,
+          theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
-          themeMode: ThemeMode.dark,
+          themeMode: ThemeController.instance.themeMode,
           scrollBehavior: const MaterialScrollBehavior().copyWith(
             dragDevices: {
               PointerDeviceKind.mouse,
