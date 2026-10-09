@@ -25,6 +25,7 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
   String _trainerName = 'Carregando...';
   String? _targetEmail;
   String? _targetPhone;
+  String? _targetName;
 
   @override
   void initState() {
@@ -46,6 +47,7 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
           _trainerName = res['trainer_name'] ?? 'Seu Personal Trainer';
           _targetEmail = res['target_email'];
           _targetPhone = res['target_phone'];
+          _targetName = res['target_name'];
           _hasValidationError = false;
           _isLoading = false;
         });
@@ -78,6 +80,7 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
               initialRole: 'client',
               initialEmail: _targetEmail,
               initialPhone: _targetPhone,
+              initialName: _targetName,
               inviteToken: widget.token,
               trainerName: _trainerName,
             ),

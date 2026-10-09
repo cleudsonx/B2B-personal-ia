@@ -88,6 +88,12 @@ async def test_student_list_does_not_use_memory_when_production_database_is_empt
         def eq(self, *_args):
             return self
 
+        def is_(self, *_args):
+            return self
+
+        def gt(self, *_args):
+            return self
+
         def order(self, *_args, **_kwargs):
             return self
 
@@ -297,15 +303,11 @@ def test_student_invitation_flow(monkeypatch):
     })
     assert invite_res.status_code == 201
     data = invite_res.json()
-    assert data["status"] == "Pendente Confirmação"
+    assert data["status"] == "Convite Pendente"
     invite_url = urlsplit(data["invitation_link"])
-    assert invite_url.fragment.startswith("/onboarding?")
-    invite_params = parse_qs(invite_url.fragment.split("?", 1)[1])
-    assert invite_params["email"] == ["novo.aluno@example.com"]
-    assert invite_params["student_id"] == [data["id"]]
-    assert invite_params["trainer_id"]
-    assert invite_params["trainer_id"] != ["attacker-trainer"]
-    assert "token" not in invite_params
+    assert invite_url.fragment.startswith("/invite/")
+    assert invite_url.fragment.removeprefix("/invite/")
+    assert "attacker-trainer" not in data["invitation_link"]
     assert "wa.me/5511988887777" in data["whatsapp_url"]
     assert data["email_status"] in ("sent", "success")
     assert data["whatsapp_status"] in ("sent", "success", "ready_url")

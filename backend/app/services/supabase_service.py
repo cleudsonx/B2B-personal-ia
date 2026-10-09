@@ -481,6 +481,43 @@ class SupabaseService:
     # ALUNOS (PROFILES + ANAMNESIS)
     # =========================================================================
 
+    async def create_student_invite(
+        self,
+        *,
+        token: str,
+        trainer_id: str,
+        email: str,
+        phone: Optional[str],
+        full_name: str,
+        objective: str,
+        injuries_or_restrictions: str,
+        channel: str = "email",
+    ) -> Dict[str, str]:
+        client = await self.get_client()
+        if not client:
+            if self._is_production():
+                raise RuntimeError("Supabase indisponível; o convite não foi persistido.")
+            return {"id": str(uuid.uuid4()), "token": token, "expires_at": ""}
+
+        try:
+            result = await client.rpc("create_student_invite", {
+                "p_token": token,
+                "p_trainer_id": to_valid_uuid_str(trainer_id),
+                "p_channel": channel,
+                "p_target_email": email.strip().lower(),
+                "p_target_phone": phone,
+                "p_target_name": full_name,
+                "p_objective": objective,
+                "p_injuries_or_restrictions": injuries_or_restrictions,
+            }).execute()
+            if not result.data:
+                raise RuntimeError("O banco não retornou o convite criado.")
+            return result.data[0]
+        except Exception as e:
+            logger.error("Erro ao reservar vaga e criar convite pendente no Supabase: %s", e)
+            self._raise_if_production("criar convite pendente", e)
+            raise
+
     async def count_trainer_occupied_slots(self, trainer_id: str, exclude_student_id: Optional[str] = None) -> int:
         """Conta quantos alunos ativos/pendentes consomem cota do treinador."""
         t_uuid = to_valid_uuid_str(trainer_id)
@@ -503,9 +540,18 @@ class SupabaseService:
                         .execute()
                     occupied = [
                         p for p in res.data
-                        if p.get("subscription_status") != "canceled" and p.get("id") != exclude_student_id
+                        if str(p.get("subscription_status") or "active").lower()
+                        not in ("arquivado", "inativo", "canceled")
+                        and p.get("id") != exclude_student_id
                     ]
-                    return len(occupied) if self._is_production() else max(len(occupied), mem_count)
+                    pending_res = await client.table("invite_tokens")\
+                        .select("id")\
+                        .eq("trainer_id", t_uuid)\
+                        .is_("used_at", "null")\
+                        .gt("expires_at", datetime.now(timezone.utc).isoformat())\
+                        .execute()
+                    total_occupied = len(occupied) + len(pending_res.data or [])
+                    return total_occupied if self._is_production() else max(total_occupied, mem_count)
                 except Exception as e:
                     logger.warning(f"Erro ao contar alunos no Supabase ({e}).")
                     self._raise_if_production("contar alunos", e)
@@ -577,6 +623,29 @@ class SupabaseService:
                         last_session="Sessão recente" if work else "Aguardando treino",
                         active_split=work.get("title") if work else None,
                         injuries_or_restrictions=anam.get("injuries_or_restrictions") or "Nenhuma restrição relatada",
+                    ))
+
+                invite_res = await client.table("invite_tokens")\
+                    .select("id, target_email, target_phone, target_name, objective, injuries_or_restrictions, created_at")\
+                    .eq("trainer_id", t_uuid)\
+                    .is_("used_at", "null")\
+                    .gt("expires_at", datetime.now(timezone.utc).isoformat())\
+                    .order("created_at", desc=True)\
+                    .execute()
+                for invite in invite_res.data or []:
+                    students.append(StudentResponse(
+                        id=invite["id"],
+                        full_name=invite.get("target_name") or "Novo aluno",
+                        email=invite.get("target_email") or "",
+                        phone=invite.get("target_phone"),
+                        goal=invite.get("objective") or "Hipertrofia Muscular",
+                        status="Convite Pendente",
+                        trainer_id=t_uuid,
+                        created_at=invite.get("created_at") or datetime.now(timezone.utc).isoformat(),
+                        has_active_prescription=False,
+                        last_session="Aguardando cadastro",
+                        active_split="Convite enviado",
+                        injuries_or_restrictions=invite.get("injuries_or_restrictions"),
                     ))
 
                 return students
@@ -1204,7 +1273,7 @@ class SupabaseService:
         }
         if phone:
             user_metadata["phone"] = phone
-        if trainer_id and is_valid_uuid(trainer_id):
+        if role != "client" and trainer_id and is_valid_uuid(trainer_id):
             user_metadata["trainer_id"] = trainer_id
         if invite_token:
             user_metadata["invite_token"] = invite_token
@@ -1215,25 +1284,26 @@ class SupabaseService:
             user_metadata["cref_or_registry"] = professional_document
 
         user_id = None
-        if client and hasattr(client, "auth") and hasattr(client.auth, "admin"):
-            try:
-                admin_res = await client.auth.admin.create_user({
-                    "email": email,
-                    "password": password,
-                    "email_confirm": True,
-                    "user_metadata": user_metadata,
-                })
-                if admin_res and hasattr(admin_res, "user") and admin_res.user:
-                    user_id = admin_res.user.id
-            except Exception as e:
-                err_str = str(e).lower()
-                logger.error(f"Erro no admin.create_user do Supabase: {e}")
-                if "already registered" in err_str or "unique" in err_str or "duplicate" in err_str:
-                    raise ValueError("Este e-mail já está cadastrado no sistema.")
-                raise e
+        if not client or not hasattr(client, "auth") or not hasattr(client.auth, "admin"):
+            raise RuntimeError("Admin API do Supabase indisponível para criar usuário.")
+        try:
+            admin_res = await client.auth.admin.create_user({
+                "email": email,
+                "password": password,
+                "email_confirm": True,
+                "user_metadata": user_metadata,
+            })
+            if admin_res and hasattr(admin_res, "user") and admin_res.user:
+                user_id = admin_res.user.id
+        except Exception as e:
+            err_str = str(e).lower()
+            logger.error(f"Erro no admin.create_user do Supabase: {e}")
+            if "already registered" in err_str or "unique" in err_str or "duplicate" in err_str:
+                raise ValueError("Este e-mail já está cadastrado no sistema.") from e
+            raise
 
         if not user_id:
-            user_id = str(uuid.uuid4())
+            raise RuntimeError("O Supabase não retornou o usuário criado.")
 
         if client:
             try:
@@ -1245,7 +1315,7 @@ class SupabaseService:
                 }
                 if phone:
                     profile_payload["phone"] = phone
-                if trainer_id and is_valid_uuid(trainer_id):
+                if role != "client" and trainer_id and is_valid_uuid(trainer_id):
                     profile_payload["trainer_id"] = to_valid_uuid_str(trainer_id)
                 if photo_url:
                     profile_payload["photo_url"] = photo_url

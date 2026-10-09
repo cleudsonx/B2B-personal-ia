@@ -210,6 +210,11 @@ class AuthService {
     if (user != null) await _consumePendingInvite(user);
   }
 
+  static Future<void> consumeInviteToken(String token) async {
+    await InviteService.consumeInvite(token);
+    _cachedProfile = null;
+  }
+
   /// Garante que o registro na tabela 'profiles' existe e está atualizado
   static Future<void> _ensureProfileUpserted(User user) async {
     try {

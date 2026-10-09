@@ -75,6 +75,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
               (activeSplit?.isNotEmpty == true ? true : null);
             final lastSession = st['last_session'] as String? ?? 'Sincronizado';
             final status = st['status'] as String? ?? 'Ativo';
+            final isPendingInvite = status.trim().toLowerCase() == 'convite pendente';
             final isArchived =
                 status.toLowerCase().contains('arquivado') ||
                 status.toLowerCase().contains('inativo');
@@ -85,7 +86,9 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
               'email': st['email'] ?? '',
               'phone': st['phone'] ?? '',
               'goal': st['goal'] ?? 'Treino',
-                'recent_status': isArchived
+                  'recent_status': isPendingInvite
+                    ? 'Convite pendente · aguardando cadastro'
+                    : isArchived
                   ? 'Arquivado'
                   : hasActivePrescription == true
                   ? (activeSplit?.isNotEmpty == true
@@ -705,7 +708,12 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                               color: Colors.transparent,
                               borderRadius: BorderRadius.circular(16),
                               child: InkWell(
-                                onTap: () => _showStudentDetails(student),
+                                onTap: (student['status'] as String? ?? '')
+                                  .trim()
+                                  .toLowerCase() ==
+                                  'convite pendente'
+                                  ? null
+                                  : () => _showStudentDetails(student),
                                 borderRadius: BorderRadius.circular(16),
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(

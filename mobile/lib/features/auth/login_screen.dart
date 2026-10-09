@@ -18,6 +18,7 @@ class LoginScreen extends StatefulWidget {
   final String? invitedStudentId;
   final String? invitedTrainerId;
   final String? invitedTrainerName;
+  final String? inviteToken;
 
   const LoginScreen({
     super.key,
@@ -27,6 +28,7 @@ class LoginScreen extends StatefulWidget {
     this.invitedStudentId,
     this.invitedTrainerId,
     this.invitedTrainerName,
+    this.inviteToken,
   });
 
   @override
@@ -99,6 +101,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _continueAfterAuthentication() async {
+    if (widget.inviteToken != null && widget.inviteToken!.isNotEmpty) {
+      await AuthService.consumeInviteToken(widget.inviteToken!);
+    }
     var profile = await AuthService.getCurrentProfile();
     if (widget.invitedStudentId != null) {
       final user = AuthService.currentUser;
@@ -153,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(
           builder: (_) => WelcomeOnboardingScreen(
             studentName: userName,
-            trainerName: trainer?['full_name'] as String?,
+            trainerName: widget.invitedTrainerName ?? (trainer?['full_name'] as String?),
           ),
         ),
       );

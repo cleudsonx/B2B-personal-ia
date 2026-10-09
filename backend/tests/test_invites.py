@@ -19,16 +19,11 @@ async def test_create_invite_uses_configured_frontend_url(monkeypatch):
         "APP_FRONTEND_URL",
         "https://frontend.example/",
     )
-    mock_supabase = MagicMock()
-    mock_supabase.table.return_value.insert.return_value.execute = AsyncMock(
-        return_value=MagicMock(data=[{"expires_at": "2026-10-09T00:00:00Z"}])
-    )
-
     with patch(
-        "app.services.supabase_service.supabase_service.get_client",
+        "app.api.v1.endpoints.invites.supabase_service.create_student_invite",
         new_callable=AsyncMock,
-        return_value=mock_supabase,
-    ):
+        return_value={"id": "invite-id", "token": "generated-token", "expires_at": "2026-10-09T00:00:00Z"},
+    ) as create_invite:
         with patch(
             "app.api.v1.endpoints.invites.log_audit_event",
             new_callable=AsyncMock,
@@ -42,8 +37,9 @@ async def test_create_invite_uses_configured_frontend_url(monkeypatch):
             )
 
     assert response.invite_url == (
-        f"https://frontend.example/#/invite/{response.token}"
+        "https://frontend.example/#/invite/generated-token"
     )
+    assert create_invite.await_args.kwargs["channel"] == "email"
 
 
 @pytest.mark.asyncio
@@ -55,32 +51,112 @@ async def test_create_invite_validation():
         assert res.status_code == 400
 
 @pytest.mark.asyncio
-async def test_consume_invite_not_found():
-    """Valida tentativa de consumir token inexistente gerando 404 e auditoria de falha"""
+async def test_consume_invite_uses_atomic_rpc_and_returns_trainer():
+    from starlette.requests import Request
+    from app.api.v1.endpoints import invites as invite_endpoints
+
+    result = {"status": "consumed", "trainer_id": "trainer-id", "trainer_name": "Coach", "channel": "whatsapp"}
     mock_supabase = MagicMock()
-    # Mock do retorno do Supabase simulando token não encontrado
-    mock_table = MagicMock()
-    mock_select = MagicMock()
-    mock_eq = MagicMock()
-    mock_maybe_single = MagicMock()
-    mock_execute = AsyncMock(return_value=MagicMock(data=None))
-
-    mock_supabase.table.return_value = mock_table
-    mock_table.select.return_value = mock_select
-    mock_select.eq.return_value = mock_eq
-    mock_eq.maybe_single.return_value = mock_maybe_single
-    mock_maybe_single.execute = mock_execute
-
+    mock_supabase.rpc.return_value.execute = AsyncMock(return_value=MagicMock(data=result))
     with patch(
         "app.services.supabase_service.supabase_service.get_client",
         new_callable=AsyncMock,
         return_value=mock_supabase,
     ):
-        with patch("app.api.v1.endpoints.invites.log_audit_event", new_callable=AsyncMock) as mock_audit:
-            async with AsyncClient(app=app, base_url="http://test") as client:
-                res = await client.post("/api/v1/invites/consume", json={"token": "token_inexistente_123"})
-                assert res.status_code == 404
-                assert mock_audit.called
-                call_args = mock_audit.call_args[1]
-                assert call_args["event_type"] == "invite_failed"
+        with patch("app.api.v1.endpoints.invites.log_audit_event", new_callable=AsyncMock):
+            request = Request({"type": "http", "headers": [], "client": ("127.0.0.1", 1234)})
+            response = await invite_endpoints.consume_invite(
+                invite_endpoints.ConsumeInviteRequest(token="invite-token"),
+                request,
+                {"id": "student-id"},
+            )
+
+    assert response.trainer_id == "trainer-id"
+    assert response.trainer_name == "Coach"
+    mock_supabase.rpc.assert_called_once_with("consume_student_invite", {
+        "p_token": "invite-token",
+        "p_student_id": "student-id",
+    })
+
+
+@pytest.mark.asyncio
+async def test_consume_invite_maps_wrong_recipient_to_forbidden():
+    from fastapi import HTTPException
+    from starlette.requests import Request
+    from app.api.v1.endpoints import invites as invite_endpoints
+
+    mock_supabase = MagicMock()
+    mock_supabase.rpc.return_value.execute = AsyncMock(
+        side_effect=Exception("Este convite foi destinado a outro e-mail.")
+    )
+    with patch(
+        "app.services.supabase_service.supabase_service.get_client",
+        new_callable=AsyncMock,
+        return_value=mock_supabase,
+    ), patch("app.api.v1.endpoints.invites.log_audit_event", new_callable=AsyncMock):
+        request = Request({"type": "http", "headers": [], "client": ("127.0.0.1", 1234)})
+        with pytest.raises(HTTPException) as error:
+            await invite_endpoints.consume_invite(
+                invite_endpoints.ConsumeInviteRequest(token="invite-token"),
+                request,
+                {"id": "student-id"},
+            )
+
+    assert error.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_direct_client_registration_requires_invite(monkeypatch):
+    from fastapi import HTTPException
+    from app.api.v1.endpoints import auth as auth_endpoints
+
+    create_user = AsyncMock()
+    monkeypatch.setattr(auth_endpoints.supabase_service, "admin_create_user", create_user)
+    with pytest.raises(HTTPException) as error:
+        await auth_endpoints.register_user_direct(auth_endpoints.DirectRegisterRequest(
+            email="student@example.com",
+            password="password123",
+            full_name="Student",
+            role="client",
+            trainer_id="attacker-trainer",
+        ))
+
+    assert error.value.status_code == 400
+    create_user.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_direct_client_registration_ignores_submitted_trainer_id(monkeypatch):
+    from app.api.v1.endpoints import auth as auth_endpoints
+
+    query = MagicMock()
+    query.execute = AsyncMock(return_value=MagicMock(data={
+        "target_email": "student@example.com",
+        "target_phone": None,
+        "channel": "email",
+        "used_at": None,
+        "expires_at": "2099-01-01T00:00:00+00:00",
+    }))
+    mock_client = MagicMock()
+    mock_client.table.return_value.select.return_value.eq.return_value.maybe_single.return_value = query
+    monkeypatch.setattr(auth_endpoints.supabase_service, "get_client", AsyncMock(return_value=mock_client))
+    create_user = AsyncMock(return_value={
+        "success": True,
+        "user_id": "student-id",
+        "email": "student@example.com",
+        "role": "client",
+        "message": "created",
+    })
+    monkeypatch.setattr(auth_endpoints.supabase_service, "admin_create_user", create_user)
+
+    await auth_endpoints.register_user_direct(auth_endpoints.DirectRegisterRequest(
+        email="student@example.com",
+        password="password123",
+        full_name="Student",
+        role="client",
+        trainer_id="attacker-trainer",
+        invite_token="valid-token",
+    ))
+
+    assert create_user.await_args.kwargs["trainer_id"] is None
 

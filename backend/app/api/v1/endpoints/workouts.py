@@ -1,3 +1,4 @@
+import secrets
 import uuid
 import urllib.parse
 from datetime import datetime, timezone
@@ -412,40 +413,29 @@ async def invite_student(
     if not trainer_name or trainer_name == "Roberto Mendes":
         trainer_name = "Seu Treinador"
 
-    # Validação estrita da cota de alunos do plano SaaS
-    occupied = await _count_trainer_occupied_slots(trainer_id)
-    max_allowed = await _get_trainer_max_students(trainer_id)
-    if occupied >= max_allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Limite de {max_allowed} alunos ativos atingido no seu plano atual. "
-                   f"Faça upgrade do plano ou arquive alunos inativos antes de convidar novos."
-        )
-
-    # Cria o aluno no Supabase vinculado ao trainer_id real
-    created_student = await supabase_service.create_student(
-        trainer_id=trainer_id,
-        req=StudentCreateRequest(
-            full_name=payload.full_name,
+    invite_token = secrets.token_urlsafe(32)
+    try:
+        invite_record = await supabase_service.create_student_invite(
+            token=invite_token,
+            trainer_id=trainer_id,
             email=payload.email,
             phone=payload.phone,
-            goal=payload.objective or "Hipertrofia Muscular",
-            injuries_or_restrictions=payload.injuries_or_restrictions or "Aguardando avaliação clínica",
+            full_name=payload.full_name,
+            objective=payload.objective or "Hipertrofia Muscular",
+            injuries_or_restrictions=payload.injuries_or_restrictions or "Nenhuma restrição relatada.",
         )
-    )
-    student_id = created_student.id
-
-    # The student account is pre-created, so the invitation opens client login.
-    query_params = {
-        "student_id": student_id,
-        "trainer_id": trainer_id,
-        "trainer_name": trainer_name,
-        "email": payload.email,
-    }
-    invitation_link = (
-        f"{settings.APP_FRONTEND_URL.rstrip('/')}/#/onboarding?"
-        f"{urllib.parse.urlencode(query_params)}"
-    )
+    except Exception as e:
+        if "limite" in str(e).lower() or "23514" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="O limite de alunos ativos do seu plano foi atingido.",
+            ) from e
+        logger.error("Falha ao reservar vaga para convite: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Não foi possível reservar a vaga para este convite.",
+        ) from e
+    invitation_link = f"{settings.APP_FRONTEND_URL.rstrip('/')}/#/invite/{invite_record['token']}"
 
     # 1. Envio de E-mail via Resend/Mock
     email_status = "skipped"
@@ -478,10 +468,10 @@ async def invite_student(
         whatsapp_status = wa_res.get("status", "sent")
 
     return StudentInviteResponse(
-        id=student_id,
+        id=invite_record["id"],
         email=payload.email,
         full_name=payload.full_name,
-        status="Pendente Confirmação",
+        status="Convite Pendente",
         invitation_link=invitation_link,
         whatsapp_url=whatsapp_url,
         email_status=email_status,

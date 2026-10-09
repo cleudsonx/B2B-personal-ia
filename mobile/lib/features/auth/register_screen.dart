@@ -9,6 +9,7 @@ class RegisterScreen extends StatefulWidget {
   final String initialRole;
   final String? initialEmail;
   final String? initialPhone;
+  final String? initialName;
   final String? inviteToken;
   final String? trainerId;
   final String? trainerName;
@@ -18,6 +19,7 @@ class RegisterScreen extends StatefulWidget {
     this.initialRole = 'trainer',
     this.initialEmail,
     this.initialPhone,
+    this.initialName,
     this.inviteToken,
     this.trainerId,
     this.trainerName,
@@ -39,7 +41,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void initState() {
     super.initState();
-    _nameCtrl = TextEditingController();
+    _nameCtrl = TextEditingController(text: widget.initialName ?? '');
     _emailCtrl = TextEditingController(text: widget.initialEmail ?? '');
     _phoneCtrl = TextEditingController(text: widget.initialPhone ?? '');
     _passwordCtrl = TextEditingController();
@@ -84,6 +86,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 initialRole: widget.initialRole,
                 initialEmail: _emailCtrl.text.trim(),
                 confirmationRequired: true,
+                inviteToken: widget.inviteToken,
+                invitedTrainerName: widget.trainerName,
               ),
             ),
             (route) => false,
@@ -391,6 +395,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               builder: (_) => LoginScreen(
                                 initialRole: widget.initialRole,
                                 initialEmail: _emailCtrl.text.trim(),
+                                inviteToken: widget.inviteToken,
+                                invitedTrainerName: widget.trainerName,
                               ),
                             ),
                           );

@@ -3,6 +3,7 @@ from typing import Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, Field
 from app.services.supabase_service import supabase_service
+import re
 
 router = APIRouter()
 
@@ -35,19 +36,52 @@ async def register_user_direct(req: DirectRegisterRequest):
     bypassing falhas de SMTP/rate-limit de e-mail de confirmação do Supabase.
     """
     try:
+        role = req.role.strip().lower()
+        if role == "client":
+            if not req.invite_token:
+                raise ValueError("É necessário um convite válido para cadastrar uma conta de aluno.")
+            client = await supabase_service.get_client()
+            if not client:
+                raise HTTPException(status_code=503, detail="Serviço de convites indisponível.")
+            invite_res = await client.table("invite_tokens").select(
+                "target_email, target_phone, channel, used_at, expires_at"
+            ).eq("token", req.invite_token.strip()).maybe_single().execute()
+            invite = invite_res.data if invite_res else None
+            if not invite or invite.get("used_at"):
+                raise ValueError("Convite não encontrado, expirado ou já utilizado.")
+            expires_at = invite.get("expires_at")
+            if expires_at and datetime.fromisoformat(expires_at.replace("Z", "+00:00")) <= datetime.now(timezone.utc):
+                raise ValueError("Convite não encontrado, expirado ou já utilizado.")
+            if invite.get("channel") == "email":
+                if (req.email or "").strip().lower() != (invite.get("target_email") or "").strip().lower():
+                    raise ValueError("Este convite foi destinado a outro e-mail.")
+            elif invite.get("channel") == "whatsapp":
+                invited_phone = re.sub(r"\D", "", invite.get("target_phone") or "")
+                registered_phone = re.sub(r"\D", "", req.phone or "")
+                if invited_phone.startswith("55") and len(invited_phone) > 11:
+                    invited_phone = invited_phone[2:]
+                if registered_phone.startswith("55") and len(registered_phone) > 11:
+                    registered_phone = registered_phone[2:]
+                if not registered_phone or invited_phone != registered_phone:
+                    raise ValueError("Este convite foi destinado a outro telefone.")
+            else:
+                raise ValueError("Canal de convite inválido.")
+
         res = await supabase_service.admin_create_user(
             email=str(req.email),
             password=req.password,
             full_name=req.full_name,
-            role=req.role,
+            role=role,
             phone=req.phone,
-            trainer_id=req.trainer_id,
+            trainer_id=req.trainer_id if role != "client" else None,
             invite_token=req.invite_token,
             professional_document_type=req.professional_document_type,
             professional_document=req.professional_document,
             photo_url=req.photo_url,
         )
         return DirectRegisterResponse(**res)
+    except HTTPException:
+        raise
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
