@@ -41,7 +41,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
   String _workoutLocation = 'Academia completa';
   final _restrictionsCtrl = TextEditingController(
     text:
-        'Leve desconforto no ombro direito (evitar abdução acima de 90Â° com carga pesada)',
+        'Leve desconforto no ombro direito (evitar abdução acima de 90° com carga pesada)',
   );
   final _notesCtrl = TextEditingController(
     text: 'Foco em peitoral superior e deltoides',
@@ -185,6 +185,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
       final inviteLink = student['invitation_link'] as String? ?? '';
       if (inviteLink.isNotEmpty) {
         await Clipboard.setData(ClipboardData(text: inviteLink));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             backgroundColor: MetaColors.emerald,
@@ -370,47 +371,593 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: MetaColors.background,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: Text(
-          _generatedPlan == null ? 'Nova Anamnese & Ficha' : 'Revisão da Ficha',
-          style: TextStyle(
-            color: MetaColors.textPrimary,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.4,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: MetaColors.background,
+        appBar: AppBar(
+          backgroundColor: MetaColors.background,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          leading: IconButton(
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: MetaColors.textPrimary,
+              size: 20,
+            ),
+            onPressed: () => Navigator.of(context).maybePop(),
+          ),
+          title: Text(
+            _generatedPlan == null ? 'Nova Periodização' : 'Revisão da Ficha',
+            style: const TextStyle(
+              color: MetaColors.textPrimary,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.4,
+              fontSize: 18,
+            ),
+          ),
+          actions: [
+            if (kDebugMode)
+              IconButton(
+                icon: const Icon(
+                  Icons.settings_ethernet_rounded,
+                  color: MetaColors.textSecondary,
+                ),
+                tooltip: 'Configurar IP do Servidor (Dev)',
+                onPressed: () => ServerConfigDialog.show(context),
+              ),
+            if (_generatedPlan != null)
+              IconButton(
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                  color: MetaColors.textSecondary,
+                ),
+                tooltip: 'Recomeçar',
+                onPressed: () => setState(() => _generatedPlan = null),
+              ),
+            const SizedBox(width: 8),
+          ],
+        ),
+        body: Stack(
+          children: [
+            _generatedPlan == null
+                ? _buildForm()
+                : _buildPlanReviewer(_generatedPlan!),
+            if (_isLoading) const AIGenerationStepper(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String tag, String title) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          tag,
+          style: const TextStyle(
+            fontSize: 11,
+            letterSpacing: 1.1,
+            fontWeight: FontWeight.w700,
+            color: MetaColors.emerald,
           ),
         ),
-        actions: [
-          if (kDebugMode)
-            IconButton(
-              icon: const Icon(Icons.settings_ethernet_rounded),
-              tooltip: 'Configurar IP do Servidor (Dev)',
-              onPressed: () => ServerConfigDialog.show(context),
-            ),
-          if (_generatedPlan != null)
-            IconButton(
-              icon: Icon(
-                Icons.refresh_rounded,
-                color: MetaColors.textSecondary,
+        const SizedBox(height: 2),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: MetaColors.textPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildObjectiveSelector() {
+    const objectives = [
+      {
+        'title': 'Hipertrofia Muscular',
+        'subtitle': 'Volume & Densidade',
+        'icon': Icons.fitness_center_rounded,
+      },
+      {
+        'title': 'Emagrecimento',
+        'subtitle': 'Déficit & Queima',
+        'icon': Icons.local_fire_department_rounded,
+      },
+      {
+        'title': 'Condicionamento Geral',
+        'subtitle': 'Resistência & Saúde',
+        'icon': Icons.directions_run_rounded,
+      },
+      {
+        'title': 'Força Máxima',
+        'subtitle': 'Potência & Cargas',
+        'icon': Icons.bolt_rounded,
+      },
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('OBJETIVO PRINCIPAL', 'Metodologia Alvo'),
+        const SizedBox(height: 10),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 2.3,
+          ),
+          itemCount: objectives.length,
+          itemBuilder: (ctx, idx) {
+            final obj = objectives[idx];
+            final title = obj['title'] as String;
+            final isSelected = _objective == title;
+            return InkWell(
+              onTap: () => setState(() => _objective = title),
+              borderRadius: BorderRadius.circular(14),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? MetaColors.emerald.withValues(alpha: 0.15)
+                      : MetaColors.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isSelected ? MetaColors.emerald : MetaColors.border,
+                    width: isSelected ? 1.5 : 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      obj['icon'] as IconData,
+                      size: 20,
+                      color: isSelected ? MetaColors.emerald : MetaColors.textSecondary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            title,
+                            style: TextStyle(
+                              color: isSelected ? MetaColors.textPrimary : MetaColors.textSecondary,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                              fontSize: 11,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            obj['subtitle'] as String,
+                            style: TextStyle(
+                              color: isSelected ? MetaColors.emerald : MetaColors.textSecondary.withValues(alpha: 0.7),
+                              fontSize: 9,
+                            ),
+                            maxLines: 1,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              tooltip: 'RecomeÃ§ar',
-              onPressed: () => setState(() => _generatedPlan = null),
-            ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Stack(
-        children: [
-          _generatedPlan == null
-              ? _buildForm()
-              : _buildPlanReviewer(_generatedPlan!),
-          if (_isLoading) const AIGenerationStepper(),
-        ],
-      ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLevelSelector() {
+    const levels = ['Iniciante', 'Intermediário', 'Avançado'];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('NÍVEL DE EXPERIÊNCIA', 'Capacidade Neuromuscular'),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: MetaColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: MetaColors.border),
+          ),
+          child: Row(
+            children: levels.map((lvl) {
+              final isSelected = _trainingLevel == lvl;
+              return Expanded(
+                child: InkWell(
+                  onTap: () => setState(() => _trainingLevel = lvl),
+                  borderRadius: BorderRadius.circular(10),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isSelected ? MetaColors.emerald : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      lvl,
+                      style: TextStyle(
+                        color: isSelected ? Colors.black : MetaColors.textPrimary,
+                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDaysPerWeekSelector() {
+    const days = [2, 3, 4, 5, 6];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('FREQUÊNCIA SEMANAL', 'Dias de Treino por Semana'),
+        const SizedBox(height: 10),
+        Row(
+          children: days.map((d) {
+            final isSelected = _daysPerWeek == d;
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: InkWell(
+                  onTap: () => setState(() => _daysPerWeek = d),
+                  borderRadius: BorderRadius.circular(14),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? MetaColors.emerald
+                          : MetaColors.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isSelected ? MetaColors.emerald : MetaColors.border,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Column(
+                      children: [
+                        Text(
+                          '${d}x',
+                          style: TextStyle(
+                            color: isSelected ? Colors.black : MetaColors.textPrimary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                        Text(
+                          'dias',
+                          style: TextStyle(
+                            color: isSelected ? Colors.black87 : MetaColors.textSecondary,
+                            fontSize: 9,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLocationSelector() {
+    const locations = [
+      {
+        'title': 'Academia completa',
+        'label': 'Academia',
+        'icon': Icons.domain_rounded,
+      },
+      {
+        'title': 'Condomínio',
+        'label': 'Condomínio',
+        'icon': Icons.apartment_rounded,
+      },
+      {
+        'title': 'Em casa (Halteres/Peso Corporal)',
+        'label': 'Em Casa',
+        'icon': Icons.home_rounded,
+      },
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('AMBIENTE DE TREINO', 'Disponibilidade de Aparelhos'),
+        const SizedBox(height: 10),
+        Row(
+          children: locations.map((loc) {
+            final val = loc['title'] as String;
+            final isSelected = _workoutLocation == val;
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: InkWell(
+                  onTap: () => setState(() => _workoutLocation = val),
+                  borderRadius: BorderRadius.circular(14),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? MetaColors.emerald.withValues(alpha: 0.15)
+                          : MetaColors.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isSelected ? MetaColors.emerald : MetaColors.border,
+                        width: isSelected ? 1.5 : 1,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Column(
+                      children: [
+                        Icon(
+                          loc['icon'] as IconData,
+                          size: 22,
+                          color: isSelected ? MetaColors.emerald : MetaColors.textSecondary,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          loc['label'] as String,
+                          style: TextStyle(
+                            color: isSelected ? MetaColors.textPrimary : MetaColors.textSecondary,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                            fontSize: 11,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSplitTypeSelector() {
+    const splitOptions = [
+      'Automático (IA Sugere o Ideal)',
+      'Full Body (1 a 3 dias - Corpo Inteiro)',
+      'Upper / Lower (2 ou 4 dias - Superiores / Inferiores)',
+      'Push / Pull / Legs (PPL - 3 a 6 dias)',
+      'Agonista / Antagonista (Superséries eficientes)',
+      'Divisão ABC Tradicional',
+      'Divisão ABCD Clássica (4 dias)',
+      'Divisão ABCDE Avançada (1 grupo/dia)',
+      'Especialização de Ponto Fraco',
+      'Reabilitação / Articularmente Poupadora',
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('DIVISÃO / SPLIT', 'Estrutura dos Treinos'),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(
+          initialValue: _splitType,
+          dropdownColor: MetaColors.surface,
+          style: const TextStyle(color: MetaColors.textPrimary, fontSize: 13),
+          isExpanded: true,
+          decoration: _inputDecoration(
+            context,
+            'Estrutura de Divisão / Split',
+            prefixIcon: Icons.alt_route_rounded,
+          ),
+          items: splitOptions
+              .map(
+                (e) => DropdownMenuItem(
+                  value: e,
+                  child: Text(e, overflow: TextOverflow.ellipsis),
+                ),
+              )
+              .toList(),
+          onChanged: (val) => setState(() => _splitType = val!),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTargetFocusSelector() {
+    const focusOptions = [
+      {'name': 'Geral / Equilibrado', 'icon': '⚖️'},
+      {'name': 'Glúteos & Posterior de Coxa', 'icon': '🍑'},
+      {'name': 'Deltoides & Ombros 3D', 'icon': '🥥'},
+      {'name': 'Peitoral Superior (Clavicular)', 'icon': '🛡️'},
+      {'name': 'Dorsais & V-Taper (Largura)', 'icon': '🦅'},
+      {'name': 'Braços (Bíceps e Tríceps)', 'icon': '💪'},
+      {'name': 'Quadríceps & Vasto Medial', 'icon': '🦵'},
+      {'name': 'Core & Fortalecimento Postural', 'icon': '🧱'},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('FOCO MUSCULAR / PONTO FRACO', 'Ênfase e Prioridade de Volume'),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 38,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: focusOptions.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (ctx, idx) {
+              final item = focusOptions[idx];
+              final name = item['name']!;
+              final icon = item['icon']!;
+              final isSelected = _targetFocus == name;
+
+              return InkWell(
+                onTap: () => setState(() => _targetFocus = name),
+                borderRadius: BorderRadius.circular(50),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? MetaColors.emerald
+                        : MetaColors.surface,
+                    borderRadius: BorderRadius.circular(50),
+                    border: Border.all(
+                      color: isSelected ? MetaColors.emerald : MetaColors.border,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(icon, style: const TextStyle(fontSize: 13)),
+                      const SizedBox(width: 6),
+                      Text(
+                        name,
+                        style: TextStyle(
+                          color: isSelected ? Colors.black : MetaColors.textPrimary,
+                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRestrictionsSection() {
+    const quickRestrictions = [
+      'Ombro',
+      'Coluna Lombar',
+      'Joelho',
+      'Punho',
+      'Cervical',
+      'Sem Restrições',
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('BLINDAGEM ARTICULAR', 'Dores, Lesões ou Limitações'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: quickRestrictions.map((tag) {
+            final isNone = tag == 'Sem Restrições';
+            final text = _restrictionsCtrl.text.toLowerCase();
+            final isSelected = isNone
+                ? (text.isEmpty || text.contains('sem restriç') || text.contains('nenhum'))
+                : text.contains(tag.toLowerCase());
+
+            return InkWell(
+              onTap: () {
+                setState(() {
+                  if (isNone) {
+                    _restrictionsCtrl.clear();
+                  } else {
+                    final current = _restrictionsCtrl.text.trim();
+                    if (isSelected) {
+                      _restrictionsCtrl.text = current
+                          .replaceAll(RegExp(tag, caseSensitive: false), '')
+                          .replaceAll(RegExp(r',\s*,|\s*,\s*$|^\s*,\s*'), '')
+                          .trim();
+                    } else {
+                      _restrictionsCtrl.text = current.isEmpty ? tag : '$current, $tag';
+                    }
+                  }
+                });
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? (isNone
+                          ? MetaColors.emerald.withValues(alpha: 0.15)
+                          : Colors.amber.shade900.withValues(alpha: 0.2))
+                      : MetaColors.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected
+                        ? (isNone ? MetaColors.emerald : Colors.amber)
+                        : MetaColors.border,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isSelected ? Icons.check_circle_rounded : Icons.add_circle_outline_rounded,
+                      size: 13,
+                      color: isSelected
+                          ? (isNone ? MetaColors.emerald : Colors.amber)
+                          : MetaColors.textSecondary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      tag,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        color: isSelected
+                            ? (isNone ? MetaColors.emerald : Colors.amber)
+                            : MetaColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 10),
+        TextFormField(
+          controller: _restrictionsCtrl,
+          maxLines: 2,
+          style: const TextStyle(color: MetaColors.textPrimary),
+          decoration: _inputDecoration(
+            context,
+            'Detalhes das Restrições (Opcional)',
+            prefixIcon: Icons.health_and_safety_outlined,
+            hint: 'Ex: Evitar supino reto livre devido a impacto no ombro',
+          ),
+        ),
+      ],
     );
   }
 
@@ -420,220 +967,40 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
       key: _formKey,
       child: ListView(
         padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 20,
+          left: 18,
+          right: 18,
+          top: 16,
           bottom: bottomInset + 30,
         ),
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.emeraldBg(context),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.assignment_ind_outlined,
-                  color: MetaColors.emerald,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'ANAMNESE CLÍNICA',
-                    style: TextStyle(
-                      fontSize: 11,
-                      letterSpacing: 1.2,
-                      fontWeight: FontWeight.w700,
-                      color: MetaColors.emerald,
-                    ),
-                  ),
-                  Text(
-                    'Parâmetros da Periodização',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: MetaColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+          _buildObjectiveSelector(),
           const SizedBox(height: 20),
-          DropdownButtonFormField<String>(
-            initialValue: _objective,
-            dropdownColor: MetaColors.surface,
-            style: TextStyle(color: MetaColors.textPrimary),
-            decoration: _inputDecoration(
-              context,
-              'Objetivo Principal',
-              prefixIcon: Icons.track_changes_outlined,
-            ),
-            items:
-                [
-                      'Hipertrofia Muscular',
-                      'Emagrecimento',
-                      'Condicionamento Geral',
-                      'Força Máxima',
-                    ]
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                    .toList(),
-            onChanged: (val) => setState(() => _objective = val!),
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            initialValue: _trainingLevel,
-            dropdownColor: MetaColors.surface,
-            style: TextStyle(color: MetaColors.textPrimary),
-            decoration: _inputDecoration(
-              context,
-              'Nível de Treino',
-              prefixIcon: Icons.signal_cellular_alt_rounded,
-            ),
-            items:
-                ['Iniciante', 'Intermediário', 'Avançado']
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                    .toList(),
-            onChanged: (val) => setState(() => _trainingLevel = val!),
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<int>(
-            initialValue: _daysPerWeek,
-            dropdownColor: MetaColors.surface,
-            style: TextStyle(color: MetaColors.textPrimary),
-            decoration: _inputDecoration(
-              context,
-              'Frequência Semanal',
-              prefixIcon: Icons.calendar_today_outlined,
-            ),
-            items:
-                [2, 3, 4, 5, 6]
-                    .map(
-                      (e) => DropdownMenuItem(
-                        value: e,
-                        child: Text('$e dias na semana'),
-                      ),
-                    )
-                    .toList(),
-            onChanged: (val) => setState(() => _daysPerWeek = val!),
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            initialValue: _splitType,
-            dropdownColor: MetaColors.surface,
-            style: TextStyle(color: MetaColors.textPrimary, fontSize: 13),
-            isExpanded: true,
-            decoration: _inputDecoration(
-              context,
-              'Estrutura de Divisão / Split',
-              prefixIcon: Icons.alt_route_rounded,
-            ),
-            items:
-                [
-                      'Automático (IA Sugere o Ideal)',
-                      'Full Body (1 a 3 dias - Corpo Inteiro)',
-                      'Upper / Lower (2 ou 4 dias - Superiores / Inferiores)',
-                      'Push / Pull / Legs (PPL - 3 a 6 dias)',
-                      'Agonista / Antagonista (SupersÃ©ries eficientes)',
-                      'Divisão ABC Tradicional',
-                      'Divisão ABCD Clássica (4 dias)',
-                      'Divisão ABCDE AvanÃ§ada (1 grupo/dia)',
-                      'Especialização de Ponto Fraco',
-                      'Reabilitação / Articularmente Poupadora',
-                    ]
-                    .map(
-                      (e) => DropdownMenuItem(
-                        value: e,
-                        child: Text(e, overflow: TextOverflow.ellipsis),
-                      ),
-                    )
-                    .toList(),
-            onChanged: (val) => setState(() => _splitType = val!),
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            initialValue: _targetFocus,
-            dropdownColor: MetaColors.surface,
-            style: TextStyle(color: MetaColors.textPrimary, fontSize: 13),
-            isExpanded: true,
-            decoration: _inputDecoration(
-              context,
-              'Foco Muscular / Ponto Fraco',
-              prefixIcon: Icons.fitness_center_rounded,
-            ),
-            items:
-                [
-                      'Geral / Equilibrado',
-                      'Glúteos & Posterior de Coxa',
-                      'Deltoides & Ombros 3D',
-                      'Peitoral Superior (Clavicular)',
-                      'Dorsais & V-Taper (Largura)',
-                      'BraÃ§os (BÃ­ceps e TrÃ­ceps)',
-                      'QuadrÃ­ceps & Vasto Medial',
-                      'Core & Fortalecimento Postural',
-                    ]
-                    .map(
-                      (e) => DropdownMenuItem(
-                        value: e,
-                        child: Text(e, overflow: TextOverflow.ellipsis),
-                      ),
-                    )
-                    .toList(),
-            onChanged: (val) => setState(() => _targetFocus = val!),
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            initialValue: _workoutLocation,
-            dropdownColor: MetaColors.surface,
-            style: TextStyle(color: MetaColors.textPrimary),
-            decoration: _inputDecoration(
-              context,
-              'Ambiente de Treino',
-              prefixIcon: Icons.location_on_outlined,
-            ),
-            items:
-                [
-                      'Academia completa',
-                      'Condomínio',
-                      'Em casa (Halteres/Peso Corporal)',
-                    ]
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                    .toList(),
-            onChanged: (val) => setState(() => _workoutLocation = val!),
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _restrictionsCtrl,
-            maxLines: 2,
-            style: TextStyle(color: MetaColors.textPrimary),
-            decoration: _inputDecoration(
-              context,
-              'Dores, Lesões e Restrições Articulares',
-              prefixIcon: Icons.health_and_safety_outlined,
-              hint: 'Ex: Evitar supino reto livre devido a impacto no ombro',
-            ),
-          ),
-          const SizedBox(height: 16),
+          _buildLevelSelector(),
+          const SizedBox(height: 20),
+          _buildDaysPerWeekSelector(),
+          const SizedBox(height: 20),
+          _buildLocationSelector(),
+          const SizedBox(height: 20),
+          _buildSplitTypeSelector(),
+          const SizedBox(height: 20),
+          _buildTargetFocusSelector(),
+          const SizedBox(height: 20),
+          _buildRestrictionsSection(),
+          const SizedBox(height: 20),
           TextFormField(
             controller: _notesCtrl,
             maxLines: 2,
-            style: TextStyle(color: MetaColors.textPrimary),
+            style: const TextStyle(color: MetaColors.textPrimary),
             decoration: _inputDecoration(
               context,
               'Observações / Foco do Treinador',
               prefixIcon: Icons.edit_note_rounded,
-              hint: 'Ex: Dar Ãªnfase a peitoral superior e deltoides',
+              hint: 'Ex: Dar ênfase a peitoral superior e deltoides',
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           _buildDispatchSection(context),
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
           Builder(
             builder: (ctx) {
               final selectedStudent = _selectedIndividualStudent;
@@ -718,7 +1085,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'DESTINATÃRIOS DO TREINO',
+                      'DESTINATÁRIOS DO TREINO',
                       style: TextStyle(
                         fontSize: 11,
                         letterSpacing: 1.1,
@@ -860,7 +1227,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Selecione o aluno que receberÃ¡ esta prescrição exclusiva:',
+          'Selecione o aluno que receberá esta prescrição exclusiva:',
           style: TextStyle(fontSize: 12, color: MetaColors.textSecondary),
         ),
         const SizedBox(height: 8),
@@ -1274,7 +1641,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'A mesma periodização serÃ¡ sincronizada para os ${_selectedMultipleStudentIds.length} alunos selecionados.',
+                    'A mesma periodização será sincronizada para os ${_selectedMultipleStudentIds.length} alunos selecionados.',
                     style: TextStyle(
                       fontSize: 11,
                       color: MetaColors.emerald,
@@ -1304,7 +1671,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Nenhum aluno cadastrado ainda. A periodização poderÃ¡ ser salva e vinculada posteriormente.',
+              'Nenhum aluno cadastrado ainda. A periodização poderá ser salva e vinculada posteriormente.',
               style: TextStyle(fontSize: 12, color: MetaColors.textPrimary),
             ),
           ),
@@ -1372,8 +1739,6 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
   }
 
   Widget _buildPlanReviewer(WorkoutPlanModel plan) {
-    final isDark = AppColors.isDark(context);
-
     return DefaultTabController(
       length: plan.splits.length,
       child: Column(
@@ -1534,7 +1899,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                   padding: const EdgeInsets.all(16),
                   itemCount: split.exercises.length + 1,
                   itemBuilder: (ctx, i) {
-                    // BOTÃƒO INCLUIR NOVO EXERCÃCIO AO FINAL DO SPLIT
+                    // BOTÃO INCLUIR NOVO EXERCÍCIO AO FINAL DO SPLIT
                     if (i == split.exercises.length) {
                       return Container(
                         margin: const EdgeInsets.only(top: 8, bottom: 24),
@@ -1546,7 +1911,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                             size: 18,
                           ),
                           label: Text(
-                            'Incluir Novo ExercÃ­cio no Treino ${split.splitIdentifier}',
+                            'Incluir Novo Exercício no Treino ${split.splitIdentifier}',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               color: MetaColors.emerald,
@@ -1579,20 +1944,10 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: MetaColors.surface,
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: AppColors.cardBorder(context),
+                          color: MetaColors.border,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color:
-                                isDark
-                                    ? Colors.black26
-                                    : const Color(0x060F172A),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1653,7 +2008,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                   size: 19,
                                 ),
                                 color: Colors.red.shade400,
-                                tooltip: 'Remover exercÃ­cio',
+                                tooltip: 'Remover exercício',
                                 visualDensity: VisualDensity.compact,
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(
@@ -1684,11 +2039,11 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                             ),
                           ],
                           const SizedBox(height: 12),
-                          // CONTROLES DE AJUSTE RÃPIDO: SÃ‰RIES, REPS, DESCANSO
+                          // CONTROLES DE AJUSTE RÁPIDO: SÉRIES, REPS, DESCANSO
                           Row(
                             children: [
                               _buildParamStepper(
-                                label: 'SÃ©ries',
+                                label: 'Séries',
                                 value: '${ex.sets}',
                                 onDecrement:
                                     () =>
@@ -2025,7 +2380,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
     '12-15',
     '15-20',
     '20-25',
-    'AtÃ© a Falha',
+    'Até a Falha',
   ];
 
   Widget _buildParamStepper({
@@ -2169,7 +2524,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
               borderRadius: BorderRadius.circular(16),
             ),
             title: Text(
-              'Ajustar RepetiÃ§Ãµes',
+              'Ajustar Repetições',
               style: TextStyle(color: MetaColors.textPrimary, fontSize: 16),
             ),
             content: TextField(
@@ -2177,7 +2532,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
               autofocus: true,
               style: TextStyle(color: MetaColors.textPrimary),
               decoration: InputDecoration(
-                hintText: 'Ex: 10-12, 4x8, AtÃ© a falha',
+                hintText: 'Ex: 10-12, 4x8, Até a falha',
                 filled: true,
                 fillColor: MetaColors.surfaceHighlight,
                 border: OutlineInputBorder(
@@ -2256,11 +2611,11 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
               borderRadius: BorderRadius.circular(16),
             ),
             title: Text(
-              'Remover ExercÃ­cio?',
+              'Remover Exercício?',
               style: TextStyle(color: MetaColors.textPrimary),
             ),
             content: Text(
-              'Deseja remover "$exerciseName" desta divisÃ£o?',
+              'Deseja remover "$exerciseName" desta divisão?',
               style: TextStyle(color: MetaColors.textSecondary),
             ),
             actions: [
@@ -2331,13 +2686,13 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
       'Peitoral',
       'Dorsais / Costas',
       'Deltoides / Ombros',
-      'QuadrÃ­ceps',
+      'Quadríceps',
       'Posterior de Coxa',
       'Glúteos',
-      'BÃ­ceps',
-      'TrÃ­ceps',
+      'Bíceps',
+      'Tríceps',
       'Panturrilhas',
-      'AbdÃ´men / Core',
+      'Abdômen / Core',
       'Geral',
     ];
 
@@ -2345,13 +2700,13 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
       'Supino Inclinado com Halteres',
       'Puxada Alta (Lat Pulldown)',
       'Elevação Lateral na Polia',
-      'Agachamento BÃºlgaro',
-      'Leg Press 45Â°',
+      'Agachamento Búlgaro',
+      'Leg Press 45°',
       'Cadeira Extensora',
-      'TrÃ­ceps na Polia com Corda',
+      'Tríceps na Polia com Corda',
       'Rosca Direta com Barra W',
       'Mesa Flexora',
-      'Elevação PÃ©lvica',
+      'Elevação Pélvica',
     ];
 
     showModalBottomSheet(
@@ -2388,7 +2743,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'Novo ExercÃ­cio â€¢ Treino ${split.splitIdentifier}',
+                              'Novo Exercício • Treino ${split.splitIdentifier}',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -2409,7 +2764,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                       style: TextStyle(color: MetaColors.textPrimary),
                       decoration: _inputDecoration(
                         context,
-                        'Nome do ExercÃ­cio',
+                        'Nome do Exercício',
                         prefixIcon: Icons.edit_outlined,
                         hint: 'Ex: Supino Inclinado com Halteres',
                       ),
@@ -2482,7 +2837,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                             child: Column(
                               children: [
                                 Text(
-                                  'SÃ‰RIES',
+                                  'SÉRIES',
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
@@ -2546,7 +2901,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                             child: Column(
                               children: [
                                 Text(
-                                  'REPETIÃ‡Ã•ES',
+                                  'REPETIÇÕES',
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
@@ -2665,7 +3020,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                         context,
                         'Diretriz / Notas de Execução (Opcional)',
                         prefixIcon: Icons.notes_rounded,
-                        hint: 'Ex: CadÃªncia 3-0-1-0 com pico de contração',
+                        hint: 'Ex: Cadência 3-0-1-0 com pico de contração',
                       ),
                     ),
                     const SizedBox(height: 18),
