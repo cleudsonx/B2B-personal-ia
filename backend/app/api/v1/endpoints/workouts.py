@@ -464,11 +464,10 @@ async def invite_student(
         clean_phone = f"55{clean_phone}"
 
     whatsapp_msg = (
-        f"Olá, {payload.full_name}! 💪\n\n"
-        f"Seu Personal Trainer *Prof. {trainer_name}* convidou você para treinar no *Mr. Coach* — a plataforma com biomecânica 3D e acompanhamento exclusivo.\n\n"
-        f"🔗 Clique no link abaixo para ativar sua conta e preencher sua avaliação em 3 minutos:\n"
+        f"Olá, {payload.full_name}! Seu convite para acessar o *Mr. Coach* está pronto.\n\n"
+        f"Acesse pelo link abaixo para começar seus treinos:\n"
         f"{invitation_link}\n\n"
-        f"_Bons treinos e foco na técnica!_"
+        f"Será um prazer acompanhar sua evolução!"
     )
     whatsapp_url = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(whatsapp_msg)}" if clean_phone else ""
 

@@ -95,7 +95,9 @@ late Map<String, dynamic> student;
         throw StateError('O servidor não retornou o link do convite.');
       }
       final text = Uri.encodeComponent(
-        'Oi $name, segue seu convite para acessar seu treino: $inviteUrl',
+        'Olá, $name! Seu convite para acessar o Mr. Coach está pronto. '
+        'Acesse pelo link abaixo para começar seus treinos:\n$inviteUrl\n\n'
+        'Será um prazer acompanhar sua evolução!',
       );
       final url = Uri.parse('https://wa.me/$cleanPhone?text=$text');
       if (!await launchUrl(url, mode: LaunchMode.externalApplication) && mounted) {

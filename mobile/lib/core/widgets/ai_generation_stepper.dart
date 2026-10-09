@@ -19,23 +19,23 @@ class _AIGenerationStepperState extends State<AIGenerationStepper>
 
   final List<Map<String, dynamic>> _steps = [
     {
-      'title': 'Analisando Restrições Articulares',
-      'detail': 'Filtrando contraindicações e histórico...',
+      'title': 'Considerando sua avaliação',
+      'detail': 'Levando em conta objetivos e restrições.',
       'icon': Icons.health_and_safety_outlined,
     },
     {
-      'title': 'Calculando Volume e Sinergistas',
-      'detail': 'Balanceando séries e recuperação muscular...',
+      'title': 'Equilibrando exercícios e volume',
+      'detail': 'Dosando estímulo e recuperação.',
       'icon': Icons.fitness_center_rounded,
     },
     {
-      'title': 'Estruturando Splits Biomecânicos',
-      'detail': 'Determinando vetores e divisão do treino...',
+      'title': 'Organizando seus dias de treino',
+      'detail': 'Distribuindo os grupos musculares.',
       'icon': Icons.auto_awesome,
     },
     {
-      'title': 'Formatando Periodização',
-      'detail': 'Validando esquema clínico para liberação...',
+      'title': 'Revisando sua ficha',
+      'detail': 'Conferindo os últimos detalhes.',
       'icon': Icons.verified_outlined,
     },
   ];
@@ -82,17 +82,59 @@ class _AIGenerationStepperState extends State<AIGenerationStepper>
               children: [
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: const BoxDecoration(
-                        color: MetaColors.surfaceHighlight,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.auto_awesome,
-                        color: MetaColors.emerald,
-                        size: 22,
-                      ),
+                    AnimatedBuilder(
+                      animation: _pulseController,
+                      builder: (context, _) {
+                        return SizedBox(
+                          width: 56,
+                          height: 56,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              const CircularProgressIndicator(
+                                semanticsLabel: 'Preparando ficha de treino',
+                                strokeWidth: 2.5,
+                                backgroundColor: MetaColors.surfaceHighlight,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  MetaColors.emerald,
+                                ),
+                              ),
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: MetaColors.emerald.withValues(
+                                    alpha: 0.08 + _pulseController.value * 0.08,
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: Transform.scale(
+                                    scale: 0.9 + _pulseController.value * 0.1,
+                                    child: AnimatedSwitcher(
+                                      duration: const Duration(milliseconds: 350),
+                                      transitionBuilder: (child, animation) =>
+                                          FadeTransition(
+                                        opacity: animation,
+                                        child: ScaleTransition(
+                                          scale: animation,
+                                          child: child,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        _steps[_currentStep]['icon'] as IconData,
+                                        key: ValueKey<int>(_currentStep),
+                                        color: MetaColors.emerald,
+                                        size: 21,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(width: 14),
                     const Expanded(
@@ -100,7 +142,7 @@ class _AIGenerationStepperState extends State<AIGenerationStepper>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'IA CLÍNICA',
+                            'PREPARANDO SEU TREINO',
                             style: TextStyle(
                               color: MetaColors.emerald,
                               fontSize: 11,
@@ -109,7 +151,7 @@ class _AIGenerationStepperState extends State<AIGenerationStepper>
                             ),
                           ),
                           Text(
-                            'Engenharia Biomecânica',
+                            'Montando uma ficha personalizada',
                             style: TextStyle(
                               color: MetaColors.textPrimary,
                               fontSize: 18,
@@ -154,43 +196,68 @@ class _AIGenerationStepperState extends State<AIGenerationStepper>
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 16),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: iconBgColor,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(child: iconWidget),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 350),
+                      curve: Curves.easeOutCubic,
+                      decoration: BoxDecoration(
+                        color: isCurrent
+                            ? MetaColors.emerald.withValues(alpha: 0.07)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 6,
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _steps[index]['title'],
-                                style: TextStyle(
-                                  color: isPending ? MetaColors.textSecondary : MetaColors.textPrimary,
-                                  fontSize: 15,
-                                  fontWeight: isCompleted || isCurrent ? FontWeight.w600 : FontWeight.w400,
-                                ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 350),
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: iconBgColor,
+                                shape: BoxShape.circle,
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                _steps[index]['detail'],
-                                style: TextStyle(
-                                  color: isCurrent ? MetaColors.emerald : MetaColors.textSecondary,
-                                  fontSize: 12,
-                                ),
+                              child: Center(child: iconWidget),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  AnimatedDefaultTextStyle(
+                                    duration: const Duration(milliseconds: 300),
+                                    style: TextStyle(
+                                      color: isPending
+                                          ? MetaColors.textSecondary
+                                          : MetaColors.textPrimary,
+                                      fontSize: 15,
+                                      fontWeight: isCompleted || isCurrent
+                                          ? FontWeight.w600
+                                          : FontWeight.w400,
+                                    ),
+                                    child: Text(_steps[index]['title'] as String),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  AnimatedDefaultTextStyle(
+                                    duration: const Duration(milliseconds: 300),
+                                    style: TextStyle(
+                                      color: isCurrent
+                                          ? MetaColors.emerald
+                                          : MetaColors.textSecondary,
+                                      fontSize: 12,
+                                    ),
+                                    child: Text(_steps[index]['detail'] as String),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   );
                 }),
@@ -198,8 +265,7 @@ class _AIGenerationStepperState extends State<AIGenerationStepper>
                 const SizedBox(height: 12),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: (_currentStep + 1) / _steps.length,
+                  child: const LinearProgressIndicator(
                     backgroundColor: MetaColors.surfaceHighlight,
                     valueColor: const AlwaysStoppedAnimation<Color>(MetaColors.emerald),
                     minHeight: 4,
@@ -207,7 +273,7 @@ class _AIGenerationStepperState extends State<AIGenerationStepper>
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Conectando ao Google Gemini 3.8 com redundância ativa...',
+                  'Seu treino está sendo preparado. Isso pode levar alguns instantes.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: MetaColors.textSecondary,
