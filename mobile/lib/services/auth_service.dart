@@ -324,7 +324,23 @@ class AuthService {
     return null;
   }
 
-  static Future<AuthMFAEnrollResponse> enrollTeacherTotp() {
+  /// Remove fatores TOTP pendentes/não verificados para evitar conflitos de chave
+  static Future<void> cleanupUnverifiedFactors() async {
+    try {
+      final factors = await _client.auth.mfa.listFactors();
+      for (final factor in factors.all) {
+        if (factor.factorType == FactorType.totp &&
+            factor.status == FactorStatus.unverified) {
+          try {
+            await _client.auth.mfa.unenroll(factor.id);
+          } catch (_) {}
+        }
+      }
+    } catch (_) {}
+  }
+
+  static Future<AuthMFAEnrollResponse> enrollTeacherTotp() async {
+    await cleanupUnverifiedFactors();
     return _client.auth.mfa.enroll(
       factorType: FactorType.totp,
       issuer: 'Mr. Coach',
@@ -336,17 +352,45 @@ class AuthService {
     required String factorId,
     required String code,
   }) async {
-    final challenge = await _client.auth.mfa.challenge(factorId: factorId);
-    await _client.auth.mfa.verify(
+    final sanitizedCode = code.replaceAll(RegExp(r'\D'), '').trim();
+    if (sanitizedCode.length != 6) {
+      throw const AuthException(
+        'O código do autenticador deve conter exatamente 6 dígitos.',
+        statusCode: '400',
+      );
+    }
+    await _client.auth.mfa.challengeAndVerify(
       factorId: factorId,
-      challengeId: challenge.id,
-      code: code.trim(),
+      code: sanitizedCode,
     );
   }
 
   static Future<bool> isCurrentSessionAal2() async {
-    final assurance = await _client.auth.mfa.getAuthenticatorAssuranceLevel();
+    final assurance = _client.auth.mfa.getAuthenticatorAssuranceLevel();
     return assurance.currentLevel?.name == 'aal2';
+  }
+
+  static String formatMfaError(Object error) {
+    if (error is AuthApiException) {
+      if (error.code == 'mfa_verification_failed' ||
+          error.message.toLowerCase().contains('invalid totp')) {
+        return 'Código do autenticador inválido ou expirado. Verifique os 6 dígitos gerados no seu aplicativo autenticador ou sincronize a hora do celular.';
+      }
+      return error.message;
+    }
+    final str = error.toString().toLowerCase();
+    if (str.contains('invalid totp') ||
+        str.contains('mfa_verification_failed') ||
+        str.contains('422')) {
+      return 'Código do autenticador inválido ou expirado. Verifique os 6 dígitos gerados no seu aplicativo autenticador ou sincronize a hora do celular.';
+    }
+    if (str.contains('socketexception') ||
+        str.contains('failed host lookup') ||
+        str.contains('network') ||
+        str.contains('timeout')) {
+      return 'Falha de conexão com a internet. Verifique sua rede e tente novamente.';
+    }
+    return 'Não foi possível validar o código do autenticador. Tente novamente.';
   }
 
   /// Busca os dados do professor vinculado ao aluno atual
