@@ -1,4 +1,5 @@
 import pytest
+from urllib.parse import parse_qs, urlsplit
 from fastapi.testclient import TestClient
 from app.main import app
 
@@ -297,8 +298,14 @@ def test_student_invitation_flow(monkeypatch):
     assert invite_res.status_code == 201
     data = invite_res.json()
     assert data["status"] == "Pendente Confirmação"
-    assert "onboarding" in data["invitation_link"]
-    assert "trainer_id=attacker-trainer" not in data["invitation_link"]
+    invite_url = urlsplit(data["invitation_link"])
+    assert invite_url.fragment.startswith("/onboarding?")
+    invite_params = parse_qs(invite_url.fragment.split("?", 1)[1])
+    assert invite_params["email"] == ["novo.aluno@example.com"]
+    assert invite_params["student_id"] == [data["id"]]
+    assert invite_params["trainer_id"]
+    assert invite_params["trainer_id"] != ["attacker-trainer"]
+    assert "token" not in invite_params
     assert "wa.me/5511988887777" in data["whatsapp_url"]
     assert data["email_status"] in ("sent", "success")
     assert data["whatsapp_status"] in ("sent", "success", "ready_url")

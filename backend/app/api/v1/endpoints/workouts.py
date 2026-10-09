@@ -435,18 +435,17 @@ async def invite_student(
     )
     student_id = created_student.id
 
-    # Gera link seguro de onboarding/convite com parâmetros reais do professor
+    # The student account is pre-created, so the invitation opens client login.
     query_params = {
         "student_id": student_id,
         "trainer_id": trainer_id,
         "trainer_name": trainer_name,
+        "email": payload.email,
     }
-    if trainer_cref:
-        query_params["cref"] = trainer_cref
-    if hasattr(created_student, 'temp_password') and created_student.temp_password:
-        query_params["token"] = created_student.temp_password
-
-    invitation_link = f"{settings.APP_FRONTEND_URL}/#onboarding?{urllib.parse.urlencode(query_params)}"
+    invitation_link = (
+        f"{settings.APP_FRONTEND_URL.rstrip('/')}/#/onboarding?"
+        f"{urllib.parse.urlencode(query_params)}"
+    )
 
     # 1. Envio de E-mail via Resend/Mock
     email_status = "skipped"

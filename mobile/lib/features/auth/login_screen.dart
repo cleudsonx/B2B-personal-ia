@@ -15,12 +15,18 @@ class LoginScreen extends StatefulWidget {
   final String initialRole;
   final String? initialEmail;
   final bool confirmationRequired;
+  final String? invitedStudentId;
+  final String? invitedTrainerId;
+  final String? invitedTrainerName;
 
   const LoginScreen({
     super.key,
     this.initialRole = 'trainer',
     this.initialEmail,
     this.confirmationRequired = false,
+    this.invitedStudentId,
+    this.invitedTrainerId,
+    this.invitedTrainerName,
   });
 
   @override
@@ -94,6 +100,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _continueAfterAuthentication() async {
     var profile = await AuthService.getCurrentProfile();
+    if (widget.invitedStudentId != null) {
+      final user = AuthService.currentUser;
+      final isInvitedStudent =
+          user?.id == widget.invitedStudentId &&
+          profile?['trainer_id'] == widget.invitedTrainerId &&
+          AuthService.availableRoles(profile).contains('client');
+      if (!isInvitedStudent) {
+        await AuthService.signOut();
+        throw StateError('Entre com a conta de aluno vinculada a este convite.');
+      }
+    }
     await AuthService.completePendingInvite();
     profile = await AuthService.getCurrentProfile();
     final roles = AuthService.availableRoles(profile);
@@ -631,6 +648,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 28),
 
+                    if (widget.invitedStudentId != null) ...[
+                      Text(
+                        'Convite de ${widget.invitedTrainerName ?? 'seu treinador'}. A conta de aluno já foi criada. Use a opção Esqueceu a senha? para definir sua senha.',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: MetaColors.accentBlue,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+
                     // Role Selector Tabs (se não for link exclusivo de aluno)
                     if (widget.initialRole != 'client') ...[
                       Container(
@@ -671,6 +700,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       controller: _emailCtrl,
                       style: const TextStyle(color: MetaColors.textPrimary),
                       keyboardType: TextInputType.emailAddress,
+                      readOnly: widget.invitedStudentId != null,
                       validator: (val) {
                         if (val == null || val.trim().isEmpty) {
                           return 'Informe seu e-mail';
@@ -828,19 +858,20 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Botão secundário para biometria (Face ID / Touch ID)
-                    SquircleButton(
-                      label: 'Entrar com biometria',
-                      icon: Icons.fingerprint,
-                      isPrimary: false,
-                      backgroundColor: MetaColors.surfaceHighlight,
-                      foregroundColor: MetaColors.textSecondary,
-                      onPressed: _handleBiometricAuth,
-                    ),
-                    const SizedBox(height: 24),
+                    if (widget.invitedStudentId == null) ...[
+                      SquircleButton(
+                        label: 'Entrar com biometria',
+                        icon: Icons.fingerprint,
+                        isPrimary: false,
+                        backgroundColor: MetaColors.surfaceHighlight,
+                        foregroundColor: MetaColors.textSecondary,
+                        onPressed: _handleBiometricAuth,
+                      ),
+                      const SizedBox(height: 24),
+                    ],
 
                     // Register Link
-                    Row(
+                    if (widget.invitedStudentId == null) Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Text(
