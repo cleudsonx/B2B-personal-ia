@@ -28,8 +28,17 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
   final _weightCtrl = TextEditingController();
   final _heightCtrl = TextEditingController();
 
+  static const Map<String, String> _timezoneOptions = {
+    'UTC': 'UTC',
+    'America/Sao_Paulo': 'São Paulo',
+    'America/Manaus': 'Manaus',
+    'America/Rio_Branco': 'Rio Branco',
+    'America/Noronha': 'Noronha',
+  };
+
   final List<String> _availableRestrictions = [...kStudentRestrictionOptions];
   final Set<String> _selectedRestrictions = {kNoRestriction};
+  String _selectedTimezone = 'UTC';
 
   String? get _userId => widget.userId ?? AuthService.currentUser?.id;
 
@@ -77,6 +86,8 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       _ageCtrl.text = data.age?.toString() ?? '';
       _weightCtrl.text = data.weightKg?.toString() ?? '';
       _heightCtrl.text = data.heightCm?.toString() ?? '';
+      _selectedTimezone =
+          _timezoneOptions.containsKey(data.timezone) ? data.timezone : 'UTC';
       _selectedRestrictions
         ..clear()
         ..addAll(data.restrictions);
@@ -100,6 +111,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         heightCm: int.tryParse(_heightCtrl.text.trim()),
         restrictions: Set.of(_selectedRestrictions),
         trainerId: _original?.trainerId,
+        timezone: _selectedTimezone,
       );
 
   void _snack(String msg, {Color? color, SnackBarAction? action}) {
@@ -306,6 +318,38 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 32),
+            Text(
+              'PREFERÊNCIA DE FUSO HORÁRIO',
+              style: TextStyle(
+                color: AppColors.emerald(context),
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: _timezoneOptions.containsKey(_selectedTimezone)
+                  ? _selectedTimezone
+                  : 'UTC',
+              items: _timezoneOptions.entries
+                  .map(
+                    (entry) => DropdownMenuItem<String>(
+                      value: entry.key,
+                      child: Text(entry.value),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _selectedTimezone = value);
+                }
+              },
+              decoration: _decoration('Fuso horário', null),
+              style: TextStyle(color: AppColors.text(context)),
+              dropdownColor: AppColors.card(context),
             ),
             const SizedBox(height: 32),
             Text(

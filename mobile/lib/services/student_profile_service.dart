@@ -28,6 +28,7 @@ class StudentProfileData {
   final int? heightCm;
   final Set<String> restrictions;
   final String? trainerId;
+  final String timezone;
 
   const StudentProfileData({
     required this.name,
@@ -36,6 +37,7 @@ class StudentProfileData {
     this.heightCm,
     required this.restrictions,
     this.trainerId,
+    this.timezone = 'UTC',
   });
 
   String get restrictionsText => restrictions.join(', ');
@@ -45,6 +47,7 @@ class StudentProfileData {
     final parsed = raw.isEmpty
         ? <String>{kNoRestriction}
         : raw.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toSet();
+    final timezoneValue = ((row['timezone'] as String?) ?? '').trim();
     return StudentProfileData(
       name: (row['full_name'] as String?) ?? '',
       age: (row['age'] as num?)?.toInt(),
@@ -52,6 +55,7 @@ class StudentProfileData {
       heightCm: (row['height_cm'] as num?)?.toInt(),
       restrictions: parsed.isEmpty ? {kNoRestriction} : parsed,
       trainerId: row['trainer_id'] as String?,
+      timezone: timezoneValue.isEmpty ? 'UTC' : timezoneValue,
     );
   }
 }
@@ -139,7 +143,7 @@ class SupabaseStudentProfileGateway implements StudentProfileGateway {
     return Supabase.instance.client
         .from('profiles')
         .select(
-            'full_name, age, weight_kg, height_cm, clinical_restrictions, trainer_id')
+            'full_name, age, weight_kg, height_cm, clinical_restrictions, trainer_id, timezone')
         .eq('id', userId)
         .maybeSingle();
   }
@@ -215,6 +219,7 @@ class StudentProfileService {
       'weight_kg': updated.weightKg,
       'height_cm': updated.heightCm,
       'clinical_restrictions': updated.restrictionsText,
+      'timezone': updated.timezone.isEmpty ? 'UTC' : updated.timezone,
     });
     if (original.restrictionsText == updated.restrictionsText) {
       return const SaveResult(ReviewStatus.notNeeded);

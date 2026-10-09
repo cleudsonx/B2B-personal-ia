@@ -406,7 +406,7 @@ def test_infinitepay_real_checkout_and_webhook_activation():
     from app.services.payment_service import PaymentProviderService
 
     client = TestClient(app)
-    trainer_test_id = "trainer-infinitepay-flow-1"
+    trainer_test_id = "771e76b9-3cb0-454f-8fd9-1d450e5560d7"
 
     # 1. Cria sessão de checkout oficial da InfinitePay
     checkout_res = client.post("/api/v1/subscriptions/checkout-session", json={
@@ -456,7 +456,7 @@ def test_asaas_transparent_checkout_and_card_processing():
     from app.main import app
 
     client = TestClient(app)
-    trainer_id = "trainer-asaas-transparent-1"
+    trainer_id = "881e76b9-3cb0-454f-8fd9-1d450e5560d8"
 
     # 1. Cria sessão de checkout Asaas transparente (Pix ou Cartão)
     checkout_res = client.post("/api/v1/subscriptions/checkout-session", json={

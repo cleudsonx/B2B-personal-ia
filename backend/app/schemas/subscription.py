@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Any
 from pydantic import BaseModel, Field
 
 
@@ -36,6 +36,15 @@ class MySubscriptionResponse(BaseModel):
     payment_method: Optional[str] = "pix"
     can_create_student: bool = True
     can_generate_ai: bool = True
+
+    def __getitem__(self, item: str) -> Any:
+        try:
+            return getattr(self, item)
+        except AttributeError:
+            raise KeyError(item)
+
+    def get(self, item: str, default: Any = None) -> Any:
+        return getattr(self, item, default)
 
 
 class CheckoutSessionRequest(BaseModel):

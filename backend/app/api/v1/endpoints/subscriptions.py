@@ -1,6 +1,9 @@
+import logging
 import uuid
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
+
+logger = logging.getLogger(__name__)
 from fastapi import APIRouter, HTTPException, Depends, Request, status
 from app.api.deps import get_current_trainer
 from app.core.config import settings
@@ -295,93 +298,168 @@ async def process_card_checkout():
 
 @router.post("/webhook/asaas")
 async def webhook_asaas(payload: dict, request: Request):
-    """Webhook oficial Asaas para confirmação de Pix recorrente e boleto/cartão.
-    Persiste a ativação ou cancelamento da assinatura no Supabase via externalReference.
-    Garante idempotência estrita via event_id único para evitar duplicidade de processamento.
-    """
+    """Webhook oficial Asaas com durable lease e consolidação atômica via RPC v2."""
     await _verify_payment_webhook("asaas", payload, request)
 
-    # Identificador de evento para garantia de idempotência
     event_id = payload.get("id")
     if not event_id:
         payment_obj = payload.get("payment") or {}
         p_id = payment_obj.get("id") or ""
         evt = payload.get("event") or "UNKNOWN"
         event_id = f"asaas_{evt}_{p_id}" if p_id else None
+    if not event_id:
+        raise HTTPException(status_code=400, detail="Webhook Asaas sem event_id para idempotência; rejeitado.")
 
-    # PAY-004: Reivindicação atômica do evento antes de qualquer processamento ou mutação
-    if event_id:
-        claimed = await supabase_service.claim_webhook_event(
+    claim_token = None
+    try:
+        claim_result = await supabase_service.claim_webhook_event(
             event_id=event_id,
             provider="asaas",
             event_type=payload.get("event", "UNKNOWN"),
             payload=payload,
+            lease_seconds=300,
+            max_attempts=5,
         )
-        if not claimed:
-            import logging as _log
-            _log.getLogger(__name__).info(f"[webhook/asaas] Evento duplicado ou sob concorrência ignorado com sucesso: {event_id}")
+        claim_token = claim_result.get("claim_token")
+        disposition = str(claim_result.get("disposition") or "claimed").lower()
+        if disposition in ("duplicate", "busy"):
+            logger.info("[webhook/asaas] Evento duplicado/busy, idempotente: %s (%s)", event_id, disposition)
             return {
                 "processed": True,
                 "provider": "asaas",
                 "idempotent": True,
                 "event_id": event_id,
-                "message": f"Evento {event_id} já processado anteriormente. Ignorando duplicata com segurança.",
+                "disposition": disposition,
+                "message": f"Evento {event_id} já processado anteriormente ou já está em processamento; ignorando duplicata.",
+            }
+        if disposition == "failed":
+            logger.warning("[webhook/asaas] Claim falhou após tentativas esgotadas para %s; encerrando retries automáticos.", event_id)
+            return {
+                "processed": True,
+                "provider": "asaas",
+                "idempotent": True,
+                "event_id": event_id,
+                "disposition": "failed",
+                "manual_check_status": True,
+                "message": "Evento excedeu tentativas de processamento; verifique status manualmente.",
             }
 
-    result = PaymentProviderService.process_webhook("asaas", payload)
+        result = PaymentProviderService.process_webhook("asaas", payload)
 
-    # Recuperar metadados da sessão pelo externalReference presente no payload (Supabase primeiro, fallback memória)
-    ext_ref = (
-        (payload.get("payment") or {}).get("externalReference")
-        or payload.get("externalReference")
-    )
-    order_meta = (
-        (await supabase_service.get_checkout_session(ext_ref))
-        or PaymentProviderService._PENDING_ORDERS.get(ext_ref or "", {})
-    ) if ext_ref else {}
-
-    subscription_status = result.get("subscription_status", "pending")
-    trainer_id = order_meta.get("trainer_id") or result.get("trainer_id") or ""
-    plan_id = order_meta.get("plan_id") or result.get("plan_id") or ""
-    billing_interval = order_meta.get("billing_interval") or result.get("billing_interval") or "monthly"
-
-    # Persistir no Supabase apenas se houver dados suficientes para identificar o treinador e plano
-    action_persisted = False
-    if trainer_id and trainer_id not in ("current-trainer", "") and plan_id:
-        if subscription_status == "active":
-            await supabase_service.activate_subscription(
-                trainer_id=trainer_id,
-                plan_id=plan_id,
-                billing_interval=billing_interval,
-                payment_method="pix",
-            )
-            action_persisted = True
-        elif subscription_status in ("canceled", "past_due"):
-            await supabase_service.update_subscription_status(
-                trainer_id=trainer_id,
-                new_status=subscription_status,
-            )
-            action_persisted = True
-    else:
-        import logging as _log
-        _log.getLogger(__name__).warning(
-            f"[webhook/asaas] Evento '{result.get('event')}' sem metadados suficientes "
-            f"para persistir (trainer_id={trainer_id!r}, plan_id={plan_id!r}, ext_ref={ext_ref!r}). "
-            "Liberando claim atômico para permitir retry legítimo do gateway."
+        ext_ref = (
+            (payload.get("payment") or {}).get("externalReference")
+            or payload.get("externalReference")
         )
-        if event_id:
-            await supabase_service.release_webhook_claim(event_id)
+        order_meta = (
+            (await supabase_service.get_checkout_session(ext_ref))
+            or PaymentProviderService._PENDING_ORDERS.get(ext_ref or "", {})
+        ) if ext_ref else {}
 
-    # PAY-004: Consolida o evento como concluído com sucesso
-    if event_id and action_persisted:
-        await supabase_service.record_processed_event(
+        subscription_status = str(result.get("subscription_status", "pending")).lower()
+        trainer_id = order_meta.get("trainer_id") or result.get("trainer_id") or ""
+        plan_id = order_meta.get("plan_id") or result.get("plan_id") or ""
+        billing_interval = order_meta.get("billing_interval") or result.get("billing_interval") or "monthly"
+
+        if subscription_status == "pending":
+            action = "none"
+        elif subscription_status == "active":
+            action = "activate"
+        elif subscription_status == "past_due":
+            action = "past_due"
+        elif subscription_status == "canceled":
+            action = "canceled"
+        else:
+            action = "none"
+
+        if action != "none":
+            try:
+                if trainer_id is None or str(trainer_id).strip() == "":
+                    if event_id and claim_token:
+                        release_result = await supabase_service.release_webhook_event_v2(event_id=event_id, token=claim_token, error="missing_trainer_id")
+                        if not release_result.get("released", False):
+                            logger.warning("[webhook/asaas] Falha ao liberar lease para %s com metadata ausente.", event_id)
+                    raise HTTPException(status_code=503, detail="Falha ao processar webhook Asaas: metadata de assinatura incompleta para retry.")
+                uuid.UUID(str(trainer_id))
+            except ValueError:
+                if event_id and claim_token:
+                    release_result = await supabase_service.release_webhook_event_v2(event_id=event_id, token=claim_token, error="invalid_trainer_id_uuid")
+                    if not release_result.get("released", False):
+                        logger.warning("[webhook/asaas] Falha ao liberar lease para %s com UUID inválido.", event_id)
+                raise HTTPException(status_code=503, detail="Falha ao processar webhook Asaas: UUID inválido para retry; retry programado.")
+            except TypeError:
+                if event_id and claim_token:
+                    logger.warning("[webhook/asaas] Metadata inválida para %s: trainer_id com tipo inesperado.", event_id)
+                    release_result = await supabase_service.release_webhook_event_v2(event_id=event_id, token=claim_token, error="invalid_trainer_id_type")
+                    if not release_result.get("released", False):
+                        logger.warning("[webhook/asaas] Release não confirmado para %s após tipo inválido de trainer_id.", event_id)
+                raise HTTPException(status_code=503, detail="Falha ao processar webhook Asaas; retry programado.")
+
+            if action == "activate":
+                if not plan_id or str(plan_id).strip() == "":
+                    if event_id and claim_token:
+                        release_result = await supabase_service.release_webhook_event_v2(event_id=event_id, token=claim_token, error="missing_plan_id")
+                        if not release_result.get("released", False):
+                            logger.warning("[webhook/asaas] Falha ao liberar lease para %s com plan_id ausente.", event_id)
+                    raise HTTPException(status_code=503, detail="Falha ao processar webhook Asaas: metadata de assinatura incompleta para retry.")
+            elif action in {"past_due", "canceled"}:
+                plan_id = None
+
+        if action == "activate":
+            session_id = ext_ref
+            if not session_id:
+                if event_id and claim_token:
+                    release_result = await supabase_service.release_webhook_event_v2(event_id=event_id, token=claim_token, error="missing_checkout_session_id")
+                    if not release_result.get("released", False):
+                        logger.warning("[webhook/asaas] Falha ao liberar lease para %s com session_id ausente.", event_id)
+                raise HTTPException(status_code=503, detail="Falha ao processar webhook Asaas: checkout session ausente para retry.")
+            session_meta = await supabase_service.get_checkout_session(session_id) or PaymentProviderService._PENDING_ORDERS.get(session_id, {})
+            if not session_meta:
+                if event_id and claim_token:
+                    release_result = await supabase_service.release_webhook_event_v2(event_id=event_id, token=claim_token, error="session_not_found")
+                    if not release_result.get("released", False):
+                        logger.warning("[webhook/asaas] Falha ao liberar lease para %s sem sessão existente.", event_id)
+                raise HTTPException(status_code=503, detail="Falha ao processar webhook Asaas; retry programado.")
+            payment_id = (payload.get("payment") or {}).get("id") or payload.get("id") or None
+            completion = await supabase_service.complete_paid_checkout_session_v2(
+                session_id=session_id,
+                event_id=event_id,
+                claim_token=claim_token,
+                provider_payment_id=payment_id,
+            )
+            if completion.get("disposition") in {"failed", "error"} or completion.get("completed") is not True and completion.get("paid") is not True:
+                logger.error("[webhook/asaas] Falha ao concluir checkout pago %s: %s", session_id, completion)
+                if event_id and claim_token:
+                    release_result = await supabase_service.release_webhook_event_v2(event_id=event_id, token=claim_token, error="complete_paid_checkout_failed")
+                    if not release_result.get("released", False):
+                        logger.warning("[webhook/asaas] Release não confirmado para %s após complete_paid_checkout failed.", event_id)
+                raise HTTPException(status_code=503, detail="Falha ao processar webhook Asaas; retry programado.")
+            return result
+
+        completion = await supabase_service.complete_subscription_webhook_v2(
             event_id=event_id,
-            provider="asaas",
-            event_type=payload.get("event", "UNKNOWN"),
-            payload=payload,
+            token=claim_token,
+            action=action,
+            trainer_id=trainer_id if action != "none" else None,
+            plan_id=plan_id if action == "activate" else None,
+            billing_interval=billing_interval,
+            payment_method="pix",
         )
-
-    return result
+        if completion.get("disposition") in {"failed", "error"}:
+            logger.error("[webhook/asaas] Falha ao concluir evento %s via RPC v2; liberando lease para retry.", event_id)
+            if event_id and claim_token:
+                release_result = await supabase_service.release_webhook_event_v2(event_id=event_id, token=claim_token, error="complete_subscription_failed")
+                if not release_result.get("released", False):
+                    logger.warning("[webhook/asaas] Release não confirmado para %s após complete failed.", event_id)
+            raise HTTPException(status_code=503, detail="Falha ao processar webhook Asaas; retry programado.")
+        return result
+    except HTTPException:
+        raise
+    except Exception as exc:
+        if event_id and claim_token:
+            release_result = await supabase_service.release_webhook_event_v2(event_id=event_id, token=claim_token, error=str(exc))
+            if not release_result.get("released", False):
+                logger.warning("[webhook/asaas] Release não confirmado para %s após exceção de processamento.", event_id)
+        raise HTTPException(status_code=503, detail="Falha ao processar webhook Asaas; retry programado.") from exc
 
 
 @router.post("/webhook/mercadopago")
@@ -393,58 +471,154 @@ async def webhook_mercadopago(payload: dict, request: Request):
 
 @router.post("/webhook/infinitepay")
 async def webhook_infinitepay(payload: dict, request: Request):
-    """Webhook oficial InfinitePay para aprovações instantâneas de Pix e Smart Checkout.
-    Garante idempotência estrita via nsu/slug único.
-    """
+    """Webhook oficial InfinitePay com durable lease e finalização atômica via RPC v2."""
     await _verify_payment_webhook("infinitepay", payload, request)
 
     order_nsu = payload.get("order_nsu") or payload.get("order_id") or payload.get("nsu") or payload.get("slug") or ""
     evt = payload.get("event") or payload.get("status") or "UNKNOWN"
     event_id = f"infinitepay_{evt}_{order_nsu}" if order_nsu else None
+    if not event_id:
+        raise HTTPException(status_code=400, detail="Webhook InfinitePay sem event_id para idempotência; rejeitado.")
 
-    if event_id:
-        claimed = await supabase_service.claim_webhook_event(
+    claim_token = None
+    try:
+        claim_result = await supabase_service.claim_webhook_event(
             event_id=event_id,
             provider="infinitepay",
             event_type=str(evt),
             payload=payload,
+            lease_seconds=300,
+            max_attempts=5,
         )
-        if not claimed:
+        claim_token = claim_result.get("claim_token")
+        disposition = str(claim_result.get("disposition") or "claimed").lower()
+        if disposition in ("duplicate", "busy"):
+            logger.info("[webhook/infinitepay] Evento duplicado/busy, idempotente: %s (%s)", event_id, disposition)
             return {
                 "processed": True,
                 "provider": "infinitepay",
                 "idempotent": True,
                 "event_id": event_id,
-                "message": f"Evento {event_id} já processado anteriormente.",
+                "disposition": disposition,
+                "message": f"Evento {event_id} já está em processamento ou foi concluído; ignorando duplicata.",
+            }
+        if disposition == "failed":
+            logger.warning("[webhook/infinitepay] Claim falhou após tentativas esgotadas para %s; encerrando retries automáticos.", event_id)
+            return {
+                "processed": True,
+                "provider": "infinitepay",
+                "idempotent": True,
+                "event_id": event_id,
+                "disposition": "failed",
+                "manual_check_status": True,
+                "message": "Evento excedeu tentativas de processamento; verifique status manualmente.",
             }
 
-    result = PaymentProviderService.process_webhook("infinitepay", payload)
-    action_persisted = False
-    if result.get("subscription_status") == "active":
-        trainer_id = result.get("trainer_id") or "current-trainer"
-        plan_id = result.get("plan_id") or "pro"
+        result = PaymentProviderService.process_webhook("infinitepay", payload)
+        subscription_status = str(result.get("subscription_status", "pending")).lower()
+        trainer_id = result.get("trainer_id") or ""
+        plan_id = result.get("plan_id") or ""
         billing_interval = result.get("billing_interval") or "monthly"
-        if trainer_id and trainer_id != "current-trainer" and plan_id:
-            await supabase_service.activate_subscription(
-                trainer_id=trainer_id,
-                plan_id=plan_id,
-                billing_interval=billing_interval,
-                payment_method="infinitepay"
-            )
-            action_persisted = True
 
-    if event_id:
-        if action_persisted:
-            await supabase_service.record_processed_event(
-                event_id=event_id,
-                provider="infinitepay",
-                event_type=str(evt),
-                payload=payload,
-            )
+        if subscription_status == "pending":
+            action = "none"
+        elif subscription_status == "active":
+            action = "activate"
+        elif subscription_status == "past_due":
+            action = "past_due"
+        elif subscription_status == "canceled":
+            action = "canceled"
         else:
-            await supabase_service.release_webhook_claim(event_id)
+            action = "none"
 
-    return result
+        if action != "none":
+            try:
+                if trainer_id is None or str(trainer_id).strip() == "":
+                    if event_id and claim_token:
+                        release_result = await supabase_service.release_webhook_event_v2(event_id=event_id, token=claim_token, error="missing_trainer_id")
+                        if not release_result.get("released", False):
+                            logger.warning("[webhook/infinitepay] Falha ao liberar lease para %s com metadata ausente.", event_id)
+                    raise HTTPException(status_code=503, detail="Falha ao processar webhook InfinitePay: metadata de assinatura incompleta para retry.")
+                uuid.UUID(str(trainer_id))
+            except ValueError:
+                if event_id and claim_token:
+                    release_result = await supabase_service.release_webhook_event_v2(event_id=event_id, token=claim_token, error="invalid_trainer_id_uuid")
+                    if not release_result.get("released", False):
+                        logger.warning("[webhook/infinitepay] Falha ao liberar lease para %s com UUID inválido.", event_id)
+                raise HTTPException(status_code=503, detail="Falha ao processar webhook InfinitePay: UUID inválido para retry.")
+            except TypeError:
+                if event_id and claim_token:
+                    logger.warning("[webhook/infinitepay] Metadata inválida para %s: trainer_id com tipo inesperado.", event_id)
+                    release_result = await supabase_service.release_webhook_event_v2(event_id=event_id, token=claim_token, error="invalid_trainer_id_type")
+                    if not release_result.get("released", False):
+                        logger.warning("[webhook/infinitepay] Release não confirmado para %s após tipo inválido de trainer_id.", event_id)
+                raise HTTPException(status_code=503, detail="Falha ao processar webhook InfinitePay; retry programado.")
+
+            if action == "activate":
+                if not plan_id or str(plan_id).strip() == "":
+                    if event_id and claim_token:
+                        release_result = await supabase_service.release_webhook_event_v2(event_id=event_id, token=claim_token, error="missing_plan_id")
+                        if not release_result.get("released", False):
+                            logger.warning("[webhook/infinitepay] Falha ao liberar lease para %s com plan_id ausente.", event_id)
+                    raise HTTPException(status_code=503, detail="Falha ao processar webhook InfinitePay: metadata de assinatura incompleta para retry.")
+            elif action in {"past_due", "canceled"}:
+                plan_id = None
+
+        if action == "activate":
+            session_id = order_nsu
+            if not session_id:
+                if event_id and claim_token:
+                    release_result = await supabase_service.release_webhook_event_v2(event_id=event_id, token=claim_token, error="missing_checkout_session_id")
+                    if not release_result.get("released", False):
+                        logger.warning("[webhook/infinitepay] Falha ao liberar lease para %s com session_id ausente.", event_id)
+                raise HTTPException(status_code=503, detail="Falha ao processar webhook InfinitePay: checkout session ausente para retry.")
+            session_meta = await supabase_service.get_checkout_session(session_id) or PaymentProviderService._PENDING_ORDERS.get(session_id, {})
+            if not session_meta:
+                if event_id and claim_token:
+                    release_result = await supabase_service.release_webhook_event_v2(event_id=event_id, token=claim_token, error="session_not_found")
+                    if not release_result.get("released", False):
+                        logger.warning("[webhook/infinitepay] Falha ao liberar lease para %s sem sessão existente.", event_id)
+                raise HTTPException(status_code=503, detail="Falha ao processar webhook InfinitePay; retry programado.")
+            completion = await supabase_service.complete_paid_checkout_session_v2(
+                session_id=session_id,
+                event_id=event_id,
+                claim_token=claim_token,
+                provider_payment_id=payload.get("id") or payload.get("payment_id") or payload.get("provider_payment_id") or None,
+            )
+            if completion.get("disposition") in {"failed", "error"} or completion.get("completed") is not True and completion.get("paid") is not True:
+                logger.error("[webhook/infinitepay] Falha ao concluir checkout pago %s: %s", session_id, completion)
+                if event_id and claim_token:
+                    release_result = await supabase_service.release_webhook_event_v2(event_id=event_id, token=claim_token, error="complete_paid_checkout_failed")
+                    if not release_result.get("released", False):
+                        logger.warning("[webhook/infinitepay] Release não confirmado para %s após complete_paid_checkout failed.", event_id)
+                raise HTTPException(status_code=503, detail="Falha ao processar webhook InfinitePay; retry programado.")
+            return result
+
+        completion = await supabase_service.complete_subscription_webhook_v2(
+            event_id=event_id,
+            token=claim_token,
+            action=action,
+            trainer_id=trainer_id if action != "none" else None,
+            plan_id=plan_id if action == "activate" else None,
+            billing_interval=billing_interval,
+            payment_method="infinitepay",
+        )
+        if completion.get("disposition") in {"failed", "error"}:
+            logger.error("[webhook/infinitepay] Falha ao concluir evento %s via RPC v2; liberando lease para retry.", event_id)
+            if event_id and claim_token:
+                release_result = await supabase_service.release_webhook_event_v2(event_id=event_id, token=claim_token, error="complete_subscription_failed")
+                if not release_result.get("released", False):
+                    logger.warning("[webhook/infinitepay] Release não confirmado para %s após complete failed.", event_id)
+            raise HTTPException(status_code=503, detail="Falha ao processar webhook InfinitePay; retry programado.")
+        return result
+    except HTTPException:
+        raise
+    except Exception as exc:
+        if event_id and claim_token:
+            release_result = await supabase_service.release_webhook_event_v2(event_id=event_id, token=claim_token, error=str(exc))
+            if not release_result.get("released", False):
+                logger.warning("[webhook/infinitepay] Release não confirmado para %s após exceção de processamento.", event_id)
+        raise HTTPException(status_code=503, detail="Falha ao processar webhook InfinitePay; retry programado.") from exc
 
 
 @router.get("/check-status/{order_nsu}")
@@ -463,6 +637,13 @@ async def check_payment_status(
     is_paid = PaymentProviderService.check_payment(order_nsu)
     order_meta = (await supabase_service.get_checkout_session(order_nsu)) or PaymentProviderService._PENDING_ORDERS.get(order_nsu, {})
 
+    if is_paid and not order_meta:
+        raise HTTPException(
+            status_code=422,
+            detail="Metadados da sessão incompletos — não é possível ativar assinatura com segurança. Inicie um novo checkout.",
+        )
+
+    rpc_paid = False
     if is_paid and order_meta:
         session_trainer_id = str(order_meta.get("trainer_id", ""))
 
@@ -492,16 +673,26 @@ async def check_payment_status(
                 detail="Metadados da sessão incompletos — não é possível ativar assinatura com segurança. Inicie um novo checkout.",
             )
 
-        await supabase_service.activate_subscription(
-            trainer_id=effective_trainer_id,
-            plan_id=plan_id,
-            billing_interval=billing_interval,
-            payment_method=payment_method,
+        completion = await supabase_service.complete_paid_checkout_session_v2(
+            session_id=order_nsu,
+            event_id=None,
+            claim_token=None,
+            provider_payment_id=order_meta.get("provider_payment_id") or order_meta.get("asaas_id") or order_meta.get("payment_id") or None,
         )
+        rpc_paid = bool(completion.get("completed") is True or completion.get("paid") is True or str(completion.get("disposition", "failed")).lower() in {"completed", "success", "ok"})
+        if not rpc_paid:
+            raise HTTPException(
+                status_code=503,
+                detail="Falha ao concluir checkout pago; retry programado.",
+            )
+        if order_nsu in PaymentProviderService._PENDING_ORDERS:
+            PaymentProviderService._PENDING_ORDERS[order_nsu]["paid"] = True
+            PaymentProviderService._PENDING_ORDERS[order_nsu]["status"] = "paid"
+        is_paid = True
 
     return {
         "order_nsu": order_nsu,
-        "paid": is_paid,
+        "paid": bool(rpc_paid or (is_paid and bool(order_meta))),
         "plan_id": order_meta.get("plan_id"),
         "trainer_id": order_meta.get("trainer_id"),
     }

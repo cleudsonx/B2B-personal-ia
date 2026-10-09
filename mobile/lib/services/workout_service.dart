@@ -412,10 +412,11 @@ class WorkoutService {
       }
 
       if (res.statusCode == 404) {
-        return {'current_streak': 0, 'daily_goal_progress': 0.0};
+        return null;
       }
     } catch (e) {
       debugPrint('Erro ao buscar gamificacao: $e');
+      return null;
     }
 
     return null;

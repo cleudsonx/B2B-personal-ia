@@ -493,11 +493,16 @@ def test_webhook_does_not_mark_event_processed_if_metadata_missing():
             }
         }
     )
-    assert res.status_code == 200
+    assert res.status_code == 503
+    detail = res.json().get("detail", "").lower()
+    assert "retry programado" in detail or "metadata" in detail
 
-    # Como não tinha metadados para persistir a assinatura, o evento NÃO deve ter sido gravado
+    # O evento foi reivindicado para retry, mas não foi finalizado; a falta de metadados
+    # deve impedir a ativação e manter o estado em processamento/release, não como completed.
     async def check():
-        assert await supabase_service.is_event_processed(unmatched_evt_id) is False
+        record = supabase_service._mem_processed_events.get(unmatched_evt_id, {})
+        assert record.get("status") in {"processing", "released", "failed"}
+        assert record.get("status") != "completed"
 
     asyncio.run(check())
 
@@ -539,5 +544,50 @@ def test_webhook_atomic_claim_blocks_concurrent_duplicate():
     data = res.json()
     assert data.get("idempotent") is True
     assert data.get("event_id") == claimed_evt_id
+    assert data.get("disposition") in {"duplicate", "busy"}
+    assert "duplicata" in data.get("message", "").lower() or "processamento" in data.get("message", "").lower()
+
+
+def test_paid_checkout_atomic_completion_failure_does_not_activate_subscription(monkeypatch):
+    """Falha na conclusão atômica via complete_paid_checkout_session_v2 não deve ativar assinatura."""
+    from fastapi.testclient import TestClient
+    from unittest.mock import AsyncMock
+    from app.main import app
+    from app.api.deps import get_current_trainer
+    from app.services import supabase_service
+
+    nsu = "sess_test_paid_completion_failure_001"
+    trainer_id = "trainer-safe-004"
+    checkout_meta = {
+        "session_id": nsu,
+        "trainer_id": trainer_id,
+        "plan_id": "pro",
+        "billing_interval": "monthly",
+        "payment_method": "pix",
+    }
+    from app.services.payment_service import PaymentProviderService
+    monkeypatch.setattr(PaymentProviderService, "check_payment", lambda *args, **kwargs: True)
+    monkeypatch.setattr(supabase_service.supabase_service, "get_checkout_session", AsyncMock(return_value=checkout_meta))
+
+    async def fake_complete(*args, **kwargs):
+        return {"session_id": nsu, "paid": False, "completed": False, "disposition": "failed", "error": "checkout_session_status_not_activable"}
+
+    async def fake_activate(*args, **kwargs):
+        raise AssertionError("/check-status não deve tentar ativar assinatura se o wrapper falhou")
+
+    monkeypatch.setattr(supabase_service.supabase_service, "complete_paid_checkout_session_v2", fake_complete)
+    monkeypatch.setattr(supabase_service.supabase_service, "activate_subscription", fake_activate)
+
+    app.dependency_overrides[get_current_trainer] = lambda: {"sub": trainer_id, "role": "authenticated", "profile": {"role": "trainer", "roles": ["trainer"]}}
+    try:
+        client = TestClient(app, raise_server_exceptions=False)
+        res = client.get(f"/api/v1/subscriptions/check-status/{nsu}")
+        assert res.status_code == 503, res.text
+        body = res.json()
+        assert "detail" in body
+        assert "paid" not in body
+    finally:
+        app.dependency_overrides.pop(get_current_trainer, None)
+
 
 

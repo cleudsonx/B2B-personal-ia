@@ -44,6 +44,7 @@ Map<String, dynamic> _row({String? trainer = 'trainer-1'}) => {
       'height_cm': 165,
       'clinical_restrictions': 'Dor Lombar',
       'trainer_id': trainer,
+      'timezone': 'America/Sao_Paulo',
     };
 
 Future<void> _pump(WidgetTester t, FakeGateway g) async {
@@ -90,11 +91,13 @@ void main() {
       expect(d.age, 31);
       expect(d.weightKg, 62.5);
       expect(d.restrictions, {'Dor Lombar'});
+      expect(d.timezone, 'America/Sao_Paulo');
     });
 
     test('restrição vazia vira "Nenhuma"', () {
       final d = StudentProfileData.fromRow({'full_name': 'A'});
       expect(d.restrictions, {kNoRestriction});
+      expect(d.timezone, 'UTC');
     });
 
     test('save persiste todos os campos e dispara revisão se restrição mudou',
@@ -108,7 +111,8 @@ void main() {
           weightKg: 63,
           heightCm: 166,
           restrictions: {'Hérnia de Disco'},
-          trainerId: orig.trainerId);
+          trainerId: orig.trainerId,
+          timezone: 'America/Sao_Paulo');
       final r = await s.save(userId: 'u1', original: orig, updated: upd);
       expect(r.review, ReviewStatus.requested);
       expect(g.lastUpdate, {
@@ -117,6 +121,7 @@ void main() {
         'weight_kg': 63.0,
         'height_cm': 166,
         'clinical_restrictions': 'Hérnia de Disco',
+        'timezone': 'America/Sao_Paulo',
       });
       expect(g.alertCalls, 1);
     });
