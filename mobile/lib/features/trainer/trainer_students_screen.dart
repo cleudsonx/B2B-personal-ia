@@ -492,6 +492,43 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
   }
 
+  Widget _buildStatusBadge(String status) {
+    final lower = status.toLowerCase();
+    Color bg;
+    Color fg;
+    String label = status;
+
+    if (lower.contains('pendente')) {
+      bg = const Color(0xFFF59E0B).withValues(alpha: 0.15);
+      fg = const Color(0xFFF59E0B);
+      label = 'Pendente';
+    } else if (lower.contains('arquivado') || lower.contains('inativo')) {
+      bg = Colors.redAccent.withValues(alpha: 0.15);
+      fg = Colors.redAccent;
+      label = 'Arquivado';
+    } else {
+      bg = MetaColors.emerald.withValues(alpha: 0.15);
+      fg = MetaColors.emerald;
+      label = 'Ativo';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: fg,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.paddingOf(context).top;
@@ -708,12 +745,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                               color: Colors.transparent,
                               borderRadius: BorderRadius.circular(16),
                               child: InkWell(
-                                onTap: (student['status'] as String? ?? '')
-                                  .trim()
-                                  .toLowerCase() ==
-                                  'convite pendente'
-                                  ? null
-                                  : () => _showStudentDetails(student),
+                                onTap: () => _showStudentDetails(student),
                                 borderRadius: BorderRadius.circular(16),
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
@@ -745,13 +777,23 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                             )
                                           : null,
                                     ),
-                                    title: Text(
-                                      fullName,
-                                      style: const TextStyle(
-                                        color: MetaColors.textPrimary,
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: 16,
-                                      ),
+                                    title: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            fullName,
+                                            style: const TextStyle(
+                                              color: MetaColors.textPrimary,
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: 16,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _buildStatusBadge(student['status'] as String? ?? 'Ativo'),
+                                      ],
                                     ),
                                     subtitle: Text(
                                       recentStatus,

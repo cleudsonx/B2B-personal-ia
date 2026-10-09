@@ -360,6 +360,50 @@ late Map<String, dynamic> student;
     }
   }
 
+  Future<void> _reactivateStudent() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Reativar aluno?'),
+        content: Text(
+          '${student['full_name'] ?? 'Este aluno'} voltará a constar como ativo '
+          'e ocupará uma vaga no seu plano.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            key: const Key('confirm_reactivate_student'),
+            style: ElevatedButton.styleFrom(backgroundColor: MetaColors.emerald),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Reativar aluno', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final updateStatus =
+          widget.onUpdateStudentStatus ?? WorkoutService.updateStudentStatus;
+      final success = await updateStatus(
+        studentId: student['id'] as String,
+        status: 'Ativo',
+      );
+      if (!success) throw StateError('O servidor não confirmou a reativação.');
+      if (mounted) Navigator.pop(context, true);
+    } catch (error) {
+      if (mounted) {
+        final message = _formatErrorMessage(error);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Não foi possível reativar o aluno: $message')),
+        );
+      }
+    }
+  }
+
   Future<void> _deleteStudent() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -405,6 +449,9 @@ late Map<String, dynamic> student;
     final status = student['status'] ?? 'Aguardando Ativação';
     final name = student['full_name'] ?? 'Aluno';
     final phone = student['phone'] ?? '';
+    final isArchived = status.toString().toLowerCase().contains('arquivado') ||
+        status.toString().toLowerCase().contains('inativo');
+    final isPendingInvite = status.toString().toLowerCase().contains('pendente');
     
     // Status colors
     Color statusColor = MetaColors.textSecondary;
@@ -606,17 +653,36 @@ late Map<String, dynamic> student;
                       trailing: const Icon(Icons.chevron_right, color: MetaColors.textSecondary),
                       onTap: _editStudent,
                     ),
+                    if (isArchived) ...[
+                      const Divider(color: MetaColors.surfaceHighlight, height: 1),
+                      ListTile(
+                        key: const Key('action_reactivate_student'),
+                        leading: const Icon(Icons.play_circle_outline, color: MetaColors.emerald),
+                        title: const Text(
+                          'Reativar Aluno',
+                          style: TextStyle(color: MetaColors.emerald, fontWeight: FontWeight.w600),
+                        ),
+                        trailing: const Icon(Icons.chevron_right, color: MetaColors.emerald),
+                        onTap: _reactivateStudent,
+                      ),
+                    ] else if (!isPendingInvite) ...[
+                      const Divider(color: MetaColors.surfaceHighlight, height: 1),
+                      ListTile(
+                        key: const Key('action_archive_student'),
+                        leading: const Icon(Icons.pause_circle_outline, color: MetaColors.textSecondary),
+                        title: const Text('Arquivar Aluno', style: TextStyle(color: MetaColors.textPrimary)),
+                        trailing: const Icon(Icons.chevron_right, color: MetaColors.textSecondary),
+                        onTap: _archiveStudent,
+                      ),
+                    ],
                     const Divider(color: MetaColors.surfaceHighlight, height: 1),
                     ListTile(
-                      leading: const Icon(Icons.pause_circle_outline, color: MetaColors.textSecondary),
-                      title: const Text('Arquivar Aluno', style: TextStyle(color: MetaColors.textPrimary)),
-                      trailing: const Icon(Icons.chevron_right, color: MetaColors.textSecondary),
-                      onTap: _archiveStudent,
-                    ),
-                    const Divider(color: MetaColors.surfaceHighlight, height: 1),
-                    ListTile(
+                      key: const Key('action_delete_student'),
                       leading: const Icon(Icons.delete_forever, color: Colors.redAccent),
-                      title: const Text('Excluir Definitivamente', style: TextStyle(color: Colors.redAccent)),
+                      title: Text(
+                        isPendingInvite ? 'Cancelar / Excluir Convite' : 'Excluir Definitivamente',
+                        style: const TextStyle(color: Colors.redAccent),
+                      ),
                       onTap: _deleteStudent,
                     ),
                   ],

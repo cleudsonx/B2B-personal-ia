@@ -170,4 +170,56 @@ void main() {
     );
     expect(find.textContaining('TimeoutException after'), findsNothing);
   });
+
+  testWidgets('reactivates archived student only after confirmation', (tester) async {
+    var reactivateCalls = 0;
+    final archivedStudent = {
+      'id': 'student-archived-1',
+      'full_name': 'Carlos Lima',
+      'email': 'carlos@example.com',
+      'status': 'Arquivado',
+    };
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => Navigator.push<bool>(
+                context,
+                MaterialPageRoute<bool>(
+                  builder: (_) => StudentDetailsScreen(
+                    studentData: archivedStudent,
+                    onUpdateStudentStatus: ({required studentId, required status}) async {
+                      expect(studentId, 'student-archived-1');
+                      expect(status, 'Ativo');
+                      reactivateCalls++;
+                      return true;
+                    },
+                    loadActiveWorkout: (_) async => null,
+                  ),
+                ),
+              ),
+              child: const Text('Abrir arquivado'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Abrir arquivado'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('action_reactivate_student')), findsOneWidget);
+    expect(find.byKey(const Key('action_archive_student')), findsNothing);
+
+    await _tapAdministrationAction(tester, 'Reativar Aluno');
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+    expect(reactivateCalls, 0);
+
+    await _tapAdministrationAction(tester, 'Reativar Aluno');
+    await tester.tap(find.byKey(const Key('confirm_reactivate_student')));
+    await tester.pumpAndSettle();
+    expect(reactivateCalls, 1);
+  });
 }
