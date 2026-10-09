@@ -1,7 +1,12 @@
-from fastapi import FastAPI
+import logging
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.api.v1.router import api_router
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -11,6 +16,18 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+
+# Registrado antes do CORS para ficar dentro dele; senão o 500 sai sem CORS e o navegador mostra só "Failed to fetch".
+@app.middleware("http")
+async def unhandled_errors_as_json(request: Request, call_next):
+    try:
+        return await call_next(request)
+    except Exception as exc:
+        logger.exception("Erro não tratado em %s %s", request.method, request.url.path)
+        if isinstance(exc, RuntimeError):
+            return JSONResponse(status_code=503, content={"detail": str(exc)})
+        return JSONResponse(status_code=500, content={"detail": "Erro interno do servidor."})
 
 # CORS configuration (conforme padrão W3C/OWASP: se allow_origins contém "*", allow_credentials deve ser False)
 cors_origins = settings.cors_origins_list
