@@ -9,6 +9,7 @@ import '../../services/auth_service.dart';
 import '../trainer/presentation/screens/trainer_onboarding_screen.dart';
 import '../trainer/presentation/screens/trainer_main_layout.dart';
 import '../client/welcome_onboarding_screen.dart';
+import '../client/student_suspended_screen.dart';
 import 'login_screen.dart';
 import 'teacher_mfa_screen.dart';
 import '../../main.dart';
@@ -105,6 +106,21 @@ class _AuthGateState extends State<AuthGate> {
           if (role == 'trainer') {
             _openTrainerDestination();
           } else {
+            final subscriptionStatus =
+                (profile?['subscription_status'] as String?)?.toLowerCase();
+            if (subscriptionStatus == 'suspended') {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => StudentSuspendedScreen(
+                    studentName: name,
+                    trainerId: profile?['trainer_id'] as String?,
+                  ),
+                ),
+              );
+              return;
+            }
+
             if (!hasCompletedAnamnesis) {
               Navigator.pushReplacement(
                 context,

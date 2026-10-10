@@ -8,6 +8,7 @@ import '../../core/widgets/server_config_dialog.dart';
 import '../../services/auth_service.dart';
 import 'auth_gate.dart';
 import '../client/welcome_onboarding_screen.dart';
+import '../client/student_suspended_screen.dart';
 import 'teacher_mfa_screen.dart';
 import 'register_screen.dart';
 
@@ -120,7 +121,101 @@ class _LoginScreenState extends State<LoginScreen> {
     profile = await AuthService.getCurrentProfile();
     final roles = AuthService.availableRoles(profile);
     if (!roles.contains(_selectedRole)) {
-      throw StateError('Esta conta não possui acesso ao perfil selecionado.');
+      if (roles.contains('client') && _selectedRole == 'trainer') {
+        if (!mounted) return;
+        final switchRole = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: MetaColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: MetaColors.border),
+            ),
+            title: const Text(
+              'Perfil de Aluno',
+              style: TextStyle(
+                color: MetaColors.textPrimary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: const Text(
+              'Esta conta está cadastrada como Aluno. Deseja acessar o portal do Aluno agora?',
+              style: TextStyle(color: MetaColors.textSecondary),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(color: MetaColors.textSecondary),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: MetaColors.emerald,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Acessar como Aluno'),
+              ),
+            ],
+          ),
+        );
+        if (switchRole == true) {
+          _selectedRole = 'client';
+        } else {
+          await AuthService.signOut();
+          return;
+        }
+      } else if (roles.contains('trainer') && _selectedRole == 'client') {
+        if (!mounted) return;
+        final switchRole = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: MetaColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: MetaColors.border),
+            ),
+            title: const Text(
+              'Perfil de Treinador',
+              style: TextStyle(
+                color: MetaColors.textPrimary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: const Text(
+              'Esta conta possui perfil de Professor/Treinador. Deseja acessar o portal do Treinador?',
+              style: TextStyle(color: MetaColors.textSecondary),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(color: MetaColors.textSecondary),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: MetaColors.emerald,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Acessar como Treinador'),
+              ),
+            ],
+          ),
+        );
+        if (switchRole == true) {
+          _selectedRole = 'trainer';
+        } else {
+          await AuthService.signOut();
+          return;
+        }
+      } else {
+        throw StateError('Esta conta não possui acesso ao perfil selecionado.');
+      }
     }
     await AuthService.setActiveRole(_selectedRole);
     if (roles.contains('trainer') &&
@@ -150,21 +245,38 @@ class _LoginScreenState extends State<LoginScreen> {
     final hasCompletedAnamnesis = profile?['has_completed_anamnesis'] == true;
 
     if (!mounted) return;
-    if (role == 'client' && !hasCompletedAnamnesis) {
-      final trainer = await AuthService.getTrainerForStudent();
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => WelcomeOnboardingScreen(
-            studentName: userName,
-            trainerName: widget.invitedTrainerName ?? (trainer?['full_name'] as String?),
+    if (role == 'client') {
+      final subscriptionStatus =
+          (profile?['subscription_status'] as String?)?.toLowerCase();
+      if (subscriptionStatus == 'suspended') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => StudentSuspendedScreen(
+              studentName: userName,
+              trainerId: profile?['trainer_id'] as String?,
+            ),
           ),
-        ),
-      );
-    } else {
-      _navigateToDashboard();
+        );
+        return;
+      }
+
+      if (!hasCompletedAnamnesis) {
+        final trainer = await AuthService.getTrainerForStudent();
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => WelcomeOnboardingScreen(
+              studentName: userName,
+              trainerName: widget.invitedTrainerName ?? (trainer?['full_name'] as String?),
+            ),
+          ),
+        );
+        return;
+      }
     }
+    _navigateToDashboard();
   }
 
   Future<void> _handleBiometricAuth() async {

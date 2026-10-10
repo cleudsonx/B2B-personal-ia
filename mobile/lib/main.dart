@@ -102,6 +102,20 @@ class B2BPersonalIaApp extends StatelessWidget {
           builder = (_) => const TrainerProfileSetupScreen();
         case '/login':
           builder = (_) => const LoginScreen();
+        case '/professor/entrar':
+          builder = (_) => const LoginScreen(initialRole: 'trainer');
+        case '/professor/cadastro':
+          builder = (_) => const RegisterScreen(initialRole: 'trainer');
+        case '/aluno/entrar':
+          builder = (_) => const LoginScreen(initialRole: 'client');
+        case '/aluno/cadastro':
+          builder = (_) => RegisterScreen(
+                initialRole: 'client',
+                initialEmail: uri.queryParameters['email'],
+                inviteToken: uri.queryParameters['token'] ?? uri.queryParameters['invite_token'],
+                trainerId: uri.queryParameters['trainer_id'],
+                trainerName: uri.queryParameters['trainer_name'],
+              );
         case '/onboarding':
           builder = (_) => LoginScreen(
                 initialRole: 'client',
@@ -111,7 +125,7 @@ class B2BPersonalIaApp extends StatelessWidget {
                 invitedTrainerName: uri.queryParameters['trainer_name'],
               );
         case '/register':
-          builder = (_) => const RegisterScreen();
+          builder = (_) => const RegisterScreen(initialRole: 'trainer');
         case '/subscription':
           builder = (_) => const SubscriptionScreen();
         default:
