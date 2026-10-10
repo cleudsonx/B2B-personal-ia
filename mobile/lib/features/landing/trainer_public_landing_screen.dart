@@ -7,7 +7,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/widgets/meta_components.dart';
-import '../auth/register_screen.dart';
 
 class TrainerPublicLandingScreen extends StatefulWidget {
   final String username;
@@ -70,17 +69,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
   }
 
   void _startConsultation() {
-    final trainer = _trainerData!;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => RegisterScreen(
-          initialRole: 'client',
-          trainerId: trainer['id'] as String?,
-          trainerName: trainer['full_name'] as String?,
-        ),
-      ),
-    );
+    _openTrainerWhatsapp();
   }
 
   Future<void> _openTrainerWhatsapp() async {
@@ -91,13 +80,16 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     }
     if (number.length != 12 && number.length != 13) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('O WhatsApp deste treinador está inválido.')),
+        const SnackBar(
+          content: Text('Este treinador ainda não configurou o WhatsApp de contato.'),
+        ),
       );
       return;
     }
 
+    final trainerName = _trainerData?['full_name'] as String? ?? 'Treinador';
     final uri = Uri.https('wa.me', '/$number', {
-      'text': 'Olá! Vi sua vitrine e tenho interesse na consultoria.',
+      'text': 'Olá, $trainerName! Vi sua vitrine na Shaipados e gostaria de informações sobre sua consultoria esportiva.',
     });
     try {
       if (!await canLaunchUrl(uri) ||
@@ -319,7 +311,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                   const SizedBox(height: 14),
                   _buildProofRow(Icons.fitness_center_rounded, 'Treinos acompanhados', 'Acesse sua ficha e registre sua evolução quando o treinador liberar o plano.'),
                   const SizedBox(height: 14),
-                  _buildProofRow(Icons.chat_bubble_outline_rounded, 'Contato antes do plano', 'Após o cadastro, aguarde o contato do treinador para conversar sobre a consultoria.'),
+                  _buildProofRow(Icons.chat_bubble_outline_rounded, 'Acordo de consultoria', 'Converse diretamente com o treinador para alinhar seu plano. O acesso ao app é liberado via convite exclusivo.'),
                   if ((_trainerData!['public_whatsapp'] as String?)
                           ?.trim()
                           .isNotEmpty ==
@@ -420,9 +412,9 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
               shadowColor: MetaColors.emerald.withValues(alpha: 0.4),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
-            icon: const Icon(Icons.person_add_alt_1_rounded, size: 24),
+            icon: const Icon(Icons.chat_bubble_rounded, size: 22),
             label: const Text(
-              'TENHO INTERESSE NA CONSULTORIA',
+              'FALAR PELO WHATSAPP',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.0),
             ),
           ),

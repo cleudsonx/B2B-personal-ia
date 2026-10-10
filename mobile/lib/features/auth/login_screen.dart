@@ -884,39 +884,78 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
 
                     // Register Link
-                    if (widget.invitedStudentId == null) Wrap(
-                      alignment: WrapAlignment.center,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        const Text(
-                          'Ainda não tem conta? ',
-                          style: TextStyle(
-                            color: MetaColors.textSecondary,
-                            fontSize: 13,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => RegisterScreen(
-                                  initialRole: _selectedRole,
+                    if (widget.invitedStudentId == null)
+                      if (_selectedRole == 'trainer')
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            const Text(
+                              'Ainda não tem conta? ',
+                              style: TextStyle(
+                                color: MetaColors.textSecondary,
+                                fontSize: 13,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const RegisterScreen(
+                                      initialRole: 'trainer',
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: const Text(
+                                'Cadastre-se grátis',
+                                style: TextStyle(
+                                  color: MetaColors.emerald,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
                                 ),
                               ),
-                            );
-                          },
-                          child: const Text(
-                            'Cadastre-se grátis',
-                            style: TextStyle(
-                              color: MetaColors.emerald,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
                             ),
+                          ],
+                        )
+                      else
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: MetaColors.surfaceHighlight.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: MetaColors.surfaceHighlight),
+                          ),
+                          child: Column(
+                            children: [
+                              const Text(
+                                'O acesso do aluno é criado mediante convite exclusivo do seu professor.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: MetaColors.textSecondary,
+                                  fontSize: 12,
+                                  height: 1.4,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.pushNamed(context, '/prof');
+                                },
+                                child: const Text(
+                                  'Ainda não tem treinador? Encontrar no Shaipados',
+                                  style: TextStyle(
+                                    color: MetaColors.emerald,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
                     const SizedBox(height: 16),
 
                     // Landing Web Link
