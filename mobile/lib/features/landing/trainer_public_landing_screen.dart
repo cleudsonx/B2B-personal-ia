@@ -88,18 +88,42 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     }
 
     final trainerName = _trainerData?['full_name'] as String? ?? 'Treinador';
-    final uri = Uri.https('wa.me', '/$number', {
-      'text': 'Olá, $trainerName! Vi sua vitrine e gostaria de informações sobre sua consultoria esportiva.',
-    });
+    final message = 'Olá, $trainerName! Vi sua vitrine e gostaria de informações sobre sua consultoria esportiva.';
+    final encodedMsg = Uri.encodeComponent(message);
+
+    // Tentativa 1: Esquema direto do WhatsApp (whatsapp://send?phone=...&text=...)
+    final nativeUri = Uri.parse('whatsapp://send?phone=$number&text=$encodedMsg');
+    
+    // Tentativa 2: Link universal HTTPS (https://api.whatsapp.com/send?phone=... ou wa.me)
+    final apiUri = Uri.parse('https://api.whatsapp.com/send?phone=$number&text=$encodedMsg');
+    final waMeUri = Uri.parse('https://wa.me/$number?text=$encodedMsg');
+
     try {
-      if (!await canLaunchUrl(uri) ||
-          !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      bool launched = false;
+      if (await canLaunchUrl(nativeUri)) {
+        launched = await launchUrl(nativeUri, mode: LaunchMode.externalApplication);
+      }
+      if (!launched && await canLaunchUrl(apiUri)) {
+        launched = await launchUrl(apiUri, mode: LaunchMode.externalApplication);
+      }
+      if (!launched && await canLaunchUrl(waMeUri)) {
+        launched = await launchUrl(waMeUri, mode: LaunchMode.externalNonBrowserApplication);
+      }
+      if (!launched) {
+        // Fallback no navegador
+        launched = await launchUrl(apiUri, mode: LaunchMode.platformDefault);
+      }
+      if (!launched) {
         throw StateError('Não foi possível abrir o WhatsApp.');
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Não foi possível abrir o WhatsApp.')),
+          const SnackBar(
+            content: Text(
+              'Não foi possível abrir o WhatsApp. Verifique se o aplicativo está instalado.',
+            ),
+          ),
         );
       }
     }
@@ -175,14 +199,14 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (photoUrl != null)
+                  if (photoUrl != null && photoUrl.toString().trim().isNotEmpty)
                     Image.network(
-                      photoUrl,
+                      photoUrl.toString().trim(),
                       fit: BoxFit.cover,
-                      errorBuilder: (ctx, err, stack) => _buildPlaceholderPhoto(),
+                      errorBuilder: (ctx, err, stack) => _buildPlaceholderPhoto(name),
                     )
                   else
-                    _buildPlaceholderPhoto(),
+                    _buildPlaceholderPhoto(name),
                   
                   // Gradiente super escuro para fundo (Estilo Shaipados Labs)
                   DecoratedBox(
@@ -403,11 +427,51 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     );
   }
 
-  Widget _buildPlaceholderPhoto() {
+  Widget _buildPlaceholderPhoto(String trainerName) {
+    final initials = trainerName.trim().isNotEmpty
+        ? trainerName
+            .trim()
+            .split(RegExp(r'\s+'))
+            .take(2)
+            .map((e) => e.isNotEmpty ? e[0].toUpperCase() : '')
+            .join()
+        : 'PT';
+
     return Container(
-      color: MetaColors.surfaceHighlight,
-      child: const Center(
-        child: Icon(Icons.fitness_center_rounded, size: 120, color: MetaColors.background),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            MetaColors.surfaceHighlight,
+            MetaColors.background,
+          ],
+        ),
+      ),
+      child: Center(
+        child: Container(
+          width: 130,
+          height: 130,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: MetaColors.emerald.withValues(alpha: 0.15),
+            border: Border.all(
+              color: MetaColors.emerald.withValues(alpha: 0.4),
+              width: 3,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              initials,
+              style: const TextStyle(
+                color: MetaColors.emerald,
+                fontSize: 48,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2.0,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

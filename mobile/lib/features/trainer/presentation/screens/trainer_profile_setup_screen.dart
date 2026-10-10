@@ -19,6 +19,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
   final TextEditingController _crefController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
   final TextEditingController _whatsappController = TextEditingController();
+  final TextEditingController _photoUrlController = TextEditingController();
 
   final List<String> _specialties = [
     'Hipertrofia',
@@ -52,7 +53,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
 
       final response = await supabase
           .from('profiles')
-          .select('username, bio, public_whatsapp, specialties, professional_document, public_directory_enabled')
+          .select('username, bio, public_whatsapp, specialties, professional_document, public_directory_enabled, photo_url, avatar_url')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -65,6 +66,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
           _bioController.text = response['bio'] ?? '';
           _whatsappController.text = response['public_whatsapp'] ?? '';
           _crefController.text = response['professional_document'] ?? '';
+          _photoUrlController.text = response['photo_url'] ?? response['avatar_url'] ?? '';
           _publishInDirectory = response['public_directory_enabled'] == true;
           
           if (response['specialties'] != null) {
@@ -87,6 +89,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
     _crefController.dispose();
     _bioController.dispose();
     _whatsappController.dispose();
+    _photoUrlController.dispose();
     super.dispose();
   }
 
@@ -148,6 +151,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
       final user = supabase.auth.currentUser;
       if (user == null) throw Exception('Usuário não logado');
 
+      final photoVal = _photoUrlController.text.trim();
       final updates = {
         'username': username.isEmpty ? null : username,
         'bio': _bioController.text.trim().isEmpty
@@ -157,6 +161,8 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
         'professional_document': _crefController.text.trim(),
         'public_directory_enabled': _publishInDirectory,
         'specialties': _selectedSpecialties.toList(),
+        'photo_url': photoVal.isEmpty ? null : photoVal,
+        'avatar_url': photoVal.isEmpty ? null : photoVal,
       };
 
       final savedProfile = await supabase
@@ -315,6 +321,71 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                               ),
                             ),
                             const SizedBox(height: 24),
+                            _buildSectionTitle(context, 'Foto ou Imagem da Marca (URL)'),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Insira o link direto da sua foto de perfil ou logo da sua consultoria para exibir na sua vitrine.',
+                              style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                ValueListenableBuilder<TextEditingValue>(
+                                  valueListenable: _photoUrlController,
+                                  builder: (context, val, _) {
+                                    final url = val.text.trim();
+                                    final hasValidUrl = url.isNotEmpty && (url.startsWith('http://') || url.startsWith('https://'));
+                                    return Container(
+                                      width: 60,
+                                      height: 60,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: MetaColors.surfaceHighlight,
+                                        border: Border.all(
+                                          color: MetaColors.emerald.withValues(alpha: 0.4),
+                                          width: 2,
+                                        ),
+                                      ),
+                                      clipBehavior: Clip.antiAlias,
+                                      child: hasValidUrl
+                                          ? Image.network(
+                                              url,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error, stackTrace) => const Icon(
+                                                Icons.broken_image_rounded,
+                                                color: MetaColors.textSecondary,
+                                                size: 28,
+                                              ),
+                                            )
+                                          : const Icon(
+                                              Icons.add_a_photo_outlined,
+                                              color: MetaColors.emerald,
+                                              size: 26,
+                                            ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _photoUrlController,
+                                    keyboardType: TextInputType.url,
+                                    decoration: InputDecoration(
+                                      hintText: 'https://exemplo.com/minha-foto.jpg',
+                                      filled: true,
+                                      fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
                             _buildSectionTitle(context, 'Biografia'),
                             const SizedBox(height: 12),
                             TextField(
@@ -355,7 +426,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                             SwitchListTile.adaptive(
                               contentPadding: EdgeInsets.zero,
                               value: _publishInDirectory,
-                              activeColor: colorScheme.primary,
+                              activeTrackColor: colorScheme.primary,
                               title: const Text('Exibir no diretório Shaipados'),
                               subtitle: const Text('Seu perfil e registro CREF poderão ser encontrados publicamente.'),
                               onChanged: (value) => setState(() => _publishInDirectory = value),
