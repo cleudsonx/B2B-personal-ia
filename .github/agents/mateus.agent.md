@@ -1,7 +1,7 @@
 ---
 name: Mateus
 description: "Implementa e corrige interfaces Flutter/Dart no aplicativo mobile, incluindo telas, estado e integração visual. Use para mudanças de frontend mobile."
-model: "MAI-Code-1.1-Flash"
+model: "GPT-6 Luna"
 tools: [read, search, edit, execute]
 user-invocable: false
 ---

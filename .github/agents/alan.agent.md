@@ -1,7 +1,7 @@
 ---
 name: Alan
 description: "Implementa e corrige a API Python/FastAPI, serviços, validações e integração backend do B2B Personal IA. Use para rotas e lógica de servidor."
-model: "MAI-Code-1.1-Flash"
+model: "GPT-6 Luna"
 tools: [read, search, edit, execute]
 user-invocable: false
 ---

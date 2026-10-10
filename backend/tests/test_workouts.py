@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import AsyncMock, MagicMock
 from urllib.parse import parse_qs, urlsplit
 from fastapi.testclient import TestClient
 from app.main import app
@@ -77,6 +78,48 @@ async def test_student_creation_fails_when_supabase_is_unavailable_in_production
 
 
 @pytest.mark.asyncio
+async def test_student_creation_marks_backend_provisioning_and_direct_client_keeps_invite(monkeypatch):
+    from types import SimpleNamespace
+    from app.schemas.workout import StudentCreateRequest
+    from app.services.supabase_service import SupabaseService
+
+    service = SupabaseService()
+    admin = SimpleNamespace(create_user=AsyncMock(
+        return_value=SimpleNamespace(user=SimpleNamespace(id="student-id")),
+    ))
+    client = MagicMock()
+    client.auth.admin = admin
+    client.table.return_value.upsert.return_value.execute = AsyncMock()
+    client.table.return_value.insert.return_value.execute = AsyncMock()
+
+    async def fake_get_client():
+        return client
+
+    monkeypatch.setattr(service, "get_client", fake_get_client)
+
+    await service.create_student(
+        "631e76b9-3cb0-454f-8fd9-1d450e5560d6",
+        StudentCreateRequest(full_name="Aluno Teste", email="aluno@example.com"),
+    )
+
+    student_payload = admin.create_user.await_args.args[0]
+    assert student_payload["app_metadata"]["provisioned_by_backend"] == "true"
+
+    admin.create_user.reset_mock()
+    await service.admin_create_user(
+        email="student@example.com",
+        password="password123",
+        full_name="Student",
+        role="client",
+        invite_token="valid-invite-token",
+    )
+
+    direct_payload = admin.create_user.await_args.args[0]
+    assert direct_payload["user_metadata"]["invite_token"] == "valid-invite-token"
+    assert "app_metadata" not in direct_payload
+
+
+@pytest.mark.asyncio
 async def test_student_list_does_not_use_memory_when_production_database_is_empty(monkeypatch):
     from app.core.config import settings
     from app.services.supabase_service import SupabaseService
@@ -141,6 +184,171 @@ def test_prescription_persistence_flow():
     active_plan = active_res.json()
     assert active_plan["workout_plan_title"] == "Periodização Hipertrofia A/B"
     assert len(active_plan["splits"]) == 1
+
+
+def test_suspended_student_is_blocked_from_client_route():
+    from app.api.deps import get_current_user
+
+    app.dependency_overrides[get_current_user] = lambda: {
+        "sub": "suspended-client",
+        "profile": {"role": "client", "roles": ["client"], "subscription_status": "suspended"},
+    }
+    try:
+        response = client.get("/api/v1/workouts/gamification")
+        assert response.status_code == 403
+        assert response.json()["detail"] == (
+            "Acesso suspenso pelo seu professor. Entre em contato com ele para regularizar."
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.mark.asyncio
+async def test_student_status_transitions_respect_slot_occupancy(monkeypatch):
+    from app.api.deps import get_current_trainer
+    from app.api.v1.endpoints import workouts
+    from app.services.supabase_service import supabase_service
+
+    trainer_id = "trainer-status-quota-test"
+    students = {
+        "status-archived": "Arquivado",
+        "status-archived-blocked": "Arquivado",
+        "status-suspended": "Acesso suspenso",
+    }
+    for student_id, student_status in students.items():
+        supabase_service._mem_students[student_id] = {
+            "id": student_id,
+            "full_name": student_id,
+            "email": f"{student_id}@example.com",
+            "goal": "Hipertrofia",
+            "status": student_status,
+            "trainer_id": trainer_id,
+            "created_at": "2026-10-10T00:00:00+00:00",
+        }
+
+    quota_check = AsyncMock(return_value=1)
+    monkeypatch.setattr(workouts, "_count_trainer_occupied_slots", quota_check)
+    monkeypatch.setattr(workouts, "_get_trainer_max_students", AsyncMock(return_value=1))
+    app.dependency_overrides[get_current_trainer] = lambda: {
+        "sub": trainer_id,
+        "aal": "aal2",
+        "profile": {"role": "trainer", "roles": ["trainer"]},
+    }
+    try:
+        suspend_res = client.patch(
+            "/api/v1/workouts/students/status-archived/status", json={"status": "Acesso Suspenso"}
+        )
+        assert suspend_res.status_code == 200
+        assert suspend_res.json()["status"] == "Acesso suspenso"
+
+        reactivate_suspended = client.patch(
+            "/api/v1/workouts/students/status-suspended/status", json={"status": "Ativo"}
+        )
+        assert reactivate_suspended.status_code == 200
+
+        blocked_archived = client.patch(
+            "/api/v1/workouts/students/status-archived-blocked/status", json={"status": "active"}
+        )
+        assert blocked_archived.status_code == 403
+        assert quota_check.await_count == 1
+        assert await supabase_service.count_trainer_occupied_slots(trainer_id) == 2
+
+        invalid_status = client.patch(
+            "/api/v1/workouts/students/status-archived-blocked/status", json={"status": "unknown"}
+        )
+        assert invalid_status.status_code == 422
+    finally:
+        app.dependency_overrides.pop(get_current_trainer, None)
+        for student_id in students:
+            supabase_service._mem_students.pop(student_id, None)
+
+
+@pytest.mark.asyncio
+async def test_list_students_maps_suspended_status(monkeypatch):
+    from app.services.supabase_service import SupabaseService
+
+    class FakeQuery:
+        def __init__(self, table_name):
+            self.table_name = table_name
+
+        def __getattr__(self, _name):
+            return lambda *_args, **_kwargs: self
+
+        async def execute(self):
+            rows = {
+                "profiles": [{
+                    "id": "631e76b9-3cb0-454f-8fd9-1d450e5560d6",
+                    "full_name": "Aluno Suspenso",
+                    "subscription_status": "suspended",
+                }],
+            }
+            return type("Result", (), {"data": rows.get(self.table_name, [])})()
+
+    class FakeDatabase:
+        def table(self, table_name):
+            return FakeQuery(table_name)
+
+    service = SupabaseService()
+    monkeypatch.setattr(service, "get_client", AsyncMock(return_value=FakeDatabase()))
+
+    students = await service.list_students("631e76b9-3cb0-454f-8fd9-1d450e5560d6")
+    assert students[0].status == "Acesso suspenso"
+
+
+@pytest.mark.asyncio
+async def test_save_prescription_does_not_overwrite_suspended_status(monkeypatch):
+    from app.schemas.workout import PrescriptionSaveRequest
+    from app.services.supabase_service import SupabaseService
+
+    class FakeQuery:
+        def __init__(self, table_name):
+            self.table_name = table_name
+            self.filters = []
+            self.update_values = None
+
+        def select(self, *_args):
+            return self
+
+        def update(self, values):
+            self.update_values = values
+            if self.table_name == "profiles":
+                profile_updates.append((values, self))
+            return self
+
+        def insert(self, values):
+            return self
+
+        def __getattr__(self, name):
+            if name in ("eq", "neq"):
+                return lambda *args: self.filters.append((name, *args)) or self
+            return lambda *_args, **_kwargs: self
+
+        async def execute(self):
+            data = [{"id": "prescription-id"}] if self.table_name == "workouts" and self.update_values is None else []
+            if self.table_name == "profiles" and self.update_values is None:
+                data = [{"id": client_id, "subscription_status": "suspended"}]
+            return type("Result", (), {"data": data})()
+
+    class FakeDatabase:
+        def table(self, table_name):
+            return FakeQuery(table_name)
+
+    client_id = "631e76b9-3cb0-454f-8fd9-1d450e5560d6"
+    trainer_id = "ddf7c840-bbc1-4641-9666-38aa6cd2cd89"
+    profile_updates = []
+    service = SupabaseService()
+    monkeypatch.setattr(service, "get_client", AsyncMock(return_value=FakeDatabase()))
+
+    await service.save_prescription(trainer_id, PrescriptionSaveRequest(
+        client_id=client_id,
+        trainer_id=trainer_id,
+        plan=SAMPLE_PLAN,
+    ))
+
+    assert len(profile_updates) == 1
+    update_values, update_query = profile_updates[0]
+    assert update_values == {"subscription_status": "active"}
+    assert ("neq", "subscription_status", "suspended") in update_query.filters
 
 
 def test_student_update_archive_and_delete():

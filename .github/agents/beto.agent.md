@@ -1,7 +1,7 @@
 ---
 name: Beto
 description: "Revisa configuração de CI/CD, Docker e infraestrutura do B2B Personal IA, identificando riscos operacionais e falhas de pipeline. Use para DevOps/SRE."
-model: "Claude Haiku 4.5"
+model: "Claude Haiku 5.5"
 tools: [read, search, edit]
 user-invocable: false
 ---

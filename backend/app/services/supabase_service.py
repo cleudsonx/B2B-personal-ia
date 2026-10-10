@@ -1025,9 +1025,11 @@ class SupabaseService:
                     work = workout_map.get(cid)
 
                     # Status mapping
-                    sub_status = p.get("subscription_status", "trial")
+                    sub_status = str(p.get("subscription_status", "trial")).lower()
                     if sub_status == "canceled":
                         ui_status = "Arquivado"
+                    elif sub_status == "suspended":
+                        ui_status = "Acesso suspenso"
                     elif sub_status == "active":
                         ui_status = "Ativo"
                     else:
@@ -1095,8 +1097,10 @@ class SupabaseService:
                     res = await client.table("profiles").select("*").eq("id", s_uuid).execute()
                     if res.data:
                         p = res.data[0]
-                        sub_st = p.get("subscription_status", "trial")
-                        ui_st = "Arquivado" if sub_st == "canceled" else "Ativo"
+                        sub_st = str(p.get("subscription_status", "trial")).lower()
+                        ui_st = "Arquivado" if sub_st == "canceled" else (
+                            "Acesso suspenso" if sub_st == "suspended" else "Ativo"
+                        )
                         return StudentResponse(
                             id=p["id"],
                             full_name=p.get("full_name") or "Aluno",
@@ -1150,6 +1154,7 @@ class SupabaseService:
                     "email": req.email,
                     "password": temp_password,
                     "email_confirm": True,
+                    "app_metadata": {"provisioned_by_backend": "true"},
                     "user_metadata": {
                         "full_name": req.full_name,
                         "role": "client",
@@ -1240,7 +1245,13 @@ class SupabaseService:
                 if req.phone is not None:
                     prof_updates["phone"] = req.phone
                 if req.status is not None:
-                    prof_updates["subscription_status"] = "canceled" if req.status == "Arquivado" else "active"
+                    normalized_status = req.status.strip().casefold()
+                    if normalized_status in ("arquivado", "canceled"):
+                        prof_updates["subscription_status"] = "canceled"
+                    elif normalized_status in ("acesso suspenso", "suspended"):
+                        prof_updates["subscription_status"] = "suspended"
+                    else:
+                        prof_updates["subscription_status"] = "active"
 
                 if prof_updates:
                     await client.table("profiles").update(prof_updates).eq("id", s_uuid).execute()
@@ -1356,7 +1367,7 @@ class SupabaseService:
         if client and is_valid_uuid(c_uuid) and is_valid_uuid(t_uuid):
             try:
                 # 0. Verifica se o aluno possui perfil ativo ou se é convite pendente
-                prof_res = await client.table("profiles").select("id").eq("id", c_uuid).execute()
+                prof_res = await client.table("profiles").select("id, subscription_status").eq("id", c_uuid).execute()
                 if not prof_res.data:
                     logger.warning(f"[save_prescription] Aluno '{c_uuid}' possui convite pendente ou conta inexistente.")
                     raise ValueError("O aluno ainda possui convite pendente e não ativou a conta. A prescrição será liberada após a ativação.")
@@ -1380,7 +1391,8 @@ class SupabaseService:
                 }).execute()
 
                 # 3. Atualiza o status do aluno para Ativo
-                await client.table("profiles").update({"subscription_status": "active"}).eq("id", c_uuid).execute()
+                await client.table("profiles").update({"subscription_status": "active"})\
+                    .eq("id", c_uuid).neq("subscription_status", "suspended").execute()
 
                 if res.data:
                     prescription_id = res.data[0]["id"]

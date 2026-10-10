@@ -126,6 +126,56 @@ async def test_direct_client_registration_requires_invite(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_direct_registration_rejects_unknown_role_before_supabase(monkeypatch):
+    from fastapi import HTTPException
+    from app.api.v1.endpoints import auth as auth_endpoints
+
+    get_client = AsyncMock()
+    create_user = AsyncMock()
+    monkeypatch.setattr(auth_endpoints.supabase_service, "get_client", get_client)
+    monkeypatch.setattr(auth_endpoints.supabase_service, "admin_create_user", create_user)
+
+    with pytest.raises(HTTPException) as error:
+        await auth_endpoints.register_user_direct(auth_endpoints.DirectRegisterRequest(
+            email="user@example.com",
+            password="password123",
+            full_name="User",
+            role=" admin ",
+        ))
+
+    assert error.value.status_code == 400
+    assert "Papel inválido" in error.value.detail
+    get_client.assert_not_awaited()
+    create_user.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_direct_trainer_registration_passes_trainer_id(monkeypatch):
+    from app.api.v1.endpoints import auth as auth_endpoints
+
+    create_user = AsyncMock(return_value={
+        "success": True,
+        "user_id": "trainer-id",
+        "email": "trainer@example.com",
+        "role": "trainer",
+        "message": "created",
+    })
+    monkeypatch.setattr(auth_endpoints.supabase_service, "admin_create_user", create_user)
+
+    await auth_endpoints.register_user_direct(auth_endpoints.DirectRegisterRequest(
+        email="trainer@example.com",
+        password="password123",
+        full_name="Trainer",
+        role="trainer",
+        trainer_id="linked-trainer-id",
+    ))
+
+    create_user.assert_awaited_once()
+    assert create_user.await_args.kwargs["role"] == "trainer"
+    assert create_user.await_args.kwargs["trainer_id"] == "linked-trainer-id"
+
+
+@pytest.mark.asyncio
 async def test_direct_client_registration_ignores_submitted_trainer_id(monkeypatch):
     from app.api.v1.endpoints import auth as auth_endpoints
 

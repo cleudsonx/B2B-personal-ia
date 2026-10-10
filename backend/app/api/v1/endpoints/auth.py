@@ -40,6 +40,8 @@ async def register_user_direct(req: DirectRegisterRequest):
     """
     try:
         role = req.role.strip().lower()
+        if role not in ("trainer", "client"):
+            raise ValueError("Papel inválido. São aceitos apenas 'trainer' ou 'client'.")
         if role == "client":
             if not req.invite_token:
                 raise ValueError("É necessário um convite válido para cadastrar uma conta de aluno.")

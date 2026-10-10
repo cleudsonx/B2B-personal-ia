@@ -1,6 +1,7 @@
 ---
 name: Arthur
 description: "Orquestra tarefas do B2B Personal IA e delega trabalho de Flutter, FastAPI, Supabase, testes e CI/CD aos especialistas adequados. Use como ponto de entrada para planejar, implementar ou revisar mudanças."
+model: "Claude Sonnet 5.5"
 tools: [read, search, agent, todo]
 agents: [Mateus, Alan, Marta, Thiago, Beto]
 user-invocable: true

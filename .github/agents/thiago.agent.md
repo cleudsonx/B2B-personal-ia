@@ -1,7 +1,7 @@
 ---
 name: Thiago
 description: "Cria e executa testes focados para backend Python/FastAPI e aplicativo Flutter, investigando regressões e casos de borda. Use para QA e validação."
-model: "MAI-Code-1.1-Flash"
+model: "Claude Haiku 5.5"
 tools: [read, search, edit, execute]
 user-invocable: false
 ---
