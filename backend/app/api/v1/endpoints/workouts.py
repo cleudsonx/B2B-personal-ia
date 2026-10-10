@@ -33,6 +33,34 @@ router = APIRouter()
 _STUDENTS_STORE = supabase_service._mem_students
 _PRESCRIPTIONS_STORE = supabase_service._mem_prescriptions
 _ALERTS_STORE = supabase_service._mem_alerts
+_STUDENT_STATUS_LABELS = {
+    "ativo": "Ativo",
+    "active": "Ativo",
+    "arquivado": "Arquivado",
+    "canceled": "Arquivado",
+    "inativo": "Inativo",
+    "pendente confirmação": "Pendente Confirmação",
+    "pendente confirmacao": "Pendente Confirmação",
+    "acesso suspenso": "Acesso suspenso",
+    "suspended": "Acesso suspenso",
+}
+
+
+def _normalize_student_status(value: str) -> str:
+    normalized = _STUDENT_STATUS_LABELS.get(value.strip().casefold())
+    if normalized is None:
+        raise HTTPException(status_code=422, detail="Status de aluno inválido.")
+    return normalized
+
+
+def _should_check_student_slot(existing_status: str, target_status: str) -> bool:
+    current = existing_status.strip().casefold()
+    target = target_status.strip().casefold()
+    if target in ("arquivado", "inativo", "acesso suspenso"):
+        return False
+    if current in ("acesso suspenso", "suspended") and target == "ativo":
+        return False
+    return True
 
 
 @router.post(
@@ -241,7 +269,10 @@ async def update_student(
 
     trainer_id = _require_student_owner(existing_student, current_user)
 
-    if data.status is not None and data.status.lower() not in ("arquivado", "inativo"):
+    if data.status is not None:
+        data.status = _normalize_student_status(data.status)
+
+    if data.status is not None and _should_check_student_slot(existing_student.status, data.status):
         occupied = await _count_trainer_occupied_slots(trainer_id, exclude_student_id=student_id)
         max_allowed = await _get_trainer_max_students(trainer_id)
         if occupied >= max_allowed:
@@ -276,9 +307,9 @@ async def update_student_status(
         )
 
     trainer_id = _require_student_owner(existing_student, current_user)
-    new_status = data.status.lower()
+    new_status = _normalize_student_status(data.status)
 
-    if new_status not in ("arquivado", "inativo"):
+    if _should_check_student_slot(existing_student.status, new_status):
         occupied = await _count_trainer_occupied_slots(trainer_id, exclude_student_id=student_id)
         max_allowed = await _get_trainer_max_students(trainer_id)
         if occupied >= max_allowed:
@@ -289,7 +320,7 @@ async def update_student_status(
                        f"Faça upgrade de plano ou arquive outro aluno para liberar uma vaga."
             )
 
-    updated = await supabase_service.update_student_status(student_id, trainer_id, data.status)
+    updated = await supabase_service.update_student_status(student_id, trainer_id, new_status)
     return updated
 
 

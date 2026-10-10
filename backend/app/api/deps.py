@@ -25,7 +25,7 @@ async def get_current_user(payload: Dict[str, Any] = Depends(get_current_user_pa
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Não foi possível validar a sessão.")
     result = await (
         client.table("profiles")
-        .select("role, roles, trainer_id, session_revoked_at")
+        .select("role, roles, trainer_id, session_revoked_at, subscription_status")
         .eq("id", user_id)
         .maybe_single()
         .execute()
@@ -65,6 +65,11 @@ async def get_current_client(current_user: Dict[str, Any] = Depends(get_current_
     roles = profile.get("roles") or [profile.get("role")]
     if "client" not in roles:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso exclusivo para alunos.")
+    if str(profile.get("subscription_status") or "").lower() == "suspended":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso suspenso pelo seu professor. Entre em contato com ele para regularizar.",
+        )
     return current_user
 
 

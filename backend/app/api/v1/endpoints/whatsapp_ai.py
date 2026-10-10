@@ -64,9 +64,12 @@ async def _find_student_by_phone(digits: str, trainer_id: str) -> Optional[Dict[
     if not client or len(digits) < 10:
         return None
     suffix = digits[-9:]  # tolera DDI/DDD e nono dígito
-    res = await client.table("profiles").select("id, full_name, trainer_id, role") \
+    res = await client.table("profiles").select("id, full_name, trainer_id, role, subscription_status") \
         .eq("role", "client").eq("trainer_id", trainer_id).ilike("phone", f"%{suffix}").limit(1).execute()
-    return res.data[0] if res.data else None
+    student = res.data[0] if res.data else None
+    if student and str(student.get("subscription_status") or "").lower() == "suspended":
+        return None
+    return student
 
 
 def _plan_summary(plan) -> str:
