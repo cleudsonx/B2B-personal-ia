@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
+import '../subscription/subscription_screen.dart';
 
 class TrainerStudentsScreen extends StatefulWidget {
   final Function(String studentId, String studentName)? onSelectStudentForPlan;
@@ -179,20 +180,20 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: MetaColors.surface,
+        backgroundColor: MetaColors.card(dialogContext),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: MetaColors.border),
+          side: BorderSide(color: MetaColors.cardBorder(dialogContext)),
         ),
         icon: Icon(
           emailFailed ? Icons.mark_email_unread_outlined : Icons.check_circle_outline_rounded,
-          color: emailFailed ? Colors.orangeAccent : MetaColors.emerald,
+          color: emailFailed ? Colors.orangeAccent : MetaColors.primaryColor(dialogContext),
           size: 42,
         ),
         title: Text(
           emailWasSent ? 'Convite enviado' : 'Aluno adicionado',
           textAlign: TextAlign.center,
-          style: const TextStyle(color: MetaColors.textPrimary, fontWeight: FontWeight.bold),
+          style: TextStyle(color: MetaColors.text(dialogContext), fontWeight: FontWeight.bold),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -206,7 +207,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                       : emailIsMock
                           ? 'Tudo certo: ${student['full_name']} já está na sua lista. O envio automático de e-mail ainda não está disponível. Compartilhe o link abaixo para ele começar.'
                           : 'Tudo certo: ${student['full_name']} já está na sua lista. Não foi possível confirmar o envio do e-mail. Compartilhe o link abaixo para ele começar.',
-              style: const TextStyle(color: MetaColors.textSecondary, height: 1.45),
+              style: TextStyle(color: MetaColors.subtext(dialogContext), height: 1.45),
             ),
             if (inviteLink.isNotEmpty) ...[
               const SizedBox(height: 16),
@@ -214,13 +215,13 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: MetaColors.surfaceHighlight,
+                  color: MetaColors.highlight(dialogContext),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: MetaColors.border),
+                  border: Border.all(color: MetaColors.cardBorder(dialogContext)),
                 ),
                 child: SelectableText(
                   inviteLink,
-                  style: const TextStyle(color: MetaColors.textPrimary, fontSize: 12),
+                  style: TextStyle(color: MetaColors.text(dialogContext), fontSize: 12),
                 ),
               ),
             ],
@@ -289,16 +290,16 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
-          backgroundColor: MetaColors.surface,
+          backgroundColor: MetaColors.card(dialogContext),
           scrollable: true,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
-            side: const BorderSide(color: MetaColors.border),
+            side: BorderSide(color: MetaColors.cardBorder(dialogContext)),
           ),
-          title: const Text(
+          title: Text(
             'Convidar aluno',
             style: TextStyle(
-              color: MetaColors.textPrimary,
+              color: MetaColors.text(dialogContext),
               fontWeight: FontWeight.bold,
               fontSize: 18,
             ),
@@ -312,12 +313,12 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                   controller: nameCtrl,
                   textCapitalization: TextCapitalization.words,
                   textInputAction: TextInputAction.next,
-                  style: const TextStyle(color: MetaColors.textPrimary),
+                  style: TextStyle(color: MetaColors.text(dialogContext)),
                   decoration: InputDecoration(
                     labelText: 'Nome completo',
-                    labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                    labelStyle: TextStyle(color: MetaColors.subtext(dialogContext)),
                     filled: true,
-                    fillColor: MetaColors.surfaceHighlight,
+                    fillColor: MetaColors.highlight(dialogContext),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -332,12 +333,12 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                   controller: emailCtrl,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
-                  style: const TextStyle(color: MetaColors.textPrimary),
+                  style: TextStyle(color: MetaColors.text(dialogContext)),
                   decoration: InputDecoration(
                     labelText: 'Email para receber o convite',
-                    labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                    labelStyle: TextStyle(color: MetaColors.subtext(dialogContext)),
                     filled: true,
-                    fillColor: MetaColors.surfaceHighlight,
+                    fillColor: MetaColors.highlight(dialogContext),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -354,13 +355,13 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                   controller: phoneCtrl,
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.done,
-                  style: const TextStyle(color: MetaColors.textPrimary),
+                  style: TextStyle(color: MetaColors.text(dialogContext)),
                   decoration: InputDecoration(
                     labelText: 'WhatsApp (opcional)',
-                    labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                    labelStyle: TextStyle(color: MetaColors.subtext(dialogContext)),
                     hintText: '(61) 99999-9999',
                     filled: true,
-                    fillColor: MetaColors.surfaceHighlight,
+                    fillColor: MetaColors.highlight(dialogContext),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -368,24 +369,127 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                   ),
                 ),
                 if (submitError != null) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.redAccent.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: Colors.redAccent.withValues(alpha: 0.35),
-                      ),
-                    ),
-                    child: Text(
-                      submitError!,
-                      style: const TextStyle(
-                        color: MetaColors.textPrimary,
-                        fontSize: 13,
-                      ),
-                    ),
+                  const SizedBox(height: 14),
+                  Builder(
+                    builder: (context) {
+                      final isQuotaError = submitError!.toLowerCase().contains('limite') ||
+                          submitError!.toLowerCase().contains('plano') ||
+                          submitError!.toLowerCase().contains('cota') ||
+                          submitError!.toLowerCase().contains('upgrade') ||
+                          submitError!.toLowerCase().contains('vaga') ||
+                          submitError!.toLowerCase().contains('403');
+
+                      if (isQuotaError) {
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.amber.withValues(alpha: 0.45),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.workspace_premium_outlined,
+                                    color: Colors.amber,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Limite de alunos atingido',
+                                    style: TextStyle(
+                                      color: MetaColors.text(dialogContext),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                submitError!.contains('plano atual')
+                                    ? submitError!
+                                    : 'Você atingiu o limite de alunos cadastrados do seu plano atual. Para continuar adicionando novos alunos ou expandir sua consultoria, conheça nossos planos com alunos ilimitados ou arquive alunos inativos.',
+                                style: TextStyle(
+                                  color: MetaColors.subtext(dialogContext),
+                                  fontSize: 12.5,
+                                  height: 1.35,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(color: Colors.amber),
+                                    foregroundColor: Colors.amber,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                  ),
+                                  icon: const Icon(Icons.arrow_upward_rounded, size: 16),
+                                  label: const Text(
+                                    'Fazer Upgrade de Plano',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    Navigator.pop(dialogContext);
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const SubscriptionScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Colors.redAccent.withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.info_outline,
+                              color: Colors.redAccent,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                submitError!,
+                                style: TextStyle(
+                                  color: MetaColors.text(dialogContext),
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ],
               ],
@@ -394,14 +498,14 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
           actions: [
             TextButton(
               onPressed: isSubmitting ? null : () => Navigator.pop(dialogContext),
-              child: const Text(
+              child: Text(
                 'Cancelar',
-                style: TextStyle(color: MetaColors.textSecondary),
+                style: TextStyle(color: MetaColors.subtext(dialogContext)),
               ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: MetaColors.emerald,
+                backgroundColor: MetaColors.primaryColor(dialogContext),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -500,7 +604,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
 
     if (lower.contains('pendente')) {
       bg = const Color(0xFFF59E0B).withValues(alpha: 0.15);
-      fg = const Color(0xFFF59E0B);
+      fg = const Color(0xFFD97706);
       label = 'Pendente';
     } else if (lower.contains('arquivado') || lower.contains('inativo')) {
       bg = Colors.redAccent.withValues(alpha: 0.15);
@@ -516,13 +620,13 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         label,
         style: TextStyle(
           color: fg,
-          fontSize: 10,
+          fontSize: 10.5,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -693,44 +797,51 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                         )
                       : _isLoading && _students.isEmpty
                         ? const Center(child: CircularProgressIndicator(color: MetaColors.emerald))
-                        : filteredStudents.isEmpty
-                          ? const Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(24),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.people_outline_rounded,
-                                      size: 48,
-                                      color: MetaColors.textSecondary,
-                                    ),
-                                    SizedBox(height: 12),
-                                    Text(
-                                      'Sua lista começa aqui',
-                                      style: TextStyle(color: MetaColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w600),
-                                    ),
-                                    SizedBox(height: 6),
-                                    Text(
-                                      'Adicione um aluno para enviar o convite e iniciar o acompanhamento.',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(color: MetaColors.textSecondary, fontSize: 14, height: 1.4),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            )
-                          : ListView.separated(
+                          : filteredStudents.isEmpty
+                           ? Center(
+                               child: Padding(
+                                 padding: const EdgeInsets.all(24),
+                                 child: Column(
+                                   mainAxisSize: MainAxisSize.min,
+                                   children: [
+                                     Icon(
+                                       Icons.people_outline_rounded,
+                                       size: 48,
+                                       color: MetaColors.subtext(context),
+                                     ),
+                                     const SizedBox(height: 12),
+                                     Text(
+                                       'Sua lista começa aqui',
+                                       style: TextStyle(
+                                         color: MetaColors.text(context),
+                                         fontSize: 17,
+                                         fontWeight: FontWeight.w600,
+                                       ),
+                                     ),
+                                     const SizedBox(height: 6),
+                                     Text(
+                                       'Adicione um aluno para enviar o convite e iniciar o acompanhamento.',
+                                       textAlign: TextAlign.center,
+                                       style: TextStyle(
+                                         color: MetaColors.subtext(context),
+                                         fontSize: 14,
+                                         height: 1.4,
+                                       ),
+                                     ),
+                                   ],
+                                 ),
+                               ),
+                             )
+                           : ListView.separated(
                           // Padding dinâmico respeitando a Safe Area inferior e o SquircleButton
                           padding: EdgeInsets.only(
                             top: 4,
                             bottom: bottomPadding + 88,
-                            left: 8,
-                            right: 8,
+                            left: 12,
+                            right: 12,
                           ),
                           itemCount: filteredStudents.length,
-                          // Removido qualquer Divider() - separação exclusivamente por espaçamento
-                          separatorBuilder: (_, _) => const SizedBox(height: 6),
+                          separatorBuilder: (_, _) => const SizedBox(height: 10),
                           itemBuilder: (context, index) {
                             final student = filteredStudents[index];
                             final fullName =
@@ -742,113 +853,180 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                 student['last_session'] as String? ?? '';
                             final hasAlert = student['has_alert'] == true;
                             final avatarUrl = student['avatar_url'] as String?;
+                            final statusStr = student['status'] as String? ?? 'Ativo';
+                            final isPending = statusStr.toLowerCase().contains('pendente');
+                            final isArchived = statusStr.toLowerCase().contains('arquivado') ||
+                                statusStr.toLowerCase().contains('inativo');
 
                             return Material(
                               color: Colors.transparent,
-                              borderRadius: BorderRadius.circular(16),
                               child: InkWell(
                                 onTap: () => _showStudentDetails(student),
                                 borderRadius: BorderRadius.circular(16),
-                                child: Padding(
+                                child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
+                                    horizontal: 14,
+                                    vertical: 12,
                                   ),
-                                  child: ListTile(
-                                    contentPadding:
-                                        const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
+                                  decoration: BoxDecoration(
+                                    color: MetaColors.card(context),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: MetaColors.cardBorder(context),
+                                      width: 1.0,
                                     ),
-                                    tileColor: Colors.transparent,
-                                    leading: CircleAvatar(
-                                      radius: 24,
-                                      backgroundColor:
-                                          MetaColors.highlight(context),
-                                      backgroundImage: avatarUrl != null
-                                          ? NetworkImage(avatarUrl)
-                                          : null,
-                                      child: avatarUrl == null
-                                          ? Text(
-                                              _getInitials(fullName),
-                                              style: TextStyle(
-                                                color: MetaColors.primaryColor(context),
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 15,
-                                              ),
-                                            )
-                                          : null,
-                                    ),
-                                    title: Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            fullName,
-                                            style: TextStyle(
-                                              color: MetaColors.text(context),
-                                              fontWeight: FontWeight.w500,
-                                              fontSize: 16,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      // 1. Avatar com indicador de status
+                                      Stack(
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 24,
+                                            backgroundColor: MetaColors.highlight(context),
+                                            backgroundImage: avatarUrl != null
+                                                ? NetworkImage(avatarUrl)
+                                                : null,
+                                            child: avatarUrl == null
+                                                ? Text(
+                                                    _getInitials(fullName),
+                                                    style: TextStyle(
+                                                      color: MetaColors.primaryColor(context),
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 15,
+                                                    ),
+                                                  )
+                                                : null,
                                           ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        _buildStatusBadge(student['status'] as String? ?? 'Ativo'),
-                                      ],
-                                    ),
-                                    subtitle: Text(
-                                      recentStatus,
-                                      style: TextStyle(
-                                        color: MetaColors.subtext(context),
-                                        fontSize: 13,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    trailing: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.end,
-                                      children: [
-                                        Text(
-                                          lastSession,
-                                          style: TextStyle(
-                                            color: hasAlert
-                                                ? MetaColors.emerald
-                                                : MetaColors.textSecondary,
-                                            fontSize: 12,
-                                            fontWeight: hasAlert
-                                                ? FontWeight.w600
-                                                : FontWeight.normal,
-                                          ),
-                                        ),
-                                        if (hasAlert) ...[
-                                          const SizedBox(height: 4),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 2,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: MetaColors.emerald
-                                                  .withValues(alpha: 0.15),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            child: const Text(
-                                              'Alerta',
-                                              style: TextStyle(
-                                                color: MetaColors.emerald,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
+                                          Positioned(
+                                            right: 0,
+                                            bottom: 0,
+                                            child: Container(
+                                              width: 12,
+                                              height: 12,
+                                              decoration: BoxDecoration(
+                                                color: isPending
+                                                    ? const Color(0xFFF59E0B)
+                                                    : (isArchived
+                                                        ? Colors.redAccent
+                                                        : MetaColors.primaryColor(context)),
+                                                shape: BoxShape.circle,
+                                                border: Border.all(
+                                                  color: MetaColors.card(context),
+                                                  width: 2,
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ],
-                                      ],
-                                    ),
+                                      ),
+                                      const SizedBox(width: 14),
+
+                                      // 2. Informações do aluno (prioridade horizontal ao nome)
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            // Linha 1: Nome completo do aluno sem truncamento
+                                            Text(
+                                              fullName,
+                                              style: TextStyle(
+                                                color: MetaColors.text(context),
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 15.5,
+                                                letterSpacing: -0.2,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 4),
+
+                                            // Linha 2: Badge de status e descrição
+                                            Row(
+                                              children: [
+                                                _buildStatusBadge(statusStr),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    recentStatus,
+                                                    style: TextStyle(
+                                                      color: MetaColors.subtext(context),
+                                                      fontSize: 12.5,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+
+                                            // Linha 3 (opcional): Última atividade / Alerta
+                                            if (lastSession.isNotEmpty || hasAlert) ...[
+                                              const SizedBox(height: 4),
+                                              Row(
+                                                children: [
+                                                  Icon(
+                                                    hasAlert
+                                                        ? Icons.warning_amber_rounded
+                                                        : Icons.access_time_rounded,
+                                                    size: 13,
+                                                    color: hasAlert
+                                                        ? MetaColors.primaryColor(context)
+                                                        : MetaColors.subtext(context),
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    lastSession,
+                                                    style: TextStyle(
+                                                      color: hasAlert
+                                                          ? MetaColors.primaryColor(context)
+                                                          : MetaColors.subtext(context),
+                                                      fontSize: 11.5,
+                                                      fontWeight: hasAlert
+                                                          ? FontWeight.w600
+                                                          : FontWeight.normal,
+                                                    ),
+                                                  ),
+                                                  if (hasAlert) ...[
+                                                    const SizedBox(width: 6),
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 1.5,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        color: MetaColors.primaryColor(context)
+                                                            .withValues(alpha: 0.15),
+                                                        borderRadius: BorderRadius.circular(6),
+                                                      ),
+                                                      child: Text(
+                                                        'Atenção',
+                                                        style: TextStyle(
+                                                          color: MetaColors.primaryColor(context),
+                                                          fontSize: 10,
+                                                          fontWeight: FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+
+                                      const SizedBox(width: 8),
+
+                                      // 3. Indicador de navegação
+                                      Icon(
+                                        Icons.chevron_right_rounded,
+                                        color: MetaColors.subtext(context).withValues(alpha: 0.6),
+                                        size: 20,
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),

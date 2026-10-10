@@ -129,7 +129,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
     ),
     _BusinessToolItem(
       title: 'Aparência do App',
-      subtitle: 'Alterne entre Modo Escuro (Meta Dark) e Claro (Meta Light)',
+      subtitle: 'Alterne entre Modo Escuro, Modo Claro e Automático',
       icon: Icons.palette_outlined,
       type: _ToolType.themeMode,
     ),
@@ -299,8 +299,8 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                   const SizedBox(height: 18),
                   _buildThemeOption(
                     ctx: ctx,
-                    title: 'Modo Escuro (Meta Dark)',
-                    subtitle: 'Obsidian e Esmeralda fosco. Ideal para academias e telas OLED.',
+                    title: 'Modo Escuro',
+                    subtitle: 'Visual escuro e confortável. Menor cansaço visual e economia de bateria.',
                     icon: Icons.dark_mode_rounded,
                     isSelected: currentMode == ThemeMode.dark,
                     onTap: () {
@@ -311,8 +311,8 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                   const SizedBox(height: 8),
                   _buildThemeOption(
                     ctx: ctx,
-                    title: 'Modo Claro (Meta Light)',
-                    subtitle: 'Canvas neutro e Teal WhatsApp. Ideal para uso sob luz do sol.',
+                    title: 'Modo Claro',
+                    subtitle: 'Visual iluminado com alta nitidez e contraste para ambientes ensolarados.',
                     icon: Icons.light_mode_rounded,
                     isSelected: currentMode == ThemeMode.light,
                     onTap: () {
@@ -323,8 +323,8 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                   const SizedBox(height: 8),
                   _buildThemeOption(
                     ctx: ctx,
-                    title: 'Automático (Padrão do Sistema)',
-                    subtitle: 'Acompanha automaticamente as preferências do seu aparelho.',
+                    title: 'Automático (Padrão do Aparelho)',
+                    subtitle: 'Acompanha automaticamente as preferências do seu dispositivo.',
                     icon: Icons.brightness_auto_rounded,
                     isSelected: currentMode == ThemeMode.system,
                     onTap: () {
@@ -1176,33 +1176,22 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                 padding: EdgeInsets.only(top: 24, bottom: bottomPadding + 32),
                 child: Column(
                   children: [
-                    const Text(
-                      'from',
+                    Text(
+                      'Mr. Coach',
                       style: TextStyle(
-                        color: MetaColors.textSecondary,
-                        fontSize: 12,
+                        color: MetaColors.subtext(context),
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.science_rounded,
-                          color: MetaColors.textSecondary,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 4),
-                        const Text(
-                          'Shaipados Labs',
-                          style: TextStyle(
-                            color: MetaColors.textSecondary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      'Plataforma para Treinadores',
+                      style: TextStyle(
+                        color: MetaColors.subtext(context).withValues(alpha: 0.7),
+                        fontSize: 11.5,
+                      ),
                     ),
                   ],
                 ),

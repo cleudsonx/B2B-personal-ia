@@ -242,7 +242,7 @@ class _AuthGateState extends State<AuthGate> {
             ),
           ),
           
-          // Branding: "from Shaipados Labs"
+          // Branding: Mr. Coach
           Positioned(
             bottom: 30,
             left: 0,
@@ -250,33 +250,22 @@ class _AuthGateState extends State<AuthGate> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'from',
-                  style: TextStyle(
-                    color: MetaColors.textSecondary,
-                    fontSize: 12,
+                Text(
+                  'Mr. Coach',
+                  style: const TextStyle(
+                    color: MetaColors.emerald,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
                   ),
                 ),
                 const SizedBox(height: 2),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.science_rounded, // Ícone que remete a "Labs"
-                      color: MetaColors.emerald,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Shaipados Labs',
-                      style: const TextStyle(
-                        color: MetaColors.emerald,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
+                Text(
+                  'Plataforma para Treinadores',
+                  style: TextStyle(
+                    color: MetaColors.subtext(context).withValues(alpha: 0.7),
+                    fontSize: 11.5,
+                  ),
                 ),
               ],
             ),

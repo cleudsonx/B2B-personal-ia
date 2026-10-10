@@ -1057,7 +1057,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   Navigator.pushNamed(context, '/prof');
                                 },
                                 child: const Text(
-                                  'Ainda não tem treinador? Encontrar no Shaipados',
+                                  'Ainda não tem treinador? Conheça nossos profissionais',
                                   style: TextStyle(
                                     color: MetaColors.emerald,
                                     fontWeight: FontWeight.w600,
@@ -1116,22 +1116,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 32),
                       Column(
                         mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'from',
-                            style: TextStyle(color: MetaColors.textSecondary, fontSize: 12),
+                        children: const [
+                          Text(
+                            'Mr. Coach',
+                            style: TextStyle(
+                              color: MetaColors.emerald,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
                           ),
-                          const SizedBox(height: 2),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              Icon(Icons.science_rounded, color: MetaColors.emerald, size: 16),
-                              SizedBox(width: 4),
-                              Text(
-                                'Shaipados Labs',
-                                style: TextStyle(color: MetaColors.emerald, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.5),
-                              ),
-                            ],
+                          SizedBox(height: 2),
+                          Text(
+                            'Plataforma para Treinadores',
+                            style: TextStyle(color: MetaColors.textSecondary, fontSize: 11.5),
                           ),
                         ],
                       ),

@@ -454,23 +454,28 @@ late Map<String, dynamic> student;
     final isPendingInvite = status.toString().toLowerCase().contains('pendente');
     
     // Status colors
-    Color statusColor = MetaColors.textSecondary;
-    if (status == 'Ativo' || status == 'Treinando') statusColor = MetaColors.emerald;
+    Color statusColor = MetaColors.subtext(context);
+    if (status == 'Ativo' || status == 'Treinando') statusColor = MetaColors.primaryColor(context);
     if (status == 'Aguardando Ativação' || status == 'Pendente Confirmação') statusColor = const Color(0xFFF59E0B); // Amber
     if (status == 'Inativo' || status == 'Arquivado') statusColor = Colors.redAccent;
+    final isDark = MetaColors.isDark(context);
 
     return Scaffold(
-      backgroundColor: MetaColors.background,
+      backgroundColor: MetaColors.bg(context),
       appBar: AppBar(
-        backgroundColor: MetaColors.background,
+        backgroundColor: MetaColors.bg(context),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: MetaColors.textPrimary),
+          icon: Icon(Icons.arrow_back, color: MetaColors.text(context)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Perfil do Aluno',
-          style: TextStyle(color: MetaColors.textPrimary, fontSize: 18),
+          style: TextStyle(
+            color: MetaColors.text(context),
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         centerTitle: true,
       ),
@@ -486,22 +491,30 @@ late Map<String, dynamic> student;
                   children: [
                     CircleAvatar(
                       radius: 40,
-                      backgroundColor: MetaColors.surfaceHighlight,
+                      backgroundColor: MetaColors.highlight(context),
                       child: Text(
                         name.trim().isEmpty ? 'A' : name.trim().substring(0, 1).toUpperCase(),
-                        style: const TextStyle(color: MetaColors.textPrimary, fontSize: 32, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: MetaColors.primaryColor(context),
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
                     Text(
                       name,
-                      style: const TextStyle(color: MetaColors.textPrimary, fontSize: 24, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: MetaColors.text(context),
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.1),
+                        color: statusColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -549,17 +562,17 @@ late Map<String, dynamic> student;
               const MetaSectionTitle(title: 'Periodização'),
               const SizedBox(height: 16),
               if (_isLoadingWorkout)
-                const Center(child: CircularProgressIndicator(color: MetaColors.emerald))
+                Center(child: CircularProgressIndicator(color: MetaColors.primaryColor(context)))
               else if (_activeWorkout == null)
                 MetaCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const Icon(Icons.fitness_center, color: MetaColors.textSecondary, size: 48),
+                      Icon(Icons.fitness_center, color: MetaColors.subtext(context), size: 48),
                       const SizedBox(height: 16),
-                      const Text(
+                      Text(
                         'Nenhuma ficha ativa ainda.',
-                        style: TextStyle(color: MetaColors.textSecondary, fontSize: 16),
+                        style: TextStyle(color: MetaColors.subtext(context), fontSize: 16),
                       ),
                       const SizedBox(height: 24),
                       if (isPendingInvite) ...[
@@ -583,10 +596,11 @@ late Map<String, dynamic> student;
                               Expanded(
                                 child: Text(
                                   'Aguardando $name ativar o convite. Para proteger seus créditos de IA, a prescrição será liberada assim que o cadastro for ativado.',
-                                  style: const TextStyle(
-                                    color: MetaColors.textPrimary,
+                                  style: TextStyle(
+                                    color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E),
                                     fontSize: 13,
-                                    height: 1.3,
+                                    height: 1.35,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ),
@@ -597,10 +611,9 @@ late Map<String, dynamic> student;
                         SizedBox(
                           width: double.infinity,
                           child: SquircleButton(
-                            label: 'Lembrar Aluno no WhatsApp',
+                            label: 'Lembrar no WhatsApp',
                             icon: Icons.chat_bubble_outline_rounded,
                             isPrimary: true,
-                            foregroundColor: Colors.black,
                             onPressed: () => _launchWhatsApp(phone, name),
                           ),
                         ),
@@ -622,19 +635,23 @@ late Map<String, dynamic> student;
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Ficha Atual',
-                        style: TextStyle(color: MetaColors.textSecondary, fontSize: 14),
+                        style: TextStyle(color: MetaColors.subtext(context), fontSize: 14),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         _activeWorkout.workoutPlanTitle ?? 'Periodização',
-                        style: const TextStyle(color: MetaColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: MetaColors.text(context),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 4),
-                      const Text(
+                      Text(
                         'Ativa',
-                        style: TextStyle(color: MetaColors.emerald, fontSize: 14),
+                        style: TextStyle(color: MetaColors.primaryColor(context), fontSize: 14),
                       ),
                       const SizedBox(height: 24),
                       Row(
@@ -692,34 +709,40 @@ late Map<String, dynamic> student;
                 child: Column(
                   children: [
                     ListTile(
-                      leading: const Icon(Icons.edit, color: MetaColors.textSecondary),
-                      title: const Text('Editar Perfil do Aluno', style: TextStyle(color: MetaColors.textPrimary)),
-                      trailing: const Icon(Icons.chevron_right, color: MetaColors.textSecondary),
+                      leading: Icon(Icons.edit, color: MetaColors.subtext(context)),
+                      title: Text(
+                        'Editar Perfil do Aluno',
+                        style: TextStyle(color: MetaColors.text(context)),
+                      ),
+                      trailing: Icon(Icons.chevron_right, color: MetaColors.subtext(context)),
                       onTap: _editStudent,
                     ),
                     if (isArchived) ...[
-                      const Divider(color: MetaColors.surfaceHighlight, height: 1),
+                      Divider(color: MetaColors.cardBorder(context), height: 1),
                       ListTile(
                         key: const Key('action_reactivate_student'),
-                        leading: const Icon(Icons.play_circle_outline, color: MetaColors.emerald),
-                        title: const Text(
+                        leading: Icon(Icons.play_circle_outline, color: MetaColors.primaryColor(context)),
+                        title: Text(
                           'Reativar Aluno',
-                          style: TextStyle(color: MetaColors.emerald, fontWeight: FontWeight.w600),
+                          style: TextStyle(color: MetaColors.primaryColor(context), fontWeight: FontWeight.w600),
                         ),
-                        trailing: const Icon(Icons.chevron_right, color: MetaColors.emerald),
+                        trailing: Icon(Icons.chevron_right, color: MetaColors.primaryColor(context)),
                         onTap: _reactivateStudent,
                       ),
                     ] else if (!isPendingInvite) ...[
-                      const Divider(color: MetaColors.surfaceHighlight, height: 1),
+                      Divider(color: MetaColors.cardBorder(context), height: 1),
                       ListTile(
                         key: const Key('action_archive_student'),
-                        leading: const Icon(Icons.pause_circle_outline, color: MetaColors.textSecondary),
-                        title: const Text('Arquivar Aluno', style: TextStyle(color: MetaColors.textPrimary)),
-                        trailing: const Icon(Icons.chevron_right, color: MetaColors.textSecondary),
+                        leading: Icon(Icons.pause_circle_outline, color: MetaColors.subtext(context)),
+                        title: Text(
+                          'Arquivar Aluno',
+                          style: TextStyle(color: MetaColors.text(context)),
+                        ),
+                        trailing: Icon(Icons.chevron_right, color: MetaColors.subtext(context)),
                         onTap: _archiveStudent,
                       ),
                     ],
-                    const Divider(color: MetaColors.surfaceHighlight, height: 1),
+                    Divider(color: MetaColors.cardBorder(context), height: 1),
                     ListTile(
                       key: const Key('action_delete_student'),
                       leading: const Icon(Icons.delete_forever, color: Colors.redAccent),

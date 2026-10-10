@@ -21,9 +21,9 @@ class ThemeController extends ChangeNotifier {
   String get themeModeName {
     switch (_themeMode) {
       case ThemeMode.light:
-        return 'Modo Claro (Meta Light)';
+        return 'Modo Claro';
       case ThemeMode.dark:
-        return 'Modo Escuro (Meta Dark)';
+        return 'Modo Escuro';
       case ThemeMode.system:
         return 'Automático (Sistema)';
     }

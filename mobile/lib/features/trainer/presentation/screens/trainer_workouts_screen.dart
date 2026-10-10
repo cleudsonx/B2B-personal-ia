@@ -143,7 +143,7 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
   void _showAssessmentDialog() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: MetaColors.surface,
+      backgroundColor: MetaColors.card(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -164,25 +164,25 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: MetaColors.border,
+                    color: MetaColors.cardBorder(context),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
               const SizedBox(height: 18),
-              const Text(
+              Text(
                 'Avaliação Física & Biomecânica',
                 style: TextStyle(
-                  color: MetaColors.textPrimary,
+                  color: MetaColors.text(context),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Escolha o tipo de teste para registrar e vincular à periodização do aluno.',
                 style: TextStyle(
-                  color: MetaColors.textSecondary,
+                  color: MetaColors.subtext(context),
                   fontSize: 14,
                 ),
               ),
@@ -204,11 +204,11 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                 onPressed: () {
                   Navigator.pop(ctx);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      backgroundColor: MetaColors.surfaceHighlight,
+                    SnackBar(
+                      backgroundColor: MetaColors.highlight(context),
                       content: Text(
                         'Módulo de Composição Corporal selecionado.',
-                        style: TextStyle(color: MetaColors.textPrimary),
+                        style: TextStyle(color: MetaColors.text(context)),
                       ),
                     ),
                   );
@@ -224,7 +224,7 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
   void _showWorkoutDetails(_RecentWorkoutItem workout) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: MetaColors.surface,
+      backgroundColor: MetaColors.card(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -245,7 +245,7 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: MetaColors.border,
+                    color: MetaColors.cardBorder(context),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -255,7 +255,7 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                 children: [
                   CircleAvatar(
                     radius: 26,
-                    backgroundColor: MetaColors.surfaceHighlight,
+                    backgroundColor: MetaColors.highlight(context),
                     child: workout.useClipboardIcon
                         ? const Icon(
                             Icons.assignment_outlined,
@@ -278,8 +278,8 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                       children: [
                         Text(
                           workout.studentName,
-                          style: const TextStyle(
-                            color: MetaColors.textPrimary,
+                          style: TextStyle(
+                            color: MetaColors.text(context),
                             fontWeight: FontWeight.w700,
                             fontSize: 18,
                           ),
@@ -287,8 +287,8 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                         const SizedBox(height: 2),
                         Text(
                           workout.workoutTitle,
-                          style: const TextStyle(
-                            color: MetaColors.textSecondary,
+                          style: TextStyle(
+                            color: MetaColors.subtext(context),
                             fontSize: 14,
                           ),
                         ),
@@ -301,9 +301,9 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: MetaColors.surfaceHighlight,
+                  color: MetaColors.highlight(context),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: MetaColors.border),
+                  border: Border.all(color: MetaColors.cardBorder(context)),
                 ),
                 child: Row(
                   children: [
@@ -355,6 +355,7 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
   }
 
   Widget _buildQuickActionButton({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required VoidCallback onTap,
@@ -371,24 +372,24 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
               width: 58,
               height: 58,
               decoration: BoxDecoration(
-                color: MetaColors.surfaceHighlight,
+                color: MetaColors.highlight(context),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: MetaColors.border,
+                  color: MetaColors.cardBorder(context),
                   width: 1.0,
                 ),
               ),
               child: Icon(
                 icon,
-                color: MetaColors.emerald,
+                color: MetaColors.primaryColor(context),
                 size: 26,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               label,
-              style: const TextStyle(
-                color: MetaColors.textSecondary,
+              style: TextStyle(
+                color: MetaColors.subtext(context),
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
@@ -404,17 +405,18 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.paddingOf(context).top;
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
+    final isDark = MetaColors.isDark(context);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
+      value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
         systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: MetaColors.background,
+        backgroundColor: MetaColors.bg(context),
         body: Stack(
           children: [
             CustomScrollView(
@@ -434,31 +436,34 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Treinos',
                           style: TextStyle(
-                            color: MetaColors.textPrimary,
+                            color: MetaColors.text(context),
                             fontSize: 26,
                             fontWeight: FontWeight.w700,
                             letterSpacing: -0.5,
                           ),
                         ),
                         const SizedBox(height: 20),
-                        // Topo (Ações Rápidas em Círculos estilo WhatsApp Ligações)
+                        // Topo (Ações Rápidas em Círculos)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
                             _buildQuickActionButton(
+                              context: context,
                               icon: Icons.post_add,
                               label: 'Nova Ficha',
                               onTap: () => _navigateToCreateWorkout(),
                             ),
                             _buildQuickActionButton(
+                              context: context,
                               icon: Icons.fitness_center,
                               label: 'Avaliação',
                               onTap: _showAssessmentDialog,
                             ),
                             _buildQuickActionButton(
+                              context: context,
                               icon: Icons.auto_awesome,
                               label: 'IA',
                               onTap: () => _navigateToCreateWorkout(),
@@ -471,9 +476,9 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                 ),
 
                 // Seção "Fichas Recentes": Título
-                const SliverToBoxAdapter(
+                SliverToBoxAdapter(
                   child: Padding(
-                    padding: EdgeInsets.only(
+                    padding: const EdgeInsets.only(
                       left: 20,
                       right: 20,
                       top: 16,
@@ -482,7 +487,7 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                     child: Text(
                       'Fichas Recentes',
                       style: TextStyle(
-                        color: MetaColors.textPrimary,
+                        color: MetaColors.text(context),
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         letterSpacing: -0.2,
@@ -512,7 +517,11 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                             children: [
                               const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
                               const SizedBox(height: 16),
-                              Text('Erro ao carregar treinos:\n$_errorMessage', textAlign: TextAlign.center, style: const TextStyle(color: MetaColors.textSecondary)),
+                              Text(
+                                'Erro ao carregar treinos:\n$_errorMessage',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: MetaColors.subtext(context)),
+                              ),
                               const SizedBox(height: 16),
                               ElevatedButton(onPressed: _loadWorkouts, child: const Text('Tentar Novamente')),
                             ],
@@ -520,11 +529,11 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                         ),
                       )
                     : _recentWorkouts.isEmpty 
-                      ? const SliverFillRemaining(
+                      ? SliverFillRemaining(
                           child: Center(
                             child: Text(
                               'Nenhum treino encontrado.',
-                              style: TextStyle(color: MetaColors.textSecondary, fontSize: 16),
+                              style: TextStyle(color: MetaColors.subtext(context), fontSize: 16),
                             ),
                           ),
                         )
@@ -547,11 +556,11 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 8,
                                   vertical: 2,
-                                ),
+                                  ),
                                 tileColor: Colors.transparent,
                                 leading: CircleAvatar(
                                   radius: 24,
-                                  backgroundColor: MetaColors.surfaceHighlight,
+                                  backgroundColor: MetaColors.highlight(context),
                                   child: workout.useClipboardIcon
                                       ? const Icon(
                                           Icons.assignment_outlined,
@@ -569,8 +578,8 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                                 ),
                                 title: Text(
                                   '${workout.studentName} • ${workout.workoutTitle}',
-                                  style: const TextStyle(
-                                    color: MetaColors.textPrimary,
+                                  style: TextStyle(
+                                    color: MetaColors.text(context),
                                     fontWeight: FontWeight.w500,
                                     fontSize: 16,
                                   ),
@@ -595,7 +604,7 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                                           style: TextStyle(
                                             color: workout.isExpired
                                                 ? const Color(0xFFEF4444)
-                                                : MetaColors.textSecondary,
+                                                : MetaColors.subtext(context),
                                             fontSize: 13,
                                           ),
                                           maxLines: 1,
@@ -605,9 +614,9 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                                     ],
                                   ),
                                 ),
-                                trailing: const Icon(
+                                trailing: Icon(
                                   Icons.chevron_right_rounded,
-                                  color: MetaColors.textSecondary,
+                                  color: MetaColors.subtext(context),
                                   size: 20,
                                 ),
                               ),

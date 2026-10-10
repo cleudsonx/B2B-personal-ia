@@ -463,6 +463,16 @@ async def invite_student(
     if not trainer_name or trainer_name == "Roberto Mendes":
         trainer_name = "Seu Treinador"
 
+    # Validação estrita da cota de alunos do plano SaaS
+    occupied = await _count_trainer_occupied_slots(trainer_id)
+    max_allowed = await _get_trainer_max_students(trainer_id)
+    if occupied >= max_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Limite de {max_allowed} alunos ativos atingido no seu plano atual. "
+                   f"Faça upgrade do plano ou arquive alunos inativos antes de cadastrar novos."
+        )
+
     invite_token = secrets.token_urlsafe(32)
     try:
         invite_record = await supabase_service.create_student_invite(
@@ -478,7 +488,8 @@ async def invite_student(
         if "limite" in str(e).lower() or "23514" in str(e):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="O limite de alunos ativos do seu plano foi atingido.",
+                detail=f"Limite de {max_allowed} alunos ativos atingido no seu plano atual. "
+                       f"Faça upgrade do plano ou arquive alunos inativos antes de cadastrar novos."
             ) from e
         logger.error("Falha ao reservar vaga para convite: %s", e, exc_info=True)
         raise HTTPException(

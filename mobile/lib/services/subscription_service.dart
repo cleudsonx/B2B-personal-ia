@@ -381,7 +381,7 @@ class SubscriptionService {
           included: true,
         ),
         PlanFeatureModel(
-          title: '10 fichas com IA Gemini 3.5 / mês',
+          title: '10 fichas inteligentes com IA / mês',
           included: true,
         ),
         PlanFeatureModel(
@@ -394,7 +394,7 @@ class SubscriptionService {
         ),
         PlanFeatureModel(title: 'Alunos ilimitados', included: false),
         PlanFeatureModel(
-          title: 'Alertas WhatsApp via Webhook',
+          title: 'Alertas automáticos no WhatsApp',
           included: false,
         ),
       ],
@@ -417,16 +417,16 @@ class SubscriptionService {
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'PrescriÃ§Ãµes IA Ilimitadas (Gemini Flash)',
+          title: 'Prescrições de Treino com IA Ilimitadas',
           included: true,
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'Anamnese clÃ­nica profunda e restriÃ§Ãµes',
+          title: 'Anamnese clínica detalhada e restrições',
           included: true,
         ),
         PlanFeatureModel(
-          title: 'Raio-X Muscular com EMG e AnÃ¡lise de Fases',
+          title: 'Raio-X Muscular e Análise de Fases',
           included: true,
           highlight: true,
         ),
@@ -435,12 +435,12 @@ class SubscriptionService {
           included: true,
         ),
         PlanFeatureModel(
-          title: 'Painel de alertas de adaptaÃ§Ã£o em tempo real',
+          title: 'Painel de alertas de adaptação em tempo real',
           included: true,
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'Suporte prioritÃ¡rio via WhatsApp',
+          title: 'Suporte prioritário via WhatsApp',
           included: true,
         ),
       ],
@@ -463,27 +463,27 @@ class SubscriptionService {
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'PrescriÃ§Ãµes IA Ilimitadas (Gemini Flash)',
+          title: 'Prescrições de Treino com IA Ilimitadas',
           included: true,
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'AutomaÃ§Ã£o WhatsApp (Evolution/Z-API)',
+          title: 'Automação inteligente no WhatsApp',
           included: true,
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'Alertas automÃ¡ticos de dor e faltas no WhatsApp',
+          title: 'Alertas de dor e frequência no WhatsApp',
           included: true,
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'RelatÃ³rios de assiduidade e retenÃ§Ã£o',
+          title: 'Relatórios de assiduidade e retenção',
           included: true,
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'Suporte prioritÃ¡rio VIP via WhatsApp',
+          title: 'Suporte prioritário VIP via WhatsApp',
           included: true,
         ),
       ],
@@ -498,7 +498,7 @@ class SubscriptionService {
       maxStudents: 100,
       maxAiGenerationsPerMonth: -1,
       isPopular: false,
-      badge: 'ESCALA MÃXIMA',
+      badge: 'ESCALA MÁXIMA',
       features: [
         PlanFeatureModel(
           title: 'Até 100 alunos ativos na assessoria',
@@ -506,22 +506,22 @@ class SubscriptionService {
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'PrescriÃ§Ãµes e adaptaÃ§Ãµes IA Ilimitadas',
+          title: 'Prescrições e adaptações com IA Ilimitadas',
           included: true,
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'MÃºltiplos personals sob a mesma conta',
+          title: 'Múltiplos treinadores na mesma conta',
           included: true,
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'Alertas de dor e evasÃ£o no WhatsApp',
+          title: 'Alertas de dor e retenção no WhatsApp',
           included: true,
           highlight: true,
         ),
         PlanFeatureModel(
-          title: 'RelatÃ³rios de assiduidade e retenÃ§Ã£o',
+          title: 'Relatórios de assiduidade e retenção',
           included: true,
           highlight: true,
         ),

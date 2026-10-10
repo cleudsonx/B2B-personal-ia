@@ -96,17 +96,18 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
     final topPadding = MediaQuery.paddingOf(context).top;
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
     final trainerInitials = _getTrainerInitials();
+    final isDark = MetaColors.isDark(context);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
+      value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
         systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: MetaColors.background,
+        backgroundColor: MetaColors.bg(context),
         body: Stack(
           children: [
             RefreshIndicator(
@@ -129,10 +130,10 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Atualizações',
                           style: TextStyle(
-                            color: MetaColors.textPrimary,
+                            color: MetaColors.text(context),
                             fontSize: 26,
                             fontWeight: FontWeight.w700,
                             letterSpacing: -0.5,
@@ -144,9 +145,9 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                 ),
 
                 // 2. Seção "Status": Título
-                const SliverToBoxAdapter(
+                SliverToBoxAdapter(
                   child: Padding(
-                    padding: EdgeInsets.only(
+                    padding: const EdgeInsets.only(
                       left: 20,
                       right: 20,
                       top: 4,
@@ -155,7 +156,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                     child: Text(
                       'Status',
                       style: TextStyle(
-                        color: MetaColors.textPrimary,
+                        color: MetaColors.text(context),
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         letterSpacing: -0.3,
@@ -164,7 +165,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                   ),
                 ),
 
-                // Status is informational until persistent publishing exists.
+                // Status do Treinador
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -177,7 +178,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                         children: [
                           CircleAvatar(
                             radius: 28,
-                            backgroundColor: MetaColors.surfaceHighlight,
+                            backgroundColor: MetaColors.highlight(context),
                             child: Text(
                               trainerInitials,
                               style: const TextStyle(
@@ -188,23 +189,23 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                             ),
                           ),
                           const SizedBox(width: 14),
-                          const Expanded(
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   'Meu status',
                                   style: TextStyle(
-                                    color: MetaColors.textPrimary,
+                                    color: MetaColors.text(context),
                                     fontWeight: FontWeight.w600,
                                     fontSize: 16,
                                   ),
                                 ),
-                                SizedBox(height: 3),
+                                const SizedBox(height: 3),
                                 Text(
                                   'Publicação de status ainda não disponível.',
                                   style: TextStyle(
-                                    color: MetaColors.textSecondary,
+                                    color: MetaColors.subtext(context),
                                     fontSize: 13,
                                   ),
                                 ),
@@ -217,10 +218,10 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                   ),
                 ),
 
-                // 4. Carrossel de Status Recentes de Alunos (Histórias no padrão WhatsApp)
-                const SliverToBoxAdapter(
+                // 4. Carrossel de Status Recentes de Alunos
+                SliverToBoxAdapter(
                   child: Padding(
-                    padding: EdgeInsets.only(
+                    padding: const EdgeInsets.only(
                       left: 20,
                       right: 20,
                       top: 14,
@@ -229,7 +230,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                     child: Text(
                       'Atualizações recentes',
                       style: TextStyle(
-                        color: MetaColors.textSecondary,
+                        color: MetaColors.subtext(context),
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 0.2,
@@ -241,10 +242,10 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                 SliverToBoxAdapter(
                   child: SizedBox(
                     height: 98,
-                    child: const Center(
+                    child: Center(
                       child: Text(
                         'Atualizações de alunos ainda não estão disponíveis.',
-                        style: TextStyle(color: MetaColors.textSecondary),
+                        style: TextStyle(color: MetaColors.subtext(context)),
                       ),
                     ),
                   ),
@@ -258,10 +259,10 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: const Text(
+                    child: Text(
                       'Consistência dos alunos',
                       style: TextStyle(
-                        color: MetaColors.textPrimary,
+                        color: MetaColors.text(context),
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         letterSpacing: -0.3,
@@ -274,7 +275,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                   child: SizedBox(height: 8),
                 ),
 
-                // Consistency ranking from persisted student gamification.
+                // Consistency ranking
                 SliverPadding(
                   padding: EdgeInsets.only(
                     left: 12,
@@ -286,7 +287,6 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
               ],
             ),
             ),
-
           ],
         ),
       ),
@@ -298,7 +298,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
       return const SliverToBoxAdapter(
         child: Padding(
           padding: EdgeInsets.all(24),
-          child: Center(child: CircularProgressIndicator()),
+          child: Center(child: CircularProgressIndicator(color: MetaColors.emerald)),
         ),
       );
     }
@@ -308,10 +308,10 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              const Text(
+              Text(
                 'Não foi possível carregar a consistência dos alunos.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: MetaColors.textSecondary),
+                style: TextStyle(color: MetaColors.subtext(context)),
               ),
               TextButton.icon(
                 onPressed: _loadRanking,
@@ -324,13 +324,13 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
       );
     }
     if (_rankingStudents.isEmpty) {
-      return const SliverToBoxAdapter(
+      return SliverToBoxAdapter(
         child: Padding(
-          padding: EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
           child: Text(
             'Ainda não há atividades registradas pelos alunos.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: MetaColors.textSecondary),
+            style: TextStyle(color: MetaColors.subtext(context)),
           ),
         ),
       );
@@ -370,7 +370,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
               const SizedBox(width: 8),
               CircleAvatar(
                 radius: 22,
-                backgroundColor: MetaColors.surfaceHighlight,
+                backgroundColor: MetaColors.highlight(context),
                 child: Text(
                   initials,
                   style: TextStyle(
@@ -389,8 +389,8 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                       name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: MetaColors.textPrimary,
+                      style: TextStyle(
+                        color: MetaColors.text(context),
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
                       ),
@@ -400,8 +400,8 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                       '${_formatLastActivity(student['last_activity_date'])} · $recentSessions treinos em 100 dias',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: MetaColors.textSecondary,
+                      style: TextStyle(
+                        color: MetaColors.subtext(context),
                         fontSize: 12.5,
                       ),
                     ),
@@ -415,7 +415,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                   vertical: 5,
                 ),
                 decoration: BoxDecoration(
-                  color: MetaColors.surfaceHighlight,
+                  color: MetaColors.highlight(context),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
                 ),

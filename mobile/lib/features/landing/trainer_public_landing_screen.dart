@@ -89,7 +89,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
 
     final trainerName = _trainerData?['full_name'] as String? ?? 'Treinador';
     final uri = Uri.https('wa.me', '/$number', {
-      'text': 'Olá, $trainerName! Vi sua vitrine na Shaipados e gostaria de informações sobre sua consultoria esportiva.',
+      'text': 'Olá, $trainerName! Vi sua vitrine e gostaria de informações sobre sua consultoria esportiva.',
     });
     try {
       if (!await canLaunchUrl(uri) ||
@@ -357,35 +357,14 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                   const SizedBox(height: 64),
 
                   // Branding Footer "Tecnologia Mr. Coach | Shaipados Labs"
-                  Column(
+                  const Column(
                     children: [
-                      const Text(
+                      Text(
                         'Tecnologia Mr. Coach',
                         style: TextStyle(
                           color: MetaColors.textSecondary,
                           fontSize: 12,
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.science_rounded,
-                            color: MetaColors.textSecondary.withValues(alpha: 0.5),
-                            size: 14,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'by Shaipados Labs',
-                            style: TextStyle(
-                              color: MetaColors.textSecondary.withValues(alpha: 0.5),
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                   ),
