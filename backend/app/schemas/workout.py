@@ -85,6 +85,11 @@ class StudentResponse(BaseModel):
     injuries_or_restrictions: Optional[str] = None
     trainer_name: Optional[str] = None
     trainer_photo_url: Optional[str] = None
+    avatar_url: Optional[str] = None
+    photo_url: Optional[str] = None
+    age: Optional[int] = None
+    weight_kg: Optional[float] = None
+    height_cm: Optional[int] = None
     temp_password: Optional[str] = None
     invitation_link: Optional[str] = None
     whatsapp_url: Optional[str] = None

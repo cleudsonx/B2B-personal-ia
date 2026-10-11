@@ -102,7 +102,11 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
               'status': status,
               'has_alert': hasAlert,
               'alert_message': alertMsg,
-              'avatar_url': st['avatar_url'],
+              'avatar_url': st['avatar_url'] ?? st['photo_url'],
+              'photo_url': st['photo_url'] ?? st['avatar_url'],
+              'age': st['age'],
+              'weight_kg': st['weight_kg'],
+              'height_cm': st['height_cm'],
             };
           }).toList();
         });

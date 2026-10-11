@@ -1078,6 +1078,7 @@ class SupabaseService:
                     else:
                         ui_status = "Pendente Confirmação" if not work else "Ativo"
 
+                    photo = p.get("photo_url") or p.get("avatar_url")
                     students.append(StudentResponse(
                         id=cid,
                         full_name=p.get("full_name") or "Aluno",
@@ -1090,7 +1091,12 @@ class SupabaseService:
                         has_active_prescription=work is not None,
                         last_session="Sessão recente" if work else "Aguardando treino",
                         active_split=work.get("title") if work else None,
-                        injuries_or_restrictions=anam.get("injuries_or_restrictions") or "Nenhuma restrição relatada",
+                        injuries_or_restrictions=anam.get("injuries_or_restrictions") or p.get("clinical_restrictions") or "Nenhuma restrição relatada",
+                        avatar_url=photo,
+                        photo_url=photo,
+                        age=p.get("age"),
+                        weight_kg=float(p["weight_kg"]) if p.get("weight_kg") is not None else None,
+                        height_cm=int(p["height_cm"]) if p.get("height_cm") is not None else None,
                     ))
 
                 invite_res = await client.table("invite_tokens")\
@@ -1157,6 +1163,7 @@ class SupabaseService:
                         ui_st = "Arquivado" if sub_st == "canceled" else (
                             "Acesso suspenso" if sub_st == "suspended" else "Ativo"
                         )
+                        photo = p.get("photo_url") or p.get("avatar_url")
                         return StudentResponse(
                             id=p["id"],
                             full_name=p.get("full_name") or "Aluno",
@@ -1167,6 +1174,12 @@ class SupabaseService:
                             trainer_id=p.get("trainer_id") or "current-trainer",
                             created_at=p.get("created_at") or datetime.now(timezone.utc).isoformat(),
                             has_active_prescription=False,
+                            avatar_url=photo,
+                            photo_url=photo,
+                            age=p.get("age"),
+                            weight_kg=float(p["weight_kg"]) if p.get("weight_kg") is not None else None,
+                            height_cm=int(p["height_cm"]) if p.get("height_cm") is not None else None,
+                            injuries_or_restrictions=p.get("clinical_restrictions"),
                         )
 
                     # Se não encontrado em profiles, verifica se é um convite pendente em invite_tokens

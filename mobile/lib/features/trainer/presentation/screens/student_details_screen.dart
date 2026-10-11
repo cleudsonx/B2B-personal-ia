@@ -748,16 +748,21 @@ late Map<String, dynamic> student;
                 child: Column(
                   children: [
                     CircleAvatar(
-                      radius: 40,
+                      radius: 44,
                       backgroundColor: MetaColors.highlight(context),
-                      child: Text(
-                        name.trim().isEmpty ? 'A' : name.trim().substring(0, 1).toUpperCase(),
-                        style: TextStyle(
-                          color: MetaColors.primaryColor(context),
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      backgroundImage: (student['avatar_url'] ?? student['photo_url']) != null
+                          ? NetworkImage(student['avatar_url'] ?? student['photo_url'])
+                          : null,
+                      child: (student['avatar_url'] ?? student['photo_url']) == null
+                          ? Text(
+                              name.trim().isEmpty ? 'A' : name.trim().substring(0, 1).toUpperCase(),
+                              style: TextStyle(
+                                color: MetaColors.primaryColor(context),
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            )
+                          : null,
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -784,7 +789,148 @@ late Map<String, dynamic> student;
                   ],
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
+
+              // DADOS FÍSICOS & ANAMNESE
+              const MetaSectionTitle(title: 'Dados Físicos & Anamnese'),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: MetaCard(
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+                      child: Column(
+                        children: [
+                          Icon(Icons.cake_outlined, size: 20, color: MetaColors.primaryColor(context)),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Idade',
+                            style: TextStyle(fontSize: 11, color: MetaColors.subtext(context)),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            student['age'] != null ? '${student['age']} anos' : 'Não inf.',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: MetaColors.text(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: MetaCard(
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+                      child: Column(
+                        children: [
+                          Icon(Icons.monitor_weight_outlined, size: 20, color: MetaColors.primaryColor(context)),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Peso',
+                            style: TextStyle(fontSize: 11, color: MetaColors.subtext(context)),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            student['weight_kg'] != null ? '${student['weight_kg']} kg' : 'Não inf.',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: MetaColors.text(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: MetaCard(
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+                      child: Column(
+                        children: [
+                          Icon(Icons.height_rounded, size: 20, color: MetaColors.primaryColor(context)),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Altura',
+                            style: TextStyle(fontSize: 11, color: MetaColors.subtext(context)),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            student['height_cm'] != null ? '${student['height_cm']} cm' : 'Não inf.',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: MetaColors.text(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              MetaCard(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.track_changes_rounded, size: 18, color: MetaColors.primaryColor(context)),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Objetivo Principal',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: MetaColors.text(context),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      student['goal'] as String? ?? 'Consultoria Personalizada',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: MetaColors.subtext(context),
+                      ),
+                    ),
+                    const Divider(height: 24),
+                    Row(
+                      children: [
+                        Icon(Icons.healing_outlined, size: 18, color: Colors.orangeAccent),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Restrições e Cuidados Biomecânicos',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: MetaColors.text(context),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      (student['injuries_or_restrictions'] as String?)?.isNotEmpty == true
+                          ? student['injuries_or_restrictions'] as String
+                          : ((student['clinical_restrictions'] as String?)?.isNotEmpty == true
+                              ? student['clinical_restrictions'] as String
+                              : 'Nenhuma restrição articular ou biomecânica relatada.'),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: MetaColors.subtext(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
 
               // 2. CONVITE E INTEGRAÇÃO (Se Pendente)
               if (status == 'Aguardando Ativação' || status == 'Pendente Confirmação') ...[
