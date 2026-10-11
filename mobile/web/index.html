@@ -19,7 +19,12 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="Mr. Coach: treinos e acompanhamento personalizados com seu treinador.">
-  <meta name="theme-color" content="#111827">
+  
+  <!-- Status bar & Theme color (Seamless Edge-to-Edge matching Meta Design System) -->
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0F1417">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F6F7F9">
+  <meta name="theme-color" content="#0F1417">
+  
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Mr. Coach | Shaipados Labs">
   <meta property="og:title" content="Seu treino, com acompanhamento de verdade | Mr. Coach">
@@ -27,6 +32,24 @@
   <meta property="og:image" content="https://shaipados.com/assets/assets/images/app_icon.png">
   <meta property="og:url" content="https://shaipados.com/">
   <meta name="twitter:card" content="summary">
+
+  <style>
+    html, body {
+      background-color: #0F1417;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    @media (prefers-color-scheme: light) {
+      html, body {
+        background-color: #F6F7F9;
+      }
+    }
+  </style>
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
