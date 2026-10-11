@@ -183,6 +183,8 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     final List<dynamic> specialties =
       _trainerData!['specialties'] as List<dynamic>? ?? const [];
     final photoUrl = _trainerData!['photo_url'];
+    final hasPhoto = photoUrl != null && photoUrl.toString().trim().isNotEmpty;
+    final appBarHeight = hasPhoto ? 240.0 : 170.0;
 
     return Scaffold(
       backgroundColor: MetaColors.background,
@@ -190,7 +192,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
         physics: const BouncingScrollPhysics(),
         slivers: [
           SliverAppBar(
-            expandedHeight: 400.0,
+            expandedHeight: appBarHeight,
             floating: false,
             pinned: true,
             backgroundColor: MetaColors.background,
@@ -199,7 +201,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (photoUrl != null && photoUrl.toString().trim().isNotEmpty)
+                  if (hasPhoto)
                     Image.network(
                       photoUrl.toString().trim(),
                       fit: BoxFit.cover,
@@ -232,9 +234,10 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  const SizedBox(height: 6),
                   // Apresentação profissional do treinador
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     decoration: BoxDecoration(
                       color: MetaColors.emerald.withValues(alpha: 0.1),
                       border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
@@ -243,91 +246,95 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: const [
-                        Icon(Icons.rocket_launch_rounded, color: MetaColors.emerald, size: 14),
-                        SizedBox(width: 8),
+                        Icon(Icons.verified_rounded, color: MetaColors.emerald, size: 14),
+                        SizedBox(width: 6),
                         Text(
                           'TREINADOR COM REGISTRO PROFISSIONAL',
                           style: TextStyle(
                             color: MetaColors.emerald,
-                            fontSize: 11,
+                            fontSize: 10.5,
                             fontWeight: FontWeight.w800,
-                            letterSpacing: 1.2,
+                            letterSpacing: 1.0,
                           ),
                         ),
                       ],
                     ),
                   ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2, end: 0),
                   
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 14),
 
-                  // Headline Principal (Nome) "Nós esculpimos ideias." -> "Nome do Treinador"
+                  // Headline Principal (Nome)
                   Text(
                     name.toUpperCase(),
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 42,
+                      fontSize: 28,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: -1.5,
-                      height: 1.1,
+                      letterSpacing: -0.5,
+                      height: 1.15,
                     ),
                     textAlign: TextAlign.center,
                   ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0),
                   
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 14),
                   
                   // Tags de Especialidade (Pills minimalistas)
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    alignment: WrapAlignment.center,
-                    children: specialties.map((spec) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: MetaColors.surfaceHighlight,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        spec.toString().toUpperCase(), 
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700, 
-                          color: MetaColors.textSecondary,
-                          fontSize: 10,
-                          letterSpacing: 1.0,
-                        )
-                      ),
-                    )).toList(),
-                  ).animate().fadeIn(delay: 300.ms).scale(),
-
-                  const SizedBox(height: 32),
+                  if (specialties.isNotEmpty) ...[
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.center,
+                      children: specialties.map((spec) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: MetaColors.surfaceHighlight,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          spec.toString().toUpperCase(), 
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700, 
+                            color: MetaColors.textSecondary,
+                            fontSize: 10,
+                            letterSpacing: 0.8,
+                          )
+                        ),
+                      )).toList(),
+                    ).animate().fadeIn(delay: 300.ms).scale(),
+                    const SizedBox(height: 16),
+                  ],
                   
-                  // Bio - Focada no texto elegante (como o subtítulo do site)
-                  if (bio != null && bio.trim().isNotEmpty)
+                  // Bio - Focada no texto elegante
+                  if (bio != null && bio.trim().isNotEmpty) ...[
                     Text(
                       bio,
                       style: const TextStyle(
                         color: MetaColors.textSecondary,
-                        fontSize: 18,
-                        height: 1.5,
+                        fontSize: 15,
+                        height: 1.45,
                         fontWeight: FontWeight.w400,
                       ),
                       textAlign: TextAlign.center,
                     ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1, end: 0),
-
-                  if ((_trainerData!['cref'] as String?)?.isNotEmpty == true) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      'Registro profissional: ${_trainerData!['cref']}',
-                      style: const TextStyle(color: MetaColors.textSecondary, fontSize: 13),
-                      textAlign: TextAlign.center,
-                    ),
+                    const SizedBox(height: 12),
                   ],
 
-                  const SizedBox(height: 32),
+                  if ((_trainerData!['cref'] as String?)?.isNotEmpty == true) ...[
+                    Text(
+                      'Registro profissional: ${_trainerData!['cref']}',
+                      style: const TextStyle(color: MetaColors.textSecondary, fontSize: 12),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                  ] else ...[
+                    const SizedBox(height: 16),
+                  ],
+
                   const Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Sua experiência no app',
-                      style: TextStyle(color: MetaColors.textPrimary, fontSize: 20, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: MetaColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -440,34 +447,44 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
           colors: [
-            MetaColors.surfaceHighlight,
+            MetaColors.surfaceHighlight.withValues(alpha: 0.5),
             MetaColors.background,
           ],
         ),
       ),
       child: Center(
-        child: Container(
-          width: 130,
-          height: 130,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: MetaColors.emerald.withValues(alpha: 0.15),
-            border: Border.all(
-              color: MetaColors.emerald.withValues(alpha: 0.4),
-              width: 3,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 16.0),
+          child: Container(
+            width: 88,
+            height: 88,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: MetaColors.emerald.withValues(alpha: 0.15),
+              border: Border.all(
+                color: MetaColors.emerald.withValues(alpha: 0.45),
+                width: 2.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: MetaColors.emerald.withValues(alpha: 0.15),
+                  blurRadius: 16,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
-          ),
-          child: Center(
-            child: Text(
-              initials,
-              style: const TextStyle(
-                color: MetaColors.emerald,
-                fontSize: 48,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 2.0,
+            child: Center(
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  color: MetaColors.emerald,
+                  fontSize: 34,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                ),
               ),
             ),
           ),
