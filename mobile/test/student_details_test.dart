@@ -223,4 +223,114 @@ void main() {
     await tester.pumpAndSettle();
     expect(reactivateCalls, 1);
   });
+
+  testWidgets('renders active workout with splits and opens full view modal', (tester) async {
+    final testPlan = {
+      'id': 'workout-test-1',
+      'workout_plan_title': 'Periodização Hipertrofia 4 Dias',
+      'notes_for_trainer': 'Foco em cadência controlada e amplitude total.',
+      'splits': [
+        {
+          'split_identifier': 'A',
+          'split_name': 'Upper 1',
+          'estimated_duration_min': 50,
+          'exercises': [
+            {
+              'order': 1,
+              'name': 'Supino Inclinado com Halteres',
+              'target_muscle_group': 'Peitoral Superior',
+              'sets': 4,
+              'reps': '10-12',
+              'rest_seconds': 60,
+              'notes': 'Manter escápulas aduzidas',
+              'substitution_vector': '',
+            },
+          ],
+        },
+        {
+          'split_identifier': 'B',
+          'split_name': 'Lower 1',
+          'estimated_duration_min': 55,
+          'exercises': [
+            {
+              'order': 1,
+              'name': 'Agachamento Búlgaro',
+              'target_muscle_group': 'Quadríceps e Glúteos',
+              'sets': 3,
+              'reps': '12',
+              'rest_seconds': 75,
+              'notes': 'Tronco levemente inclinado',
+              'substitution_vector': '',
+            },
+          ],
+        },
+      ],
+    };
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => Navigator.push<bool>(
+                context,
+                MaterialPageRoute<bool>(
+                  builder: (_) => StudentDetailsScreen(
+                    studentData: _student(),
+                    loadActiveWorkout: (_) async => testPlan,
+                  ),
+                ),
+              ),
+              child: const Text('Abrir com ficha'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Abrir com ficha'));
+    await tester.pumpAndSettle();
+
+    // Valida exibição da ficha e dos splits
+    expect(find.text('Periodização Hipertrofia 4 Dias'), findsOneWidget);
+    expect(find.text('ATIVA'), findsOneWidget);
+    expect(find.text('Upper 1'), findsOneWidget);
+    expect(find.text('Lower 1'), findsOneWidget);
+    expect(find.text('Ver Ficha Completa'), findsOneWidget);
+    expect(find.text('Nova com IA'), findsOneWidget);
+    expect(find.text('Renovar'), findsOneWidget);
+    expect(find.text('Desativar / Excluir Ficha'), findsOneWidget);
+
+    // Clica em "Ver Ficha Completa"
+    final btnVerFicha = find.text('Ver Ficha Completa');
+    await tester.ensureVisible(btnVerFicha);
+    await tester.tap(btnVerFicha);
+    await tester.pumpAndSettle();
+
+    // Modal aberto com os detalhes
+    expect(find.text('FICHA COMPLETA'), findsOneWidget);
+    expect(find.text('Supino Inclinado com Halteres'), findsOneWidget);
+    expect(find.textContaining('10-12'), findsWidgets);
+
+    // Fecha modal
+    await tester.tap(find.byIcon(Icons.close_rounded));
+    await tester.pumpAndSettle();
+
+    // Testa diálogo de renovar
+    final btnRenovar = find.text('Renovar');
+    await tester.ensureVisible(btnRenovar);
+    await tester.tap(btnRenovar);
+    await tester.pumpAndSettle();
+    expect(find.text('Renovar Periodização'), findsOneWidget);
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+
+    // Testa diálogo de excluir ficha
+    final btnExcluir = find.text('Desativar / Excluir Ficha');
+    await tester.ensureVisible(btnExcluir);
+    await tester.tap(btnExcluir);
+    await tester.pumpAndSettle();
+    expect(find.text('Excluir Ficha'), findsWidgets);
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+  });
 }

@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/widgets/meta_components.dart';
+import '../../../../models/exercise_model.dart';
+import '../../../../models/split_model.dart';
+import '../../../../models/workout_plan_model.dart';
 import '../../../../services/invite_service.dart';
 import '../../anamnesis_screen.dart';
 
@@ -219,7 +222,7 @@ late Map<String, dynamic> student;
   }
 
   Future<void> _openWorkoutPrescription() async {
-    await Navigator.push<void>(
+    await Navigator.push<dynamic>(
       context,
       MaterialPageRoute(
         builder: (_) => TrainerAnamnesisScreen(
@@ -231,6 +234,516 @@ late Map<String, dynamic> student;
     if (!mounted) return;
     setState(() => _isLoadingWorkout = true);
     await _fetchWorkout();
+  }
+
+  Future<void> _deleteActiveWorkout() async {
+    final name = student['full_name'] as String? ?? 'Aluno';
+    final isDark = MetaColors.isDark(context);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: isDark ? MetaColors.surface : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: MetaColors.cardBorder(dialogCtx)),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.redAccent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.delete_forever_rounded, color: Colors.redAccent, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Excluir Ficha',
+                style: TextStyle(
+                  color: MetaColors.text(dialogCtx),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Deseja desativar a periodização ativa de $name? O aluno não terá fichas ativas até que você prescreva um novo treino.',
+          style: TextStyle(
+            color: MetaColors.subtext(dialogCtx),
+            fontSize: 14,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: MetaColors.subtext(dialogCtx), fontWeight: FontWeight.w600),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            ),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Excluir Ficha', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isLoadingWorkout = true);
+    try {
+      final studentId = student['id'] as String;
+      String? workoutId;
+      if (_activeWorkout is WorkoutPlanModel) {
+        workoutId = (_activeWorkout as WorkoutPlanModel).id;
+      }
+      await WorkoutService.deleteWorkoutPlan(clientId: studentId, workoutId: workoutId);
+      if (mounted) {
+        setState(() {
+          _activeWorkout = null;
+          _isLoadingWorkout = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: isDark ? MetaColors.surfaceHighlight : const Color(0xFF1E293B),
+            content: const Text('Ficha de treino desativada com sucesso.'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingWorkout = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.red.shade900,
+            content: Text('Erro ao excluir ficha: $e'),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _renewActiveWorkout() async {
+    final name = student['full_name'] as String? ?? 'Aluno';
+    final isDark = MetaColors.isDark(context);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: isDark ? MetaColors.surface : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: MetaColors.cardBorder(dialogCtx)),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: MetaColors.primaryColor(dialogCtx).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.replay_rounded, color: MetaColors.primaryColor(dialogCtx), size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Renovar Periodização',
+                style: TextStyle(
+                  color: MetaColors.text(dialogCtx),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Deseja renovar o ciclo da periodização ativa de $name? A data de validade será estendida e o ciclo continuará ativo no aplicativo do aluno.',
+          style: TextStyle(
+            color: MetaColors.subtext(dialogCtx),
+            fontSize: 14,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: MetaColors.subtext(dialogCtx), fontWeight: FontWeight.w600),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: MetaColors.primaryColor(dialogCtx),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            ),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Confirmar Renovação', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isLoadingWorkout = true);
+    try {
+      final studentId = student['id'] as String;
+      String? workoutId;
+      if (_activeWorkout is WorkoutPlanModel) {
+        workoutId = (_activeWorkout as WorkoutPlanModel).id;
+      }
+      await WorkoutService.renewWorkoutPlan(clientId: studentId, workoutId: workoutId);
+      await _fetchWorkout();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.green.shade800,
+            content: Text('Periodização de $name renovada com sucesso!'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingWorkout = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.red.shade900,
+            content: Text('Erro ao renovar periodização: $e'),
+          ),
+        );
+      }
+    }
+  }
+
+  void _viewFullWorkoutDetails(WorkoutPlanModel plan) {
+    final isDark = MetaColors.isDark(context);
+    final splits = plan.splits;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetCtx) {
+        return Container(
+          height: MediaQuery.of(bottomSheetCtx).size.height * 0.88,
+          decoration: BoxDecoration(
+            color: isDark ? MetaColors.background : const Color(0xFFF8FAFC),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            border: Border.all(color: MetaColors.cardBorder(bottomSheetCtx)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 48,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: MetaColors.cardBorder(bottomSheetCtx),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: MetaColors.emerald.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
+                                ),
+                                child: const Text(
+                                  'FICHA COMPLETA',
+                                  style: TextStyle(
+                                    color: MetaColors.emerald,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${splits.length} divisões de treino',
+                                style: TextStyle(
+                                  color: MetaColors.subtext(bottomSheetCtx),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            plan.workoutPlanTitle,
+                            style: TextStyle(
+                              color: MetaColors.text(bottomSheetCtx),
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close_rounded, color: MetaColors.subtext(bottomSheetCtx)),
+                      onPressed: () => Navigator.pop(bottomSheetCtx),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Divider(color: MetaColors.cardBorder(bottomSheetCtx), height: 1),
+              if (splits.isEmpty)
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      'Nenhum split detalhado nesta ficha.',
+                      style: TextStyle(color: MetaColors.subtext(bottomSheetCtx)),
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: DefaultTabController(
+                    length: splits.length,
+                    child: Column(
+                      children: [
+                        Container(
+                          color: isDark ? MetaColors.surface : Colors.white,
+                          child: TabBar(
+                            isScrollable: splits.length > 3,
+                            tabAlignment: splits.length > 3 ? TabAlignment.start : null,
+                            indicatorColor: MetaColors.primaryColor(bottomSheetCtx),
+                            labelColor: MetaColors.primaryColor(bottomSheetCtx),
+                            unselectedLabelColor: MetaColors.subtext(bottomSheetCtx),
+                            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                            tabs: splits.map((s) {
+                              return Tab(
+                                text: 'Split ${s.splitIdentifier}: ${s.splitName}',
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        Expanded(
+                          child: TabBarView(
+                            children: splits.map((split) {
+                              return ListView(
+                                padding: const EdgeInsets.all(16),
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? MetaColors.surface : Colors.white,
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(color: MetaColors.cardBorder(bottomSheetCtx)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.timer_outlined, size: 18, color: MetaColors.primaryColor(bottomSheetCtx)),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Duração estimada: ${split.estimatedDurationMin} min',
+                                          style: TextStyle(
+                                            color: MetaColors.text(bottomSheetCtx),
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Text(
+                                          '${split.exercises.length} exercícios',
+                                          style: TextStyle(
+                                            color: MetaColors.subtext(bottomSheetCtx),
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  ...split.exercises.asMap().entries.map((entry) {
+                                    final idx = entry.key + 1;
+                                    final ex = entry.value;
+                                    return Container(
+                                      margin: const EdgeInsets.only(bottom: 10),
+                                      padding: const EdgeInsets.all(14),
+                                      decoration: BoxDecoration(
+                                        color: isDark ? MetaColors.surface : Colors.white,
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(color: MetaColors.cardBorder(bottomSheetCtx)),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Container(
+                                                width: 28,
+                                                height: 28,
+                                                alignment: Alignment.center,
+                                                decoration: BoxDecoration(
+                                                  color: MetaColors.primaryColor(bottomSheetCtx).withValues(alpha: 0.15),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Text(
+                                                  '$idx',
+                                                  style: TextStyle(
+                                                    color: MetaColors.primaryColor(bottomSheetCtx),
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      ex.name,
+                                                      style: TextStyle(
+                                                        color: MetaColors.text(bottomSheetCtx),
+                                                        fontSize: 15,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                    if (ex.targetMuscleGroup.isNotEmpty) ...[
+                                                      const SizedBox(height: 2),
+                                                      Text(
+                                                        ex.targetMuscleGroup,
+                                                        style: TextStyle(
+                                                          color: MetaColors.primaryColor(bottomSheetCtx),
+                                                          fontSize: 12,
+                                                          fontWeight: FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Wrap(
+                                            spacing: 8,
+                                            runSpacing: 6,
+                                            children: [
+                                              _buildDetailBadge(
+                                                bottomSheetCtx,
+                                                Icons.repeat_rounded,
+                                                '${ex.sets} séries × ${ex.reps}',
+                                              ),
+                                              _buildDetailBadge(
+                                                bottomSheetCtx,
+                                                Icons.hourglass_bottom_rounded,
+                                                'Descanso: ${ex.restSeconds}s',
+                                              ),
+                                            ],
+                                          ),
+                                          if (ex.notes.isNotEmpty) ...[
+                                            const SizedBox(height: 10),
+                                            Container(
+                                              padding: const EdgeInsets.all(10),
+                                              decoration: BoxDecoration(
+                                                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                              child: Row(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Icon(Icons.info_outline, size: 16, color: MetaColors.subtext(bottomSheetCtx)),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      ex.notes,
+                                                      style: TextStyle(
+                                                        color: MetaColors.text(bottomSheetCtx),
+                                                        fontSize: 12,
+                                                        height: 1.3,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailBadge(BuildContext context, IconData icon, String label) {
+    final isDark = MetaColors.isDark(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: isDark ? MetaColors.highlight(context) : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: MetaColors.cardBorder(context)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: MetaColors.primaryColor(context)),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: MetaColors.text(context),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _editStudent() async {
@@ -1032,75 +1545,310 @@ late Map<String, dynamic> student;
                     ],
                   ),
                 )
-              else
-                MetaCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Ficha Atual',
-                        style: TextStyle(color: MetaColors.subtext(context), fontSize: 14),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _activeWorkout.workoutPlanTitle ?? 'Periodização',
-                        style: TextStyle(
-                          color: MetaColors.text(context),
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Ativa',
-                        style: TextStyle(color: MetaColors.primaryColor(context), fontSize: 14),
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
+              else ...[
+                Builder(
+                  builder: (workoutContext) {
+                    final isDark = MetaColors.isDark(workoutContext);
+                    final plan = _activeWorkout is WorkoutPlanModel
+                        ? (_activeWorkout as WorkoutPlanModel)
+                        : (_activeWorkout is Map<String, dynamic>
+                            ? WorkoutPlanModel.fromJson(_activeWorkout as Map<String, dynamic>)
+                            : const WorkoutPlanModel(
+                                workoutPlanTitle: 'Periodização',
+                                notesForTrainer: '',
+                                splits: [],
+                              ));
+                    final splits = plan.splits;
+                    final totalExercises = splits.fold<int>(
+                      0,
+                      (acc, s) => acc + s.exercises.length,
+                    );
+                    final createdAt = plan.createdAt;
+
+                    return MetaCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: SquircleButton(
-                              label: 'Criar ficha com IA',
-                              icon: Icons.visibility,
-                              isPrimary: true,
-                              onPressed: _openWorkoutPrescription,
-                            ),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: MetaColors.emerald.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: MetaColors.emerald.withValues(alpha: 0.35),
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.fitness_center_rounded,
+                                  color: MetaColors.emerald,
+                                  size: 22,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          'PERIODIZAÇÃO ATIVA',
+                                          style: TextStyle(
+                                            color: MetaColors.subtext(workoutContext),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 0.8,
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: MetaColors.emerald.withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(20),
+                                            border: Border.all(
+                                              color: MetaColors.emerald.withValues(alpha: 0.4),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: const [
+                                              Icon(Icons.check_circle_rounded, color: MetaColors.emerald, size: 12),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                'ATIVA',
+                                                style: TextStyle(
+                                                  color: MetaColors.emerald,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w800,
+                                                  letterSpacing: 0.5,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      plan.workoutPlanTitle,
+                                      style: TextStyle(
+                                        color: MetaColors.text(workoutContext),
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        height: 1.25,
+                                      ),
+                                    ),
+                                    if (createdAt != null) ...[
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.calendar_today_outlined,
+                                            size: 12,
+                                            color: MetaColors.subtext(workoutContext),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Prescrito em ${createdAt.day.toString().padLeft(2, '0')}/${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year}',
+                                            style: TextStyle(
+                                              color: MetaColors.subtext(workoutContext),
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: SquircleButton(
-                              label: 'Renovar',
-                              icon: Icons.refresh,
-                              isPrimary: false,
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Renovação de ficha ainda não disponível. Nada foi alterado.'),
+                          if (splits.isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            Divider(color: MetaColors.cardBorder(workoutContext), height: 1),
+                            const SizedBox(height: 14),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Divisões do Treino',
+                                  style: TextStyle(
+                                    color: MetaColors.subtext(workoutContext),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                Text(
+                                  '$totalExercises exercícios totais',
+                                  style: TextStyle(
+                                    color: MetaColors.primaryColor(workoutContext),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: splits.map((split) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? MetaColors.highlight(workoutContext)
+                                        : const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: MetaColors.cardBorder(workoutContext),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: MetaColors.primaryColor(workoutContext),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          split.splitIdentifier,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        split.splitName,
+                                        style: TextStyle(
+                                          color: MetaColors.text(workoutContext),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        '(${split.exercises.length})',
+                                        style: TextStyle(
+                                          color: MetaColors.subtext(workoutContext),
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 );
-                              },
+                              }).toList(),
+                            ),
+                          ],
+                          if (plan.notesForTrainer.isNotEmpty) ...[
+                            const SizedBox(height: 14),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? const Color(0xFF1E293B).withValues(alpha: 0.6)
+                                    : const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: MetaColors.cardBorder(workoutContext),
+                                ),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Icon(
+                                    Icons.lightbulb_outline_rounded,
+                                    color: Color(0xFFF59E0B),
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      plan.notesForTrainer,
+                                      style: TextStyle(
+                                        color: MetaColors.subtext(workoutContext),
+                                        fontSize: 12,
+                                        height: 1.35,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 20),
+                          SizedBox(
+                            width: double.infinity,
+                            child: SquircleButton(
+                              label: 'Ver Ficha Completa',
+                              icon: Icons.visibility_rounded,
+                              isPrimary: true,
+                              height: 50,
+                              onPressed: () => _viewFullWorkoutDetails(plan),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: SquircleButton(
+                                  label: 'Nova com IA',
+                                  icon: Icons.auto_awesome,
+                                  isPrimary: false,
+                                  height: 46,
+                                  onPressed: _openWorkoutPrescription,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: SquircleButton(
+                                  label: 'Renovar',
+                                  icon: Icons.replay_rounded,
+                                  isPrimary: false,
+                                  height: 46,
+                                  onPressed: _renewActiveWorkout,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: TextButton.icon(
+                              onPressed: _deleteActiveWorkout,
+                              icon: const Icon(
+                                Icons.delete_outline_rounded,
+                                color: Colors.redAccent,
+                                size: 18,
+                              ),
+                              label: const Text(
+                                'Desativar / Excluir Ficha',
+                                style: TextStyle(
+                                  color: Colors.redAccent,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: TextButton.icon(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Exclusão de ficha ainda não disponível. Nenhum dado foi excluído.'),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                          label: const Text('Excluir Ficha', style: TextStyle(color: Colors.redAccent)),
-                        ),
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
+              ],
               const SizedBox(height: 32),
 
               // 4. ADMINISTRAÇÃO (Menu de Configurações)

@@ -512,7 +512,7 @@ class WorkoutService {
         final data =
             await _client
                 .from('workouts')
-                .select('plan_json')
+                .select('id, title, notes_for_trainer, plan_json, created_at, updated_at')
                 .eq('client_id', targetId)
                 .eq('is_active', true)
                 .order('created_at', ascending: false)
@@ -520,9 +520,28 @@ class WorkoutService {
                 .maybeSingle();
 
         if (data != null && data['plan_json'] != null) {
-          final plan = WorkoutPlanModel.fromJson(
-            Map<String, dynamic>.from(data['plan_json']),
-          );
+          final planMap = Map<String, dynamic>.from(data['plan_json']);
+          if (data['id'] != null) {
+            planMap['id'] = data['id'];
+          }
+          if (data['title'] != null &&
+              (planMap['workout_plan_title'] == null ||
+                  planMap['workout_plan_title'] == 'Periodização')) {
+            planMap['workout_plan_title'] = data['title'];
+          }
+          if (data['notes_for_trainer'] != null &&
+              (planMap['notes_for_trainer'] == null ||
+                  (planMap['notes_for_trainer'] as String).isEmpty)) {
+            planMap['notes_for_trainer'] = data['notes_for_trainer'];
+          }
+          if (data['created_at'] != null) {
+            planMap['created_at'] = data['created_at'];
+          }
+          if (data['updated_at'] != null) {
+            planMap['updated_at'] = data['updated_at'];
+          }
+
+          final plan = WorkoutPlanModel.fromJson(planMap);
           await _saveWorkoutToOfflineCache(targetId, plan);
           return plan;
         }
@@ -546,6 +565,71 @@ class WorkoutService {
     }
 
     return null;
+  }
+
+  /// Desativa ou exclui a ficha ativa do aluno
+  static Future<bool> deleteWorkoutPlan({
+    required String clientId,
+    String? workoutId,
+  }) async {
+    var success = false;
+    if (_clientOrNull != null) {
+      try {
+        if (workoutId != null && workoutId.isNotEmpty) {
+          await _client
+              .from('workouts')
+              .update({'is_active': false})
+              .eq('id', workoutId);
+        } else {
+          await _client
+              .from('workouts')
+              .update({'is_active': false})
+              .eq('client_id', clientId)
+              .eq('is_active', true);
+        }
+        success = true;
+      } catch (e) {
+        debugPrint('Erro ao desativar ficha no Supabase: $e');
+      }
+    }
+    // Limpa cache offline
+    await clearOfflineCachedWorkout(clientId);
+    return success;
+  }
+
+  /// Renova o ciclo da ficha ativa do aluno (atualiza timestamp e reinicia ciclo)
+  static Future<bool> renewWorkoutPlan({
+    required String clientId,
+    String? workoutId,
+  }) async {
+    var success = false;
+    final now = DateTime.now().toIso8601String();
+    if (_clientOrNull != null) {
+      try {
+        if (workoutId != null && workoutId.isNotEmpty) {
+          await _client
+              .from('workouts')
+              .update({
+                'is_active': true,
+                'updated_at': now,
+              })
+              .eq('id', workoutId);
+        } else {
+          await _client
+              .from('workouts')
+              .update({
+                'is_active': true,
+                'updated_at': now,
+              })
+              .eq('client_id', clientId)
+              .eq('is_active', true);
+        }
+        success = true;
+      } catch (e) {
+        debugPrint('Erro ao renovar ficha no Supabase: $e');
+      }
+    }
+    return success;
   }
 
   /// Registra uma substituição de exercício na tabela de auditoria

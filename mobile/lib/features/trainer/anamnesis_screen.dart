@@ -1723,6 +1723,13 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             content: Text(message),
           ),
         );
+
+        // Retorna para a tela anterior (ex: detalhes do aluno) notificando sucesso
+        Future.delayed(const Duration(milliseconds: 600), () {
+          if (mounted && Navigator.canPop(context)) {
+            Navigator.pop(context, true);
+          }
+        });
       }
     } catch (e) {
       if (mounted) {
