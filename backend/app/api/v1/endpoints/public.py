@@ -1,6 +1,9 @@
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
 from typing import List, Optional, Any
+import base64
+import uuid
+from app.core.config import settings
 from app.services.supabase_service import supabase_service, is_valid_uuid
 from app.services.ai_news_service import get_ai_news
 
@@ -143,4 +146,59 @@ async def get_public_trainer_profile(username: str):
         if isinstance(e, HTTPException):
             raise e
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+
+class AvatarUploadRequest(BaseModel):
+    image_base64: str
+    user_id: Optional[str] = None
+    content_type: Optional[str] = "image/jpeg"
+
+
+class AvatarUploadResponse(BaseModel):
+    avatar_url: str
+
+
+@router.post("/upload-avatar", response_model=AvatarUploadResponse, summary="Upload de avatar/foto para armazenamento público")
+async def upload_avatar_endpoint(payload: AvatarUploadRequest):
+    """
+    Recebe uma imagem codificada em base64 (câmera ou galeria) e armazena com segurança
+    no bucket de avatares do Supabase com URL pública acessível.
+    """
+    try:
+        raw_b64 = payload.image_base64
+        if "," in raw_b64:
+            raw_b64 = raw_b64.split(",", 1)[1]
+        
+        image_bytes = base64.b64decode(raw_b64)
+        if len(image_bytes) == 0:
+            raise HTTPException(status_code=400, detail="Imagem vazia.")
+        if len(image_bytes) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="A imagem não pode ultrapassar 10MB.")
+
+        ext = "jpg"
+        content_type = payload.content_type or "image/jpeg"
+        if "png" in content_type.lower():
+            ext = "png"
+        elif "webp" in content_type.lower():
+            ext = "webp"
+
+        user_prefix = payload.user_id if payload.user_id and is_valid_uuid(payload.user_id) else "user"
+        file_name = f"uploads/{user_prefix}_{uuid.uuid4().hex[:12]}.{ext}"
+
+        client = await supabase_service.get_client()
+        if not client:
+            raise HTTPException(status_code=503, detail="Serviço de armazenamento indisponível.")
+
+        await client.storage.from_("avatars").upload(
+            file_name,
+            image_bytes,
+            {"upsert": "true", "content-type": content_type}
+        )
+
+        public_url = f"{settings.SUPABASE_URL}/storage/v1/object/public/avatars/{file_name}"
+        return AvatarUploadResponse(avatar_url=public_url)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Falha ao realizar upload da imagem: {str(e)}")
 

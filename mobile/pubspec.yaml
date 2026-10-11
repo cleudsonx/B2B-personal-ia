@@ -41,6 +41,7 @@ dependencies:
   url_launcher: ^6.3.2
   local_auth: ^3.0.2
   flutter_animate: ^4.5.2
+  image_picker: ^1.2.4
 
 dev_dependencies:
   flutter_test:
@@ -67,6 +68,8 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/images/avatars/trainers/
+    - assets/images/avatars/students/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

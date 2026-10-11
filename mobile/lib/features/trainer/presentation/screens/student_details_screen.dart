@@ -750,10 +750,8 @@ late Map<String, dynamic> student;
                     CircleAvatar(
                       radius: 44,
                       backgroundColor: MetaColors.highlight(context),
-                      backgroundImage: (student['avatar_url'] ?? student['photo_url']) != null
-                          ? NetworkImage(student['avatar_url'] ?? student['photo_url'])
-                          : null,
-                      child: (student['avatar_url'] ?? student['photo_url']) == null
+                      backgroundImage: safeImageProvider(student['avatar_url'] ?? student['photo_url']),
+                      child: safeImageProvider(student['avatar_url'] ?? student['photo_url']) == null
                           ? Text(
                               name.trim().isEmpty ? 'A' : name.trim().substring(0, 1).toUpperCase(),
                               style: TextStyle(

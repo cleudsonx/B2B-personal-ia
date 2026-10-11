@@ -26,10 +26,12 @@ class AuthGate extends StatefulWidget {
 class _AuthGateState extends State<AuthGate> {
   final LocalAuthentication _auth = LocalAuthentication();
   bool _isAuthenticating = false;
+  final Stopwatch _brandTimer = Stopwatch();
 
   @override
   void initState() {
     super.initState();
+    _brandTimer.start();
     _checkAuthAndRedirect();
   }
 
@@ -100,6 +102,15 @@ class _AuthGateState extends State<AuthGate> {
       final role = await AuthService.getActiveRole(profile);
       final name = profile?['full_name'] as String? ?? 'Usuário';
       final hasCompletedAnamnesis = profile?['has_completed_anamnesis'] == true;
+
+      // Valorização da marca Mr. Coach: garantir exibição de pelo menos 5 segundos
+      final elapsedMs = _brandTimer.elapsedMilliseconds;
+      const targetBrandDurationMs = 5000;
+      if (elapsedMs < targetBrandDurationMs) {
+        await Future.delayed(
+          Duration(milliseconds: targetBrandDurationMs - elapsedMs),
+        );
+      }
 
       if (mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {

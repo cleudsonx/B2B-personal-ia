@@ -1,5 +1,6 @@
 // ignore_for_file: unused_element, unused_local_variable, unused_field, override_on_non_overriding_member, use_build_context_synchronously
 import '../../../../core/widgets/meta_components.dart';
+import '../../../../core/widgets/avatar_selector_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -184,10 +185,18 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
       }
     } catch (e) {
       if (mounted) {
-        final message =
-            e is PostgrestException && e.code == '23505'
-                ? 'Este username já está em uso. Escolha outro endereço para sua vitrine.'
-                : 'Não foi possível salvar a vitrine. Verifique os dados e tente novamente.';
+        String message = 'Não foi possível salvar a vitrine. Verifique os dados e tente novamente.';
+        if (e is PostgrestException) {
+          if (e.code == '23505') {
+            message = 'Este username já está em uso. Escolha outro endereço para sua vitrine.';
+          } else {
+            message = 'Erro no banco (${e.code}): ${e.message}';
+          }
+        } else if (e is StateError) {
+          message = e.message;
+        } else {
+          message = 'Erro ao salvar: $e';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(message, style: const TextStyle(color: Colors.white)),
@@ -321,69 +330,135 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                               ),
                             ),
                             const SizedBox(height: 24),
-                            _buildSectionTitle(context, 'Foto ou Imagem da Marca (URL)'),
+                            _buildSectionTitle(context, 'Foto de Perfil ou Marca da Vitrine'),
                             const SizedBox(height: 8),
                             Text(
-                              'Insira o link direto da sua foto de perfil ou logo da sua consultoria para exibir na sua vitrine.',
+                              'Tire uma foto pela câmera, escolha da sua galeria ou use um dos nossos 8 avatares exclusivos de treinador.',
                               style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
                             ),
-                            const SizedBox(height: 12),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                ValueListenableBuilder<TextEditingValue>(
-                                  valueListenable: _photoUrlController,
-                                  builder: (context, val, _) {
-                                    final url = val.text.trim();
-                                    final hasValidUrl = url.isNotEmpty && (url.startsWith('http://') || url.startsWith('https://'));
-                                    return Container(
-                                      width: 60,
-                                      height: 60,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: MetaColors.surfaceHighlight,
-                                        border: Border.all(
-                                          color: MetaColors.emerald.withValues(alpha: 0.4),
-                                          width: 2,
+                            const SizedBox(height: 14),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      ValueListenableBuilder<TextEditingValue>(
+                                        valueListenable: _photoUrlController,
+                                        builder: (context, val, _) {
+                                          final url = val.text.trim();
+                                          final hasValidUrl = url.isNotEmpty;
+                                          return GestureDetector(
+                                            onTap: () async {
+                                              final selected = await AvatarSelectorSheet.show(
+                                                context: context,
+                                                isTrainer: true,
+                                                currentUrl: url,
+                                              );
+                                              if (selected != null && mounted) {
+                                                _photoUrlController.text = selected;
+                                              }
+                                            },
+                                            child: Container(
+                                              width: 72,
+                                              height: 72,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: MetaColors.surfaceHighlight,
+                                                border: Border.all(
+                                                  color: MetaColors.emerald,
+                                                  width: 2.5,
+                                                ),
+                                              ),
+                                              clipBehavior: Clip.antiAlias,
+                                              child: hasValidUrl
+                                                  ? (url.startsWith('assets/')
+                                                      ? Image.asset(url, fit: BoxFit.cover)
+                                                      : Image.network(
+                                                          url,
+                                                          fit: BoxFit.cover,
+                                                          errorBuilder: (_, __, ___) => const Icon(
+                                                            Icons.broken_image_rounded,
+                                                            color: MetaColors.textSecondary,
+                                                            size: 32,
+                                                          ),
+                                                        ))
+                                                  : const Icon(
+                                                      Icons.add_a_photo_outlined,
+                                                      color: MetaColors.emerald,
+                                                      size: 30,
+                                                    ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            ElevatedButton.icon(
+                                              onPressed: () async {
+                                                final selected = await AvatarSelectorSheet.show(
+                                                  context: context,
+                                                  isTrainer: true,
+                                                  currentUrl: _photoUrlController.text.trim(),
+                                                );
+                                                if (selected != null && mounted) {
+                                                  _photoUrlController.text = selected;
+                                                }
+                                              },
+                                              icon: const Icon(Icons.add_photo_alternate_rounded, size: 18),
+                                              label: const Text('Escolher Imagem / Avatar'),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: MetaColors.emerald,
+                                                foregroundColor: Colors.white,
+                                                elevation: 0,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                ),
+                                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              'Câmera • Galeria • 8 Avatares',
+                                              style: theme.textTheme.bodySmall?.copyWith(
+                                                color: colorScheme.onSurfaceVariant,
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      clipBehavior: Clip.antiAlias,
-                                      child: hasValidUrl
-                                          ? Image.network(
-                                              url,
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (context, error, stackTrace) => const Icon(
-                                                Icons.broken_image_rounded,
-                                                color: MetaColors.textSecondary,
-                                                size: 28,
-                                              ),
-                                            )
-                                          : const Icon(
-                                              Icons.add_a_photo_outlined,
-                                              color: MetaColors.emerald,
-                                              size: 26,
-                                            ),
-                                    );
-                                  },
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: TextField(
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  TextField(
                                     controller: _photoUrlController,
                                     keyboardType: TextInputType.url,
                                     decoration: InputDecoration(
+                                      labelText: 'Link direto da imagem (opcional)',
                                       hintText: 'https://exemplo.com/minha-foto.jpg',
                                       filled: true,
-                                      fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                                      fillColor: colorScheme.surface.withValues(alpha: 0.5),
                                       border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(16),
+                                        borderRadius: BorderRadius.circular(12),
                                         borderSide: BorderSide.none,
                                       ),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                             const SizedBox(height: 24),
                             _buildSectionTitle(context, 'Biografia'),

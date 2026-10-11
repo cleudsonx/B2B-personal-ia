@@ -889,10 +889,8 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                           CircleAvatar(
                                             radius: 24,
                                             backgroundColor: MetaColors.highlight(context),
-                                            backgroundImage: avatarUrl != null
-                                                ? NetworkImage(avatarUrl)
-                                                : null,
-                                            child: avatarUrl == null
+                                            backgroundImage: safeImageProvider(avatarUrl),
+                                            child: safeImageProvider(avatarUrl) == null
                                                 ? Text(
                                                     _getInitials(fullName),
                                                     style: TextStyle(

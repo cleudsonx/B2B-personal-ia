@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/student_profile_service.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/avatar_selector_sheet.dart';
 
 class StudentProfileScreen extends StatefulWidget {
   /// Injetáveis para testes; em produção usam o usuário autenticado e o Supabase.
@@ -21,6 +22,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
   String? _loadError;
   StudentProfileData? _original;
   Map<String, String> _fieldErrors = {};
+  String? _photoUrl;
 
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
@@ -82,6 +84,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         return;
       }
       _original = data;
+      _photoUrl = data.photoUrl;
       _nameCtrl.text = data.name;
       _ageCtrl.text = data.age?.toString() ?? '';
       _weightCtrl.text = data.weightKg?.toString() ?? '';
@@ -112,6 +115,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         restrictions: Set.of(_selectedRestrictions),
         trainerId: _original?.trainerId,
         timezone: _selectedTimezone,
+        photoUrl: _photoUrl,
       );
 
   void _snack(String msg, {Color? color, SnackBarAction? action}) {
@@ -247,6 +251,99 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Foto / Avatar do Aluno
+            Center(
+              child: GestureDetector(
+                onTap: () async {
+                  final uid = _userId;
+                  final selected = await AvatarSelectorSheet.show(
+                    context: context,
+                    isTrainer: false,
+                    currentUrl: _photoUrl,
+                    userId: uid,
+                  );
+                  if (selected != null && mounted) {
+                    setState(() => _photoUrl = selected);
+                  }
+                },
+                child: Column(
+                  children: [
+                    Stack(
+                      children: [
+                        Container(
+                          width: 88,
+                          height: 88,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.card(context),
+                            border: Border.all(
+                              color: AppColors.emerald(context),
+                              width: 2.5,
+                            ),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: (_photoUrl != null && _photoUrl!.isNotEmpty)
+                              ? (_photoUrl!.startsWith('assets/')
+                                  ? Image.asset(_photoUrl!, fit: BoxFit.cover)
+                                  : Image.network(
+                                      _photoUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => const Icon(
+                                        Icons.person_rounded,
+                                        size: 44,
+                                        color: Colors.grey,
+                                      ),
+                                    ))
+                              : Icon(
+                                  Icons.person_rounded,
+                                  size: 44,
+                                  color: AppColors.emerald(context),
+                                ),
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppColors.emerald(context),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Theme.of(context).scaffoldBackgroundColor,
+                                width: 2,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt_rounded,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Alterar Foto ou Avatar',
+                      style: TextStyle(
+                        color: AppColors.emerald(context),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Câmera • Galeria • 8 Avatares',
+                      style: TextStyle(
+                        color: AppColors.subtext(context),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
             Text(
               'DADOS PESSOAIS',
               style: TextStyle(

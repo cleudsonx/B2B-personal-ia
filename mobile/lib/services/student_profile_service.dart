@@ -29,6 +29,7 @@ class StudentProfileData {
   final Set<String> restrictions;
   final String? trainerId;
   final String timezone;
+  final String? photoUrl;
 
   const StudentProfileData({
     required this.name,
@@ -38,6 +39,7 @@ class StudentProfileData {
     required this.restrictions,
     this.trainerId,
     this.timezone = 'UTC',
+    this.photoUrl,
   });
 
   String get restrictionsText => restrictions.join(', ');
@@ -56,6 +58,7 @@ class StudentProfileData {
       restrictions: parsed.isEmpty ? {kNoRestriction} : parsed,
       trainerId: row['trainer_id'] as String?,
       timezone: timezoneValue.isEmpty ? 'UTC' : timezoneValue,
+      photoUrl: (row['photo_url'] ?? row['avatar_url']) as String?,
     );
   }
 }
@@ -143,7 +146,7 @@ class SupabaseStudentProfileGateway implements StudentProfileGateway {
     return Supabase.instance.client
         .from('profiles')
         .select(
-            'full_name, age, weight_kg, height_cm, clinical_restrictions, trainer_id, timezone')
+            'full_name, age, weight_kg, height_cm, clinical_restrictions, trainer_id, timezone, photo_url, avatar_url')
         .eq('id', userId)
         .maybeSingle();
   }
@@ -213,14 +216,19 @@ class StudentProfileService {
     required StudentProfileData original,
     required StudentProfileData updated,
   }) async {
-    await gateway.updateProfile(userId, {
+    final payload = <String, dynamic>{
       'full_name': updated.name.trim(),
       'age': updated.age,
       'weight_kg': updated.weightKg,
       'height_cm': updated.heightCm,
       'clinical_restrictions': updated.restrictionsText,
       'timezone': updated.timezone.isEmpty ? 'UTC' : updated.timezone,
-    });
+    };
+    if (updated.photoUrl != null) {
+      payload['photo_url'] = updated.photoUrl;
+      payload['avatar_url'] = updated.photoUrl;
+    }
+    await gateway.updateProfile(userId, payload);
     if (original.restrictionsText == updated.restrictionsText) {
       return const SaveResult(ReviewStatus.notNeeded);
     }

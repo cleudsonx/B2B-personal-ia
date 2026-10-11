@@ -49,6 +49,16 @@ class MetaColors {
       isDark(context) ? emerald : lightEmerald;
 }
 
+/// Helper para carregar avatares e imagens tanto de rede (HTTP) quanto locais (assets/)
+ImageProvider? safeImageProvider(String? url) {
+  if (url == null || url.trim().isEmpty) return null;
+  final clean = url.trim();
+  if (clean.startsWith('assets/')) {
+    return AssetImage(clean);
+  }
+  return NetworkImage(clean);
+}
+
 /// Card padrão Meta: Dark surface, borda sutil de 1px e zero sombras.
 class MetaCard extends StatelessWidget {
   final Widget child;
