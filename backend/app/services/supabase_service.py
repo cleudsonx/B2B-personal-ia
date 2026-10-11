@@ -1,6 +1,8 @@
 import asyncio
 import uuid
 import logging
+import urllib.parse
+import re
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
 from supabase import AsyncClient, create_async_client
@@ -922,12 +924,53 @@ class SupabaseService:
                 raise RuntimeError("Supabase indisponível; o convite não foi persistido.")
             return {"id": str(uuid.uuid4()), "token": token, "expires_at": ""}
 
+        t_uuid = to_valid_uuid_str(trainer_id)
+        clean_target_phone = re.sub(r"\D", "", phone or "")
+        if clean_target_phone.startswith("55") and len(clean_target_phone) > 11:
+            clean_target_phone = clean_target_phone[2:]
+        normalized_email = email.strip().lower()
+
+        # 1. Verifica se já existe um convite pendente para este aluno (evita estourar cota no reenvio/lembrete)
+        try:
+            query = client.table("invite_tokens").select("*").eq("trainer_id", t_uuid).is_("used_at", "null")
+            existing_res = await query.execute()
+            for inv in (existing_res.data or []):
+                inv_email = (inv.get("target_email") or "").strip().lower()
+                inv_phone = re.sub(r"\D", "", inv.get("target_phone") or "")
+                if inv_phone.startswith("55") and len(inv_phone) > 11:
+                    inv_phone = inv_phone[2:]
+
+                is_match = False
+                if normalized_email and inv_email and normalized_email == inv_email:
+                    is_match = True
+                elif clean_target_phone and inv_phone and clean_target_phone == inv_phone:
+                    is_match = True
+
+                if is_match:
+                    expires_at_dt = (datetime.now(timezone.utc) + timedelta(hours=48)).isoformat()
+                    upd = {
+                        "channel": channel,
+                        "expires_at": expires_at_dt,
+                    }
+                    if full_name and not inv.get("target_name"):
+                        upd["target_name"] = full_name.strip()
+                    if phone and not inv.get("target_phone"):
+                        upd["target_phone"] = phone.strip()
+                    if normalized_email and not inv.get("target_email"):
+                        upd["target_email"] = normalized_email
+
+                    await client.table("invite_tokens").update(upd).eq("id", inv["id"]).execute()
+                    logger.info("Reaproveitando e renovando convite pendente existente %s para o canal %s", inv["id"], channel)
+                    return {"id": inv["id"], "token": inv["token"], "expires_at": expires_at_dt}
+        except Exception as check_err:
+            logger.warning("Falha na checagem prévia de convite pendente existente: %s", check_err)
+
         try:
             result = await client.rpc("create_student_invite", {
                 "p_token": token,
-                "p_trainer_id": to_valid_uuid_str(trainer_id),
+                "p_trainer_id": t_uuid,
                 "p_channel": channel,
-                "p_target_email": email.strip().lower(),
+                "p_target_email": normalized_email,
                 "p_target_phone": phone,
                 "p_target_name": full_name,
                 "p_objective": objective,
@@ -1051,13 +1094,24 @@ class SupabaseService:
                     ))
 
                 invite_res = await client.table("invite_tokens")\
-                    .select("id, target_email, target_phone, target_name, objective, injuries_or_restrictions, created_at")\
+                    .select("id, token, target_email, target_phone, target_name, objective, injuries_or_restrictions, created_at")\
                     .eq("trainer_id", t_uuid)\
                     .is_("used_at", "null")\
                     .gt("expires_at", datetime.now(timezone.utc).isoformat())\
                     .order("created_at", desc=True)\
                     .execute()
                 for invite in invite_res.data or []:
+                    token_val = invite.get("token")
+                    invitation_link = f"{settings.APP_FRONTEND_URL.rstrip('/')}/#/invite/{token_val}" if token_val else None
+                    clean_phone = "".join(filter(str.isdigit, invite.get("target_phone") or ""))
+                    if clean_phone and not clean_phone.startswith("55") and len(clean_phone) in (10, 11):
+                        clean_phone = f"55{clean_phone}"
+                    whatsapp_msg = (
+                        f"Olá, {invite.get('target_name') or 'aluno'}! Seu convite para o Mr. Coach está pronto.\n"
+                        f"Acesse pelo link para começar seus treinos:\n{invitation_link}"
+                    ) if invitation_link else ""
+                    whatsapp_url = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(whatsapp_msg)}" if clean_phone and invitation_link else None
+
                     students.append(StudentResponse(
                         id=invite["id"],
                         full_name=invite.get("target_name") or "Novo aluno",
@@ -1071,6 +1125,8 @@ class SupabaseService:
                         last_session="Aguardando cadastro",
                         active_split="Convite enviado",
                         injuries_or_restrictions=invite.get("injuries_or_restrictions"),
+                        invitation_link=invitation_link,
+                        whatsapp_url=whatsapp_url,
                     ))
 
                 return students
@@ -1117,6 +1173,17 @@ class SupabaseService:
                     inv_res = await client.table("invite_tokens").select("*").eq("id", s_uuid).execute()
                     if inv_res.data:
                         inv = inv_res.data[0]
+                        token_val = inv.get("token")
+                        invitation_link = f"{settings.APP_FRONTEND_URL.rstrip('/')}/#/invite/{token_val}" if token_val else None
+                        clean_phone = "".join(filter(str.isdigit, inv.get("target_phone") or ""))
+                        if clean_phone and not clean_phone.startswith("55") and len(clean_phone) in (10, 11):
+                            clean_phone = f"55{clean_phone}"
+                        whatsapp_msg = (
+                            f"Olá, {inv.get('target_name') or 'aluno'}! Seu convite para o Mr. Coach está pronto.\n"
+                            f"Acesse pelo link para começar seus treinos:\n{invitation_link}"
+                        ) if invitation_link else ""
+                        whatsapp_url = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(whatsapp_msg)}" if clean_phone and invitation_link else None
+
                         return StudentResponse(
                             id=inv["id"],
                             full_name=inv.get("target_name") or "Novo aluno",
@@ -1130,6 +1197,8 @@ class SupabaseService:
                             last_session="Aguardando cadastro",
                             active_split="Convite enviado",
                             injuries_or_restrictions=inv.get("injuries_or_restrictions"),
+                            invitation_link=invitation_link,
+                            whatsapp_url=whatsapp_url,
                         )
                 except Exception as e:
                     logger.error(f"Erro ao buscar aluno por ID no Supabase: {e}")

@@ -1,5 +1,6 @@
 import '../../../../services/workout_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/widgets/meta_components.dart';
 import '../../../../services/invite_service.dart';
@@ -78,7 +79,7 @@ late Map<String, dynamic> student;
     if (digits.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Telefone não cadastrado. Nenhuma mensagem foi enviada.')),
+          const SnackBar(content: Text('Telefone não cadastrado. Edite os dados do aluno para informar o número de WhatsApp.')),
         );
       }
       return;
@@ -86,30 +87,93 @@ late Map<String, dynamic> student;
     final cleanPhone = digits.startsWith('55') ? digits : '55$digits';
     setState(() => _isResendingInvite = true);
     try {
-      final invite = await InviteService.createInvite(
-        channel: 'whatsapp',
-        targetPhone: phone,
-      );
-      final inviteUrl = invite['invite_url'] as String?;
-      if (inviteUrl == null || inviteUrl.isEmpty) {
-        throw StateError('O servidor não retornou o link do convite.');
+      String? inviteUrl = student['invitation_link'] as String?;
+      final studentEmail = (student['email'] as String?)?.trim();
+
+      try {
+        final invite = await InviteService.createInvite(
+          channel: 'whatsapp',
+          targetPhone: cleanPhone,
+          targetEmail: (studentEmail != null && studentEmail.isNotEmpty) ? studentEmail : null,
+          targetName: name,
+        );
+        final url = invite['invite_url'] as String?;
+        if (url != null && url.isNotEmpty) {
+          inviteUrl = url;
+          if (mounted) {
+            setState(() {
+              student['invitation_link'] = url;
+            });
+          }
+        }
+      } catch (createErr) {
+        debugPrint('[StudentDetails] Erro ao obter novo link de convite pela API: $createErr');
+        // Se a API falhou mas já tínhamos o link guardado localmente, usamos o fallback
+        if (inviteUrl == null || inviteUrl.isEmpty) {
+          rethrow;
+        }
       }
-      final text = Uri.encodeComponent(
-        'Olá, $name! Seu convite para acessar o Mr. Coach está pronto. '
-        'Acesse pelo link abaixo para começar seus treinos:\n$inviteUrl\n\n'
-        'Será um prazer acompanhar sua evolução!',
-      );
-      final url = Uri.parse('https://wa.me/$cleanPhone?text=$text');
-      if (!await launchUrl(url, mode: LaunchMode.externalApplication) && mounted) {
+
+      if (inviteUrl == null || inviteUrl.isEmpty) {
+        throw StateError('O link de convite não está disponível no momento.');
+      }
+
+      final messageText =
+          'Olá, $name! Seu convite para acessar o Mr. Coach está pronto. '
+          'Acesse pelo link abaixo para começar seus treinos:\n$inviteUrl\n\n'
+          'Será um prazer acompanhar sua evolução!';
+      final encodedMsg = Uri.encodeComponent(messageText);
+
+      final nativeUri = Uri.parse('whatsapp://send?phone=$cleanPhone&text=$encodedMsg');
+      final webApiUri = Uri.parse('https://api.whatsapp.com/send?phone=$cleanPhone&text=$encodedMsg');
+      final waMeUri = Uri.parse('https://wa.me/$cleanPhone?text=$encodedMsg');
+
+      var launched = false;
+      try {
+        launched = await launchUrl(nativeUri, mode: LaunchMode.externalApplication);
+      } catch (_) {}
+
+      if (!launched) {
+        try {
+          launched = await launchUrl(webApiUri, mode: LaunchMode.externalApplication);
+        } catch (_) {}
+      }
+
+      if (!launched) {
+        try {
+          launched = await launchUrl(waMeUri, mode: LaunchMode.externalApplication);
+        } catch (_) {}
+      }
+
+      if (!launched && mounted) {
+        await Clipboard.setData(ClipboardData(text: '$messageText\n\n$inviteUrl'));
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Convite gerado, mas não foi possível abrir o WhatsApp.')),
+          const SnackBar(
+            content: Text('Link de convite copiado para a área de transferência! Cole na conversa com o aluno.'),
+            duration: Duration(seconds: 4),
+          ),
         );
       }
     } catch (error) {
       debugPrint('Falha ao reenviar convite pelo WhatsApp: $error');
       if (mounted) {
+        final errStr = error.toString().toLowerCase();
+        String userMessage = 'Não foi possível gerar o convite para WhatsApp.';
+        if (errStr.contains('limite') || errStr.contains('23514')) {
+          userMessage = 'Limite de alunos ativos atingido no seu plano. Faça upgrade para liberar novas vagas.';
+        } else if (errStr.contains('telefone')) {
+          userMessage = 'Telefone inválido ou não informado.';
+        } else {
+          final cleanDetail = error.toString().replaceAll('Exception: ', '').trim();
+          if (cleanDetail.isNotEmpty && cleanDetail.length < 120) {
+            userMessage = cleanDetail;
+          }
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Não foi possível gerar o convite para WhatsApp.')),
+          SnackBar(
+            content: Text(userMessage),
+            backgroundColor: MetaColors.surfaceHighlight,
+          ),
         );
       }
     } finally {
@@ -611,10 +675,10 @@ late Map<String, dynamic> student;
                         SizedBox(
                           width: double.infinity,
                           child: SquircleButton(
-                            label: 'Lembrar no WhatsApp',
+                            label: _isResendingInvite ? 'Preparando envio...' : 'Lembrar no WhatsApp',
                             icon: Icons.chat_bubble_outline_rounded,
                             isPrimary: true,
-                            onPressed: () => _launchWhatsApp(phone, name),
+                            onPressed: _isResendingInvite ? null : () => _launchWhatsApp(phone, name),
                           ),
                         ),
                       ] else ...[

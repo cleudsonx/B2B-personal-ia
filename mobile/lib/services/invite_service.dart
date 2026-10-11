@@ -22,12 +22,14 @@ class InviteService {
     required String channel, // 'email' ou 'whatsapp'
     String? targetEmail,
     String? targetPhone,
+    String? targetName,
   }) async {
     final url = Uri.parse('${AppConfig.apiBaseUrl}/invites/create');
     final payload = {
       'channel': channel,
       if (targetEmail != null && targetEmail.isNotEmpty) 'target_email': targetEmail.trim(),
       if (targetPhone != null && targetPhone.isNotEmpty) 'target_phone': targetPhone.trim(),
+      if (targetName != null && targetName.isNotEmpty) 'target_name': targetName.trim(),
     };
 
     try {

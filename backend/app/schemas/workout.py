@@ -86,6 +86,8 @@ class StudentResponse(BaseModel):
     trainer_name: Optional[str] = None
     trainer_photo_url: Optional[str] = None
     temp_password: Optional[str] = None
+    invitation_link: Optional[str] = None
+    whatsapp_url: Optional[str] = None
 
 
 class BiomechanicalAlertCreate(BaseModel):

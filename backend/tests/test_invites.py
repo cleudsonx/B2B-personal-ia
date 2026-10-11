@@ -210,3 +210,78 @@ async def test_direct_client_registration_ignores_submitted_trainer_id(monkeypat
 
     assert create_user.await_args.kwargs["trainer_id"] is None
 
+
+@pytest.mark.asyncio
+async def test_create_invite_forwards_target_name(monkeypatch):
+    from app.api.v1.endpoints import invites as invite_endpoints
+
+    monkeypatch.setattr(
+        invite_endpoints.settings,
+        "APP_FRONTEND_URL",
+        "https://frontend.example/",
+    )
+    with patch(
+        "app.api.v1.endpoints.invites.supabase_service.create_student_invite",
+        new_callable=AsyncMock,
+        return_value={"id": "invite-id", "token": "whatsapp-token", "expires_at": "2026-10-12T00:00:00Z"},
+    ) as create_invite, patch(
+        "app.api.v1.endpoints.invites.log_audit_event",
+        new_callable=AsyncMock,
+    ):
+        response = await invite_endpoints.create_invite(
+            invite_endpoints.CreateInviteRequest(
+                channel="whatsapp",
+                target_phone="11999998888",
+                target_email="aluno@example.com",
+                target_name="Carlos Silva",
+            ),
+            {"id": "631e76b9-3cb0-454f-8fd9-1d450e5560d6"},
+        )
+
+    assert response.token == "whatsapp-token"
+    assert response.invite_url == "https://frontend.example/#/invite/whatsapp-token"
+    assert create_invite.await_args.kwargs["full_name"] == "Carlos Silva"
+    assert create_invite.await_args.kwargs["phone"] == "11999998888"
+    assert create_invite.await_args.kwargs["email"] == "aluno@example.com"
+
+
+@pytest.mark.asyncio
+async def test_supabase_service_create_student_invite_reuses_pending():
+    from app.services.supabase_service import supabase_service
+
+    mock_client = MagicMock()
+    # Simula convite pendente existente
+    existing_invite = {
+        "id": "existing-id",
+        "token": "existing-token",
+        "target_email": "aluno@example.com",
+        "target_phone": "11999998888",
+        "target_name": "Carlos",
+        "channel": "email",
+        "used_at": None,
+    }
+    query_mock = MagicMock()
+    query_mock.execute = AsyncMock(return_value=MagicMock(data=[existing_invite]))
+    update_mock = MagicMock()
+    update_mock.execute = AsyncMock(return_value=MagicMock(data=[existing_invite]))
+
+    mock_client.table.return_value.select.return_value.eq.return_value.is_.return_value = query_mock
+    mock_client.table.return_value.update.return_value.eq.return_value = update_mock
+
+    with patch.object(supabase_service, "get_client", AsyncMock(return_value=mock_client)):
+        res = await supabase_service.create_student_invite(
+            token="new-random-token",
+            trainer_id="631e76b9-3cb0-454f-8fd9-1d450e5560d6",
+            email="aluno@example.com",
+            phone="11999998888",
+            full_name="Carlos Silva",
+            objective="Hipertrofia Muscular",
+            injuries_or_restrictions="Nenhuma",
+            channel="whatsapp",
+        )
+
+    assert res["id"] == "existing-id"
+    assert res["token"] == "existing-token"
+    # Garante que atualizou o canal para whatsapp sem chamar RPC de inserção
+    mock_client.table.return_value.update.assert_called()
+

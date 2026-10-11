@@ -26,6 +26,7 @@ class CreateInviteRequest(BaseModel):
     channel: str = Field(..., pattern="^(email|whatsapp)$", description="Canal de envio: 'email' ou 'whatsapp'")
     target_email: Optional[EmailStr] = None
     target_phone: Optional[str] = None
+    target_name: Optional[str] = None
 
 class CreateInviteResponse(BaseModel):
     token: str
@@ -84,7 +85,7 @@ async def create_invite(
             trainer_id=trainer_id,
             email=str(body.target_email or ""),
             phone=body.target_phone,
-            full_name="",
+            full_name=body.target_name or "",
             objective="Hipertrofia Muscular",
             injuries_or_restrictions="Nenhuma restrição relatada.",
             channel=body.channel,
