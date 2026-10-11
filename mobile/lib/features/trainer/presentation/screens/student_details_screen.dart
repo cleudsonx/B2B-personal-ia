@@ -253,111 +253,305 @@ late Map<String, dynamic> student;
     final saved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) => AlertDialog(
-          title: const Text('Editar Perfil do Aluno'),
-          scrollable: true,
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+        builder: (dialogContext, setDialogState) {
+          final isDark = MetaColors.isDark(dialogContext);
+
+          InputDecoration buildInputDecoration({
+            required String labelText,
+            required IconData prefixIcon,
+            Widget? suffixIcon,
+            String? helperText,
+            String? hintText,
+            bool isReadOnly = false,
+          }) {
+            final fillColor = isReadOnly
+                ? (isDark ? const Color(0xFF161F30) : const Color(0xFFF1F5F9))
+                : MetaColors.highlight(dialogContext);
+            final borderColor = MetaColors.cardBorder(dialogContext);
+
+            return InputDecoration(
+              labelText: labelText,
+              hintText: hintText,
+              helperText: helperText,
+              helperMaxLines: 2,
+              labelStyle: TextStyle(
+                color: MetaColors.subtext(dialogContext),
+                fontSize: 13,
+              ),
+              floatingLabelStyle: TextStyle(
+                color: isReadOnly
+                    ? MetaColors.subtext(dialogContext)
+                    : MetaColors.primaryColor(dialogContext),
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+              prefixIcon: Icon(
+                prefixIcon,
+                size: 20,
+                color: isReadOnly
+                    ? MetaColors.subtext(dialogContext)
+                    : MetaColors.primaryColor(dialogContext),
+              ),
+              suffixIcon: suffixIcon,
+              filled: true,
+              fillColor: fillColor,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: borderColor, width: 1),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: borderColor, width: 1),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: isReadOnly ? borderColor : MetaColors.primaryColor(dialogContext),
+                  width: 1.5,
+                ),
+              ),
+            );
+          }
+
+          return AlertDialog(
+            backgroundColor: MetaColors.card(dialogContext),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+            contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+            actionsPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+            title: Row(
               children: [
-                TextFormField(
-                  key: const Key('student_full_name'),
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Nome completo'),
-                  textCapitalization: TextCapitalization.words,
-                  validator: (value) => value == null || value.trim().length < 2
-                      ? 'Informe o nome do aluno.'
-                      : null,
-                ),
-                TextFormField(
-                  key: const Key('student_email_read_only'),
-                  initialValue: student['email'] as String? ?? '',
-                  readOnly: true,
-                  decoration: const InputDecoration(
-                    labelText: 'E-mail de acesso',
-                    helperText: 'A alteração do e-mail exige confirmação da conta.',
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: MetaColors.primaryColor(dialogContext).withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.edit_note_rounded,
+                    color: MetaColors.primaryColor(dialogContext),
+                    size: 24,
                   ),
                 ),
-                TextFormField(
-                  key: const Key('student_phone'),
-                  controller: phoneController,
-                  decoration: const InputDecoration(labelText: 'Telefone'),
-                  keyboardType: TextInputType.phone,
-                ),
-                TextFormField(
-                  key: const Key('student_goal'),
-                  controller: goalController,
-                  decoration: const InputDecoration(labelText: 'Objetivo'),
-                ),
-                TextFormField(
-                  key: const Key('student_restrictions'),
-                  controller: restrictionsController,
-                  decoration: const InputDecoration(
-                    labelText: 'Lesões e restrições',
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Editar Perfil do Aluno',
+                        style: TextStyle(
+                          color: MetaColors.text(dialogContext),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Atualize os dados cadastrais',
+                        style: TextStyle(
+                          color: MetaColors.subtext(dialogContext),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
-                  maxLines: 3,
                 ),
-                if (errorMessage != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    errorMessage!,
-                    key: const Key('student_edit_error'),
-                    style: const TextStyle(color: Colors.redAccent),
-                  ),
-                ],
               ],
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: isSaving ? null : () => Navigator.pop(dialogContext),
-              child: const Text('Cancelar'),
+            scrollable: true,
+            content: SizedBox(
+              width: 440,
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextFormField(
+                      key: const Key('student_full_name'),
+                      controller: nameController,
+                      style: TextStyle(color: MetaColors.text(dialogContext), fontSize: 15),
+                      decoration: buildInputDecoration(
+                        labelText: 'Nome completo',
+                        hintText: 'Nome do aluno',
+                        prefixIcon: Icons.badge_outlined,
+                      ),
+                      textCapitalization: TextCapitalization.words,
+                      validator: (value) => value == null || value.trim().length < 2
+                          ? 'Informe o nome do aluno.'
+                          : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      key: const Key('student_email_read_only'),
+                      initialValue: student['email'] as String? ?? '',
+                      readOnly: true,
+                      style: TextStyle(
+                        color: MetaColors.subtext(dialogContext),
+                        fontSize: 15,
+                      ),
+                      decoration: buildInputDecoration(
+                        labelText: 'E-mail de acesso',
+                        prefixIcon: Icons.email_outlined,
+                        suffixIcon: Icon(
+                          Icons.lock_outline_rounded,
+                          size: 18,
+                          color: MetaColors.subtext(dialogContext),
+                        ),
+                        helperText: 'A alteração do e-mail exige confirmação da conta.',
+                        isReadOnly: true,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      key: const Key('student_phone'),
+                      controller: phoneController,
+                      keyboardType: TextInputType.phone,
+                      style: TextStyle(color: MetaColors.text(dialogContext), fontSize: 15),
+                      decoration: buildInputDecoration(
+                        labelText: 'WhatsApp / Telefone',
+                        hintText: '(DD) 99999-9999',
+                        prefixIcon: Icons.phone_outlined,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      key: const Key('student_goal'),
+                      controller: goalController,
+                      style: TextStyle(color: MetaColors.text(dialogContext), fontSize: 15),
+                      decoration: buildInputDecoration(
+                        labelText: 'Objetivo',
+                        hintText: 'Ex: Hipertrofia, Emagrecimento, Saúde',
+                        prefixIcon: Icons.flag_outlined,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      key: const Key('student_restrictions'),
+                      controller: restrictionsController,
+                      maxLines: 3,
+                      style: TextStyle(color: MetaColors.text(dialogContext), fontSize: 15),
+                      decoration: buildInputDecoration(
+                        labelText: 'Lesões e restrições',
+                        hintText: 'Ex: Condromalácia patelar, hérnia de disco',
+                        prefixIcon: Icons.healing_outlined,
+                      ),
+                    ),
+                    if (errorMessage != null) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                errorMessage!,
+                                key: const Key('student_edit_error'),
+                                style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
-            ElevatedButton(
-              key: const Key('save_student_profile'),
-              onPressed: isSaving
-                  ? null
-                  : () async {
-                      if (!formKey.currentState!.validate()) return;
-                      setDialogState(() {
-                        isSaving = true;
-                        errorMessage = null;
-                      });
-                      try {
-                        final update = widget.onUpdateStudent ??
-                            WorkoutService.updateStudent;
-                        final success = await update(
-                          studentId: student['id'] as String,
-                          fullName: nameController.text.trim(),
-                          phone: phoneController.text.trim(),
-                          goal: goalController.text.trim(),
-                          injuriesOrRestrictions:
-                              restrictionsController.text.trim(),
-                        );
-                        if (!success) {
-                          throw StateError('O servidor não confirmou a atualização.');
-                        }
-                        if (dialogContext.mounted) {
-                          Navigator.pop(dialogContext, true);
-                        }
-                      } catch (error) {
-                        setDialogState(() {
-                          isSaving = false;
-                          errorMessage = _formatErrorMessage(error);
-                        });
-                      }
-                    },
-              child: isSaving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Salvar'),
-            ),
-          ],
-        ),
+            actions: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: isSaving ? null : () => Navigator.pop(dialogContext),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text(
+                      'Cancelar',
+                      style: TextStyle(
+                        color: MetaColors.subtext(dialogContext),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    height: 44,
+                    child: ElevatedButton(
+                      key: const Key('save_student_profile'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: MetaColors.primaryColor(dialogContext),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: isSaving
+                          ? null
+                          : () async {
+                              if (!formKey.currentState!.validate()) return;
+                              setDialogState(() {
+                                isSaving = true;
+                                errorMessage = null;
+                              });
+                              try {
+                                final update = widget.onUpdateStudent ??
+                                    WorkoutService.updateStudent;
+                                final success = await update(
+                                  studentId: student['id'] as String,
+                                  fullName: nameController.text.trim(),
+                                  phone: phoneController.text.trim(),
+                                  goal: goalController.text.trim(),
+                                  injuriesOrRestrictions:
+                                      restrictionsController.text.trim(),
+                                );
+                                if (!success) {
+                                  throw StateError('O servidor não confirmou a atualização.');
+                                }
+                                if (dialogContext.mounted) {
+                                  Navigator.pop(dialogContext, true);
+                                }
+                              } catch (error) {
+                                setDialogState(() {
+                                  isSaving = false;
+                                  errorMessage = _formatErrorMessage(error);
+                                });
+                              }
+                            },
+                      child: isSaving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Salvar Alterações',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
       ),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {

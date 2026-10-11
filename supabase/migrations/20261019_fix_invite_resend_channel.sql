@@ -131,3 +131,4 @@ REVOKE ALL ON FUNCTION public.create_student_invite(TEXT, UUID, TEXT, TEXT, TEXT
     FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.create_student_invite(TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT)
     TO service_role;
+
