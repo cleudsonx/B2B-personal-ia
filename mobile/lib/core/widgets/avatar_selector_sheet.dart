@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/meta_components.dart';
+import 'avatar_cropper_dialog.dart';
 
 class AvatarItem {
   final String id;
@@ -176,21 +177,33 @@ class _AvatarSelectorSheetState extends State<AvatarSelectorSheet> {
     try {
       final XFile? image = await _picker.pickImage(
         source: source,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
+        maxWidth: 2048,
+        maxHeight: 2048,
+        imageQuality: 92,
       );
 
       if (image == null) return;
 
+      final rawBytes = await image.readAsBytes();
+
+      if (!mounted) return;
+
+      // Abre a tela interativa de recorte, zoom e enquadramento
+      final croppedBytes = await AvatarCropperDialog.show(
+        context: context,
+        imageBytes: rawBytes,
+      );
+
+      // Se o usuário cancelou o enquadramento, não faz o upload
+      if (croppedBytes == null || !mounted) return;
+
       setState(() {
         _isUploading = true;
-        _uploadStatusText = 'Processando imagem...';
+        _uploadStatusText = 'Processando foto ajustada...';
       });
 
-      final bytes = await image.readAsBytes();
-      final base64Image = base64Encode(bytes);
-      final mimeType = image.mimeType ?? 'image/jpeg';
+      final base64Image = base64Encode(croppedBytes);
+      const mimeType = 'image/png';
 
       setState(() {
         _uploadStatusText = 'Enviando foto com segurança...';
@@ -219,13 +232,12 @@ class _AvatarSelectorSheetState extends State<AvatarSelectorSheet> {
 
       // 2. Fallback: upload direto no Supabase Storage
       final supabase = Supabase.instance.client;
-      final fileExt = mimeType.contains('png') ? 'png' : 'jpg';
-      final fileName = 'uploads/${resolvedUserId ?? "user"}_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+      final fileName = 'uploads/${resolvedUserId ?? "user"}_${DateTime.now().millisecondsSinceEpoch}.png';
 
       await supabase.storage.from('avatars').uploadBinary(
         fileName,
-        bytes,
-        fileOptions: FileOptions(contentType: mimeType, upsert: true),
+        croppedBytes,
+        fileOptions: const FileOptions(contentType: mimeType, upsert: true),
       );
 
       final publicUrl = supabase.storage.from('avatars').getPublicUrl(fileName);
