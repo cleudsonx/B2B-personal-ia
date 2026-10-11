@@ -446,8 +446,9 @@ async def invite_student(
     trainer_metadata = current_user.get("user_metadata") or {}
     trainer_name = trainer_metadata.get("full_name") or trainer_profile.get("full_name")
     trainer_cref = ""
+    trainer_avatar_url = ""
 
-    # Se for UUID válido, busca perfil no Supabase para garantir nome e registro reais do professor
+    # Se for UUID válido, busca perfil no Supabase para garantir nome, foto e registro reais do professor
     client = await supabase_service.get_client()
     if client and is_valid_uuid(trainer_id):
         try:
@@ -457,6 +458,7 @@ async def invite_student(
                 if not trainer_name or trainer_name == "Roberto Mendes":
                     trainer_name = td.get("full_name") or trainer_name
                 trainer_cref = td.get("professional_document") or td.get("cref") or td.get("cref_or_registry") or ""
+                trainer_avatar_url = td.get("photo_url") or td.get("avatar_url") or ""
         except Exception:
             pass
 
@@ -498,13 +500,14 @@ async def invite_student(
         ) from e
     invitation_link = f"{settings.APP_FRONTEND_URL.rstrip('/')}/#/invite/{invite_record['token']}"
 
-    # 1. Envio de E-mail via Resend/Mock
+    # 1. Envio de E-mail via Resend/Mock com foto e avatar do professor
     email_status = "skipped"
     if payload.send_email:
         email_res = await email_service.send_student_invitation_email(
             student_email=payload.email,
             student_name=payload.full_name,
             trainer_name=trainer_name,
+            trainer_avatar_url=trainer_avatar_url,
             confirmation_url=invitation_link,
         )
         email_status = email_res.get("status", "sent")
@@ -515,10 +518,11 @@ async def invite_student(
         clean_phone = f"55{clean_phone}"
 
     whatsapp_msg = (
-        f"Olá, {payload.full_name}! Seu convite para acessar o *Mr. Coach* está pronto.\n\n"
-        f"Acesse pelo link abaixo para começar seus treinos:\n"
+        f"Olá, {payload.full_name}! Seu convite para o *Mr. Coach* está pronto. 🚀\n\n"
+        f"Acesse pelo link exclusivo abaixo para iniciar seus treinos comigo:\n"
         f"{invitation_link}\n\n"
-        f"Será um prazer acompanhar sua evolução!"
+        f"Prof. {trainer_name}\n"
+        f"Seu Personal Trainer"
     )
     whatsapp_url = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(whatsapp_msg)}" if clean_phone else ""
 

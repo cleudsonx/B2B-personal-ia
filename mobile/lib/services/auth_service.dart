@@ -415,7 +415,7 @@ class AuthService {
     return 'Não foi possível validar o código do autenticador. Tente novamente.';
   }
 
-  /// Busca os dados do professor vinculado ao aluno atual
+  /// Busca os dados do professor vinculado ao aluno atual (incluindo foto/avatar e CREF)
   static Future<Map<String, dynamic>?> getTrainerForStudent() async {
     try {
       final profile = await getCurrentProfile();
@@ -424,9 +424,16 @@ class AuthService {
         final trainer =
             await _client
                 .from('profiles')
-            .select('id, full_name, professional_document')
+            .select('id, full_name, professional_document, photo_url, avatar_url, cref')
                 .eq('id', trainerId)
                 .maybeSingle();
+        if (trainer != null) {
+          final photo = (trainer['photo_url'] ?? trainer['avatar_url']) as String?;
+          trainer['trainer_name'] = trainer['full_name'];
+          trainer['trainer_photo_url'] = photo;
+          trainer['photo_url'] = photo;
+          trainer['avatar_url'] = photo;
+        }
         return trainer;
       }
     } catch (_) {}

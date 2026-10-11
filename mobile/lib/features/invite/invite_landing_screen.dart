@@ -23,6 +23,7 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
   bool _isLoading = true;
   bool _hasValidationError = false;
   String _trainerName = 'Carregando...';
+  String? _trainerAvatarUrl;
   String? _targetEmail;
   String? _targetPhone;
   String? _targetName;
@@ -31,6 +32,74 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
   void initState() {
     super.initState();
     _fetchTrainerData();
+  }
+
+  String _getInitials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return 'PC';
+    if (parts.length == 1) return parts.first.substring(0, parts.first.length >= 2 ? 2 : 1).toUpperCase();
+    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+  }
+
+  Widget _buildAvatarWidget({required double size, bool isHero = false}) {
+    if (_trainerAvatarUrl != null && _trainerAvatarUrl!.trim().isNotEmpty) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: MetaColors.emerald,
+            width: isHero ? 2.5 : 1.5,
+          ),
+          boxShadow: isHero
+              ? [
+                  BoxShadow(
+                    color: MetaColors.emerald.withValues(alpha: 0.25),
+                    blurRadius: 18,
+                    spreadRadius: 2,
+                  ),
+                ]
+              : null,
+        ),
+        child: ClipOval(
+          child: Image.network(
+            _trainerAvatarUrl!.trim(),
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _buildInitialsFallback(size, isHero),
+          ),
+        ),
+      );
+    }
+    return _buildInitialsFallback(size, isHero);
+  }
+
+  Widget _buildInitialsFallback(double size, bool isHero) {
+    final initials = _getInitials(_trainerName);
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: MetaColors.surfaceHighlight,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: isHero ? MetaColors.emerald : MetaColors.border,
+          width: isHero ? 2.0 : 1.0,
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        initials,
+        style: TextStyle(
+          color: MetaColors.emerald,
+          fontWeight: FontWeight.bold,
+          fontSize: size * 0.38,
+          letterSpacing: 1.0,
+        ),
+      ),
+    );
   }
 
   Future<void> _fetchTrainerData() async {
@@ -45,6 +114,7 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
       if (mounted) {
         setState(() {
           _trainerName = res['trainer_name'] ?? 'Seu Personal Trainer';
+          _trainerAvatarUrl = res['trainer_avatar_url'] as String?;
           _targetEmail = res['target_email'];
           _targetPhone = res['target_phone'];
           _targetName = res['target_name'];
@@ -155,34 +225,18 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Ícone central em destaque
-                    Container(
-                      width: 76,
-                      height: 76,
-                      decoration: BoxDecoration(
-                        color: MetaColors.emerald.withValues(alpha: 0.12),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: MetaColors.emerald.withValues(alpha: 0.25),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.fitness_center_rounded,
-                        size: 36,
-                        color: MetaColors.emerald,
-                      ),
-                    ),
+                    // Foto / Avatar / Marca central do professor em destaque
+                    _buildAvatarWidget(size: 84, isHero: true),
                     const SizedBox(height: 24),
 
                     // Título e subtítulo
                     MetaSectionTitle(
                       title: _hasValidationError
                           ? 'Este convite não está disponível'
-                          : 'Seu convite chegou',
+                          : 'Seu convite com Prof. $_trainerName',
                       subtitle: _hasValidationError
                           ? 'O link pode ter expirado ou já ter sido usado. Tente validar novamente ou peça um novo convite ao treinador.'
-                          : 'Confirme o convite do seu treinador para criar sua conta e preparar seu plano de treino.',
+                          : 'Ative seu cadastro para iniciar seu acompanhamento biomecânico exclusivo com seu Personal Trainer.',
                       textAlign: TextAlign.center,
                       crossAxisAlignment: CrossAxisAlignment.center,
                     ),
@@ -214,26 +268,13 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
                         label: const Text('Voltar'),
                       ),
                     ] else ...[
-                      // Card do Personal
+                      // Card do Personal com Foto/Avatar Oficial
                       MetaCard(
                         backgroundColor: MetaColors.surfaceHighlight,
                         padding: const EdgeInsets.all(18),
                         child: Row(
                           children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: MetaColors.background,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: MetaColors.border),
-                              ),
-                              child: const Icon(
-                                Icons.person_outline_rounded,
-                                color: MetaColors.accentBlue,
-                                size: 26,
-                              ),
-                            ),
+                            _buildAvatarWidget(size: 48, isHero: false),
                             const SizedBox(width: 16),
                             Expanded(
                               child: Column(

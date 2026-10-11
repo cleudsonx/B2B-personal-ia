@@ -180,21 +180,19 @@
                 Você recebeu um convite direto do seu <strong>Personal Trainer</strong> para ingressar no <strong>Mr. Coach</strong> — a plataforma inteligente onde cada repetição é orientada pela ciência biomecânica e pelo acompanhamento próximo do seu professor.
               </p>
 
-              <!-- Trainer Highlight Box -->
+              <!-- Trainer Highlight Box com Foto / Avatar / Marca -->
               <div class="trainer-card">
                 <table width="100%" role="presentation">
                   <tr>
-                    <td width="42" valign="middle">
-                      <div style="width: 36px; height: 36px; background-color: #047857; border-radius: 50%; text-align: center; line-height: 36px; color: #FFFFFF; font-weight: 800; font-size: 14px;">
-                        ✓
-                      </div>
+                    <td width="54" valign="middle">
+                      {{ .TrainerAvatarBlock }}
                     </td>
-                    <td valign="middle" style="padding-left: 10px;">
-                      <div style="font-size: 14px; font-weight: 800; color: #0F172A;">
-                        Prof. Responsável Vinculado
+                    <td valign="middle" style="padding-left: 14px;">
+                      <div style="font-size: 15px; font-weight: 800; color: #0F172A;">
+                        Prof. {{ .TrainerName }}
                       </div>
                       <div style="font-size: 12px; color: #6B7280; margin-top: 2px;">
-                        Prescrição ativa & suporte biomecânico no salão
+                        Seu Personal Trainer Responsável no Mr. Coach
                       </div>
                     </td>
                   </tr>

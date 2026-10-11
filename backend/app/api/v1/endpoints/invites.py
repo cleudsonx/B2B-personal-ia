@@ -38,6 +38,7 @@ class ValidateInviteResponse(BaseModel):
     is_valid: bool
     trainer_id: str
     trainer_name: str
+    trainer_avatar_url: Optional[str] = None
     target_email: Optional[str] = None
     target_phone: Optional[str] = None
     target_name: Optional[str] = None
@@ -142,15 +143,18 @@ async def validate_invite(token: str):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Este convite expirou.")
 
     trainer_id = invite_data.get("trainer_id")
-    trainer_res = await client.table("profiles").select("id, full_name").eq("id", trainer_id).maybe_single().execute()
+    trainer_res = await client.table("profiles").select("id, full_name, photo_url, avatar_url").eq("id", trainer_id).maybe_single().execute()
     trainer_name = "Seu Personal Trainer"
+    trainer_avatar_url = None
     if trainer_res and trainer_res.data:
         trainer_name = trainer_res.data.get("full_name") or trainer_name
+        trainer_avatar_url = trainer_res.data.get("photo_url") or trainer_res.data.get("avatar_url")
 
     return ValidateInviteResponse(
         is_valid=True,
         trainer_id=str(trainer_id),
         trainer_name=trainer_name,
+        trainer_avatar_url=trainer_avatar_url,
         target_email=invite_data.get("target_email"),
         target_phone=invite_data.get("target_phone"),
         target_name=invite_data.get("target_name"),

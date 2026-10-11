@@ -22,9 +22,11 @@ class EmailService:
         confirmation_url: str,
         student_name: str,
         trainer_name: str,
+        trainer_avatar_url: Optional[str] = None,
     ) -> str:
         """
-        Carrega o template HTML de confirmação de cadastro e injeta variáveis dinâmicas.
+        Carrega o template HTML de confirmação de cadastro e injeta variáveis dinâmicas,
+        incluindo foto/avatar/marca do professor.
         """
         template_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
@@ -33,21 +35,46 @@ class EmailService:
             "confirm_signup.html",
         )
 
+        parts = [p for p in trainer_name.strip().split() if p]
+        initials = "".join([p[0].upper() for p in parts[:2]]) if parts else "PC"
+
+        if trainer_avatar_url and trainer_avatar_url.strip():
+            avatar_html = (
+                f'<img src="{trainer_avatar_url.strip()}" width="48" height="48" '
+                f'style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid #059669;display:block;" '
+                f'alt="Prof. {trainer_name}" />'
+            )
+        else:
+            avatar_html = (
+                f'<div style="width:48px;height:48px;background:linear-gradient(135deg, #0F172A, #1E293B);'
+                f'border:2px solid #059669;border-radius:50%;text-align:center;line-height:48px;'
+                f'color:#FFFFFF;font-weight:800;font-size:16px;">{initials}</div>'
+            )
+
         try:
             if os.path.exists(template_path):
                 with open(template_path, "r", encoding="utf-8") as f:
                     content = f.read()
                     # Injeta variáveis reais
                     content = content.replace("{{ .ConfirmationURL }}", confirmation_url)
+                    content = content.replace("{{ .TrainerName }}", trainer_name)
+                    content = content.replace("{{ .TrainerAvatarBlock }}", avatar_html)
                     content = content.replace("Prof. Responsável Vinculado", f"Prof. {trainer_name}")
                     return content
         except Exception as e:
             logger.warning(f"Não foi possível ler template customizado em {template_path}: {e}")
 
-        # Fallback inline elegante
+        # Fallback inline elegante com foto/avatar do professor
         return f"""
         <div style="font-family: sans-serif; padding: 24px; background: #FAFAF9; color: #111;">
           <h2 style="color: #059669;">MR. COACH • CONVITE EXCLUSIVO</h2>
+          <div style="display:flex; align-items:center; margin: 16px 0; padding: 12px; background:#FFF; border-radius:12px; border:1px solid #E5E7EB;">
+            <div style="margin-right: 14px;">{avatar_html}</div>
+            <div>
+              <div style="font-weight: bold; font-size: 15px;">Prof. {trainer_name}</div>
+              <div style="font-size: 12px; color: #6B7280;">Seu Personal Trainer Responsável</div>
+            </div>
+          </div>
           <p>Olá, <strong>{student_name}</strong>!</p>
           <p>Seu Personal Trainer <strong>Prof. {trainer_name}</strong> convidou você para o Mr. Coach.</p>
           <p><a href="{confirmation_url}" style="display:inline-block; padding: 14px 28px; background: #0F172A; color: #FFF; text-decoration: none; border-radius: 12px; font-weight: bold;">Confirmar Acesso & Iniciar Anamnese →</a></p>
@@ -61,15 +88,18 @@ class EmailService:
         student_name: str,
         trainer_name: str,
         confirmation_url: str,
+        trainer_avatar_url: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Dispara o e-mail estilizado de confirmação/convite para o aluno.
+        Dispara o e-mail estilizado de confirmação/convite para o aluno,
+        exibindo a foto/avatar/marca do professor responsável.
         """
         subject = f"Seu Personal {trainer_name} te convidou para o Mr. Coach 🏅"
         html_body = self._get_template_html(
             confirmation_url=confirmation_url,
             student_name=student_name,
             trainer_name=trainer_name,
+            trainer_avatar_url=trainer_avatar_url,
         )
 
         # Se não houver chave Resend configurada, opera em modo Mock sem falhar
