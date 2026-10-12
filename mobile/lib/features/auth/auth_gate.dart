@@ -142,7 +142,10 @@ class _AuthGateState extends State<AuthGate> {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => WelcomeOnboardingScreen(studentName: name),
+                  builder: (_) => WelcomeOnboardingScreen(
+                    studentName: name,
+                    trainerId: profile?['trainer_id'] as String?,
+                  ),
                 ),
               );
             } else {

@@ -457,3 +457,4 @@ class _SmartInstallBannerState extends State<SmartInstallBanner> {
     );
   }
 }
+

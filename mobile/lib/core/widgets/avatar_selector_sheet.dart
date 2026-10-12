@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../config/app_config.dart';
 import '../widgets/meta_components.dart';
 import 'avatar_cropper_dialog.dart';
 
@@ -209,10 +210,11 @@ class _AvatarSelectorSheetState extends State<AvatarSelectorSheet> {
         _uploadStatusText = 'Enviando foto com segurança...';
       });
 
-      // 1. Tentar upload seguro via endpoint do backend
+      // 1. Tentar upload seguro via endpoint do backend oficial
       final resolvedUserId = widget.userId ?? Supabase.instance.client.auth.currentUser?.id;
+      final uploadUrl = Uri.parse('${AppConfig.apiBaseUrl}/public/upload-avatar');
       final response = await http.post(
-        Uri.parse('https://api.shaipados.com/api/v1/public/upload-avatar'),
+        uploadUrl,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'image_base64': base64Image,

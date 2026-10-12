@@ -34,3 +34,4 @@ class PwaInstaller {
     return impl.isAndroidWeb();
   }
 }
+

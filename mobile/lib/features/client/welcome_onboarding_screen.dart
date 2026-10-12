@@ -9,11 +9,15 @@ import '../../services/workout_service.dart';
 class WelcomeOnboardingScreen extends StatefulWidget {
   final String? studentName;
   final String? trainerName;
+  final String? trainerId;
+  final String? trainerAvatarUrl;
 
   const WelcomeOnboardingScreen({
     super.key,
     this.studentName,
     this.trainerName,
+    this.trainerId,
+    this.trainerAvatarUrl,
   });
 
   @override
@@ -52,6 +56,7 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
   String _resolvedTrainerName = 'Seu Treinador';
   String _resolvedTrainerRegistry = 'Registro Profissional Ativo';
   String? _trainerId;
+  String? _resolvedTrainerAvatarUrl;
   bool _isLoadingTrainerInfo = true;
 
   String _getTrainerInitials() {
@@ -67,6 +72,8 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
   @override
   void initState() {
     super.initState();
+    _trainerId = widget.trainerId;
+    _resolvedTrainerAvatarUrl = widget.trainerAvatarUrl;
     _loadTrainerInfo().whenComplete(() {
       if (mounted) setState(() => _isLoadingTrainerInfo = false);
     });
@@ -79,9 +86,15 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
       debugPrint('Convite não pôde ser concluído durante o onboarding: $e');
     }
 
-    // 1. Prioriza o nome passado explicitamente para o widget
+    // 1. Prioriza dados passados explicitamente para o widget
     if (widget.trainerName != null && widget.trainerName!.isNotEmpty) {
       _resolvedTrainerName = widget.trainerName!;
+    }
+    if (widget.trainerId != null && widget.trainerId!.isNotEmpty) {
+      _trainerId = widget.trainerId;
+    }
+    if (widget.trainerAvatarUrl != null && widget.trainerAvatarUrl!.isNotEmpty) {
+      _resolvedTrainerAvatarUrl = widget.trainerAvatarUrl;
     }
 
     // 2. Extrai da URL atual do navegador (Web query parameters ou fragment query)
@@ -95,7 +108,7 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
 
       if (queryParams.containsKey('trainer_id') &&
           queryParams['trainer_id']!.isNotEmpty) {
-        _trainerId = queryParams['trainer_id'];
+        _trainerId ??= queryParams['trainer_id'];
       }
 
       if (queryParams.containsKey('trainer_name') &&
@@ -108,39 +121,40 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
       if (queryParams.containsKey('cref') && queryParams['cref']!.isNotEmpty) {
         _resolvedTrainerRegistry = queryParams['cref']!;
       }
-
-      // 3. Se temos o trainer_id, busca o perfil real no Supabase para garantir os dados mais recentes
-      if (_trainerId != null && _trainerId!.isNotEmpty) {
-        try {
-          final client = Supabase.instance.client;
-          final trainerData =
-              await client
-                  .from('profiles')
-                  .select('id, full_name, professional_document')
-                  .eq('id', _trainerId!)
-                  .maybeSingle();
-
-          if (trainerData != null && mounted) {
-            setState(() {
-              final name = trainerData['full_name'] as String?;
-              if (name != null && name.isNotEmpty) {
-                _resolvedTrainerName =
-                    name.startsWith('Prof.') ? name : 'Prof. $name';
-              }
-              final reg =
-                  (trainerData['cref_or_registry'] ??
-                          trainerData['cref'] ??
-                          trainerData['professional_document'])
-                      as String?;
-              if (reg != null && reg.isNotEmpty) {
-                _resolvedTrainerRegistry = reg;
-              }
-            });
-            return;
-          }
-        } catch (_) {}
-      }
     } catch (_) {}
+
+    // 3. Se temos o trainer_id, busca o perfil real no Supabase para garantir os dados mais recentes
+    if (_trainerId != null && _trainerId!.isNotEmpty) {
+      try {
+        final client = Supabase.instance.client;
+        final trainerData = await client
+            .from('profiles')
+            .select('id, full_name, professional_document, photo_url, avatar_url')
+            .eq('id', _trainerId!)
+            .maybeSingle();
+
+        if (trainerData != null && mounted) {
+          setState(() {
+            final name = trainerData['full_name'] as String?;
+            if (name != null && name.isNotEmpty) {
+              _resolvedTrainerName =
+                  name.startsWith('Prof.') ? name : 'Prof. $name';
+            }
+            final reg = (trainerData['professional_document'] ??
+                    trainerData['cref'] ??
+                    trainerData['cref_or_registry']) as String?;
+            if (reg != null && reg.isNotEmpty) {
+              _resolvedTrainerRegistry = reg;
+            }
+            final avatar = (trainerData['photo_url'] ?? trainerData['avatar_url']) as String?;
+            if (avatar != null && avatar.isNotEmpty) {
+              _resolvedTrainerAvatarUrl = avatar;
+            }
+          });
+          return;
+        }
+      } catch (_) {}
+    }
 
     // 4. Se o aluno já estiver autenticado, busca pelo vínculo do perfil dele
     try {
@@ -153,17 +167,114 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
             _resolvedTrainerName =
                 name.startsWith('Prof.') ? name : 'Prof. $name';
           }
-          final reg =
-              (trainer['cref_or_registry'] ??
-                      trainer['cref'] ??
-                      trainer['professional_document'])
-                  as String?;
+          final reg = (trainer['professional_document'] ??
+                  trainer['cref'] ??
+                  trainer['cref_or_registry']) as String?;
           if (reg != null && reg.isNotEmpty) {
             _resolvedTrainerRegistry = reg;
           }
+          final avatar = (trainer['photo_url'] ?? trainer['avatar_url']) as String?;
+          if (avatar != null && avatar.isNotEmpty) {
+            _resolvedTrainerAvatarUrl = avatar;
+          }
         });
+        return;
       }
     } catch (_) {}
+
+    // 5. Auto-Recuperação Resiliente de Vínculo:
+    // Caso o aluno esteja autenticado mas _trainerId ainda seja nulo,
+    // buscamos convite pendente por telefone/email ou localizamos o professor pelo nome.
+    try {
+      final client = Supabase.instance.client;
+      final currentUser = client.auth.currentUser;
+      if (currentUser != null) {
+        String? foundTrainerId;
+
+        // a) Procura convite em invite_tokens correspondente ao usuário
+        final phone = currentUser.phone ?? (currentUser.userMetadata?['phone'] as String?);
+        final email = currentUser.email;
+
+        if (phone != null && phone.isNotEmpty) {
+          final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+          final inviteByPhone = await client
+              .from('invite_tokens')
+              .select('trainer_id')
+              .eq('target_phone', cleanPhone)
+              .order('created_at', ascending: false)
+              .limit(1)
+              .maybeSingle();
+          if (inviteByPhone != null) {
+            foundTrainerId = inviteByPhone['trainer_id'] as String?;
+          }
+        }
+
+        if (foundTrainerId == null && email != null && email.isNotEmpty) {
+          final inviteByEmail = await client
+              .from('invite_tokens')
+              .select('trainer_id')
+              .eq('target_email', email)
+              .order('created_at', ascending: false)
+              .limit(1)
+              .maybeSingle();
+          if (inviteByEmail != null) {
+            foundTrainerId = inviteByEmail['trainer_id'] as String?;
+          }
+        }
+
+        // b) Se não achou por convite mas temos o nome do treinador
+        if (foundTrainerId == null && _resolvedTrainerName != 'Seu Treinador') {
+          final cleanName = _resolvedTrainerName.replaceAll('Prof.', '').trim();
+          final trainerProfile = await client
+              .from('profiles')
+              .select('id, full_name, professional_document, photo_url, avatar_url')
+              .ilike('full_name', '%$cleanName%')
+              .eq('role', 'trainer')
+              .limit(1)
+              .maybeSingle();
+          if (trainerProfile != null) {
+            foundTrainerId = trainerProfile['id'] as String?;
+          }
+        }
+
+        // c) Se localizou o treinador, consolida o vínculo na tabela profiles
+        if (foundTrainerId != null && foundTrainerId.isNotEmpty) {
+          _trainerId = foundTrainerId;
+          await client
+              .from('profiles')
+              .update({'trainer_id': foundTrainerId})
+              .eq('id', currentUser.id);
+
+          final trainerData = await client
+              .from('profiles')
+              .select('id, full_name, professional_document, photo_url, avatar_url')
+              .eq('id', foundTrainerId)
+              .maybeSingle();
+
+          if (trainerData != null && mounted) {
+            setState(() {
+              final name = trainerData['full_name'] as String?;
+              if (name != null && name.isNotEmpty) {
+                _resolvedTrainerName =
+                    name.startsWith('Prof.') ? name : 'Prof. $name';
+              }
+              final reg = (trainerData['professional_document'] ??
+                      trainerData['cref'] ??
+                      trainerData['cref_or_registry']) as String?;
+              if (reg != null && reg.isNotEmpty) {
+                _resolvedTrainerRegistry = reg;
+              }
+              final avatar = (trainerData['photo_url'] ?? trainerData['avatar_url']) as String?;
+              if (avatar != null && avatar.isNotEmpty) {
+                _resolvedTrainerAvatarUrl = avatar;
+              }
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Aviso na auto-recuperação de vínculo de treinador: $e');
+    }
   }
 
   @override
@@ -445,17 +556,58 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      Center(
-                        child: Text(
-                          _getTrainerInitials(),
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 18,
-                            letterSpacing: -0.5,
+                      if (_resolvedTrainerAvatarUrl != null &&
+                          _resolvedTrainerAvatarUrl!.trim().isNotEmpty) ...[
+                        ClipOval(
+                          child: _resolvedTrainerAvatarUrl!.trim().startsWith('assets/')
+                              ? Image.asset(
+                                  _resolvedTrainerAvatarUrl!.trim(),
+                                  width: 52,
+                                  height: 52,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Center(
+                                    child: Text(
+                                      _getTrainerInitials(),
+                                      style: const TextStyle(
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 18,
+                                        letterSpacing: -0.5,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              : Image.network(
+                                  _resolvedTrainerAvatarUrl!.trim(),
+                                  width: 52,
+                                  height: 52,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Center(
+                                    child: Text(
+                                      _getTrainerInitials(),
+                                      style: const TextStyle(
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 18,
+                                        letterSpacing: -0.5,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ] else ...[
+                        Center(
+                          child: Text(
+                            _getTrainerInitials(),
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 18,
+                              letterSpacing: -0.5,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                       Positioned(
                         right: 2,
                         bottom: 2,

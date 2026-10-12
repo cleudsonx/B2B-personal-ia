@@ -23,6 +23,7 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
   bool _isLoading = true;
   bool _hasValidationError = false;
   String _trainerName = 'Carregando...';
+  String? _trainerId;
   String? _trainerAvatarUrl;
   String? _targetEmail;
   String? _targetPhone;
@@ -43,6 +44,9 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
 
   Widget _buildAvatarWidget({required double size, bool isHero = false}) {
     if (_trainerAvatarUrl != null && _trainerAvatarUrl!.trim().isNotEmpty) {
+      final avatarUrl = _trainerAvatarUrl!.trim();
+      final isAsset = avatarUrl.startsWith('assets/');
+
       return Container(
         width: size,
         height: size,
@@ -63,13 +67,21 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
               : null,
         ),
         child: ClipOval(
-          child: Image.network(
-            _trainerAvatarUrl!.trim(),
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _buildInitialsFallback(size, isHero),
-          ),
+          child: isAsset
+              ? Image.asset(
+                  avatarUrl,
+                  width: size,
+                  height: size,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _buildInitialsFallback(size, isHero),
+                )
+              : Image.network(
+                  avatarUrl,
+                  width: size,
+                  height: size,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _buildInitialsFallback(size, isHero),
+                ),
         ),
       );
     }
@@ -113,6 +125,7 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
       final res = await InviteService.validateInvite(widget.token);
       if (mounted) {
         setState(() {
+          _trainerId = res['trainer_id'] as String?;
           _trainerName = res['trainer_name'] ?? 'Seu Personal Trainer';
           _trainerAvatarUrl = res['trainer_avatar_url'] as String?;
           _targetEmail = res['target_email'];
@@ -152,6 +165,7 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
               initialPhone: _targetPhone,
               initialName: _targetName,
               inviteToken: widget.token,
+              trainerId: _trainerId,
               trainerName: _trainerName,
             ),
           ),

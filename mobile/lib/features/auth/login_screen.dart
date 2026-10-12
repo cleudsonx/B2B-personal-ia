@@ -271,6 +271,11 @@ class _LoginScreenState extends State<LoginScreen> {
             builder: (_) => WelcomeOnboardingScreen(
               studentName: userName,
               trainerName: widget.invitedTrainerName ?? (trainer?['full_name'] as String?),
+              trainerId: widget.invitedTrainerId ??
+                  (profile?['trainer_id'] as String?) ??
+                  (trainer?['id'] as String?),
+              trainerAvatarUrl: (trainer?['photo_url'] as String?) ??
+                  (trainer?['avatar_url'] as String?),
             ),
           ),
         );

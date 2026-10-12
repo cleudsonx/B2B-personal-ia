@@ -88,6 +88,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 confirmationRequired: true,
                 inviteToken: widget.inviteToken,
                 invitedTrainerName: widget.trainerName,
+                invitedTrainerId: widget.trainerId,
               ),
             ),
             (route) => false,
@@ -101,6 +102,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               builder: (_) => WelcomeOnboardingScreen(
                 studentName: _nameCtrl.text.trim(),
                 trainerName: widget.trainerName,
+                trainerId: widget.trainerId,
               ),
             ),
             (route) => false,

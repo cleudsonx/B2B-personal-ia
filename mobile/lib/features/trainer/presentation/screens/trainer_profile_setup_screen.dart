@@ -111,6 +111,45 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
     );
   }
 
+  Future<void> _handleAvatarSelected(String selected) async {
+    _photoUrlController.text = selected;
+    if (mounted) setState(() {});
+
+    try {
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+      if (user != null) {
+        await supabase.from('profiles').update({
+          'photo_url': selected,
+          'avatar_url': selected,
+        }).eq('id', user.id);
+
+        await supabase.auth.updateUser(
+          UserAttributes(data: {
+            'photo_url': selected,
+            'avatar_url': selected,
+          }),
+        );
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Foto de perfil atualizada com sucesso!',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: MetaColors.emerald,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Aviso ao sincronizar foto de perfil: $e');
+    }
+  }
+
   Future<void> _saveProfile() async {
     if (_isLoading || _profileLoadFailed) return;
     final username = _usernameController.text.trim().toLowerCase();
@@ -364,7 +403,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                                                 currentUrl: url,
                                               );
                                               if (selected != null && mounted) {
-                                                _photoUrlController.text = selected;
+                                                await _handleAvatarSelected(selected);
                                               }
                                             },
                                             child: Container(
@@ -413,7 +452,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                                                   currentUrl: _photoUrlController.text.trim(),
                                                 );
                                                 if (selected != null && mounted) {
-                                                  _photoUrlController.text = selected;
+                                                  await _handleAvatarSelected(selected);
                                                 }
                                               },
                                               icon: const Icon(Icons.add_photo_alternate_rounded, size: 18),
