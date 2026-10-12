@@ -5,6 +5,7 @@ import 'package:local_auth/local_auth.dart';
 
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/server_config_dialog.dart';
+import '../../core/widgets/smart_install_banner.dart';
 import '../../services/auth_service.dart';
 import 'auth_gate.dart';
 import '../client/welcome_onboarding_screen.dart';
@@ -719,6 +720,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    const SmartInstallBanner(),
                     const SizedBox(height: 12),
                     // Logo Icon / Brand
                     Center(

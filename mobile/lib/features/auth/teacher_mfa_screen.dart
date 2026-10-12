@@ -1,9 +1,13 @@
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/utils/pwa_installer.dart';
 import '../../core/widgets/meta_components.dart';
+import '../../core/widgets/smart_install_banner.dart';
 import '../../services/auth_service.dart';
 
 class TeacherMfaScreen extends StatefulWidget {
@@ -131,6 +135,36 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
     }
   }
 
+  Future<void> _openStore(String appName) async {
+    Uri url;
+    final isIos = !kIsWeb ? Platform.isIOS : PwaInstaller.isIosWeb;
+    if (appName == 'google') {
+      if (isIos) {
+        url = Uri.parse('https://apps.apple.com/app/google-authenticator/id388497605');
+      } else {
+        url = Uri.parse('https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2');
+      }
+    } else {
+      if (isIos) {
+        url = Uri.parse('https://apps.apple.com/app/microsoft-authenticator/id983156458');
+      } else {
+        url = Uri.parse('https://play.google.com/store/apps/details?id=com.azure.authenticator');
+      }
+    }
+    try {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            content: Text('Não foi possível abrir a loja de aplicativos.'),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _verify() async {
     final factorId = _enrollment?.id ?? _factorId;
     final sanitizedCode = _codeController.text.replaceAll(RegExp(r'\D'), '').trim();
@@ -207,6 +241,7 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             shrinkWrap: true,
             children: [
+              const SmartInstallBanner(),
               Container(
                 width: 64,
                 height: 64,
@@ -221,31 +256,31 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
                   color: MetaColors.emerald,
                 ),
               ),
-                      const SizedBox(height: 20),
-                      Text(
-                        isConfirming
-                            ? 'Confirme sua identidade'
-                            : 'Ative a verificação em duas etapas',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: MetaColors.text(context),
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        isConfirming
-                            ? 'Digite o código de 6 dígitos gerado pelo seu aplicativo autenticador para liberar o painel do treinador.'
-                            : 'Adicione a chave abaixo ao seu aplicativo autenticador (Google Authenticator, Microsoft ou 1Password) para proteger o acesso às ferramentas de treinador.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: MetaColors.subtext(context),
-                          height: 1.45,
-                          fontSize: 14,
-                        ),
-                      ),
+              const SizedBox(height: 20),
+              Text(
+                isConfirming
+                    ? 'Confirme sua identidade'
+                    : 'Ative a verificação em duas etapas',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: MetaColors.text(context),
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                isConfirming
+                    ? 'Digite o código de 6 dígitos gerado pelo seu aplicativo autenticador para liberar o painel do treinador.'
+                    : 'Adicione a chave abaixo ao seu aplicativo autenticador (Google Authenticator, Microsoft ou 1Password) para proteger o acesso às ferramentas de treinador.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: MetaColors.subtext(context),
+                  height: 1.45,
+                  fontSize: 14,
+                ),
+              ),
               if (_loading) ...[
                 const SizedBox(height: 40),
                 const Center(
@@ -253,7 +288,9 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
                 ),
                 const SizedBox(height: 40),
               ] else if (secret != null) ...[
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
+                _buildAuthenticatorGuide(context),
+                const SizedBox(height: 20),
                 MetaCard(
                   padding: const EdgeInsets.all(18),
                   borderRadius: 16,
@@ -425,6 +462,20 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
                   isPrimary: true,
                   onPressed: _submitting ? null : _verify,
                 ),
+                if (isConfirming) ...[
+                  const SizedBox(height: 12),
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: () => _showGuideDialog(context),
+                      icon: const Icon(Icons.help_outline, size: 16),
+                      label: const Text('Onde encontro este código?'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: MetaColors.subtext(context),
+                        textStyle: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                  ),
+                ],
               ],
               if (_error != null) ...[
                 const SizedBox(height: 18),
@@ -538,6 +589,205 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showGuideDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: MetaColors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildAuthenticatorGuide(context),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: MetaColors.emerald,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Entendido', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAuthenticatorGuide(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: MetaColors.highlight(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: MetaColors.emerald.withValues(alpha: 0.35),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: MetaColors.emerald.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.security_rounded, color: MetaColors.emerald, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Como funciona o Autenticador?',
+                  style: TextStyle(
+                    color: MetaColors.text(context),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Para a segurança dos seus alunos e faturamento, o Mr. Coach utiliza autenticação em dois fatores. O app autenticador gera tokens temporários de 6 dígitos que mudam a cada 30 segundos.',
+            style: TextStyle(
+              color: MetaColors.subtext(context),
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'PASSO 1: BAIXE UM AUTENTICADOR GRATUITO',
+            style: TextStyle(
+              color: MetaColors.emerald,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _openStore('google'),
+                  icon: const Icon(Icons.download_rounded, size: 16),
+                  label: const Text('Google Auth', style: TextStyle(fontSize: 12)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: MetaColors.text(context),
+                    side: BorderSide(color: MetaColors.cardBorder(context)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _openStore('microsoft'),
+                  icon: const Icon(Icons.download_rounded, size: 16),
+                  label: const Text('Microsoft Auth', style: TextStyle(fontSize: 12)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: MetaColors.text(context),
+                    side: BorderSide(color: MetaColors.cardBorder(context)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'PASSO 2: CONFIGURE A CONTA',
+            style: TextStyle(
+              color: MetaColors.emerald,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _buildGuideStepItem(
+            context,
+            number: '1',
+            text: 'Abra o Google ou Microsoft Authenticator e toque no botão (+) no aplicativo.',
+          ),
+          const SizedBox(height: 8),
+          _buildGuideStepItem(
+            context,
+            number: '2',
+            text: 'Selecione "Inserir chave de configuração" e cole a chave abaixo (ou toque em "Abrir no App").',
+          ),
+          const SizedBox(height: 8),
+          _buildGuideStepItem(
+            context,
+            number: '3',
+            text: 'O autenticador começará a gerar um código de 6 dígitos. Digite esse código no campo de verificação.',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuideStepItem(BuildContext context, {required String number, required String text}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 22,
+          height: 22,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: MetaColors.emerald.withValues(alpha: 0.2),
+            shape: BoxShape.circle,
+          ),
+          child: Text(
+            number,
+            style: const TextStyle(
+              color: MetaColors.emerald,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              color: MetaColors.text(context),
+              fontSize: 12.5,
+              height: 1.35,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

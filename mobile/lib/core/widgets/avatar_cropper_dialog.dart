@@ -313,3 +313,4 @@ class _AvatarCropperDialogState extends State<AvatarCropperDialog> {
     );
   }
 }
+

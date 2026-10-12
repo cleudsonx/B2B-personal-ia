@@ -40,6 +40,7 @@ class _AuthGateState extends State<AuthGate> {
     final session = AuthService.currentSession;
 
     if (session == null) {
+      await _ensureBrandDuration();
       _goToLogin();
       return;
     }
@@ -75,7 +76,18 @@ class _AuthGateState extends State<AuthGate> {
       _loadProfileAndGoToDashboard();
     } else {
       await AuthService.signOut();
+      await _ensureBrandDuration();
       _goToLogin();
+    }
+  }
+
+  Future<void> _ensureBrandDuration() async {
+    final elapsedMs = _brandTimer.elapsedMilliseconds;
+    const targetBrandDurationMs = 5000;
+    if (elapsedMs < targetBrandDurationMs) {
+      await Future.delayed(
+        Duration(milliseconds: targetBrandDurationMs - elapsedMs),
+      );
     }
   }
 
@@ -104,13 +116,7 @@ class _AuthGateState extends State<AuthGate> {
       final hasCompletedAnamnesis = profile?['has_completed_anamnesis'] == true;
 
       // Valorização da marca Mr. Coach: garantir exibição de pelo menos 5 segundos
-      final elapsedMs = _brandTimer.elapsedMilliseconds;
-      const targetBrandDurationMs = 5000;
-      if (elapsedMs < targetBrandDurationMs) {
-        await Future.delayed(
-          Duration(milliseconds: targetBrandDurationMs - elapsedMs),
-        );
-      }
+      await _ensureBrandDuration();
 
       if (mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
