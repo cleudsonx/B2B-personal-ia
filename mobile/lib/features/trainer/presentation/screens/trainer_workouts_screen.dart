@@ -42,6 +42,7 @@ class TrainerWorkoutsScreen extends StatefulWidget {
 
 class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
   List<_RecentWorkoutItem> _recentWorkouts = [];
+  List<Map<String, dynamic>> _pendingStudents = [];
   bool _isLoading = true;
   bool _hasError = false;
   String _errorMessage = '';
@@ -60,8 +61,24 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
     });
     try {
       final workouts = await WorkoutService.getTrainerWorkouts();
+      final students = await WorkoutService.getTrainerStudents();
+
+      // Identifica alunos que estão aguardando periodização (sem ficha ativa)
+      final activeStudentIds = workouts
+          .where((w) => w['is_active'] == true)
+          .map((w) => w['client_id']?.toString())
+          .toSet();
+
+      final pending = students.where((s) {
+        final sid = s['id']?.toString();
+        final hasActive = s['has_active_prescription'] == true;
+        final status = (s['status'] as String? ?? '').toLowerCase();
+        return !hasActive && !activeStudentIds.contains(sid) && !status.contains('arquivado');
+      }).toList();
+
       if (mounted) {
         setState(() {
+          _pendingStudents = pending;
           _recentWorkouts = workouts.map((w) {
             final client = w['profiles'] ?? {};
             final clientName = client['full_name'] as String? ?? 'Aluno';
@@ -474,6 +491,128 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                     ),
                   ),
                 ),
+
+                // Seção "Aguardando Periodização" (Notificação imediata para novos alunos cadastrados)
+                if (_pendingStudents.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                        left: 20,
+                        right: 20,
+                        top: 10,
+                        bottom: 6,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: MetaColors.emerald,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Aguardando Periodização (${_pendingStudents.length})',
+                                style: const TextStyle(
+                                  color: MetaColors.emerald,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          ..._pendingStudents.map((st) {
+                            final name = st['full_name'] as String? ?? 'Aluno';
+                            final goal = st['goal'] as String? ?? 'Objetivo não informado';
+                            final stId = st['id'] as String?;
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: MetaColors.card(context),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: MetaColors.emerald.withValues(alpha: 0.4),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 20,
+                                    backgroundColor: MetaColors.highlight(context),
+                                    child: Text(
+                                      name.isNotEmpty ? name[0].toUpperCase() : 'A',
+                                      style: const TextStyle(
+                                        color: MetaColors.emerald,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          name,
+                                          style: TextStyle(
+                                            color: MetaColors.text(context),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'Avaliação pronta • $goal',
+                                          style: TextStyle(
+                                            color: MetaColors.subtext(context),
+                                            fontSize: 12,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  ElevatedButton.icon(
+                                    onPressed: () => _navigateToCreateWorkout(
+                                      studentId: stId,
+                                      studentName: name,
+                                    ),
+                                    icon: const Icon(Icons.auto_awesome, size: 15),
+                                    label: const Text('Prescrever'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: MetaColors.emerald,
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      textStyle: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                  ),
 
                 // Seção "Fichas Recentes": Título
                 SliverToBoxAdapter(

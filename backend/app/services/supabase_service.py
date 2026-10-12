@@ -1099,6 +1099,25 @@ class SupabaseService:
                         height_cm=int(p["height_cm"]) if p.get("height_cm") is not None else None,
                     ))
 
+                # Coleta identificadores de alunos com cadastro concluído para evitar duplicidade
+                registered_phones = {
+                    "".join(filter(str.isdigit, p.get("phone") or ""))
+                    for p in prof_res.data
+                    if p.get("phone")
+                }
+                # Também remove o prefixo 55 se houver para matching bidirecional
+                normalized_reg_phones = set()
+                for ph in registered_phones:
+                    normalized_reg_phones.add(ph)
+                    if ph.startswith("55") and len(ph) > 11:
+                        normalized_reg_phones.add(ph[2:])
+
+                registered_names = {
+                    (p.get("full_name") or "").strip().lower()
+                    for p in prof_res.data
+                    if p.get("full_name")
+                }
+
                 invite_res = await client.table("invite_tokens")\
                     .select("id, token, target_email, target_phone, target_name, objective, injuries_or_restrictions, created_at")\
                     .eq("trainer_id", t_uuid)\
@@ -1107,6 +1126,16 @@ class SupabaseService:
                     .order("created_at", desc=True)\
                     .execute()
                 for invite in invite_res.data or []:
+                    inv_phone = "".join(filter(str.isdigit, invite.get("target_phone") or ""))
+                    clean_inv_phone = inv_phone[2:] if (inv_phone.startswith("55") and len(inv_phone) > 11) else inv_phone
+                    inv_name = (invite.get("target_name") or "").strip().lower()
+
+                    # Se já existe aluno cadastrado com este telefone ou nome, descarta o convite pendente duplicado
+                    if inv_phone and (inv_phone in normalized_reg_phones or clean_inv_phone in normalized_reg_phones):
+                        continue
+                    if inv_name and inv_name in registered_names:
+                        continue
+
                     token_val = invite.get("token")
                     invitation_link = f"{settings.APP_FRONTEND_URL.rstrip('/')}/#/invite/{token_val}" if token_val else None
                     clean_phone = "".join(filter(str.isdigit, invite.get("target_phone") or ""))

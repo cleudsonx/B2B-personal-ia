@@ -19,6 +19,8 @@ from app.schemas.workout import (
     StudentInviteRequest,
     StudentInviteResponse,
     GamificationResponse,
+    NotifyTrainerOnboardingRequest,
+    NotifyTrainerOnboardingResponse,
 )
 from app.services.gemini_service import GeminiService
 from app.services.email_service import email_service
@@ -575,3 +577,144 @@ async def get_gamification_data(
         current_streak=data.get("current_streak", 0),
         daily_goal_progress=data.get("daily_goal_progress", 0.0)
     )
+
+
+@router.post(
+    "/notify-trainer-onboarding",
+    response_model=NotifyTrainerOnboardingResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Notificar Professor Imediatamente sobre Avaliação Concluída",
+    description="Dispara alerta na central do app, WhatsApp e e-mail transacional para o personal trainer elaborar a periodização."
+)
+async def notify_trainer_onboarding(
+    payload: NotifyTrainerOnboardingRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+) -> NotifyTrainerOnboardingResponse:
+    client = await supabase_service.get_client()
+    if not client:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Serviço de dados indisponível no momento."
+        )
+
+    t_uuid = to_valid_uuid_str(payload.trainer_id)
+    c_uuid = to_valid_uuid_str(payload.client_id)
+
+    # 1. Busca dados de contato do professor no Supabase
+    trainer_name = "Treinador"
+    trainer_phone = None
+    trainer_email = None
+
+    try:
+        t_res = await client.table("profiles").select("id, full_name, phone, public_whatsapp").eq("id", t_uuid).maybe_single().execute()
+        if t_res and t_res.data:
+            trainer_name = t_res.data.get("full_name") or trainer_name
+            trainer_phone = t_res.data.get("public_whatsapp") or t_res.data.get("phone")
+    except Exception as e:
+        logging.warning(f"Erro ao buscar perfil do treinador para notificação: {e}")
+
+    try:
+        auth_user = await client.auth.admin.get_user_by_id(t_uuid)
+        if auth_user and auth_user.user:
+            trainer_email = auth_user.user.email
+    except Exception as e:
+        logging.warning(f"Erro ao buscar email do treinador no Auth: {e}")
+
+    # 2. Registra o alerta de avaliação pendente na tabela adaptation_logs (alerta no app do professor)
+    alert_id = None
+    try:
+        alert_payload = {
+            "client_id": c_uuid,
+            "trainer_id": t_uuid,
+            "original_exercise": "Avaliação Biomecânica Concluída",
+            "adapted_exercise": "Aguardando Elaboração de Ficha de Treino",
+            "reason": f"A aluna {payload.student_name} concluiu a avaliação ({payload.objective}). Pronto para elaboração da periodização.",
+            "adaptation_details": {
+                "student_name": payload.student_name,
+                "objective": payload.objective,
+                "training_level": payload.training_level,
+                "weekly_days": payload.weekly_days,
+                "injuries_or_restrictions": payload.injuries_or_restrictions or "Nenhuma restrição relatada",
+                "type": "new_student_assessment",
+            },
+            "viewed_by_trainer": False,
+        }
+        ins_res = await client.table("adaptation_logs").insert(alert_payload).execute()
+        if ins_res and ins_res.data:
+            alert_id = ins_res.data[0].get("id")
+    except Exception as e:
+        logging.warning(f"Erro ao registrar alerta em adaptation_logs: {e}")
+
+    # 3. Disparo imediato via WhatsApp
+    whatsapp_sent = False
+    if trainer_phone:
+        clean_phone = "".join(filter(str.isdigit, trainer_phone))
+        if clean_phone and not clean_phone.startswith("55") and len(clean_phone) in (10, 11):
+            clean_phone = f"55{clean_phone}"
+
+        wa_msg = (
+            f"🔔 *Mr. Coach - Nova Avaliação Concluída!*\n\n"
+            f"Olá, Prof. {trainer_name}!\n"
+            f"Sua aluna *{payload.student_name}* acabou de concluir a avaliação inicial e está aguardando sua ficha de treino:\n\n"
+            f"🎯 *Objetivo:* {payload.objective}\n"
+            f"📊 *Frequência:* {payload.weekly_days}x por semana ({payload.training_level})\n"
+            f"⚠️ *Restrições:* {payload.injuries_or_restrictions or 'Nenhuma restrição relatada'}\n\n"
+            f"Acesse o Mr. Coach para elaborar e liberar a periodização da aluna."
+        )
+
+        try:
+            instance_name = f"trainer_{t_uuid.replace('-', '').lower()}"
+            await whatsapp_service.send_text_message(
+                instance_name=instance_name,
+                number=clean_phone,
+                text=wa_msg,
+            )
+            whatsapp_sent = True
+        except Exception as e:
+            logging.info(f"Aviso envio WhatsApp para o professor: {e}")
+
+    # 4. Disparo de E-mail Transacional para o Professor
+    email_sent = False
+    if trainer_email and email_service.api_key:
+        try:
+            subject = f"[Mr. Coach] 📋 Nova Avaliação de {payload.student_name} Concluída - Elaborar Periodização"
+            email_html = (
+                f'<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#0A0F1D;color:#FFFFFF;border-radius:16px;">'
+                f'<h2 style="color:#10B981;margin-top:0;">Nova Avaliação Concluída!</h2>'
+                f'<p style="font-size:16px;line-height:1.6;">Olá, <strong>Prof. {trainer_name}</strong>!</p>'
+                f'<p style="font-size:15px;line-height:1.6;">Sua aluna <strong>{payload.student_name}</strong> concluiu o formulário de anamnese biomecânica e está aguardando a sua prescrição:</p>'
+                f'<div style="background:#131C31;padding:16px;border-radius:12px;margin:20px 0;border-left:4px solid #10B981;">'
+                f'<p style="margin:4px 0;"><strong>🎯 Objetivo:</strong> {payload.objective}</p>'
+                f'<p style="margin:4px 0;"><strong>📊 Frequência:</strong> {payload.weekly_days}x por semana ({payload.training_level})</p>'
+                f'<p style="margin:4px 0;"><strong>⚠️ Restrições:</strong> {payload.injuries_or_restrictions or "Nenhuma"}</p>'
+                f'</div>'
+                f'<p style="font-size:14px;color:#94A3B8;">Acesse o painel Mr. Coach para gerar ou prescrever a ficha personalizada com IA.</p>'
+                f'</div>'
+            )
+            # Envia via HTTP Resend se configurado
+            async with httpx.AsyncClient(timeout=10) as http_client:
+                await http_client.post(
+                    "https://api.resend.com/emails",
+                    headers={
+                        "Authorization": f"Bearer {email_service.api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "from": email_service.email_from,
+                        "to": [trainer_email],
+                        "subject": subject,
+                        "html": email_html,
+                    },
+                )
+                email_sent = True
+        except Exception as e:
+            logging.info(f"Aviso envio e-mail para o professor: {e}")
+
+    return NotifyTrainerOnboardingResponse(
+        status="success",
+        message=f"Professor {trainer_name} notificado com sucesso sobre a avaliação de {payload.student_name}.",
+        alert_id=alert_id,
+        whatsapp_sent=whatsapp_sent,
+        email_sent=email_sent,
+    )
+

@@ -348,6 +348,19 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
               .update({'trainer_id': _trainerId})
               .eq('id', clientId);
         } catch (_) {}
+
+        // Notifica o professor imediatamente (Alerta na central do app + WhatsApp + E-mail)
+        WorkoutService.notifyTrainerOnboardingCompleted(
+          clientId: clientId,
+          trainerId: _trainerId!,
+          studentName: widget.studentName ??
+              (user.userMetadata?['full_name'] as String?) ??
+              'Sua Aluna',
+          objective: _objective,
+          trainingLevel: _trainingLevel,
+          weeklyDays: _weeklyDays,
+          injuriesOrRestrictions: injuriesSummary,
+        );
       }
 
       if (mounted) {

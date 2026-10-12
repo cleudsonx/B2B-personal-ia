@@ -153,3 +153,21 @@ class GamificationResponse(BaseModel):
     current_streak: int = Field(default=0, description="Dias seguidos de treino concluídos")
     daily_goal_progress: float = Field(default=0.0, description="Porcentagem de conclusão do treino de hoje (0.0 a 1.0)")
 
+
+class NotifyTrainerOnboardingRequest(BaseModel):
+    client_id: str = Field(..., description="ID do aluno que concluiu o onboarding")
+    trainer_id: str = Field(..., description="ID do personal trainer responsável")
+    student_name: str = Field(..., description="Nome completo do aluno")
+    objective: str = Field("Hipertrofia Muscular", description="Objetivo principal")
+    training_level: Optional[str] = Field("Intermediário", description="Nível de experiência")
+    weekly_days: Optional[int] = Field(4, description="Frequência semanal")
+    injuries_or_restrictions: Optional[str] = Field(None, description="Restrições ou dores relatadas")
+
+
+class NotifyTrainerOnboardingResponse(BaseModel):
+    status: str
+    message: str
+    alert_id: Optional[str] = None
+    whatsapp_sent: bool = False
+    email_sent: bool = False
+

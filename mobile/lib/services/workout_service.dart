@@ -225,14 +225,9 @@ class WorkoutService {
   static Future<List<Map<String, dynamic>>> getTrainerStudents() async {
     final trainer = AuthService.currentUser;
     final trainerId = trainer?.id ?? 'current-trainer';
-    final Map<String, Map<String, dynamic>> aggregated = {};
+    final List<Map<String, dynamic>> rawList = [];
 
-    // 1. Injeta cache local
-    for (final st in _localStudentsCache) {
-      aggregated[st['id'] as String] = Map<String, dynamic>.from(st);
-    }
-
-    // 2. Busca do Supabase 'profiles'
+    // 1. Busca do Supabase 'profiles' (Fonte oficial de alunos com conta ativa)
     if (_clientOrNull != null && trainer != null) {
       try {
         final List<dynamic> response = await _client
@@ -246,15 +241,15 @@ class WorkoutService {
           final map = Map<String, dynamic>.from(row as Map);
           final subStatus = map['subscription_status'] as String? ?? 'trial';
           map['status'] = subStatus == 'canceled' ? 'Arquivado' : 'Ativo';
-          map['goal'] = 'Consultoria Personalizada';
-          aggregated[map['id'] as String] = map;
+          map['goal'] = map['goal'] ?? 'Consultoria Personalizada';
+          rawList.add(map);
         }
       } catch (e) {
         debugPrint('Erro ao buscar alunos no Supabase: $e');
       }
     }
 
-    // 3. Busca do Backend /workouts/students
+    // 2. Busca do Backend /workouts/students (complementa com convites e anamneses)
     try {
       final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/students');
       final res = await http
@@ -263,13 +258,83 @@ class WorkoutService {
       if (res.statusCode == 200) {
         final list = jsonDecode(utf8.decode(res.bodyBytes)) as List<dynamic>;
         for (final item in list) {
-          final map = Map<String, dynamic>.from(item as Map);
-          aggregated[map['id'] as String] = map;
+          rawList.add(Map<String, dynamic>.from(item as Map));
         }
       }
     } catch (_) {}
 
-    return aggregated.values.toList();
+    // 3. Injeta cache local de novos convites criados nesta sessão
+    for (final st in _localStudentsCache) {
+      rawList.add(Map<String, dynamic>.from(st));
+    }
+
+    // 4. Deduplicação inteligente e unificação de registros
+    final Map<String, Map<String, dynamic>> deduplicated = {};
+    final Set<String> seenPhones = {};
+    final Set<String> seenEmails = {};
+    final Set<String> seenNames = {};
+
+    String normalizePhone(dynamic p) {
+      if (p == null) return '';
+      final digits = p.toString().replaceAll(RegExp(r'\D'), '');
+      return digits.startsWith('55') && digits.length > 11 ? digits.substring(2) : digits;
+    }
+
+    String normalizeEmail(dynamic e) {
+      if (e == null) return '';
+      return e.toString().trim().toLowerCase();
+    }
+
+    String normalizeName(dynamic n) {
+      if (n == null) return '';
+      return n.toString().trim().toLowerCase();
+    }
+
+    // Ordena priorizando perfis com ID oficial de UUID real (não mockado 11111111-)
+    rawList.sort((a, b) {
+      final aId = (a['id'] ?? '').toString();
+      final bId = (b['id'] ?? '').toString();
+      final aIsTemp = aId.startsWith('11111111-');
+      final bIsTemp = bId.startsWith('11111111-');
+      if (aIsTemp && !bIsTemp) return 1;
+      if (!aIsTemp && bIsTemp) return -1;
+      return 0;
+    });
+
+    for (final student in rawList) {
+      final id = (student['id'] ?? '').toString();
+      final phone = normalizePhone(student['phone']);
+      final email = normalizeEmail(student['email']);
+      final name = normalizeName(student['full_name']);
+
+      // Se já temos esse aluno por ID, telefone, email ou nome
+      bool isDuplicate = false;
+      if (id.isNotEmpty && deduplicated.containsKey(id)) {
+        isDuplicate = true;
+      } else if (phone.isNotEmpty && seenPhones.contains(phone)) {
+        isDuplicate = true;
+      } else if (email.isNotEmpty && !email.contains('shaipados.com') && seenEmails.contains(email)) {
+        isDuplicate = true;
+      } else if (name.isNotEmpty && name != 'novo aluno' && seenNames.contains(name)) {
+        isDuplicate = true;
+      }
+
+      if (!isDuplicate) {
+        if (id.isNotEmpty) deduplicated[id] = student;
+        if (phone.isNotEmpty) seenPhones.add(phone);
+        if (email.isNotEmpty && !email.contains('shaipados.com')) seenEmails.add(email);
+        if (name.isNotEmpty && name != 'novo aluno') seenNames.add(name);
+      }
+    }
+
+    // Limpa do _localStudentsCache qualquer item que já esteja sincronizado
+    _localStudentsCache.removeWhere((cacheItem) {
+      final cachePhone = normalizePhone(cacheItem['phone']);
+      final cacheName = normalizeName(cacheItem['full_name']);
+      return seenPhones.contains(cachePhone) || seenNames.contains(cacheName);
+    });
+
+    return deduplicated.values.toList();
   }
 
   /// Salva uma ficha de treino com persistência dupla (Supabase 'workouts' + Backend API)
@@ -1007,4 +1072,35 @@ class WorkoutService {
       return null;
     }
   }
+
+  /// Notifica o professor imediatamente sobre a conclusão da anamnese do aluno
+  static Future<void> notifyTrainerOnboardingCompleted({
+    required String clientId,
+    required String trainerId,
+    required String studentName,
+    required String objective,
+    String? trainingLevel,
+    int? weeklyDays,
+    String? injuriesOrRestrictions,
+  }) async {
+    try {
+      final uri = Uri.parse('${AppConfig.apiBaseUrl}/workouts/notify-trainer-onboarding');
+      await http.post(
+        uri,
+        headers: _apiHeaders,
+        body: jsonEncode({
+          'client_id': clientId,
+          'trainer_id': trainerId,
+          'student_name': studentName,
+          'objective': objective,
+          'training_level': trainingLevel ?? 'Intermediário',
+          'weekly_days': weeklyDays ?? 4,
+          'injuries_or_restrictions': injuriesOrRestrictions,
+        }),
+      ).timeout(const Duration(seconds: 5));
+    } catch (e) {
+      debugPrint('Aviso ao notificar professor sobre onboarding: $e');
+    }
+  }
 }
+
