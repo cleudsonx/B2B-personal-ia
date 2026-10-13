@@ -249,14 +249,24 @@ class WorkoutService {
         final Map<String, Map<String, dynamic>> activeWorkoutsMap = {};
         if (clientIds.isNotEmpty) {
           try {
-            final List<dynamic> workoutsRes = await _client
-                .from('workouts')
-                .select('client_id, title, is_active, updated_at')
-                .inFilter('client_id', clientIds)
-                .eq('is_active', true);
+            List<dynamic> workoutsRes = [];
+            try {
+              workoutsRes = await _client
+                  .from('workouts')
+                  .select('client_id, title, is_active, updated_at')
+                  .eq('trainer_id', trainerId)
+                  .eq('is_active', true)
+                  .order('updated_at', ascending: false);
+            } catch (_) {
+              workoutsRes = await _client
+                  .from('workouts')
+                  .select('client_id, title, is_active, updated_at')
+                  .inFilter('client_id', clientIds)
+                  .eq('is_active', true);
+            }
             for (final w in workoutsRes) {
               final cid = w['client_id']?.toString();
-              if (cid != null) {
+              if (cid != null && !activeWorkoutsMap.containsKey(cid)) {
                 activeWorkoutsMap[cid] = Map<String, dynamic>.from(w as Map);
               }
             }
@@ -272,11 +282,19 @@ class WorkoutService {
           map['goal'] = map['goal'] ?? 'Consultoria Personalizada';
 
           final stId = map['id']?.toString() ?? '';
-          final activeWorkout = activeWorkoutsMap[stId];
-          final hasActive = activeWorkout != null;
+          var activeWorkout = activeWorkoutsMap[stId];
+          var hasActive = activeWorkout != null;
+          if (!hasActive && stId.isNotEmpty) {
+            final cachedPlan = await getOfflineCachedWorkout(clientId: stId);
+            if (cachedPlan != null) {
+              hasActive = true;
+              map['active_split'] = cachedPlan.workoutPlanTitle;
+              map['last_session'] = 'Ficha ativa';
+            }
+          }
           map['has_active_prescription'] = hasActive;
           if (hasActive) {
-            map['active_split'] = activeWorkout['title'] ?? 'Ficha ativa';
+            map['active_split'] = map['active_split'] ?? (activeWorkout?['title'] ?? 'Ficha ativa');
             map['last_session'] = 'Ficha ativa';
           }
           rawList.add(map);
@@ -375,20 +393,22 @@ class WorkoutService {
       } else if (matchedKey != null && deduplicated.containsKey(matchedKey)) {
         // Fusão inteligente de campos para garantir propagação completa de dados
         final existing = deduplicated[matchedKey]!;
-        if (student['has_active_prescription'] == true) {
-          existing['has_active_prescription'] = true;
+        final hasActive = student['has_active_prescription'] == true || existing['has_active_prescription'] == true;
+        existing['has_active_prescription'] = hasActive;
+
+        final stSplit = student['active_split']?.toString();
+        final exSplit = existing['active_split']?.toString();
+        if (stSplit != null && stSplit.isNotEmpty && (exSplit == null || exSplit.isEmpty || exSplit == 'Ficha ativa')) {
+          existing['active_split'] = stSplit;
         }
-        if (student['active_split'] != null && student['active_split'].toString().isNotEmpty) {
-          existing['active_split'] = student['active_split'];
+        if (hasActive && (existing['last_session'] == null || existing['last_session'] == 'Aguardando treino')) {
+          existing['last_session'] = 'Ficha ativa';
         }
         if (student['photo_url'] != null && student['photo_url'].toString().isNotEmpty) {
           existing['photo_url'] = student['photo_url'];
         }
         if (student['avatar_url'] != null && student['avatar_url'].toString().isNotEmpty) {
           existing['avatar_url'] = student['avatar_url'];
-        }
-        if (student['last_session'] != null && student['last_session'].toString().isNotEmpty) {
-          existing['last_session'] = student['last_session'];
         }
       }
     }
@@ -734,6 +754,7 @@ class WorkoutService {
     }
     // Limpa cache offline
     await clearOfflineCachedWorkout(clientId);
+    studentsRefreshNotifier.value++;
     return success;
   }
 
@@ -769,6 +790,7 @@ class WorkoutService {
         debugPrint('Erro ao renovar ficha no Supabase: $e');
       }
     }
+    studentsRefreshNotifier.value++;
     return success;
   }
 

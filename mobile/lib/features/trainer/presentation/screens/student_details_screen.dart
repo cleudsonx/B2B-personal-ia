@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/widgets/meta_components.dart';
-import '../../../../models/exercise_model.dart';
-import '../../../../models/split_model.dart';
 import '../../../../models/workout_plan_model.dart';
 import '../../../../services/invite_service.dart';
 import '../../anamnesis_screen.dart';
@@ -66,6 +64,12 @@ late Map<String, dynamic> student;
         setState(() {
           _activeWorkout = workout;
           _isLoadingWorkout = false;
+          if (workout != null) {
+            student['has_active_prescription'] = true;
+            if (workout is WorkoutPlanModel) {
+              student['active_split'] = workout.workoutPlanTitle;
+            }
+          }
         });
       }
     } catch (e) {
@@ -234,6 +238,7 @@ late Map<String, dynamic> student;
     if (!mounted) return;
     setState(() => _isLoadingWorkout = true);
     await _fetchWorkout();
+    WorkoutService.studentsRefreshNotifier.value++;
   }
 
   Future<void> _deleteActiveWorkout() async {
@@ -316,7 +321,10 @@ late Map<String, dynamic> student;
         setState(() {
           _activeWorkout = null;
           _isLoadingWorkout = false;
+          student['has_active_prescription'] = false;
+          student['active_split'] = null;
         });
+        WorkoutService.studentsRefreshNotifier.value++;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: isDark ? MetaColors.surfaceHighlight : const Color(0xFF1E293B),
@@ -414,6 +422,11 @@ late Map<String, dynamic> student;
       }
       await WorkoutService.renewWorkoutPlan(clientId: studentId, workoutId: workoutId);
       await _fetchWorkout();
+      student['has_active_prescription'] = true;
+      if (_activeWorkout is WorkoutPlanModel) {
+        student['active_split'] = (_activeWorkout as WorkoutPlanModel).workoutPlanTitle;
+      }
+      WorkoutService.studentsRefreshNotifier.value++;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1231,26 +1244,31 @@ late Map<String, dynamic> student;
     if (status == 'Inativo' || status == 'Arquivado') statusColor = Colors.redAccent;
     final isDark = MetaColors.isDark(context);
 
-    return Scaffold(
-      backgroundColor: MetaColors.bg(context),
-      appBar: AppBar(
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        WorkoutService.studentsRefreshNotifier.value++;
+      },
+      child: Scaffold(
         backgroundColor: MetaColors.bg(context),
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: MetaColors.text(context)),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Perfil do Aluno',
-          style: TextStyle(
-            color: MetaColors.text(context),
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+        appBar: AppBar(
+          backgroundColor: MetaColors.bg(context),
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: MetaColors.text(context)),
+            onPressed: () => Navigator.pop(context, true),
           ),
+          title: Text(
+            'Perfil do Aluno',
+            style: TextStyle(
+              color: MetaColors.text(context),
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          centerTitle: true,
         ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
+        body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
@@ -1669,7 +1687,7 @@ late Map<String, dynamic> student;
                             ],
                           ),
                           if (splits.isNotEmpty) ...[
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 18),
                             Divider(color: MetaColors.cardBorder(workoutContext), height: 1),
                             const SizedBox(height: 14),
                             Row(
@@ -1694,54 +1712,72 @@ late Map<String, dynamic> student;
                               ],
                             ),
                             const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
+                            Column(
                               children: splits.map((split) {
                                 return Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                   decoration: BoxDecoration(
                                     color: isDark
                                         ? MetaColors.highlight(workoutContext)
                                         : const Color(0xFFF1F5F9),
-                                    borderRadius: BorderRadius.circular(10),
+                                    borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                       color: MetaColors.cardBorder(workoutContext),
+                                      width: 0.8,
                                     ),
                                   ),
                                   child: Row(
-                                    mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        width: 26,
+                                        height: 26,
+                                        alignment: Alignment.center,
                                         decoration: BoxDecoration(
                                           color: MetaColors.primaryColor(workoutContext),
-                                          borderRadius: BorderRadius.circular(6),
+                                          borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Text(
                                           split.splitIdentifier,
                                           style: const TextStyle(
                                             color: Colors.white,
-                                            fontSize: 11,
+                                            fontSize: 12,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        split.splitName,
-                                        style: TextStyle(
-                                          color: MetaColors.text(workoutContext),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          split.splitName,
+                                          style: TextStyle(
+                                            color: MetaColors.text(workoutContext),
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            height: 1.25,
+                                          ),
                                         ),
                                       ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        '(${split.exercises.length})',
-                                        style: TextStyle(
-                                          color: MetaColors.subtext(workoutContext),
-                                          fontSize: 11,
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: isDark
+                                              ? MetaColors.surface
+                                              : Colors.white,
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: MetaColors.cardBorder(workoutContext),
+                                            width: 0.6,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '${split.exercises.length} ex',
+                                          style: TextStyle(
+                                            color: MetaColors.subtext(workoutContext),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -1751,7 +1787,7 @@ late Map<String, dynamic> student;
                             ),
                           ],
                           if (plan.notesForTrainer.isNotEmpty) ...[
-                            const SizedBox(height: 14),
+                            const SizedBox(height: 8),
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
@@ -1760,7 +1796,7 @@ late Map<String, dynamic> student;
                                     : const Color(0xFFF8FAFC),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: MetaColors.cardBorder(workoutContext),
+                                  color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
                                 ),
                               ),
                               child: Row(
@@ -1780,7 +1816,7 @@ late Map<String, dynamic> student;
                                         fontSize: 12,
                                         height: 1.35,
                                       ),
-                                      maxLines: 2,
+                                      maxLines: 3,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
@@ -1795,7 +1831,7 @@ late Map<String, dynamic> student;
                               label: 'Ver Ficha Completa',
                               icon: Icons.visibility_rounded,
                               isPrimary: true,
-                              height: 50,
+                              height: 48,
                               onPressed: () => _viewFullWorkoutDetails(plan),
                             ),
                           ),
@@ -1807,7 +1843,9 @@ late Map<String, dynamic> student;
                                   label: 'Nova com IA',
                                   icon: Icons.auto_awesome,
                                   isPrimary: false,
-                                  height: 46,
+                                  height: 44,
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                  fontSize: 13.5,
                                   onPressed: _openWorkoutPrescription,
                                 ),
                               ),
@@ -1817,17 +1855,21 @@ late Map<String, dynamic> student;
                                   label: 'Renovar',
                                   icon: Icons.replay_rounded,
                                   isPrimary: false,
-                                  height: 46,
+                                  height: 44,
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                  fontSize: 13.5,
                                   onPressed: _renewActiveWorkout,
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 8),
-                          SizedBox(
-                            width: double.infinity,
+                          Center(
                             child: TextButton.icon(
                               onPressed: _deleteActiveWorkout,
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              ),
                               icon: const Icon(
                                 Icons.delete_outline_rounded,
                                 color: Colors.redAccent,
@@ -1910,6 +1952,6 @@ late Map<String, dynamic> student;
           ),
         ),
       ),
-    );
+    ),);
   }
 }

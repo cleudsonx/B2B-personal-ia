@@ -129,6 +129,8 @@ class SquircleButton extends StatelessWidget {
   final Color? foregroundColor;
   final double height;
   final double borderRadius;
+  final EdgeInsetsGeometry? padding;
+  final double? fontSize;
 
   const SquircleButton({
     super.key,
@@ -141,6 +143,8 @@ class SquircleButton extends StatelessWidget {
     this.foregroundColor,
     this.height = 54.0,
     this.borderRadius = 16.0,
+    this.padding,
+    this.fontSize,
   });
 
   @override
@@ -173,7 +177,7 @@ class SquircleButton extends StatelessWidget {
                 ? BorderSide.none
                 : BorderSide(color: activeBorder, width: 1.0),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          padding: padding ?? const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         ),
         child: isLoading
             ? SizedBox(
@@ -189,8 +193,8 @@ class SquircleButton extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (icon != null) ...[
-                    Icon(icon, size: 20, color: fg),
-                    const SizedBox(width: 10),
+                    Icon(icon, size: 18, color: fg),
+                    const SizedBox(width: 8),
                   ],
                   Flexible(
                     child: Text(
@@ -198,10 +202,10 @@ class SquircleButton extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: fontSize ?? 15,
                         fontWeight: FontWeight.bold,
                         color: fg,
-                        letterSpacing: 0.3,
+                        letterSpacing: 0.2,
                       ),
                     ),
                   ),

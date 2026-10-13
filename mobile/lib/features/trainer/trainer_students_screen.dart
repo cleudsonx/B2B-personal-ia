@@ -64,12 +64,39 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
             final stId = st['id'] ?? 'db-id';
             final stName = (st['full_name'] as String? ?? '').toLowerCase();
 
+            final activeSplit = st['active_split'] as String?;
+            final hasActivePrescription =
+                st['has_active_prescription'] as bool? ??
+                (activeSplit?.isNotEmpty == true ? true : null);
+
             final matchingAlert = alerts.firstWhere(
-              (a) =>
-                  (a['student_id'] == stId ||
-                      (a['student_name'] as String? ?? '').toLowerCase() ==
-                          stName) &&
-                  a['acknowledged'] == false,
+              (a) {
+                final matchIdOrName = (a['student_id'] == stId ||
+                    (a['student_name'] as String? ?? '').toLowerCase() == stName);
+                if (!matchIdOrName || a['acknowledged'] == true) return false;
+
+                // Se o aluno já tem ficha ativa prescrita, alertas de onboarding/prescrição pendente foram sanados
+                if (hasActivePrescription == true) {
+                  final orig = (a['original_exercise'] as String? ?? '').toLowerCase();
+                  final adap = (a['adapted_exercise'] as String? ?? '').toLowerCase();
+                  final reason = (a['reason'] as String? ?? '').toLowerCase();
+                  final isPrescriptionPendingAlert =
+                      orig.contains('avaliação') ||
+                      adap.contains('aguardando') ||
+                      adap.contains('ficha') ||
+                      reason.contains('avaliação') ||
+                      reason.contains('periodização') ||
+                      reason.contains('elaboração');
+                  if (isPrescriptionPendingAlert) {
+                    final aid = a['id']?.toString();
+                    if (aid != null) {
+                      WorkoutService.acknowledgeAlert(aid);
+                    }
+                    return false;
+                  }
+                }
+                return true;
+              },
               orElse: () => <String, dynamic>{},
             );
 
@@ -78,10 +105,6 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                 ? (matchingAlert['message'] ?? 'Alerta biomecânico registrado')
                 : null;
 
-            final activeSplit = st['active_split'] as String?;
-            final hasActivePrescription =
-              st['has_active_prescription'] as bool? ??
-              (activeSplit?.isNotEmpty == true ? true : null);
             final lastSession = st['last_session'] as String? ?? 'Sincronizado';
             final status = st['status'] as String? ?? 'Ativo';
             final isPendingInvite = status.trim().toLowerCase() == 'convite pendente';
@@ -95,15 +118,15 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
               'email': st['email'] ?? '',
               'phone': st['phone'] ?? '',
               'goal': st['goal'] ?? 'Treino',
-                  'recent_status': isPendingInvite
-                    ? 'Convite pendente · aguardando cadastro'
-                    : isArchived
-                  ? 'Arquivado'
-                  : hasActivePrescription == true
-                  ? (activeSplit?.isNotEmpty == true
-                    ? 'Ficha ativa: $activeSplit'
-                    : 'Ficha ativa')
-                  : 'Aguardando ficha',
+              'recent_status': isPendingInvite
+                  ? 'Convite pendente · aguardando cadastro'
+                  : isArchived
+                      ? 'Arquivado'
+                      : hasActivePrescription == true
+                          ? (activeSplit?.isNotEmpty == true
+                              ? 'Ficha ativa: $activeSplit'
+                              : 'Ficha ativa')
+                          : 'Aguardando ficha',
               'last_session': lastSession,
               'status': status,
               'has_alert': hasAlert,
