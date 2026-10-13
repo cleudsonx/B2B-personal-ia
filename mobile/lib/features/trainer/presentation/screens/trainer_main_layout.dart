@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/widgets/meta_components.dart';
 import '../../../../services/auth_service.dart';
+import '../../../../services/workout_service.dart';
 import '../../../auth/auth_gate.dart';
 import '../../../auth/account_screen.dart';
 import '../../../auth/login_screen.dart';
@@ -40,6 +41,9 @@ class _TrainerMainLayoutState extends State<TrainerMainLayout> {
   }
 
   void _onDestinationSelected(int index) {
+    if (index == 0) {
+      WorkoutService.studentsRefreshNotifier.value++;
+    }
     if (_currentIndex != index) {
       setState(() {
         _currentIndex = index;

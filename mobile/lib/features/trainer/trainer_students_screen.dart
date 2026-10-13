@@ -31,13 +31,21 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
   @override
   void initState() {
     super.initState();
+    WorkoutService.studentsRefreshNotifier.addListener(_onStudentsRefreshed);
     _loadStudentsFromDb();
   }
 
   @override
   void dispose() {
+    WorkoutService.studentsRefreshNotifier.removeListener(_onStudentsRefreshed);
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onStudentsRefreshed() {
+    if (mounted) {
+      _loadStudentsFromDb();
+    }
   }
 
   Future<void> _loadStudentsFromDb() async {
@@ -95,9 +103,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                   ? (activeSplit?.isNotEmpty == true
                     ? 'Ficha ativa: $activeSplit'
                     : 'Ficha ativa')
-                  : hasActivePrescription == false
-                    ? 'Aguardando ficha'
-                    : 'Status da ficha indisponível',
+                  : 'Aguardando ficha',
               'last_session': lastSession,
               'status': status,
               'has_alert': hasAlert,
@@ -279,7 +285,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
         builder: (context) => StudentDetailsScreen(studentData: student),
       ),
     );
-    if (changed == true && mounted) await _loadStudentsFromDb();
+    if (mounted) await _loadStudentsFromDb();
   }
 
   void _showAddStudentDialog() {

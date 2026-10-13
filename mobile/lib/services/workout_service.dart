@@ -27,6 +27,9 @@ class WorkoutService {
   // Cache local em memória de alunos criados nesta sessão para garantir persistência contínua
   static final List<Map<String, dynamic>> _localStudentsCache = [];
 
+  /// Notificador reativo disparado sempre que a lista de alunos ou prescrições sofre alterações
+  static final ValueNotifier<int> studentsRefreshNotifier = ValueNotifier<int>(0);
+
   static Map<String, String> get _apiHeaders {
     final headers = {
       'Content-Type': 'application/json',
@@ -237,11 +240,45 @@ class WorkoutService {
             .eq('role', 'client')
             .order('created_at', ascending: false);
 
+        // Coleta todos os client IDs para buscar treinos ativos diretamente
+        final List<String> clientIds = response
+            .map((r) => (r['id'] ?? '').toString())
+            .where((id) => id.isNotEmpty)
+            .toList();
+
+        final Map<String, Map<String, dynamic>> activeWorkoutsMap = {};
+        if (clientIds.isNotEmpty) {
+          try {
+            final List<dynamic> workoutsRes = await _client
+                .from('workouts')
+                .select('client_id, title, is_active, updated_at')
+                .inFilter('client_id', clientIds)
+                .eq('is_active', true);
+            for (final w in workoutsRes) {
+              final cid = w['client_id']?.toString();
+              if (cid != null) {
+                activeWorkoutsMap[cid] = Map<String, dynamic>.from(w as Map);
+              }
+            }
+          } catch (we) {
+            debugPrint('Aviso Supabase busca treinos de alunos: $we');
+          }
+        }
+
         for (final row in response) {
           final map = Map<String, dynamic>.from(row as Map);
           final subStatus = map['subscription_status'] as String? ?? 'trial';
           map['status'] = subStatus == 'canceled' ? 'Arquivado' : 'Ativo';
           map['goal'] = map['goal'] ?? 'Consultoria Personalizada';
+
+          final stId = map['id']?.toString() ?? '';
+          final activeWorkout = activeWorkoutsMap[stId];
+          final hasActive = activeWorkout != null;
+          map['has_active_prescription'] = hasActive;
+          if (hasActive) {
+            map['active_split'] = activeWorkout['title'] ?? 'Ficha ativa';
+            map['last_session'] = 'Ficha ativa';
+          }
           rawList.add(map);
         }
       } catch (e) {
@@ -309,14 +346,25 @@ class WorkoutService {
 
       // Se já temos esse aluno por ID, telefone, email ou nome
       bool isDuplicate = false;
+      String? matchedKey;
+
       if (id.isNotEmpty && deduplicated.containsKey(id)) {
         isDuplicate = true;
-      } else if (phone.isNotEmpty && seenPhones.contains(phone)) {
-        isDuplicate = true;
-      } else if (email.isNotEmpty && !email.contains('shaipados.com') && seenEmails.contains(email)) {
-        isDuplicate = true;
-      } else if (name.isNotEmpty && name != 'novo aluno' && seenNames.contains(name)) {
-        isDuplicate = true;
+        matchedKey = id;
+      } else {
+        for (final entry in deduplicated.entries) {
+          final existing = entry.value;
+          final exPhone = normalizePhone(existing['phone']);
+          final exEmail = normalizeEmail(existing['email']);
+          final exName = normalizeName(existing['full_name']);
+          if ((phone.isNotEmpty && exPhone == phone) ||
+              (email.isNotEmpty && !email.contains('shaipados.com') && exEmail == email) ||
+              (name.isNotEmpty && name != 'novo aluno' && exName == name)) {
+            isDuplicate = true;
+            matchedKey = entry.key;
+            break;
+          }
+        }
       }
 
       if (!isDuplicate) {
@@ -324,6 +372,24 @@ class WorkoutService {
         if (phone.isNotEmpty) seenPhones.add(phone);
         if (email.isNotEmpty && !email.contains('shaipados.com')) seenEmails.add(email);
         if (name.isNotEmpty && name != 'novo aluno') seenNames.add(name);
+      } else if (matchedKey != null && deduplicated.containsKey(matchedKey)) {
+        // Fusão inteligente de campos para garantir propagação completa de dados
+        final existing = deduplicated[matchedKey]!;
+        if (student['has_active_prescription'] == true) {
+          existing['has_active_prescription'] = true;
+        }
+        if (student['active_split'] != null && student['active_split'].toString().isNotEmpty) {
+          existing['active_split'] = student['active_split'];
+        }
+        if (student['photo_url'] != null && student['photo_url'].toString().isNotEmpty) {
+          existing['photo_url'] = student['photo_url'];
+        }
+        if (student['avatar_url'] != null && student['avatar_url'].toString().isNotEmpty) {
+          existing['avatar_url'] = student['avatar_url'];
+        }
+        if (student['last_session'] != null && student['last_session'].toString().isNotEmpty) {
+          existing['last_session'] = student['last_session'];
+        }
       }
     }
 
@@ -370,6 +436,12 @@ class WorkoutService {
                 })
                 .select()
                 .single();
+
+        // 1.1 Baixa os alertas de adaptação / pendência de treino para este aluno
+        await _client
+            .from('adaptation_logs')
+            .update({'viewed_by_trainer': true})
+            .eq('client_id', clientId);
       } catch (e) {
         debugPrint('Aviso Supabase saveWorkoutPlan: $e');
       }
@@ -398,6 +470,9 @@ class WorkoutService {
 
     // 3. Salva no cache offline persistente do celular para visualização sem internet
     await _saveWorkoutToOfflineCache(clientId, plan);
+
+    // 4. Notifica ouvintes reativos de que os alunos/fichas foram atualizados
+    studentsRefreshNotifier.value++;
 
     return supabaseResult ?? {'status': 'saved', 'client_id': clientId};
   }

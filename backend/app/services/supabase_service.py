@@ -1505,6 +1505,10 @@ class SupabaseService:
                 await client.table("profiles").update({"subscription_status": "active"})\
                     .eq("id", c_uuid).neq("subscription_status", "suspended").execute()
 
+                # 4. Baixa os alertas de adaptação / pendência de treino para este aluno
+                await client.table("adaptation_logs").update({"viewed_by_trainer": True})\
+                    .eq("client_id", c_uuid).execute()
+
                 if res.data:
                     prescription_id = res.data[0]["id"]
             except Exception as e:
