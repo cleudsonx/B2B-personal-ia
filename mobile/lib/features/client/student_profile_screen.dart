@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../core/widgets/avatar_selector_sheet.dart';
+import '../../core/widgets/meta_components.dart';
 import '../../services/auth_service.dart';
 import '../../services/student_profile_service.dart';
 import '../auth/teacher_mfa_screen.dart';
@@ -11,8 +13,14 @@ class StudentProfileScreen extends StatefulWidget {
   /// Injetáveis para testes; em produção usam o usuário autenticado e o Supabase.
   final StudentProfileService? service;
   final String? userId;
+  final bool isTab;
 
-  const StudentProfileScreen({super.key, this.service, this.userId});
+  const StudentProfileScreen({
+    super.key,
+    this.service,
+    this.userId,
+    this.isTab = false,
+  });
 
   @override
   State<StudentProfileScreen> createState() => _StudentProfileScreenState();
@@ -22,6 +30,8 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
   late final StudentProfileService _service;
   bool _isLoadingData = true;
   bool _isSaving = false;
+  bool _isSavedSuccess = false;
+  Timer? _successTimer;
   String? _loadError;
   StudentProfileData? _original;
   Map<String, String> _fieldErrors = {};
@@ -66,6 +76,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
 
   @override
   void dispose() {
+    _successTimer?.cancel();
     _nameCtrl.dispose();
     _ageCtrl.dispose();
     _weightCtrl.dispose();
@@ -167,14 +178,35 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         photoUrl: _photoUrl,
       );
 
-  void _snack(String msg, {Color? color, SnackBarAction? action}) {
+  void _snack(String msg, {Color? color, SnackBarAction? action, IconData? icon}) {
     if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg),
-        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        content: Row(
+          children: [
+            if (icon != null) ...[
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
+              child: Text(
+                msg,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: color ?? MetaColors.emerald,
         action: action,
-        duration: const Duration(seconds: 6),
+        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -201,29 +233,56 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       _original = updated;
       if (!mounted) return;
 
+      // Atualiza o cache do Smart Re-entry para refletir o novo nome ou foto em background
+      try {
+        AuthService.saveLastAuthenticatedUser(
+          email: _email ?? '',
+          name: updated.name,
+          role: 'client',
+          photoUrl: updated.photoUrl,
+        ).catchError((_) {});
+      } catch (_) {}
+
+      setState(() {
+        _isSaving = false;
+        _isSavedSuccess = true;
+      });
+
+      // Retorna o botão ao estado padrão após 2.5 segundos
+      _successTimer?.cancel();
+      _successTimer = Timer(const Duration(milliseconds: 2500), () {
+        if (mounted) {
+          setState(() => _isSavedSuccess = false);
+        }
+      });
+
       switch (result.review) {
         case ReviewStatus.notNeeded:
-          _snack('Perfil atualizado com sucesso.', color: AppColors.emerald(context));
-          if (Navigator.canPop(context)) Navigator.pop(context);
+          _snack(
+            'Perfil atualizado com sucesso.',
+            color: MetaColors.emerald,
+            icon: Icons.check_circle_rounded,
+          );
           return;
         case ReviewStatus.requested:
           _snack(
             'Perfil atualizado. Seu professor foi notificado para revisar a ficha com suas novas restrições.',
-            color: AppColors.emerald(context),
+            color: MetaColors.emerald,
+            icon: Icons.mark_email_read_rounded,
           );
-          if (Navigator.canPop(context)) Navigator.pop(context);
           return;
         case ReviewStatus.noTrainer:
           _snack(
             'Perfil atualizado. Você ainda não tem professor vinculado para revisar a ficha.',
-            color: AppColors.emerald(context),
+            color: MetaColors.emerald,
+            icon: Icons.info_outline_rounded,
           );
-          if (Navigator.canPop(context)) Navigator.pop(context);
           return;
         case ReviewStatus.failed:
           _snack(
             'Perfil salvo, mas não conseguimos avisar seu professor para revisar a ficha.',
             color: Colors.orange.shade800,
+            icon: Icons.warning_amber_rounded,
             action: SnackBarAction(
               label: 'Tentar novamente',
               textColor: Colors.white,
@@ -236,9 +295,12 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       _snack(
         cleanMsg.isNotEmpty ? 'Não foi possível salvar: $cleanMsg' : 'Não foi possível salvar. Nada foi alterado.',
         color: Colors.red,
+        icon: Icons.error_outline_rounded,
       );
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted && _isSaving) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -931,33 +993,59 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
             // Botão Principal de Salvar Perfil
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                key: const Key('btn_save_profile'),
-                onPressed: _isSaving ? null : _handleSave,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.emerald(context),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                child: ElevatedButton(
+                  key: const Key('btn_save_profile'),
+                  onPressed: (_isSaving || _isSavedSuccess) ? null : _handleSave,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _isSavedSuccess
+                        ? MetaColors.emerald
+                        : AppColors.emerald(context),
+                    disabledBackgroundColor: _isSavedSuccess
+                        ? MetaColors.emerald
+                        : AppColors.emerald(context).withValues(alpha: 0.6),
+                    foregroundColor: Colors.white,
+                    disabledForegroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
                   ),
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : _isSavedSuccess
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Alterações Salvas!',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : const Text(
+                              'Salvar Alterações',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                 ),
-                child: _isSaving
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text(
-                        'Salvar Alterações',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
               ),
             ),
             const SizedBox(height: 40),
@@ -1101,12 +1189,13 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final canPop = Navigator.canPop(context);
+    final showBackButton = !widget.isTab && canPop;
     return Scaffold(
       backgroundColor: AppColors.bg(context),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: canPop
+        leading: showBackButton
             ? IconButton(
                 icon: Icon(Icons.arrow_back_rounded, color: AppColors.text(context)),
                 onPressed: () => Navigator.pop(context),

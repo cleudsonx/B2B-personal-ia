@@ -221,7 +221,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         ClientBioHubScreen(
           onNavigateToWorkout: () => setState(() => _currentIndex = 0),
         ),
-        const StudentProfileScreen(),
+        const StudentProfileScreen(isTab: true),
       ];
     }
   }

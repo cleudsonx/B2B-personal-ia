@@ -198,6 +198,21 @@ void main() {
       expect(find.text('Idade entre 10 e 100.'), findsOneWidget);
       expect(g.lastUpdate, isNull);
     });
+
+    testWidgets('salvar com sucesso mantém na tela e mostra feedback de sucesso', (t) async {
+      final g = FakeGateway(row: _row());
+      await _pump(t, g);
+      await t.enterText(find.byKey(const Key('field_name')), 'Maria Atualizada');
+      await t.ensureVisible(find.byKey(const Key('btn_save_profile')));
+      await t.tap(find.byKey(const Key('btn_save_profile')));
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Alterações Salvas!'), findsOneWidget);
+      expect(find.text('Meu Perfil & Conta'), findsOneWidget);
+      expect(g.lastUpdate?['full_name'], 'Maria Atualizada');
+      await t.pump(const Duration(seconds: 3));
+    });
   });
 }
 
