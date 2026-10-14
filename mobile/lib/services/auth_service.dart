@@ -462,7 +462,7 @@ class AuthService {
       if (trainerId != null && trainerId.isNotEmpty && _clientOrNull != null) {
         final trainer = await _client
             .from('profiles')
-            .select('id, full_name, professional_document, photo_url, avatar_url, cref, phone, whatsapp')
+            .select('id, full_name, professional_document, photo_url, avatar_url, public_whatsapp')
             .eq('id', trainerId)
             .maybeSingle();
         if (trainer != null) {
@@ -471,7 +471,12 @@ class AuthService {
           trainer['trainer_photo_url'] = photo;
           trainer['photo_url'] = photo;
           trainer['avatar_url'] = photo;
-          trainer['cref_or_registry'] = trainer['cref'] ?? trainer['professional_document'] ?? 'CREF Ativo';
+          trainer['cref'] = trainer['professional_document'];
+          trainer['cref_or_registry'] = trainer['professional_document'] != null &&
+                  (trainer['professional_document'] as String).trim().isNotEmpty
+              ? trainer['professional_document']
+              : 'CREF Ativo';
+          trainer['whatsapp'] = trainer['public_whatsapp'];
           return trainer;
         }
       }

@@ -16,6 +16,7 @@ class _RecentWorkoutItem {
   final bool isExpired;
   final String initials;
   final bool useClipboardIcon;
+  final String? photoUrl;
   final Map<String, dynamic>? rawWorkout;
 
   const _RecentWorkoutItem({
@@ -29,6 +30,7 @@ class _RecentWorkoutItem {
     required this.isExpired,
     required this.initials,
     this.useClipboardIcon = false,
+    this.photoUrl,
   });
 }
 
@@ -76,12 +78,18 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
         return !hasActive && !activeStudentIds.contains(sid) && !status.contains('arquivado');
       }).toList();
 
+      // Indexar alunos para fallback de fotos e dados completos
+      final studentMap = {for (final s in students) s['id']?.toString(): s};
+
       if (mounted) {
         setState(() {
           _pendingStudents = pending;
           _recentWorkouts = workouts.map((w) {
             final client = w['profiles'] ?? {};
             final clientName = client['full_name'] as String? ?? 'Aluno';
+            final clientId = w['client_id']?.toString();
+            final stProfile = studentMap[clientId];
+            final photoUrl = (client['photo_url'] ?? client['avatar_url'] ?? stProfile?['photo_url'] ?? stProfile?['avatar_url']) as String?;
             final title = w['title'] as String? ?? 'Ficha de Treino';
             final updatedAt = w['updated_at'] as String?;
             
@@ -124,6 +132,7 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
               isExpired: expired,
               initials: initials,
               useClipboardIcon: clientName == 'Aluno',
+              photoUrl: photoUrl,
               rawWorkout: w,
             );
           }).toList();
@@ -532,6 +541,7 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                             final name = st['full_name'] as String? ?? 'Aluno';
                             final goal = st['goal'] as String? ?? 'Objetivo não informado';
                             final stId = st['id'] as String?;
+                            final photoUrl = (st['photo_url'] ?? st['avatar_url']) as String?;
                             return Container(
                               margin: const EdgeInsets.only(bottom: 10),
                               padding: const EdgeInsets.all(14),
@@ -548,14 +558,17 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                                   CircleAvatar(
                                     radius: 20,
                                     backgroundColor: MetaColors.highlight(context),
-                                    child: Text(
-                                      name.isNotEmpty ? name[0].toUpperCase() : 'A',
-                                      style: const TextStyle(
-                                        color: MetaColors.emerald,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
-                                      ),
-                                    ),
+                                    backgroundImage: safeImageProvider(photoUrl),
+                                    child: safeImageProvider(photoUrl) != null
+                                        ? null
+                                        : Text(
+                                            name.isNotEmpty ? name[0].toUpperCase() : 'A',
+                                            style: const TextStyle(
+                                              color: MetaColors.emerald,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 15,
+                                            ),
+                                          ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
@@ -700,20 +713,23 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                                 leading: CircleAvatar(
                                   radius: 24,
                                   backgroundColor: MetaColors.highlight(context),
-                                  child: workout.useClipboardIcon
-                                      ? const Icon(
-                                          Icons.assignment_outlined,
-                                          color: MetaColors.emerald,
-                                          size: 22,
-                                        )
-                                      : Text(
-                                          workout.initials,
-                                          style: const TextStyle(
-                                            color: MetaColors.emerald,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 15,
-                                          ),
-                                        ),
+                                  backgroundImage: safeImageProvider(workout.photoUrl),
+                                  child: safeImageProvider(workout.photoUrl) != null
+                                      ? null
+                                      : (workout.useClipboardIcon
+                                          ? const Icon(
+                                              Icons.assignment_outlined,
+                                              color: MetaColors.emerald,
+                                              size: 22,
+                                            )
+                                          : Text(
+                                              workout.initials,
+                                              style: const TextStyle(
+                                                color: MetaColors.emerald,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                              ),
+                                            )),
                                 ),
                                 title: Text(
                                   '${workout.studentName} • ${workout.workoutTitle}',
