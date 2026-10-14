@@ -14,6 +14,7 @@ import 'features/auth/auth_gate.dart';
 import 'features/auth/account_screen.dart';
 import 'features/client/student_profile_screen.dart';
 import 'features/client/active_workout_screen.dart';
+import 'features/client/client_bio_hub_screen.dart';
 import 'features/client/student_demo_screen.dart';
 import 'features/trainer/anamnesis_screen.dart';
 import 'features/trainer/trainer_students_screen.dart';
@@ -217,6 +218,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
       return [
         const ActiveWorkoutScreen(),
         const B2BAssistantScreen(isStudentView: true),
+        ClientBioHubScreen(
+          onNavigateToWorkout: () => setState(() => _currentIndex = 0),
+        ),
         const StudentProfileScreen(),
       ];
     }
@@ -234,7 +238,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         _NavDestinationItem(
           icon: Icons.assignment_outlined,
           activeIcon: Icons.assignment_rounded,
-          label: 'PrescriÃƒÂ§ÃƒÂ£o IA',
+          label: 'Prescrição IA',
           activeColor: AppColors.trainerEmerald,
         ),
         _NavDestinationItem(
@@ -267,7 +271,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         _NavDestinationItem(
           icon: Icons.fitness_center_outlined,
           activeIcon: Icons.fitness_center_rounded,
-          label: 'Meu Treino Presencial',
+          label: 'Treino',
           activeColor: AppColors.studentCyan,
         ),
         _NavDestinationItem(
@@ -277,9 +281,15 @@ class _MainShellScreenState extends State<MainShellScreen> {
           activeColor: AppColors.studentCyan,
         ),
         _NavDestinationItem(
+          icon: Icons.biotech_outlined,
+          activeIcon: Icons.biotech_rounded,
+          label: 'Bio-Hub',
+          activeColor: AppColors.trainerEmerald,
+        ),
+        _NavDestinationItem(
           icon: Icons.manage_accounts_outlined,
           activeIcon: Icons.manage_accounts,
-          label: 'Conta',
+          label: 'Perfil',
           activeColor: AppColors.studentAmber,
         ),
       ];

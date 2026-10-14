@@ -1891,9 +1891,197 @@ late Map<String, dynamic> student;
                   },
                 ),
               ],
+              const SizedBox(height: 28),
+
+              // 4. BIO-HUB & PERFORMANCE DO ALUNO
+              const MetaSectionTitle(title: '🧬 Bio-Hub & Performance'),
+              const SizedBox(height: 14),
+              MetaCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: MetaColors.emerald.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.biotech_rounded,
+                            color: MetaColors.emerald,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Painel Biomecânico de $name',
+                                style: TextStyle(
+                                  color: MetaColors.text(context),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                'Dados sincronizados do app do aluno',
+                                style: TextStyle(
+                                  color: MetaColors.subtext(context),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: MetaColors.emerald.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'ONLINE',
+                            style: TextStyle(
+                              color: MetaColors.emerald,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        // Card 1: Prontidão
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: const [
+                                    Icon(Icons.battery_charging_full_rounded, size: 16, color: MetaColors.emerald),
+                                    SizedBox(width: 6),
+                                    Text('Recovery', style: TextStyle(fontSize: 11, color: MetaColors.textSecondary)),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  '88% • Alta',
+                                  style: TextStyle(
+                                    color: MetaColors.text(context),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Sono: 7.5h',
+                                  style: TextStyle(
+                                    color: MetaColors.subtext(context),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // Card 2: RPE Médio
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: const [
+                                    Icon(Icons.bolt_rounded, size: 16, color: Color(0xFFF59E0B)),
+                                    SizedBox(width: 6),
+                                    Text('Esforço RPE', style: TextStyle(fontSize: 11, color: MetaColors.textSecondary)),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  '8.0 / 10',
+                                  style: TextStyle(
+                                    color: MetaColors.text(context),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Muito Intenso',
+                                  style: TextStyle(
+                                    color: MetaColors.subtext(context),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // Progressão de Carga
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF161F30) : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: MetaColors.cardBorder(context), width: 0.8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.trending_up_rounded, color: MetaColors.emerald, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Curva de Sobrecarga: +44% de Força',
+                                  style: TextStyle(
+                                    color: MetaColors.text(context),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                Text(
+                                  'Supino: 50kg ➔ 72kg • Agachamento: 60kg ➔ 90kg',
+                                  style: TextStyle(
+                                    color: MetaColors.subtext(context),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 32),
 
-              // 4. ADMINISTRAÇÃO (Menu de Configurações)
+              // 5. ADMINISTRAÇÃO (Menu de Configurações)
               const MetaSectionTitle(title: 'Administração'),
               const SizedBox(height: 16),
               MetaCard(

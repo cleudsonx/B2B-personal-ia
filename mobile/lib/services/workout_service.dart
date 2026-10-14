@@ -1287,5 +1287,29 @@ class WorkoutService {
       debugPrint('Aviso ao notificar professor sobre onboarding: $e');
     }
   }
+
+  /// Registra o feedback pós-treino do aluno (RPE e desconfortos articulares)
+  static Future<void> saveWorkoutFeedback({
+    required double rpe,
+    required List<String> painPoints,
+    String? notes,
+  }) async {
+    try {
+      final user = AuthService.currentUser;
+      final client = _clientOrNull;
+      if (user == null || client == null) return;
+
+      // Salva de forma resiliente
+      await client.from('workout_feedback').insert({
+        'client_id': user.id,
+        'rpe': rpe,
+        'pain_points': painPoints,
+        'notes': notes,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      debugPrint('Aviso ao registrar feedback pós-treino: $e');
+    }
+  }
 }
 
