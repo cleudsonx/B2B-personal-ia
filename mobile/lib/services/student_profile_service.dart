@@ -153,13 +153,32 @@ class SupabaseStudentProfileGateway implements StudentProfileGateway {
 
   @override
   Future<void> updateProfile(String userId, Map<String, dynamic> values) async {
-    final rows = await Supabase.instance.client
-        .from('profiles')
-        .update(values)
-        .eq('id', userId)
-        .select('id');
-    if ((rows as List).isEmpty) {
-      throw Exception('Perfil não foi atualizado (sem permissão ou inexistente).');
+    try {
+      final rows = await Supabase.instance.client
+          .from('profiles')
+          .update(values)
+          .eq('id', userId)
+          .select('id');
+      if ((rows as List).isEmpty) {
+        throw Exception('Perfil não foi atualizado (sem permissão ou inexistente).');
+      }
+    } catch (e) {
+      // Fallback: se o banco ainda tiver a trigger que bloqueia photo_url para alunos,
+      // tenta salvar com avatar_url (que é permitido para todos os papéis)
+      if (values.containsKey('photo_url')) {
+        final fallbackValues = Map<String, dynamic>.from(values)..remove('photo_url');
+        try {
+          final fallbackRows = await Supabase.instance.client
+              .from('profiles')
+              .update(fallbackValues)
+              .eq('id', userId)
+              .select('id');
+          if ((fallbackRows as List).isNotEmpty) {
+            return;
+          }
+        } catch (_) {}
+      }
+      rethrow;
     }
   }
 
@@ -227,6 +246,9 @@ class StudentProfileService {
     if (updated.photoUrl != null) {
       payload['photo_url'] = updated.photoUrl;
       payload['avatar_url'] = updated.photoUrl;
+    } else if (original.photoUrl != null) {
+      payload['photo_url'] = null;
+      payload['avatar_url'] = null;
     }
     await gateway.updateProfile(userId, payload);
     if (original.restrictionsText == updated.restrictionsText) {

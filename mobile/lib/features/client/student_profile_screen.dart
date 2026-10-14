@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/theme_controller.dart';
+import '../../core/widgets/avatar_selector_sheet.dart';
 import '../../services/auth_service.dart';
 import '../../services/student_profile_service.dart';
-import '../../core/theme/app_colors.dart';
-import '../../core/widgets/avatar_selector_sheet.dart';
+import '../auth/teacher_mfa_screen.dart';
+import 'welcome_onboarding_screen.dart';
 
 class StudentProfileScreen extends StatefulWidget {
   /// Injetáveis para testes; em produção usam o usuário autenticado e o Supabase.
@@ -23,6 +26,16 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
   StudentProfileData? _original;
   Map<String, String> _fieldErrors = {};
   String? _photoUrl;
+  String? _email;
+  List<String> _roles = const [];
+  String? _totpFactorId;
+  bool _isSwitchingRole = false;
+
+  // Informações do Treinador Associado
+  String? _trainerName;
+  String? _trainerCref;
+  String? _trainerPhotoUrl;
+  bool _isLoadingTrainer = true;
 
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
@@ -97,6 +110,22 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       for (final r in data.restrictions) {
         if (!_availableRestrictions.contains(r)) _availableRestrictions.add(r);
       }
+
+      // Carregar dados de conta e sessão
+      _email = AuthService.currentUser?.email;
+      try {
+        final profile = await AuthService.getCurrentProfile();
+        if (profile != null) {
+          _roles = AuthService.availableRoles(profile);
+          if (_roles.contains('trainer')) {
+            _totpFactorId = await AuthService.getVerifiedTotpFactorId();
+          }
+        }
+      } catch (_) {}
+
+      // Carregar dados do treinador associado
+      _loadTrainerInfo();
+
       setState(() => _isLoadingData = false);
     } catch (e) {
       if (!mounted) return;
@@ -104,6 +133,26 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         _isLoadingData = false;
         _loadError = 'Não foi possível carregar seu perfil. Verifique a conexão.';
       });
+    }
+  }
+
+  Future<void> _loadTrainerInfo() async {
+    try {
+      final trainer = await AuthService.getTrainerForStudent();
+      if (!mounted) return;
+      if (trainer != null) {
+        setState(() {
+          _trainerName = trainer['full_name'] as String?;
+          _trainerCref = trainer['professional_document'] as String?;
+          _trainerPhotoUrl =
+              (trainer['photo_url'] ?? trainer['avatar_url']) as String?;
+          _isLoadingTrainer = false;
+        });
+      } else {
+        setState(() => _isLoadingTrainer = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingTrainer = false);
     }
   }
 
@@ -154,25 +203,24 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
 
       switch (result.review) {
         case ReviewStatus.notNeeded:
-          _snack('Perfil atualizado.', color: AppColors.emerald(context));
-          Navigator.pop(context);
+          _snack('Perfil atualizado com sucesso.', color: AppColors.emerald(context));
+          if (Navigator.canPop(context)) Navigator.pop(context);
           return;
         case ReviewStatus.requested:
           _snack(
             'Perfil atualizado. Seu professor foi notificado para revisar a ficha com suas novas restrições.',
             color: AppColors.emerald(context),
           );
-          Navigator.pop(context);
+          if (Navigator.canPop(context)) Navigator.pop(context);
           return;
         case ReviewStatus.noTrainer:
           _snack(
             'Perfil atualizado. Você ainda não tem professor vinculado para revisar a ficha.',
             color: AppColors.emerald(context),
           );
-          Navigator.pop(context);
+          if (Navigator.canPop(context)) Navigator.pop(context);
           return;
         case ReviewStatus.failed:
-          // Dados salvos, mas a revisão NÃO foi acionada: permanece na tela.
           _snack(
             'Perfil salvo, mas não conseguimos avisar seu professor para revisar a ficha.',
             color: Colors.orange.shade800,
@@ -184,7 +232,11 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
           );
       }
     } catch (e) {
-      _snack('Não foi possível salvar. Nada foi alterado.', color: Colors.red);
+      final cleanMsg = e.toString().replaceFirst('Exception: ', '').trim();
+      _snack(
+        cleanMsg.isNotEmpty ? 'Não foi possível salvar: $cleanMsg' : 'Não foi possível salvar. Nada foi alterado.',
+        color: Colors.red,
+      );
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -200,12 +252,52 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       _snack('Seu professor foi notificado para revisar a ficha.',
           color: AppColors.emerald(context));
     } else {
-      _snack('Ainda não foi possível avisar seu professor.',
-          color: Colors.orange.shade800,
-          action: SnackBarAction(
-              label: 'Tentar novamente',
-              textColor: Colors.white,
-              onPressed: _retryReview));
+      _snack(
+        'Ainda não foi possível avisar seu professor.',
+        color: Colors.orange.shade800,
+        action: SnackBarAction(
+          label: 'Tentar novamente',
+          textColor: Colors.white,
+          onPressed: _retryReview,
+        ),
+      );
+    }
+  }
+
+  Future<void> _signOut(bool allDevices) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(allDevices ? 'Sair de todos os dispositivos?' : 'Sair deste aparelho?'),
+        content: Text(
+          allDevices
+              ? 'Isso revogará todas as sessões ativas da sua conta em qualquer dispositivo. Você precisará fazer login novamente.'
+              : 'Deseja realmente encerrar a sessão neste dispositivo?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(allDevices ? 'Revogar e Sair' : 'Sair'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await AuthService.signOut(allDevices: allDevices);
+      if (mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+      }
+    } catch (error) {
+      if (mounted) {
+        _snack(error.toString().replaceFirst('Exception: ', ''), color: Colors.red);
+      }
     }
   }
 
@@ -219,6 +311,243 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
           borderSide: BorderSide.none,
         ),
       );
+
+  Widget _buildTrainerCard() {
+    if (_isLoadingTrainer) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.card(context),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.cardBorder(context)),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+
+    final hasTrainer = _trainerName != null && _trainerName!.isNotEmpty;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card(context),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: hasTrainer
+              ? AppColors.emerald(context).withValues(alpha: 0.3)
+              : AppColors.cardBorder(context),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.emerald(context).withValues(alpha: 0.15),
+              border: Border.all(
+                color: AppColors.emerald(context).withValues(alpha: 0.5),
+                width: 1.5,
+              ),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: (_trainerPhotoUrl != null && _trainerPhotoUrl!.isNotEmpty)
+                ? (_trainerPhotoUrl!.startsWith('assets/')
+                    ? Image.asset(_trainerPhotoUrl!, fit: BoxFit.cover)
+                    : Image.network(
+                        _trainerPhotoUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Icon(
+                          Icons.person_rounded,
+                          color: AppColors.emerald(context),
+                        ),
+                      ))
+                : Icon(
+                    Icons.fitness_center_rounded,
+                    color: AppColors.emerald(context),
+                    size: 24,
+                  ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'TREINADOR RESPONSÁVEL',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.1,
+                        color: AppColors.emerald(context),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: hasTrainer
+                            ? AppColors.emerald(context).withValues(alpha: 0.2)
+                            : Colors.orange.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        hasTrainer ? 'Ativo' : 'Pendente',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: hasTrainer
+                              ? AppColors.emerald(context)
+                              : Colors.orangeAccent,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  hasTrainer ? _trainerName! : 'Nenhum treinador vinculado',
+                  style: TextStyle(
+                    color: AppColors.text(context),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (_trainerCref != null && _trainerCref!.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'CREF: $_trainerCref',
+                    style: TextStyle(
+                      color: AppColors.subtext(context),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnamnesisHeroCard() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.emerald(context).withValues(alpha: 0.18),
+            AppColors.card(context),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: AppColors.emerald(context).withValues(alpha: 0.4),
+          width: 1.5,
+        ),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.emerald(context).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  Icons.assignment_turned_in_rounded,
+                  color: AppColors.emerald(context),
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Anamnese Completa',
+                      style: TextStyle(
+                        color: AppColors.text(context),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Renovação de Periodização & Rotina',
+                      style: TextStyle(
+                        color: AppColors.subtext(context),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Precisa ajustar suas metas, dias disponíveis, foco muscular ou o professor solicitou uma nova periodização? Refaça o formulário interativo de 5 passos.',
+            style: TextStyle(
+              color: AppColors.subtext(context),
+              fontSize: 13,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => WelcomeOnboardingScreen(
+                      studentName: _nameCtrl.text.isNotEmpty
+                          ? _nameCtrl.text
+                          : _original?.name,
+                      trainerId: _original?.trainerId,
+                    ),
+                  ),
+                );
+                // Ao retornar da anamnese, recarrega para atualizar peso/idade/restrições
+                if (mounted) _load();
+              },
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text(
+                'Refazer / Atualizar Anamnese Completa',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.emerald(context),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 0,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildBody() {
     if (_isLoadingData) {
@@ -245,40 +574,40 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       );
     }
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 48),
       child: Form(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Foto / Avatar do Aluno
+            // Header do Aluno: Foto, Nome e E-mail
             Center(
-              child: GestureDetector(
-                onTap: () async {
-                  final uid = _userId;
-                  final selected = await AvatarSelectorSheet.show(
-                    context: context,
-                    isTrainer: false,
-                    currentUrl: _photoUrl,
-                    userId: uid,
-                  );
-                  if (selected != null && mounted) {
-                    setState(() => _photoUrl = selected.isEmpty ? null : selected);
-                  }
-                },
-                child: Column(
-                  children: [
-                    Stack(
+              child: Column(
+                children: [
+                  GestureDetector(
+                    onTap: () async {
+                      final uid = _userId;
+                      final selected = await AvatarSelectorSheet.show(
+                        context: context,
+                        isTrainer: false,
+                        currentUrl: _photoUrl,
+                        userId: uid,
+                      );
+                      if (selected != null && mounted) {
+                        setState(() => _photoUrl = selected.isEmpty ? null : selected);
+                      }
+                    },
+                    child: Stack(
                       children: [
                         Container(
-                          width: 88,
-                          height: 88,
+                          width: 96,
+                          height: 96,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: AppColors.card(context),
                             border: Border.all(
                               color: AppColors.emerald(context),
-                              width: 2.5,
+                              width: 3,
                             ),
                           ),
                           clipBehavior: Clip.antiAlias,
@@ -290,13 +619,13 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                                       fit: BoxFit.cover,
                                       errorBuilder: (_, __, ___) => const Icon(
                                         Icons.person_rounded,
-                                        size: 44,
+                                        size: 48,
                                         color: Colors.grey,
                                       ),
                                     ))
                               : Icon(
                                   Icons.person_rounded,
-                                  size: 44,
+                                  size: 48,
                                   color: AppColors.emerald(context),
                                 ),
                         ),
@@ -304,7 +633,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                           bottom: 0,
                           right: 0,
                           child: Container(
-                            padding: const EdgeInsets.all(6),
+                            padding: const EdgeInsets.all(7),
                             decoration: BoxDecoration(
                               color: AppColors.emerald(context),
                               shape: BoxShape.circle,
@@ -315,15 +644,30 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                             ),
                             child: const Icon(
                               Icons.camera_alt_rounded,
-                              size: 14,
+                              size: 15,
                               color: Colors.white,
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
+                  ),
+                  const SizedBox(height: 10),
+                  TextButton.icon(
+                    onPressed: () async {
+                      final uid = _userId;
+                      final selected = await AvatarSelectorSheet.show(
+                        context: context,
+                        isTrainer: false,
+                        currentUrl: _photoUrl,
+                        userId: uid,
+                      );
+                      if (selected != null && mounted) {
+                        setState(() => _photoUrl = selected.isEmpty ? null : selected);
+                      }
+                    },
+                    icon: Icon(Icons.edit_rounded, size: 16, color: AppColors.emerald(context)),
+                    label: Text(
                       'Alterar Foto ou Avatar',
                       style: TextStyle(
                         color: AppColors.emerald(context),
@@ -331,19 +675,81 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Câmera • Galeria • 8 Avatares',
-                      style: TextStyle(
-                        color: AppColors.subtext(context),
-                        fontSize: 11,
-                      ),
+                  ),
+                  if (_email != null && _email!.isNotEmpty) ...[
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.email_outlined, size: 14, color: AppColors.subtext(context)),
+                        const SizedBox(width: 6),
+                        Text(
+                          _email!,
+                          style: TextStyle(
+                            color: AppColors.subtext(context),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                ),
+                ],
               ),
             ),
             const SizedBox(height: 24),
+
+            // Card do Treinador Vinculado
+            _buildTrainerCard(),
+            const SizedBox(height: 20),
+
+            // Card Hero de Anamnese & Periodização
+            _buildAnamnesisHeroCard(),
+            const SizedBox(height: 28),
+
+            // Seção de Alternância de Papel (se o usuário for trainer e aluno)
+            if (_roles.length > 1) ...[
+              Text(
+                'USAR APLICATIVO COMO',
+                style: TextStyle(
+                  color: AppColors.emerald(context),
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SegmentedButton<String>(
+                segments: [
+                  for (final role in _roles)
+                    ButtonSegment<String>(
+                      value: role,
+                      label: Text(role == 'trainer' ? 'Treinador' : 'Aluno'),
+                      icon: Icon(
+                        role == 'trainer' ? Icons.fitness_center : Icons.person_outline,
+                      ),
+                    ),
+                ],
+                selected: {'client'},
+                onSelectionChanged: (selection) async {
+                  if (_isSwitchingRole) return;
+                  final nextRole = selection.first;
+                  if (nextRole == 'client') return;
+                  setState(() => _isSwitchingRole = true);
+                  try {
+                    await AuthService.setActiveRole(nextRole);
+                    if (mounted) {
+                      Navigator.of(context).pushNamedAndRemoveUntil('/', (r) => false);
+                    }
+                  } catch (e) {
+                    if (mounted) _snack(e.toString().replaceFirst('Exception: ', ''));
+                  } finally {
+                    if (mounted) setState(() => _isSwitchingRole = false);
+                  }
+                },
+              ),
+              const SizedBox(height: 28),
+            ],
+
+            // Seção: Dados Pessoais
             Text(
               'DADOS PESSOAIS',
               style: TextStyle(
@@ -360,9 +766,11 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               style: TextStyle(color: AppColors.text(context)),
               decoration: _decoration('Nome Completo', _fieldErrors['name']),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
+
+            // Seção: Biometria Rápida
             Text(
-              'ANAMNESE FÍSICA',
+              'BIOMETRIA RÁPIDA',
               style: TextStyle(
                 color: AppColors.emerald(context),
                 fontSize: 12,
@@ -372,7 +780,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Mantenha atualizado. Mudanças de restrição avisam seu professor para revisar a ficha.',
+              'Mantenha atualizado. Seu professor utiliza esses dados para calibrar o volume e intensidade.',
               style: TextStyle(
                 color: AppColors.subtext(context),
                 fontSize: 13,
@@ -416,9 +824,11 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
+
+            // Fuso Horário
             Text(
-              'PREFERÊNCIA DE FUSO HORÁRIO',
+              'FUSO HORÁRIO DO ALUNO',
               style: TextStyle(
                 color: AppColors.emerald(context),
                 fontSize: 12,
@@ -426,7 +836,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                 letterSpacing: 1.2,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _timezoneOptions.containsKey(_selectedTimezone)
                   ? _selectedTimezone
@@ -448,7 +858,9 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               style: TextStyle(color: AppColors.text(context)),
               dropdownColor: AppColors.card(context),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
+
+            // Restrições e Lesões
             Text(
               'RESTRIÇÕES OU LESÕES ATUAIS',
               style: TextStyle(
@@ -458,7 +870,15 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                 letterSpacing: 1.2,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
+            Text(
+              'Alterar restrições notifica automaticamente seu treinador para revisão de segurança.',
+              style: TextStyle(
+                color: AppColors.subtext(context),
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 14),
             Wrap(
               spacing: 8,
               runSpacing: 12,
@@ -506,7 +926,9 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                 );
               }).toList(),
             ),
-            const SizedBox(height: 64),
+            const SizedBox(height: 36),
+
+            // Botão Principal de Salvar Perfil
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -517,7 +939,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(100),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
                 child: _isSaving
@@ -530,12 +952,144 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                         ),
                       )
                     : const Text(
-                        'Salvar Perfil',
+                        'Salvar Alterações',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+              ),
+            ),
+            const SizedBox(height: 40),
+
+            // Divisor decorativo
+            Divider(color: AppColors.cardBorder(context), thickness: 1),
+            const SizedBox(height: 28),
+
+            // Seção: Aparência do Aplicativo
+            Text(
+              'APARÊNCIA DO APLICATIVO',
+              style: TextStyle(
+                color: AppColors.emerald(context),
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 14),
+            ListenableBuilder(
+              listenable: ThemeController.instance,
+              builder: (context, _) {
+                final currentMode = ThemeController.instance.themeMode;
+                return SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<ThemeMode>(
+                    segments: const [
+                      ButtonSegment<ThemeMode>(
+                        value: ThemeMode.dark,
+                        label: Text('Escuro'),
+                        icon: Icon(Icons.dark_mode_rounded),
+                      ),
+                      ButtonSegment<ThemeMode>(
+                        value: ThemeMode.light,
+                        label: Text('Claro'),
+                        icon: Icon(Icons.light_mode_rounded),
+                      ),
+                      ButtonSegment<ThemeMode>(
+                        value: ThemeMode.system,
+                        label: Text('Sistema'),
+                        icon: Icon(Icons.brightness_auto_rounded),
+                      ),
+                    ],
+                    selected: {currentMode},
+                    onSelectionChanged: (selection) {
+                      if (selection.isNotEmpty) {
+                        ThemeController.instance.setThemeMode(selection.first);
+                      }
+                    },
+                    emptySelectionAllowed: false,
+                  ),
+                );
+              },
+            ),
+
+            // MFA se for professor
+            if (_roles.contains('trainer')) ...[
+              const SizedBox(height: 28),
+              Text(
+                'SEGURANÇA DA CONTA',
+                style: TextStyle(
+                  color: AppColors.emerald(context),
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: AppColors.cardBorder(context)),
+                ),
+                tileColor: AppColors.card(context),
+                leading: const Icon(Icons.security_outlined),
+                title: const Text('Verificação em duas etapas (2FA)'),
+                subtitle: Text(
+                  _totpFactorId == null
+                      ? 'Recomendado para proteger acesso de treinador'
+                      : 'Autenticador ativo e verificado',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const TeacherMfaScreen()),
+                  );
+                  _load();
+                },
+              ),
+            ],
+
+            const SizedBox(height: 36),
+            Text(
+              'SESSÃO E CONECTIVIDADE',
+              style: TextStyle(
+                color: AppColors.emerald(context),
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _signOut(false),
+                icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+                label: const Text(
+                  'Sair neste aparelho',
+                  style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.5)),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton.icon(
+                onPressed: () => _signOut(true),
+                icon: Icon(Icons.phonelink_erase_rounded, color: AppColors.subtext(context)),
+                label: Text(
+                  'Sair de todos os dispositivos',
+                  style: TextStyle(color: AppColors.subtext(context), fontSize: 13),
+                ),
               ),
             ),
           ],
@@ -559,7 +1113,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               )
             : null,
         title: Text(
-          'Meu Perfil & Anamnese',
+          'Meu Perfil & Conta',
           style: TextStyle(
             color: AppColors.text(context),
             fontWeight: FontWeight.bold,
@@ -569,33 +1123,8 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
-            tooltip: 'Sair da Conta',
-            onPressed: () async {
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Sair da Conta'),
-                  content: const Text('Deseja realmente encerrar a sessão neste dispositivo?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('Cancelar'),
-                    ),
-                    FilledButton(
-                      style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: const Text('Sair'),
-                    ),
-                  ],
-                ),
-              );
-              if (confirm == true) {
-                await AuthService.signOut();
-                if (context.mounted) {
-                  Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-                }
-              }
-            },
+            tooltip: 'Sair deste aparelho',
+            onPressed: () => _signOut(false),
           ),
         ],
       ),
