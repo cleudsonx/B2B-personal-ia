@@ -303,9 +303,8 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
     final clientName = session['client_name'] as String? ?? 'Aluno';
     final photoUrl = session['photo_url'] as String?;
     final splitId = session['split_identifier'] as String? ?? 'A';
-    final splitName = session['split_name'] as String? ?? 'Treino';
+    final splitName = session['split_name'] as String? ?? 'Treino Completo';
     final durationSeconds = (session['duration_seconds'] as num?)?.toInt() ?? 0;
-    final durationMin = (durationSeconds / 60).round();
     final completedEx = (session['completed_exercises'] as num?)?.toInt() ?? 0;
     final totalEx = (session['total_exercises'] as num?)?.toInt() ?? 0;
     final completedAt = session['completed_at'];
@@ -317,6 +316,15 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
             ? '${clientName.trim().split(' ')[0][0]}${clientName.trim().split(' ')[1][0]}'.toUpperCase()
             : clientName.trim().substring(0, 1).toUpperCase())
         : 'A';
+
+    final String formattedDuration;
+    if (durationSeconds <= 0) {
+      formattedDuration = '~45 min';
+    } else if (durationSeconds < 60) {
+      formattedDuration = '${durationSeconds}s';
+    } else {
+      formattedDuration = '${(durationSeconds / 60).round()} min';
+    }
 
     showModalBottomSheet(
       context: context,
@@ -363,35 +371,93 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: MetaColors.highlight(ctx),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: MetaColors.cardBorder(ctx)),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
+              child: Column(
                 children: [
-                  Column(
+                  Row(
                     children: [
-                      Text('Ficha / Split', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 11)),
-                      const SizedBox(height: 4),
-                      Text('Split $splitId', style: TextStyle(color: MetaColors.text(ctx), fontSize: 15, fontWeight: FontWeight.bold)),
-                      Text(splitName, style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 11)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: MetaColors.emerald.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'SPLIT $splitId',
+                          style: const TextStyle(
+                            color: MetaColors.emerald,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          splitName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: MetaColors.text(ctx),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
-                  Container(width: 1, height: 36, color: MetaColors.cardBorder(ctx)),
-                  Column(
+                  const SizedBox(height: 14),
+                  Divider(height: 1, color: MetaColors.cardBorder(ctx)),
+                  const SizedBox(height: 14),
+                  Row(
                     children: [
-                      Text('Duração', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 11)),
-                      const SizedBox(height: 4),
-                      Text('$durationMin min', style: TextStyle(color: MetaColors.text(ctx), fontSize: 15, fontWeight: FontWeight.bold)),
-                      Text('Tempo total', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 11)),
-                    ],
-                  ),
-                  Container(width: 1, height: 36, color: MetaColors.cardBorder(ctx)),
-                  Column(
-                    children: [
-                      Text('Exercícios', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 11)),
-                      const SizedBox(height: 4),
-                      Text('$completedEx / $totalEx', style: TextStyle(color: MetaColors.text(ctx), fontSize: 15, fontWeight: FontWeight.bold)),
-                      Text('Executados', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 11)),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text('Duração', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 11)),
+                            const SizedBox(height: 4),
+                            Text(
+                              formattedDuration,
+                              style: TextStyle(color: MetaColors.text(ctx), fontSize: 14, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 2),
+                            Text('Tempo total', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 10)),
+                          ],
+                        ),
+                      ),
+                      Container(width: 1, height: 32, color: MetaColors.cardBorder(ctx)),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text('Exercícios', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 11)),
+                            const SizedBox(height: 4),
+                            Text(
+                              '$completedEx / $totalEx',
+                              style: TextStyle(color: MetaColors.text(ctx), fontSize: 14, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 2),
+                            Text('Executados', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 10)),
+                          ],
+                        ),
+                      ),
+                      Container(width: 1, height: 32, color: MetaColors.cardBorder(ctx)),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text('Status', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 11)),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Concluído 🔥',
+                              style: TextStyle(color: MetaColors.emerald, fontSize: 13, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 2),
+                            Text('Meta batida', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 10)),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ],

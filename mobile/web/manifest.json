@@ -1,7 +1,7 @@
 {
     "name": "Mr. Coach | Shaipados Labs",
     "short_name": "Mr. Coach",
-    "start_url": ".",
+    "start_url": "/?pwa=1",
     "display": "standalone",
     "background_color": "#000000",
     "theme_color": "#000000",

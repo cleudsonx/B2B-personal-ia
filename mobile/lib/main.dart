@@ -56,11 +56,20 @@ class B2BPersonalIaApp extends StatelessWidget {
 
   Widget _homeScreen() {
     if (kIsWeb) {
-      final host = Uri.base.host;
-      if (host.contains('mrcoach')) return const B2BLandingScreen();
+      final uri = Uri.base;
+      final isPwa = uri.queryParameters['pwa'] == '1' || uri.queryParameters['mode'] == 'standalone';
+      final hasActiveSession = AuthService.currentSession != null;
+
+      // Se abriu via PWA instalado ou já possui sessão autenticada:
+      if (isPwa || hasActiveSession) {
+        return const AuthGate();
+      }
+
+      final host = uri.host;
       if (host.contains('app') || host.contains('localhost')) {
         return const AuthGate();
       }
+      if (host.contains('mrcoach')) return const B2BLandingScreen();
       return const ShaipadosStudioScreen();
     }
     return const AuthGate();
