@@ -263,7 +263,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                     userId: uid,
                   );
                   if (selected != null && mounted) {
-                    setState(() => _photoUrl = selected);
+                    setState(() => _photoUrl = selected.isEmpty ? null : selected);
                   }
                 },
                 child: Column(
@@ -546,15 +546,18 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final canPop = Navigator.canPop(context);
     return Scaffold(
       backgroundColor: AppColors.bg(context),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.close_rounded, color: AppColors.text(context)),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: canPop
+            ? IconButton(
+                icon: Icon(Icons.arrow_back_rounded, color: AppColors.text(context)),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
         title: Text(
           'Meu Perfil & Anamnese',
           style: TextStyle(
@@ -563,6 +566,38 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
             fontSize: 18,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+            tooltip: 'Sair da Conta',
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Sair da Conta'),
+                  content: const Text('Deseja realmente encerrar a sessão neste dispositivo?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Cancelar'),
+                    ),
+                    FilledButton(
+                      style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Sair'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                await AuthService.signOut();
+                if (context.mounted) {
+                  Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                }
+              }
+            },
+          ),
+        ],
       ),
       body: _buildBody(),
     );

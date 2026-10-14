@@ -371,6 +371,34 @@ class _AvatarSelectorSheetState extends State<AvatarSelectorSheet> {
                 ),
               ],
             ),
+            if (widget.currentUrl != null && widget.currentUrl!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 18),
+                  label: const Text(
+                    'Remover Foto Atual',
+                    style: TextStyle(
+                      color: Colors.redAccent,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.4)),
+                    backgroundColor: Colors.redAccent.withValues(alpha: 0.08),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).pop(''); // Retorna string vazia para limpar foto
+                  },
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
 
             // Avatares Padrões Section

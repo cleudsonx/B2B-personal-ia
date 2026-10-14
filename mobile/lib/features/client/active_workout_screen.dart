@@ -195,11 +195,21 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       trainer['professional_document'])
                   as String?;
           if (reg != null && reg.isNotEmpty) _trainerCref = reg;
-
-          // gamification is loaded separately
+        });
+      } else if (mounted && _trainerName == 'Carregando treinador...') {
+        setState(() {
+          _trainerName = 'Prof. Cleudson Cavalcante';
+          _trainerCref = 'CREF 012345-G/DF';
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted && _trainerName == 'Carregando treinador...') {
+        setState(() {
+          _trainerName = 'Prof. Cleudson Cavalcante';
+          _trainerCref = 'CREF 012345-G/DF';
+        });
+      }
+    }
 
     try {
       final gami = await WorkoutService.getGamificationData();
@@ -1562,22 +1572,143 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   ),
                 ),
                 if (_splits.length > 1) ...[
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      for (var index = 0; index < _splits.length; index++)
-                        ChoiceChip(
-                          label: Text(
-                            '${_splits[index].splitIdentifier} · ${_splits[index].splitName}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          selected: index == _selectedSplitIndex,
-                          onSelected: (_) => _selectSplit(index),
+                      const Text(
+                        'DIVISÕES DO SEU PLANO (SPLITS)',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.6,
+                          color: MetaColors.textSecondary,
                         ),
+                      ),
+                      Text(
+                        '${_selectedSplitIndex + 1} de ${_splits.length}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: MetaColors.emerald,
+                        ),
+                      ),
                     ],
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 102,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: _splits.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 10),
+                      itemBuilder: (context, index) {
+                        final split = _splits[index];
+                        final isSelected = index == _selectedSplitIndex;
+                        final exCount = split.exercises.length;
+
+                        return InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            _selectSplit(index);
+                          },
+                          borderRadius: BorderRadius.circular(18),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 220),
+                            width: 175,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? MetaColors.surface
+                                  : MetaColors.surfaceHighlight.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: isSelected
+                                    ? MetaColors.emerald
+                                    : MetaColors.border,
+                                width: isSelected ? 1.8 : 1.0,
+                              ),
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: MetaColors.emerald.withValues(alpha: 0.18),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? MetaColors.emerald
+                                            : MetaColors.surfaceHighlight,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        'SPLIT ${split.splitIdentifier}',
+                                        style: TextStyle(
+                                          color: isSelected ? Colors.black : MetaColors.textSecondary,
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ),
+                                    if (isSelected)
+                                      Container(
+                                        padding: const EdgeInsets.all(3),
+                                        decoration: const BoxDecoration(
+                                          color: MetaColors.emerald,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.check_rounded,
+                                          color: Colors.black,
+                                          size: 11,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      split.splitName,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w900,
+                                        color: isSelected ? MetaColors.textPrimary : MetaColors.textSecondary,
+                                        letterSpacing: -0.2,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '$exCount exercícios',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: isSelected ? MetaColors.emerald : MetaColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ],
                 const SizedBox(height: 16),
@@ -1667,47 +1798,71 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 // 4. Lista de Exercícios (MetaCards)
                 for (int index = 0; index < _exercises.length; index++)
                   _buildExerciseCard(index),
-              ],
-            ),
 
-            // Botão de Finalizar (Rodapé) - SquircleButton GIGANTE (largura total)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      MetaColors.background.withValues(alpha: 0.0),
-                      MetaColors.background.withValues(alpha: 0.85),
-                      MetaColors.background,
-                    ],
-                  ),
-                ),
-                padding: EdgeInsets.only(
-                  left: 18,
-                  right: 18,
-                  top: 20,
-                  bottom: bottomPadding > 0 ? bottomPadding + 10 : 20,
-                ),
-                child: SizedBox(
-                  width: double.infinity,
+                const SizedBox(height: 12),
+
+                // Botão de Concluir no Fim da Lista (Scroll Natural)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 24),
                   child: SquircleButton(
-                    label: 'Finalizar Treino',
+                    label: _completedExerciseIndices.isEmpty
+                        ? 'Concluir Treino'
+                        : 'Concluir Treino (${_completedExerciseIndices.length}/${_exercises.length} Feitos)',
                     icon: Icons.check_circle_rounded,
-                    isPrimary: true,
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
-                    height: 62.0,
-                    borderRadius: 20.0,
+                    isPrimary: _completedExerciseIndices.isNotEmpty,
+                    backgroundColor: _completedExerciseIndices.isNotEmpty
+                        ? MetaColors.emerald
+                        : MetaColors.surfaceHighlight,
+                    foregroundColor: _completedExerciseIndices.isNotEmpty
+                        ? Colors.black
+                        : MetaColors.textSecondary,
+                    height: 54.0,
+                    borderRadius: 18.0,
                     onPressed: _finishWorkout,
                   ),
                 ),
-              ),
+              ],
             ),
+
+            // Botão de Finalizar Flutuante (Rodapé) - Só aparece condicionalmente quando o aluno marcou ao menos 1 exercício
+            if (_completedExerciseIndices.isNotEmpty)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        MetaColors.background.withValues(alpha: 0.0),
+                        MetaColors.background.withValues(alpha: 0.9),
+                        MetaColors.background,
+                      ],
+                    ),
+                  ),
+                  padding: EdgeInsets.only(
+                    left: 18,
+                    right: 18,
+                    top: 14,
+                    bottom: bottomPadding > 0 ? bottomPadding + 8 : 16,
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: SquircleButton(
+                      label: 'Concluir Treino (${_completedExerciseIndices.length}/${_exercises.length})',
+                      icon: Icons.check_circle_rounded,
+                      isPrimary: true,
+                      backgroundColor: MetaColors.emerald,
+                      foregroundColor: Colors.black,
+                      height: 56.0,
+                      borderRadius: 18.0,
+                      onPressed: _finishWorkout,
+                    ),
+                  ),
+                ),
+              ),
 
             // Loading State Overlay
             if (_isLoading)

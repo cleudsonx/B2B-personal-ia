@@ -12,6 +12,7 @@ import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
 import 'features/auth/auth_gate.dart';
 import 'features/auth/account_screen.dart';
+import 'features/client/student_profile_screen.dart';
 import 'features/client/active_workout_screen.dart';
 import 'features/client/student_demo_screen.dart';
 import 'features/trainer/anamnesis_screen.dart';
@@ -214,13 +215,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
       ];
     } else {
       return [
-        ActiveWorkoutScreen(),
-        B2BAssistantScreen(isStudentView: true),
-        AccountScreen(
-          currentRole: _activeRole,
-          onRoleSelected: _switchRole,
-          onSignOut: _signOut,
-        ),
+        const ActiveWorkoutScreen(),
+        const B2BAssistantScreen(isStudentView: true),
+        const StudentProfileScreen(),
       ];
     }
   }

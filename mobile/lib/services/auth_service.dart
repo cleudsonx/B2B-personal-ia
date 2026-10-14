@@ -419,24 +419,65 @@ class AuthService {
   static Future<Map<String, dynamic>?> getTrainerForStudent() async {
     try {
       final profile = await getCurrentProfile();
-      final trainerId = profile?['trainer_id'] as String?;
+      String? trainerId = profile?['trainer_id'] as String?;
+
+      // Fallback 1: Buscar trainer_id nos metadados do auth.currentUser
+      if ((trainerId == null || trainerId.isEmpty) && currentUser != null) {
+        trainerId = currentUser!.userMetadata?['trainer_id'] as String?;
+      }
+
+      // Fallback 2: Buscar na tabela 'workouts' na ficha ativa do aluno
+      if ((trainerId == null || trainerId.isEmpty) && _clientOrNull != null && currentUser != null) {
+        try {
+          final workout = await _client
+              .from('workouts')
+              .select('trainer_id')
+              .eq('client_id', currentUser!.id)
+              .eq('is_active', true)
+              .order('created_at', ascending: false)
+              .limit(1)
+              .maybeSingle();
+          if (workout != null && workout['trainer_id'] != null) {
+            trainerId = workout['trainer_id'] as String?;
+          }
+        } catch (_) {}
+      }
+
+      // Fallback 3: Buscar na tabela 'workouts' em qualquer treino prescrito
+      if ((trainerId == null || trainerId.isEmpty) && _clientOrNull != null && currentUser != null) {
+        try {
+          final anyWorkout = await _client
+              .from('workouts')
+              .select('trainer_id')
+              .eq('client_id', currentUser!.id)
+              .order('created_at', ascending: false)
+              .limit(1)
+              .maybeSingle();
+          if (anyWorkout != null && anyWorkout['trainer_id'] != null) {
+            trainerId = anyWorkout['trainer_id'] as String?;
+          }
+        } catch (_) {}
+      }
+
       if (trainerId != null && trainerId.isNotEmpty && _clientOrNull != null) {
-        final trainer =
-            await _client
-                .from('profiles')
-            .select('id, full_name, professional_document, photo_url, avatar_url, cref')
-                .eq('id', trainerId)
-                .maybeSingle();
+        final trainer = await _client
+            .from('profiles')
+            .select('id, full_name, professional_document, photo_url, avatar_url, cref, phone, whatsapp')
+            .eq('id', trainerId)
+            .maybeSingle();
         if (trainer != null) {
           final photo = (trainer['photo_url'] ?? trainer['avatar_url']) as String?;
           trainer['trainer_name'] = trainer['full_name'];
           trainer['trainer_photo_url'] = photo;
           trainer['photo_url'] = photo;
           trainer['avatar_url'] = photo;
+          trainer['cref_or_registry'] = trainer['cref'] ?? trainer['professional_document'] ?? 'CREF Ativo';
+          return trainer;
         }
-        return trainer;
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Aviso ao buscar professor do aluno: $e');
+    }
     return null;
   }
 
