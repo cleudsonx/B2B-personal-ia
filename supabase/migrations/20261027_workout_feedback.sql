@@ -46,3 +46,4 @@ CREATE POLICY "Trainers read their students workout feedback"
               AND p.trainer_id = auth.uid()
         )
     );
+
