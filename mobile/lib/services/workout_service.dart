@@ -593,26 +593,26 @@ class WorkoutService {
 
     final profiles = await client
         .from('profiles')
-        .select('id, full_name')
+        .select('id, full_name, photo_url, avatar_url, phone')
         .eq('trainer_id', trainerId);
     if (profiles.isEmpty) return [];
 
-    final namesById = {
+    final profilesById = {
       for (final profile in profiles)
-        profile['id'] as String: profile['full_name'] as String? ?? 'Aluno',
+        profile['id'] as String: profile,
     };
     final now = DateTime.now().toUtc();
     final cutoff = now.subtract(const Duration(days: 100));
     final sessions = await client
         .from('workout_sessions')
         .select('client_id, completed_at')
-        .inFilter('client_id', namesById.keys.toList())
+        .inFilter('client_id', profilesById.keys.toList())
         .gte('completed_at', cutoff.toIso8601String())
         .order('completed_at', ascending: false)
         .limit(1000);
 
     final sessionsByClient = {
-      for (final clientId in namesById.keys) clientId: <DateTime>[],
+      for (final clientId in profilesById.keys) clientId: <DateTime>[],
     };
     for (final session in sessions) {
       final clientId = session['client_id'] as String?;
@@ -641,9 +641,12 @@ class WorkoutService {
           expectedDate = expectedDate.subtract(const Duration(days: 1));
         }
       }
+      final prof = profilesById[entry.key] ?? {};
       ranking.add({
         'client_id': entry.key,
-        'full_name': namesById[entry.key] ?? 'Aluno',
+        'full_name': (prof['full_name'] as String?) ?? 'Aluno',
+        'photo_url': (prof['photo_url'] ?? prof['avatar_url']) as String?,
+        'phone': prof['phone'] as String?,
         'current_streak': streak,
         'sessions_in_window': entry.value.length,
         'last_activity_date': activityDates.isEmpty
@@ -659,6 +662,91 @@ class WorkoutService {
           .compareTo(a['sessions_in_window'] as int);
     });
     return ranking;
+  }
+
+  /// Retorna as últimas sessões concluídas pelos alunos do treinador (Feed de Atualizações Recentes).
+  static Future<List<Map<String, dynamic>>> getTrainerRecentCompletedSessions({
+    int limit = 15,
+  }) async {
+    final client = _clientOrNull;
+    final trainerId = AuthService.currentUser?.id;
+    if (client == null || trainerId == null) return [];
+
+    try {
+      final profiles = await client
+          .from('profiles')
+          .select('id, full_name, photo_url, avatar_url, phone')
+          .eq('trainer_id', trainerId);
+      if (profiles.isEmpty) return [];
+
+      final profilesById = {
+        for (final profile in profiles)
+          profile['id'] as String: profile,
+      };
+
+      final rows = await client
+          .from('workout_sessions')
+          .select('id, client_id, split_identifier, split_name, total_exercises, completed_exercises, completed_at, duration_seconds')
+          .inFilter('client_id', profilesById.keys.toList())
+          .order('completed_at', ascending: false)
+          .limit(limit);
+
+      final result = <Map<String, dynamic>>[];
+      for (final row in rows) {
+        final clientId = row['client_id'] as String?;
+        final prof = profilesById[clientId] ?? {};
+        result.add({
+          'session_id': row['id'],
+          'client_id': clientId,
+          'client_name': (prof['full_name'] as String?) ?? 'Aluno',
+          'photo_url': (prof['photo_url'] ?? prof['avatar_url']) as String?,
+          'phone': prof['phone'] as String?,
+          'split_identifier': row['split_identifier'] ?? 'A',
+          'split_name': row['split_name'] ?? 'Treino Prescrito',
+          'completed_at': row['completed_at'],
+          'duration_seconds': (row['duration_seconds'] as num?)?.toInt() ?? 0,
+          'completed_exercises': (row['completed_exercises'] as num?)?.toInt() ?? 0,
+          'total_exercises': (row['total_exercises'] as num?)?.toInt() ?? 0,
+        });
+      }
+      return result;
+    } catch (e) {
+      debugPrint('Erro ao buscar sessões recentes dos alunos: $e');
+      return [];
+    }
+  }
+
+  /// Busca o status / recado publicado pelo treinador.
+  static Future<Map<String, dynamic>?> getTrainerStatus() async {
+    final client = _clientOrNull;
+    final trainerId = AuthService.currentUser?.id;
+    if (client == null || trainerId == null) return null;
+
+    try {
+      final row = await client
+          .from('profiles')
+          .select('status_message, status_updated_at, photo_url, avatar_url, full_name')
+          .eq('id', trainerId)
+          .maybeSingle();
+      return row;
+    } catch (e) {
+      debugPrint('Erro ao carregar status do treinador: $e');
+      return null;
+    }
+  }
+
+  /// Atualiza o status / recado publicado pelo treinador para seus alunos.
+  static Future<void> updateTrainerStatus(String message) async {
+    final client = _clientOrNull;
+    final trainerId = AuthService.currentUser?.id;
+    if (client == null || trainerId == null) {
+      throw StateError('Sessão do treinador indisponível.');
+    }
+
+    await client.from('profiles').update({
+      'status_message': message.trim(),
+      'status_updated_at': DateTime.now().toUtc().toIso8601String(),
+    }).eq('id', trainerId);
   }
 
   static Future<WorkoutPlanModel?> getActiveWorkoutForClient({
