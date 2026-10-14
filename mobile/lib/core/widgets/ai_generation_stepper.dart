@@ -267,7 +267,7 @@ class _AIGenerationStepperState extends State<AIGenerationStepper>
                   borderRadius: BorderRadius.circular(4),
                   child: const LinearProgressIndicator(
                     backgroundColor: MetaColors.surfaceHighlight,
-                    valueColor: const AlwaysStoppedAnimation<Color>(MetaColors.emerald),
+                    valueColor: AlwaysStoppedAnimation<Color>(MetaColors.emerald),
                     minHeight: 4,
                   ),
                 ),

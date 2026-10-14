@@ -73,14 +73,14 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
                   width: size,
                   height: size,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _buildInitialsFallback(size, isHero),
+                  errorBuilder: (_, _, _) => _buildInitialsFallback(size, isHero),
                 )
               : Image.network(
                   avatarUrl,
                   width: size,
                   height: size,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _buildInitialsFallback(size, isHero),
+                  errorBuilder: (_, _, _) => _buildInitialsFallback(size, isHero),
                 ),
         ),
       );

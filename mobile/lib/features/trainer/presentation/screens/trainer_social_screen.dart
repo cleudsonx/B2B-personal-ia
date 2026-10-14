@@ -141,7 +141,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
               : Image.network(
                   photoUrl,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Center(
+                  errorBuilder: (_, _, _) => Center(
                     child: Text(
                       initials,
                       style: TextStyle(
@@ -774,7 +774,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 20),
         scrollDirection: Axis.horizontal,
         itemCount: _recentSessions.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 14),
+        separatorBuilder: (_, _) => const SizedBox(width: 14),
         itemBuilder: (context, index) {
           final session = _recentSessions[index];
           final clientName = session['client_name'] as String? ?? 'Aluno';

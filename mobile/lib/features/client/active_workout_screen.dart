@@ -1602,7 +1602,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       scrollDirection: Axis.horizontal,
                       physics: const BouncingScrollPhysics(),
                       itemCount: _splits.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 10),
+                      separatorBuilder: (_, _) => const SizedBox(width: 10),
                       itemBuilder: (context, index) {
                         final split = _splits[index];
                         final isSelected = index == _selectedSplitIndex;

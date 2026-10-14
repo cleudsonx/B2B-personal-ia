@@ -216,7 +216,7 @@ class _AvatarCropperDialogState extends State<AvatarCropperDialog> {
                               child: Image.memory(
                                 widget.imageBytes,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Center(
+                                errorBuilder: (_, _, _) => const Center(
                                   child: Icon(Icons.broken_image_rounded, color: Colors.white54, size: 48),
                                 ),
                               ),

@@ -52,8 +52,7 @@ class _SetProgress {
   _SetProgress({
     required this.weightKg,
     required this.reps,
-    this.isCompleted = false,
-  });
+  }) : isCompleted = false;
 }
 
 class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
@@ -1113,7 +1112,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                       width: 68,
                       height: 68,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
+                      errorBuilder: (_, _, _) => Container(
                         width: 68,
                         height: 68,
                         color: MetaColors.surfaceHighlight,

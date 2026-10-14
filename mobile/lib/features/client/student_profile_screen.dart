@@ -363,7 +363,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                     : Image.network(
                         _trainerPhotoUrl!,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Icon(
+                        errorBuilder: (_, _, _) => Icon(
                           Icons.person_rounded,
                           color: AppColors.emerald(context),
                         ),
@@ -617,7 +617,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                                   : Image.network(
                                       _photoUrl!,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => const Icon(
+                                      errorBuilder: (_, _, _) => const Icon(
                                         Icons.person_rounded,
                                         size: 48,
                                         color: Colors.grey,

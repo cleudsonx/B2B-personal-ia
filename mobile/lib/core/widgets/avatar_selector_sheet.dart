@@ -424,7 +424,7 @@ class _AvatarSelectorSheetState extends State<AvatarSelectorSheet> {
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
                 itemCount: avatars.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
                 itemBuilder: (context, index) {
                   final item = avatars[index];
                   final isSelected = _selectedAvatarUrl == item.publicUrl;
@@ -462,10 +462,10 @@ class _AvatarSelectorSheetState extends State<AvatarSelectorSheet> {
                             child: Image.asset(
                               item.assetPath,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Image.network(
+                              errorBuilder: (_, _, _) => Image.network(
                                 item.publicUrl,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Icon(Icons.person),
+                                errorBuilder: (_, _, _) => const Icon(Icons.person),
                               ),
                             ),
                           ),

@@ -1170,3 +1170,4 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
     );
   }
 }
+

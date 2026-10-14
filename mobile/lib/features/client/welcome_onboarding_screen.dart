@@ -578,7 +578,7 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                                   width: 52,
                                   height: 52,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Center(
+                                  errorBuilder: (_, _, _) => Center(
                                     child: Text(
                                       _getTrainerInitials(),
                                       style: const TextStyle(
@@ -595,7 +595,7 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                                   width: 52,
                                   height: 52,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Center(
+                                  errorBuilder: (_, _, _) => Center(
                                     child: Text(
                                       _getTrainerInitials(),
                                       style: const TextStyle(
