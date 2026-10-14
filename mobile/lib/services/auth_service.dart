@@ -316,6 +316,59 @@ class AuthService {
     await prefs.setString('active_role_$userId', role);
   }
 
+  static const String _keyLastAuthEmail = 'last_auth_email';
+  static const String _keyLastAuthName = 'last_auth_name';
+  static const String _keyLastAuthPhoto = 'last_auth_photo';
+  static const String _keyLastAuthRole = 'last_auth_role';
+
+  /// Retorna os dados do último usuário autenticado neste aparelho para fluxo de "Bem-vindo de volta"
+  static Future<Map<String, String>?> getLastAuthenticatedUser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final email = prefs.getString(_keyLastAuthEmail);
+      if (email == null || email.trim().isEmpty) return null;
+      return {
+        'email': email.trim(),
+        'name': prefs.getString(_keyLastAuthName) ?? '',
+        'photo': prefs.getString(_keyLastAuthPhoto) ?? '',
+        'role': prefs.getString(_keyLastAuthRole) ?? 'trainer',
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Salva os dados de perfil do usuário logado para facilitar reentradas rápidas
+  static Future<void> saveLastAuthenticatedUser({
+    required String email,
+    required String name,
+    String? photoUrl,
+    required String role,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyLastAuthEmail, email.trim());
+      await prefs.setString(_keyLastAuthName, name.trim());
+      if (photoUrl != null && photoUrl.trim().isNotEmpty) {
+        await prefs.setString(_keyLastAuthPhoto, photoUrl.trim());
+      } else {
+        await prefs.remove(_keyLastAuthPhoto);
+      }
+      await prefs.setString(_keyLastAuthRole, role);
+    } catch (_) {}
+  }
+
+  /// Limpa o cache do último usuário
+  static Future<void> clearLastAuthenticatedUser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyLastAuthEmail);
+      await prefs.remove(_keyLastAuthName);
+      await prefs.remove(_keyLastAuthPhoto);
+      await prefs.remove(_keyLastAuthRole);
+    } catch (_) {}
+  }
+
   static Future<String?> getVerifiedTotpFactorId() async {
     try {
       final factors = await _client.auth.mfa.listFactors();

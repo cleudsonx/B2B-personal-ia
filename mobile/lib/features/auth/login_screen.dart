@@ -46,12 +46,19 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _rememberMe = true;
   late String _selectedRole;
 
+  // Smart Re-entry (Bem-vindo de volta)
+  bool _isWelcomeBackMode = false;
+  String _cachedUserName = '';
+  String? _cachedUserPhoto;
+  String _cachedUserEmail = '';
+
   @override
   void initState() {
     super.initState();
     _selectedRole = widget.initialRole;
     _emailCtrl = TextEditingController(text: widget.initialEmail ?? '');
     _passwordCtrl = TextEditingController();
+    _checkLastAuthenticatedUser();
     if (widget.confirmationRequired) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -60,6 +67,24 @@ class _LoginScreenState extends State<LoginScreen> {
             content: Text('Confirme o e-mail enviado e depois entre com sua senha.'),
           ),
         );
+      });
+    }
+  }
+
+  Future<void> _checkLastAuthenticatedUser() async {
+    // Se o usuário clicou em um link de convite com token ou e-mail específico, respeita o fluxo de convite
+    if (widget.invitedStudentId != null || (widget.initialEmail != null && widget.initialEmail!.isNotEmpty)) {
+      return;
+    }
+    final lastUser = await AuthService.getLastAuthenticatedUser();
+    if (lastUser != null && lastUser['email']?.isNotEmpty == true && mounted) {
+      setState(() {
+        _isWelcomeBackMode = true;
+        _cachedUserName = lastUser['name'] ?? '';
+        _cachedUserPhoto = lastUser['photo']?.isNotEmpty == true ? lastUser['photo'] : null;
+        _cachedUserEmail = lastUser['email']!;
+        _selectedRole = lastUser['role'] ?? _selectedRole;
+        _emailCtrl.text = _cachedUserEmail;
       });
     }
   }
@@ -244,6 +269,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 ? 'Personal Trainer'
                 : 'Aluno no Salão';
     final hasCompletedAnamnesis = profile?['has_completed_anamnesis'] == true;
+
+    // Salva perfil para reentrada inteligente (Smart Re-entry)
+    final savedEmail = user?.email ?? _emailCtrl.text.trim();
+    if (savedEmail.isNotEmpty) {
+      await AuthService.saveLastAuthenticatedUser(
+        email: savedEmail,
+        name: userName,
+        photoUrl: (profile?['photo_url'] ?? profile?['avatar_url']) as String?,
+        role: role,
+      );
+    }
 
     if (!mounted) return;
     if (role == 'client') {
@@ -727,240 +763,151 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     const SmartInstallBanner(),
                     const SizedBox(height: 12),
-                    // Logo Icon / Brand
-                    Center(
-                      child: Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          color: MetaColors.surfaceHighlight,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isTrainer ? MetaColors.emerald : MetaColors.accentBlue,
-                            width: 2,
-                          ),
-                        ),
-                        child: Icon(
-                          isTrainer
-                              ? Icons.sports_gymnastics
-                              : Icons.fitness_center_rounded,
-                          color: isTrainer ? MetaColors.emerald : MetaColors.accentBlue,
-                          size: 36,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Title
-                    const Center(
-                      child: Text(
-                        'MR. COACH',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.5,
-                          color: MetaColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Center(
-                      child: Text(
-                        widget.initialRole == 'client'
-                            ? 'Ãrea do Aluno â€¢ Treino Inteligente'
-                            : 'Plataforma para Personal Trainers & IA Biomecânica',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: MetaColors.textSecondary,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-
-                    if (widget.invitedStudentId != null) ...[
-                      Text(
-                        'Convite de ${widget.invitedTrainerName ?? 'seu treinador'}. A conta de aluno já foi criada. Use a opção Esqueceu a senha? para definir sua senha.',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: MetaColors.accentBlue,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
-
-                    // Role Selector Tabs (se não for link exclusivo de aluno)
-                    if (widget.initialRole != 'client') ...[
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: MetaColors.surface,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: MetaColors.border),
-                        ),
-                        child: Row(
+                    if (_isWelcomeBackMode) ...[
+                      // Modo "Bem-vindo de volta" (Smart Re-entry)
+                      const SizedBox(height: 8),
+                      Center(
+                        child: Stack(
                           children: [
-                            Expanded(
-                              child: _buildRoleTab(
-                                title: 'Treinador Pro',
-                                icon: Icons.sports_gymnastics,
-                                isSelected: isTrainer,
-                                activeColor: MetaColors.emerald,
-                                onTap: () => _onRoleChanged('trainer'),
-                              ),
+                            CircleAvatar(
+                              radius: 46,
+                              backgroundColor: MetaColors.surfaceHighlight,
+                              backgroundImage: safeImageProvider(_cachedUserPhoto),
+                              child: safeImageProvider(_cachedUserPhoto) == null
+                                  ? Text(
+                                      _cachedUserName.trim().isNotEmpty
+                                          ? _cachedUserName.trim().substring(0, 1).toUpperCase()
+                                          : 'U',
+                                      style: TextStyle(
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.bold,
+                                        color: isTrainer ? MetaColors.emerald : MetaColors.accentBlue,
+                                      ),
+                                    )
+                                  : null,
                             ),
-                            Expanded(
-                              child: _buildRoleTab(
-                                title: 'Aluno no Salão',
-                                icon: Icons.fitness_center_rounded,
-                                isSelected: !isTrainer,
-                                activeColor: MetaColors.accentBlue,
-                                onTap: () => _onRoleChanged('client'),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: isTrainer ? MetaColors.emerald : MetaColors.accentBlue,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: MetaColors.background, width: 2),
+                                ),
+                                child: Icon(
+                                  isTrainer ? Icons.sports_gymnastics : Icons.fitness_center_rounded,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Center(
+                        child: Text(
+                          'Bem-vindo de volta,',
+                          style: TextStyle(
+                            color: MetaColors.textSecondary,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Center(
+                        child: Text(
+                          _cachedUserName.isNotEmpty ? _cachedUserName : 'Usuário',
+                          style: const TextStyle(
+                            color: MetaColors.textPrimary,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -0.3,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: (isTrainer ? MetaColors.emerald : MetaColors.accentBlue).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: (isTrainer ? MetaColors.emerald : MetaColors.accentBlue).withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Text(
+                            isTrainer ? 'Personal Trainer Pro' : 'Aluno no Salão',
+                            style: TextStyle(
+                              color: isTrainer ? MetaColors.emerald : MetaColors.accentBlue,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),
-                    ],
 
-                    // Email Input
-                    TextFormField(
-                      controller: _emailCtrl,
-                      style: const TextStyle(color: MetaColors.textPrimary),
-                      keyboardType: TextInputType.emailAddress,
-                      readOnly: widget.invitedStudentId != null,
-                      validator: (val) {
-                        if (val == null || val.trim().isEmpty) {
-                          return 'Informe seu e-mail';
-                        }
-                        if (!val.contains('@')) {
-                          return 'Informe um e-mail válido';
-                        }
-                        return null;
-                      },
-                      decoration: InputDecoration(
-                        labelText: 'E-mail',
-                        labelStyle: const TextStyle(
-                          color: MetaColors.textSecondary,
-                          fontSize: 13,
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.email_outlined,
-                          color: MetaColors.textSecondary,
-                          size: 20,
-                        ),
-                        filled: true,
-                        fillColor: MetaColors.surfaceHighlight,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: MetaColors.border),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: MetaColors.border),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: Colors.white, width: 1.5),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Password Input
-                    TextFormField(
-                      controller: _passwordCtrl,
-                      obscureText: _obscurePassword,
-                      style: const TextStyle(color: MetaColors.textPrimary),
-                      validator: (val) {
-                        if (val == null || val.trim().isEmpty) {
-                          return 'Informe sua senha';
-                        }
-                        if (val.length < 6) {
-                          return 'A senha deve ter no mínimo 6 dígitos';
-                        }
-                        return null;
-                      },
-                      decoration: InputDecoration(
-                        labelText: 'Senha',
-                        labelStyle: const TextStyle(
-                          color: MetaColors.textSecondary,
-                          fontSize: 13,
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.lock_outline,
-                          color: MetaColors.textSecondary,
-                          size: 20,
-                        ),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
+                      // Password Input
+                      TextFormField(
+                        controller: _passwordCtrl,
+                        obscureText: _obscurePassword,
+                        autofocus: true,
+                        style: const TextStyle(color: MetaColors.textPrimary),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Informe sua senha';
+                          }
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          labelText: 'Sua senha',
+                          labelStyle: const TextStyle(
+                            color: MetaColors.textSecondary,
+                            fontSize: 13,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.lock_outline,
                             color: MetaColors.textSecondary,
                             size: 20,
                           ),
-                          onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              color: MetaColors.textSecondary,
+                              size: 20,
+                            ),
+                            onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: MetaColors.surfaceHighlight,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: MetaColors.border),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: MetaColors.border),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: Colors.white, width: 1.5),
                           ),
                         ),
-                        filled: true,
-                        fillColor: MetaColors.surfaceHighlight,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: MetaColors.border),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: MetaColors.border),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: Colors.white, width: 1.5),
-                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
+                      const SizedBox(height: 12),
 
-                    // Remember Me & Forgot Password Row
-                    Wrap(
-                      alignment: WrapAlignment.spaceBetween,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      runSpacing: 8,
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: Checkbox(
-                                value: _rememberMe,
-                                activeColor: MetaColors.emerald,
-                                checkColor: Colors.black,
-                                side: const BorderSide(
-                                  color: MetaColors.textSecondary,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                onChanged: (val) =>
-                                    setState(() => _rememberMe = val ?? true),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Lembrar acesso',
-                              style: TextStyle(
-                                color: MetaColors.textSecondary,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                        TextButton(
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
                           onPressed: _showForgotPasswordDialog,
                           style: TextButton.styleFrom(
                             foregroundColor: MetaColors.textSecondary,
@@ -977,20 +924,17 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
+                      ),
+                      const SizedBox(height: 20),
 
-                    // Botão de entrar: SquircleButton (isPrimary: true, label: "Entrar")
-                    SquircleButton(
-                      label: 'Entrar',
-                      isPrimary: true,
-                      isLoading: _isLoading,
-                      onPressed: _handleSignIn,
-                    ),
-                    const SizedBox(height: 12),
+                      SquircleButton(
+                        label: 'Entrar',
+                        isPrimary: true,
+                        isLoading: _isLoading,
+                        onPressed: _handleSignIn,
+                      ),
+                      const SizedBox(height: 12),
 
-                    if (widget.invitedStudentId == null) ...[
                       SquircleButton(
                         label: 'Entrar com biometria',
                         icon: Icons.fingerprint,
@@ -999,82 +943,377 @@ class _LoginScreenState extends State<LoginScreen> {
                         foregroundColor: MetaColors.textSecondary,
                         onPressed: _handleBiometricAuth,
                       ),
-                      const SizedBox(height: 24),
-                    ],
+                      const SizedBox(height: 20),
 
-                    // Register Link
-                    if (widget.invitedStudentId == null)
-                      if (_selectedRole == 'trainer')
-                        Wrap(
-                          alignment: WrapAlignment.center,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            const Text(
-                              'Ainda não tem conta? ',
-                              style: TextStyle(
-                                color: MetaColors.textSecondary,
-                                fontSize: 13,
-                              ),
+                      Center(
+                        child: TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _isWelcomeBackMode = false;
+                              _passwordCtrl.clear();
+                              _emailCtrl.clear();
+                            });
+                          },
+                          child: const Text(
+                            'Entrar com outra conta',
+                            style: TextStyle(
+                              color: MetaColors.textSecondary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
                             ),
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const RegisterScreen(
-                                      initialRole: 'trainer',
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: const Text(
-                                'Cadastre-se grátis',
-                                style: TextStyle(
-                                  color: MetaColors.emerald,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
-                      else
-                        Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: MetaColors.surfaceHighlight.withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: MetaColors.surfaceHighlight),
                           ),
-                          child: Column(
+                        ),
+                      ),
+                    ] else ...[
+                      // Logo Icon / Brand
+                      Center(
+                        child: Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            color: MetaColors.surfaceHighlight,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isTrainer ? MetaColors.emerald : MetaColors.accentBlue,
+                              width: 2,
+                            ),
+                          ),
+                          child: Icon(
+                            isTrainer
+                                ? Icons.sports_gymnastics
+                                : Icons.fitness_center_rounded,
+                            color: isTrainer ? MetaColors.emerald : MetaColors.accentBlue,
+                            size: 36,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Title
+                      const Center(
+                        child: Text(
+                          'MR. COACH',
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.5,
+                            color: MetaColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Center(
+                        child: Text(
+                          widget.initialRole == 'client'
+                              ? 'Área do Aluno • Treino Inteligente'
+                              : 'Plataforma para Personal Trainers & IA Biomecânica',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: MetaColors.textSecondary,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+
+                      if (widget.invitedStudentId != null) ...[
+                        Text(
+                          'Convite de ${widget.invitedTrainerName ?? 'seu treinador'}. A conta de aluno já foi criada. Use a opção Esqueceu a senha? para definir sua senha.',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: MetaColors.accentBlue,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+
+                      // Role Selector Tabs (se não for link exclusivo de aluno)
+                      if (widget.initialRole != 'client') ...[
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: MetaColors.surface,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: MetaColors.border),
+                          ),
+                          child: Row(
                             children: [
-                              const Text(
-                                'O acesso do aluno é criado mediante convite exclusivo do seu professor.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: MetaColors.textSecondary,
-                                  fontSize: 12,
-                                  height: 1.4,
+                              Expanded(
+                                child: _buildRoleTab(
+                                  title: 'Treinador Pro',
+                                  icon: Icons.sports_gymnastics,
+                                  isSelected: isTrainer,
+                                  activeColor: MetaColors.emerald,
+                                  onTap: () => _onRoleChanged('trainer'),
                                 ),
                               ),
-                              const SizedBox(height: 8),
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.pushNamed(context, '/prof');
-                                },
-                                child: const Text(
-                                  'Ainda não tem treinador? Conheça nossos profissionais',
-                                  style: TextStyle(
-                                    color: MetaColors.emerald,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 12,
-                                  ),
+                              Expanded(
+                                child: _buildRoleTab(
+                                  title: 'Aluno no Salão',
+                                  icon: Icons.fitness_center_rounded,
+                                  isSelected: !isTrainer,
+                                  activeColor: MetaColors.accentBlue,
+                                  onTap: () => _onRoleChanged('client'),
                                 ),
                               ),
                             ],
                           ),
                         ),
+                        const SizedBox(height: 24),
+                      ],
+
+                      // Email Input
+                      TextFormField(
+                        controller: _emailCtrl,
+                        style: const TextStyle(color: MetaColors.textPrimary),
+                        keyboardType: TextInputType.emailAddress,
+                        readOnly: widget.invitedStudentId != null,
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Informe seu e-mail';
+                          }
+                          if (!val.contains('@')) {
+                            return 'Informe um e-mail válido';
+                          }
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          labelText: 'E-mail',
+                          labelStyle: const TextStyle(
+                            color: MetaColors.textSecondary,
+                            fontSize: 13,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.email_outlined,
+                            color: MetaColors.textSecondary,
+                            size: 20,
+                          ),
+                          filled: true,
+                          fillColor: MetaColors.surfaceHighlight,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: MetaColors.border),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: MetaColors.border),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: Colors.white, width: 1.5),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Password Input
+                      TextFormField(
+                        controller: _passwordCtrl,
+                        obscureText: _obscurePassword,
+                        style: const TextStyle(color: MetaColors.textPrimary),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Informe sua senha';
+                          }
+                          if (val.length < 6) {
+                            return 'A senha deve ter no mínimo 6 dígitos';
+                          }
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          labelText: 'Senha',
+                          labelStyle: const TextStyle(
+                            color: MetaColors.textSecondary,
+                            fontSize: 13,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.lock_outline,
+                            color: MetaColors.textSecondary,
+                            size: 20,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              color: MetaColors.textSecondary,
+                              size: 20,
+                            ),
+                            onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: MetaColors.surfaceHighlight,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: MetaColors.border),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: MetaColors.border),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: Colors.white, width: 1.5),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Remember Me & Forgot Password Row
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        runSpacing: 8,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: Checkbox(
+                                  value: _rememberMe,
+                                  activeColor: MetaColors.emerald,
+                                  checkColor: Colors.black,
+                                  side: const BorderSide(
+                                    color: MetaColors.textSecondary,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  onChanged: (val) =>
+                                      setState(() => _rememberMe = val ?? true),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Lembrar acesso',
+                                style: TextStyle(
+                                  color: MetaColors.textSecondary,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                          TextButton(
+                            onPressed: _showForgotPasswordDialog,
+                            style: TextButton.styleFrom(
+                              foregroundColor: MetaColors.textSecondary,
+                              padding: EdgeInsets.zero,
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text(
+                              'Esqueceu a senha?',
+                              style: TextStyle(
+                                color: MetaColors.textSecondary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Botão de entrar: SquircleButton (isPrimary: true, label: "Entrar")
+                      SquircleButton(
+                        label: 'Entrar',
+                        isPrimary: true,
+                        isLoading: _isLoading,
+                        onPressed: _handleSignIn,
+                      ),
+                      const SizedBox(height: 12),
+
+                      if (widget.invitedStudentId == null) ...[
+                        SquircleButton(
+                          label: 'Entrar com biometria',
+                          icon: Icons.fingerprint,
+                          isPrimary: false,
+                          backgroundColor: MetaColors.surfaceHighlight,
+                          foregroundColor: MetaColors.textSecondary,
+                          onPressed: _handleBiometricAuth,
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+
+                      // Register Link
+                      if (widget.invitedStudentId == null)
+                        if (_selectedRole == 'trainer')
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              const Text(
+                                'Ainda não tem conta? ',
+                                style: TextStyle(
+                                  color: MetaColors.textSecondary,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const RegisterScreen(
+                                        initialRole: 'trainer',
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: const Text(
+                                  'Cadastre-se grátis',
+                                  style: TextStyle(
+                                    color: MetaColors.emerald,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        else
+                          Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: MetaColors.surfaceHighlight.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: MetaColors.surfaceHighlight),
+                            ),
+                            child: Column(
+                              children: [
+                                const Text(
+                                  'O acesso do aluno é criado mediante convite exclusivo do seu professor.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: MetaColors.textSecondary,
+                                    fontSize: 12,
+                                    height: 1.4,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.pushNamed(context, '/prof');
+                                  },
+                                  child: const Text(
+                                    'Ainda não tem treinador? Conheça nossos profissionais',
+                                    style: TextStyle(
+                                      color: MetaColors.emerald,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                    ],
                     const SizedBox(height: 16),
 
                     // Landing Web Link
