@@ -46,11 +46,11 @@ class AppConfig {
   static const String supabaseAnonKey = supabasePublishableKey;
 
   // Informações Oficiais de Versionamento (SemVer) & Build
-  static const String appVersion = '1.2.0';
-  static const int buildNumber = 2026102701;
-  static const String buildDate = '14 de Outubro, 2026';
+  static const String appVersion = '1.3.0';
+  static const int buildNumber = 2026102801;
+  static const String buildDate = '15 de Outubro, 2026';
   static const String releaseNotes =
-      'Bio-Hub, Smart Re-entry PWA e Biomecânica 3D Loop com Raio-X Muscular';
+      'Bio-Hub 100% Real: Prontidão Biomecânica, Galeria Sigilosa Antes x Depois e Sobrecarga Progressiva Sincronizada';
 
   static String get fullVersionString => 'v$appVersion (Build $buildNumber)';
 }
