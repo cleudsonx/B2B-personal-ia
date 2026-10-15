@@ -46,10 +46,11 @@ class AppConfig {
   static const String supabaseAnonKey = supabasePublishableKey;
 
   // Informações Oficiais de Versionamento (SemVer) & Build
-  static const String appVersion = '1.3.3';
-  static const int buildNumber = 2026102810;
+  static const String appVersion = '1.3.4';
+  static const int buildNumber = 2026102811;
   static const String buildDate = '15 de Outubro, 2026';
-  static const String releaseNotes = 'Copiloto de Salão: Ações rápidas de academia sem redundância 3D e respostas scannable';
+  static const String releaseNotes =
+      'Resiliência no cadastro e convite de alunos com timeout estendido e proteção de rede';
 
   static String get fullVersionString => 'v$appVersion (Build $buildNumber)';
 }

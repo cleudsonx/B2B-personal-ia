@@ -101,15 +101,22 @@ class WorkoutService {
               'trainer_name': trainerName,
             }),
           )
-          .timeout(const Duration(seconds: 8));
+          .timeout(const Duration(seconds: 25));
 
       if (res.statusCode != 200 && res.statusCode != 201) {
-        final err =
-            jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-        throw Exception(
-          err['detail'] ??
-              'Não foi possível criar o convite (${res.statusCode}).',
-        );
+        String errorDetail = 'Não foi possível criar o convite (${res.statusCode}).';
+        try {
+          final err = jsonDecode(utf8.decode(res.bodyBytes));
+          if (err is Map<String, dynamic> && err['detail'] != null) {
+            errorDetail = err['detail'].toString();
+          }
+        } catch (_) {
+          if (res.statusCode == 502 || res.statusCode == 503 || res.statusCode == 504) {
+            errorDetail =
+                'O servidor remoto está acordando ou temporariamente indisponível. Tente novamente em instantes.';
+          }
+        }
+        throw Exception(errorDetail);
       }
 
       final data =
@@ -119,9 +126,15 @@ class WorkoutService {
       studentData['invitation_link'] = data['invitation_link'];
       studentData['whatsapp_url'] = data['whatsapp_url'];
       studentData['email_status'] = data['email_status'];
+    } on TimeoutException {
+      _localStudentsCache.removeWhere((s) => s['id'] == studentId);
+      throw Exception(
+        'Tempo de resposta esgotado ao contatar o servidor. Verifique sua conexão ou tente novamente.',
+      );
     } catch (e) {
       _localStudentsCache.removeWhere((s) => s['id'] == studentId);
-      rethrow;
+      final rawMsg = e.toString().replaceFirst('Exception: ', '');
+      throw Exception(rawMsg);
     }
 
     _localStudentsCache.removeWhere((s) => s['email'] == studentData['email']);

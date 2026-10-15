@@ -405,12 +405,14 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                   const SizedBox(height: 14),
                   Builder(
                     builder: (context) {
-                      final isQuotaError = submitError!.toLowerCase().contains('limite') ||
-                          submitError!.toLowerCase().contains('plano') ||
-                          submitError!.toLowerCase().contains('cota') ||
-                          submitError!.toLowerCase().contains('upgrade') ||
-                          submitError!.toLowerCase().contains('vaga') ||
-                          submitError!.toLowerCase().contains('403');
+                      final lowerError = submitError!.toLowerCase();
+                      final isQuotaError = (lowerError.contains('limite') ||
+                              lowerError.contains('cota') ||
+                              lowerError.contains('vaga') ||
+                              lowerError.contains('upgrade') ||
+                              (lowerError.contains('plano') && !lowerError.contains('treino'))) &&
+                          !lowerError.contains('duas etapas') &&
+                          !lowerError.contains('exclusivo');
 
                       if (isQuotaError) {
                         return Container(
