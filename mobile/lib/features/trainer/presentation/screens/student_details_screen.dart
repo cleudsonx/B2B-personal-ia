@@ -1,4 +1,5 @@
 import '../../../../services/workout_service.dart';
+import '../../../../services/evolution_photo_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -20,6 +21,7 @@ typedef StudentStatusAction = Future<bool> Function({
 });
 typedef StudentDeleteAction = Future<bool> Function(String studentId);
 typedef ActiveWorkoutLoader = Future<dynamic> Function(String studentId);
+typedef EvolutionPhotosLoader = Future<Map<String, EvolutionPhoto?>> Function(String studentId);
 
 class StudentDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> studentData;
@@ -27,6 +29,7 @@ class StudentDetailsScreen extends StatefulWidget {
   final StudentStatusAction? onUpdateStudentStatus;
   final StudentDeleteAction? onDeleteStudent;
   final ActiveWorkoutLoader? loadActiveWorkout;
+  final EvolutionPhotosLoader? loadEvolutionPhotos;
 
   const StudentDetailsScreen({
     super.key,
@@ -35,6 +38,7 @@ class StudentDetailsScreen extends StatefulWidget {
     this.onUpdateStudentStatus,
     this.onDeleteStudent,
     this.loadActiveWorkout,
+    this.loadEvolutionPhotos,
   });
 
   @override
@@ -42,12 +46,15 @@ class StudentDetailsScreen extends StatefulWidget {
 }
 
 class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
-late Map<String, dynamic> student;
+  late Map<String, dynamic> student;
   bool _isLoadingWorkout = true;
   bool _isResendingInvite = false;
   dynamic _activeWorkout;
   Map<String, dynamic>? _studentBioFeedback;
   bool _isLoadingBioFeedback = true;
+  EvolutionPhoto? _studentBeforePhoto;
+  EvolutionPhoto? _studentAfterPhoto;
+  bool _isLoadingPhotos = true;
 
   @override
   void initState() {
@@ -61,9 +68,16 @@ late Map<String, dynamic> student;
     try {
       final studentId = student['id']?.toString();
       if (studentId == null || studentId.isEmpty) {
-        if (mounted) setState(() => _isLoadingBioFeedback = false);
+        if (mounted) {
+          setState(() {
+            _isLoadingBioFeedback = false;
+            _isLoadingPhotos = false;
+          });
+        }
         return;
       }
+
+      // Buscar telemetria de RPE e Dores
       final fb = await WorkoutService.getStudentWorkoutFeedback(studentId);
       if (mounted) {
         setState(() {
@@ -71,9 +85,28 @@ late Map<String, dynamic> student;
           _isLoadingBioFeedback = false;
         });
       }
+
+      // Buscar fotos confidenciais de evolução (Antes x Depois)
+      try {
+        final photos = widget.loadEvolutionPhotos != null
+            ? await widget.loadEvolutionPhotos!(studentId)
+            : await EvolutionPhotoService.getStudentBeforeAndAfter(studentId);
+        if (mounted) {
+          setState(() {
+            _studentBeforePhoto = photos['before'];
+            _studentAfterPhoto = photos['after'];
+            _isLoadingPhotos = false;
+          });
+        }
+      } catch (_) {
+        if (mounted) setState(() => _isLoadingPhotos = false);
+      }
     } catch (_) {
       if (mounted) {
-        setState(() => _isLoadingBioFeedback = false);
+        setState(() {
+          _isLoadingBioFeedback = false;
+          _isLoadingPhotos = false;
+        });
       }
     }
   }
@@ -1267,6 +1300,227 @@ late Map<String, dynamic> student;
     }
   }
 
+  void _openPhotoViewer(EvolutionPhoto photo, String title) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final dateFormatted =
+            '${photo.takenAt.day.toString().padLeft(2, '0')}/${photo.takenAt.month.toString().padLeft(2, '0')}/${photo.takenAt.year}';
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF161618),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFF2C2C2E)),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.lock_rounded, color: MetaColors.emerald, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '$title • $dateFormatted',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                        onPressed: () => Navigator.pop(dialogContext),
+                      ),
+                    ],
+                  ),
+                ),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(dialogContext).size.height * 0.65,
+                    maxWidth: double.infinity,
+                  ),
+                  child: InteractiveViewer(
+                    clipBehavior: Clip.none,
+                    minScale: 1.0,
+                    maxScale: 3.5,
+                    child: EvolutionPhotoService.buildPhotoImage(
+                      photo.photoUrl,
+                      fit: BoxFit.contain,
+                      width: double.infinity,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        photo.weightKg != null ? 'Peso: ${photo.weightKg} kg' : 'Sem peso registrado',
+                        style: const TextStyle(color: MetaColors.emerald, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      const Text(
+                        'Privativo • Treinador & Aluno',
+                        style: TextStyle(color: Colors.white54, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTrainerPhotoPreview({
+    required String label,
+    required EvolutionPhoto? photo,
+    required BuildContext context,
+    required bool isDark,
+  }) {
+    if (photo == null) {
+      return Container(
+        height: 130,
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF161F30) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: MetaColors.cardBorder(context), width: 0.8),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.account_box_outlined, size: 28, color: MetaColors.subtext(context)),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: MetaColors.subtext(context),
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Pendente',
+              style: TextStyle(color: MetaColors.subtext(context), fontSize: 10),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final dateFormatted =
+        '${photo.takenAt.day.toString().padLeft(2, '0')}/${photo.takenAt.month.toString().padLeft(2, '0')}';
+
+    return GestureDetector(
+      onTap: () => _openPhotoViewer(photo, label),
+      child: Container(
+        height: 130,
+        decoration: BoxDecoration(
+          color: MetaColors.surfaceHighlight,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.4)),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(11),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              EvolutionPhotoService.buildPhotoImage(
+                photo.photoUrl,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.45),
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.85),
+                    ],
+                    stops: const [0.0, 0.4, 1.0],
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 6,
+                left: 6,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    label.toUpperCase(),
+                    style: const TextStyle(
+                      color: MetaColors.emerald,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 6,
+                right: 6,
+                child: Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.fullscreen_rounded, color: Colors.white, size: 14),
+                ),
+              ),
+              Positioned(
+                bottom: 8,
+                left: 8,
+                right: 8,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      dateFormatted,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (photo.weightKg != null)
+                      Text(
+                        '${photo.weightKg}kg',
+                        style: const TextStyle(
+                          color: MetaColors.emerald,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final status = student['status'] ?? 'Aguardando Ativação';
@@ -2231,6 +2485,100 @@ late Map<String, dynamic> student;
                         ],
                       ),
                     ),
+                    const SizedBox(height: 16),
+
+                    // Galeria Sigilosa de Fotos de Evolução (Antes vs. Atual)
+                    Row(
+                      children: [
+                        const Icon(Icons.lock_rounded, color: MetaColors.emerald, size: 15),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Galeria Sigilosa Antes & Depois',
+                          style: TextStyle(
+                            color: MetaColors.text(context),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: MetaColors.emerald.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'CONFIDENCIAL',
+                            style: TextStyle(
+                              color: MetaColors.emerald,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Acompanhe visualmente a postura e a transformação física de $name.',
+                      style: TextStyle(color: MetaColors.subtext(context), fontSize: 11.5),
+                    ),
+                    const SizedBox(height: 12),
+                    if (_isLoadingPhotos)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Center(
+                          child: CircularProgressIndicator(strokeWidth: 2, color: MetaColors.emerald),
+                        ),
+                      )
+                    else if (_studentBeforePhoto == null && _studentAfterPhoto == null)
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.5) : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: MetaColors.cardBorder(context), width: 0.8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.photo_library_outlined, size: 20, color: MetaColors.subtext(context)),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Nenhuma foto de evolução enviada ainda. O aluno pode registrar fotos pelo Bio-Hub do app dele.',
+                                style: TextStyle(
+                                  color: MetaColors.subtext(context),
+                                  fontSize: 12,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildTrainerPhotoPreview(
+                              label: 'Início',
+                              photo: _studentBeforePhoto,
+                              context: context,
+                              isDark: isDark,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _buildTrainerPhotoPreview(
+                              label: 'Atual',
+                              photo: _studentAfterPhoto,
+                              context: context,
+                              isDark: isDark,
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ),

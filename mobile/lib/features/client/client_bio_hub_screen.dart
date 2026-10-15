@@ -1,7 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../services/auth_service.dart';
+import '../../services/evolution_photo_service.dart';
 import '../../services/workout_service.dart';
 import 'widgets/warmup_sheet.dart';
 
@@ -38,6 +41,12 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
   double _sleepHours = 7.5;
   String _domsLevel = 'Leve'; // Leve, Moderada, Intensa
 
+  // Galeria Sigilosa State
+  EvolutionPhoto? _beforePhoto;
+  EvolutionPhoto? _afterPhoto;
+  bool _isLoadingPhotos = true;
+  bool _isUploadingPhoto = false;
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +56,235 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
         setState(() => _currentSubTab = _tabController.index);
       }
     });
+    _loadEvolutionPhotos();
+  }
+
+  Future<void> _loadEvolutionPhotos() async {
+    final user = AuthService.currentUser;
+    if (user == null) {
+      if (mounted) setState(() => _isLoadingPhotos = false);
+      return;
+    }
+    final photos = await EvolutionPhotoService.getStudentBeforeAndAfter(user.id);
+    if (mounted) {
+      setState(() {
+        _beforePhoto = photos['before'];
+        _afterPhoto = photos['after'];
+        _isLoadingPhotos = false;
+      });
+    }
+  }
+
+  Future<void> _handlePickAndUploadPhoto(String photoType, ImageSource source) async {
+    Navigator.of(context).pop();
+    try {
+      final bytes = await EvolutionPhotoService.pickImage(source);
+      if (bytes == null) return;
+
+      setState(() => _isUploadingPhoto = true);
+      final photo = await EvolutionPhotoService.uploadPhoto(
+        bytes: bytes,
+        photoType: photoType,
+      );
+
+      if (mounted) {
+        setState(() {
+          _isUploadingPhoto = false;
+          if (photo != null) {
+            if (photoType == 'before') {
+              _beforePhoto = photo;
+            } else {
+              _afterPhoto = photo;
+            }
+          }
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: MetaColors.emerald,
+            content: Row(
+              children: const [
+                Icon(Icons.lock_rounded, color: Colors.white, size: 20),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Foto de evolução salva com sigilo!',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isUploadingPhoto = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.redAccent,
+            content: Text('Não foi possível salvar a foto.'),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showAddPhotoSheet({String? defaultType}) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final isDark = MetaColors.isDark(ctx);
+        final bg = isDark ? MetaColors.surface : MetaColors.lightSurface;
+        final border = isDark ? MetaColors.border : MetaColors.lightBorder;
+        final textColor = isDark ? MetaColors.textPrimary : MetaColors.lightTextPrimary;
+        final subtextColor = isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary;
+
+        String selectedType = defaultType ?? (_beforePhoto == null ? 'before' : 'after');
+
+        return StatefulBuilder(
+          builder: (ctx, setModalState) => SafeArea(
+            child: Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: border),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: subtextColor.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: MetaColors.emerald.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.lock_rounded, color: MetaColors.emerald, size: 20),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Galeria Sigilosa de Evolução',
+                              style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                            Text(
+                              'Visível apenas para você e seu personal trainer',
+                              style: TextStyle(color: subtextColor, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'DEFINIR TIPO DE FOTO',
+                    style: TextStyle(color: subtextColor, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Text('Início (Antes)'),
+                          selected: selectedType == 'before',
+                          onSelected: (_) => setModalState(() => selectedType = 'before'),
+                          selectedColor: MetaColors.emerald.withValues(alpha: 0.2),
+                          labelStyle: TextStyle(
+                            color: selectedType == 'before' ? MetaColors.emerald : subtextColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(color: selectedType == 'before' ? MetaColors.emerald : border),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Text('Atual (Depois)'),
+                          selected: selectedType == 'after',
+                          onSelected: (_) => setModalState(() => selectedType = 'after'),
+                          selectedColor: MetaColors.emerald.withValues(alpha: 0.2),
+                          labelStyle: TextStyle(
+                            color: selectedType == 'after' ? MetaColors.emerald : subtextColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(color: selectedType == 'after' ? MetaColors.emerald : border),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'ORIGEM DA IMAGEM',
+                    style: TextStyle(color: subtextColor, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _handlePickAndUploadPhoto(selectedType, ImageSource.camera),
+                          icon: const Icon(Icons.camera_alt_rounded),
+                          label: const Text('Câmera'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => _handlePickAndUploadPhoto(selectedType, ImageSource.gallery),
+                          icon: const Icon(Icons.photo_library_rounded, color: Colors.white),
+                          label: const Text('Galeria', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: MetaColors.emerald,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -727,42 +965,44 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                 ],
               ),
               const SizedBox(height: 16),
-              // Comparativo Antes x Atual
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildPhotoSlot(
-                      label: 'Início da Consultoria',
-                      date: 'Mês 1',
-                      hasImage: false,
-                    ),
+              // Comparativo Antes x Atual Real
+              if (_isLoadingPhotos)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: CircularProgressIndicator(strokeWidth: 2, color: MetaColors.emerald),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildPhotoSlot(
-                      label: 'Atual (Mês Recente)',
-                      date: 'Hoje',
-                      hasImage: false,
+                )
+              else
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildPhotoSlot(
+                        label: 'Início da Consultoria',
+                        fallbackDate: 'Mês 1',
+                        photo: _beforePhoto,
+                        onTap: () => _showAddPhotoSheet(defaultType: 'before'),
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildPhotoSlot(
+                        label: 'Atual (Mês Recente)',
+                        fallbackDate: 'Hoje',
+                        photo: _afterPhoto,
+                        onTap: () => _showAddPhotoSheet(defaultType: 'after'),
+                      ),
+                    ),
+                  ],
+                ),
               const SizedBox(height: 16),
               SquircleButton(
-                label: 'Adicionar Foto de Comparação',
-                icon: Icons.camera_alt_outlined,
+                label: _isUploadingPhoto ? 'Enviando Foto Sigilosa...' : 'Adicionar Foto de Comparação',
+                icon: _isUploadingPhoto ? Icons.cloud_upload_rounded : Icons.camera_alt_outlined,
                 isPrimary: false,
                 backgroundColor: MetaColors.surfaceHighlight,
-                foregroundColor: MetaColors.textPrimary,
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      behavior: SnackBarBehavior.floating,
-                      backgroundColor: MetaColors.surfaceHighlight,
-                      content: Text('Selecione uma foto da galeria ou câmera para atualizar.'),
-                    ),
-                  );
-                },
+                foregroundColor: _isUploadingPhoto ? MetaColors.emerald : MetaColors.textPrimary,
+                onPressed: _isUploadingPhoto ? null : () => _showAddPhotoSheet(),
               ),
             ],
           ),
@@ -865,36 +1105,184 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
 
   Widget _buildPhotoSlot({
     required String label,
-    required String date,
-    required bool hasImage,
+    required String fallbackDate,
+    required EvolutionPhoto? photo,
+    required VoidCallback onTap,
   }) {
-    return Container(
-      height: 160,
-      decoration: BoxDecoration(
-        color: MetaColors.surfaceHighlight,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: MetaColors.border),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.account_box_outlined, size: 36, color: MetaColors.textSecondary),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              color: MetaColors.textPrimary,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
+    if (photo != null) {
+      final dateFormatted =
+          '${photo.takenAt.day.toString().padLeft(2, '0')}/${photo.takenAt.month.toString().padLeft(2, '0')}/${photo.takenAt.year}';
+      return GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 190,
+          decoration: BoxDecoration(
+            color: MetaColors.surfaceHighlight,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                EvolutionPhotoService.buildPhotoImage(
+                  photo.photoUrl,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
+                // Gradiente escuro para contraste
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.5),
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.85),
+                      ],
+                      stops: const [0.0, 0.45, 1.0],
+                    ),
+                  ),
+                ),
+                // Badge de Categoria (Início vs Atual)
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.7),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.5)),
+                    ),
+                    child: Text(
+                      photo.photoType == 'before' ? 'INÍCIO' : 'ATUAL',
+                      style: const TextStyle(
+                        color: MetaColors.emerald,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ),
+                ),
+                // Ícone de Toque/Editar
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.6),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.edit_rounded, color: Colors.white, size: 14),
+                  ),
+                ),
+                // Informações na base
+                Positioned(
+                  bottom: 10,
+                  left: 10,
+                  right: 10,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_today_rounded, size: 11, color: Colors.white.withValues(alpha: 0.8)),
+                          const SizedBox(width: 4),
+                          Text(
+                            dateFormatted,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              fontSize: 11,
+                            ),
+                          ),
+                          if (photo.weightKg != null) ...[
+                            Text(
+                              ' • ${photo.weightKg}kg',
+                              style: const TextStyle(
+                                color: MetaColors.emerald,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 2),
-          Text(
-            date,
-            style: const TextStyle(color: MetaColors.textSecondary, fontSize: 11),
-          ),
-        ],
+        ),
+      );
+    }
+
+    // Estado sem foto
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 190,
+        decoration: BoxDecoration(
+          color: MetaColors.surfaceHighlight,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: MetaColors.border, style: BorderStyle.solid),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: MetaColors.surface,
+                shape: BoxShape.circle,
+                border: Border.all(color: MetaColors.border),
+              ),
+              child: const Icon(Icons.add_a_photo_outlined, size: 24, color: MetaColors.emerald),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              label,
+              style: const TextStyle(
+                color: MetaColors.textPrimary,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 3),
+            Text(
+              fallbackDate,
+              style: const TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              '+ Adicionar',
+              style: TextStyle(
+                color: MetaColors.emerald,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:personal_ia/features/trainer/presentation/screens/student_details_screen.dart';
 
 Map<String, dynamic> _student() => {
@@ -34,6 +35,7 @@ Future<void> _openDetails(
                   onUpdateStudentStatus: onUpdateStudentStatus,
                   onDeleteStudent: onDeleteStudent,
                   loadActiveWorkout: (_) async => null,
+                  loadEvolutionPhotos: (_) async => {'before': null, 'after': null},
                 ),
               ),
             ),
@@ -55,6 +57,11 @@ Future<void> _tapAdministrationAction(WidgetTester tester, String label) async {
 }
 
 void main() {
+  setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    SharedPreferences.setMockInitialValues({});
+  });
+
   testWidgets('edits profile fields and keeps login email read-only', (tester) async {
     String? savedName;
     String? savedGoal;
@@ -198,6 +205,7 @@ void main() {
                       return true;
                     },
                     loadActiveWorkout: (_) async => null,
+                    loadEvolutionPhotos: (_) async => {'before': null, 'after': null},
                   ),
                 ),
               ),
@@ -278,6 +286,7 @@ void main() {
                   builder: (_) => StudentDetailsScreen(
                     studentData: _student(),
                     loadActiveWorkout: (_) async => testPlan,
+                    loadEvolutionPhotos: (_) async => {'before': null, 'after': null},
                   ),
                 ),
               ),
