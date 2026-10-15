@@ -78,3 +78,6 @@ Thumbs.db
 # Supabase CLI Local Cache
 supabase/.temp/
 supabase/.branches/
+
+# Firebase CLI Local Cache
+.firebase/

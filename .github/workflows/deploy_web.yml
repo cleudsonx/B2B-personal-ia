@@ -35,6 +35,11 @@ jobs:
           cd mobile
           flutter pub get
 
+      - name: Auto-Versionamento PWA & Build Stamp
+        run: |
+          cd mobile
+          dart run tool/update_version.dart
+
       - name: Build Flutter Web Release
         run: |
           cd mobile

@@ -1,4 +1,4 @@
-﻿name: Deploy Flutter Web para Firebase Hosting
+name: Deploy Flutter Web para Firebase Hosting
 
 on:
   push:
@@ -26,6 +26,11 @@ jobs:
         run: |
           cd mobile
           flutter pub get
+
+      - name: Auto-Versionamento PWA & Build Stamp
+        run: |
+          cd mobile
+          dart run tool/update_version.dart
 
       - name: Build Flutter Web Release
         run: |
