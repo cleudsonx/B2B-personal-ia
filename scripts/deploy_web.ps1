@@ -16,13 +16,12 @@ $ErrorActionPreference = "Stop"
 $root = Resolve-Path "$PSScriptRoot\.."
 Set-Location $root
 
-Write-Host "Passaporte de Versionamento & Build..." -ForegroundColor Cyan
-$buildArgs = @()
-if ($Bump) { $buildArgs += "-Bump", $Bump }
-if ($SetVersion) { $buildArgs += "-SetVersion", $SetVersion }
-if ($Notes) { $buildArgs += "-Notes", $Notes }
+$splat = @{}
+if ($Bump) { $splat["Bump"] = $Bump }
+if ($SetVersion) { $splat["SetVersion"] = $SetVersion }
+if ($Notes) { $splat["Notes"] = $Notes }
 
-& "$PSScriptRoot\build_web.ps1" @buildArgs
+& "$PSScriptRoot\build_web.ps1" @splat
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Falha na etapa de build!"
     exit $LASTEXITCODE

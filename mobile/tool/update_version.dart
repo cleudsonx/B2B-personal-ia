@@ -69,6 +69,11 @@ void main(List<String> args) {
     }
   }
 
+  if (!RegExp(r'^[0-9]+\.[0-9]+\.[0-9]+$').hasMatch(targetSemVer)) {
+    stderr.writeln('ERRO: Versão de destino inválida: "$targetSemVer". Formato esperado: X.Y.Z');
+    exit(1);
+  }
+
   // 4. Calcula novo buildNumber (estritamente monotônico e seguro para 32-bit int)
   final now = DateTime.now().toUtc();
   final year = now.year.toString().padLeft(4, '0');
