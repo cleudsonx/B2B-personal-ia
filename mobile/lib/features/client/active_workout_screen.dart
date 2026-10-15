@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'student_profile_screen.dart';
 import 'client_focus_workout_screen.dart';
 import '../../core/theme/app_colors.dart';
@@ -9,6 +10,7 @@ import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/rest_timer_sheet.dart';
 import '../../core/widgets/biomechanical_analysis_sheet.dart';
 import '../../core/widgets/server_config_dialog.dart';
+import '../../core/widgets/workout_guide_modal.dart';
 import '../../models/exercise_model.dart';
 import '../../models/split_model.dart';
 import '../../models/adaptation_model.dart';
@@ -259,6 +261,54 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         _loadActiveWorkout();
       }
     });
+  }
+
+  Future<void> _contactTrainerWhatsApp() async {
+    final rawPhone = _trainerPhone;
+    if (rawPhone == null || rawPhone.trim().isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Seu treinador ($_trainerName) ainda não cadastrou o WhatsApp profissional.',
+            style: const TextStyle(color: Colors.white, fontSize: 13),
+          ),
+          backgroundColor: const Color(0xFF1E293B),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+
+    final digits = rawPhone.replaceAll(RegExp(r'\D'), '');
+    final phone = digits.startsWith('55')
+        ? digits
+        : (digits.length >= 10 && digits.length <= 11 ? '55$digits' : digits);
+    final msg = Uri.encodeComponent(
+      'Olá professor(a) $_trainerName! Sou aluno no Mr. Coach e gostaria de tirar uma dúvida sobre meu treino.',
+    );
+    final uri = Uri.parse('https://api.whatsapp.com/send?phone=$phone&text=$msg');
+
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      }
+    } catch (e) {
+      debugPrint('Erro ao abrir WhatsApp do treinador: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Não foi possível abrir o WhatsApp automaticamente.',
+            style: TextStyle(color: Colors.white, fontSize: 13),
+          ),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   void _showAdaptationModal(int exerciseIndex) {
@@ -1393,28 +1443,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           ),
                         IconButton(
                           icon: const Icon(
-                            Icons.refresh_rounded,
+                            Icons.chat_bubble_outline_rounded,
                             size: 20,
-                            color: MetaColors.textSecondary,
+                            color: MetaColors.emerald,
                           ),
-                          tooltip: 'Sincronizar Ficha do Banco',
-                          onPressed: _loadActiveWorkout,
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.person_outline_rounded,
-                            size: 20,
-                            color: MetaColors.textSecondary,
-                          ),
-                          tooltip: 'Meu Perfil & Anamnese',
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const StudentProfileScreen(),
-                              ),
-                            );
-                          },
+                          tooltip: 'Falar com o Treinador no WhatsApp',
+                          onPressed: _contactTrainerWhatsApp,
                         ),
                       ],
                     ),
@@ -1576,14 +1610,48 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'DIVISÕES DO SEU PLANO (SPLITS)',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.6,
-                          color: MetaColors.textSecondary,
-                        ),
+                      Row(
+                        children: [
+                          const Text(
+                            'DIVISÃO DE TREINO',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.6,
+                              color: MetaColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          InkWell(
+                            onTap: () => WorkoutGuideModal.show(context),
+                            borderRadius: BorderRadius.circular(6),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.help_outline_rounded,
+                                    size: 13,
+                                    color: AppColors.studentCyan,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Como treinar',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.studentCyan,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       Text(
                         '${_selectedSplitIndex + 1} de ${_splits.length}',

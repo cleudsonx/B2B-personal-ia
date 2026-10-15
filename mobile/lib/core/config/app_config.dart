@@ -46,11 +46,11 @@ class AppConfig {
   static const String supabaseAnonKey = supabasePublishableKey;
 
   // Informações Oficiais de Versionamento (SemVer) & Build
-  static const String appVersion = '1.3.5';
-  static const int buildNumber = 2026102812;
+  static const String appVersion = '1.3.6';
+  static const int buildNumber = 2026102813;
   static const String buildDate = '15 de Outubro, 2026';
   static const String releaseNotes =
-      'Foto de perfil atualizável pelo avatar da aba social, layout de status limpo e WhatsApp com SafeArea e DDI 55';
+      'Eliminação de redundâncias na visão do aluno, substituição de Plano por Treino, WhatsApp do treinador no card e Guia Rápido de Treino';
 
   static String get fullVersionString => 'v$appVersion (Build $buildNumber)';
 }

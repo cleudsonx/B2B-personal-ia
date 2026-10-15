@@ -31,6 +31,7 @@ import 'core/config/app_config.dart';
 import 'core/theme/theme_controller.dart';
 import 'core/widgets/theme_toggle_button.dart';
 import 'core/widgets/pwa_update_wrapper.dart';
+import 'core/widgets/workout_guide_modal.dart';
 
 import 'package:flutter/services.dart';
 import 'features/invite/invite_landing_screen.dart';
@@ -844,28 +845,44 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     children: [
                       const ThemeToggleButton(compact: true),
                       const SizedBox(width: 4),
-                      TextButton.icon(
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        icon: Icon(
-                          Icons.person_outline_rounded,
-                          size: 14,
-                          color: AppColors.subtext(context),
-                        ),
-                        label: Text(
-                          'Conta',
-                          style: TextStyle(
+                      if (!_isTrainer)
+                        IconButton(
+                          icon: Icon(
+                            Icons.help_outline_rounded,
+                            size: 19,
                             color: AppColors.subtext(context),
-                            fontSize: 11,
                           ),
+                          tooltip: 'Como treinar',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          onPressed: () => WorkoutGuideModal.show(context),
+                        )
+                      else
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          icon: Icon(
+                            Icons.person_outline_rounded,
+                            size: 14,
+                            color: AppColors.subtext(context),
+                          ),
+                          label: Text(
+                            'Conta',
+                            style: TextStyle(
+                              color: AppColors.subtext(context),
+                              fontSize: 11,
+                            ),
+                          ),
+                          onPressed: _openAccount,
                         ),
-                        onPressed: _openAccount,
-                      ),
                     ],
                   ),
                 ],
