@@ -110,37 +110,37 @@ class AppVersionFooter extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 _buildChangelogItem(
-                  icon: Icons.bolt_rounded,
-                  title: 'Smart Re-entry PWA',
+                  icon: Icons.shield_moon_rounded,
+                  title: 'Bio-Recovery & Prontidão Real',
                   description:
-                      'Acessos subsequentes direcionam direto para o app ou tela de login, dispensando a landing page.',
+                      'Score diário de prontidão biomecânica e telemetria de RPE integrado em tempo real no Supabase.',
                   textColor: textColor,
                   subtextColor: subtextColor,
                 ),
                 const SizedBox(height: 10),
                 _buildChangelogItem(
-                  icon: Icons.view_in_ar_rounded,
-                  title: 'Mr. Coach AI Biomecânico',
+                  icon: Icons.lock_outline_rounded,
+                  title: 'Galeria Sigilosa Antes x Depois',
                   description:
-                      'Motor de resposta com loop 3D anatômico e destaque do músculo primário com Raio-X interativo.',
+                      'Fotos criptografadas com RLS para acompanhamento visual da evolução física do aluno pelo professor.',
                   textColor: textColor,
                   subtextColor: subtextColor,
                 ),
                 const SizedBox(height: 10),
                 _buildChangelogItem(
-                  icon: Icons.history_edu_rounded,
-                  title: 'Histórico Social Otimizado',
+                  icon: Icons.trending_up_rounded,
+                  title: 'Sobrecarga Progressiva Sincronizada',
                   description:
-                      'Visualização de treinos concluídos em cards responsivos com duração real e sem cortes de tela.',
+                      'Histórico real de cargas registradas pelo aluno exibido no dashboard de detalhes do professor.',
                   textColor: textColor,
                   subtextColor: subtextColor,
                 ),
                 const SizedBox(height: 10),
                 _buildChangelogItem(
                   icon: Icons.sync_rounded,
-                  title: 'Atualizações em Segundo Plano',
+                  title: 'Versionamento & PWA Heartbeat',
                   description:
-                      'Detecção inteligente de novas versões para você nunca perder a série durante o treino.',
+                      'Detecção automática de deploys com atualização instantânea e sem retenção de cache.',
                   textColor: textColor,
                   subtextColor: subtextColor,
                 ),
@@ -218,16 +218,24 @@ class AppVersionFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = MetaColors.isDark(context);
+    final textColor = isDark ? MetaColors.textPrimary : MetaColors.lightTextPrimary;
     final subtextColor = isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary;
+    final pillBg = isDark ? MetaColors.surfaceHighlight.withValues(alpha: 0.5) : MetaColors.lightSurfaceHighlight;
+    final pillBorder = isDark ? MetaColors.border : MetaColors.lightBorder;
 
     return Padding(
       padding: padding,
       child: Center(
         child: InkWell(
           onTap: () => _showReleaseNotesModal(context),
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: pillBg,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: pillBorder),
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -235,18 +243,25 @@ class AppVersionFooter extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      width: 6,
-                      height: 6,
+                      width: 7,
+                      height: 7,
                       decoration: const BoxDecoration(
                         color: MetaColors.emerald,
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0x6610B981),
+                            blurRadius: 4,
+                            spreadRadius: 1,
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 7),
+                    const SizedBox(width: 8),
                     Text(
                       'Mr. Coach AI',
                       style: TextStyle(
-                        color: subtextColor.withValues(alpha: 0.9),
+                        color: textColor,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 0.3,
@@ -256,27 +271,29 @@ class AppVersionFooter extends StatelessWidget {
                     Text(
                       '•',
                       style: TextStyle(
-                        color: subtextColor.withValues(alpha: 0.5),
+                        color: subtextColor,
                         fontSize: 12,
                       ),
                     ),
                     const SizedBox(width: 6),
                     Text(
                       AppConfig.fullVersionString,
-                      style: TextStyle(
-                        color: subtextColor.withValues(alpha: 0.7),
+                      style: const TextStyle(
+                        color: MetaColors.emerald,
                         fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.2,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
-                  'Toque para ver as notas desta versão',
+                  'Toque para ver as novidades',
                   style: TextStyle(
-                    color: subtextColor.withValues(alpha: 0.45),
+                    color: subtextColor,
                     fontSize: 10,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],

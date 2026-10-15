@@ -94,7 +94,7 @@ class _AccountScreenState extends State<AccountScreen> {
   Widget build(BuildContext context) {
     final roles = _roles.isEmpty ? [widget.currentRole] : _roles;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 28, 20, 36),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
       children: [
         Text('Conta', style: Theme.of(context).textTheme.headlineSmall),
         if (_email != null) ...[
@@ -179,7 +179,7 @@ class _AccountScreenState extends State<AccountScreen> {
           },
         ),
         if (roles.contains('trainer')) ...[
-          const SizedBox(height: 32),
+          const SizedBox(height: 18),
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.security_outlined),
@@ -199,19 +199,21 @@ class _AccountScreenState extends State<AccountScreen> {
             },
           ),
         ],
-        const SizedBox(height: 36),
+        const SizedBox(height: 20),
         OutlinedButton.icon(
           onPressed: () => _signOut(false),
           icon: const Icon(Icons.logout),
           label: const Text('Sair neste aparelho'),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         TextButton.icon(
           onPressed: () => _signOut(true),
           icon: const Icon(Icons.phonelink_erase_outlined),
           label: const Text('Sair de todos os dispositivos'),
         ),
-        const AppVersionFooter(),
+        const AppVersionFooter(
+          padding: EdgeInsets.only(top: 14, bottom: 8),
+        ),
       ],
     );
   }
