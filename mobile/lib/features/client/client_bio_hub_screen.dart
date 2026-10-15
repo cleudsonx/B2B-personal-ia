@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
+import 'widgets/warmup_sheet.dart';
 
 /// Aba 4 do Aluno: 🧬 Bio-Hub
 /// Central integrada de Performance (Pré e Pós-Treino), Cargas & Fotos, e Bio-Recovery.
@@ -458,15 +459,29 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                 isPrimary: false,
                 backgroundColor: MetaColors.surfaceHighlight,
                 foregroundColor: MetaColors.emerald,
-                onPressed: () {
-                  setState(() => _mobilityCompleted = true);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      behavior: SnackBarBehavior.floating,
-                      backgroundColor: MetaColors.emerald,
-                      content: Text('Mobilidade concluída! Músculos e articulações prontos.'),
-                    ),
-                  );
+                onPressed: () async {
+                  final completed = await WarmupSheet.show(context);
+                  if (completed == true && mounted) {
+                    setState(() => _mobilityCompleted = true);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: MetaColors.emerald,
+                        content: Row(
+                          children: const [
+                            Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Aquecimento concluído! Articulações preparadas para o treino.',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
                 },
               ),
               const SizedBox(height: 10),

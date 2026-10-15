@@ -35,3 +35,4 @@ void main() {
     expect(find.text('NOVIDADES DESTA VERSÃO'), findsNothing);
   });
 }
+

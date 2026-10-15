@@ -287,3 +287,4 @@ class AppVersionFooter extends StatelessWidget {
     );
   }
 }
+
