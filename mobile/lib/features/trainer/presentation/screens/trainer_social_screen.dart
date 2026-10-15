@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/widgets/avatar_selector_sheet.dart';
 import '../../../../core/widgets/meta_components.dart';
 import '../../../../services/auth_service.dart';
 import '../../../../services/workout_service.dart';
@@ -299,6 +301,65 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
     );
   }
 
+  Future<void> _updateTrainerProfilePhoto() async {
+    final currentPhoto = _getTrainerPhotoUrl();
+    final selected = await AvatarSelectorSheet.show(
+      context: context,
+      isTrainer: true,
+      currentUrl: currentPhoto,
+    );
+    if (selected != null && mounted) {
+      try {
+        final supabase = Supabase.instance.client;
+        final user = supabase.auth.currentUser;
+        if (user != null) {
+          await supabase.from('profiles').update({
+            'photo_url': selected,
+            'avatar_url': selected,
+          }).eq('id', user.id);
+
+          await supabase.auth.updateUser(
+            UserAttributes(data: {
+              'photo_url': selected,
+              'avatar_url': selected,
+            }),
+          );
+        }
+        await _loadAll();
+        WorkoutService.studentsRefreshNotifier.value++;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                'Foto de perfil atualizada com sucesso!',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              backgroundColor: MetaColors.emerald,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } catch (e) {
+        debugPrint('Erro ao atualizar foto de perfil: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Não foi possível salvar a foto: $e',
+                style: const TextStyle(color: Colors.white),
+              ),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+        }
+      }
+    }
+  }
+
   void _openSessionDetailsModal(Map<String, dynamic> session) {
     final clientName = session['client_name'] as String? ?? 'Aluno';
     final photoUrl = session['photo_url'] as String?;
@@ -328,182 +389,240 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: MetaColors.card(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: MetaColors.highlight(ctx),
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-            const SizedBox(height: 18),
-            _buildAvatar(
-              photoUrl: photoUrl,
-              initials: initials,
-              radius: 36,
-              borderColor: MetaColors.emerald,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              clientName,
-              style: TextStyle(
-                color: MetaColors.text(ctx),
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(
-              'Treino concluído $timeRelative',
-              style: TextStyle(color: MetaColors.emerald, fontSize: 13, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: MetaColors.highlight(ctx),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: MetaColors.cardBorder(ctx)),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: MetaColors.emerald.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          'SPLIT $splitId',
-                          style: const TextStyle(
-                            color: MetaColors.emerald,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          splitName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: MetaColors.text(ctx),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Divider(height: 1, color: MetaColors.cardBorder(ctx)),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Text('Duração', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 11)),
-                            const SizedBox(height: 4),
-                            Text(
-                              formattedDuration,
-                              style: TextStyle(color: MetaColors.text(ctx), fontSize: 14, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 2),
-                            Text('Tempo total', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 10)),
-                          ],
-                        ),
-                      ),
-                      Container(width: 1, height: 32, color: MetaColors.cardBorder(ctx)),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Text('Exercícios', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 11)),
-                            const SizedBox(height: 4),
-                            Text(
-                              '$completedEx / $totalEx',
-                              style: TextStyle(color: MetaColors.text(ctx), fontSize: 14, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 2),
-                            Text('Executados', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 10)),
-                          ],
-                        ),
-                      ),
-                      Container(width: 1, height: 32, color: MetaColors.cardBorder(ctx)),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Text('Status', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 11)),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'Concluído 🔥',
-                              style: TextStyle(color: MetaColors.emerald, fontSize: 13, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 2),
-                            Text('Meta batida', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 10)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () async {
-                  final firstName = clientName.split(' ').first;
-                  final msg = 'Fala $firstName! Vi aqui no Mr. Coach que você concluiu o Split $splitId ($splitName)! Parabéns pela dedicação e foco! 🔥💪';
-                  final encoded = Uri.encodeComponent(msg);
+      builder: (ctx) {
+        String cleanPhone = (phone ?? '').replaceAll(RegExp(r'\D'), '');
+        if (cleanPhone.isNotEmpty) {
+          if (cleanPhone.length == 10 || cleanPhone.length == 11) {
+            cleanPhone = '55$cleanPhone';
+          }
+        }
 
-                  if (phone != null && phone.trim().isNotEmpty) {
-                    final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
-                    final uri = Uri.parse('https://wa.me/$cleanPhone?text=$encoded');
-                    try {
-                      await launchUrl(uri, mode: LaunchMode.externalApplication);
-                    } catch (_) {}
-                  } else {
-                    // Fallback para abrir WhatsApp geral com a mensagem
-                    final uri = Uri.parse('https://api.whatsapp.com/send?text=$encoded');
-                    try {
-                      await launchUrl(uri, mode: LaunchMode.externalApplication);
-                    } catch (_) {}
-                  }
-                  if (ctx.mounted) Navigator.pop(ctx);
-                },
-                icon: const Icon(Icons.chat_bubble_rounded, size: 20),
-                label: const Text(
-                  'Parabenizar no WhatsApp 🔥',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: MetaColors.emerald,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 0,
-                ),
-              ),
+        return SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              18,
+              20,
+              24 + MediaQuery.of(ctx).padding.bottom,
             ),
-          ],
-        ),
-      ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: MetaColors.highlight(ctx),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                _buildAvatar(
+                  photoUrl: photoUrl,
+                  initials: initials,
+                  radius: 36,
+                  borderColor: MetaColors.emerald,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  clientName,
+                  style: TextStyle(
+                    color: MetaColors.text(ctx),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Treino concluído $timeRelative',
+                  style: const TextStyle(color: MetaColors.emerald, fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: MetaColors.highlight(ctx),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: MetaColors.cardBorder(ctx)),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: MetaColors.emerald.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'SPLIT $splitId',
+                              style: const TextStyle(
+                                color: MetaColors.emerald,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              splitName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: MetaColors.text(ctx),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Divider(height: 1, color: MetaColors.cardBorder(ctx)),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              children: [
+                                Text('Duração', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 11)),
+                                const SizedBox(height: 4),
+                                Text(
+                                  formattedDuration,
+                                  style: TextStyle(color: MetaColors.text(ctx), fontSize: 14, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 2),
+                                Text('Tempo total', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 10)),
+                              ],
+                            ),
+                          ),
+                          Container(width: 1, height: 32, color: MetaColors.cardBorder(ctx)),
+                          Expanded(
+                            child: Column(
+                              children: [
+                                Text('Exercícios', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 11)),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '$completedEx / $totalEx',
+                                  style: TextStyle(color: MetaColors.text(ctx), fontSize: 14, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 2),
+                                Text('Executados', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 10)),
+                              ],
+                            ),
+                          ),
+                          Container(width: 1, height: 32, color: MetaColors.cardBorder(ctx)),
+                          Expanded(
+                            child: Column(
+                              children: [
+                                Text('Status', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 11)),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'Concluído 🔥',
+                                  style: TextStyle(color: MetaColors.emerald, fontSize: 13, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 2),
+                                Text('Meta batida', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 10)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final firstName = clientName.split(' ').first;
+                      final msg = 'Fala $firstName! Vi aqui no Mr. Coach que você concluiu o Split $splitId ($splitName)! Parabéns pela dedicação e foco! 🔥💪';
+                      final encoded = Uri.encodeComponent(msg);
+
+                      final uri = cleanPhone.isNotEmpty
+                          ? Uri.parse('https://api.whatsapp.com/send?phone=$cleanPhone&text=$encoded')
+                          : Uri.parse('https://api.whatsapp.com/send?text=$encoded');
+
+                      try {
+                        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        if (!launched) {
+                          await launchUrl(uri, mode: LaunchMode.platformDefault);
+                        }
+                      } catch (_) {
+                        try {
+                          await launchUrl(uri, mode: LaunchMode.platformDefault);
+                        } catch (err) {
+                          debugPrint('Erro ao abrir WhatsApp: $err');
+                        }
+                      }
+                      if (ctx.mounted) Navigator.pop(ctx);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: MetaColors.emerald,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.chat_outlined, size: 20, color: Colors.white),
+                        SizedBox(width: 8),
+                        Text(
+                          'Parabenizar no WhatsApp 🔥',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                if (cleanPhone.isEmpty)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.info_outline, size: 12, color: MetaColors.subtext(ctx)),
+                      const SizedBox(width: 6),
+                      Text(
+                        'WhatsApp não salvo: abrirá para você escolher o contato',
+                        style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 11),
+                      ),
+                    ],
+                  )
+                else
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.check_circle_outline, size: 12, color: MetaColors.emerald),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Enviando para $phone',
+                        style: const TextStyle(color: MetaColors.emerald, fontSize: 11, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -547,25 +666,14 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                         right: 20,
                         bottom: 12,
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Atualizações',
-                            style: TextStyle(
-                              color: MetaColors.text(context),
-                              fontSize: 26,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.edit_note_rounded, size: 26),
-                            color: MetaColors.emerald,
-                            tooltip: 'Publicar Aviso no Mural',
-                            onPressed: _openEditStatusModal,
-                          ),
-                        ],
+                      child: Text(
+                        'Atualizações',
+                        style: TextStyle(
+                          color: MetaColors.text(context),
+                          fontSize: 26,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.5,
+                        ),
                       ),
                     ),
                   ),
@@ -591,84 +699,115 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                     ),
                   ),
 
-                  // Status do Treinador (Mural / Recado Interativo)
+                  // Status do Treinador (Avatar para Trocar Foto + Recado Interativo para Editar Status)
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 14),
-                      child: InkWell(
-                        onTap: _openEditStatusModal,
-                        borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: MetaColors.card(context),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: MetaColors.cardBorder(context)),
+                        ),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                           child: Row(
                             children: [
-                              Stack(
-                                children: [
-                                  _buildAvatar(
-                                    photoUrl: trainerPhoto,
-                                    initials: trainerInitials,
-                                    radius: 28,
-                                    borderColor: hasStatus ? MetaColors.emerald : null,
-                                  ),
-                                  Positioned(
-                                    bottom: 0,
-                                    right: 0,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
-                                        color: MetaColors.emerald,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: MetaColors.bg(context),
-                                          width: 2,
+                              // Avatar do Treinador: Tocar para alterar foto de perfil
+                              InkWell(
+                                onTap: _updateTrainerProfilePhoto,
+                                borderRadius: BorderRadius.circular(32),
+                                child: Stack(
+                                  children: [
+                                    _buildAvatar(
+                                      photoUrl: trainerPhoto,
+                                      initials: trainerInitials,
+                                      radius: 28,
+                                      borderColor: hasStatus ? MetaColors.emerald : null,
+                                    ),
+                                    Positioned(
+                                      bottom: 0,
+                                      right: 0,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(5),
+                                        decoration: BoxDecoration(
+                                          color: MetaColors.emerald,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: MetaColors.card(context),
+                                            width: 2,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.camera_alt_rounded,
+                                          size: 13,
+                                          color: Colors.white,
                                         ),
                                       ),
-                                      child: const Icon(
-                                        Icons.add,
-                                        size: 13,
-                                        color: Colors.white,
-                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Meu status',
-                                      style: TextStyle(
-                                        color: MetaColors.text(context),
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      hasStatus
-                                          ? statusMessage
-                                          : 'Toque para publicar um aviso ou dica para seus alunos.',
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: hasStatus ? MetaColors.text(context) : MetaColors.subtext(context),
-                                        fontSize: 13,
-                                        fontWeight: hasStatus ? FontWeight.w500 : FontWeight.normal,
-                                      ),
-                                    ),
-                                    if (hasStatus && statusUpdatedAt != null) ...[
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        _formatRelativeTime(statusUpdatedAt),
-                                        style: TextStyle(color: MetaColors.emerald, fontSize: 11),
-                                      ),
-                                    ],
                                   ],
                                 ),
                               ),
-                              Icon(Icons.edit_outlined, size: 20, color: MetaColors.subtext(context)),
+                              const SizedBox(width: 14),
+                              // Clique no texto e recado para editar o status
+                              Expanded(
+                                child: InkWell(
+                                  onTap: _openEditStatusModal,
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Text(
+                                              'Meu status',
+                                              style: TextStyle(
+                                                color: MetaColors.text(context),
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            const Icon(
+                                              Icons.edit_outlined,
+                                              size: 15,
+                                              color: MetaColors.emerald,
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          hasStatus
+                                              ? statusMessage
+                                              : 'Toque para publicar um aviso ou dica para seus alunos.',
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: hasStatus ? MetaColors.text(context) : MetaColors.subtext(context),
+                                            fontSize: 13,
+                                            fontWeight: hasStatus ? FontWeight.w500 : FontWeight.normal,
+                                          ),
+                                        ),
+                                        if (hasStatus && statusUpdatedAt != null) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            _formatRelativeTime(statusUpdatedAt),
+                                            style: const TextStyle(color: MetaColors.emerald, fontSize: 11),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined, size: 20),
+                                color: MetaColors.subtext(context),
+                                tooltip: 'Editar Status',
+                                onPressed: _openEditStatusModal,
+                              ),
                             ],
                           ),
                         ),
