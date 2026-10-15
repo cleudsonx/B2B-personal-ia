@@ -348,10 +348,44 @@
             }
           });
 
-          // Checagem periódica a cada 20 minutos
-          setInterval(checkForUpdates, 20 * 60 * 1000);
+          // Checagem periódica a cada 5 minutos
+          setInterval(checkForUpdates, 5 * 60 * 1000);
         });
       }
+
+      // =========================================================================
+      // Camada 2: Version Heartbeat via version.json (Resiliente ao cache do Safari/iOS)
+      // =========================================================================
+      const APP_CURRENT_BUILD = 2026102701;
+
+      async function checkVersionFile() {
+        try {
+          const res = await fetch('version.json?_t=' + Date.now(), { cache: 'no-store' });
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.build && Number(data.build) > APP_CURRENT_BUILD) {
+              showUpdateBanner(null);
+            }
+          }
+        } catch (_) {}
+      }
+
+      // Função pública para teste imediato de interface:
+      // Pode ser chamada no console do navegador via: window.simulatePwaUpdate()
+      window.simulatePwaUpdate = function() {
+        showUpdateBanner(null);
+      };
+
+      // Dispara verificação rápida após 2s de carregamento
+      setTimeout(checkVersionFile, 2000);
+      setInterval(checkVersionFile, 3 * 60 * 1000);
+
+      window.addEventListener('focus', checkVersionFile);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          checkVersionFile();
+        }
+      });
     })();
   </script>
 
