@@ -24,8 +24,8 @@ void main() {
 
     // Verifica que o BottomSheet com o changelog abriu
     expect(find.text('NOVIDADES DESTA VERSÃO'), findsOneWidget);
-    expect(find.text('Smart Re-entry PWA'), findsOneWidget);
-    expect(find.text('Mr. Coach AI Biomecânico'), findsOneWidget);
+    expect(find.text('Bio-Recovery & Prontidão Real'), findsOneWidget);
+    expect(find.text('Galeria Sigilosa Antes x Depois'), findsOneWidget);
     expect(find.text('Entendido'), findsOneWidget);
 
     // Fecha o modal
