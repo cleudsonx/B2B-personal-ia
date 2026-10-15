@@ -40,12 +40,48 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
   // Recovery State
   double _sleepHours = 7.5;
   String _domsLevel = 'Leve'; // Leve, Moderada, Intensa
+  bool _isSavingRecovery = false;
+  bool _recoverySaved = false;
+
+  // Sobrecarga Progressiva Real State
+  List<Map<String, dynamic>> _progressiveOverloads = [];
+  bool _isLoadingLoads = true;
 
   // Galeria Sigilosa State
   EvolutionPhoto? _beforePhoto;
   EvolutionPhoto? _afterPhoto;
   bool _isLoadingPhotos = true;
   bool _isUploadingPhoto = false;
+
+  double get _calculatedReadinessScore {
+    double sleepScore = 0;
+    if (_sleepHours >= 7 && _sleepHours <= 9) {
+      sleepScore = 50;
+    } else if (_sleepHours >= 6) {
+      sleepScore = 38;
+    } else if (_sleepHours >= 5) {
+      sleepScore = 25;
+    } else if (_sleepHours > 9) {
+      sleepScore = 42;
+    } else {
+      sleepScore = 15;
+    }
+
+    double domsScore = 0;
+    if (_domsLevel == 'Leve') {
+      domsScore = 40;
+    } else if (_domsLevel == 'Moderada') {
+      domsScore = 25;
+    } else {
+      domsScore = 10;
+    }
+
+    double waterScore = (_waterIntakeMl / 500.0) * 10.0;
+    if (waterScore > 10) waterScore = 10;
+
+    final total = sleepScore + domsScore + waterScore;
+    return total.clamp(20.0, 100.0);
+  }
 
   @override
   void initState() {
@@ -57,6 +93,81 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
       }
     });
     _loadEvolutionPhotos();
+    _loadRecoveryAndLoads();
+  }
+
+  Future<void> _loadRecoveryAndLoads() async {
+    final user = AuthService.currentUser;
+    if (user == null) {
+      if (mounted) setState(() => _isLoadingLoads = false);
+      return;
+    }
+
+    try {
+      final latestRec = await WorkoutService.getLatestDailyRecovery(user.id);
+      if (latestRec != null && mounted) {
+        setState(() {
+          _sleepHours = (latestRec['sleep_hours'] as num?)?.toDouble() ?? _sleepHours;
+          _domsLevel = latestRec['doms_level']?.toString() ?? _domsLevel;
+          _waterIntakeMl = (latestRec['water_intake_ml'] as num?)?.toInt() ?? _waterIntakeMl;
+        });
+      }
+    } catch (_) {}
+
+    try {
+      final loads = await WorkoutService.getStudentProgressiveOverload(user.id);
+      if (mounted) {
+        setState(() {
+          _progressiveOverloads = loads;
+          _isLoadingLoads = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingLoads = false);
+    }
+  }
+
+  Future<void> _saveDailyRecovery() async {
+    setState(() => _isSavingRecovery = true);
+    final score = _calculatedReadinessScore;
+    final success = await WorkoutService.saveDailyRecovery(
+      sleepHours: _sleepHours,
+      domsLevel: _domsLevel,
+      waterIntakeMl: _waterIntakeMl,
+      readinessScore: score,
+    );
+
+    if (mounted) {
+      setState(() {
+        _isSavingRecovery = false;
+        _recoverySaved = success;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: success ? MetaColors.emerald : MetaColors.surfaceHighlight,
+          content: Row(
+            children: [
+              Icon(
+                success ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  success
+                      ? 'Prontidão de ${score.toInt()}% registrada! Sincronizada com seu treinador.'
+                      : 'Não foi possível salvar a prontidão no momento.',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _loadEvolutionPhotos() async {
@@ -279,6 +390,219 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                     ],
                   ),
                 ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showRecordLoadSheet() {
+    final exerciseCtrl = TextEditingController(text: 'Supino Reto com Barra');
+    final loadCtrl = TextEditingController();
+    final repsCtrl = TextEditingController(text: '10');
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final isDark = MetaColors.isDark(ctx);
+        final bg = isDark ? MetaColors.surface : MetaColors.lightSurface;
+        final border = isDark ? MetaColors.border : MetaColors.lightBorder;
+        final textColor = isDark ? MetaColors.textPrimary : MetaColors.lightTextPrimary;
+        final subtextColor = isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary;
+
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) => Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            child: SafeArea(
+              child: Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                decoration: BoxDecoration(
+                  color: bg,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: border),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: subtextColor.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: MetaColors.emerald.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.fitness_center_rounded, color: MetaColors.emerald, size: 20),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Registrar Carga do Exercício',
+                                style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 16),
+                              ),
+                              Text(
+                                'Alimenta a curva de sobrecarga progressiva real',
+                                style: TextStyle(color: subtextColor, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'EXERCÍCIO',
+                      style: TextStyle(color: subtextColor, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: exerciseCtrl,
+                      style: TextStyle(color: textColor, fontSize: 14),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: MetaColors.surfaceHighlight,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: border)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: border)),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          'Supino Reto',
+                          'Agachamento',
+                          'Puxada Frontal',
+                          'Leg Press',
+                          'Desenvolvimento',
+                          'Stiff',
+                        ].map((sug) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: ActionChip(
+                              label: Text(sug),
+                              labelStyle: const TextStyle(fontSize: 11, color: MetaColors.textSecondary),
+                              backgroundColor: MetaColors.surfaceHighlight,
+                              side: BorderSide(color: border),
+                              onPressed: () {
+                                setSheetState(() => exerciseCtrl.text = sug);
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'CARGA (KG)',
+                                style: TextStyle(color: subtextColor, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+                              ),
+                              const SizedBox(height: 6),
+                              TextField(
+                                controller: loadCtrl,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                autofocus: true,
+                                style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
+                                decoration: InputDecoration(
+                                  hintText: 'Ex: 75',
+                                  hintStyle: TextStyle(color: subtextColor),
+                                  filled: true,
+                                  fillColor: MetaColors.surfaceHighlight,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: border)),
+                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: border)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'REPETIÇÕES',
+                                style: TextStyle(color: subtextColor, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+                              ),
+                              const SizedBox(height: 6),
+                              TextField(
+                                controller: repsCtrl,
+                                keyboardType: TextInputType.number,
+                                style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
+                                decoration: InputDecoration(
+                                  hintText: 'Ex: 10',
+                                  hintStyle: TextStyle(color: subtextColor),
+                                  filled: true,
+                                  fillColor: MetaColors.surfaceHighlight,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: border)),
+                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: border)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    SquircleButton(
+                      label: 'Salvar Carga do Exercício',
+                      icon: Icons.check_circle_rounded,
+                      isPrimary: true,
+                      onPressed: () async {
+                        final exName = exerciseCtrl.text.trim();
+                        final load = double.tryParse(loadCtrl.text.replaceAll(',', '.')) ?? 0.0;
+                        final reps = int.tryParse(repsCtrl.text) ?? 10;
+                        if (exName.isEmpty || load <= 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Por favor, informe o exercício e uma carga válida.')),
+                          );
+                          return;
+                        }
+                        Navigator.pop(ctx);
+                        await WorkoutService.recordExerciseLoad(exerciseName: exName, loadKg: load, reps: reps);
+                        await _loadRecoveryAndLoads();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: MetaColors.emerald,
+                              content: Text('Carga de ${load.toInt()}kg em "$exName" registrada com sucesso!'),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -901,38 +1225,75 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
         bottom: bottomPadding + 32,
       ),
       children: [
-        _buildSectionHeader(
-          icon: Icons.trending_up_rounded,
-          title: 'Sobrecarga Progressiva',
-          tag: 'FORÇA & CARGAS',
-          tagColor: MetaColors.emerald,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: _buildSectionHeader(
+                icon: Icons.trending_up_rounded,
+                title: 'Sobrecarga Progressiva',
+                tag: 'FORÇA & CARGAS',
+                tagColor: MetaColors.emerald,
+              ),
+            ),
+            TextButton.icon(
+              onPressed: _showRecordLoadSheet,
+              icon: const Icon(Icons.add, size: 16, color: MetaColors.emerald),
+              label: const Text(
+                'Nova Carga',
+                style: TextStyle(color: MetaColors.emerald, fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
 
-        // Cards de Cargas dos Exercícios Principais
-        _buildExerciseLoadCard(
-          exercise: 'Supino Reto com Barra',
-          startLoad: '50 kg',
-          currentLoad: '72 kg',
-          gainPercent: '+44%',
-          history: ['50kg', '56kg', '62kg', '68kg', '72kg'],
-        ),
-        const SizedBox(height: 10),
-        _buildExerciseLoadCard(
-          exercise: 'Agachamento Livre',
-          startLoad: '60 kg',
-          currentLoad: '90 kg',
-          gainPercent: '+50%',
-          history: ['60kg', '70kg', '78kg', '84kg', '90kg'],
-        ),
-        const SizedBox(height: 10),
-        _buildExerciseLoadCard(
-          exercise: 'Puxada Frontal Aberta',
-          startLoad: '45 kg',
-          currentLoad: '60 kg',
-          gainPercent: '+33%',
-          history: ['45kg', '50kg', '52kg', '55kg', '60kg'],
-        ),
+        if (_isLoadingLoads)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Center(
+              child: CircularProgressIndicator(strokeWidth: 2, color: MetaColors.emerald),
+            ),
+          )
+        else if (_progressiveOverloads.isNotEmpty)
+          ..._progressiveOverloads.map((item) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _buildExerciseLoadCard(
+                exercise: item['exercise'] as String,
+                startLoad: item['start_load'] as String,
+                currentLoad: item['current_load'] as String,
+                gainPercent: item['gain_percent'] as String,
+                history: List<String>.from(item['history'] as List),
+              ),
+            );
+          })
+        else ...[
+          // Cards iniciais de referência
+          _buildExerciseLoadCard(
+            exercise: 'Supino Reto com Barra',
+            startLoad: '50 kg',
+            currentLoad: '72 kg',
+            gainPercent: '+44%',
+            history: ['50kg', '56kg', '62kg', '68kg', '72kg'],
+          ),
+          const SizedBox(height: 10),
+          _buildExerciseLoadCard(
+            exercise: 'Agachamento Livre',
+            startLoad: '60 kg',
+            currentLoad: '90 kg',
+            gainPercent: '+50%',
+            history: ['60kg', '70kg', '78kg', '84kg', '90kg'],
+          ),
+          const SizedBox(height: 10),
+          _buildExerciseLoadCard(
+            exercise: 'Puxada Frontal Aberta',
+            startLoad: '45 kg',
+            currentLoad: '60 kg',
+            gainPercent: '+33%',
+            history: ['45kg', '50kg', '52kg', '55kg', '60kg'],
+          ),
+        ],
 
         const SizedBox(height: 24),
 
@@ -1308,60 +1669,78 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
         ),
         const SizedBox(height: 12),
 
-        // Score de Prontidão (Ready to Train)
-        MetaCard(
-          child: Row(
-            children: [
-              Stack(
-                alignment: Alignment.center,
+        // Score de Prontidão Dinâmico (Ready to Train)
+        Builder(
+          builder: (context) {
+            final readiness = _calculatedReadinessScore;
+            final readinessPercent = (readiness / 100.0).clamp(0.0, 1.0);
+            final Color readinessColor = readiness >= 80
+                ? MetaColors.emerald
+                : (readiness >= 60 ? const Color(0xFFF59E0B) : const Color(0xFFEF4444));
+            final String readinessTitle = readiness >= 80
+                ? 'Prontidão Excelente 🚀'
+                : (readiness >= 60 ? 'Prontidão Moderada ⚡' : 'Fadiga Acumulada 🛑');
+            final String readinessDesc = readiness >= 80
+                ? 'Sono e regeneração muscular em ponto ótimo. Seu corpo está em ponto ideal para hipertrofia hoje.'
+                : (readiness >= 60
+                    ? 'Recuperação intermediária. Mantenha as cargas estáveis e hidratação adequada.'
+                    : 'Sinais de fadiga muscular ou sono reduzido. Priorize mobilidade e evite falha concêntrica.');
+
+            return MetaCard(
+              child: Row(
                 children: [
-                  SizedBox(
-                    width: 74,
-                    height: 74,
-                    child: CircularProgressIndicator(
-                      value: 0.88,
-                      strokeWidth: 8,
-                      backgroundColor: MetaColors.surfaceHighlight,
-                      valueColor: const AlwaysStoppedAnimation<Color>(MetaColors.emerald),
-                    ),
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox(
+                        width: 74,
+                        height: 74,
+                        child: CircularProgressIndicator(
+                          value: readinessPercent,
+                          strokeWidth: 8,
+                          backgroundColor: MetaColors.surfaceHighlight,
+                          valueColor: AlwaysStoppedAnimation<Color>(readinessColor),
+                        ),
+                      ),
+                      Text(
+                        '${readiness.toInt()}%',
+                        style: const TextStyle(
+                          color: MetaColors.textPrimary,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
                   ),
-                  const Text(
-                    '88%',
-                    style: TextStyle(
-                      color: MetaColors.textPrimary,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 18,
+                  const SizedBox(width: 18),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          readinessTitle,
+                          style: TextStyle(
+                            color: readinessColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          readinessDesc,
+                          style: const TextStyle(
+                            color: MetaColors.textSecondary,
+                            fontSize: 12,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(width: 18),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Prontidão Excelente 🚀',
-                      style: TextStyle(
-                        color: MetaColors.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Frequência cardíaca e sono estáveis. Seu corpo está em ponto ótimo para hipertrofia hoje.',
-                      style: TextStyle(
-                        color: MetaColors.textSecondary,
-                        fontSize: 12,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         ),
         const SizedBox(height: 14),
 
@@ -1527,6 +1906,18 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
               ),
             ],
           ),
+        ),
+        const SizedBox(height: 18),
+
+        SquircleButton(
+          label: _isSavingRecovery
+              ? 'Sincronizando com o Treinador...'
+              : (_recoverySaved ? 'Prontidão Salva Hoje ✓' : 'Salvar Registro de Prontidão'),
+          icon: _isSavingRecovery
+              ? Icons.cloud_upload_rounded
+              : (_recoverySaved ? Icons.check_circle_rounded : Icons.save_rounded),
+          isPrimary: true,
+          onPressed: _isSavingRecovery ? null : _saveDailyRecovery,
         ),
       ],
     );

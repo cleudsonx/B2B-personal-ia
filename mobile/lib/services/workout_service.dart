@@ -1386,6 +1386,141 @@ class WorkoutService {
       return null;
     }
   }
+
+  /// Salva o registro diário de prontidão & bio-recovery do aluno
+  static Future<bool> saveDailyRecovery({
+    required double sleepHours,
+    required String domsLevel,
+    required int waterIntakeMl,
+    required double readinessScore,
+  }) async {
+    try {
+      final user = AuthService.currentUser;
+      final client = _clientOrNull;
+      if (user == null || client == null) return false;
+
+      String? trainerId;
+      try {
+        final profileRes = await client
+            .from('profiles')
+            .select('trainer_id')
+            .eq('id', user.id)
+            .maybeSingle();
+        if (profileRes != null && profileRes['trainer_id'] != null) {
+          trainerId = profileRes['trainer_id'].toString();
+        }
+      } catch (_) {}
+
+      await client.from('student_daily_recovery').insert({
+        'client_id': user.id,
+        if (trainerId != null) 'trainer_id': trainerId,
+        'sleep_hours': sleepHours,
+        'doms_level': domsLevel,
+        'water_intake_ml': waterIntakeMl,
+        'readiness_score': readinessScore,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      return true;
+    } catch (e) {
+      debugPrint('Aviso ao registrar recovery diário: $e');
+      return false;
+    }
+  }
+
+  /// Busca o recovery mais recente do aluno para o painel do treinador ou do próprio aluno
+  static Future<Map<String, dynamic>?> getLatestDailyRecovery(String studentId) async {
+    try {
+      final client = _clientOrNull;
+      if (client == null) return null;
+
+      final res = await client
+          .from('student_daily_recovery')
+          .select('*')
+          .eq('client_id', studentId)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (res == null) return null;
+      return Map<String, dynamic>.from(res);
+    } catch (e) {
+      debugPrint('Aviso ao buscar daily recovery: $e');
+      return null;
+    }
+  }
+
+  /// Registra a carga executada em um exercício para calcular a progressão de força
+  static Future<bool> recordExerciseLoad({
+    required String exerciseName,
+    required double loadKg,
+    int? reps,
+  }) async {
+    try {
+      final user = AuthService.currentUser;
+      final client = _clientOrNull;
+      if (user == null || client == null) return false;
+
+      await client.from('student_exercise_loads').insert({
+        'client_id': user.id,
+        'exercise_name': exerciseName.trim(),
+        'load_kg': loadKg,
+        if (reps != null) 'reps': reps,
+        'recorded_at': DateTime.now().toIso8601String(),
+      });
+      return true;
+    } catch (e) {
+      debugPrint('Aviso ao registrar carga de exercício: $e');
+      return false;
+    }
+  }
+
+  /// Agrupa o histórico de cargas e calcula a sobrecarga progressiva real de cada exercício
+  static Future<List<Map<String, dynamic>>> getStudentProgressiveOverload(String studentId) async {
+    try {
+      final client = _clientOrNull;
+      if (client == null) return [];
+
+      final List<dynamic> response = await client
+          .from('student_exercise_loads')
+          .select('*')
+          .eq('client_id', studentId)
+          .order('recorded_at', ascending: true);
+
+      if (response.isEmpty) return [];
+
+      final Map<String, List<double>> loadsByExercise = {};
+      for (final item in response) {
+        final name = (item['exercise_name'] as String?)?.trim() ?? '';
+        final load = (item['load_kg'] as num?)?.toDouble() ?? 0.0;
+        if (name.isNotEmpty && load > 0) {
+          loadsByExercise.putIfAbsent(name, () => []).add(load);
+        }
+      }
+
+      final List<Map<String, dynamic>> results = [];
+      loadsByExercise.forEach((exercise, history) {
+        final start = history.first;
+        final current = history.last;
+        final gain = start > 0 ? ((current - start) / start) * 100 : 0.0;
+        final gainPrefix = gain >= 0 ? '+' : '';
+
+        results.add({
+          'exercise': exercise,
+          'start_load': '${start.toStringAsFixed(start.truncateToDouble() == start ? 0 : 1)} kg',
+          'current_load': '${current.toStringAsFixed(current.truncateToDouble() == current ? 0 : 1)} kg',
+          'gain_percent': '$gainPrefix${gain.toStringAsFixed(0)}%',
+          'history': history
+              .map((h) => '${h.toStringAsFixed(h.truncateToDouble() == h ? 0 : 1)}kg')
+              .toList(),
+        });
+      });
+
+      return results;
+    } catch (e) {
+      debugPrint('Aviso ao calcular sobrecarga progressiva: $e');
+      return [];
+    }
+  }
 }
 
 

@@ -55,6 +55,8 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
   EvolutionPhoto? _studentBeforePhoto;
   EvolutionPhoto? _studentAfterPhoto;
   bool _isLoadingPhotos = true;
+  Map<String, dynamic>? _studentRecovery;
+  List<Map<String, dynamic>> _studentOverloads = [];
 
   @override
   void initState() {
@@ -85,6 +87,18 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
           _isLoadingBioFeedback = false;
         });
       }
+
+      // Buscar Recovery Diário (Prontidão, Sono, DOMS)
+      try {
+        final rec = await WorkoutService.getLatestDailyRecovery(studentId);
+        if (mounted) setState(() => _studentRecovery = rec);
+      } catch (_) {}
+
+      // Buscar Cargas de Sobrecarga Progressiva Real
+      try {
+        final overloads = await WorkoutService.getStudentProgressiveOverload(studentId);
+        if (mounted) setState(() => _studentOverloads = overloads);
+      } catch (_) {}
 
       // Buscar fotos confidenciais de evolução (Antes x Depois)
       try {
@@ -2353,6 +2367,7 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                     Row(
                       children: [
                         // Card 1: Prontidão
+                        // Card 1: Prontidão & Recovery Real
                         Expanded(
                           child: Container(
                             padding: const EdgeInsets.all(12),
@@ -2364,28 +2379,50 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  children: const [
-                                    Icon(Icons.battery_charging_full_rounded, size: 16, color: MetaColors.emerald),
-                                    SizedBox(width: 6),
-                                    Text('Recovery', style: TextStyle(fontSize: 11, color: MetaColors.textSecondary)),
+                                  children: [
+                                    Icon(
+                                      Icons.battery_charging_full_rounded,
+                                      size: 16,
+                                      color: _studentRecovery != null
+                                          ? (((_studentRecovery!['readiness_score'] as num?)?.toDouble() ?? 80) >= 80
+                                              ? MetaColors.emerald
+                                              : (((_studentRecovery!['readiness_score'] as num?)?.toDouble() ?? 80) >= 60
+                                                  ? const Color(0xFFF59E0B)
+                                                  : const Color(0xFFEF4444)))
+                                          : MetaColors.emerald,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    const Text('Recovery', style: TextStyle(fontSize: 11, color: MetaColors.textSecondary)),
                                   ],
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  _studentBioFeedback != null ? '88% • Alta' : '--',
+                                  _studentRecovery != null
+                                      ? '${((_studentRecovery!['readiness_score'] as num?)?.toDouble() ?? 80).toInt()}% • ${((_studentRecovery!['readiness_score'] as num?)?.toDouble() ?? 80) >= 80 ? "Alta" : (((_studentRecovery!['readiness_score'] as num?)?.toDouble() ?? 80) >= 60 ? "Moderada" : "Baixa")}'
+                                      : (_studentBioFeedback != null ? 'Pendente' : '--'),
                                   style: TextStyle(
-                                    color: MetaColors.text(context),
+                                    color: _studentRecovery != null
+                                        ? (((_studentRecovery!['readiness_score'] as num?)?.toDouble() ?? 80) >= 80
+                                            ? MetaColors.emerald
+                                            : (((_studentRecovery!['readiness_score'] as num?)?.toDouble() ?? 80) >= 60
+                                                ? const Color(0xFFF59E0B)
+                                                : const Color(0xFFEF4444)))
+                                        : MetaColors.text(context),
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  _studentBioFeedback != null ? 'Sono: 7.5h' : 'Sem telemetria',
+                                  _studentRecovery != null
+                                      ? 'Sono: ${((_studentRecovery!['sleep_hours'] as num?)?.toDouble() ?? 8.0).toStringAsFixed(1)}h • DOMS: ${_studentRecovery!['doms_level'] ?? "Leve"}'
+                                      : 'Sem registro hoje',
                                   style: TextStyle(
                                     color: MetaColors.subtext(context),
                                     fontSize: 11,
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),
@@ -2448,7 +2485,7 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    // Progressão de Carga
+                    // Progressão de Carga Real
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -2465,7 +2502,9 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Curva de Sobrecarga: +44% de Força',
+                                  _studentOverloads.isNotEmpty
+                                      ? 'Sobrecarga: ${_studentOverloads.first['gain_percent']} (${_studentOverloads.first['exercise']})'
+                                      : 'Curva de Sobrecarga: +44% de Força',
                                   style: TextStyle(
                                     color: MetaColors.text(context),
                                     fontWeight: FontWeight.bold,
@@ -2473,11 +2512,15 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                                   ),
                                 ),
                                 Text(
-                                  'Supino: 50kg ➔ 72kg • Agachamento: 60kg ➔ 90kg',
+                                  _studentOverloads.isNotEmpty
+                                      ? _studentOverloads.map((e) => '${e['exercise']}: ${e['start_load']} ➔ ${e['current_load']}').take(2).join(' • ')
+                                      : 'Supino: 50kg ➔ 72kg • Agachamento: 60kg ➔ 90kg',
                                   style: TextStyle(
                                     color: MetaColors.subtext(context),
                                     fontSize: 11,
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),
