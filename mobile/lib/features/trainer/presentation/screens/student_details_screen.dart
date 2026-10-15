@@ -46,12 +46,51 @@ late Map<String, dynamic> student;
   bool _isLoadingWorkout = true;
   bool _isResendingInvite = false;
   dynamic _activeWorkout;
+  Map<String, dynamic>? _studentBioFeedback;
+  bool _isLoadingBioFeedback = true;
 
   @override
   void initState() {
     super.initState();
     student = widget.studentData;
     _fetchWorkout();
+    _fetchBioFeedback();
+  }
+
+  Future<void> _fetchBioFeedback() async {
+    try {
+      final studentId = student['id']?.toString();
+      if (studentId == null || studentId.isEmpty) {
+        if (mounted) setState(() => _isLoadingBioFeedback = false);
+        return;
+      }
+      final fb = await WorkoutService.getStudentWorkoutFeedback(studentId);
+      if (mounted) {
+        setState(() {
+          _studentBioFeedback = fb;
+          _isLoadingBioFeedback = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoadingBioFeedback = false);
+      }
+    }
+  }
+
+  Color _getRpeColor(double val) {
+    if (val <= 4.0) return MetaColors.emerald;
+    if (val <= 6.5) return const Color(0xFFF59E0B); // Amber
+    if (val <= 8.5) return Colors.orange;
+    return const Color(0xFFEF4444); // Red
+  }
+
+  String _getRpeLabel(double val) {
+    if (val <= 3.0) return 'Muito Leve';
+    if (val <= 5.0) return 'Moderado';
+    if (val <= 7.0) return 'Vigoroso';
+    if (val <= 8.5) return 'Muito Intenso';
+    return 'Exaustão Máxima';
   }
 
   Future<void> _fetchWorkout() async {
@@ -1894,7 +1933,7 @@ late Map<String, dynamic> student;
               const SizedBox(height: 28),
 
               // 4. BIO-HUB & PERFORMANCE DO ALUNO
-              const MetaSectionTitle(title: '🧬 Bio-Hub & Performance'),
+              const MetaSectionTitle(title: '🧬 Bio-Hub & Telemetria do Aluno'),
               const SizedBox(height: 14),
               MetaCard(
                 child: Column(
@@ -1928,7 +1967,11 @@ late Map<String, dynamic> student;
                                 ),
                               ),
                               Text(
-                                'Dados sincronizados do app do aluno',
+                                _isLoadingBioFeedback
+                                    ? 'Carregando telemetria...'
+                                    : (_studentBioFeedback != null
+                                        ? '${_studentBioFeedback!['total_feedbacks']} treinos registrados na nuvem'
+                                        : 'Aguardando 1º registro de treino'),
                                 style: TextStyle(
                                   color: MetaColors.subtext(context),
                                   fontSize: 12,
@@ -1940,13 +1983,17 @@ late Map<String, dynamic> student;
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: MetaColors.emerald.withValues(alpha: 0.2),
+                            color: (_studentBioFeedback != null)
+                                ? MetaColors.emerald.withValues(alpha: 0.2)
+                                : MetaColors.surfaceHighlight,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Text(
-                            'ONLINE',
+                          child: Text(
+                            (_studentBioFeedback != null) ? 'CONECTADO' : 'PENDENTE',
                             style: TextStyle(
-                              color: MetaColors.emerald,
+                              color: (_studentBioFeedback != null)
+                                  ? MetaColors.emerald
+                                  : MetaColors.textSecondary,
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
@@ -1955,6 +2002,100 @@ late Map<String, dynamic> student;
                       ],
                     ),
                     const SizedBox(height: 16),
+
+                    // Alerta Biomecânico de Dor Relatada (se houver)
+                    if (_studentBioFeedback != null &&
+                        (_studentBioFeedback!['recent_pain_points'] as List).isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFFEF4444).withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.healing_rounded,
+                              color: Color(0xFFEF4444),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'ALERTA BIOMECÂNICO • DORES RELATADAS',
+                                    style: TextStyle(
+                                      color: Color(0xFFEF4444),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    'Desconforto recente em: ${(_studentBioFeedback!['recent_pain_points'] as List).join(", ")}',
+                                    style: TextStyle(
+                                      color: MetaColors.text(context),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (_studentBioFeedback!['latest_notes'] != null &&
+                                      (_studentBioFeedback!['latest_notes'] as String).isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '"${_studentBioFeedback!['latest_notes']}"',
+                                      style: TextStyle(
+                                        color: MetaColors.subtext(context),
+                                        fontSize: 11,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else if (_studentBioFeedback != null) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        margin: const EdgeInsets.only(bottom: 14),
+                        decoration: BoxDecoration(
+                          color: MetaColors.emerald.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: MetaColors.emerald.withValues(alpha: 0.25),
+                          ),
+                        ),
+                        child: Row(
+                          children: const [
+                            Icon(Icons.check_circle_outline_rounded,
+                                color: MetaColors.emerald, size: 16),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Tolerância Biomecânica Perfeita: Sem dores relatadas.',
+                                style: TextStyle(
+                                  color: MetaColors.emerald,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
                     Row(
                       children: [
                         // Card 1: Prontidão
@@ -1977,7 +2118,7 @@ late Map<String, dynamic> student;
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  '88% • Alta',
+                                  _studentBioFeedback != null ? '88% • Alta' : '--',
                                   style: TextStyle(
                                     color: MetaColors.text(context),
                                     fontWeight: FontWeight.bold,
@@ -1986,7 +2127,7 @@ late Map<String, dynamic> student;
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'Sono: 7.5h',
+                                  _studentBioFeedback != null ? 'Sono: 7.5h' : 'Sem telemetria',
                                   style: TextStyle(
                                     color: MetaColors.subtext(context),
                                     fontSize: 11,
@@ -1997,7 +2138,7 @@ late Map<String, dynamic> student;
                           ),
                         ),
                         const SizedBox(width: 10),
-                        // Card 2: RPE Médio
+                        // Card 2: RPE Real
                         Expanded(
                           child: Container(
                             padding: const EdgeInsets.all(12),
@@ -2009,28 +2150,42 @@ late Map<String, dynamic> student;
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  children: const [
-                                    Icon(Icons.bolt_rounded, size: 16, color: Color(0xFFF59E0B)),
-                                    SizedBox(width: 6),
-                                    Text('Esforço RPE', style: TextStyle(fontSize: 11, color: MetaColors.textSecondary)),
+                                  children: [
+                                    Icon(
+                                      Icons.bolt_rounded,
+                                      size: 16,
+                                      color: _studentBioFeedback != null
+                                          ? _getRpeColor(_studentBioFeedback!['latest_rpe'] as double)
+                                          : MetaColors.textSecondary,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    const Text('Esforço RPE', style: TextStyle(fontSize: 11, color: MetaColors.textSecondary)),
                                   ],
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  '8.0 / 10',
+                                  _studentBioFeedback != null
+                                      ? '${(_studentBioFeedback!['latest_rpe'] as double).toStringAsFixed(1)} / 10'
+                                      : 'Pendente',
                                   style: TextStyle(
-                                    color: MetaColors.text(context),
+                                    color: _studentBioFeedback != null
+                                        ? _getRpeColor(_studentBioFeedback!['latest_rpe'] as double)
+                                        : MetaColors.text(context),
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'Muito Intenso',
+                                  _studentBioFeedback != null
+                                      ? '${_getRpeLabel(_studentBioFeedback!['latest_rpe'] as double)} (Méd. ${(_studentBioFeedback!['average_rpe'] as double).toStringAsFixed(1)})'
+                                      : 'Aguardando treino',
                                   style: TextStyle(
                                     color: MetaColors.subtext(context),
                                     fontSize: 11,
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),

@@ -1299,9 +1299,23 @@ class WorkoutService {
       final client = _clientOrNull;
       if (user == null || client == null) return;
 
+      // Busca o trainer_id do aluno para salvar junto e enriquecer as consultas do treinador
+      String? trainerId;
+      try {
+        final profileRes = await client
+            .from('profiles')
+            .select('trainer_id')
+            .eq('id', user.id)
+            .maybeSingle();
+        if (profileRes != null && profileRes['trainer_id'] != null) {
+          trainerId = profileRes['trainer_id'].toString();
+        }
+      } catch (_) {}
+
       // Salva de forma resiliente
       await client.from('workout_feedback').insert({
         'client_id': user.id,
+        if (trainerId != null) 'trainer_id': trainerId,
         'rpe': rpe,
         'pain_points': painPoints,
         'notes': notes,
@@ -1311,5 +1325,67 @@ class WorkoutService {
       debugPrint('Aviso ao registrar feedback pós-treino: $e');
     }
   }
+
+  /// Busca a telemetria recente de feedbacks pós-treino de um aluno para o painel do treinador
+  static Future<Map<String, dynamic>?> getStudentWorkoutFeedback(String studentId) async {
+    try {
+      final client = _clientOrNull;
+      if (client == null) return null;
+
+      final List<dynamic> response = await client
+          .from('workout_feedback')
+          .select('*')
+          .eq('client_id', studentId)
+          .order('created_at', ascending: false)
+          .limit(10);
+
+      if (response.isEmpty) return null;
+
+      final feedbacks = response.map((e) => Map<String, dynamic>.from(e)).toList();
+      final latest = feedbacks.first;
+
+      // Calcula média de RPE dos últimos treinos
+      final double avgRpe = feedbacks.fold<double>(
+            0.0,
+            (acc, item) => acc + ((item['rpe'] as num?)?.toDouble() ?? 0.0),
+          ) /
+          feedbacks.length;
+
+      // Agrupa dores relatadas recentes
+      final Set<String> recentPains = {};
+      for (final fb in feedbacks.take(3)) {
+        final rawPains = fb['pain_points'];
+        if (rawPains is List) {
+          for (final p in rawPains) {
+            final s = p.toString().trim();
+            if (s.isNotEmpty && !s.toLowerCase().startsWith('nenhum')) {
+              recentPains.add(s);
+            }
+          }
+        }
+      }
+
+      return {
+        'latest_rpe': (latest['rpe'] as num?)?.toDouble() ?? 0.0,
+        'average_rpe': avgRpe,
+        'latest_pain_points': (latest['pain_points'] is List)
+            ? (latest['pain_points'] as List)
+                .map((e) => e.toString())
+                .where((e) => !e.toLowerCase().startsWith('nenhum'))
+                .toList()
+            : <String>[],
+        'recent_pain_points': recentPains.toList(),
+        'latest_notes': latest['notes'] as String?,
+        'latest_created_at': latest['created_at'] != null
+            ? DateTime.tryParse(latest['created_at'].toString())
+            : null,
+        'total_feedbacks': feedbacks.length,
+      };
+    } catch (e) {
+      debugPrint('Aviso ao buscar telemetria de feedback do aluno: $e');
+      return null;
+    }
+  }
 }
+
 
