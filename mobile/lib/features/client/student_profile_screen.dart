@@ -4,6 +4,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../core/widgets/avatar_selector_sheet.dart';
 import '../../core/widgets/meta_components.dart';
+import '../../core/widgets/app_version_footer.dart';
 import '../../services/auth_service.dart';
 import '../../services/student_profile_service.dart';
 import '../auth/teacher_mfa_screen.dart';
@@ -1180,6 +1181,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                 ),
               ),
             ),
+            const AppVersionFooter(),
           ],
         ),
       ),

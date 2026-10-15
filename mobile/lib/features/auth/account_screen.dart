@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
 import '../../core/theme/theme_controller.dart';
+import '../../core/widgets/app_version_footer.dart';
 import 'teacher_mfa_screen.dart';
 
 class AccountScreen extends StatefulWidget {
@@ -210,6 +211,7 @@ class _AccountScreenState extends State<AccountScreen> {
           icon: const Icon(Icons.phonelink_erase_outlined),
           label: const Text('Sair de todos os dispositivos'),
         ),
+        const AppVersionFooter(),
       ],
     );
   }
