@@ -45,5 +45,17 @@ class PwaInstaller {
     if (!kIsWeb) return;
     impl.triggerPwaReload();
   }
+
+  /// Verifica se a biometria nativa do navegador (WebAuthn / Face ID / Touch ID / Fingerprint) está disponível
+  static Future<bool> isWebBiometricsAvailable() {
+    if (!kIsWeb) return Future.value(false);
+    return impl.isWebBiometricsAvailable();
+  }
+
+  /// Aciona a autenticação biométrica nativa do navegador via WebAuthn
+  static Future<bool> authenticateWithWebBiometrics() {
+    if (!kIsWeb) return Future.value(false);
+    return impl.authenticateWithWebBiometrics();
+  }
 }
 

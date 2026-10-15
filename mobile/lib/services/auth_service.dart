@@ -369,6 +369,41 @@ class AuthService {
     } catch (_) {}
   }
 
+  static const String _keyOneTouchPrefix = 'one_touch_token_';
+
+  /// Salva a credencial de re-entrada de 1 toque no dispositivo local
+  static Future<void> saveOneTouchSecret(String email, String secret) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = '$_keyOneTouchPrefix${email.trim().toLowerCase()}';
+      final encoded = base64Encode(utf8.encode(secret));
+      await prefs.setString(key, encoded);
+    } catch (_) {}
+  }
+
+  /// Recupera a credencial de 1 toque se cadastrada no dispositivo
+  static Future<String?> getOneTouchSecret(String email) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = '$_keyOneTouchPrefix${email.trim().toLowerCase()}';
+      final encoded = prefs.getString(key);
+      if (encoded == null || encoded.isEmpty) return null;
+      return utf8.decode(base64Decode(encoded));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Remove a credencial de 1 toque
+  static Future<void> clearOneTouchSecret(String email) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = '$_keyOneTouchPrefix${email.trim().toLowerCase()}';
+      await prefs.remove(key);
+    } catch (_) {}
+  }
+
+
   static Future<String?> getVerifiedTotpFactorId() async {
     try {
       final factors = await _client.auth.mfa.listFactors();

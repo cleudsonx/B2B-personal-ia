@@ -375,7 +375,7 @@
       // =========================================================================
       // Camada 2: Version Heartbeat via version.json (Resiliente a iOS e Android WebAPK)
       // =========================================================================
-      const APP_CURRENT_BUILD = 2026102805;
+      const APP_CURRENT_BUILD = 2026102807;
 
       async function checkVersionFile() {
         try {
@@ -411,6 +411,60 @@
           checkVersionFile();
         }
       });
+      // =========================================================================
+      // Suporte WebAuthn / Biometria de Plataforma (Face ID, Touch ID, Digital)
+      // =========================================================================
+      window.isWebBiometricsAvailable = async function() {
+        try {
+          if (window.PublicKeyCredential &&
+              typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function') {
+            return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+          }
+          return false;
+        } catch (_) {
+          return false;
+        }
+      };
+
+      window.authenticateWithWebBiometrics = async function() {
+        try {
+          if (!window.PublicKeyCredential) {
+            return false;
+          }
+
+          const challenge = new Uint8Array(32);
+          window.crypto.getRandomValues(challenge);
+          const userId = new Uint8Array(16);
+          window.crypto.getRandomValues(userId);
+
+          // Dispara a folha nativa do sistema operacional (Face ID / Touch ID / Leitor de Digital)
+          const cred = await navigator.credentials.create({
+            publicKey: {
+              challenge: challenge,
+              rp: { name: 'Mr. Coach | Shaipados', id: window.location.hostname },
+              user: {
+                id: userId,
+                name: 'user@shaipados',
+                displayName: 'Mr. Coach Autenticado'
+              },
+              pubKeyCredParams: [
+                { alg: -7, type: 'public-key' },
+                { alg: -257, type: 'public-key' }
+              ],
+              authenticatorSelection: {
+                authenticatorAttachment: 'platform',
+                userVerification: 'required'
+              },
+              timeout: 60000
+            }
+          });
+
+          return !!cred;
+        } catch (err) {
+          console.warn('[Biometria WebAuthn] Notificação:', err);
+          return false;
+        }
+      };
     })();
   </script>
 

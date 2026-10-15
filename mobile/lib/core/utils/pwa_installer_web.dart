@@ -83,3 +83,27 @@ void triggerPwaReload() {
   }
 }
 
+@JS('isWebBiometricsAvailable')
+external JSPromise<JSBoolean> _jsIsWebBiometricsAvailable();
+
+@JS('authenticateWithWebBiometrics')
+external JSPromise<JSBoolean> _jsAuthenticateWithWebBiometrics();
+
+Future<bool> isWebBiometricsAvailable() async {
+  try {
+    final res = await _jsIsWebBiometricsAvailable().toDart;
+    return res.toDart;
+  } catch (_) {
+    return false;
+  }
+}
+
+Future<bool> authenticateWithWebBiometrics() async {
+  try {
+    final res = await _jsAuthenticateWithWebBiometrics().toDart;
+    return res.toDart;
+  } catch (_) {
+    return false;
+  }
+}
+

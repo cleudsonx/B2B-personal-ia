@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:local_auth/local_auth.dart';
+import '../../core/services/biometric_auth_service.dart';
 
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/server_config_dialog.dart';
@@ -279,6 +279,9 @@ class _LoginScreenState extends State<LoginScreen> {
         photoUrl: (profile?['photo_url'] ?? profile?['avatar_url']) as String?,
         role: role,
       );
+      if (_passwordCtrl.text.isNotEmpty) {
+        await AuthService.saveOneTouchSecret(savedEmail, _passwordCtrl.text);
+      }
     }
 
     if (!mounted) return;
@@ -322,18 +325,37 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleBiometricAuth() async {
-    final localAuth = LocalAuthentication();
+    final targetEmail = _cachedUserEmail.isNotEmpty ? _cachedUserEmail : _emailCtrl.text.trim();
+    if (targetEmail.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: MetaColors.surfaceHighlight,
+          content: Text(
+            'Por favor, informe seu e-mail para autenticar com biometria.',
+            style: TextStyle(color: MetaColors.textPrimary),
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
     try {
-      final canCheckBiometrics = await localAuth.canCheckBiometrics;
-      final isDeviceSupported = await localAuth.isDeviceSupported();
-      if (!canCheckBiometrics && !isDeviceSupported) {
-        if (mounted) {
+      final authResult = await BiometricAuthService.authenticate(
+        localizedReason: 'Autentique-se com biometria para acessar sua conta',
+      );
+
+      if (!authResult.success) {
+        if (mounted && authResult.errorMessage != null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(behavior: SnackBarBehavior.floating, 
+            SnackBar(
+              behavior: SnackBarBehavior.floating,
               backgroundColor: MetaColors.surfaceHighlight,
               content: Text(
-                'Autenticação biométrica não disponível neste dispositivo.',
-                style: TextStyle(color: MetaColors.textPrimary),
+                authResult.errorMessage!,
+                style: const TextStyle(color: MetaColors.textPrimary),
               ),
             ),
           );
@@ -341,38 +363,58 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      final didAuthenticate = await localAuth.authenticate(
-        localizedReason: 'Autentique-se com biometria para acessar sua conta',
-      );
+      if (!mounted) return;
 
-      if (didAuthenticate && mounted) {
-        final user = AuthService.currentUser;
-        if (user != null) {
-          await _continueAfterAuthentication();
-        } else {
-          if (_emailCtrl.text.isNotEmpty && _passwordCtrl.text.isNotEmpty) {
-            await _handleSignIn();
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(behavior: SnackBarBehavior.floating, 
-                backgroundColor: MetaColors.surfaceHighlight,
-                content: Text(
-                  'Biometria validada. Faça o primeiro login com seu e-mail e senha para vincular sua biometria.',
-                  style: TextStyle(color: MetaColors.textPrimary),
-                ),
-              ),
-            );
-          }
-        }
+      // 1. Se já existe usuário com sessão ativa no Supabase:
+      final user = AuthService.currentUser;
+      if (user != null) {
+        await _continueAfterAuthentication();
+        return;
       }
-    } catch (e) {
+
+      // 2. Se temos a credencial de 1 toque salva neste aparelho:
+      final savedSecret = await AuthService.getOneTouchSecret(targetEmail);
+      if (savedSecret != null && savedSecret.isNotEmpty) {
+        _passwordCtrl.text = savedSecret;
+        await _handleSignIn();
+        return;
+      }
+
+      // 3. Se a senha foi informada no campo:
+      if (_passwordCtrl.text.isNotEmpty) {
+        await _handleSignIn();
+        return;
+      }
+
+      // 4. Biometria validada, mas precisa do primeiro login com senha para salvar o 1 toque:
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(behavior: SnackBarBehavior.floating, 
-            backgroundColor: Colors.red.shade800,
-            content: Text('Falha na autenticação biométrica: $e'),
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: MetaColors.surfaceHighlight,
+            content: Text(
+              'Biometria confirmada! Digite sua senha uma vez para ativar o retorno com 1 toque neste aparelho.',
+              style: TextStyle(color: MetaColors.textPrimary),
+            ),
           ),
         );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: MetaColors.surfaceHighlight,
+            content: Text(
+              'Falha no leitor biométrico. Por favor, use sua senha.',
+              style: TextStyle(color: MetaColors.textPrimary),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -936,11 +978,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 12),
 
                       SquircleButton(
-                        label: 'Entrar com biometria',
+                        label: kIsWeb ? 'Retornar com biometria (1 toque)' : 'Entrar com biometria',
                         icon: Icons.fingerprint,
                         isPrimary: false,
                         backgroundColor: MetaColors.surfaceHighlight,
-                        foregroundColor: MetaColors.textSecondary,
+                        foregroundColor: MetaColors.textPrimary,
                         onPressed: _handleBiometricAuth,
                       ),
                       const SizedBox(height: 20),
@@ -1230,11 +1272,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       if (widget.invitedStudentId == null) ...[
                         SquircleButton(
-                          label: 'Entrar com biometria',
+                          label: kIsWeb ? 'Retornar com biometria (1 toque)' : 'Entrar com biometria',
                           icon: Icons.fingerprint,
                           isPrimary: false,
                           backgroundColor: MetaColors.surfaceHighlight,
-                          foregroundColor: MetaColors.textSecondary,
+                          foregroundColor: MetaColors.textPrimary,
                           onPressed: _handleBiometricAuth,
                         ),
                         const SizedBox(height: 24),
