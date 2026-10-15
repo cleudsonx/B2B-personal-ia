@@ -3,4 +3,6 @@ bool canPromptInstall() => false;
 void promptInstall() {}
 bool isIosWeb() => false;
 bool isAndroidWeb() => false;
+bool hasPendingUpdate() => false;
+void triggerPwaReload() {}
 

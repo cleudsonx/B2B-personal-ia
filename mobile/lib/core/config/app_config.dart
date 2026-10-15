@@ -47,7 +47,7 @@ class AppConfig {
 
   // Informações Oficiais de Versionamento (SemVer) & Build
   static const String appVersion = '1.3.0';
-  static const int buildNumber = 2026102804;
+  static const int buildNumber = 2026102805;
   static const String buildDate = '15 de Outubro, 2026';
   static const String releaseNotes =
       'Bio-Hub 100% Real: Prontidão Biomecânica, Galeria Sigilosa Antes x Depois e Sobrecarga Progressiva Sincronizada';

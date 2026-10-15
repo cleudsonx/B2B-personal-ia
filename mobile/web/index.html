@@ -263,44 +263,73 @@
         });
       }
 
-      if (updateBtn) {
-        updateBtn.addEventListener('click', async () => {
+      // Função unificada de recarregamento limpo de caches PWA (exposta para JS e Dart)
+      window.triggerPwaReload = async function() {
+        if (isRefreshing) return;
+        isRefreshing = true;
+
+        if (updateBtn) {
           updateBtn.disabled = true;
           updateBtn.textContent = 'Atualizando...';
+        }
 
-          if (waitingWorker) {
-            // Notifica o novo worker para assumir o controle imediatamente
+        if (waitingWorker) {
+          try {
             waitingWorker.postMessage({ type: 'SKIP_WAITING' });
             waitingWorker.postMessage('skipWaiting');
-          }
+          } catch (_) {}
+        }
 
-          // Limpa caches antigos de scripts e assets sem afetar tokens de login (localStorage)
-          if ('caches' in window) {
-            try {
-              const cacheKeys = await caches.keys();
-              await Promise.all(
-                cacheKeys.map((key) => {
-                  if (key.includes('flutter') || key.includes('app') || key.includes('shaipados')) {
-                    return caches.delete(key);
-                  }
-                  return Promise.resolve();
-                })
-              );
-            } catch (_) {}
-          }
+        // Limpa caches de assets e scripts para subir código novo sem afetar tokens de login
+        if ('caches' in window) {
+          try {
+            const cacheKeys = await caches.keys();
+            await Promise.all(
+              cacheKeys.map((key) => {
+                if (key.includes('flutter') || key.includes('app') || key.includes('shaipados') || key.includes('workbox')) {
+                  return caches.delete(key);
+                }
+                return Promise.resolve();
+              })
+            );
+          } catch (_) {}
+        }
 
-          // Recarrega imediatamente para subir o novo código limpo
-          setTimeout(() => {
-            if (!isRefreshing) {
-              isRefreshing = true;
-              window.location.reload();
-            }
-          }, 350);
+        setTimeout(() => {
+          window.location.reload();
+        }, 300);
+      };
+
+      if (updateBtn) {
+        updateBtn.addEventListener('click', () => {
+          window.triggerPwaReload();
+        });
+      }
+
+      function showUpdateBanner(worker) {
+        if (worker) waitingWorker = worker;
+        window._pwaHasPendingUpdate = true;
+        if (banner) {
+          banner.classList.add('visible');
+          banner.style.zIndex = '2147483647';
+          banner.style.pointerEvents = 'auto';
+        }
+        window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: { worker: !!worker } }));
+      }
+
+      function hideUpdateBanner() {
+        if (banner) {
+          banner.classList.remove('visible');
+        }
+      }
+
+      if (dismissBtn) {
+        dismissBtn.addEventListener('click', () => {
+          hideUpdateBanner();
         });
       }
 
       if ('serviceWorker' in navigator) {
-        // Ao assumir novo controle (SKIP_WAITING ativado), recarrega
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           if (!isRefreshing) {
             isRefreshing = true;
@@ -309,34 +338,25 @@
         });
 
         navigator.serviceWorker.ready.then((registration) => {
-          // Checa imediatamente se já há uma versão esperando
-          if (registration.waiting && navigator.serviceWorker.controller) {
+          // Checa imediatamente se já há um worker esperando (no Android pode não ter controller prévio)
+          if (registration.waiting) {
             showUpdateBanner(registration.waiting);
           }
 
-          // Monitora se o navegador encontrou um novo Service Worker
           registration.addEventListener('updatefound', () => {
             const installingWorker = registration.installing;
             if (!installingWorker) return;
 
             installingWorker.addEventListener('statechange', () => {
-              if (
-                installingWorker.state === 'installed' &&
-                navigator.serviceWorker.controller
-              ) {
-                // Nova versão instalada com sucesso em segundo plano
+              if (installingWorker.state === 'installed') {
                 showUpdateBanner(installingWorker);
               }
             });
           });
 
-          // Dispara checagem em segundo plano
-          registration.update().catch(() => {});
-
-          // Checa novamente quando o usuário volta para o PWA (focus / visibility)
           const checkForUpdates = () => {
             registration.update().catch(() => {});
-            if (registration.waiting && navigator.serviceWorker.controller) {
+            if (registration.waiting) {
               showUpdateBanner(registration.waiting);
             }
           };
@@ -348,26 +368,31 @@
             }
           });
 
-          // Checagem periódica a cada 5 minutos
-          setInterval(checkForUpdates, 5 * 60 * 1000);
+          setInterval(checkForUpdates, 4 * 60 * 1000);
         });
       }
 
       // =========================================================================
-      // Camada 2: Version Heartbeat via version.json (Resiliente ao cache do Safari/iOS)
+      // Camada 2: Version Heartbeat via version.json (Resiliente a iOS e Android WebAPK)
       // =========================================================================
-      const APP_CURRENT_BUILD = 2026102804;
+      const APP_CURRENT_BUILD = 2026102805;
 
       async function checkVersionFile() {
         try {
-          const res = await fetch('version.json?_t=' + Date.now(), { cache: 'no-store' });
+          const origin = window.location.origin || '';
+          const versionUrl = origin + '/version.json?_t=' + Date.now();
+          const res = await fetch(versionUrl, { cache: 'no-store' });
           if (res.ok) {
             const data = await res.json();
+            console.log('[PWA Heartbeat] Build local:', APP_CURRENT_BUILD, '| Servidor:', data?.build);
             if (data && data.build && Number(data.build) > APP_CURRENT_BUILD) {
+              console.log('[PWA Heartbeat] Nova versão encontrada! Exibindo banner.');
               showUpdateBanner(null);
             }
           }
-        } catch (_) {}
+        } catch (err) {
+          console.warn('[PWA Heartbeat] Checagem version.json:', err);
+        }
       }
 
       // Função pública para teste imediato de interface:
@@ -376,8 +401,8 @@
         showUpdateBanner(null);
       };
 
-      // Dispara verificação rápida após 2s de carregamento
-      setTimeout(checkVersionFile, 2000);
+      // Dispara verificação rápida após 1.5s de carregamento
+      setTimeout(checkVersionFile, 1500);
       setInterval(checkVersionFile, 3 * 60 * 1000);
 
       window.addEventListener('focus', checkVersionFile);

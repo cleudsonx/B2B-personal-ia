@@ -33,5 +33,17 @@ class PwaInstaller {
     if (!kIsWeb) return false;
     return impl.isAndroidWeb();
   }
+
+  /// Retorna true se houver uma nova versão do PWA aguardando ativação.
+  static bool get hasPendingUpdate {
+    if (!kIsWeb) return false;
+    return impl.hasPendingUpdate();
+  }
+
+  /// Recarrega a aplicação limpando caches de assets PWA para aplicar nova versão.
+  static void triggerPwaReload() {
+    if (!kIsWeb) return;
+    impl.triggerPwaReload();
+  }
 }
 

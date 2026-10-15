@@ -30,6 +30,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/app_config.dart';
 import 'core/theme/theme_controller.dart';
 import 'core/widgets/theme_toggle_button.dart';
+import 'core/widgets/pwa_update_wrapper.dart';
 
 import 'package:flutter/services.dart';
 import 'features/invite/invite_landing_screen.dart';
@@ -170,6 +171,7 @@ class B2BPersonalIaApp extends StatelessWidget {
           onGenerateInitialRoutes: (initialRouteName) => [
             _routeFor(RouteSettings(name: initialRouteName)),
           ],
+          builder: (context, child) => PwaUpdateWrapper(child: child ?? const SizedBox()),
         );
       },
     );

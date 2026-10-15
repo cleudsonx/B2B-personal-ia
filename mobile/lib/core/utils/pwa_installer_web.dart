@@ -52,3 +52,34 @@ bool isAndroidWeb() {
   }
 }
 
+@JS('window._pwaHasPendingUpdate')
+external JSBoolean? _jsHasPendingUpdate;
+
+@JS('window.triggerPwaReload')
+external JSFunction? _jsTriggerPwaReload;
+
+@JS('window.location.reload')
+external void _jsLocationReload();
+
+bool hasPendingUpdate() {
+  try {
+    return _jsHasPendingUpdate?.toDart ?? false;
+  } catch (_) {
+    return false;
+  }
+}
+
+void triggerPwaReload() {
+  try {
+    if (_jsTriggerPwaReload != null) {
+      _jsTriggerPwaReload!.callAsFunction();
+    } else {
+      _jsLocationReload();
+    }
+  } catch (_) {
+    try {
+      _jsLocationReload();
+    } catch (_) {}
+  }
+}
+
