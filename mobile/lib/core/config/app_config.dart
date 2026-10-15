@@ -46,10 +46,10 @@ class AppConfig {
   static const String supabaseAnonKey = supabasePublishableKey;
 
   // Informações Oficiais de Versionamento (SemVer) & Build
-  static const String appVersion = '1.3.2';
-  static const int buildNumber = 2026102809;
+  static const String appVersion = '1.3.3';
+  static const int buildNumber = 2026102810;
   static const String buildDate = '15 de Outubro, 2026';
-  static const String releaseNotes = 'Redesign Mr. Coach AI: Hero Spotlight 3D, Action Grid de Academia e Carrossel de Prompts';
+  static const String releaseNotes = 'Copiloto de Salão: Ações rápidas de academia sem redundância 3D e respostas scannable';
 
   static String get fullVersionString => 'v$appVersion (Build $buildNumber)';
 }

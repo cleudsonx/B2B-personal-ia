@@ -27,11 +27,11 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
   List<String> get _quickPrompts {
     if (widget.isStudentView) {
       return [
-        'Como executar o Supino Inclinado com Halteres?',
-        'Ver Raio-X Biomecânico do Agachamento Búlgaro',
-        'Qual o ângulo ideal dos joelhos no Leg Press 45°?',
-        'Como evitar dor nos ombros na Puxada Alta?',
-        'Qual a cadência recomendada para hipertrofia máxima?',
+        'Como substituir o Supino se o banco estiver ocupado?',
+        'Qual ângulo do banco protege melhor os ombros?',
+        'Sinto a lombar no agachamento: o que corrigir?',
+        'Quantas repetições aguentar antes de aumentar a carga?',
+        'Como evitar que os joelhos entrem no Leg Press?',
       ];
     }
 
@@ -166,7 +166,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
     try {
       final promptWithContext =
           widget.isStudentView
-              ? 'Por favor, me ajude de forma clara e acessível: $text'
+              ? 'Você é o Copiloto de Salão. O aluno está treinando agora. Responda em formato ultra-enxuto, scannable e direto ao ponto (máximo 4 tópicos curtos: 🟢 Regra de Ouro, 📐 Ajuste de Ângulo/Pegada, 🚫 O que Evitar, 🔄 Alternativa se o Aparelho estiver Ocupado). Sem introdução ou conclusões longas. Dúvida: $text'
               : text;
 
       final reply = await GeminiService.askB2BAssistant(
@@ -740,7 +740,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
     );
   }
 
-  /// 1. Hero Spotlight Card - Visual de alta tecnologia, gradiente escuro e CTA direto
+  /// 1. Hero Spotlight Card - Copiloto de Salão em Tempo Real
   Widget _buildHeroSpotlightCard(BuildContext context, Color accentColor) {
     return Container(
       width: double.infinity,
@@ -786,13 +786,13 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(
-                      Icons.auto_awesome,
+                      Icons.bolt_rounded,
                       size: 13,
                       color: MetaColors.emerald,
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      widget.isStudentView ? 'MOTOR BIOMECÂNICO 3D' : 'MR. COACH ENTERPRISE',
+                      widget.isStudentView ? 'COPILOTO DE SALÃO • TEMPO REAL' : 'MR. COACH ENTERPRISE',
                       style: const TextStyle(
                         color: MetaColors.emerald,
                         fontSize: 10,
@@ -809,8 +809,8 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                   color: Colors.white.withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.fitness_center_rounded,
+                child: Icon(
+                  widget.isStudentView ? Icons.fitness_center_rounded : Icons.business_center_rounded,
                   size: 16,
                   color: Colors.white70,
                 ),
@@ -820,8 +820,8 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
           const SizedBox(height: 14),
           Text(
             widget.isStudentView
-                ? 'Qual movimento você quer analisar agora?'
-                : 'Inteligência Estratégica & Biomecânica',
+                ? 'Qual a dúvida da sua série agora?'
+                : 'Inteligência Estratégica & Prescrição',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -832,8 +832,8 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
           const SizedBox(height: 6),
           Text(
             widget.isStudentView
-                ? 'Consulte ângulos ideais, ativação sEMG muscular, cadência das fases e alternativas se o aparelho estiver ocupado.'
-                : 'Prescrição de alta performance, fisiologia de hipertrofia, precificação de planos e engajamento no WhatsApp.',
+                ? 'Aparelho ocupado, ajuste de postura para evitar dor ou dúvida de carga na série. Resposta direta em 5 segundos.'
+                : 'Periodização de força, fisiologia de hipertrofia, precificação de planos e engajamento no WhatsApp.',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.8),
               fontSize: 12.5,
@@ -841,16 +841,18 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          // Botão Interativo do Hero Card
+          // Botão Funcional Útil de Salão (sem redundância de 3D)
           InkWell(
             onTap: () {
-              BiomechanicalAnalysisSheet.show(
-                context,
-                exerciseName: 'Agachamento Búlgaro',
-                onAskAI: () => _sendPrompt(
-                  'Explique a biomecânica detalhada do Agachamento Búlgaro e correção de postura',
-                ),
-              );
+              if (widget.isStudentView) {
+                _sendPrompt(
+                  'O aparelho que eu ia usar agora está ocupado na academia. Quais as melhores alternativas com halteres ou polia mantendo o mesmo estímulo muscular?',
+                );
+              } else {
+                _sendPrompt(
+                  'Crie um script de WhatsApp humanizado e persuasivo para reengajar alunos ausentes há mais de 10 dias.',
+                );
+              }
             },
             borderRadius: BorderRadius.circular(12),
             child: Container(
@@ -868,23 +870,25 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
-                children: const [
+                children: [
                   Icon(
-                    Icons.view_in_ar_rounded,
-                    size: 16,
+                    widget.isStudentView ? Icons.swap_horiz_rounded : Icons.chat_rounded,
+                    size: 17,
                     color: Colors.black,
                   ),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Text(
-                    'Explorar Raio-X 3D em Tempo Real',
-                    style: TextStyle(
+                    widget.isStudentView
+                        ? 'Aparelho Ocupado? Trocar em 1 Toque'
+                        : 'Gerar Script de WhatsApp para Alunos',
+                    style: const TextStyle(
                       color: Colors.black,
                       fontWeight: FontWeight.w800,
                       fontSize: 12.5,
                     ),
                   ),
-                  SizedBox(width: 4),
-                  Icon(
+                  const SizedBox(width: 4),
+                  const Icon(
                     Icons.arrow_forward_rounded,
                     size: 14,
                     color: Colors.black,
@@ -898,52 +902,90 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
     );
   }
 
-  /// 2. Grade de Ações Rápidas 2x2 com cards funcionais inspirados no Gemini e Apple Fitness+
+  /// 2. Grade de Ações Rápidas 2x2 com cards de alta utilidade prática no salão
   Widget _buildActionGrid(BuildContext context) {
-    final actions = [
-      _ActionItem(
-        title: 'Postura & Ângulos',
-        subtitle: 'Cotovelos no Supino, Joelhos no Leg',
-        icon: Icons.architecture_rounded,
-        color: MetaColors.accentBlue,
-        onTap: () => _sendPrompt(
-          'Qual o ângulo ideal dos joelhos no Leg Press 45° e cotovelos no Supino para evitar lesões?',
+    final List<_ActionItem> actions;
+
+    if (widget.isStudentView) {
+      actions = [
+        _ActionItem(
+          title: 'Aparelho Ocupado?',
+          subtitle: 'Troca por halter ou polia livre',
+          icon: Icons.swap_horiz_rounded,
+          color: const Color(0xFFF59E0B), // Âmbar
+          onTap: () => _sendPrompt(
+            'O aparelho que eu ia usar agora está ocupado na academia. Quais as melhores variações livres ou na polia mantendo o mesmo estímulo muscular?',
+          ),
         ),
-      ),
-      _ActionItem(
-        title: 'Raio-X Muscular 3D',
-        subtitle: 'Ativação sEMG e curva de força',
-        icon: Icons.biotech_rounded,
-        color: MetaColors.emerald,
-        onTap: () {
-          BiomechanicalAnalysisSheet.show(
-            context,
-            exerciseName: 'Supino Inclinado com Halteres',
-            onAskAI: () => _sendPrompt(
-              'Explique a biomecânica e ativação muscular do Supino Inclinado com Halteres',
-            ),
-          );
-        },
-      ),
-      _ActionItem(
-        title: 'Aparelho Ocupado?',
-        subtitle: 'Substituição imediata no salão',
-        icon: Icons.swap_horiz_rounded,
-        color: const Color(0xFFF59E0B), // Âmbar
-        onTap: () => _sendPrompt(
-          'O aparelho de treino está ocupado na academia. Quais as melhores variações mantendo o mesmo estímulo muscular?',
+        _ActionItem(
+          title: 'Senti Dor / Fisgada',
+          subtitle: 'Ajustar pegada ou troca segura',
+          icon: Icons.healing_rounded,
+          color: const Color(0xFFEF4444), // Coral/Vermelho
+          onTap: () => _sendPrompt(
+            'Senti um desconforto/fisgada na articulação durante o exercício. Como corrigir a pegada e postura ou qual exercício alternativo seguro fazer agora?',
+          ),
         ),
-      ),
-      _ActionItem(
-        title: 'Cadência & RIR',
-        subtitle: 'Tempo sob tensão e hipertrofia',
-        icon: Icons.speed_rounded,
-        color: const Color(0xFFA855F7), // Roxo
-        onTap: () => _sendPrompt(
-          'Qual a cadência recomendada e como aplicar repetições em reserva (RIR) para hipertrofia máxima?',
+        _ActionItem(
+          title: 'Execução em 3 Passos',
+          subtitle: 'Banco, escápulas e trajetória',
+          icon: Icons.checklist_rounded,
+          color: MetaColors.accentBlue,
+          onTap: () => _sendPrompt(
+            'Me dê um checklist direto em 3 passos para executar meu exercício com máxima eficiência e segurança: ajuste de banco, escápulas/core e amplitude.',
+          ),
         ),
-      ),
-    ];
+        _ActionItem(
+          title: 'Carga & Repetições',
+          subtitle: 'Tá leve ou pesado? RIR e descanso',
+          icon: Icons.fitness_center_rounded,
+          color: MetaColors.emerald,
+          onTap: () => _sendPrompt(
+            'Como saber se a carga está leve ou pesada demais? Qual a regra prática de repetições em reserva (RIR) e tempo de descanso para hipertrofia?',
+          ),
+        ),
+      ];
+    } else {
+      // Visão do Treinador: Estratégias e Prescrição Avançada
+      actions = [
+        _ActionItem(
+          title: 'Prescrição & Divisão',
+          subtitle: 'Upper/Lower, PPL ou DUP',
+          icon: Icons.calendar_month_rounded,
+          color: MetaColors.accentBlue,
+          onTap: () => _sendPrompt(
+            'Qual a melhor divisão de treino (Upper/Lower, PPL ou DUP) para aluno intermediário com 4 dias na semana?',
+          ),
+        ),
+        _ActionItem(
+          title: 'Fisiologia & Fadiga',
+          subtitle: 'Volume semanal, RPE e Deload',
+          icon: Icons.bolt_rounded,
+          color: Colors.amber,
+          onTap: () => _sendPrompt(
+            'Como calcular volume de séries efetivas semanais por grupo muscular e quando prescrever deload?',
+          ),
+        ),
+        _ActionItem(
+          title: 'Scripts de WhatsApp',
+          subtitle: 'Reengajamento e cobrança suave',
+          icon: Icons.chat_rounded,
+          color: MetaColors.emerald,
+          onTap: () => _sendPrompt(
+            'Crie mensagens persuasivas e elegantes para WhatsApp: 1) reengajar aluno ausente e 2) renovação de ciclo.',
+          ),
+        ),
+        _ActionItem(
+          title: 'Precificação & Vendas',
+          subtitle: 'Planos híbridos e escala B2B',
+          icon: Icons.trending_up_rounded,
+          color: const Color(0xFFA855F7), // Roxo
+          onTap: () => _sendPrompt(
+            r'Como estruturar e precificar consultoria híbrida recorrente (R$ 180 a 250/mês) para escalar sem estafa de agenda?',
+          ),
+        ),
+      ];
+    }
 
     return GridView.builder(
       shrinkWrap: true,
