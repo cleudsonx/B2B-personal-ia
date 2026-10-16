@@ -113,6 +113,19 @@ class WhatsAppService:
             r.raise_for_status()
             return r.json()
 
+    async def delete_instance(self, instance_name: str) -> dict:
+        """Exclui a instância na Evolution API (limpando sessões antigas ou zumbis)."""
+        if self.provider == "mock":
+            return {"status": "success", "mode": "mock"}
+        async with httpx.AsyncClient(timeout=15) as client:
+            try:
+                r = await client.delete(f"{self._base()}/instance/delete/{instance_name}", headers=self._headers())
+                r.raise_for_status()
+                return r.json()
+            except Exception as e:
+                logger.warning("[WhatsApp] Erro ao deletar instância %s: %s", instance_name, e)
+                return {"status": "error", "error": str(e)}
+
     @staticmethod
     def _format_phone(phone: str) -> str:
         """Extrai dígitos e garante DDI 55 para números brasileiros de 10 ou 11 dígitos."""
@@ -125,11 +138,12 @@ class WhatsAppService:
         """Envia texto (payload Evolution v2)."""
         if self.provider == "mock":
             return {"status": "success", "mode": "mock", "instanceName": instance_name, "number": number, "text": text}
+        target_number = self._format_phone(number)
         async with httpx.AsyncClient(timeout=20) as client:
             r = await client.post(
                 f"{self._base()}/message/sendText/{instance_name}",
                 headers=self._headers(),
-                json={"number": number, "text": text, "delay": 1200},
+                json={"number": target_number, "text": text},
             )
             r.raise_for_status()
             return r.json()

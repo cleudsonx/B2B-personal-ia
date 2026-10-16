@@ -86,6 +86,18 @@ async def get_status(user: Dict[str, Any] = Depends(get_current_trainer)):
         raise HTTPException(status_code=502, detail="Erro ao consultar o WhatsApp.")
 
 
+@router.delete("/disconnect")
+async def disconnect_whatsapp(user: Dict[str, Any] = Depends(get_current_trainer)):
+    """Desconecta e remove a instância do professor autenticado para permitir nova conexão limpa."""
+    instance = instance_name_for(_trainer_id(user))
+    try:
+        res = await whatsapp_service.delete_instance(instance)
+        return {"status": "disconnected", "instance": instance, "result": res}
+    except Exception as e:
+        logger.error(f"[WhatsApp] Erro ao desconectar instância: {e}")
+        raise HTTPException(status_code=502, detail="Erro ao desconectar instância.")
+
+
 @router.post("/notify-workout")
 async def notify_workout(req: NotifyWorkoutRequest, user: Dict[str, Any] = Depends(get_current_trainer)):
     """Dispara notificação proativa de novo treino no WhatsApp do aluno (Fase 3 - Custo Zero de IA)."""
