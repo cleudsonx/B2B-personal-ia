@@ -1,11 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:personal_ia/core/config/app_changelog.dart';
 import 'package:personal_ia/core/config/app_config.dart';
 import 'package:personal_ia/core/widgets/app_version_footer.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   testWidgets('AppVersionFooter exibe versão formatada e abre notas ao tocar',
       (tester) async {
+    tester.view.physicalSize = const Size(1080, 1920);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
@@ -24,11 +38,13 @@ void main() {
 
     // Verifica que o BottomSheet com o changelog abriu
     expect(find.text('NOVIDADES DESTA VERSÃO'), findsOneWidget);
-    expect(find.text('Bio-Recovery & Prontidão Real'), findsOneWidget);
-    expect(find.text('Galeria Sigilosa Antes x Depois'), findsOneWidget);
+    expect(find.text(AppChangelog.current.highlights.first.title), findsOneWidget);
+    expect(find.text(AppChangelog.current.highlights[1].title), findsOneWidget);
     expect(find.text('Entendido'), findsOneWidget);
 
-    // Fecha o modal
+    // Fecha o modal garantindo visibilidade no scroll
+    await tester.ensureVisible(find.text('Entendido'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Entendido'));
     await tester.pumpAndSettle();
 

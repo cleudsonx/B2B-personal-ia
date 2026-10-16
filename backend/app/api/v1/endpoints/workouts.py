@@ -24,10 +24,12 @@ from app.schemas.workout import (
 )
 from app.services.gemini_service import GeminiService
 from app.services.email_service import email_service
-from app.services.whatsapp_service import whatsapp_service
+from app.services.whatsapp_service import whatsapp_service, instance_name_for
 from app.services.supabase_service import supabase_service, is_valid_uuid, to_valid_uuid_str
 from app.core.config import settings
 from app.api.deps import get_gemini_service, get_current_user, get_current_client, get_current_trainer
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -505,14 +507,18 @@ async def invite_student(
     # 1. Envio de E-mail via Resend/Mock com foto e avatar do professor
     email_status = "skipped"
     if payload.send_email:
-        email_res = await email_service.send_student_invitation_email(
-            student_email=payload.email,
-            student_name=payload.full_name,
-            trainer_name=trainer_name,
-            trainer_avatar_url=trainer_avatar_url,
-            confirmation_url=invitation_link,
-        )
-        email_status = email_res.get("status", "sent")
+        try:
+            email_res = await email_service.send_student_invitation_email(
+                student_email=payload.email,
+                student_name=payload.full_name,
+                trainer_name=trainer_name,
+                trainer_avatar_url=trainer_avatar_url,
+                confirmation_url=invitation_link,
+            )
+            email_status = email_res.get("status", "sent")
+        except Exception as email_err:
+            logger.warning("[Workouts] Falha ao enviar e-mail de convite para %s: %s", payload.email, email_err)
+            email_status = "error"
 
     # 2. Formata mensagem e URL de WhatsApp
     clean_phone = "".join(filter(str.isdigit, payload.phone or ""))
@@ -531,11 +537,17 @@ async def invite_student(
     # Se solicitado disparo direto via WhatsApp service
     whatsapp_status = "ready_url"
     if payload.send_whatsapp and clean_phone:
-        wa_res = await whatsapp_service.send_text_message(settings.EVOLUTION_INSTANCE, clean_phone, whatsapp_msg)
-        whatsapp_status = wa_res.get("status", "sent")
+        try:
+            instance = instance_name_for(trainer_id)
+            wa_res = await whatsapp_service.send_text_message(instance, clean_phone, whatsapp_msg)
+            whatsapp_status = wa_res.get("status", "sent")
+        except Exception as wa_err:
+            logger.warning("[Workouts] Falha ao enviar convite via WhatsApp direto: %s", wa_err)
+            whatsapp_status = "ready_url"
 
+    invite_id = invite_record.get("id") if isinstance(invite_record, dict) else str(uuid.uuid4())
     return StudentInviteResponse(
-        id=invite_record["id"],
+        id=str(invite_id),
         email=payload.email,
         full_name=payload.full_name,
         status="Convite Pendente",

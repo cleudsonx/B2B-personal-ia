@@ -134,12 +134,35 @@ class WhatsAppService:
             digits = f"55{digits}"
         return digits
 
+    async def resolve_whatsapp_number(self, instance_name: str, number: str) -> str:
+        """Resolve o JID correto no WhatsApp (trata a questão do 9º dígito no Brasil)."""
+        clean = self._format_phone(number)
+        if self.provider == "mock" or not clean:
+            return clean
+        try:
+            async with httpx.AsyncClient(timeout=8) as client:
+                r = await client.post(
+                    f"{self._base()}/chat/whatsappNumbers/{instance_name}",
+                    headers=self._headers(),
+                    json={"numbers": [clean]},
+                )
+                if r.status_code == 200:
+                    data = r.json()
+                    if isinstance(data, list) and data:
+                        first = data[0]
+                        if first.get("exists") and first.get("jid"):
+                            jid_num = first["jid"].split("@")[0]
+                            return jid_num
+        except Exception as e:
+            logger.warning("[WhatsApp] Não foi possível resolver JID prévio para %s: %s", clean, e)
+        return clean
+
     async def send_text_message(self, instance_name: str, number: str, text: str) -> dict:
         """Envia texto (payload Evolution v2)."""
         if self.provider == "mock":
             return {"status": "success", "mode": "mock", "instanceName": instance_name, "number": number, "text": text}
-        target_number = self._format_phone(number)
-        async with httpx.AsyncClient(timeout=20) as client:
+        target_number = await self.resolve_whatsapp_number(instance_name, number)
+        async with httpx.AsyncClient(timeout=35) as client:
             r = await client.post(
                 f"{self._base()}/message/sendText/{instance_name}",
                 headers=self._headers(),

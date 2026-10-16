@@ -139,6 +139,26 @@ async def test_send_whatsapp(req: TestSendRequest = TestSendRequest(), user: Dic
     trainer_id = _trainer_id(user)
     instance = instance_name_for(trainer_id)
 
+    # 1. Verifica se a instância está aberta no WhatsApp antes de disparar
+    try:
+        state_data = await whatsapp_service.get_instance_state(instance)
+        raw_state = (
+            state_data.get("state")
+            or state_data.get("instance", {}).get("state")
+            or ""
+        ).lower()
+        if raw_state != "open":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Seu WhatsApp não está com a conexão ativa no momento (Status: {raw_state or 'desconectado'}). "
+                       f"Aguarde o status ficar Online ou gere um novo código de pareamento."
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning("[WhatsApp] Não foi possível verificar estado prévio da instância: %s", e)
+
+    # 2. Prioriza o celular pessoal do professor cadastrado no perfil
     target_phone = req.phone
     if not target_phone:
         client = await supabase_service.get_client()
@@ -146,12 +166,13 @@ async def test_send_whatsapp(req: TestSendRequest = TestSendRequest(), user: Dic
             try:
                 prof = await client.table("profiles").select("phone, public_whatsapp, full_name").eq("id", trainer_id).maybe_single().execute()
                 if prof and prof.data:
-                    target_phone = prof.data.get("public_whatsapp") or prof.data.get("phone")
+                    # Prioriza phone (celular pessoal) antes de public_whatsapp (que pode ser o bot)
+                    target_phone = prof.data.get("phone") or prof.data.get("public_whatsapp")
             except Exception:
                 pass
 
     if not target_phone:
-        raise HTTPException(status_code=400, detail="Nenhum número de telefone encontrado para envio do teste.")
+        raise HTTPException(status_code=400, detail="Nenhum número de telefone cadastrado no seu perfil para envio do teste.")
 
     clean_phone = whatsapp_service._format_phone(target_phone)
     test_msg = (
@@ -174,8 +195,11 @@ async def test_send_whatsapp(req: TestSendRequest = TestSendRequest(), user: Dic
         )
         return {"status": "success", "phone": clean_phone, "response": res}
     except Exception as e:
-        logger.error(f"[WhatsApp] Erro ao disparar mensagem de teste: {e}")
-        raise HTTPException(status_code=502, detail=f"Falha ao enviar mensagem de teste via Evolution API: {e}")
+        logger.error(f"[WhatsApp] Erro ao disparar mensagem de teste: %s", e)
+        err_msg = str(e)
+        if "timeout" in err_msg.lower():
+            err_msg = "O servidor do WhatsApp demorou para responder. Verifique se o seu celular está conectado à internet."
+        raise HTTPException(status_code=502, detail=f"Falha ao enviar mensagem de teste via Evolution API: {err_msg}")
 
 
 @router.get("/logs")

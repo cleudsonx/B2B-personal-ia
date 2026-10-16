@@ -345,7 +345,10 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
                           ),
                         ),
                         const SizedBox(height: 2),
-                        Row(
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 2,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             Text(
                               currentRelease.fullTitle,
@@ -356,7 +359,6 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
                                 letterSpacing: 0.3,
                               ),
                             ),
-                            const SizedBox(width: 6),
                             Text(
                               '• ${currentRelease.date}',
                               style: TextStyle(

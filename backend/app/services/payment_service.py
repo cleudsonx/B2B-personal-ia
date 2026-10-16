@@ -151,7 +151,7 @@ class PaymentProviderService:
                         "access_token": settings.ASAAS_API_KEY,
                         "Content-Type": "application/json"
                     }
-                    with httpx.Client(timeout=4.0) as client:
+                    with httpx.Client(timeout=15.0) as client:
                         # 1. Busca ou cadastra cliente no Asaas
                         c_res = client.get(f"{base_url}/customers?email={trainer_email}", headers=headers)
                         cust_id = None

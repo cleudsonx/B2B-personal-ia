@@ -361,12 +361,12 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
     final Color statusColor = _isConnected ? MetaColors.emerald : AppColors.warning;
     final String statusLabel = _checkingStatus
         ? 'Verificando conexão...'
-        : (_isConnected ? 'Conectado • Instância Ativa' : 'Aguardando pareamento');
+        : (_isConnected ? 'Conectado • Online' : 'Aguardando pareamento');
 
     return GestureDetector(
       onTap: _checkingStatus ? null : _checkConnectionStatus,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color: statusColor.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(999),
@@ -399,6 +399,8 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
             const SizedBox(width: 8),
             Text(
               statusLabel,
+              maxLines: 1,
+              softWrap: false,
               style: TextStyle(
                 color: statusColor,
                 fontSize: 12,
@@ -591,8 +593,8 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                         width: double.infinity,
                         child: SquircleButton(
                           label: _isSendingTest
-                              ? 'Enviando Teste...'
-                              : '📲 Disparar Teste no Meu WhatsApp',
+                              ? 'Enviando...'
+                              : '📲 Disparar Teste',
                           icon: Icons.send_rounded,
                           isPrimary: true,
                           onPressed: _isSendingTest ? null : _sendTestMessage,
@@ -602,7 +604,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: SquircleButton(
-                          label: _isDisconnecting ? 'Desconectando...' : '⚠️ Desconectar e Limpar Sessão',
+                          label: _isDisconnecting ? 'Desconectando...' : '⚠️ Desconectar Sessão',
                           icon: Icons.link_off_rounded,
                           isPrimary: false,
                           onPressed: _isDisconnecting ? null : _disconnectInstance,
@@ -845,31 +847,39 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
       decoration: BoxDecoration(
         color: MetaColors.surfaceHighlight,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: color, size: 18),
           const SizedBox(height: 6),
-          Text(
-            value,
-            style: const TextStyle(
-              color: MetaColors.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: MetaColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: const TextStyle(
-              color: MetaColors.textSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
+          const SizedBox(height: 3),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              style: const TextStyle(
+                color: MetaColors.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

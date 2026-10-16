@@ -38,6 +38,36 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
+      version: '1.3.13',
+      buildNumber: 2026102821,
+      date: '16 de Outubro, 2026',
+      summary:
+          'Estabilização de Lançamento: Correção de Layout no WhatsApp, Resiliência na Criação de Alunos e Testes CI/CD 100% Verdes.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.person_add_rounded,
+          title: 'Resiliência no Convite de Alunos',
+          description:
+              'Correção da trava de cota e blindagem no fluxo de criação de alunos, permitindo cadastros fluidos e geração instantânea de links de convite.',
+          badge: 'CORREÇÃO',
+        ),
+        ChangelogItem(
+          icon: Icons.smartphone_rounded,
+          title: 'Layout Ergonômico de Conexão WhatsApp',
+          description:
+              'Textos de indicadores sem quebra de linha, botões de ação sem reticências e cartões de telemetria perfeitamente responsivos em qualquer tela.',
+          badge: 'DESIGN',
+        ),
+        ChangelogItem(
+          icon: Icons.check_circle_rounded,
+          title: 'Pipeline CI/CD Aprovado',
+          description:
+              'Ajuste definitivo de layout responsivo (Wrap) no rodapé de notas de versão, eliminando overflows nos testes automatizados do GitHub Actions.',
+          badge: 'ESTABILIDADE',
+        ),
+      ],
+    ),
+    VersionRelease(
       version: '1.3.12',
       buildNumber: 2026102820,
       date: '16 de Outubro, 2026',
