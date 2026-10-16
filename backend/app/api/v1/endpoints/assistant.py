@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from app.schemas.assistant import AssistantChatRequest, AssistantChatResponse
 from app.services.gemini_service import gemini_service
 from app.services.supabase_service import supabase_service
-from app.api.deps import get_current_trainer
+from app.api.deps import get_current_user
 import logging
 
 logger = logging.getLogger(__name__)
@@ -14,14 +14,19 @@ router = APIRouter()
 @router.post("/chat", response_model=AssistantChatResponse, summary="Conversar com o Assistente B2B Gemini")
 async def chat_with_assistant(
     request: AssistantChatRequest,
-    current_user: Dict[str, Any] = Depends(get_current_trainer),
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """
-    Endpoint para consultoria e assistência B2B a personais trainers.
+    Endpoint para consultoria e assistência B2B a personais trainers e alunos.
     Processa dúvidas de retenção, comercial, biomecânica e montagem de treinos.
     Requer autenticação e respeita a cota mensal de IA do plano.
     """
-    trainer_id = current_user.get("sub") or "current-trainer"
+    profile = current_user.get("profile") or {}
+    roles = profile.get("roles") or [profile.get("role")]
+    if "trainer" in roles:
+        trainer_id = current_user.get("sub") or "current-trainer"
+    else:
+        trainer_id = profile.get("trainer_id") or current_user.get("sub") or "current-trainer"
 
     # Reserva atômica da cota mensal antes de chamar o Gemini (Prevenção de Race Conditions - AI-001)
     sub = await supabase_service.get_trainer_subscription(trainer_id)
@@ -56,7 +61,7 @@ async def chat_with_assistant(
 @router.post("/generate", response_model=AssistantChatResponse, summary="Compatibilidade com gateway de geração")
 async def generate_text(
     request: AssistantChatRequest,
-    current_user: Dict[str, Any] = Depends(get_current_trainer),
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """Alias para compatibilidade direta com rotas /api/generate."""
     return await chat_with_assistant(request, current_user)

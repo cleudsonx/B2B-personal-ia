@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.schemas.adaptation import AdaptationInput, AdaptationResponse
 from app.services.gemini_service import GeminiService
 from app.services.supabase_service import supabase_service
-from app.api.deps import get_gemini_service, get_current_trainer
+from app.api.deps import get_gemini_service, get_current_user
 
 router = APIRouter()
 
@@ -18,9 +18,14 @@ router = APIRouter()
 async def adapt_exercise(
     data: AdaptationInput,
     gemini_svc: GeminiService = Depends(get_gemini_service),
-    current_user: Dict[str, Any] = Depends(get_current_trainer),
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> AdaptationResponse:
-    trainer_id = current_user.get("sub") or "current-trainer"
+    profile = current_user.get("profile") or {}
+    roles = profile.get("roles") or [profile.get("role")]
+    if "trainer" in roles:
+        trainer_id = current_user.get("sub") or "current-trainer"
+    else:
+        trainer_id = profile.get("trainer_id") or current_user.get("sub") or "current-trainer"
 
     # Reserva atômica da cota mensal antes de chamar o Gemini (Prevenção de Race Conditions - AI-001)
     sub = await supabase_service.get_trainer_subscription(trainer_id)
