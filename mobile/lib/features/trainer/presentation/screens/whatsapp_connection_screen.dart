@@ -21,18 +21,40 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
   final TextEditingController _phoneController = TextEditingController();
   bool _isLoading = false;
   String? _pairingCode;
+  String? _pairedPhoneDisplay;
   bool _isConnected = false;
   bool _checkingStatus = true;
-  bool _autoGenerating = false;
 
   @override
   void initState() {
     super.initState();
     final initialPhone = widget.initialPhone?.trim();
     if (initialPhone != null && initialPhone.isNotEmpty) {
-      _phoneController.text = initialPhone;
+      _phoneController.text = _stripLeadingDdi55(initialPhone);
     }
     _initializeScreen();
+  }
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  String _stripLeadingDdi55(String raw) {
+    final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    if ((digits.length == 12 || digits.length == 13) && digits.startsWith('55')) {
+      return digits.substring(2);
+    }
+    return digits;
+  }
+
+  String _normalizeWithDdi55(String raw) {
+    final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length == 10 || digits.length == 11) {
+      return '55$digits';
+    }
+    return digits;
   }
 
   Future<void> _initializeScreen() async {
@@ -88,46 +110,38 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
   }
 
   Future<void> _loadTrainerPhone() async {
-    setState(() => _autoGenerating = true);
     try {
-      if (widget.initialPhone != null) {
-        final initialPhone = widget.initialPhone!.trim();
-        if (initialPhone.isNotEmpty) {
-          _phoneController.text = initialPhone;
-          await _generatePairingCode();
-        }
+      if (_phoneController.text.trim().isNotEmpty) {
         return;
       }
 
       final profile = await AuthService.getCurrentProfile();
       if (profile != null && mounted) {
-        final phone = profile['public_whatsapp'] ?? profile['phone'] ?? '';
-        if (phone.toString().isNotEmpty) {
+        final phone = (profile['public_whatsapp'] ?? profile['phone'] ?? '').toString().trim();
+        if (phone.isNotEmpty && _phoneController.text.trim().isEmpty) {
           setState(() {
-            _phoneController.text = phone.toString();
+            _phoneController.text = _stripLeadingDdi55(phone);
           });
-          // Auto gera o código assim que a tela abre se já tiver o telefone
-          await _generatePairingCode();
         }
       }
     } catch (_) {
       // Ignora erro e permite preenchimento manual
-    } finally {
-      if (mounted) setState(() => _autoGenerating = false);
     }
   }
 
   Future<void> _generatePairingCode() async {
-    final phone = _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (phone.isEmpty || phone.length < 10) {
+    final rawDigits = _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (rawDigits.isEmpty || rawDigits.length < 10) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Por favor, digite um número de WhatsApp válido com DDD.'),
+          content: Text('Por favor, digite um número de WhatsApp válido com DDD (ex: 11999999999).'),
           backgroundColor: AppColors.danger,
         ),
       );
       return;
     }
+
+    final normalizedPhone = _normalizeWithDdi55(rawDigits);
 
     setState(() {
       _isLoading = true;
@@ -145,7 +159,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $token',
             },
-            body: jsonEncode({'number': phone}),
+            body: jsonEncode({'number': normalizedPhone}),
           )
           .timeout(const Duration(seconds: 30));
 
@@ -158,11 +172,12 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
       final data = jsonDecode(response.body);
       final code = data['pairingCode'];
       if (code == null || code.toString().isEmpty) {
-        throw Exception('O servidor não retornou o código de pareamento. Tente novamente.');
+        throw Exception('O servidor não retornou o código de pareamento. Verifique o número e tente novamente.');
       }
       if (mounted) {
         setState(() {
           _pairingCode = code.toString();
+          _pairedPhoneDisplay = '+$normalizedPhone';
           _isLoading = false;
         });
       }
@@ -395,11 +410,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
               ),
               const SizedBox(height: 32),
 
-              if (_autoGenerating && _pairingCode == null)
-                const Center(
-                  child: CircularProgressIndicator(color: MetaColors.emerald),
-                )
-              else if (_isConnected && _pairingCode == null) ...[
+              if (_isConnected && _pairingCode == null) ...[
                 MetaCard(
                   borderColor: MetaColors.emerald.withValues(alpha: 0.4),
                   child: Column(
@@ -438,6 +449,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                           onPressed: () {
                             setState(() {
                               _isConnected = false;
+                              _pairingCode = null;
                             });
                           },
                         ),
@@ -450,12 +462,26 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                   child: TextField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
+                    onChanged: (_) => setState(() {}),
                     style: const TextStyle(color: MetaColors.textPrimary, fontSize: 18),
-                    decoration: const InputDecoration(
-                      labelText: 'Seu número (Ex: 11999999999)',
-                      labelStyle: TextStyle(color: MetaColors.textSecondary),
+                    decoration: InputDecoration(
+                      labelText: 'Seu número com DDD (Ex: 11999999999)',
+                      hintText: '11999999999',
+                      hintStyle: TextStyle(color: MetaColors.textSecondary.withValues(alpha: 0.5)),
+                      labelStyle: const TextStyle(color: MetaColors.textSecondary),
                       border: InputBorder.none,
-                      prefixIcon: Icon(Icons.message_rounded, color: MetaColors.emerald),
+                      prefixIcon: const Icon(Icons.message_rounded, color: MetaColors.emerald),
+                      suffixIcon: _phoneController.text.isNotEmpty
+                          ? IconButton(
+                              tooltip: 'Limpar número',
+                              icon: const Icon(Icons.clear_rounded, color: MetaColors.textSecondary),
+                              onPressed: () {
+                                setState(() {
+                                  _phoneController.clear();
+                                });
+                              },
+                            )
+                          : null,
                     ),
                   ),
                 ),
@@ -463,7 +489,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: SquircleButton(
-                    label: _isLoading ? 'Gerando...' : 'Gerar Código',
+                    label: _isLoading ? 'Gerando...' : 'Gerar Código de Pareamento',
                     icon: Icons.vpn_key_rounded,
                     isPrimary: true,
                     onPressed: _isLoading ? null : _generatePairingCode,
@@ -473,9 +499,11 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                 MetaCard(
                   child: Column(
                     children: [
-                      const Text(
-                        'Seu código de conexão:',
-                        style: TextStyle(color: MetaColors.textSecondary, fontSize: 14),
+                      Text(
+                        _pairedPhoneDisplay != null
+                            ? 'Código gerado para $_pairedPhoneDisplay:'
+                            : 'Seu código de conexão:',
+                        style: const TextStyle(color: MetaColors.textSecondary, fontSize: 14),
                       ),
                       const SizedBox(height: 16),
                       GestureDetector(
@@ -522,9 +550,23 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                   width: double.infinity,
                   child: SquircleButton(
                     label: 'Copiar código',
-                    icon: Icons.open_in_new_rounded,
+                    icon: Icons.copy_rounded,
                     isPrimary: true,
                     onPressed: _copyPairingCode,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: SquircleButton(
+                    label: 'Alterar número / Digitar outro telefone',
+                    icon: Icons.edit_rounded,
+                    isPrimary: false,
+                    onPressed: () {
+                      setState(() {
+                        _pairingCode = null;
+                      });
+                    },
                   ),
                 ),
               ],

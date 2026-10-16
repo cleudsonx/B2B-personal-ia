@@ -41,7 +41,7 @@ def _trainer_id(user: Dict[str, Any]) -> str:
 async def connect_whatsapp(req: ConnectRequest, user: Dict[str, Any] = Depends(get_current_trainer)):
     """Conecta o WhatsApp do professor autenticado (instância dele, nunca de outro)."""
     instance = instance_name_for(_trainer_id(user))
-    number = "".join(c for c in (req.number or "") if c.isdigit()) or None
+    number = whatsapp_service._format_phone(req.number or "") or None
     try:
         try:
             data = await whatsapp_service.create_instance(instance, number)

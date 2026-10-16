@@ -46,11 +46,11 @@ class AppConfig {
   static const String supabaseAnonKey = supabasePublishableKey;
 
   // Informações Oficiais de Versionamento (SemVer) & Build
-  static const String appVersion = '1.3.8';
-  static const int buildNumber = 2026102815;
+  static const String appVersion = '1.3.9';
+  static const int buildNumber = 2026102816;
   static const String buildDate = '16 de Outubro, 2026';
   static const String releaseNotes =
-      'Robô WhatsApp Fases 1 e 3 (Triagem Custo Zero, Notificador Proativo de Treino/Streak e Painel de Conexão)';
+      'Correção na Tela de Conexão WhatsApp do Professor (Edição Manual do Número, Botão Limpar e Troca de Número Pós-Código)';
 
   static String get fullVersionString => 'v$appVersion (Build $buildNumber)';
 }
