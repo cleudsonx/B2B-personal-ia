@@ -16,6 +16,20 @@ class ConnectRequest(BaseModel):
     number: Optional[str] = None  # DDI+DDD+número; habilita código de pareamento
 
 
+class NotifyWorkoutRequest(BaseModel):
+    student_name: str
+    student_phone: str
+    workout_title: str
+    trainer_name: Optional[str] = "Seu Treinador"
+
+
+class NotifyStreakRiskRequest(BaseModel):
+    student_name: str
+    student_phone: str
+    current_streak: int
+    trainer_name: Optional[str] = "Seu Treinador"
+
+
 def _trainer_id(user: Dict[str, Any]) -> str:
     sub = user.get("sub")
     if not sub:
@@ -64,4 +78,35 @@ async def get_status(user: Dict[str, Any] = Depends(get_current_trainer)):
         raise HTTPException(status_code=502, detail="Erro ao consultar o WhatsApp.")
     except Exception:
         raise HTTPException(status_code=502, detail="Erro ao consultar o WhatsApp.")
+
+
+@router.post("/notify-workout")
+async def notify_workout(req: NotifyWorkoutRequest, user: Dict[str, Any] = Depends(get_current_trainer)):
+    """Dispara notificação proativa de novo treino no WhatsApp do aluno (Fase 3 - Custo Zero de IA)."""
+    trainer_id = _trainer_id(user)
+    trainer_name = req.trainer_name or "Seu Treinador"
+    result = await whatsapp_service.notify_new_workout(
+        trainer_id=trainer_id,
+        student_name=req.student_name,
+        student_phone=req.student_phone,
+        workout_title=req.workout_title,
+        trainer_name=trainer_name,
+    )
+    return result
+
+
+@router.post("/notify-streak-risk")
+async def notify_streak_risk(req: NotifyStreakRiskRequest, user: Dict[str, Any] = Depends(get_current_trainer)):
+    """Dispara notificação proativa de recuperação de ofensiva no WhatsApp do aluno (Fase 3 - Custo Zero de IA)."""
+    trainer_id = _trainer_id(user)
+    trainer_name = req.trainer_name or "Seu Treinador"
+    result = await whatsapp_service.notify_streak_risk(
+        trainer_id=trainer_id,
+        student_name=req.student_name,
+        student_phone=req.student_phone,
+        current_streak=req.current_streak,
+        trainer_name=trainer_name,
+    )
+    return result
+
 

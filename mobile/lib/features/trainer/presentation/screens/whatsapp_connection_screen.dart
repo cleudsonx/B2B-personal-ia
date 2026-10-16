@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -21,7 +21,8 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
   final TextEditingController _phoneController = TextEditingController();
   bool _isLoading = false;
   String? _pairingCode;
-  final bool _isConnected = false;
+  bool _isConnected = false;
+  bool _checkingStatus = true;
   bool _autoGenerating = false;
 
   @override
@@ -31,7 +32,59 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
     if (initialPhone != null && initialPhone.isNotEmpty) {
       _phoneController.text = initialPhone;
     }
-    _loadTrainerPhone();
+    _initializeScreen();
+  }
+
+  Future<void> _initializeScreen() async {
+    await _checkConnectionStatus();
+    if (!_isConnected && mounted) {
+      await _loadTrainerPhone();
+    }
+  }
+
+  Future<void> _checkConnectionStatus() async {
+    if (mounted) {
+      setState(() => _checkingStatus = true);
+    }
+    try {
+      final token = Supabase.instance.client.auth.currentSession?.accessToken;
+      if (token == null) return;
+
+      final response = await http
+          .get(
+            Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/status'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final rawStatus = (data['status'] ??
+                data['state'] ??
+                data['instance']?['state'] ??
+                '')
+            .toString()
+            .toLowerCase();
+        final connected = rawStatus == 'open' ||
+            rawStatus == 'connected' ||
+            data['connected'] == true;
+
+        if (mounted) {
+          setState(() {
+            _isConnected = connected;
+          });
+        }
+      }
+    } catch (_) {
+      // Mantém estado padrão (aguardando pareamento) caso falhe silenciosamente
+    } finally {
+      if (mounted) {
+        setState(() => _checkingStatus = false);
+      }
+    }
   }
 
   Future<void> _loadTrainerPhone() async {
@@ -142,6 +195,155 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
     }
   }
 
+  Widget _buildStatusIndicator() {
+    final Color statusColor = _isConnected ? MetaColors.emerald : AppColors.warning;
+    final String statusLabel = _checkingStatus
+        ? 'Verificando conexão...'
+        : (_isConnected ? 'Conectado • Instância Ativa' : 'Aguardando pareamento');
+
+    return GestureDetector(
+      onTap: _checkingStatus ? null : _checkConnectionStatus,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: statusColor.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: statusColor.withValues(alpha: 0.35),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_checkingStatus)
+              SizedBox(
+                width: 10,
+                height: 10,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+                ),
+              )
+            else
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: statusColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            const SizedBox(width: 8),
+            Text(
+              statusLabel,
+              style: TextStyle(
+                color: statusColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+              ),
+            ),
+            if (!_checkingStatus) ...[
+              const SizedBox(width: 6),
+              Icon(
+                Icons.refresh_rounded,
+                size: 14,
+                color: statusColor.withValues(alpha: 0.8),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAutomationCard({
+    required IconData icon,
+    required Color accentColor,
+    required String title,
+    required String badgeText,
+    required String description,
+  }) {
+    return MetaCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: accentColor.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Icon(
+                  icon,
+                  color: accentColor,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: accentColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: accentColor.withValues(alpha: 0.35),
+                        ),
+                      ),
+                      child: Text(
+                        badgeText,
+                        style: TextStyle(
+                          color: accentColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: MetaColors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            description,
+            style: const TextStyle(
+              color: MetaColors.textSecondary,
+              fontSize: 13.5,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -157,6 +359,8 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              _buildStatusIndicator(),
+              const SizedBox(height: 20),
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: const BoxDecoration(
@@ -169,7 +373,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                   color: MetaColors.emerald,
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               const Text(
                 'Conectar WhatsApp',
                 style: TextStyle(
@@ -190,12 +394,58 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              
+
               if (_autoGenerating && _pairingCode == null)
                 const Center(
                   child: CircularProgressIndicator(color: MetaColors.emerald),
                 )
-              else if (_pairingCode == null && !_isConnected) ...[
+              else if (_isConnected && _pairingCode == null) ...[
+                MetaCard(
+                  borderColor: MetaColors.emerald.withValues(alpha: 0.4),
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.verified_rounded,
+                        color: MetaColors.emerald,
+                        size: 40,
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Seu WhatsApp está conectado!',
+                        style: TextStyle(
+                          color: MetaColors.textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Sua instância está ativa e pronta para disparar notificações de treino e responder seus alunos automaticamente.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: MetaColors.textSecondary,
+                          fontSize: 14,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        child: SquircleButton(
+                          label: 'Trocar Número / Gerar Novo Código',
+                          icon: Icons.sync_rounded,
+                          isPrimary: false,
+                          onPressed: () {
+                            setState(() {
+                              _isConnected = false;
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else if (_pairingCode == null && !_isConnected) ...[
                 MetaCard(
                   child: TextField(
                     controller: _phoneController,
@@ -278,6 +528,38 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                   ),
                 ),
               ],
+
+              const SizedBox(height: 40),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'AUTOMAÇÕES ATIVAS NO SEU NÚMERO',
+                  style: TextStyle(
+                    color: MetaColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildAutomationCard(
+                icon: Icons.local_fire_department_rounded,
+                accentColor: MetaColors.emerald,
+                title: 'Notificador de Ficha & Ofensiva (Fase 1 & 3)',
+                badgeText: 'ATIVO • CUSTO ZERO',
+                description:
+                    'Dispara avisos de ficha nova, recuperação de alunos ausentes (Streak 🔥) e responde comandos rápidos (1 = Ver Treino, 2 = Ver Ofensiva) automaticamente.',
+              ),
+              const SizedBox(height: 16),
+              _buildAutomationCard(
+                icon: Icons.auto_awesome_rounded,
+                accentColor: AppColors.warning,
+                title: 'Consultor Ativo IA 24h (Fase 2)',
+                badgeText: 'EXCLUSIVO PRO & STUDIO',
+                description:
+                    'Tira dúvidas biomecânicas e sugere substituições de aparelhos pelo WhatsApp usando Gemini Flash com proteção de cota diária.',
+              ),
             ],
           ),
         ),

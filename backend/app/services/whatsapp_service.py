@@ -88,6 +88,14 @@ class WhatsAppService:
             r.raise_for_status()
             return r.json()
 
+    @staticmethod
+    def _format_phone(phone: str) -> str:
+        """Extrai dígitos e garante DDI 55 para números brasileiros de 10 ou 11 dígitos."""
+        digits = "".join(c for c in (phone or "") if c.isdigit())
+        if len(digits) in (10, 11):
+            digits = f"55{digits}"
+        return digits
+
     async def send_text_message(self, instance_name: str, number: str, text: str) -> dict:
         """Envia texto (payload Evolution v2)."""
         if self.provider == "mock":
@@ -100,6 +108,69 @@ class WhatsAppService:
             )
             r.raise_for_status()
             return r.json()
+
+    async def notify_new_workout(
+        self,
+        trainer_id: str,
+        student_name: str,
+        student_phone: str,
+        workout_title: str,
+        trainer_name: str = "Seu Treinador",
+    ) -> dict:
+        """Notificação proativa (Fase 3): avisa o aluno que o treinador liberou um novo treino."""
+        number = self._format_phone(student_phone)
+        if not number:
+            logger.warning("[WhatsApp] Telefone inválido ao notificar novo treino para %s.", student_name)
+            return {"status": "skipped", "reason": "invalid_phone"}
+
+        instance = instance_name_for(trainer_id)
+        text = (
+            f"🚀 *Treino Atualizado no Mr. Coach!*\n\n"
+            f"Fala, {student_name}! {trainer_name} acabou de liberar sua nova programação: *{workout_title}*.\n\n"
+            f"Acesse agora pelo app ou digite *1* aqui para ver o resumo:\n"
+            f"https://shaipados-labs.web.app"
+        )
+        try:
+            return await self.send_text_message(instance, number, text)
+        except Exception as e:
+            logger.warning(
+                "[WhatsApp] Não foi possível enviar notificação de novo treino (instância %s): %s",
+                instance,
+                e,
+            )
+            return {"status": "skipped", "reason": str(e)}
+
+    async def notify_streak_risk(
+        self,
+        trainer_id: str,
+        student_name: str,
+        student_phone: str,
+        current_streak: int,
+        trainer_name: str = "Seu Treinador",
+    ) -> dict:
+        """Notificação proativa (Fase 3): alerta de recuperação de ofensiva (streak em risco)."""
+        number = self._format_phone(student_phone)
+        if not number:
+            logger.warning("[WhatsApp] Telefone inválido ao notificar risco de ofensiva para %s.", student_name)
+            return {"status": "skipped", "reason": "invalid_phone"}
+
+        instance = instance_name_for(trainer_id)
+        text = (
+            f"🔥 *Atenção à sua Ofensiva, {student_name}!*\n\n"
+            f"Você está com *{current_streak} dias* de consistência, mas notamos sua falta nos últimos dias. "
+            f"Bora treinar hoje para não zerar seu progresso?\n\n"
+            f"Seu treino já está pronto no Mr. Coach:\n"
+            f"https://shaipados-labs.web.app"
+        )
+        try:
+            return await self.send_text_message(instance, number, text)
+        except Exception as e:
+            logger.warning(
+                "[WhatsApp] Não foi possível enviar alerta de ofensiva (instância %s): %s",
+                instance,
+                e,
+            )
+            return {"status": "skipped", "reason": str(e)}
 
 
 whatsapp_service = WhatsAppService()

@@ -80,6 +80,24 @@ def _plan_summary(plan) -> str:
     return "\n".join(lines)
 
 
+import unicodedata
+
+
+def _normalize_command(text: str) -> str:
+    cleaned = text.strip().lower()
+    normalized = unicodedata.normalize("NFD", cleaned)
+    without_accents = "".join(c for c in normalized if unicodedata.category(c) != "Mn")
+    return without_accents.strip("?!.,:; ")
+
+
+MENU_GREETINGS = {"oi", "ola", "menu", "ajuda", "0", "bom dia", "boa tarde", "boa noite"}
+MENU_WORKOUT = {"1", "treino", "meu treino", "ficha", "qual meu treino", "minha ficha"}
+MENU_STREAK = {"2", "streak", "ofensiva", "foguinho", "minha ofensiva"}
+MENU_APP = {"3", "app", "link", "aplicativo", "acesso"}
+PHASE2_ALLOWED_PLANS = {"pro", "elite", "studio"}
+APP_URL = "https://shaipados-labs.web.app"
+
+
 async def _answer(instance: str, number: str, digits: str, question: str) -> None:
     try:
         trainer_id = trainer_id_from_instance(instance)
@@ -90,6 +108,92 @@ async def _answer(instance: str, number: str, digits: str, question: str) -> Non
         if not student:
             return  # número desconhecido: silêncio (evita custo e spam)
 
+        nome = (student.get("full_name") or "Aluno").split()[0]
+        cmd = _normalize_command(question)
+
+        # ---------------------------------------------------------------------
+        # PASSO 2.1 — Triagem de Custo Zero (Menu Rápido sem consumo de tokens)
+        # ---------------------------------------------------------------------
+        if cmd in MENU_GREETINGS:
+            await whatsapp_service.send_text_message(
+                instance,
+                number,
+                (
+                    f"Olá, {nome}! 💪 Sou o assistente automático do seu treinador no Mr. Coach.\n\n"
+                    "Digite uma opção:\n"
+                    "*1* - Ver meu treino ativo\n"
+                    "*2* - Ver minha ofensiva (Streak 🔥)\n"
+                    "*3* - Link do App\n\n"
+                    "Ou envie sua dúvida sobre algum exercício!"
+                ),
+            )
+            return
+
+        if cmd in MENU_WORKOUT:
+            plan = await supabase_service.get_active_prescription(student["id"])
+            if not plan:
+                await whatsapp_service.send_text_message(
+                    instance,
+                    number,
+                    "Ainda não encontrei uma ficha ativa para você. Vou avisar seu professor! 💪",
+                )
+                return
+            await whatsapp_service.send_text_message(
+                instance,
+                number,
+                f"📋 *Seu Treino Ativo*\n\n{_plan_summary(plan)}\n\n📲 Acesse completo no app: {APP_URL}",
+            )
+            return
+
+        if cmd in MENU_STREAK:
+            streak_days = 0
+            try:
+                gamification = await supabase_service.get_gamification_data(student["id"])
+                streak_days = int((gamification or {}).get("current_streak") or 0)
+            except Exception:
+                streak_days = int(student.get("streak_days") or 0)
+
+            if streak_days > 0:
+                msg_streak = (
+                    f"🔥 *{nome}, sua ofensiva atual é de {streak_days} dia(s) seguido(s)!*\n\n"
+                    f"Continue firme na consistência! Registre seu treino de hoje no app: {APP_URL} 💪"
+                )
+            else:
+                msg_streak = (
+                    f"🔥 *{nome}, sua ofensiva está em 0 dias no momento.*\n\n"
+                    f"Bora começar uma nova sequência hoje? Acesse seu treino e conclua a sessão no app: {APP_URL} 💪"
+                )
+            await whatsapp_service.send_text_message(instance, number, msg_streak)
+            return
+
+        if cmd in MENU_APP:
+            await whatsapp_service.send_text_message(
+                instance,
+                number,
+                (
+                    f"📲 *Acesso ao App Mr. Coach*\n\n"
+                    f"Entre pelo link: {APP_URL}\n"
+                    "Use seu e-mail cadastrado pelo treinador para visualizar sua ficha interativa, vídeos e registrar sua ofensiva! 💪"
+                ),
+            )
+            return
+
+        # ---------------------------------------------------------------------
+        # PASSO 2.2 — Trava Comercial da Fase 2 (Monetização por Plano)
+        # ---------------------------------------------------------------------
+        sub = await supabase_service.get_trainer_subscription(trainer_id)
+        plan_id = str(getattr(sub, "plan_id", "") or "").lower()
+        if plan_id == "starter" or plan_id not in PHASE2_ALLOWED_PLANS:
+            await whatsapp_service.send_text_message(
+                instance,
+                number,
+                f"Recebi sua mensagem! Já encaminhei para o seu treinador responder pessoalmente. Para ver sua ficha agora, digite *1* ou acesse: {APP_URL} 💪",
+            )
+            return
+
+        # ---------------------------------------------------------------------
+        # Consultor Ativo IA (Fase 2 — Planos Pro, Elite e Studio)
+        # ---------------------------------------------------------------------
         if not _within_limit(student["id"]):
             await whatsapp_service.send_text_message(
                 instance, number,
