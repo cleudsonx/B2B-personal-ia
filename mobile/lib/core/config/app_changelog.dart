@@ -38,6 +38,36 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
+      version: '1.3.12',
+      buildNumber: 2026102820,
+      date: '16 de Outubro, 2026',
+      summary:
+          'Fase A: Radar de Atendimento do Robô em tempo real, Botão de Teste 1-Clique no WhatsApp e Pílulas Omnichannel no Chat do Aluno.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.send_rounded,
+          title: 'Disparo de Teste no WhatsApp',
+          description:
+              'O treinador agora pode enviar uma mensagem de teste real diretamente para o seu próprio WhatsApp com 1 toque para confirmar que a automação está viva.',
+          badge: 'NOVO',
+        ),
+        ChangelogItem(
+          icon: Icons.insights_rounded,
+          title: 'Radar & Telemetria do Robô',
+          description:
+              'Extrato transparente com total de atendimentos realizados, alunos únicos e horas economizadas no mês, além do histórico das últimas conversas.',
+          badge: 'NOVO',
+        ),
+        ChangelogItem(
+          icon: Icons.touch_app_rounded,
+          title: 'Pílulas Rápidas no Chat do Aluno',
+          description:
+              'Atalhos ergonômicos na barra de digitação para o aluno consultar ficha, ofensiva ou pedir adaptação de máquina ocupada sem atrito.',
+          badge: 'MELHORIA',
+        ),
+      ],
+    ),
+    VersionRelease(
       version: '1.3.11',
       buildNumber: 2026102819,
       date: '16 de Outubro, 2026',

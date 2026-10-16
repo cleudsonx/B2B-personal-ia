@@ -24,6 +24,11 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
   String? _pairedPhoneDisplay;
   bool _isConnected = false;
   bool _checkingStatus = true;
+  bool _isSendingTest = false;
+  bool _isDisconnecting = false;
+  bool _loadingTelemetry = false;
+  Map<String, dynamic>? _telemetry;
+  List<dynamic> _logs = [];
 
   @override
   void initState() {
@@ -98,6 +103,9 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
           setState(() {
             _isConnected = connected;
           });
+          if (connected) {
+            _loadTelemetryAndLogs();
+          }
         }
       }
     } catch (_) {
@@ -106,6 +114,145 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
       if (mounted) {
         setState(() => _checkingStatus = false);
       }
+    }
+  }
+
+  Future<void> _loadTelemetryAndLogs() async {
+    try {
+      final token = Supabase.instance.client.auth.currentSession?.accessToken;
+      if (token == null) return;
+      if (mounted) setState(() => _loadingTelemetry = true);
+
+      final headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+
+      final telemFuture = http
+          .get(Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/telemetry'), headers: headers)
+          .timeout(const Duration(seconds: 12));
+      final logsFuture = http
+          .get(Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/logs?limit=15'), headers: headers)
+          .timeout(const Duration(seconds: 12));
+
+      final results = await Future.wait([telemFuture, logsFuture]);
+      if (results[0].statusCode == 200 && mounted) {
+        _telemetry = jsonDecode(results[0].body);
+      }
+      if (results[1].statusCode == 200 && mounted) {
+        final logsData = jsonDecode(results[1].body);
+        _logs = logsData['logs'] ?? [];
+      }
+    } catch (_) {
+      // Ignora erro silencioso de telemetria
+    } finally {
+      if (mounted) setState(() => _loadingTelemetry = false);
+    }
+  }
+
+  Future<void> _sendTestMessage() async {
+    setState(() => _isSendingTest = true);
+    try {
+      final token = Supabase.instance.client.auth.currentSession?.accessToken;
+      if (token == null) throw Exception('Sessão expirada. Faça login novamente.');
+
+      final response = await http.post(
+        Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/test-send'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 25));
+
+      if (response.statusCode == 200) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🚀 Mensagem de teste enviada com sucesso para o seu WhatsApp!'),
+            backgroundColor: MetaColors.emerald,
+            duration: Duration(seconds: 4),
+          ),
+        );
+        await _loadTelemetryAndLogs();
+      } else {
+        final err = jsonDecode(response.body);
+        throw Exception(err['detail'] ?? 'Falha ao enviar teste (${response.statusCode})');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro: ${e.toString().replaceFirst("Exception: ", "")}'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSendingTest = false);
+    }
+  }
+
+  Future<void> _disconnectInstance() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: MetaColors.surface,
+        title: const Text('Desconectar WhatsApp?', style: TextStyle(color: MetaColors.textPrimary)),
+        content: const Text(
+          'Isso removerá a sessão do robô no servidor para você poder gerar um novo código limpo.',
+          style: TextStyle(color: MetaColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar', style: TextStyle(color: MetaColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Desconectar', style: TextStyle(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isDisconnecting = true);
+    try {
+      final token = Supabase.instance.client.auth.currentSession?.accessToken;
+      if (token == null) throw Exception('Sessão expirada.');
+
+      final response = await http.delete(
+        Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/disconnect'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200 && mounted) {
+        setState(() {
+          _isConnected = false;
+          _pairingCode = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('WhatsApp desconectado com sucesso.'),
+            backgroundColor: MetaColors.surfaceHighlight,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao desconectar: $e'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDisconnecting = false);
     }
   }
 
@@ -443,20 +590,31 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: SquircleButton(
-                          label: 'Trocar Número / Gerar Novo Código',
-                          icon: Icons.sync_rounded,
+                          label: _isSendingTest
+                              ? 'Enviando Teste...'
+                              : '📲 Disparar Teste no Meu WhatsApp',
+                          icon: Icons.send_rounded,
+                          isPrimary: true,
+                          onPressed: _isSendingTest ? null : _sendTestMessage,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: SquircleButton(
+                          label: _isDisconnecting ? 'Desconectando...' : '⚠️ Desconectar e Limpar Sessão',
+                          icon: Icons.link_off_rounded,
                           isPrimary: false,
-                          onPressed: () {
-                            setState(() {
-                              _isConnected = false;
-                              _pairingCode = null;
-                            });
-                          },
+                          onPressed: _isDisconnecting ? null : _disconnectInstance,
                         ),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(height: 24),
+                _buildTelemetryCard(),
+                const SizedBox(height: 28),
+                _buildLogsSection(),
               ] else if (_pairingCode == null && !_isConnected) ...[
                 MetaCard(
                   child: TextField(
@@ -606,6 +764,250 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTelemetryCard() {
+    final interactions = _telemetry?['total_interactions'] ?? 0;
+    final students = _telemetry?['unique_students'] ?? 0;
+    final hours = _telemetry?['hours_saved'] ?? 0.0;
+
+    return MetaCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.insights_rounded, color: MetaColors.emerald, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'Impacto do Robô no Mês',
+                    style: TextStyle(
+                      color: MetaColors.textPrimary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                ],
+              ),
+              if (_loadingTelemetry)
+                const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: MetaColors.emerald),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildMetricTile(
+                  label: 'Atendimentos',
+                  value: '$interactions',
+                  icon: Icons.chat_bubble_outline_rounded,
+                  color: MetaColors.emerald,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildMetricTile(
+                  label: 'Alunos',
+                  value: '$students',
+                  icon: Icons.people_alt_outlined,
+                  color: MetaColors.accentBlue,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildMetricTile(
+                  label: 'Poupado',
+                  value: '${hours}h',
+                  icon: Icons.timelapse_rounded,
+                  color: const Color(0xFFF59E0B),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricTile({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: MetaColors.surfaceHighlight,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              color: MetaColors.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(
+              color: MetaColors.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'RADAR DO ROBÔ • ATENDIMENTOS',
+              style: TextStyle(
+                color: MetaColors.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.2,
+              ),
+            ),
+            IconButton(
+              tooltip: 'Atualizar histórico',
+              icon: const Icon(Icons.refresh_rounded, size: 18, color: MetaColors.textSecondary),
+              onPressed: _loadTelemetryAndLogs,
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (_logs.isEmpty)
+          MetaCard(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline_rounded, color: MetaColors.textSecondary.withValues(alpha: 0.7), size: 22),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Nenhum atendimento registrado ainda. Dispare uma mensagem de teste no botão acima ou peça para um aluno mandar "menu" no seu WhatsApp!',
+                    style: TextStyle(color: MetaColors.textSecondary, fontSize: 13, height: 1.4),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ..._logs.map((log) {
+            final studentName = log['student_name'] ?? 'Aluno';
+            final channel = log['channel'] ?? 'whatsapp';
+            final msgIn = log['message_in'] ?? '';
+            final msgOut = log['message_out'] ?? '';
+            final isFree = log['cost_type'] == 'free';
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: MetaCard(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              channel == 'whatsapp' ? Icons.chat_rounded : Icons.phone_android_rounded,
+                              size: 14,
+                              color: channel == 'whatsapp' ? MetaColors.emerald : MetaColors.accentBlue,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              studentName,
+                              style: const TextStyle(
+                                color: MetaColors.textPrimary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isFree
+                                ? MetaColors.emerald.withValues(alpha: 0.15)
+                                : MetaColors.accentBlue.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            isFree ? 'CUSTO ZERO' : 'GEMINI IA',
+                            style: TextStyle(
+                              color: isFree ? MetaColors.emerald : MetaColors.accentBlue,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: MetaColors.surfaceHighlight.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '👤 "$msgIn"',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: MetaColors.textSecondary,
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '🤖 $msgOut',
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: MetaColors.textPrimary,
+                        fontSize: 12,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+      ],
     );
   }
 }

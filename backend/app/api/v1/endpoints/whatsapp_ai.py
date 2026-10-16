@@ -167,17 +167,33 @@ async def _answer(instance: str, number: str, digits: str, question: str) -> Non
         nome = (student.get("full_name") or "Aluno").split()[0]
         cmd = _normalize_command(question)
 
+        async def _reply(text_to_send: str, cost: str = "free", tokens: int = 0):
+            await whatsapp_service.send_text_message(instance, number, text_to_send)
+            try:
+                await supabase_service.log_whatsapp_interaction(
+                    trainer_id=trainer_id,
+                    student_id=student.get("id"),
+                    student_name=student.get("full_name") or "Aluno",
+                    student_phone=digits,
+                    channel="whatsapp",
+                    message_in=question,
+                    message_out=text_to_send,
+                    cost_type=cost,
+                    tokens_used=tokens,
+                )
+            except Exception as log_err:
+                logger.debug(f"[WhatsAppAI] Falha ao gravar log transparente: {log_err}")
+
         # Se for o próprio treinador testando
         if student.get("role") == "trainer_self_test":
-            await whatsapp_service.send_text_message(
-                instance,
-                number,
+            await _reply(
                 (
                     f"🧪 *Teste de Conexão Bem-Sucedido!*\n\n"
                     f"Olá, {nome}! O seu Robô WhatsApp do Mr. Coach está 100% ativo e operacional.\n\n"
                     f"Quando seus alunos mandarem mensagem aqui, eles receberão o menu automático e você não gastará tokens de IA nos comandos rápidos (1 = Ver Treino, 2 = Streak 🔥).\n\n"
                     f"Tudo pronto para atender seus alunos!"
                 ),
+                cost="free",
             )
             return
 
@@ -185,9 +201,7 @@ async def _answer(instance: str, number: str, digits: str, question: str) -> Non
         # PASSO 2.1 — Triagem de Custo Zero (Menu Rápido sem consumo de tokens)
         # ---------------------------------------------------------------------
         if cmd in MENU_GREETINGS:
-            await whatsapp_service.send_text_message(
-                instance,
-                number,
+            await _reply(
                 (
                     f"Olá, {nome}! 💪 Sou o assistente automático do seu treinador no Mr. Coach.\n\n"
                     "Digite uma opção:\n"
@@ -196,22 +210,21 @@ async def _answer(instance: str, number: str, digits: str, question: str) -> Non
                     "*3* - Link do App\n\n"
                     "Ou envie sua dúvida sobre algum exercício!"
                 ),
+                cost="free",
             )
             return
 
         if cmd in MENU_WORKOUT:
             plan = await supabase_service.get_active_prescription(student["id"])
             if not plan:
-                await whatsapp_service.send_text_message(
-                    instance,
-                    number,
+                await _reply(
                     "Ainda não encontrei uma ficha ativa para você. Vou avisar seu professor! 💪",
+                    cost="free",
                 )
                 return
-            await whatsapp_service.send_text_message(
-                instance,
-                number,
+            await _reply(
                 f"📋 *Seu Treino Ativo*\n\n{_plan_summary(plan)}\n\n📲 Acesse completo no app: {APP_URL}",
+                cost="free",
             )
             return
 
@@ -233,18 +246,17 @@ async def _answer(instance: str, number: str, digits: str, question: str) -> Non
                     f"🔥 *{nome}, sua ofensiva está em 0 dias no momento.*\n\n"
                     f"Bora começar uma nova sequência hoje? Acesse seu treino e conclua a sessão no app: {APP_URL} 💪"
                 )
-            await whatsapp_service.send_text_message(instance, number, msg_streak)
+            await _reply(msg_streak, cost="free")
             return
 
         if cmd in MENU_APP:
-            await whatsapp_service.send_text_message(
-                instance,
-                number,
+            await _reply(
                 (
                     f"📲 *Acesso ao App Mr. Coach*\n\n"
                     f"Entre pelo link: {APP_URL}\n"
                     "Use seu e-mail cadastrado pelo treinador para visualizar sua ficha interativa, vídeos e registrar sua ofensiva! 💪"
                 ),
+                cost="free",
             )
             return
 
@@ -254,10 +266,9 @@ async def _answer(instance: str, number: str, digits: str, question: str) -> Non
         sub = await supabase_service.get_trainer_subscription(trainer_id)
         plan_id = str(getattr(sub, "plan_id", "") or "").lower()
         if plan_id == "starter" or plan_id not in PHASE2_ALLOWED_PLANS:
-            await whatsapp_service.send_text_message(
-                instance,
-                number,
+            await _reply(
                 f"Recebi sua mensagem! Já encaminhei para o seu treinador responder pessoalmente. Para ver sua ficha agora, digite *1* ou acesse: {APP_URL} 💪",
+                cost="free",
             )
             return
 
@@ -265,17 +276,17 @@ async def _answer(instance: str, number: str, digits: str, question: str) -> Non
         # Consultor Ativo IA (Fase 2 — Planos Pro, Elite e Studio)
         # ---------------------------------------------------------------------
         if not _within_limit(student["id"]):
-            await whatsapp_service.send_text_message(
-                instance, number,
+            await _reply(
                 "Você atingiu o limite de dúvidas de hoje 😊 Seu professor vai te responder em breve!",
+                cost="free",
             )
             return
 
         plan = await supabase_service.get_active_prescription(student["id"])
         if not plan:
-            await whatsapp_service.send_text_message(
-                instance, number,
+            await _reply(
                 "Ainda não encontrei uma ficha ativa para você. Vou avisar seu professor! 💪",
+                cost="free",
             )
             return
 
@@ -289,7 +300,7 @@ async def _answer(instance: str, number: str, digits: str, question: str) -> Non
         response = await gemini_service._generate_with_fallback_async(
             candidate_models=AI_MODELS, contents=prompt, config=config, per_model_timeout=12.0
         )
-        await whatsapp_service.send_text_message(instance, number, response.text.strip())
+        await _reply(response.text.strip(), cost="ai_gemini", tokens=len(response.text.split()))
     except Exception as e:
         logger.error(f"[WhatsAppAI] Falha ao responder: {e}")
 

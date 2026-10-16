@@ -1,6 +1,6 @@
 {
-  "version": "1.3.11",
-  "build": 2026102819,
-  "updated_at": "2026-10-16T14:44:51.883868Z",
-  "notes": "Vistoria e Blindagem do Robo WhatsApp e Suporte a Comandos Rapidos no Chat do App"
+  "version": "1.3.12",
+  "build": 2026102820,
+  "updated_at": "2026-10-16T17:07:19.465265Z",
+  "notes": "Fase A: Radar de Atendimento do Robo, Botao de Teste no WhatsApp e Pilulas Omnichannel"
 }

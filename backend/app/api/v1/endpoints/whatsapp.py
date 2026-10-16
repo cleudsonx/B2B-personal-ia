@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from app.api.deps import get_current_trainer
 from app.services.whatsapp_service import instance_name_for, whatsapp_service
+from app.services.supabase_service import supabase_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -126,5 +127,71 @@ async def notify_streak_risk(req: NotifyStreakRiskRequest, user: Dict[str, Any] 
         trainer_name=trainer_name,
     )
     return result
+
+
+class TestSendRequest(BaseModel):
+    phone: Optional[str] = None
+
+
+@router.post("/test-send")
+async def test_send_whatsapp(req: TestSendRequest = TestSendRequest(), user: Dict[str, Any] = Depends(get_current_trainer)):
+    """Dispara uma mensagem de teste real para o WhatsApp do treinador ou número indicado."""
+    trainer_id = _trainer_id(user)
+    instance = instance_name_for(trainer_id)
+
+    target_phone = req.phone
+    if not target_phone:
+        client = await supabase_service.get_client()
+        if client:
+            try:
+                prof = await client.table("profiles").select("phone, public_whatsapp, full_name").eq("id", trainer_id).maybe_single().execute()
+                if prof and prof.data:
+                    target_phone = prof.data.get("public_whatsapp") or prof.data.get("phone")
+            except Exception:
+                pass
+
+    if not target_phone:
+        raise HTTPException(status_code=400, detail="Nenhum número de telefone encontrado para envio do teste.")
+
+    clean_phone = whatsapp_service._format_phone(target_phone)
+    test_msg = (
+        "🧪 *Teste de Operação do Mr. Coach*\n\n"
+        "Olá, Professor! Seu robô de WhatsApp está 100% ativo e operacional.\n"
+        "Seus alunos já podem consultar fichas e tirar dúvidas automáticas com custo zero! 💪🚀"
+    )
+
+    try:
+        res = await whatsapp_service.send_text_message(instance, clean_phone, test_msg)
+        await supabase_service.log_whatsapp_interaction(
+            trainer_id=trainer_id,
+            student_id=None,
+            student_name="Teste do Treinador",
+            student_phone=clean_phone,
+            channel="whatsapp_test",
+            message_in="[Disparo Manual de Teste]",
+            message_out=test_msg,
+            cost_type="free",
+        )
+        return {"status": "success", "phone": clean_phone, "response": res}
+    except Exception as e:
+        logger.error(f"[WhatsApp] Erro ao disparar mensagem de teste: {e}")
+        raise HTTPException(status_code=502, detail=f"Falha ao enviar mensagem de teste via Evolution API: {e}")
+
+
+@router.get("/logs")
+async def get_whatsapp_logs(limit: int = 20, user: Dict[str, Any] = Depends(get_current_trainer)):
+    """Retorna os registros recentes de atendimentos do robô para dar total transparência ao professor."""
+    trainer_id = _trainer_id(user)
+    logs = await supabase_service.get_whatsapp_logs(trainer_id, limit=limit)
+    return {"logs": logs}
+
+
+@router.get("/telemetry")
+async def get_whatsapp_telemetry(user: Dict[str, Any] = Depends(get_current_trainer)):
+    """Retorna métricas de impacto comercial do robô (interações, alunos atendidos, tempo economizado)."""
+    trainer_id = _trainer_id(user)
+    data = await supabase_service.get_whatsapp_telemetry(trainer_id)
+    return data
+
 
 

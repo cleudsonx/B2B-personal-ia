@@ -1220,19 +1220,63 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
   Widget _buildFloatingPromptBar(BuildContext context, Color accentColor) {
     return SafeArea(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: MetaColors.bg(context),
           border: Border(
             top: BorderSide(color: MetaColors.cardBorder(context), width: 1),
           ),
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: MetaColors.highlight(context),
+            if (widget.isStudentView) ...[
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    _buildShortcutPill(
+                      context,
+                      icon: Icons.assignment_rounded,
+                      label: '📋 Ficha Ativa',
+                      onTap: () => _sendPrompt('1'),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildShortcutPill(
+                      context,
+                      icon: Icons.local_fire_department_rounded,
+                      label: '🔥 Ofensiva',
+                      color: const Color(0xFFF59E0B),
+                      onTap: () => _sendPrompt('2'),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildShortcutPill(
+                      context,
+                      icon: Icons.swap_horiz_rounded,
+                      label: '⚠️ Aparelho Ocupado',
+                      color: MetaColors.accentBlue,
+                      onTap: () => _sendPrompt('O aparelho que eu ia usar agora está ocupado na academia. Qual a melhor substituição?'),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildShortcutPill(
+                      context,
+                      icon: Icons.chat_rounded,
+                      label: '💬 Comandos WhatsApp',
+                      color: MetaColors.emerald,
+                      onTap: () => _sendPrompt('menu'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: MetaColors.highlight(context),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
                     color: MetaColors.cardBorder(context),
@@ -1284,6 +1328,45 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
               child: IconButton(
                 icon: const Icon(Icons.arrow_upward_rounded, size: 20, color: Colors.black),
                 onPressed: _isLoading ? null : () => _sendPrompt(),
+              ),
+            ),
+          ],
+        ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShortcutPill(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color? color,
+  }) {
+    final effectiveColor = color ?? MetaColors.emerald;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: effectiveColor.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: effectiveColor.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 13, color: effectiveColor),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                color: effectiveColor,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],

@@ -46,10 +46,10 @@ class AppConfig {
   static const String supabaseAnonKey = supabasePublishableKey;
 
   // Informações Oficiais de Versionamento (SemVer) & Build
-  static const String appVersion = '1.3.11';
-  static const int buildNumber = 2026102819;
+  static const String appVersion = '1.3.12';
+  static const int buildNumber = 2026102820;
   static const String buildDate = '16 de Outubro, 2026';
-  static const String releaseNotes = 'Vistoria e Blindagem do Robo WhatsApp e Suporte a Comandos Rapidos no Chat do App';
+  static const String releaseNotes = 'Fase A: Radar de Atendimento do Robo, Botao de Teste no WhatsApp e Pilulas Omnichannel';
 
   static String get fullVersionString => 'v$appVersion (Build $buildNumber)';
 }

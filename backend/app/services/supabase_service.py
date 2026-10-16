@@ -2100,6 +2100,79 @@ class SupabaseService:
             logger.error(f"Erro ao consultar sessões de treino para gamificação: {exc}")
             raise RuntimeError("Falha ao consultar sessões de treino para gamificação do aluno.") from exc
 
+    async def log_whatsapp_interaction(
+        self,
+        trainer_id: str,
+        student_id: Optional[str],
+        student_name: str,
+        student_phone: Optional[str],
+        channel: str,
+        message_in: str,
+        message_out: str,
+        cost_type: str = "free",
+        tokens_used: int = 0,
+    ) -> Dict[str, Any]:
+        """Registra interação do robô (WhatsApp ou App) para telemetria e transparência."""
+        log_entry = {
+            "id": str(uuid.uuid4()),
+            "trainer_id": to_valid_uuid_str(trainer_id),
+            "student_id": to_valid_uuid_str(student_id) if student_id and is_valid_uuid(student_id) else None,
+            "student_name": student_name or "Aluno",
+            "student_phone": student_phone or "",
+            "channel": channel,
+            "message_in": message_in,
+            "message_out": message_out,
+            "cost_type": cost_type,
+            "tokens_used": tokens_used,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        if not hasattr(self, "_mem_whatsapp_logs"):
+            self._mem_whatsapp_logs = []
+        self._mem_whatsapp_logs.insert(0, log_entry)
+        if len(self._mem_whatsapp_logs) > 500:
+            self._mem_whatsapp_logs = self._mem_whatsapp_logs[:500]
+
+        client = await self.get_client()
+        if client:
+            try:
+                await client.table("trainer_whatsapp_logs").insert(log_entry).execute()
+            except Exception as e:
+                logger.debug(f"[SupabaseService] Log em DB ignorado (tabela opcional): {e}")
+
+        return log_entry
+
+    async def get_whatsapp_logs(self, trainer_id: str, limit: int = 20) -> List[Dict[str, Any]]:
+        """Recupera os registros mais recentes de atendimento do robô."""
+        valid_tid = to_valid_uuid_str(trainer_id)
+        client = await self.get_client()
+        if client:
+            try:
+                res = await client.table("trainer_whatsapp_logs").select("*").eq("trainer_id", valid_tid).order("created_at", desc=True).limit(limit).execute()
+                if res.data:
+                    return res.data
+            except Exception:
+                pass
+
+        mem = getattr(self, "_mem_whatsapp_logs", [])
+        return [l for l in mem if l.get("trainer_id") == valid_tid][:limit]
+
+    async def get_whatsapp_telemetry(self, trainer_id: str) -> Dict[str, Any]:
+        """Calcula telemetria consolidada do robô."""
+        valid_tid = to_valid_uuid_str(trainer_id)
+        logs = await self.get_whatsapp_logs(valid_tid, limit=200)
+        total_interactions = len(logs)
+        unique_students = len(set(l.get("student_name") for l in logs if l.get("student_name")))
+        minutes_saved = total_interactions * 4
+        hours_saved = round(minutes_saved / 60, 1)
+
+        return {
+            "total_interactions": total_interactions,
+            "unique_students": unique_students,
+            "hours_saved": hours_saved,
+            "free_interactions_ratio": 1.0 if not logs else sum(1 for l in logs if l.get("cost_type") == "free") / len(logs),
+        }
+
 supabase_service = SupabaseService()
 
 
