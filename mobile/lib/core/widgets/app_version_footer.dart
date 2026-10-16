@@ -18,9 +18,14 @@ class AppVersionFooter extends StatelessWidget {
     this.padding = const EdgeInsets.only(top: 24, bottom: 32),
   });
 
+  /// Controla a exibição automática do modal de novidades.
+  /// Pode ser desativado em suítes de testes automatizados para evitar timers pendentes.
+  static bool enableAutoModal = true;
+
   /// Verifica se o usuário já viu as novidades desta versão. Se for a primeira vez,
   /// exibe o modal automaticamente após o carregamento da tela.
   static Future<void> checkAndShowAutoModal(BuildContext context) async {
+    if (!enableAutoModal) return;
     try {
       final prefs = await SharedPreferences.getInstance();
       final lastSeen = prefs.getInt(_lastSeenBuildKey) ?? 0;

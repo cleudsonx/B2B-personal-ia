@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:personal_ia/core/widgets/app_version_footer.dart';
 import 'package:personal_ia/features/client/active_workout_screen.dart';
 import 'package:personal_ia/services/workout_service.dart';
 import 'package:personal_ia/services/workout_session_service.dart';
@@ -38,7 +39,10 @@ WorkoutSessionRecord _record({String id = 'sess-1', String client = 'u1'}) =>
     );
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    AppVersionFooter.enableAutoModal = false;
+  });
 
   group('WorkoutSessionService', () {
     test('persistência confirmada => synced, com treino e professor reais',
