@@ -1,6 +1,6 @@
 {
-  "version": "1.3.3",
-  "build": 2026102810,
-  "updated_at": "2026-10-15T10:15:06.017299Z",
-  "notes": "Copiloto de Salão: Ações rápidas de academia sem redundância 3D e respostas scannable"
+  "version": "1.3.9",
+  "build": 2026102817,
+  "updated_at": "2026-10-16T05:28:40.128769Z",
+  "notes": "Correção na Conexão WhatsApp do Professor e Sincronização do Alerta de Versão iOS/Android"
 }
