@@ -10,6 +10,7 @@ import '../../trainer_students_screen.dart';
 import 'trainer_workouts_screen.dart';
 import 'trainer_social_screen.dart';
 import 'trainer_business_screen.dart';
+import '../../../../core/widgets/app_version_footer.dart';
 
 /// Layout base de navegação do aplicativo do Personal Trainer.
 ///
@@ -38,6 +39,11 @@ class _TrainerMainLayoutState extends State<TrainerMainLayout> {
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        AppVersionFooter.checkAndShowAutoModal(context);
+      }
+    });
   }
 
   void _onDestinationSelected(int index) {

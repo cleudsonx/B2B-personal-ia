@@ -11,6 +11,7 @@ import '../../core/widgets/rest_timer_sheet.dart';
 import '../../core/widgets/biomechanical_analysis_sheet.dart';
 import '../../core/widgets/server_config_dialog.dart';
 import '../../core/widgets/workout_guide_modal.dart';
+import '../../core/widgets/app_version_footer.dart';
 import '../../models/exercise_model.dart';
 import '../../models/split_model.dart';
 import '../../models/adaptation_model.dart';
@@ -60,6 +61,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       if (mounted && _startedAt != null) setState(() {});
     });
     _loadActiveWorkout();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        AppVersionFooter.checkAndShowAutoModal(context);
+      }
+    });
   }
 
   @override
