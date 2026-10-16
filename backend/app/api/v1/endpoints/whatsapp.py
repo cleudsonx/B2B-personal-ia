@@ -51,6 +51,12 @@ async def connect_whatsapp(req: ConnectRequest, user: Dict[str, Any] = Depends(g
                 data = await whatsapp_service.connect_instance(instance, number)
             else:
                 raise
+        # Garante registro do webhook na Evolution API mesmo em caso de reconexão
+        try:
+            await whatsapp_service.set_webhook(instance)
+        except Exception:
+            pass
+
         qr = data.get("qrcode") if isinstance(data.get("qrcode"), dict) else data
         return {
             "instance_name": instance,

@@ -38,6 +38,36 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
+      version: '1.3.11',
+      buildNumber: 2026102819,
+      date: '16 de Outubro, 2026',
+      summary:
+          'Blindagem de Webhook da Evolution API, busca resiliente de alunos por telefone e comandos inteligentes no Chat do Aluno.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.shield_rounded,
+          title: 'Blindagem do Robô WhatsApp',
+          description:
+              'Identificação ultra-resiliente de alunos mesmo com números salvos com traço ou espaço, suporte a convites pendentes e autoteste para o treinador.',
+          badge: 'CORREÇÃO',
+        ),
+        ChangelogItem(
+          icon: Icons.hub_rounded,
+          title: 'Registro Forçado de Webhook',
+          description:
+              'Garantia automática de registro do webhook na Evolution API ao conectar a instância, assegurando recebimento instantâneo de mensagens.',
+          badge: 'MELHORIA',
+        ),
+        ChangelogItem(
+          icon: Icons.smart_toy_rounded,
+          title: 'Guia Interativo no Chat do App',
+          description:
+              'O assistente do app agora orienta comandos de menu (1, 2, 3) instantaneamente e indica o canal correto do WhatsApp do seu treinador.',
+          badge: 'NOVO',
+        ),
+      ],
+    ),
+    VersionRelease(
       version: '1.3.10',
       buildNumber: 2026102818,
       date: '16 de Outubro, 2026',

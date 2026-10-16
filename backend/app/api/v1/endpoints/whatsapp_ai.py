@@ -61,15 +61,70 @@ def _within_limit(student_id: str) -> bool:
 
 async def _find_student_by_phone(digits: str, trainer_id: str) -> Optional[Dict[str, Any]]:
     client = await supabase_service.get_client()
-    if not client or len(digits) < 10:
+    clean_target = "".join(c for c in (digits or "") if c.isdigit())
+    if not client or len(clean_target) < 8:
         return None
-    suffix = digits[-9:]  # tolera DDI/DDD e nono dígito
-    res = await client.table("profiles").select("id, full_name, trainer_id, role, subscription_status") \
-        .eq("role", "client").eq("trainer_id", trainer_id).ilike("phone", f"%{suffix}").limit(1).execute()
-    student = res.data[0] if res.data else None
-    if student and str(student.get("subscription_status") or "").lower() == "suspended":
-        return None
-    return student
+
+    # 1. Verifica se quem está mandando mensagem é o próprio treinador (teste de conexão)
+    try:
+        t_res = await client.table("profiles").select("id, full_name, phone, public_whatsapp").eq("id", trainer_id).maybe_single().execute()
+        if t_res and t_res.data:
+            for field in ("phone", "public_whatsapp"):
+                t_ph = "".join(c for c in (t_res.data.get(field) or "") if c.isdigit())
+                if len(t_ph) >= 8 and t_ph[-8:] == clean_target[-8:]:
+                    return {
+                        "id": trainer_id,
+                        "full_name": t_res.data.get("full_name") or "Professor",
+                        "trainer_id": trainer_id,
+                        "role": "trainer_self_test",
+                    }
+    except Exception as e:
+        logger.warning(f"[WhatsAppAI] Erro ao checar autoteste do treinador: {e}")
+
+    # 2. Busca entre os alunos vinculados ao treinador (profiles)
+    try:
+        res = await client.table("profiles").select("id, full_name, trainer_id, role, subscription_status, phone") \
+            .eq("role", "client").eq("trainer_id", trainer_id).execute()
+        for p in res.data or []:
+            p_phone = "".join(c for c in (p.get("phone") or "") if c.isdigit())
+            if len(p_phone) >= 8 and p_phone[-8:] == clean_target[-8:]:
+                if str(p.get("subscription_status") or "").lower() == "suspended":
+                    return None
+                return p
+    except Exception as e:
+        logger.warning(f"[WhatsAppAI] Erro ao buscar alunos vinculados: {e}")
+
+    # 3. Busca entre os convites pendentes do treinador (invite_tokens)
+    try:
+        inv_res = await client.table("invite_tokens").select("id, target_name, trainer_id, target_phone") \
+            .eq("trainer_id", trainer_id).is_("used_at", "null").execute()
+        for inv in inv_res.data or []:
+            inv_phone = "".join(c for c in (inv.get("target_phone") or "") if c.isdigit())
+            if len(inv_phone) >= 8 and inv_phone[-8:] == clean_target[-8:]:
+                return {
+                    "id": inv["id"],
+                    "full_name": inv.get("target_name") or "Aluno",
+                    "trainer_id": trainer_id,
+                    "role": "client",
+                    "is_pending_invite": True,
+                }
+    except Exception as e:
+        logger.warning(f"[WhatsAppAI] Erro ao buscar invite_tokens: {e}")
+
+    # 4. Fallback: busca em qualquer perfil de cliente no sistema cujo telefone coincida
+    try:
+        all_res = await client.table("profiles").select("id, full_name, trainer_id, role, subscription_status, phone") \
+            .eq("role", "client").execute()
+        for p in all_res.data or []:
+            p_phone = "".join(c for c in (p.get("phone") or "") if c.isdigit())
+            if len(p_phone) >= 8 and p_phone[-8:] == clean_target[-8:]:
+                if str(p.get("subscription_status") or "").lower() == "suspended":
+                    return None
+                return p
+    except Exception as e:
+        logger.warning(f"[WhatsAppAI] Erro ao buscar fallback de cliente: {e}")
+
+    return None
 
 
 def _plan_summary(plan) -> str:
@@ -103,13 +158,28 @@ async def _answer(instance: str, number: str, digits: str, question: str) -> Non
         trainer_id = trainer_id_from_instance(instance)
         if not trainer_id:
             return
-        # Só atende alunos VINCULADOS ao professor dono desta instância.
+        # Identifica o aluno ou professor
         student = await _find_student_by_phone(digits, trainer_id)
         if not student:
+            logger.info(f"[WhatsAppAI] Mensagem ignorada de número não cadastrado: {digits}")
             return  # número desconhecido: silêncio (evita custo e spam)
 
         nome = (student.get("full_name") or "Aluno").split()[0]
         cmd = _normalize_command(question)
+
+        # Se for o próprio treinador testando
+        if student.get("role") == "trainer_self_test":
+            await whatsapp_service.send_text_message(
+                instance,
+                number,
+                (
+                    f"🧪 *Teste de Conexão Bem-Sucedido!*\n\n"
+                    f"Olá, {nome}! O seu Robô WhatsApp do Mr. Coach está 100% ativo e operacional.\n\n"
+                    f"Quando seus alunos mandarem mensagem aqui, eles receberão o menu automático e você não gastará tokens de IA nos comandos rápidos (1 = Ver Treino, 2 = Streak 🔥).\n\n"
+                    f"Tudo pronto para atender seus alunos!"
+                ),
+            )
+            return
 
         # ---------------------------------------------------------------------
         # PASSO 2.1 — Triagem de Custo Zero (Menu Rápido sem consumo de tokens)

@@ -151,17 +151,60 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
 
     final detectedExercise = _detectExerciseInText(text);
 
-    setState(() {
-      _messages.add(
-        _ChatMessage(
-          text: text,
-          isUser: true,
-          detectedExercise: detectedExercise,
-        ),
-      );
-      _isLoading = true;
-      if (textOverride == null) _promptCtrl.clear();
-    });
+    final normalized = text.toLowerCase().trim();
+    if (widget.isStudentView) {
+      if (normalized == 'menu' ||
+          normalized == 'ajuda' ||
+          normalized == '0' ||
+          normalized == 'oi' ||
+          normalized == 'olá' ||
+          normalized == 'ola') {
+        setState(() {
+          _messages.add(
+            _ChatMessage(
+              text: '💪 **Olá! Eu sou o Copiloto de Treino do Mr. Coach.**\n\n'
+                  'Aqui dentro do app você pode tirar dúvidas em tempo real:\n'
+                  '• Digite o nome de um exercício para ver postura e ativação 3D (ex: *Supino*, *Leg Press*)\n'
+                  '• Digite *Ocupado* se o aparelho estiver cheio para ver uma adaptação biomecânica instantânea!\n\n'
+                  '📲 **No WhatsApp:** Caso você mande mensagem direto no **WhatsApp do seu treinador**, você pode usar os comandos rápidos:\n'
+                  '*1* - Ver ficha de treino\n'
+                  '*2* - Ver ofensiva (Streak 🔥)\n'
+                  '*3* - Link de acesso do app',
+              isUser: false,
+            ),
+          );
+          _isLoading = false;
+        });
+        return;
+      } else if (normalized == '1' || normalized == 'treino' || normalized == 'ficha') {
+        setState(() {
+          _messages.add(
+            _ChatMessage(
+              text: '📋 **Seu Treino Ativo**\n\n'
+                  'Você pode acompanhar sua ficha completa, marcar séries e acionar o timer de descanso tocando na aba **Treino** (ícone de halter na barra inferior).\n\n'
+                  '💡 Se preferir receber o resumo da ficha por mensagem, basta mandar *1* no WhatsApp do seu treinador!',
+              isUser: false,
+            ),
+          );
+          _isLoading = false;
+        });
+        return;
+      } else if (normalized == '2' || normalized == 'streak' || normalized == 'ofensiva') {
+        setState(() {
+          _messages.add(
+            _ChatMessage(
+              text: '🔥 **Ofensiva & Consistência**\n\n'
+                  'Sua ofensiva é contabilizada a cada treino concluído na aba **Treino**!\n'
+                  'Mantenha a frequência para acumular dias seguidos de treino sem zerar o foguinho.\n\n'
+                  '💡 Você também pode digitar *2* no WhatsApp do seu treinador para consultar seu streak.',
+              isUser: false,
+            ),
+          );
+          _isLoading = false;
+        });
+        return;
+      }
+    }
 
     try {
       final promptWithContext =

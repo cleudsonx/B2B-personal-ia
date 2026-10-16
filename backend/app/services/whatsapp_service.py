@@ -78,6 +78,31 @@ class WhatsAppService:
             r.raise_for_status()
             return r.json()
 
+    async def set_webhook(self, instance_name: str) -> dict:
+        """Configura ou atualiza o webhook na Evolution API para receber mensagens em tempo real."""
+        if self.provider == "mock":
+            return {"status": "mock"}
+        backend_url = settings.PUBLIC_BACKEND_URL or "https://b2b-personal-ia-backend.onrender.com"
+        webhook_token = settings.EVOLUTION_WEBHOOK_TOKEN or "mrcoach_evolution_webhook_sec_2026_tok"
+        payload = {
+            "webhook": {
+                "enabled": True,
+                "url": f"{backend_url.rstrip('/')}/api/v1/whatsapp/webhook",
+                "byEvents": False,
+                "base64": False,
+                "headers": {"apikey": webhook_token},
+                "events": ["MESSAGES_UPSERT"],
+            }
+        }
+        async with httpx.AsyncClient(timeout=20) as client:
+            try:
+                r = await client.post(f"{self._base()}/webhook/set/{instance_name}", headers=self._headers(), json=payload)
+                r.raise_for_status()
+                return r.json()
+            except Exception as e:
+                logger.warning("[WhatsApp] Falha ao configurar webhook para %s: %s", instance_name, e)
+                return {"status": "error", "error": str(e)}
+
     async def get_instance_state(self, instance_name: str) -> dict:
         if self.provider == "mock":
             return {"status": "connected", "instanceName": instance_name, "mode": "mock"}
