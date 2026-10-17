@@ -38,8 +38,8 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
-      version: '1.4.1',
-      buildNumber: 2026102874,
+      version: '1.4.2',
+      buildNumber: 2026102875,
       date: '17 de Outubro, 2026',
       summary:
           'Checkout Asaas Transparente: Pix & Cartão centralizados na conta oficial, detecção automática de bandeiras, máscaras e validação obrigatória de CPF/CNPJ.',

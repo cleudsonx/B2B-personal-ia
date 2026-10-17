@@ -46,10 +46,10 @@ class AppConfig {
   static const String supabaseAnonKey = supabasePublishableKey;
 
   // Informações Oficiais de Versionamento (SemVer) & Build
-  static const String appVersion = '1.4.1';
-  static const int buildNumber = 2026102874;
+  static const String appVersion = '1.4.2';
+  static const int buildNumber = 2026102875;
   static const String buildDate = '17 de Outubro, 2026';
-  static const String releaseNotes = 'Checkout Asaas Transparente: Pix & Cartao centralizados, mascaras mobile e campo CPF/CNPJ';
+  static const String releaseNotes = 'Correcao Checkout: campos de CEP e Numero adicionados e Pix desbloqueado sem dead-end de CPF';
 
   static String get fullVersionString => 'v$appVersion (Build $buildNumber)';
 }

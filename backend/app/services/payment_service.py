@@ -774,6 +774,8 @@ class PaymentProviderService:
         clean_phone = normalize_br_phone(holder_phone)
         clean_cep = normalize_cep(holder_postal_code)
         clean_addr_number = (holder_address_number or "").strip()[:10]
+        if not clean_addr_number:
+            clean_addr_number = "S/N"
 
         if asaas_key and is_production:
             if not clean_doc:
@@ -781,9 +783,7 @@ class PaymentProviderService:
             if not clean_phone:
                 raise ValueError("Informe um celular válido com DDD.")
             if not clean_cep:
-                raise ValueError("Informe um CEP válido com 8 dígitos.")
-            if not clean_addr_number:
-                raise ValueError("Informe o número do endereço de cobrança (ou S/N).")
+                raise ValueError("Informe o CEP de cobrança do cartão (8 dígitos).")
 
         if asaas_key and clean_doc and clean_phone and clean_cep and clean_addr_number:
             base_url = resolve_asaas_base_url(asaas_key, getattr(settings, "ASAAS_API_URL", ""))

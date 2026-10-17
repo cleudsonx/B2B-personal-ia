@@ -872,12 +872,19 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
   final TextEditingController _cvvController = TextEditingController();
   final TextEditingController _cpfCnpjController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _postalCodeController = TextEditingController();
+  final TextEditingController _addressNumberController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _prefillUserData();
-    _createSession();
+    final cleanCpf = _cpfCnpjController.text.replaceAll(RegExp(r'\D'), '');
+    if (_paymentMethod == 'pix' && (cleanCpf.length == 11 || cleanCpf.length == 14)) {
+      _createSession();
+    } else {
+      _isLoading = false;
+    }
   }
 
   void _prefillUserData() {
@@ -906,6 +913,19 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
           _cpfCnpjController.text = cpf;
         }
       }
+      final postalCode = (meta['postal_code'] as String?) ?? (meta['cep'] as String?) ?? '';
+      if (postalCode.isNotEmpty) {
+        final digits = postalCode.replaceAll(RegExp(r'\D'), '');
+        if (digits.length == 8) {
+          _postalCodeController.text = '${digits.substring(0, 5)}-${digits.substring(5)}';
+        } else {
+          _postalCodeController.text = postalCode;
+        }
+      }
+      final addrNum = (meta['address_number'] as String?) ?? (meta['numero'] as String?) ?? '';
+      if (addrNum.isNotEmpty) {
+        _addressNumberController.text = addrNum;
+      }
     }
   }
 
@@ -918,6 +938,8 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
     _cvvController.dispose();
     _cpfCnpjController.dispose();
     _phoneController.dispose();
+    _postalCodeController.dispose();
+    _addressNumberController.dispose();
     super.dispose();
   }
 
@@ -1040,18 +1062,26 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
       return;
     }
 
+    final cleanCpf = _cpfCnpjController.text.replaceAll(RegExp(r'\D'), '');
+    if (cleanCpf.length != 11 && cleanCpf.length != 14) {
+      setState(() {
+        _checkoutError = 'Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) para emitir o Pix.';
+        _isLoading = false;
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _checkoutError = null;
     });
     try {
-      final cleanCpf = _cpfCnpjController.text.replaceAll(RegExp(r'\D'), '');
       final session = await SubscriptionService.createCheckoutSession(
         planId: widget.plan.id,
         billingInterval: widget.isYearly ? 'yearly' : 'monthly',
         paymentMethod: _paymentMethod,
         provider: 'asaas',
-        cpfCnpj: cleanCpf.isNotEmpty ? cleanCpf : null,
+        cpfCnpj: cleanCpf,
       );
       if (session.sessionId.isEmpty ||
           (_paymentMethod == 'pix' &&
@@ -1063,6 +1093,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
       setState(() {
         _session = session;
         _isLoading = false;
+        _checkoutError = null;
       });
       if (_paymentMethod == 'pix') {
         _startPixPolling();
@@ -1087,6 +1118,8 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
     final cvv = _cvvController.text.trim();
     final cleanCpf = _cpfCnpjController.text.replaceAll(RegExp(r'\D'), '');
     final cleanPhone = _phoneController.text.replaceAll(RegExp(r'\D'), '');
+    final cleanCep = _postalCodeController.text.replaceAll(RegExp(r'\D'), '');
+    final addrNumber = _addressNumberController.text.trim();
 
     if (rawNumber.length < 13 || rawNumber.length > 19) {
       _showError('Por favor, digite um número de cartão válido.');
@@ -1114,6 +1147,10 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
       _showError('O campo CPF ou CNPJ do titular é obrigatório para emissão da assinatura.');
       return;
     }
+    if (cleanCep.length != 8) {
+      _showError('Informe o CEP de cobrança do cartão com 8 dígitos.');
+      return;
+    }
 
     final month = parts[0].trim();
     final year = parts[1].trim();
@@ -1131,6 +1168,8 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
         ccv: cvv,
         holderCpf: cleanCpf,
         holderPhone: cleanPhone.isNotEmpty ? cleanPhone : null,
+        holderPostalCode: cleanCep,
+        holderAddressNumber: addrNumber.isNotEmpty ? addrNumber : 'S/N',
       );
 
       if (mounted) {
@@ -1347,46 +1386,44 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                       color: MetaColors.emerald,
                     ),
                   )
-                : _checkoutError != null
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.error_outline,
-                                color: Colors.orange,
-                                size: 40,
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                _checkoutError!,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: MetaColors.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              OutlinedButton.icon(
-                                onPressed: _createSession,
-                                icon: const Icon(Icons.refresh),
-                                label: const Text('Tentar novamente'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : SingleChildScrollView(
+                : SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
                     padding: EdgeInsets.only(
                       left: 20,
                       right: 20,
                       bottom: bottomPadding + 20,
                     ),
-                    child: _paymentMethod == 'pix'
-                        ? _buildPixContent()
-                        : _buildCreditCardContent(amount),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (_checkoutError != null) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _checkoutError!,
+                                    style: const TextStyle(color: MetaColors.textPrimary, fontSize: 12.5),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                        ],
+                        _paymentMethod == 'pix'
+                            ? _buildPixContent()
+                            : _buildCreditCardContent(amount),
+                      ],
+                    ),
                   ),
           ),
         ],
@@ -1820,6 +1857,57 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
             helperStyle: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
           ),
         ),
+        const SizedBox(height: 14),
+
+        // Endereço de Cobrança do Cartão (Exigido pelo Asaas e Antifraude)
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: TextFormField(
+                controller: _postalCodeController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  PostalCodeInputFormatter(),
+                ],
+                style: const TextStyle(color: MetaColors.textPrimary),
+                decoration: const InputDecoration(
+                  labelText: 'CEP da Fatura *',
+                  hintText: '00000-000',
+                  prefixIcon: Icon(
+                    Icons.location_on_outlined,
+                    color: MetaColors.textSecondary,
+                    size: 20,
+                  ),
+                  helperText: 'Exigido pelo banco do cartão',
+                  helperStyle: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: TextFormField(
+                controller: _addressNumberController,
+                keyboardType: TextInputType.text,
+                style: const TextStyle(color: MetaColors.textPrimary),
+                decoration: const InputDecoration(
+                  labelText: 'Número',
+                  hintText: 'Ex: 100',
+                  prefixIcon: Icon(
+                    Icons.home_outlined,
+                    color: MetaColors.textSecondary,
+                    size: 20,
+                  ),
+                  helperText: 'Ou S/N',
+                  helperStyle: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                ),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 22),
 
         // Botão de Confirmação In-App
@@ -1936,6 +2024,28 @@ class PhoneInputFormatter extends TextInputFormatter {
       } else {
         if (i == 6) buffer.write('-');
       }
+      buffer.write(digits[i]);
+    }
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
+class PostalCodeInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    if (digits.length > 8) return oldValue;
+
+    final buffer = StringBuffer();
+    for (int i = 0; i < digits.length; i++) {
+      if (i == 5) buffer.write('-');
       buffer.write(digits[i]);
     }
     final formatted = buffer.toString();
