@@ -74,27 +74,40 @@ void main(List<String> args) {
     exit(1);
   }
 
-  // 4. Calcula novo buildNumber (estritamente monotônico e seguro para 32-bit int)
+  // 4. Calcula novo buildNumber (estritamente monotônico a cada commit/deploy e seguro para 32-bit int)
   final now = DateTime.now().toUtc();
   final year = now.year.toString().padLeft(4, '0');
   final month = now.month.toString().padLeft(2, '0');
   final day = now.day.toString().padLeft(2, '0');
-  final todayPrefix = '$year$month$day'; // ex: 20261015
+  final todayPrefix = '$year$month$day'; // ex: 20261017
+
+  int gitCommitCount = 0;
+  try {
+    final res = Process.runSync('git', ['rev-list', '--count', 'HEAD'], workingDirectory: mobileDir.path);
+    if (res.exitCode == 0) {
+      gitCommitCount = int.tryParse(res.stdout.toString().trim()) ?? 0;
+    }
+  } catch (_) {}
 
   int newBuildNumber;
   final currentBuildStr = currentBuild.toString();
 
   if (currentBuildStr.length == 10 && currentBuildStr.startsWith(todayPrefix)) {
-    // Mesmo dia: incrementa sufixo
     newBuildNumber = currentBuild + 1;
   } else {
-    // Novo dia: tenta iniciar em YYYYMMDD01
     final candidate = int.parse('${todayPrefix}01');
     if (candidate > currentBuild) {
       newBuildNumber = candidate;
     } else {
-      // Se por qualquer motivo currentBuild for maior (ex: data futura mockada), nunca regride
       newBuildNumber = currentBuild + 1;
+    }
+  }
+
+  // Garante incremento automático mesmo quando o CI roda sem commitar pubspec.yaml de volta:
+  if (gitCommitCount > 0) {
+    final commitBasedBuild = 2026102600 + gitCommitCount;
+    if (commitBasedBuild > newBuildNumber) {
+      newBuildNumber = commitBasedBuild;
     }
   }
 
@@ -141,6 +154,22 @@ void main(List<String> args) {
     }
     appConfigFile.writeAsStringSync(configContent);
     stdout.writeln('✅ Atualizado: mobile/lib/core/config/app_config.dart');
+  }
+
+  // 6.1 Atualiza o topo de lib/core/config/app_changelog.dart para manter buildNumber sincronizado
+  final changelogFile = File('${mobileDir.path}/lib/core/config/app_changelog.dart');
+  if (changelogFile.existsSync()) {
+    var changelogContent = changelogFile.readAsStringSync();
+    changelogContent = changelogContent.replaceFirst(
+      RegExp(r"version:\s*'[^']+'"),
+      "version: '$targetSemVer'",
+    );
+    changelogContent = changelogContent.replaceFirst(
+      RegExp(r'buildNumber:\s*[0-9]+'),
+      'buildNumber: $newBuildNumber',
+    );
+    changelogFile.writeAsStringSync(changelogContent);
+    stdout.writeln('✅ Atualizado: mobile/lib/core/config/app_changelog.dart');
   }
 
   // 7. Atualiza web/version.json

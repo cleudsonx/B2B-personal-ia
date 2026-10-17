@@ -32,6 +32,7 @@ import 'core/theme/theme_controller.dart';
 import 'core/widgets/theme_toggle_button.dart';
 import 'core/widgets/pwa_update_wrapper.dart';
 import 'core/widgets/workout_guide_modal.dart';
+import 'core/widgets/app_version_footer.dart';
 
 import 'package:flutter/services.dart';
 import 'features/invite/invite_landing_screen.dart';
@@ -204,6 +205,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
     super.initState();
     _currentIndex = widget.initialIndex;
     _activeRole = widget.activeRole;
+    if (!_isTrainer) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          AppVersionFooter.checkAndShowAutoModal(context);
+        }
+      });
+    }
   }
 
   bool get _isTrainer => _activeRole == 'trainer';

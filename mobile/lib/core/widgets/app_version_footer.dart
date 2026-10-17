@@ -29,7 +29,9 @@ class AppVersionFooter extends StatelessWidget {
     try {
       final prefs = await SharedPreferences.getInstance();
       final lastSeen = prefs.getInt(_lastSeenBuildKey) ?? 0;
-      final currentBuild = AppChangelog.current.buildNumber;
+      final currentBuild = AppConfig.buildNumber > AppChangelog.current.buildNumber
+          ? AppConfig.buildNumber
+          : AppChangelog.current.buildNumber;
 
       if (currentBuild > lastSeen) {
         await prefs.setInt(_lastSeenBuildKey, currentBuild);

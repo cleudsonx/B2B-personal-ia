@@ -38,6 +38,36 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
+      version: '1.3.14',
+      buildNumber: 2026102869,
+      date: '17 de Outubro, 2026',
+      summary:
+          'Cockpit de Prescrição na Aba Treinos, Guia Interativo 360º do Aluno, Link 1-Toque na Vitrine, Nova Aba Conta e Sincronização Global de WhatsApp.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.dashboard_customize_rounded,
+          title: 'Cockpit de Prescrição & Vigência (Aba Treinos)',
+          description:
+              'Painel executivo com KPIs em tempo real (Fichas em Dia, Renovação e Fila), filtros inteligentes de vigência de 30 dias e renovação rápida com 1 toque.',
+          badge: 'NOVO',
+        ),
+        ChangelogItem(
+          icon: Icons.storefront_rounded,
+          title: 'Link de Vendas 1-Toque na Vitrine & Nova Aba Conta',
+          description:
+              'Botão instantâneo para copiar o link público de vendas na Vitrine B2B e reorganização executiva dos 5 cartões principais na aba Conta.',
+          badge: 'MELHORIA',
+        ),
+        ChangelogItem(
+          icon: Icons.menu_book_rounded,
+          title: 'Guia Interativo 360º (Pré, Durante e Pós-Treino)',
+          description:
+              'Novo manual interativo em 4 abas para orientar o aluno antes, durante e após o treino, além de sincronização global de telefone em todo o sistema.',
+          badge: 'UX',
+        ),
+      ],
+    ),
+    VersionRelease(
       version: '1.3.13',
       buildNumber: 2026102821,
       date: '16 de Outubro, 2026',
