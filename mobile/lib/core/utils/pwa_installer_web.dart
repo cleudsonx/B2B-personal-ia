@@ -58,6 +58,9 @@ external JSBoolean? _jsHasPendingUpdate;
 @JS('window.triggerPwaReload')
 external JSFunction? _jsTriggerPwaReload;
 
+@JS('window._onPwaUpdateAvailable')
+external set _jsOnPwaUpdateAvailable(JSFunction? callback);
+
 @JS('window.location.reload')
 external void _jsLocationReload();
 
@@ -67,6 +70,14 @@ bool hasPendingUpdate() {
   } catch (_) {
     return false;
   }
+}
+
+void onPwaUpdateAvailable(void Function() callback) {
+  try {
+    _jsOnPwaUpdateAvailable = (() {
+      callback();
+    }).toJS;
+  } catch (_) {}
 }
 
 void triggerPwaReload() {

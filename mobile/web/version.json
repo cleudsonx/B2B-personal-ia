@@ -1,6 +1,6 @@
 {
-  "version": "1.4.2",
-  "build": 2026102875,
-  "updated_at": "2026-10-17T15:14:51.371848Z",
-  "notes": "Correcao Checkout: campos de CEP e Numero adicionados e Pix desbloqueado sem dead-end de CPF"
+  "version": "1.4.3",
+  "build": 2026102876,
+  "updated_at": "2026-10-17T15:36:00.000000Z",
+  "notes": "Unificacao de alerta PWA: mantido unico banner elegante e nativo de atualizacao"
 }

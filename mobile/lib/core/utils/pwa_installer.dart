@@ -40,6 +40,12 @@ class PwaInstaller {
     return impl.hasPendingUpdate();
   }
 
+  /// Registra um callback disparado no momento em que uma nova versão do PWA for detectada.
+  static void onPwaUpdateAvailable(void Function() callback) {
+    if (!kIsWeb) return;
+    impl.onPwaUpdateAvailable(callback);
+  }
+
   /// Recarrega a aplicação limpando caches de assets PWA para aplicar nova versão.
   static void triggerPwaReload() {
     if (!kIsWeb) return;

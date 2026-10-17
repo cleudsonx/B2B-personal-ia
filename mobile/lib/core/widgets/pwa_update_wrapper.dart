@@ -58,10 +58,27 @@ class _PwaUpdateWrapperState extends State<PwaUpdateWrapper> with WidgetsBinding
     super.initState();
     if (kIsWeb) {
       WidgetsBinding.instance.addObserver(this);
-      // Checagem inicial após 2 segundos
-      Future.delayed(const Duration(seconds: 2), _checkForUpdate);
-      // Checagem periódica a cada 2 minutos
-      _checkTimer = Timer.periodic(const Duration(minutes: 2), (_) => _checkForUpdate());
+
+      // Checagem imediata se o Service Worker já sinalizou update pendente
+      if (PwaInstaller.hasPendingUpdate) {
+        PwaUpdateNotifier.instance.setUpdateAvailable(
+          AppConfig.appVersion,
+          AppConfig.buildNumber + 1,
+        );
+      }
+
+      // Registro de callback imediato do Service Worker (via JS hook)
+      PwaInstaller.onPwaUpdateAvailable(() {
+        PwaUpdateNotifier.instance.setUpdateAvailable(
+          AppConfig.appVersion,
+          AppConfig.buildNumber + 1,
+        );
+      });
+
+      // Checagem inicial via version.json após 1.5 segundos
+      Future.delayed(const Duration(milliseconds: 1500), _checkForUpdate);
+      // Checagem periódica a cada 1 minuto
+      _checkTimer = Timer.periodic(const Duration(minutes: 1), (_) => _checkForUpdate());
     }
   }
 
@@ -98,6 +115,8 @@ class _PwaUpdateWrapperState extends State<PwaUpdateWrapper> with WidgetsBinding
 
         if (serverBuild > AppConfig.buildNumber) {
           PwaUpdateNotifier.instance.setUpdateAvailable(serverVersion, serverBuild);
+        } else if (PwaInstaller.hasPendingUpdate) {
+          PwaUpdateNotifier.instance.setUpdateAvailable(AppConfig.appVersion, AppConfig.buildNumber + 1);
         }
       }
     } catch (_) {

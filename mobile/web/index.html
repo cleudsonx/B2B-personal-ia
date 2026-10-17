@@ -45,128 +45,6 @@
       user-select: none;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
-
-    /* PWA Update Banner - Meta / Dark Obsidian Style */
-    .pwa-update-banner {
-      position: fixed;
-      top: max(16px, env(safe-area-inset-top));
-      left: 50%;
-      transform: translate(-50%, -30px);
-      width: calc(100% - 32px);
-      max-width: 460px;
-      background: rgba(18, 18, 18, 0.94);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(16, 185, 129, 0.45);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 0 20px rgba(16, 185, 129, 0.15);
-      border-radius: 18px;
-      padding: 12px 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      z-index: 9999999;
-      opacity: 0;
-      pointer-events: none;
-      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
-      box-sizing: border-box;
-    }
-
-    .pwa-update-banner.visible {
-      transform: translate(-50%, 0);
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .pwa-update-content {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex: 1;
-      min-width: 0;
-    }
-
-    .pwa-update-icon {
-      font-size: 22px;
-      line-height: 1;
-      flex-shrink: 0;
-    }
-
-    .pwa-update-text {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      overflow: hidden;
-    }
-
-    .pwa-update-text strong {
-      color: #FFFFFF;
-      font-size: 13.5px;
-      font-weight: 700;
-      letter-spacing: -0.2px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .pwa-update-text span {
-      color: rgba(255, 255, 255, 0.7);
-      font-size: 11.5px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .pwa-update-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-shrink: 0;
-    }
-
-    .pwa-update-btn {
-      background: #10B981;
-      color: #FFFFFF;
-      border: none;
-      border-radius: 12px;
-      padding: 9px 14px;
-      font-size: 12.5px;
-      font-weight: 700;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background 0.2s ease, transform 0.1s ease;
-      outline: none;
-      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
-    }
-
-    .pwa-update-btn:hover {
-      background: #059669;
-    }
-
-    .pwa-update-btn:active {
-      transform: scale(0.97);
-    }
-
-    .pwa-dismiss-btn {
-      background: transparent;
-      border: none;
-      color: rgba(255, 255, 255, 0.5);
-      font-size: 20px;
-      line-height: 1;
-      width: 28px;
-      height: 28px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      border-radius: 50%;
-      transition: color 0.2s, background 0.2s;
-    }
-
-    .pwa-dismiss-btn:hover {
-      color: #FFFFFF;
-      background: rgba(255, 255, 255, 0.1);
-    }
   </style>
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -194,21 +72,6 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
-  <!-- Banner Sutil de Auto-Update do PWA -->
-  <div id="pwa-update-banner" class="pwa-update-banner" role="alert" aria-live="assertive">
-    <div class="pwa-update-content">
-      <span class="pwa-update-icon">🚀</span>
-      <div class="pwa-update-text">
-        <strong>Nova versão do Mr. Coach disponível!</strong>
-        <span>Toque para carregar as últimas atualizações.</span>
-      </div>
-    </div>
-    <div class="pwa-update-actions">
-      <button id="pwa-update-btn" class="pwa-update-btn" type="button">Atualizar Agora</button>
-      <button id="pwa-update-dismiss" class="pwa-dismiss-btn" type="button" aria-label="Fechar">&times;</button>
-    </div>
-  </div>
-
   <script>
     // Gerenciador de Instalação PWA
     window.pwaDeferredPrompt = null;
@@ -234,44 +97,27 @@
 
     // =========================================================================
     // Auto-Update Detector PWA (Padrão Ouro da Indústria)
-    // Monitora atualizações no Service Worker em segundo plano e notifica o usuário
+    // Monitora atualizações no Service Worker em segundo plano e notifica a UI
     // =========================================================================
     (function initPwaUpdateDetector() {
       let waitingWorker = null;
       let isRefreshing = false;
 
-      const banner = document.getElementById('pwa-update-banner');
-      const updateBtn = document.getElementById('pwa-update-btn');
-      const dismissBtn = document.getElementById('pwa-update-dismiss');
-
-      function showUpdateBanner(worker) {
-        waitingWorker = worker;
-        if (banner) {
-          banner.classList.add('visible');
+      function notifyUpdateAvailable(worker) {
+        if (worker) waitingWorker = worker;
+        window._pwaHasPendingUpdate = true;
+        if (typeof window._onPwaUpdateAvailable === 'function') {
+          try {
+            window._onPwaUpdateAvailable();
+          } catch (_) {}
         }
-      }
-
-      function hideUpdateBanner() {
-        if (banner) {
-          banner.classList.remove('visible');
-        }
-      }
-
-      if (dismissBtn) {
-        dismissBtn.addEventListener('click', () => {
-          hideUpdateBanner();
-        });
+        window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: { worker: !!worker } }));
       }
 
       // Função unificada de recarregamento limpo de caches PWA (exposta para JS e Dart)
       window.triggerPwaReload = async function() {
         if (isRefreshing) return;
         isRefreshing = true;
-
-        if (updateBtn) {
-          updateBtn.disabled = true;
-          updateBtn.textContent = 'Atualizando...';
-        }
 
         if (waitingWorker) {
           try {
@@ -300,35 +146,6 @@
         }, 300);
       };
 
-      if (updateBtn) {
-        updateBtn.addEventListener('click', () => {
-          window.triggerPwaReload();
-        });
-      }
-
-      function showUpdateBanner(worker) {
-        if (worker) waitingWorker = worker;
-        window._pwaHasPendingUpdate = true;
-        if (banner) {
-          banner.classList.add('visible');
-          banner.style.zIndex = '2147483647';
-          banner.style.pointerEvents = 'auto';
-        }
-        window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: { worker: !!worker } }));
-      }
-
-      function hideUpdateBanner() {
-        if (banner) {
-          banner.classList.remove('visible');
-        }
-      }
-
-      if (dismissBtn) {
-        dismissBtn.addEventListener('click', () => {
-          hideUpdateBanner();
-        });
-      }
-
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           if (!isRefreshing) {
@@ -340,7 +157,7 @@
         navigator.serviceWorker.ready.then((registration) => {
           // Checa imediatamente se já há um worker esperando (no Android pode não ter controller prévio)
           if (registration.waiting) {
-            showUpdateBanner(registration.waiting);
+            notifyUpdateAvailable(registration.waiting);
           }
 
           registration.addEventListener('updatefound', () => {
@@ -349,7 +166,7 @@
 
             installingWorker.addEventListener('statechange', () => {
               if (installingWorker.state === 'installed') {
-                showUpdateBanner(installingWorker);
+                notifyUpdateAvailable(installingWorker);
               }
             });
           });
@@ -357,7 +174,7 @@
           const checkForUpdates = () => {
             registration.update().catch(() => {});
             if (registration.waiting) {
-              showUpdateBanner(registration.waiting);
+              notifyUpdateAvailable(registration.waiting);
             }
           };
 
@@ -375,7 +192,7 @@
       // =========================================================================
       // Camada 2: Version Heartbeat via version.json (Resiliente a iOS e Android WebAPK)
       // =========================================================================
-      const APP_CURRENT_BUILD = 2026102875;
+      const APP_CURRENT_BUILD = 2026102876;
 
       async function checkVersionFile() {
         try {
@@ -386,8 +203,8 @@
             const data = await res.json();
             console.log('[PWA Heartbeat] Build local:', APP_CURRENT_BUILD, '| Servidor:', data?.build);
             if (data && data.build && Number(data.build) > APP_CURRENT_BUILD) {
-              console.log('[PWA Heartbeat] Nova versão encontrada! Exibindo banner.');
-              showUpdateBanner(null);
+              console.log('[PWA Heartbeat] Nova versão encontrada! Notificando Flutter.');
+              notifyUpdateAvailable(null);
             }
           }
         } catch (err) {
@@ -398,7 +215,7 @@
       // Função pública para teste imediato de interface:
       // Pode ser chamada no console do navegador via: window.simulatePwaUpdate()
       window.simulatePwaUpdate = function() {
-        showUpdateBanner(null);
+        notifyUpdateAvailable(null);
       };
 
       // Dispara verificação rápida após 1.5s de carregamento e a cada 45s
