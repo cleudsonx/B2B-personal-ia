@@ -47,9 +47,9 @@ class AppConfig {
 
   // Informações Oficiais de Versionamento (SemVer) & Build
   static const String appVersion = '1.4.3';
-  static const int buildNumber = 2026102876;
+  static const int buildNumber = 2026102877;
   static const String buildDate = '17 de Outubro, 2026';
-  static const String releaseNotes = 'Unificacao de alerta PWA: mantido unico banner elegante e nativo de atualizacao';
+  static const String releaseNotes = 'Versao 1.4.3: unificacao do alerta flutuante PWA e melhorias';
 
   static String get fullVersionString => 'v$appVersion (Build $buildNumber)';
 }
