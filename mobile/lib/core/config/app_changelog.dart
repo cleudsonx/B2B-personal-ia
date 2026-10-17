@@ -38,6 +38,43 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
+      version: '1.4.6',
+      buildNumber: 2026102882,
+      date: '17 de Outubro, 2026',
+      summary:
+          'Frente 2: One UI 7 Fase 2 (Cockpit & Gestão do Treinador) — Cards 24px Super-Arredondados, Agrupamento e Triagem por Risco, Micro-ações Táteis com Haptics e Renovação Rápida de Ciclo.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.rounded_corner_rounded,
+          title: 'Design One UI 7 Super-Arredondado (24px)',
+          description:
+              'Cards redesenhados com cantos ultra-fluidos de 24px, acabamento obsidian e bordas translúcidas de alto contraste.',
+          badge: 'VISUAL',
+        ),
+        ChangelogItem(
+          icon: Icons.filter_alt_outlined,
+          title: 'Triagem por Risco e Vigência em Pílula',
+          description:
+              'Filtros táteis rápidos no topo: Em Dia 🟢, Atenção 🟡 e Risco 🔴, identificando imediatamente alunos inativos ou fichas pendentes.',
+          badge: 'ONE UI 7',
+        ),
+        ChangelogItem(
+          icon: Icons.touch_app_outlined,
+          title: 'Micro-Ações Táteis com Feedback Háptico',
+          description:
+              'Ações diretas no próprio card: contato por WhatsApp em 1-toque, prescrição de ficha imediata e renovação de ciclo (+30d) sem sair da lista.',
+          badge: 'PRODUTIVIDADE',
+        ),
+        ChangelogItem(
+          icon: Icons.linear_scale_rounded,
+          title: 'Barra de Progresso do Ciclo de 30 Dias',
+          description:
+              'Visualização gráfica sutil do ciclo de periodização em cada ficha prescrita para antecipar renovações.',
+          badge: 'COCKPIT',
+        ),
+      ],
+    ),
+    VersionRelease(
       version: '1.4.5',
       buildNumber: 2026102880,
       date: '17 de Outubro, 2026',

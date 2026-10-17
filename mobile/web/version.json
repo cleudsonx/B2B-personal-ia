@@ -1,6 +1,6 @@
 {
-  "version": "1.4.5",
-  "build": 2026102880,
-  "updated_at": "2026-10-17T23:15:00.000000Z",
-  "notes": "Frente 1: Experiencia do Aluno no Salao (One-Hand Gym UX), ajuste tatil carga/reps e correcao foto do professor"
+  "version": "1.4.6",
+  "build": 2026102882,
+  "updated_at": "2026-10-17T23:57:00.000000Z",
+  "notes": "Frente 2: One UI 7 Fase 2 (Cockpit & Gestao do Treinador), cards 24px super-arredondados, triagem por risco e micro-acoes tateis"
 }

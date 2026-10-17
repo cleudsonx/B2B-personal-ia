@@ -499,39 +499,57 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
     required VoidCallback onTap,
   }) {
     return Expanded(
-      child: MetaCard(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(22),
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
+          borderRadius: BorderRadius.circular(22),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            decoration: BoxDecoration(
+              color: MetaColors.card(context),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: MetaColors.cardBorder(context),
+                width: 1.0,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    color: MetaColors.text(context),
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      value,
+                      style: TextStyle(
+                        color: MetaColors.text(context),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    Icon(icon, color: accentColor, size: 18),
+                  ],
                 ),
-                Icon(icon, color: accentColor, size: 18),
+                const SizedBox(height: 5),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: MetaColors.subtext(context),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: MetaColors.subtext(context),
-                fontSize: 11.5,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -545,28 +563,55 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
   }) {
     final isSelected = _selectedFilter == filter;
     return GestureDetector(
-      onTap: () => setState(() => _selectedFilter = filter),
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _selectedFilter = filter);
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
         decoration: BoxDecoration(
           color: isSelected
-              ? MetaColors.emerald.withValues(alpha: 0.16)
+              ? MetaColors.emerald.withValues(alpha: 0.18)
               : MetaColors.highlight(context),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: isSelected
                 ? MetaColors.emerald
                 : MetaColors.cardBorder(context),
+            width: isSelected ? 1.2 : 0.8,
           ),
         ),
-        child: Text(
-          '$label ($count)',
-          style: TextStyle(
-            color: isSelected ? MetaColors.emerald : MetaColors.subtext(context),
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? MetaColors.emerald : MetaColors.subtext(context),
+                fontSize: 12.5,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? MetaColors.emerald.withValues(alpha: 0.25)
+                    : MetaColors.cardBorder(context).withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  color: isSelected ? MetaColors.emerald : MetaColors.subtext(context),
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -772,25 +817,22 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                             final photoUrl =
                                 (st['photo_url'] ?? st['avatar_url']) as String?;
                             return Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              padding: const EdgeInsets.all(14),
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                               decoration: BoxDecoration(
                                 color: MetaColors.card(context),
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(24),
                                 border: Border.all(
-                                  color:
-                                      MetaColors.emerald.withValues(alpha: 0.4),
-                                  width: 1.5,
+                                  color: MetaColors.emerald.withValues(alpha: 0.35),
+                                  width: 1.2,
                                 ),
                               ),
                               child: Row(
                                 children: [
                                   CircleAvatar(
-                                    radius: 20,
-                                    backgroundColor:
-                                        MetaColors.highlight(context),
-                                    backgroundImage:
-                                        safeImageProvider(photoUrl),
+                                    radius: 22,
+                                    backgroundColor: MetaColors.highlight(context),
+                                    backgroundImage: safeImageProvider(photoUrl),
                                     child: safeImageProvider(photoUrl) != null
                                         ? null
                                         : Text(
@@ -804,21 +846,20 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                                             ),
                                           ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  const SizedBox(width: 14),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           name,
                                           style: TextStyle(
                                             color: MetaColors.text(context),
                                             fontWeight: FontWeight.bold,
-                                            fontSize: 15,
+                                            fontSize: 15.5,
                                           ),
                                         ),
-                                        const SizedBox(height: 2),
+                                        const SizedBox(height: 3),
                                         Text(
                                           goal.isNotEmpty &&
                                                   goal != 'Treino' &&
@@ -827,7 +868,7 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                                               : 'Cadastro ativo • Aguardando 1ª periodização',
                                           style: TextStyle(
                                             color: MetaColors.subtext(context),
-                                            fontSize: 12,
+                                            fontSize: 12.5,
                                           ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
@@ -835,29 +876,39 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                                       ],
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  ElevatedButton.icon(
-                                    onPressed: () => _navigateToCreateWorkout(
-                                      studentId: stId,
-                                      studentName: name,
-                                    ),
-                                    icon:
-                                        const Icon(Icons.auto_awesome, size: 15),
-                                    label: const Text('Prescrever'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: MetaColors.emerald,
-                                      foregroundColor: Colors.white,
-                                      elevation: 0,
+                                  const SizedBox(width: 10),
+                                  InkWell(
+                                    onTap: () {
+                                      HapticFeedback.lightImpact();
+                                      _navigateToCreateWorkout(
+                                        studentId: stId,
+                                        studentName: name,
+                                      );
+                                    },
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 12,
                                         vertical: 8,
                                       ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
+                                      decoration: BoxDecoration(
+                                        color: MetaColors.emerald,
+                                        borderRadius: BorderRadius.circular(16),
                                       ),
-                                      textStyle: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.auto_awesome, size: 14, color: Colors.white),
+                                          SizedBox(width: 5),
+                                          Text(
+                                            'Prescrever',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
@@ -994,157 +1045,295 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                                               ? 'RENOVAR'
                                               : 'EM DIA';
 
-                                      return Material(
-                                        color: Colors.transparent,
-                                        borderRadius: BorderRadius.circular(16),
-                                        child: InkWell(
-                                          onTap: () =>
-                                              _showWorkoutDetails(workout),
-                                          borderRadius:
-                                              BorderRadius.circular(16),
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 4,
-                                            ),
-                                            child: ListTile(
-                                              contentPadding:
-                                                  const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                                vertical: 2,
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 6,
+                                        ),
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          borderRadius: BorderRadius.circular(24),
+                                          child: InkWell(
+                                            onTap: () {
+                                              HapticFeedback.selectionClick();
+                                              _showWorkoutDetails(workout);
+                                            },
+                                            borderRadius: BorderRadius.circular(24),
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 16,
+                                                vertical: 14,
                                               ),
-                                              tileColor: Colors.transparent,
-                                              leading: CircleAvatar(
-                                                radius: 24,
-                                                backgroundColor:
-                                                    MetaColors.highlight(
-                                                  context,
+                                              decoration: BoxDecoration(
+                                                color: MetaColors.card(context),
+                                                borderRadius: BorderRadius.circular(24),
+                                                border: Border.all(
+                                                  color: workout.needsAttention
+                                                      ? statusColor.withValues(alpha: 0.4)
+                                                      : MetaColors.cardBorder(context),
+                                                  width: workout.needsAttention ? 1.4 : 1.0,
                                                 ),
-                                                backgroundImage:
-                                                    safeImageProvider(
-                                                  workout.photoUrl,
-                                                ),
-                                                child: safeImageProvider(
-                                                          workout.photoUrl,
-                                                        ) !=
-                                                        null
-                                                    ? null
-                                                    : (workout.useClipboardIcon
-                                                        ? const Icon(
-                                                            Icons
-                                                                .assignment_outlined,
-                                                            color: MetaColors
-                                                                .emerald,
-                                                            size: 22,
-                                                          )
-                                                        : Text(
-                                                            workout.initials,
-                                                            style:
-                                                                const TextStyle(
-                                                              color: MetaColors
-                                                                  .emerald,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                              fontSize: 15,
-                                                            ),
-                                                          )),
                                               ),
-                                              title: Row(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
-                                                  Expanded(
-                                                    child: Text(
-                                                      '${workout.studentName} • ${workout.workoutTitle}',
-                                                      style: TextStyle(
-                                                        color: MetaColors.text(
-                                                          context,
-                                                        ),
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        fontSize: 15.5,
+                                                  Row(
+                                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                                    children: [
+                                                      // Avatar One UI 7 com badge circular de vigência
+                                                      Stack(
+                                                        children: [
+                                                          CircleAvatar(
+                                                            radius: 25,
+                                                            backgroundColor: MetaColors.highlight(context),
+                                                            backgroundImage: safeImageProvider(workout.photoUrl),
+                                                            child: safeImageProvider(workout.photoUrl) != null
+                                                                ? null
+                                                                : (workout.useClipboardIcon
+                                                                    ? const Icon(
+                                                                        Icons.assignment_outlined,
+                                                                        color: MetaColors.emerald,
+                                                                        size: 22,
+                                                                      )
+                                                                    : Text(
+                                                                        workout.initials,
+                                                                        style: const TextStyle(
+                                                                          color: MetaColors.emerald,
+                                                                          fontWeight: FontWeight.bold,
+                                                                          fontSize: 15,
+                                                                        ),
+                                                                      )),
+                                                          ),
+                                                          Positioned(
+                                                            right: 0,
+                                                            bottom: 0,
+                                                            child: Container(
+                                                              width: 13,
+                                                              height: 13,
+                                                              decoration: BoxDecoration(
+                                                                color: statusColor,
+                                                                shape: BoxShape.circle,
+                                                                border: Border.all(
+                                                                  color: MetaColors.card(context),
+                                                                  width: 2.2,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
                                                       ),
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
+                                                      const SizedBox(width: 14),
+
+                                                      // Nome do Aluno & Título da Ficha
+                                                      Expanded(
+                                                        child: Column(
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          children: [
+                                                            Row(
+                                                              children: [
+                                                                Expanded(
+                                                                  child: Text(
+                                                                    workout.studentName,
+                                                                    style: TextStyle(
+                                                                      color: MetaColors.text(context),
+                                                                      fontWeight: FontWeight.w700,
+                                                                      fontSize: 16,
+                                                                      letterSpacing: -0.2,
+                                                                    ),
+                                                                    maxLines: 1,
+                                                                    overflow: TextOverflow.ellipsis,
+                                                                  ),
+                                                                ),
+                                                                const SizedBox(width: 8),
+                                                                Container(
+                                                                  padding: const EdgeInsets.symmetric(
+                                                                    horizontal: 8,
+                                                                    vertical: 3,
+                                                                  ),
+                                                                  decoration: BoxDecoration(
+                                                                    color: statusColor.withValues(alpha: 0.14),
+                                                                    borderRadius: BorderRadius.circular(20),
+                                                                    border: Border.all(
+                                                                      color: statusColor.withValues(alpha: 0.3),
+                                                                      width: 0.8,
+                                                                    ),
+                                                                  ),
+                                                                  child: Text(
+                                                                    statusLabel,
+                                                                    style: TextStyle(
+                                                                      color: statusColor,
+                                                                      fontSize: 10,
+                                                                      fontWeight: FontWeight.w800,
+                                                                      letterSpacing: 0.3,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                            const SizedBox(height: 3),
+                                                            Text(
+                                                              workout.workoutTitle,
+                                                              style: TextStyle(
+                                                                color: MetaColors.subtext(context),
+                                                                fontSize: 13,
+                                                              ),
+                                                              maxLines: 1,
+                                                              overflow: TextOverflow.ellipsis,
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+
+                                                  // Mini Barra de Progresso Visual de Vigência do Ciclo (30 dias)
+                                                  const SizedBox(height: 12),
+                                                  ClipRRect(
+                                                    borderRadius: BorderRadius.circular(4),
+                                                    child: LinearProgressIndicator(
+                                                      value: (workout.daysElapsed / 30.0).clamp(0.0, 1.0),
+                                                      minHeight: 4,
+                                                      backgroundColor: MetaColors.highlight(context),
+                                                      valueColor: AlwaysStoppedAnimation<Color>(statusColor),
                                                     ),
                                                   ),
-                                                  const SizedBox(width: 8),
-                                                  Container(
-                                                    padding: const EdgeInsets
-                                                        .symmetric(
-                                                      horizontal: 7,
-                                                      vertical: 2,
-                                                    ),
-                                                    decoration: BoxDecoration(
-                                                      color: statusColor
-                                                          .withValues(
-                                                        alpha: 0.14,
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                        6,
-                                                      ),
-                                                    ),
-                                                    child: Text(
-                                                      statusLabel,
-                                                      style: TextStyle(
+
+                                                  // Rodapé do Card One UI 7: Status & Micro-ações táteis
+                                                  const SizedBox(height: 10),
+                                                  Row(
+                                                    children: [
+                                                      Icon(
+                                                        workout.isExpired
+                                                            ? Icons.call_missed_rounded
+                                                            : workout.isExpiringSoon
+                                                                ? Icons.schedule_rounded
+                                                                : Icons.call_made_rounded,
+                                                        size: 14,
                                                         color: statusColor,
-                                                        fontSize: 10,
-                                                        fontWeight:
-                                                            FontWeight.w800,
-                                                        letterSpacing: 0.4,
                                                       ),
-                                                    ),
+                                                      const SizedBox(width: 5),
+                                                      Expanded(
+                                                        child: Text(
+                                                          workout.statusText,
+                                                          style: TextStyle(
+                                                            color: workout.isExpired
+                                                                ? statusColor
+                                                                : MetaColors.subtext(context),
+                                                            fontSize: 12,
+                                                            fontWeight: workout.isExpired
+                                                                ? FontWeight.w600
+                                                                : FontWeight.normal,
+                                                          ),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 8),
+
+                                                      // Micro-ação: Renovar +30d rápido
+                                                      if (workout.needsAttention && workout.studentId != null) ...[
+                                                        InkWell(
+                                                          onTap: () async {
+                                                            HapticFeedback.lightImpact();
+                                                            final messenger = ScaffoldMessenger.of(context);
+                                                            await WorkoutService.renewWorkoutPlan(
+                                                              clientId: workout.studentId!,
+                                                              workoutId: workout.id,
+                                                            );
+                                                            if (!mounted) return;
+                                                            messenger.showSnackBar(
+                                                              const SnackBar(
+                                                                backgroundColor: MetaColors.emerald,
+                                                                content: Text(
+                                                                  'Ciclo de 30 dias renovado!',
+                                                                  style: TextStyle(
+                                                                    color: Colors.white,
+                                                                    fontWeight: FontWeight.bold,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            );
+                                                            await _loadWorkouts();
+                                                          },
+                                                          borderRadius: BorderRadius.circular(16),
+                                                          child: Container(
+                                                            padding: const EdgeInsets.symmetric(
+                                                              horizontal: 10,
+                                                              vertical: 5,
+                                                            ),
+                                                            decoration: BoxDecoration(
+                                                              color: statusColor.withValues(alpha: 0.16),
+                                                              borderRadius: BorderRadius.circular(16),
+                                                              border: Border.all(
+                                                                color: statusColor.withValues(alpha: 0.4),
+                                                              ),
+                                                            ),
+                                                            child: Row(
+                                                              mainAxisSize: MainAxisSize.min,
+                                                              children: [
+                                                                Icon(Icons.autorenew_rounded, size: 13, color: statusColor),
+                                                                const SizedBox(width: 4),
+                                                                Text(
+                                                                  'Renovar',
+                                                                  style: TextStyle(
+                                                                    color: statusColor,
+                                                                    fontSize: 11.5,
+                                                                    fontWeight: FontWeight.w700,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        const SizedBox(width: 8),
+                                                      ],
+
+                                                      // Micro-ação: Periodizar IA rápida
+                                                      InkWell(
+                                                        onTap: () {
+                                                          HapticFeedback.lightImpact();
+                                                          _navigateToCreateWorkout(
+                                                            studentId: workout.studentId,
+                                                            studentName: workout.studentName,
+                                                          );
+                                                        },
+                                                        borderRadius: BorderRadius.circular(16),
+                                                        child: Container(
+                                                          padding: const EdgeInsets.symmetric(
+                                                            horizontal: 10,
+                                                            vertical: 5,
+                                                          ),
+                                                          decoration: BoxDecoration(
+                                                            color: MetaColors.highlight(context),
+                                                            borderRadius: BorderRadius.circular(16),
+                                                            border: Border.all(
+                                                              color: MetaColors.cardBorder(context),
+                                                            ),
+                                                          ),
+                                                          child: Row(
+                                                            mainAxisSize: MainAxisSize.min,
+                                                            children: [
+                                                              const Icon(
+                                                                Icons.auto_awesome,
+                                                                size: 13,
+                                                                color: MetaColors.emerald,
+                                                              ),
+                                                              const SizedBox(width: 4),
+                                                              Text(
+                                                                'Periodizar',
+                                                                style: TextStyle(
+                                                                  color: MetaColors.text(context),
+                                                                  fontSize: 11.5,
+                                                                  fontWeight: FontWeight.w600,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
                                                 ],
-                                              ),
-                                              subtitle: Padding(
-                                                padding: const EdgeInsets.only(
-                                                  top: 4,
-                                                ),
-                                                child: Row(
-                                                  children: [
-                                                    Icon(
-                                                      workout.isExpired
-                                                          ? Icons
-                                                              .call_missed_rounded
-                                                          : workout
-                                                                  .isExpiringSoon
-                                                              ? Icons
-                                                                  .schedule_rounded
-                                                              : Icons
-                                                                  .call_made_rounded,
-                                                      size: 14,
-                                                      color: statusColor,
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Expanded(
-                                                      child: Text(
-                                                        workout.statusText,
-                                                        style: TextStyle(
-                                                          color: workout
-                                                                  .isExpired
-                                                              ? statusColor
-                                                              : MetaColors
-                                                                  .subtext(
-                                                                  context,
-                                                                ),
-                                                          fontSize: 13,
-                                                        ),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              trailing: Icon(
-                                                Icons.chevron_right_rounded,
-                                                color: MetaColors.subtext(
-                                                  context,
-                                                ),
-                                                size: 20,
                                               ),
                                             ),
                                           ),

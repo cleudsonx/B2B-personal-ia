@@ -10,7 +10,10 @@ import '../../core/theme/theme_controller.dart';
 import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
 import '../subscription/subscription_screen.dart';
+import 'anamnesis_screen.dart';
 import 'presentation/screens/trainer_profile_setup_screen.dart';
+
+enum _StudentRiskFilter { all, onTrack, attention, atRisk }
 
 class TrainerStudentsScreen extends StatefulWidget {
   final Function(String studentId, String studentName)? onSelectStudentForPlan;
@@ -25,8 +28,9 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   bool _isLoading = false;
+  _StudentRiskFilter _selectedRiskFilter = _StudentRiskFilter.all;
 
-  // Lista mockada de alunos no estilo WhatsApp / Meta
+  // Lista de alunos no estilo One UI 7 / Meta
   List<Map<String, dynamic>> _students = [];
   bool _hasError = false;
   String _errorMessage = '';
@@ -634,71 +638,228 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
   }
 
-  Widget _buildStatusBadge(String status) {
-    final lower = status.toLowerCase();
+  _StudentRiskFilter _classifyStudent(Map<String, dynamic> st) {
+    final status = (st['status'] as String? ?? '').toLowerCase();
+    final recent = (st['recent_status'] as String? ?? '').toLowerCase();
+    final lastSession = (st['last_session'] as String? ?? '').toLowerCase();
+    final hasAlert = st['has_alert'] == true;
+
+    if (status.contains('arquivado') || status.contains('inativo')) {
+      return _StudentRiskFilter.atRisk;
+    }
+    if (hasAlert) {
+      return _StudentRiskFilter.attention;
+    }
+    if (status.contains('pendente') ||
+        recent.contains('pendente') ||
+        recent.contains('aguardando')) {
+      return _StudentRiskFilter.attention;
+    }
+    if (lastSession.contains('5') ||
+        lastSession.contains('6') ||
+        lastSession.contains('7') ||
+        lastSession.contains('semana') ||
+        lastSession.contains('mês') ||
+        lastSession.contains('mes') ||
+        lastSession.contains('nunca') ||
+        lastSession.contains('sem registro')) {
+      return _StudentRiskFilter.atRisk;
+    }
+    if (lastSession.contains('3') || lastSession.contains('4')) {
+      return _StudentRiskFilter.attention;
+    }
+    return _StudentRiskFilter.onTrack;
+  }
+
+  Widget _buildTierBadge(_StudentRiskFilter tier) {
     Color bg;
     Color fg;
-    String label = status;
+    String label;
+    IconData icon;
 
-    if (lower.contains('pendente')) {
-      bg = const Color(0xFFF59E0B).withValues(alpha: 0.15);
-      fg = const Color(0xFFD97706);
-      label = 'Pendente';
-    } else if (lower.contains('arquivado') || lower.contains('inativo')) {
-      bg = Colors.redAccent.withValues(alpha: 0.15);
-      fg = Colors.redAccent;
-      label = 'Arquivado';
-    } else {
-      bg = MetaColors.emerald.withValues(alpha: 0.15);
-      fg = MetaColors.emerald;
-      label = 'Ativo';
+    switch (tier) {
+      case _StudentRiskFilter.onTrack:
+        bg = MetaColors.emerald.withValues(alpha: 0.14);
+        fg = MetaColors.emerald;
+        label = 'Em dia';
+        icon = Icons.check_circle_outline_rounded;
+        break;
+      case _StudentRiskFilter.attention:
+        bg = const Color(0xFFF59E0B).withValues(alpha: 0.16);
+        fg = const Color(0xFFD97706);
+        label = 'Atenção';
+        icon = Icons.warning_amber_rounded;
+        break;
+      case _StudentRiskFilter.atRisk:
+        bg = Colors.redAccent.withValues(alpha: 0.16);
+        fg = Colors.redAccent;
+        label = 'Risco';
+        icon = Icons.error_outline_rounded;
+        break;
+      case _StudentRiskFilter.all:
+        bg = Colors.transparent;
+        fg = Colors.white;
+        label = '';
+        icon = Icons.circle;
+        break;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: fg.withValues(alpha: 0.28), width: 0.8),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: fg,
-          fontSize: 10.5,
-          fontWeight: FontWeight.w600,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: fg),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: fg,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterPill({
+    required BuildContext context,
+    required String label,
+    required _StudentRiskFilter filter,
+    required int count,
+    Color? activeColor,
+  }) {
+    final isSelected = _selectedRiskFilter == filter;
+    final color = activeColor ?? MetaColors.emerald;
+
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _selectedRiskFilter = filter);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? color.withValues(alpha: 0.18)
+              : MetaColors.highlight(context),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isSelected ? color : MetaColors.cardBorder(context),
+            width: isSelected ? 1.2 : 0.8,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? color : MetaColors.subtext(context),
+                fontSize: 12.5,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? color.withValues(alpha: 0.25)
+                    : MetaColors.cardBorder(context).withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  color: isSelected ? color : MetaColors.subtext(context),
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  Future<void> _openPrescriptionForStudent(
+    String studentId,
+    String studentName,
+  ) async {
+    HapticFeedback.lightImpact();
+    if (widget.onSelectStudentForPlan != null) {
+      widget.onSelectStudentForPlan!(studentId, studentName);
+      return;
+    }
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TrainerAnamnesisScreen(
+          initialStudentId: studentId,
+          initialStudentName: studentName,
+        ),
+      ),
+    );
+    if (mounted) await _loadStudentsFromDb();
   }
 
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.paddingOf(context).top;
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
+    final isDark = MetaColors.isDark(context);
+
+    // Contadores de triagem One UI 7
+    int onTrackCount = 0;
+    int attentionCount = 0;
+    int atRiskCount = 0;
+
+    for (final st in _students) {
+      final tier = _classifyStudent(st);
+      switch (tier) {
+        case _StudentRiskFilter.onTrack:
+          onTrackCount++;
+          break;
+        case _StudentRiskFilter.attention:
+          attentionCount++;
+          break;
+        case _StudentRiskFilter.atRisk:
+          atRiskCount++;
+          break;
+        case _StudentRiskFilter.all:
+          break;
+      }
+    }
 
     final filteredStudents = _students.where((st) {
       final name = (st['full_name'] as String? ?? '').toLowerCase();
       final status = (st['recent_status'] as String? ?? '').toLowerCase();
       final q = _searchQuery.toLowerCase();
-      return name.contains(q) || status.contains(q);
+      final matchesSearch = q.isEmpty || name.contains(q) || status.contains(q);
+
+      if (!matchesSearch) return false;
+
+      if (_selectedRiskFilter == _StudentRiskFilter.all) return true;
+      return _classifyStudent(st) == _selectedRiskFilter;
     }).toList();
 
-    // Ordenação estrita solicitada pelo treinador: 1º Pendente, 2º Ativo, 3º Arquivado
+    // Ordenação estrita One UI 7: Alunos que necessitam de atenção/risco no topo ou pendentes
     int statusPriority(Map<String, dynamic> st) {
-      final status = (st['status'] as String? ?? '').toLowerCase();
-      final recent = (st['recent_status'] as String? ?? '').toLowerCase();
-      final isPending = status.contains('pendente') ||
-          recent.contains('pendente') ||
-          recent.contains('cadastro') ||
-          status.contains('pending');
-      if (isPending) return 0; // 1º Pendente
-
-      final isArchived = status.contains('arquivado') ||
-          status.contains('inativo') ||
-          recent.contains('arquivado');
-      if (isArchived) return 2; // 3º Arquivado
-
-      return 1; // 2º Ativo
+      final tier = _classifyStudent(st);
+      if (tier == _StudentRiskFilter.attention) return 0;
+      if (tier == _StudentRiskFilter.atRisk) return 1;
+      return 2;
     }
 
     filteredStudents.sort((a, b) {
@@ -709,8 +870,6 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
       final nameB = (b['full_name'] as String? ?? '').toLowerCase();
       return nameA.compareTo(nameB);
     });
-
-    final isDark = MetaColors.isDark(context);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
@@ -817,12 +976,15 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      // Barra de Pesquisa: Formato de Pílula, sem sombras
+                      // Barra de Pesquisa: Formato de Pílula One UI 7, sem sombras
                       Container(
                         height: 46,
                         decoration: BoxDecoration(
                           color: MetaColors.highlight(context),
                           borderRadius: BorderRadius.circular(50),
+                          border: Border.all(
+                            color: MetaColors.cardBorder(context).withValues(alpha: 0.6),
+                          ),
                         ),
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Row(
@@ -846,7 +1008,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                   fontSize: 15,
                                 ),
                                 decoration: InputDecoration(
-                                  hintText: 'Pesquisar...',
+                                  hintText: 'Pesquisar alunos...',
                                   hintStyle: TextStyle(
                                     color: MetaColors.subtext(context),
                                     fontSize: 15,
@@ -871,6 +1033,46 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                   size: 18,
                                 ),
                               ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      // Pílulas de Triagem One UI 7 (Scroll Horizontal)
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        child: Row(
+                          children: [
+                            _buildFilterPill(
+                              context: context,
+                              label: 'Todos',
+                              filter: _StudentRiskFilter.all,
+                              count: _students.length,
+                            ),
+                            const SizedBox(width: 8),
+                            _buildFilterPill(
+                              context: context,
+                              label: 'Em dia',
+                              filter: _StudentRiskFilter.onTrack,
+                              count: onTrackCount,
+                              activeColor: MetaColors.emerald,
+                            ),
+                            const SizedBox(width: 8),
+                            _buildFilterPill(
+                              context: context,
+                              label: 'Atenção',
+                              filter: _StudentRiskFilter.attention,
+                              count: attentionCount,
+                              activeColor: const Color(0xFFF59E0B),
+                            ),
+                            const SizedBox(width: 8),
+                            _buildFilterPill(
+                              context: context,
+                              label: 'Em risco',
+                              filter: _StudentRiskFilter.atRisk,
+                              count: atRiskCount,
+                              activeColor: Colors.redAccent,
+                            ),
                           ],
                         ),
                       ),
@@ -940,16 +1142,15 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                  ),
                                ),
                              )
-                           : ListView.separated(
-                          // Padding dinâmico respeitando a Safe Area inferior e o SquircleButton
+                            : ListView.separated(
                           padding: EdgeInsets.only(
-                            top: 4,
+                            top: 8,
                             bottom: bottomPadding + 88,
-                            left: 12,
-                            right: 12,
+                            left: 14,
+                            right: 14,
                           ),
                           itemCount: filteredStudents.length,
-                          separatorBuilder: (_, _) => const SizedBox(height: 10),
+                          separatorBuilder: (_, _) => const SizedBox(height: 12),
                           itemBuilder: (context, index) {
                             final student = filteredStudents[index];
                             final fullName =
@@ -961,176 +1162,227 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                 student['last_session'] as String? ?? '';
                             final hasAlert = student['has_alert'] == true;
                             final avatarUrl = student['avatar_url'] as String?;
-                            final statusStr = student['status'] as String? ?? 'Ativo';
-                            final isPending = statusStr.toLowerCase().contains('pendente');
-                            final isArchived = statusStr.toLowerCase().contains('arquivado') ||
-                                statusStr.toLowerCase().contains('inativo');
+                            final tier = _classifyStudent(student);
+                            final needsPrescription = recentStatus.toLowerCase().contains('aguardando') ||
+                                recentStatus.toLowerCase().contains('sem ficha');
+                            final studentId = student['id'] as String? ?? '';
 
                             return Material(
                               color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(24),
                               child: InkWell(
-                                onTap: () => _showStudentDetails(student),
-                                borderRadius: BorderRadius.circular(16),
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  _showStudentDetails(student);
+                                },
+                                borderRadius: BorderRadius.circular(24),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 12,
+                                    horizontal: 16,
+                                    vertical: 14,
                                   ),
                                   decoration: BoxDecoration(
                                     color: MetaColors.card(context),
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(24),
                                     border: Border.all(
-                                      color: MetaColors.cardBorder(context),
-                                      width: 1.0,
+                                      color: hasAlert
+                                          ? const Color(0xFFF59E0B).withValues(alpha: 0.4)
+                                          : MetaColors.cardBorder(context),
+                                      width: hasAlert ? 1.4 : 1.0,
                                     ),
                                   ),
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      // 1. Avatar com indicador de status
-                                      Stack(
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.center,
                                         children: [
-                                          CircleAvatar(
-                                            radius: 24,
-                                            backgroundColor: MetaColors.highlight(context),
-                                            backgroundImage: safeImageProvider(avatarUrl),
-                                            child: safeImageProvider(avatarUrl) == null
-                                                ? Text(
-                                                    _getInitials(fullName),
-                                                    style: TextStyle(
-                                                      color: MetaColors.primaryColor(context),
-                                                      fontWeight: FontWeight.bold,
-                                                      fontSize: 15,
+                                          // 1. Avatar One UI 7 com indicador circular de triagem
+                                          Stack(
+                                            children: [
+                                              CircleAvatar(
+                                                radius: 25,
+                                                backgroundColor: MetaColors.highlight(context),
+                                                backgroundImage: safeImageProvider(avatarUrl),
+                                                child: safeImageProvider(avatarUrl) == null
+                                                    ? Text(
+                                                        _getInitials(fullName),
+                                                        style: TextStyle(
+                                                          color: MetaColors.primaryColor(context),
+                                                          fontWeight: FontWeight.bold,
+                                                          fontSize: 15,
+                                                        ),
+                                                      )
+                                                    : null,
+                                              ),
+                                              Positioned(
+                                                right: 0,
+                                                bottom: 0,
+                                                child: Container(
+                                                  width: 13,
+                                                  height: 13,
+                                                  decoration: BoxDecoration(
+                                                    color: tier == _StudentRiskFilter.onTrack
+                                                        ? MetaColors.emerald
+                                                        : (tier == _StudentRiskFilter.attention
+                                                            ? const Color(0xFFF59E0B)
+                                                            : Colors.redAccent),
+                                                    shape: BoxShape.circle,
+                                                    border: Border.all(
+                                                      color: MetaColors.card(context),
+                                                      width: 2.2,
                                                     ),
-                                                  )
-                                                : null,
-                                          ),
-                                          Positioned(
-                                            right: 0,
-                                            bottom: 0,
-                                            child: Container(
-                                              width: 12,
-                                              height: 12,
-                                              decoration: BoxDecoration(
-                                                color: isPending
-                                                    ? const Color(0xFFF59E0B)
-                                                    : (isArchived
-                                                        ? Colors.redAccent
-                                                        : MetaColors.primaryColor(context)),
-                                                shape: BoxShape.circle,
-                                                border: Border.all(
-                                                  color: MetaColors.card(context),
-                                                  width: 2,
+                                                  ),
                                                 ),
                                               ),
+                                            ],
+                                          ),
+                                          const SizedBox(width: 14),
+
+                                          // 2. Informações do aluno
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: Text(
+                                                        fullName,
+                                                        style: TextStyle(
+                                                          color: MetaColors.text(context),
+                                                          fontWeight: FontWeight.w700,
+                                                          fontSize: 16,
+                                                          letterSpacing: -0.2,
+                                                        ),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    _buildTierBadge(tier),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 5),
+                                                Text(
+                                                  recentStatus,
+                                                  style: TextStyle(
+                                                    color: MetaColors.subtext(context),
+                                                    fontSize: 13,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ],
                                             ),
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(width: 14),
 
-                                      // 2. Informações do aluno (prioridade horizontal ao nome)
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            // Linha 1: Nome completo do aluno sem truncamento
-                                            Text(
-                                              fullName,
+                                      // Linha de Rodapé do Card One UI 7: Status temporal & Micro-ações táteis
+                                      const SizedBox(height: 12),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            hasAlert
+                                                ? Icons.warning_amber_rounded
+                                                : Icons.access_time_rounded,
+                                            size: 14,
+                                            color: hasAlert
+                                                ? const Color(0xFFF59E0B)
+                                                : MetaColors.subtext(context),
+                                          ),
+                                          const SizedBox(width: 5),
+                                          Expanded(
+                                            child: Text(
+                                              hasAlert && student['alert_message'] != null
+                                                  ? '${student['alert_message']}'
+                                                  : (lastSession.isNotEmpty ? lastSession : 'Sincronizado'),
                                               style: TextStyle(
-                                                color: MetaColors.text(context),
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 15.5,
-                                                letterSpacing: -0.2,
+                                                color: hasAlert
+                                                    ? const Color(0xFFF59E0B)
+                                                    : MetaColors.subtext(context),
+                                                fontSize: 12,
+                                                fontWeight: hasAlert ? FontWeight.w600 : FontWeight.normal,
                                               ),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
-                                            const SizedBox(height: 4),
+                                          ),
+                                          const SizedBox(width: 8),
 
-                                            // Linha 2: Badge de status e descrição
-                                            Row(
-                                              children: [
-                                                _buildStatusBadge(statusStr),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Text(
-                                                    recentStatus,
-                                                    style: TextStyle(
-                                                      color: MetaColors.subtext(context),
-                                                      fontSize: 12.5,
-                                                    ),
-                                                    maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
+                                          // Micro-ação: Prescrever Ficha rápida (se aplicável)
+                                          if (needsPrescription && studentId.isNotEmpty) ...[
+                                            InkWell(
+                                              onTap: () => _openPrescriptionForStudent(studentId, fullName),
+                                              borderRadius: BorderRadius.circular(16),
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                                decoration: BoxDecoration(
+                                                  color: MetaColors.emerald.withValues(alpha: 0.16),
+                                                  borderRadius: BorderRadius.circular(16),
+                                                  border: Border.all(
+                                                    color: MetaColors.emerald.withValues(alpha: 0.4),
                                                   ),
                                                 ),
-                                              ],
-                                            ),
-
-                                            // Linha 3 (opcional): Última atividade / Alerta
-                                            if (lastSession.isNotEmpty || hasAlert) ...[
-                                              const SizedBox(height: 4),
-                                              Row(
-                                                children: [
-                                                  Icon(
-                                                    hasAlert
-                                                        ? Icons.warning_amber_rounded
-                                                        : Icons.access_time_rounded,
-                                                    size: 13,
-                                                    color: hasAlert
-                                                        ? MetaColors.primaryColor(context)
-                                                        : MetaColors.subtext(context),
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                  Text(
-                                                    lastSession,
-                                                    style: TextStyle(
-                                                      color: hasAlert
-                                                          ? MetaColors.primaryColor(context)
-                                                          : MetaColors.subtext(context),
-                                                      fontSize: 11.5,
-                                                      fontWeight: hasAlert
-                                                          ? FontWeight.w600
-                                                          : FontWeight.normal,
-                                                    ),
-                                                  ),
-                                                  if (hasAlert) ...[
-                                                    const SizedBox(width: 6),
-                                                    Container(
-                                                      padding: const EdgeInsets.symmetric(
-                                                        horizontal: 6,
-                                                        vertical: 1.5,
-                                                      ),
-                                                      decoration: BoxDecoration(
-                                                        color: MetaColors.primaryColor(context)
-                                                            .withValues(alpha: 0.15),
-                                                        borderRadius: BorderRadius.circular(6),
-                                                      ),
-                                                      child: Text(
-                                                        'Atenção',
-                                                        style: TextStyle(
-                                                          color: MetaColors.primaryColor(context),
-                                                          fontSize: 10,
-                                                          fontWeight: FontWeight.bold,
-                                                        ),
+                                                child: const Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(Icons.auto_awesome, size: 13, color: MetaColors.emerald),
+                                                    SizedBox(width: 4),
+                                                    Text(
+                                                      'Prescrever',
+                                                      style: TextStyle(
+                                                        color: MetaColors.emerald,
+                                                        fontSize: 11.5,
+                                                        fontWeight: FontWeight.w700,
                                                       ),
                                                     ),
                                                   ],
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                          ],
+
+                                          // Micro-ação: WhatsApp 1-Toque
+                                          InkWell(
+                                            onTap: () {
+                                              HapticFeedback.lightImpact();
+                                              _openWhatsApp(student);
+                                            },
+                                            borderRadius: BorderRadius.circular(16),
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                              decoration: BoxDecoration(
+                                                color: MetaColors.highlight(context),
+                                                borderRadius: BorderRadius.circular(16),
+                                                border: Border.all(
+                                                  color: MetaColors.cardBorder(context),
+                                                ),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    Icons.chat_bubble_outline_rounded,
+                                                    size: 13,
+                                                    color: MetaColors.text(context),
+                                                  ),
+                                                  const SizedBox(width: 5),
+                                                  Text(
+                                                    'Contato',
+                                                    style: TextStyle(
+                                                      color: MetaColors.text(context),
+                                                      fontSize: 11.5,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
                                                 ],
                                               ),
-                                            ],
-                                          ],
-                                        ),
-                                      ),
-
-                                      const SizedBox(width: 8),
-
-                                      // 3. Indicador de navegação
-                                      Icon(
-                                        Icons.chevron_right_rounded,
-                                        color: MetaColors.subtext(context).withValues(alpha: 0.6),
-                                        size: 20,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
