@@ -1,6 +1,6 @@
 {
-  "version": "1.4.0",
-  "build": 2026102873,
-  "updated_at": "2026-10-17T07:22:29.599790Z",
-  "notes": "Fase 1 (One UI 7 / Samsung Health): Dock Flutuante em Capsula com Blur, Controles Translucidos de Topo, Barra Flutuante de Confirmacao e Menu Popover com Ponto Laranja"
+  "version": "1.4.1",
+  "build": 2026102874,
+  "updated_at": "2026-10-17T14:44:42.907717Z",
+  "notes": "Checkout Asaas Transparente: Pix & Cartao centralizados, mascaras mobile e campo CPF/CNPJ"
 }

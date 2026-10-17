@@ -38,6 +38,36 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
+      version: '1.4.1',
+      buildNumber: 2026102874,
+      date: '17 de Outubro, 2026',
+      summary:
+          'Checkout Asaas Transparente: Pix & Cartão centralizados na conta oficial, detecção automática de bandeiras, máscaras e validação obrigatória de CPF/CNPJ.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.credit_card_rounded,
+          title: 'Detecção Automática de Bandeira & Máscaras Mobile',
+          description:
+              'Formatação inteligente em tempo real para Visa, Mastercard, Elo, Amex e Hipercard, com validade MM/AA, CVV protegido e formatação de telefone.',
+          badge: 'NOVO',
+        ),
+        ChangelogItem(
+          icon: Icons.badge_outlined,
+          title: 'Campo Obrigatório de CPF ou CNPJ (BACEN & Asaas)',
+          description:
+              'Validador nativo com máscara dinâmica de CPF/CNPJ integrado ao Asaas para emissão de nota fiscal e conciliação instantânea.',
+          badge: 'SEGURANÇA',
+        ),
+        ChangelogItem(
+          icon: Icons.pix_rounded,
+          title: 'Centralização Financeira em Conta Única Asaas',
+          description:
+              'Cobranças Pix Copia e Cola e assinaturas de cartão liquidadas diretamente na conta oficial do titular, sem redirecionamentos externos.',
+          badge: 'MELHORIA',
+        ),
+      ],
+    ),
+    VersionRelease(
       version: '1.4.0',
       buildNumber: 2026102873,
       date: '17 de Outubro, 2026',

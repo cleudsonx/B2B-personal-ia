@@ -46,10 +46,10 @@ class AppConfig {
   static const String supabaseAnonKey = supabasePublishableKey;
 
   // Informações Oficiais de Versionamento (SemVer) & Build
-  static const String appVersion = '1.4.0';
-  static const int buildNumber = 2026102873;
+  static const String appVersion = '1.4.1';
+  static const int buildNumber = 2026102874;
   static const String buildDate = '17 de Outubro, 2026';
-  static const String releaseNotes = 'Fase 1 (One UI 7 / Samsung Health): Dock Flutuante em Capsula com Blur, Controles Translucidos de Topo, Barra Flutuante de Confirmacao e Menu Popover com Ponto Laranja';
+  static const String releaseNotes = 'Checkout Asaas Transparente: Pix & Cartao centralizados, mascaras mobile e campo CPF/CNPJ';
 
   static String get fullVersionString => 'v$appVersion (Build $buildNumber)';
 }
