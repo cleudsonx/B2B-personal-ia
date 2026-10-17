@@ -46,10 +46,10 @@ class AppConfig {
   static const String supabaseAnonKey = supabasePublishableKey;
 
   // Informações Oficiais de Versionamento (SemVer) & Build
-  static const String appVersion = '1.4.4';
-  static const int buildNumber = 2026102878;
+  static const String appVersion = '1.4.5';
+  static const int buildNumber = 2026102880;
   static const String buildDate = '17 de Outubro, 2026';
-  static const String releaseNotes = 'Checkout UX: modal amigavel de recusa bancaria (padrao Nubank/Stripe) e correcao de legibilidade CEP';
+  static const String releaseNotes = 'Frente 1: Experiência do Aluno no Salão (One-Hand Gym UX), ajuste tátil de carga/reps sem teclado e correção da foto do professor';
 
   static String get fullVersionString => 'v$appVersion (Build $buildNumber)';
 }

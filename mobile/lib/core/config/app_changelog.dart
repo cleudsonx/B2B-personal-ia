@@ -38,6 +38,43 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
+      version: '1.4.5',
+      buildNumber: 2026102880,
+      date: '17 de Outubro, 2026',
+      summary:
+          'Frente 1: Experiência do Aluno no Salão (One-Hand Gym UX), Ajuste Tátil de Carga e Repetições sem Teclado, Auto-Rest Timer com Vibração e Correção da Foto do Treinador.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.fitness_center_rounded,
+          title: 'Ergonomia no Salão & Ajuste Tátil sem Teclado',
+          description:
+              'Ajuste rápido de carga (+/- 2.5kg) e repetições (+/- 1) diretamente na tela, sem invasão do teclado virtual durante as séries.',
+          badge: 'NOVO',
+        ),
+        ChangelogItem(
+          icon: Icons.timer_outlined,
+          title: 'Auto-Rest Timer com Feedback Háptico',
+          description:
+              'Ao marcar uma série concluída, o cronômetro de descanso inicia automaticamente, com vibração e botões de +30s e pular.',
+          badge: 'UX',
+        ),
+        ChangelogItem(
+          icon: Icons.bolt_rounded,
+          title: 'Botão de Pânico "Aparelho Ocupado / Dor"',
+          description:
+              'Adaptação biomecânica em 1 toque com IA e notificação instantânea para o personal trainer.',
+          badge: 'IA',
+        ),
+        ChangelogItem(
+          icon: Icons.account_circle_rounded,
+          title: 'Foto do Treinador 100% Preenchida (Meu Status)',
+          description:
+              'Eliminação de preenchimento ou bordas verdes nas quinas do avatar, garantindo enquadramento circular limpo e perfeito.',
+          badge: 'CORREÇÃO',
+        ),
+      ],
+    ),
+    VersionRelease(
       version: '1.4.4',
       buildNumber: 2026102878,
       date: '17 de Outubro, 2026',

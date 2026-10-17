@@ -131,43 +131,63 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
     Color? backgroundColor,
   }) {
     final hasPhoto = photoUrl != null && photoUrl.trim().isNotEmpty;
-    return Container(
-      width: radius * 2,
-      height: radius * 2,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: backgroundColor ?? MetaColors.highlight(context),
-        border: borderColor != null ? Border.all(color: borderColor, width: 2) : null,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: hasPhoto
-          ? (photoUrl.startsWith('assets/')
-              ? Image.asset(photoUrl, fit: BoxFit.cover)
-              : Image.network(
-                  photoUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Center(
-                    child: Text(
-                      initials,
-                      style: TextStyle(
-                        color: MetaColors.text(context),
-                        fontWeight: FontWeight.bold,
-                        fontSize: radius * 0.7,
+    final size = radius * 2;
+
+    Widget avatarContent = ClipOval(
+      child: Container(
+        width: size,
+        height: size,
+        color: backgroundColor ?? MetaColors.card(context),
+        child: hasPhoto
+            ? (photoUrl.startsWith('assets/')
+                ? Image.asset(
+                    photoUrl,
+                    fit: BoxFit.cover,
+                    width: size,
+                    height: size,
+                  )
+                : Image.network(
+                    photoUrl,
+                    fit: BoxFit.cover,
+                    width: size,
+                    height: size,
+                    errorBuilder: (_, _, _) => Center(
+                      child: Text(
+                        initials,
+                        style: TextStyle(
+                          color: MetaColors.text(context),
+                          fontWeight: FontWeight.bold,
+                          fontSize: radius * 0.7,
+                        ),
                       ),
                     ),
+                  ))
+            : Center(
+                child: Text(
+                  initials,
+                  style: TextStyle(
+                    color: MetaColors.text(context),
+                    fontWeight: FontWeight.bold,
+                    fontSize: radius * 0.7,
                   ),
-                ))
-          : Center(
-              child: Text(
-                initials,
-                style: TextStyle(
-                  color: MetaColors.text(context),
-                  fontWeight: FontWeight.bold,
-                  fontSize: radius * 0.7,
                 ),
               ),
-            ),
+      ),
     );
+
+    if (borderColor != null) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: borderColor, width: 2),
+        ),
+        child: avatarContent,
+      );
+    }
+
+    return avatarContent;
   }
 
   void _openEditStatusModal() {
@@ -766,7 +786,6 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                                       photoUrl: trainerPhoto,
                                       initials: trainerInitials,
                                       radius: 28,
-                                      borderColor: hasStatus ? MetaColors.emerald : null,
                                     ),
                                     Positioned(
                                       bottom: 0,

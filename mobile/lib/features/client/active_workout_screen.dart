@@ -1355,9 +1355,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                     _trainerPhotoUrl != null &&
                                             _trainerPhotoUrl!.isNotEmpty
                                         ? DecorationImage(
-                                          image: NetworkImage(
-                                            _trainerPhotoUrl!,
-                                          ),
+                                          image: _trainerPhotoUrl!.startsWith('assets/')
+                                              ? AssetImage(_trainerPhotoUrl!) as ImageProvider
+                                              : NetworkImage(_trainerPhotoUrl!),
                                           fit: BoxFit.cover,
                                         )
                                         : null,

@@ -1,6 +1,6 @@
 {
-  "version": "1.4.4",
-  "build": 2026102878,
-  "updated_at": "2026-10-17T17:18:20.157367Z",
-  "notes": "Checkout UX: modal amigavel de recusa bancaria (padrao Nubank/Stripe) e correcao de legibilidade CEP"
+  "version": "1.4.5",
+  "build": 2026102880,
+  "updated_at": "2026-10-17T23:15:00.000000Z",
+  "notes": "Frente 1: Experiencia do Aluno no Salao (One-Hand Gym UX), ajuste tatil carga/reps e correcao foto do professor"
 }

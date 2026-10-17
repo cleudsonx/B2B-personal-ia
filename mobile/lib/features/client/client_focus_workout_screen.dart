@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -202,6 +201,15 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
       final set = _exerciseSets[exerciseIndex]![setIndex];
       final newW = (set.weightKg + delta).clamp(0.0, 500.0);
       set.weightKg = (newW * 2).round() / 2; // Arredonda para 0.5kg
+    });
+  }
+
+  void _adjustReps(int exerciseIndex, int setIndex, int delta) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      final set = _exerciseSets[exerciseIndex]![setIndex];
+      final newReps = (set.reps + delta).clamp(1, 100);
+      set.reps = newReps;
     });
   }
 
@@ -575,7 +583,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: MetaColors.background,
                         borderRadius: BorderRadius.circular(16),
@@ -584,7 +592,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                       child: Column(
                         children: [
                           const Text(
-                            'VOLUME TOTAL',
+                            'VOLUME',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
@@ -595,9 +603,41 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                           Text(
                             '${totalVolume.toStringAsFixed(0)} kg',
                             style: const TextStyle(
-                              fontSize: 18,
+                              fontSize: 17,
                               fontWeight: FontWeight.w900,
                               color: MetaColors.emerald,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: MetaColors.background,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: MetaColors.border),
+                      ),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'SÉRIES',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: MetaColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '$totalCompleted/${_countTotalSets()}',
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                              color: MetaColors.textPrimary,
                             ),
                           ),
                         ],
@@ -985,6 +1025,18 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                                 color: MetaColors.textPrimary,
                               ),
                             ),
+                            const SizedBox(height: 4),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(2),
+                              child: LinearProgressIndicator(
+                                value: _restInitialDuration > 0
+                                    ? (_restSecondsRemaining / _restInitialDuration).clamp(0.0, 1.0)
+                                    : 0.0,
+                                backgroundColor: MetaColors.background,
+                                color: MetaColors.emerald,
+                                minHeight: 3,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -1019,6 +1071,31 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                         onPressed: _skipRestTimer,
                       ),
                     ],
+                  ),
+                ),
+              ),
+
+            // 5. Overlay de Adaptação de Exercício (IA)
+            if (_isAdapting)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.65),
+                  child: const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(color: MetaColors.emerald),
+                        SizedBox(height: 16),
+                        Text(
+                          'Adaptando exercício com IA...',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -1347,18 +1424,58 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                   ),
                 ),
 
-                // Reps
+                // Reps (Ajuste Tátil sem Teclado)
                 Expanded(
                   flex: 3,
-                  child: Center(
-                    child: Text(
-                      '${set.reps}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: MetaColors.textPrimary,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      InkWell(
+                        onTap: () => _adjustReps(index, sIdx, -1),
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: MetaColors.background,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: MetaColors.border),
+                          ),
+                          child: const Icon(
+                            Icons.remove,
+                            size: 12,
+                            color: MetaColors.textSecondary,
+                          ),
+                        ),
                       ),
-                    ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        child: Text(
+                          '${set.reps}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: MetaColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () => _adjustReps(index, sIdx, 1),
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: MetaColors.background,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: MetaColors.border),
+                          ),
+                          child: const Icon(
+                            Icons.add,
+                            size: 12,
+                            color: MetaColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 
