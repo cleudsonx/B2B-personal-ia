@@ -65,7 +65,8 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
       final workouts = await WorkoutService.getTrainerWorkouts();
       final students = await WorkoutService.getTrainerStudents();
 
-      // Identifica alunos que estão aguardando periodização (sem ficha ativa)
+      // Identifica apenas alunos com cadastro ativo que estão aguardando periodização (sem ficha ativa)
+      // Alunos com convite pendente / aguardando cadastro ou arquivados NÃO entram aqui!
       final activeStudentIds = workouts
           .where((w) => w['is_active'] == true)
           .map((w) => w['client_id']?.toString())
@@ -75,7 +76,19 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
         final sid = s['id']?.toString();
         final hasActive = s['has_active_prescription'] == true;
         final status = (s['status'] as String? ?? '').toLowerCase();
-        return !hasActive && !activeStudentIds.contains(sid) && !status.contains('arquivado');
+        final recentStatus = (s['recent_status'] as String? ?? '').toLowerCase();
+        final isPendingInvite = status.contains('pendente') ||
+            recentStatus.contains('pendente') ||
+            recentStatus.contains('cadastro') ||
+            status.contains('pending');
+        final isArchived = status.contains('arquivado') ||
+            status.contains('inativo') ||
+            recentStatus.contains('arquivado');
+
+        return !hasActive &&
+            !activeStudentIds.contains(sid) &&
+            !isPendingInvite &&
+            !isArchived;
       }).toList();
 
       // Indexar alunos para fallback de fotos e dados completos
@@ -585,7 +598,9 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          'Avaliação pronta • $goal',
+                                          goal.isNotEmpty && goal != 'Treino' && goal != 'Geral'
+                                              ? 'Anamnese preenchida • $goal'
+                                              : 'Cadastro ativo • Aguardando 1ª periodização',
                                           style: TextStyle(
                                             color: MetaColors.subtext(context),
                                             fontSize: 12,

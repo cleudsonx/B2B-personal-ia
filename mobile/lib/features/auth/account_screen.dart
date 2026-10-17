@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../services/auth_service.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../core/widgets/app_version_footer.dart';
+import '../../core/widgets/meta_components.dart';
+import '../../services/auth_service.dart';
+import '../../services/subscription_service.dart';
+import '../subscription/subscription_screen.dart';
+import '../trainer/presentation/screens/trainer_profile_setup_screen.dart';
+import '../trainer/presentation/screens/whatsapp_connection_screen.dart';
 import 'teacher_mfa_screen.dart';
 
 class AccountScreen extends StatefulWidget {
@@ -24,7 +30,13 @@ class AccountScreen extends StatefulWidget {
 class _AccountScreenState extends State<AccountScreen> {
   List<String> _roles = const [];
   String? _email;
+  String? _fullName;
+  String? _phone;
+  String? _photoUrl;
+  String? _cref;
   String? _totpFactorId;
+  String? _activePlanName;
+  int? _maxStudents;
   bool _loading = true;
   bool _isSwitchingRole = false;
 
@@ -43,16 +55,174 @@ class _AccountScreenState extends State<AccountScreen> {
       final factorId = roles.contains('trainer')
           ? await AuthService.getVerifiedTotpFactorId()
           : null;
+
+      if (roles.contains('trainer')) {
+        try {
+          final sub = await SubscriptionService.getMySubscription();
+          if (mounted && sub != null) {
+            _activePlanName = sub.planName;
+            _maxStudents = sub.maxStudents;
+          }
+        } catch (_) {}
+      }
+
       if (!mounted) return;
       setState(() {
         _roles = roles;
         _email = AuthService.currentUser?.email;
+        _fullName = profile?['full_name'] as String? ?? 'Usuário';
+        _phone = (profile?['phone'] ??
+            profile?['public_whatsapp'] ??
+            profile?['whatsapp']) as String?;
+        _photoUrl = (profile?['photo_url'] ?? profile?['avatar_url']) as String?;
+        _cref = (profile?['professional_document'] ?? profile?['cref']) as String?;
         _totpFactorId = factorId;
       });
     } catch (_) {
       if (mounted) setState(() => _roles = [widget.currentRole]);
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _editPhoneNumber() async {
+    final phoneController = TextEditingController(text: _phone ?? '');
+    final formKey = GlobalKey<FormState>();
+    final isDark = MetaColors.isDark(context);
+
+    final updated = await showDialog<String?>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: MetaColors.card(dialogCtx),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: MetaColors.cardBorder(dialogCtx)),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: MetaColors.emerald.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.phone_rounded, color: MetaColors.emerald, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Atualizar Telefone / WhatsApp',
+                style: TextStyle(
+                  color: MetaColors.text(dialogCtx),
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Este número será sincronizado no seu perfil, na vitrine pública e nos disparos do WhatsApp.',
+                style: TextStyle(color: MetaColors.subtext(dialogCtx), fontSize: 13, height: 1.4),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
+                style: TextStyle(color: MetaColors.text(dialogCtx)),
+                decoration: InputDecoration(
+                  labelText: 'Telefone com DDD',
+                  hintText: 'Ex: 61982912174',
+                  prefixIcon: const Icon(Icons.call_outlined, size: 20),
+                  filled: true,
+                  fillColor: isDark ? MetaColors.surfaceHighlight : const Color(0xFFF1F5F9),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: MetaColors.cardBorder(dialogCtx)),
+                  ),
+                ),
+                validator: (val) {
+                  final digits = (val ?? '').replaceAll(RegExp(r'\D'), '');
+                  if (digits.isEmpty) return 'Informe o número do telefone';
+                  if (digits.length < 10 || digits.length > 13) {
+                    return 'Telefone inválido (use DDD + número)';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, null),
+            child: Text('Cancelar', style: TextStyle(color: MetaColors.subtext(dialogCtx))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: MetaColors.emerald,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                final digits = phoneController.text.replaceAll(RegExp(r'\D'), '');
+                Navigator.pop(dialogCtx, digits);
+              }
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
+    );
+
+    if (updated != null && updated != _phone) {
+      setState(() => _loading = true);
+      try {
+        final client = Supabase.instance.client;
+        final uid = client.auth.currentUser?.id;
+        if (uid != null) {
+          final payload = {
+            'phone': updated,
+            'whatsapp': updated,
+            'public_whatsapp': updated,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          };
+          await client.from('profiles').update(payload).eq('id', uid);
+        }
+        if (mounted) {
+          setState(() {
+            _phone = updated;
+            _loading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: MetaColors.emerald,
+              content: Text(
+                'Telefone atualizado e sincronizado em todo o sistema!',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _loading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.red.shade900,
+              content: Text('Erro ao atualizar telefone: $e'),
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -90,22 +260,368 @@ class _AccountScreenState extends State<AccountScreen> {
     }
   }
 
+  String _formatPhone(String? p) {
+    if (p == null || p.isEmpty) return 'Não cadastrado';
+    final digits = p.replaceAll(RegExp(r'\D'), '');
+    if (digits.length == 11) {
+      return '(${digits.substring(0, 2)}) ${digits.substring(2, 7)}-${digits.substring(7)}';
+    } else if (digits.length == 10) {
+      return '(${digits.substring(0, 2)}) ${digits.substring(2, 6)}-${digits.substring(6)}';
+    } else if (digits.length == 13 && digits.startsWith('55')) {
+      return '+55 (${digits.substring(2, 4)}) ${digits.substring(4, 9)}-${digits.substring(9)}';
+    }
+    return p;
+  }
+
   @override
   Widget build(BuildContext context) {
     final roles = _roles.isEmpty ? [widget.currentRole] : _roles;
+    final isDark = MetaColors.isDark(context);
+    final isTrainer = widget.currentRole == 'trainer';
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
       children: [
-        Text('Conta', style: Theme.of(context).textTheme.headlineSmall),
-        if (_email != null) ...[
-          const SizedBox(height: 6),
-          Text(_email!, style: Theme.of(context).textTheme.bodyMedium),
-        ],
-        if (_loading) const LinearProgressIndicator(),
-        if (roles.length > 1) ...[
-          const SizedBox(height: 28),
-          Text('Usar como', style: Theme.of(context).textTheme.titleMedium),
+        // 1. Topo: Título da tela
+        Text(
+          'Conta',
+          style: TextStyle(
+            color: MetaColors.text(context),
+            fontSize: 26,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // 2. Card Principal de Identificação
+        MetaCard(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundColor: MetaColors.highlight(context),
+                backgroundImage: safeImageProvider(_photoUrl),
+                child: safeImageProvider(_photoUrl) == null
+                    ? Text(
+                        (_fullName != null && _fullName!.isNotEmpty)
+                            ? _fullName![0].toUpperCase()
+                            : 'U',
+                        style: const TextStyle(
+                          color: MetaColors.emerald,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 22,
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _fullName ?? 'Usuário',
+                      style: TextStyle(
+                        color: MetaColors.text(context),
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _email ?? 'Carregando...',
+                      style: TextStyle(
+                        color: MetaColors.subtext(context),
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: MetaColors.emerald.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        isTrainer ? 'TREINADOR PROFISSIONAL' : 'ALUNO',
+                        style: const TextStyle(
+                          color: MetaColors.emerald,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 14),
+
+        // 3. Card de Telefone / WhatsApp com Edição Rápida
+        MetaCard(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: MetaColors.emerald.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.phone_android_rounded, color: MetaColors.emerald, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'WhatsApp Cadastrado',
+                      style: TextStyle(
+                        color: MetaColors.subtext(context),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _formatPhone(_phone),
+                      style: TextStyle(
+                        color: MetaColors.text(context),
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.edit_outlined, size: 20),
+                tooltip: 'Atualizar telefone',
+                color: MetaColors.emerald,
+                onPressed: _editPhoneNumber,
+              ),
+            ],
+          ),
+        ),
+
+        if (roles.contains('trainer')) ...[
           const SizedBox(height: 12),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.security_outlined),
+            title: const Text('Verificação em duas etapas'),
+            subtitle: Text(
+              _totpFactorId == null
+                  ? 'Configuração recomendada para segurança da consultoria'
+                  : 'Aplicativo autenticador ativo',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const TeacherMfaScreen()),
+              );
+              await _loadAccount();
+            },
+          ),
+        ],
+
+        // 4. Recursos Específicos para o Treinador (CREF, Automação WhatsApp, Plano SaaS)
+        if (isTrainer) ...[
+          const SizedBox(height: 14),
+
+          // Card de Registro Profissional (CREF)
+          MetaCard(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: (_cref != null && _cref!.toUpperCase().startsWith('CREF'))
+                        ? MetaColors.emerald.withValues(alpha: 0.12)
+                        : Colors.orange.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.verified_outlined,
+                    color: (_cref != null && _cref!.toUpperCase().startsWith('CREF'))
+                        ? MetaColors.emerald
+                        : Colors.orangeAccent,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Registro Profissional',
+                        style: TextStyle(
+                          color: MetaColors.subtext(context),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        (_cref != null && _cref!.isNotEmpty) ? _cref! : 'CREF Pendente',
+                        style: TextStyle(
+                          color: MetaColors.text(context),
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const TrainerProfileSetupScreen()),
+                    );
+                    await _loadAccount();
+                  },
+                  child: const Text('Configurar'),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          // Card do Robô WhatsApp / Conexão
+          MetaCard(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: MetaColors.emerald.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.smart_toy_outlined, color: MetaColors.emerald, size: 24),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Robô de WhatsApp Mr. Coach',
+                        style: TextStyle(
+                          color: MetaColors.text(context),
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Envios automáticos & telemetria 24h',
+                        style: TextStyle(
+                          color: MetaColors.subtext(context),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right_rounded),
+                  color: MetaColors.text(context),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const WhatsappConnectionScreen()),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          // Card de Assinatura & Cotas de Alunos
+          MetaCard(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.workspace_premium_outlined, color: Colors.amber, size: 24),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Plano de Assinatura SaaS',
+                        style: TextStyle(
+                          color: MetaColors.subtext(context),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _activePlanName != null
+                            ? 'Plano $_activePlanName (${_maxStudents ?? 30} vagas)'
+                            : 'Plano Pro (30 vagas ativas)',
+                        style: TextStyle(
+                          color: MetaColors.text(context),
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+                    );
+                  },
+                  child: const Text('Planos'),
+                ),
+              ],
+            ),
+          ),
+        ],
+
+        if (_loading) const Padding(
+          padding: EdgeInsets.symmetric(vertical: 8),
+          child: LinearProgressIndicator(),
+        ),
+
+        if (roles.length > 1) ...[
+          const SizedBox(height: 24),
+          Text(
+            'Usar como',
+            style: TextStyle(
+              color: MetaColors.text(context),
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 10),
           SegmentedButton<String>(
             segments: [
               for (final role in roles)
@@ -143,9 +659,17 @@ class _AccountScreenState extends State<AccountScreen> {
           ),
           if (_isSwitchingRole) const LinearProgressIndicator(),
         ],
-        const SizedBox(height: 28),
-        Text('Aparência', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 12),
+
+        const SizedBox(height: 24),
+        Text(
+          'Aparência',
+          style: TextStyle(
+            color: MetaColors.text(context),
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 10),
         ListenableBuilder(
           listenable: ThemeController.instance,
           builder: (context, _) {
@@ -178,28 +702,8 @@ class _AccountScreenState extends State<AccountScreen> {
             );
           },
         ),
-        if (roles.contains('trainer')) ...[
-          const SizedBox(height: 18),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.security_outlined),
-            title: const Text('Verificação em duas etapas'),
-            subtitle: Text(
-              _totpFactorId == null
-                  ? 'Configuração obrigatória no primeiro acesso de treinador'
-                  : 'Aplicativo autenticador ativo',
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const TeacherMfaScreen()),
-              );
-              await _loadAccount();
-            },
-          ),
-        ],
-        const SizedBox(height: 20),
+
+        const SizedBox(height: 24),
         OutlinedButton.icon(
           onPressed: () => _signOut(false),
           icon: const Icon(Icons.logout),

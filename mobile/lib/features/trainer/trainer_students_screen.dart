@@ -680,6 +680,33 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
       return name.contains(q) || status.contains(q);
     }).toList();
 
+    // Ordenação estrita solicitada pelo treinador: 1º Pendente, 2º Ativo, 3º Arquivado
+    int statusPriority(Map<String, dynamic> st) {
+      final status = (st['status'] as String? ?? '').toLowerCase();
+      final recent = (st['recent_status'] as String? ?? '').toLowerCase();
+      final isPending = status.contains('pendente') ||
+          recent.contains('pendente') ||
+          recent.contains('cadastro') ||
+          status.contains('pending');
+      if (isPending) return 0; // 1º Pendente
+
+      final isArchived = status.contains('arquivado') ||
+          status.contains('inativo') ||
+          recent.contains('arquivado');
+      if (isArchived) return 2; // 3º Arquivado
+
+      return 1; // 2º Ativo
+    }
+
+    filteredStudents.sort((a, b) {
+      final pA = statusPriority(a);
+      final pB = statusPriority(b);
+      if (pA != pB) return pA.compareTo(pB);
+      final nameA = (a['full_name'] as String? ?? '').toLowerCase();
+      final nameB = (b['full_name'] as String? ?? '').toLowerCase();
+      return nameA.compareTo(nameB);
+    });
+
     final isDark = MetaColors.isDark(context);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(

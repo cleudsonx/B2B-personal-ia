@@ -197,15 +197,19 @@ class SquircleButton extends StatelessWidget {
                     const SizedBox(width: 8),
                   ],
                   Flexible(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: fontSize ?? 15,
-                        fontWeight: FontWeight.bold,
-                        color: fg,
-                        letterSpacing: 0.2,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.center,
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: fontSize ?? 15,
+                          fontWeight: FontWeight.bold,
+                          color: fg,
+                          letterSpacing: 0.2,
+                        ),
                       ),
                     ),
                   ),
@@ -222,6 +226,7 @@ class MetaSectionTitle extends StatelessWidget {
   final String? subtitle;
   final CrossAxisAlignment crossAxisAlignment;
   final TextAlign textAlign;
+  final double? fontSize;
 
   const MetaSectionTitle({
     super.key,
@@ -229,6 +234,7 @@ class MetaSectionTitle extends StatelessWidget {
     this.subtitle,
     this.crossAxisAlignment = CrossAxisAlignment.start,
     this.textAlign = TextAlign.start,
+    this.fontSize,
   });
 
   @override
@@ -242,10 +248,10 @@ class MetaSectionTitle extends StatelessWidget {
           textAlign: textAlign,
           style: TextStyle(
             color: isDark ? MetaColors.textPrimary : MetaColors.lightTextPrimary,
-            fontSize: 26,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -0.8,
-            height: 1.2,
+            fontSize: fontSize ?? 18,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.4,
+            height: 1.25,
           ),
         ),
         if (subtitle != null) ...[

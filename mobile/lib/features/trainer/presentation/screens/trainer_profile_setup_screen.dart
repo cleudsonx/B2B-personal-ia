@@ -54,7 +54,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
 
       final response = await supabase
           .from('profiles')
-          .select('username, bio, public_whatsapp, specialties, professional_document, public_directory_enabled, photo_url, avatar_url')
+          .select('username, bio, phone, whatsapp, public_whatsapp, specialties, professional_document, public_directory_enabled, photo_url, avatar_url')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -65,7 +65,10 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
         setState(() {
           _usernameController.text = response['username'] ?? '';
           _bioController.text = response['bio'] ?? '';
-          _whatsappController.text = response['public_whatsapp'] ?? '';
+          _whatsappController.text = response['public_whatsapp'] ??
+              response['phone'] ??
+              response['whatsapp'] ??
+              '';
           _crefController.text = response['professional_document'] ?? '';
           _photoUrlController.text = response['photo_url'] ?? response['avatar_url'] ?? '';
           _publishInDirectory = response['public_directory_enabled'] == true;
@@ -197,6 +200,8 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
         'bio': _bioController.text.trim().isEmpty
             ? null
             : _bioController.text.trim(),
+        'phone': whatsappDigits.isEmpty ? null : whatsappDigits,
+        'whatsapp': whatsappDigits.isEmpty ? null : whatsappDigits,
         'public_whatsapp': whatsappDigits.isEmpty ? null : whatsappDigits,
         'professional_document': _crefController.text.trim(),
         'public_directory_enabled': _publishInDirectory,
