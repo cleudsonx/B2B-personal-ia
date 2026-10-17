@@ -108,80 +108,43 @@ class _TrainerMainLayoutState extends State<TrainerMainLayout> {
         systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         systemNavigationBarDividerColor: Colors.transparent,
       ),
-      child: NavigationBarTheme(
-        data: NavigationBarThemeData(
-          backgroundColor: isDark ? MetaColors.background : MetaColors.lightSurface,
-          indicatorColor: isDark ? MetaColors.surfaceHighlight : MetaColors.lightSurfaceHighlight,
-          elevation: 0,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          iconTheme: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return IconThemeData(
-                color: isDark ? MetaColors.emerald : MetaColors.lightEmerald,
-                size: 24,
-              );
-            }
-            return IconThemeData(
-              color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary,
-              size: 24,
-            );
-          }),
-          labelTextStyle: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return TextStyle(
-                color: isDark ? MetaColors.textPrimary : MetaColors.lightTextPrimary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              );
-            }
-            return TextStyle(
-              color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            );
-          }),
+      child: Scaffold(
+        extendBody: true,
+        backgroundColor: isDark ? MetaColors.background : MetaColors.lightBackground,
+        body: IndexedStack(
+          index: activeIndex,
+          children: screens,
         ),
-        child: Scaffold(
-          backgroundColor: isDark ? MetaColors.background : MetaColors.lightBackground,
-          body: IndexedStack(
-            index: activeIndex,
-            children: screens,
-          ),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: activeIndex,
-            onDestinationSelected: _onDestinationSelected,
-            backgroundColor: isDark ? MetaColors.background : MetaColors.lightSurface,
-            indicatorColor: isDark ? MetaColors.surfaceHighlight : MetaColors.lightSurfaceHighlight,
-            elevation: 0,
-            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.chat_bubble_outline),
-                selectedIcon: Icon(Icons.chat_bubble),
-                label: 'Alunos',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.list_alt),
-                selectedIcon: Icon(Icons.list),
-                label: 'Treinos',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.groups_outlined),
-                selectedIcon: Icon(Icons.groups),
-                label: 'Social',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.store_outlined),
-                selectedIcon: Icon(Icons.store),
-                label: 'Vitrine',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.manage_accounts_outlined),
-                selectedIcon: Icon(Icons.manage_accounts),
-                label: 'Conta',
-              ),
-            ],
-          ),
+        bottomNavigationBar: OneUiFloatingNavBar(
+          selectedIndex: activeIndex,
+          onDestinationSelected: _onDestinationSelected,
+          items: const [
+            OneUiNavItem(
+              icon: Icons.chat_bubble_outline,
+              selectedIcon: Icons.chat_bubble,
+              label: 'Alunos',
+            ),
+            OneUiNavItem(
+              icon: Icons.list_alt,
+              selectedIcon: Icons.list,
+              label: 'Treinos',
+            ),
+            OneUiNavItem(
+              icon: Icons.groups_outlined,
+              selectedIcon: Icons.groups,
+              label: 'Social',
+            ),
+            OneUiNavItem(
+              icon: Icons.store_outlined,
+              selectedIcon: Icons.store,
+              label: 'Vitrine',
+            ),
+            OneUiNavItem(
+              icon: Icons.manage_accounts_outlined,
+              selectedIcon: Icons.manage_accounts,
+              label: 'Conta',
+            ),
+          ],
         ),
       ),
     );

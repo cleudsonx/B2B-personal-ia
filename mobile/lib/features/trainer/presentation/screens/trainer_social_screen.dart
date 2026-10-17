@@ -3,10 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/theme/theme_controller.dart';
+import '../../../../core/widgets/app_version_footer.dart';
 import '../../../../core/widgets/avatar_selector_sheet.dart';
 import '../../../../core/widgets/meta_components.dart';
 import '../../../../services/auth_service.dart';
 import '../../../../services/workout_service.dart';
+import 'trainer_profile_setup_screen.dart';
 
 /// Aba 3 do Professor (Social / Atualizações)
 ///
@@ -657,7 +660,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                   parent: BouncingScrollPhysics(),
                 ),
                 slivers: [
-                  // 1. Topo M3: Título da Aba "Atualizações"
+                  // 1. Topo M3: Título da Aba "Atualizações" + Popover One UI
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.only(
@@ -666,14 +669,54 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                         right: 20,
                         bottom: 12,
                       ),
-                      child: Text(
-                        'Atualizações',
-                        style: TextStyle(
-                          color: MetaColors.text(context),
-                          fontSize: 26,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.5,
-                        ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Atualizações',
+                            style: TextStyle(
+                              color: MetaColors.text(context),
+                              fontSize: 26,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          OneUiPopoverMenuButton(
+                            showBadgeDot: true,
+                            items: [
+                              OneUiPopoverItem(
+                                label: 'Novidades da versão',
+                                icon: Icons.new_releases_outlined,
+                                showOrangeDot: true,
+                                onTap: () =>
+                                    AppVersionFooter.showReleaseNotesModal(
+                                      context,
+                                    ),
+                              ),
+                              OneUiPopoverItem(
+                                label: 'Alternar modo visual',
+                                icon: isDark
+                                    ? Icons.light_mode_outlined
+                                    : Icons.dark_mode_outlined,
+                                onTap: () =>
+                                    ThemeController.instance.toggleTheme(),
+                              ),
+                              OneUiPopoverItem(
+                                label: 'Configurar Vitrine',
+                                icon: Icons.storefront_outlined,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const TrainerProfileSetupScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ),

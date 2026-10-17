@@ -287,33 +287,42 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
               physics: const BouncingScrollPhysics(),
               slivers: [
                 SliverAppBar(
-                  backgroundColor: colorScheme.surface.withValues(alpha: 0.9),
+                  backgroundColor: Colors.transparent,
+                  surfaceTintColor: Colors.transparent,
                   pinned: true,
                   elevation: 0,
                   scrolledUnderElevation: 0,
-                  title: const Text('Montar Vitrine'),
-                  centerTitle: true,
-                  actions: [
-                    TextButton(
-                      onPressed: _leaveProfileSetup,
-                      child: const Text(
-                        'Pular',
+                  automaticallyImplyLeading: false,
+                  titleSpacing: 16,
+                  title: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      OneUiFloatingCircleButton(
+                        icon: Icons.arrow_back_ios_new_rounded,
+                        tooltip: 'Voltar',
+                        onTap: _leaveProfileSetup,
+                      ),
+                      Text(
+                        'Montar Vitrine',
                         style: TextStyle(
-                          color: MetaColors.emerald,
-                          fontWeight: FontWeight.bold,
+                          color: MetaColors.text(context),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                    ),
-                  ],
+                      OneUiFloatingPillAction(
+                        label: 'Pular',
+                        onTap: _leaveProfileSetup,
+                      ),
+                    ],
+                  ),
                 ),
                 SliverPadding(
                   padding: EdgeInsets.only(
                     left: 24,
                     right: 24,
-                    top: 24,
-                    bottom:
-                        padding.bottom +
-                        120, // Extra space for the floating button
+                    top: 16,
+                    bottom: padding.bottom + 120, // Extra space for the floating button
                   ),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate((context, index) {
@@ -648,31 +657,13 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
             Positioned(
               left: 24,
               right: 24,
-              bottom: padding.bottom > 0 ? padding.bottom : 24,
-              child: FilledButton(
-                onPressed: _isSaving || _isLoading
-                  ? null
-                  : _saveProfile,
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: _isSaving
-                    ? const SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text(
-                        'Salvar Vitrine',
-                        style: TextStyle(fontSize: 16),
-                      ),
+              bottom: padding.bottom > 0 ? padding.bottom + 8 : 24,
+              child: OneUiFloatingConfirmBar(
+                cancelLabel: 'Cancelar',
+                confirmLabel: 'Salvar Vitrine',
+                isLoading: _isSaving,
+                onCancel: _leaveProfileSetup,
+                onConfirm: _isSaving || _isLoading ? null : _saveProfile,
               ),
             ),
           ],

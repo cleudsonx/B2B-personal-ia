@@ -5,9 +5,12 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/widgets/meta_components.dart';
+import '../../core/widgets/app_version_footer.dart';
+import '../../core/theme/theme_controller.dart';
 import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
 import '../subscription/subscription_screen.dart';
+import 'presentation/screens/trainer_profile_setup_screen.dart';
 
 class TrainerStudentsScreen extends StatefulWidget {
   final Function(String studentId, String studentName)? onSelectStudentForPlan;
@@ -746,28 +749,71 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                               letterSpacing: -0.5,
                             ),
                           ),
-                          if (_isLoading)
-                            SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  MetaColors.primaryColor(context),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (_isLoading)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  child: SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        MetaColors.primaryColor(context),
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              else
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.refresh_rounded,
+                                    color: MetaColors.textSecondary,
+                                    size: 22,
+                                  ),
+                                  onPressed: _loadStudentsFromDb,
+                                  tooltip: 'Recarregar',
+                                  splashRadius: 20,
                                 ),
+                              OneUiPopoverMenuButton(
+                                showBadgeDot: true,
+                                items: [
+                                  OneUiPopoverItem(
+                                    label: 'Novidades da versão',
+                                    icon: Icons.new_releases_outlined,
+                                    showOrangeDot: true,
+                                    onTap: () =>
+                                        AppVersionFooter.showReleaseNotesModal(
+                                          context,
+                                        ),
+                                  ),
+                                  OneUiPopoverItem(
+                                    label: 'Alternar modo visual',
+                                    icon: isDark
+                                        ? Icons.light_mode_outlined
+                                        : Icons.dark_mode_outlined,
+                                    onTap: () =>
+                                        ThemeController.instance.toggleTheme(),
+                                  ),
+                                  OneUiPopoverItem(
+                                    label: 'Configurar Vitrine',
+                                    icon: Icons.storefront_outlined,
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const TrainerProfileSetupScreen(),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
                               ),
-                            )
-                          else
-                            IconButton(
-                              icon: const Icon(
-                                Icons.refresh_rounded,
-                                color: MetaColors.textSecondary,
-                                size: 22,
-                              ),
-                              onPressed: _loadStudentsFromDb,
-                              tooltip: 'Recarregar',
-                              splashRadius: 20,
-                            ),
+                            ],
+                          ),
                         ],
                       ),
                       const SizedBox(height: 12),

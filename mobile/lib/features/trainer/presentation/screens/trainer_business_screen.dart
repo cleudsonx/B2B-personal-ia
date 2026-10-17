@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../services/auth_service.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/widgets/app_version_footer.dart';
 import '../../../../core/widgets/meta_components.dart';
 import '../../../../core/theme/theme_controller.dart';
 import '../../../subscription/subscription_screen.dart';
@@ -1151,7 +1152,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
         body: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
-            // Topo (Título Geral M3)
+            // Topo (Título Geral M3 + Popover One UI)
             SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.only(
@@ -1160,14 +1161,52 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                   right: 20,
                   bottom: 20,
                 ),
-                child: Text(
-                  'Ferramentas do Personal',
-                  style: TextStyle(
-                    color: MetaColors.text(context),
-                    fontSize: 26,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.5,
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Ferramentas do Personal',
+                      style: TextStyle(
+                        color: MetaColors.text(context),
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    OneUiPopoverMenuButton(
+                      showBadgeDot: true,
+                      items: [
+                        OneUiPopoverItem(
+                          label: 'Novidades da versão',
+                          icon: Icons.new_releases_outlined,
+                          showOrangeDot: true,
+                          onTap: () => AppVersionFooter.showReleaseNotesModal(
+                            context,
+                          ),
+                        ),
+                        OneUiPopoverItem(
+                          label: 'Alternar modo visual',
+                          icon: isDark
+                              ? Icons.light_mode_outlined
+                              : Icons.dark_mode_outlined,
+                          onTap: () => ThemeController.instance.toggleTheme(),
+                        ),
+                        OneUiPopoverItem(
+                          label: 'Configurar Vitrine',
+                          icon: Icons.storefront_outlined,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const TrainerProfileSetupScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),

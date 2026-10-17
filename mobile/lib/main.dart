@@ -33,6 +33,7 @@ import 'core/widgets/theme_toggle_button.dart';
 import 'core/widgets/pwa_update_wrapper.dart';
 import 'core/widgets/workout_guide_modal.dart';
 import 'core/widgets/app_version_footer.dart';
+import 'core/widgets/meta_components.dart';
 
 import 'package:flutter/services.dart';
 import 'features/invite/invite_landing_screen.dart';
@@ -712,6 +713,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
     } else {
       // Mobile Layout with Top Header Pill & Bottom Navigation
       return Scaffold(
+        extendBody: true,
         body: Column(
           children: [
             // Top Compact Role & User Banner
@@ -902,32 +904,18 @@ class _MainShellScreenState extends State<MainShellScreen> {
             ),
           ],
         ),
-        bottomNavigationBar: Container(
-          decoration: BoxDecoration(
-            color: AppColors.card(context),
-            border: Border(
-              top: BorderSide(color: AppColors.cardBorder(context), width: 1),
-            ),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: List.generate(navItems.length, (idx) {
-                  final item = navItems[idx];
-                  final isSelected = _currentIndex == idx;
-                  return _NavBarItem(
-                    icon: isSelected ? item.activeIcon : item.icon,
-                    label: item.label,
-                    isSelected: isSelected,
-                    activeColor: item.activeColor,
-                    onTap: () => setState(() => _currentIndex = idx),
-                  );
-                }),
-              ),
-            ),
-          ),
+        bottomNavigationBar: OneUiFloatingNavBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: (idx) => setState(() => _currentIndex = idx),
+          items: navItems
+              .map(
+                (item) => OneUiNavItem(
+                  icon: item.icon,
+                  selectedIcon: item.activeIcon,
+                  label: item.label,
+                ),
+              )
+              .toList(),
         ),
       );
     }
