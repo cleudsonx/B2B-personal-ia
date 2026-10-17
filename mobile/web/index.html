@@ -375,7 +375,7 @@
       // =========================================================================
       // Camada 2: Version Heartbeat via version.json (Resiliente a iOS e Android WebAPK)
       // =========================================================================
-      const APP_CURRENT_BUILD = 2026102869;
+      const APP_CURRENT_BUILD = 2026102873;
 
       async function checkVersionFile() {
         try {
@@ -401,9 +401,9 @@
         showUpdateBanner(null);
       };
 
-      // Dispara verificação rápida após 1.5s de carregamento
+      // Dispara verificação rápida após 1.5s de carregamento e a cada 45s
       setTimeout(checkVersionFile, 1500);
-      setInterval(checkVersionFile, 3 * 60 * 1000);
+      setInterval(checkVersionFile, 45 * 1000);
 
       window.addEventListener('focus', checkVersionFile);
       document.addEventListener('visibilitychange', () => {

@@ -1,6 +1,6 @@
 {
-  "version": "1.3.14",
-  "build": 2026102869,
-  "updated_at": "2026-10-17T04:24:41.791620Z",
-  "notes": "Cockpit de Prescrição na Aba Treinos, Guia Interativo 360º do Aluno, Link 1-Toque na Vitrine, Nova Aba Conta e Sincronização Global de WhatsApp"
+  "version": "1.4.0",
+  "build": 2026102873,
+  "updated_at": "2026-10-17T07:22:29.599790Z",
+  "notes": "Fase 1 (One UI 7 / Samsung Health): Dock Flutuante em Capsula com Blur, Controles Translucidos de Topo, Barra Flutuante de Confirmacao e Menu Popover com Ponto Laranja"
 }

@@ -38,6 +38,36 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
+      version: '1.4.0',
+      buildNumber: 2026102873,
+      date: '17 de Outubro, 2026',
+      summary:
+          'Fase 1 (One UI 7 / Samsung Health): Dock Flutuante em Cápsula com Blur, Controles Translúcidos de Topo, Barra Flutuante de Confirmação e Menu Popover com Ponto Laranja.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.view_carousel_rounded,
+          title: 'Dock Inferior Flutuante em Cápsula com Blur (Edge-to-Edge)',
+          description:
+              'Nova barra de navegação flutuante com efeito vidro fosco (BackdropFilter), pílula interna de seleção ativa e listas rolando suavemente por trás do menu.',
+          badge: 'NOVO',
+        ),
+        ChangelogItem(
+          icon: Icons.more_vert_rounded,
+          title: 'Menu Popover Super-Arredondado com Ponto Laranja (•)',
+          description:
+              'Novo botão de opções rápidas no topo das abas Alunos, Social e Vitrine com indicador laranja para abrir as novidades da versão, alternar tema e configurar vitrine.',
+          badge: 'UX',
+        ),
+        ChangelogItem(
+          icon: Icons.tune_rounded,
+          title: 'Controles Translúcidos de Topo & Barra [ Cancelar | Salvar ]',
+          description:
+              'Botões flutuantes translúcidos no cabeçalho e nova barra de confirmação em cápsula dividida com divisor central na configuração da Vitrine.',
+          badge: 'MELHORIA',
+        ),
+      ],
+    ),
+    VersionRelease(
       version: '1.3.14',
       buildNumber: 2026102869,
       date: '17 de Outubro, 2026',
