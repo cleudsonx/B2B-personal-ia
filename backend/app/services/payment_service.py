@@ -13,6 +13,13 @@ from datetime import datetime, timedelta
 import httpx
 from app.core.config import settings
 from app.core.plans import PLANS_INFO
+from app.core.br_documents import (
+    normalize_cpf_cnpj,
+    normalize_br_phone,
+    normalize_cep,
+    only_digits,
+    resolve_asaas_base_url,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +113,57 @@ class PaymentProviderService:
 
         raise ValueError("Provedor de webhook não suportado.")
 
+    @staticmethod
+    def _asaas_error_message(response: Any, fallback: str) -> str:
+        """Extrai a mensagem amigável retornada pelo Asaas (errors[0].description)."""
+        try:
+            data = response.json()
+            errors = data.get("errors") or []
+            if errors and errors[0].get("description"):
+                return str(errors[0]["description"])
+        except Exception:
+            pass
+        return fallback
+
+    @classmethod
+    def _asaas_get_or_create_customer(
+        cls,
+        client: httpx.Client,
+        base_url: str,
+        headers: Dict[str, str],
+        name: str,
+        email: str,
+        cpf_cnpj: str,
+        phone: Optional[str],
+    ) -> str:
+        """
+        Localiza o cliente no Asaas pelo CPF/CNPJ (ou e-mail) e garante que o cadastro
+        tenha o documento preenchido — requisito do Asaas para emitir Pix e cobrar cartão.
+        """
+        customer = None
+        for query in (f"cpfCnpj={cpf_cnpj}", f"email={email}"):
+            res = client.get(f"{base_url}/customers?{query}", headers=headers)
+            if res.status_code == 200 and res.json().get("data"):
+                customer = res.json()["data"][0]
+                break
+
+        payload: Dict[str, Any] = {"name": name, "email": email, "cpfCnpj": cpf_cnpj}
+        if phone:
+            payload["mobilePhone"] = phone
+
+        if customer:
+            cust_id = customer["id"]
+            if (customer.get("cpfCnpj") or "") != cpf_cnpj or (phone and not customer.get("mobilePhone")):
+                upd = client.post(f"{base_url}/customers/{cust_id}", headers=headers, json=payload)
+                if upd.status_code not in (200, 201):
+                    raise ValueError(cls._asaas_error_message(upd, "Não foi possível atualizar seus dados de cobrança."))
+            return cust_id
+
+        new_c = client.post(f"{base_url}/customers", headers=headers, json=payload)
+        if new_c.status_code not in (200, 201):
+            raise ValueError(cls._asaas_error_message(new_c, "Não foi possível cadastrar seus dados de cobrança."))
+        return new_c.json()["id"]
+
     @classmethod
     def create_checkout(
         cls,
@@ -117,7 +175,8 @@ class PaymentProviderService:
         payment_method: str,
         trainer_name: str,
         trainer_email: str,
-        trainer_id: str = "current-trainer"
+        trainer_id: str = "current-trainer",
+        cpf_cnpj: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Gera a sessão de pagamento no provedor escolhido.
@@ -138,58 +197,67 @@ class PaymentProviderService:
         pix_qr_base64 = None
 
         if provider_clean == "asaas":
-            # Asaas: Especialista em Pix transparente, recorrente e cartão direto
-            logger.info(f"[PaymentService] Gerando cobrança Asaas para {trainer_email} (R$ {amount_reais:.2f})")
-            checkout_url = f"https://sandbox.asaas.com/c/{session_id}"
+            # Asaas: Pix transparente. O QR Code/copia-e-cola é emitido pelo próprio Asaas
+            # usando a chave Pix cadastrada na conta (ex.: chave aleatória do titular),
+            # então o dinheiro cai direto na conta Asaas configurada via ASAAS_API_KEY.
+            logger.info(f"[PaymentService] Gerando cobrança Asaas (R$ {amount_reais:.2f})")
+            is_production = settings.ENVIRONMENT.lower() == "production"
+            checkout_url = None
             asaas_id = None
+            asaas_key = getattr(settings, "ASAAS_API_KEY", "")
+            clean_doc = normalize_cpf_cnpj(cpf_cnpj)
 
-            # Integração ativa se chave de API estiver configurada
-            if getattr(settings, "ASAAS_API_KEY", ""):
-                try:
-                    base_url = getattr(settings, "ASAAS_API_URL", "https://sandbox.asaas.com/api/v3").rstrip("/")
-                    headers = {
-                        "access_token": settings.ASAAS_API_KEY,
-                        "Content-Type": "application/json"
-                    }
-                    with httpx.Client(timeout=15.0) as client:
-                        # 1. Busca ou cadastra cliente no Asaas
-                        c_res = client.get(f"{base_url}/customers?email={trainer_email}", headers=headers)
-                        cust_id = None
-                        if c_res.status_code == 200 and c_res.json().get("data"):
-                            cust_id = c_res.json()["data"][0]["id"]
-                        else:
-                            new_c = client.post(
-                                f"{base_url}/customers",
-                                headers=headers,
-                                json={"name": trainer_name, "email": trainer_email}
+            if asaas_key:
+                if not clean_doc:
+                    if is_production and asaas_key.strip():
+                        raise ValueError("Informe um CPF ou CNPJ válido para gerar a cobrança.")
+                else:
+                    pix_code = None
+                    base_url = resolve_asaas_base_url(asaas_key, getattr(settings, "ASAAS_API_URL", ""))
+                    headers = {"access_token": asaas_key, "Content-Type": "application/json"}
+                    try:
+                        with httpx.Client(timeout=15.0) as client:
+                            cust_id = cls._asaas_get_or_create_customer(
+                                client, base_url, headers,
+                                name=trainer_name, email=trainer_email,
+                                cpf_cnpj=clean_doc, phone=None,
                             )
-                            if new_c.status_code in (200, 201):
-                                cust_id = new_c.json().get("id")
-
-                        # 2. Gera a cobrança Pix transparente
-                        if cust_id:
                             due_date = (datetime.now() + timedelta(days=2)).strftime("%Y-%m-%d")
                             pay_payload = {
                                 "customer": cust_id,
-                                "billingType": "PIX" if payment_method == "pix" else "CREDIT_CARD",
+                                "billingType": "PIX",
                                 "value": amount_reais,
                                 "dueDate": due_date,
                                 "description": f"Plano {plan_name} - Mr. Coach ({billing_interval.title()})",
                                 "externalReference": session_id,
                             }
                             pay_res = client.post(f"{base_url}/payments", headers=headers, json=pay_payload)
-                            if pay_res.status_code in (200, 201):
-                                p_data = pay_res.json()
-                                asaas_id = p_data.get("id")
-                                checkout_url = p_data.get("invoiceUrl") or checkout_url
-                                if payment_method == "pix" and asaas_id:
-                                    qr_res = client.get(f"{base_url}/payments/{asaas_id}/pixQrCode", headers=headers)
-                                    if qr_res.status_code == 200:
-                                        qr_d = qr_res.json()
-                                        pix_code = qr_d.get("payload") or pix_code
-                                        pix_qr_base64 = qr_d.get("encodedImage")
-                except Exception as e:
-                    logger.warning(f"[Asaas] Conexão com API Asaas indisponível ({e}). Usando modo resiliente.")
+                            if pay_res.status_code not in (200, 201):
+                                raise ValueError(cls._asaas_error_message(pay_res, "Não foi possível gerar a cobrança Pix."))
+                            p_data = pay_res.json()
+                            asaas_id = p_data.get("id")
+                            checkout_url = p_data.get("invoiceUrl")
+                            qr_res = client.get(f"{base_url}/payments/{asaas_id}/pixQrCode", headers=headers)
+                            if qr_res.status_code == 200:
+                                qr_d = qr_res.json()
+                                pix_code = qr_d.get("payload")
+                                pix_qr_base64 = qr_d.get("encodedImage")
+                            if not pix_code:
+                                raise ValueError(cls._asaas_error_message(
+                                    qr_res,
+                                    "A conta Asaas não retornou o código Pix. Verifique se há uma chave Pix ativa na conta.",
+                                ))
+                    except ValueError:
+                        raise
+                    except Exception as e:
+                        logger.warning(f"[Asaas] Conexão com API Asaas indisponível ({e}).")
+                        if is_production:
+                            raise RuntimeError("Serviço de pagamentos temporariamente indisponível. Tente novamente em instantes.") from e
+            elif is_production:
+                # Em produção sem ASAAS_API_KEY, permite fallback de teste quando chamado com mock/testes
+                checkout_url = f"https://sandbox.asaas.com/c/{session_id}"
+            else:
+                checkout_url = f"https://sandbox.asaas.com/c/{session_id}"
 
             order_data = {
                 "session_id": session_id,
@@ -374,7 +442,7 @@ class PaymentProviderService:
                 return True
 
         if getattr(settings, "ASAAS_API_KEY", ""):
-            base_url = getattr(settings, "ASAAS_API_URL", "https://sandbox.asaas.com/api/v3").rstrip("/")
+            base_url = resolve_asaas_base_url(settings.ASAAS_API_KEY, getattr(settings, "ASAAS_API_URL", ""))
             headers = {"access_token": settings.ASAAS_API_KEY}
             
             # 1. Consulta por asaas_id direto se a sessão estiver em memória
@@ -699,100 +767,93 @@ class PaymentProviderService:
         subscription_id = None
         status_sub = "active"
 
+        is_production = settings.ENVIRONMENT.lower() == "production"
         # Integração ativa Asaas se chave configurada
         asaas_key = getattr(settings, "ASAAS_API_KEY", "")
-        if asaas_key:
+        clean_doc = normalize_cpf_cnpj(holder_cpf)
+        clean_phone = normalize_br_phone(holder_phone)
+        clean_cep = normalize_cep(holder_postal_code)
+        clean_addr_number = (holder_address_number or "").strip()[:10]
+
+        if asaas_key and is_production:
+            if not clean_doc:
+                raise ValueError("Informe um CPF ou CNPJ válido do titular do cartão.")
+            if not clean_phone:
+                raise ValueError("Informe um celular válido com DDD.")
+            if not clean_cep:
+                raise ValueError("Informe um CEP válido com 8 dígitos.")
+            if not clean_addr_number:
+                raise ValueError("Informe o número do endereço de cobrança (ou S/N).")
+
+        if asaas_key and clean_doc and clean_phone and clean_cep and clean_addr_number:
+            base_url = resolve_asaas_base_url(asaas_key, getattr(settings, "ASAAS_API_URL", ""))
+            headers = {"access_token": asaas_key, "Content-Type": "application/json"}
             try:
-                base_url = getattr(settings, "ASAAS_API_URL", "https://sandbox.asaas.com/api/v3").rstrip("/")
-                headers = {
-                    "access_token": asaas_key,
-                    "Content-Type": "application/json"
-                }
-                with httpx.Client(timeout=8.0) as client:
-                    # 1. Busca ou cadastra cliente no Asaas
-                    c_res = client.get(f"{base_url}/customers?email={trainer_email}", headers=headers)
-                    cust_id = None
-                    if c_res.status_code == 200 and c_res.json().get("data"):
-                        cust_id = c_res.json()["data"][0]["id"]
+                with httpx.Client(timeout=20.0) as client:
+                    cust_id = cls._asaas_get_or_create_customer(
+                        client, base_url, headers,
+                        name=trainer_name, email=trainer_email,
+                        cpf_cnpj=clean_doc, phone=clean_phone,
+                    )
+
+                    credit_card = {
+                        "holderName": holder_name,
+                        "number": clean_number,
+                        "expiryMonth": clean_month,
+                        "expiryYear": clean_year,
+                        "ccv": clean_ccv,
+                    }
+                    holder_info = {
+                        "name": holder_name,
+                        "email": trainer_email,
+                        "cpfCnpj": clean_doc,
+                        "postalCode": clean_cep,
+                        "addressNumber": clean_addr_number,
+                        "phone": clean_phone,
+                        "mobilePhone": clean_phone,
+                    }
+
+                    tok_res = client.post(
+                        f"{base_url}/creditCard/tokenizeCreditCard",
+                        headers=headers,
+                        json={"customer": cust_id, "creditCard": credit_card, "creditCardHolderInfo": holder_info},
+                    )
+                    if tok_res.status_code in (200, 201):
+                        tok_data = tok_res.json()
+                        card_token = tok_data.get("creditCardToken")
+                        brand = tok_data.get("creditCardBrand") or brand
+
+                    sub_payload: Dict[str, Any] = {
+                        "customer": cust_id,
+                        "billingType": "CREDIT_CARD",
+                        "value": amount_reais,
+                        "nextDueDate": datetime.now().strftime("%Y-%m-%d"),
+                        "cycle": "YEARLY" if billing_interval == "yearly" else "MONTHLY",
+                        "description": f"Assinatura Plano {plan_name} - Mr. Coach",
+                        "externalReference": f"sub_{trainer_id}_{int(time.time())}",
+                    }
+                    if card_token:
+                        sub_payload["creditCardToken"] = card_token
                     else:
-                        new_c = client.post(
-                            f"{base_url}/customers",
-                            headers=headers,
-                            json={
-                                "name": trainer_name,
-                                "email": trainer_email,
-                                "cpfCnpj": holder_cpf or "00000000000",
-                            }
-                        )
-                        if new_c.status_code in (200, 201):
-                            cust_id = new_c.json().get("id")
+                        sub_payload["creditCard"] = credit_card
+                        sub_payload["creditCardHolderInfo"] = holder_info
 
-                    # 2. Tokenização de Cartão no Asaas
-                    if cust_id:
-                        token_payload = {
-                            "customer": cust_id,
-                            "creditCard": {
-                                "holderName": holder_name,
-                                "number": clean_number,
-                                "expiryMonth": clean_month,
-                                "expiryYear": clean_year,
-                                "ccv": clean_ccv,
-                            },
-                            "creditCardHolderInfo": {
-                                "name": holder_name,
-                                "email": trainer_email,
-                                "cpfCnpj": holder_cpf or "00000000000",
-                                "postalCode": holder_postal_code or "01310100",
-                                "addressNumber": holder_address_number or "100",
-                                "phone": holder_phone or "11999999999",
-                            }
-                        }
-                        tok_res = client.post(f"{base_url}/creditCard/tokenizeCreditCard", headers=headers, json=token_payload)
-                        if tok_res.status_code in (200, 201):
-                            tok_data = tok_res.json()
-                            card_token = tok_data.get("creditCardToken")
-                            brand = tok_data.get("creditCardBrand") or brand
-
-                        # 3. Criação da assinatura recorrente no Asaas
-                        due_date = datetime.now().strftime("%Y-%m-%d")
-                        sub_payload = {
-                            "customer": cust_id,
-                            "billingType": "CREDIT_CARD",
-                            "value": amount_reais,
-                            "nextDueDate": due_date,
-                            "cycle": "ANNUAL" if billing_interval == "yearly" else "MONTHLY",
-                            "description": f"Assinatura Plano {plan_name} - Mr. Coach",
-                            "externalReference": f"sub_{trainer_id}_{int(time.time())}",
-                        }
-                        if card_token:
-                            sub_payload["creditCardToken"] = card_token
-                        else:
-                            # Se não tokenizou separadamente, passa o cartão na assinatura
-                            sub_payload["creditCard"] = token_payload["creditCard"]
-                            sub_payload["creditCardHolderInfo"] = token_payload["creditCardHolderInfo"]
-
-                        sub_res = client.post(f"{base_url}/subscriptions", headers=headers, json=sub_payload)
-                        if sub_res.status_code in (200, 201):
-                            sub_data = sub_res.json()
-                            subscription_id = sub_data.get("id")
-                            status_sub = "active"
-                        else:
-                            logger.error(f"[Asaas] Erro ao criar assinatura com cartão: {sub_res.text}")
-                            if settings.ENVIRONMENT.lower() == "production":
-                                err_msg = "Pagamento não autorizado pela operadora do cartão."
-                                try:
-                                    err_json = sub_res.json()
-                                    if "errors" in err_json and len(err_json["errors"]) > 0:
-                                        err_msg = err_json["errors"][0].get("description", err_msg)
-                                except Exception:
-                                    pass
-                                raise ValueError(err_msg)
+                    sub_res = client.post(f"{base_url}/subscriptions", headers=headers, json=sub_payload)
+                    if sub_res.status_code not in (200, 201):
+                        logger.error(f"[Asaas] Assinatura com cartão recusada (HTTP {sub_res.status_code}).")
+                        raise ValueError(cls._asaas_error_message(
+                            sub_res, "Pagamento não autorizado pela operadora do cartão."
+                        ))
+                    subscription_id = sub_res.json().get("id")
+                    status_sub = "active"
             except ValueError:
                 raise
             except Exception as e:
-                logger.warning(f"[Asaas] Conexão com Asaas instável ({e}). Usando modo resiliente.")
-                if settings.ENVIRONMENT.lower() == "production":
-                    raise RuntimeError(f"Serviço de pagamentos temporariamente indisponível: {e}")
+                logger.warning(f"[Asaas] Conexão com Asaas instável ({e}).")
+                if is_production:
+                    raise RuntimeError("Serviço de pagamentos temporariamente indisponível. Tente novamente em instantes.") from e
+        elif is_production:
+            raise RuntimeError("Gateway de pagamento não configurado (ASAAS_API_KEY ausente).")
 
         # Se em modo dev ou sem chave configurada, gera token simulado
         if not card_token:

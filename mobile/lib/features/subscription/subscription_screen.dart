@@ -6,6 +6,7 @@ import '../../core/widgets/meta_components.dart';
 import 'presentation/screens/pix_payment_screen.dart';
 import '../../models/subscription_model.dart';
 import '../../services/subscription_service.dart';
+import '../../services/auth_service.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -864,16 +865,48 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
   Timer? _pollingTimer;
   static const int _maxPixPollAttempts = 100;
 
-  // Controladores do Cartão
+  // Controladores do Cartão e Faturamento
   final TextEditingController _cardNumberController = TextEditingController();
   final TextEditingController _cardHolderController = TextEditingController();
   final TextEditingController _expiryController = TextEditingController();
   final TextEditingController _cvvController = TextEditingController();
+  final TextEditingController _cpfCnpjController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _prefillUserData();
     _createSession();
+  }
+
+  void _prefillUserData() {
+    final user = AuthService.currentUser;
+    if (user != null) {
+      final meta = user.userMetadata ?? {};
+      final name = (meta['full_name'] as String?) ?? '';
+      if (name.isNotEmpty) {
+        _cardHolderController.text = name.toUpperCase();
+      }
+      final phone = (meta['phone'] as String?) ?? user.phone ?? '';
+      if (phone.isNotEmpty) {
+        final digits = phone.replaceAll(RegExp(r'\D'), '');
+        if (digits.length == 11) {
+          _phoneController.text = '(${digits.substring(0, 2)}) ${digits.substring(2, 7)}-${digits.substring(7)}';
+        } else {
+          _phoneController.text = phone;
+        }
+      }
+      final cpf = (meta['cpf'] as String?) ?? (meta['cpf_cnpj'] as String?) ?? '';
+      if (cpf.isNotEmpty) {
+        final digits = cpf.replaceAll(RegExp(r'\D'), '');
+        if (digits.length == 11) {
+          _cpfCnpjController.text = '${digits.substring(0, 3)}.${digits.substring(3, 6)}.${digits.substring(6, 9)}-${digits.substring(9)}';
+        } else {
+          _cpfCnpjController.text = cpf;
+        }
+      }
+    }
   }
 
   @override
@@ -883,7 +916,67 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
     _cardHolderController.dispose();
     _expiryController.dispose();
     _cvvController.dispose();
+    _cpfCnpjController.dispose();
+    _phoneController.dispose();
     super.dispose();
+  }
+
+  String _detectCardBrand(String rawNumber) {
+    final clean = rawNumber.replaceAll(RegExp(r'\D'), '');
+    if (clean.startsWith('4')) return 'Visa';
+    if (RegExp(r'^(5[1-5]|222[1-9]|22[3-9]\d|2[3-6]\d{2}|27[01]\d|2720)').hasMatch(clean)) {
+      return 'Mastercard';
+    }
+    if (RegExp(r'^(4011|438935|451416|4576|504175|5067|5090|627780|636297|636368)').hasMatch(clean)) {
+      return 'Elo';
+    }
+    if (RegExp(r'^(34|37)').hasMatch(clean)) return 'Amex';
+    if (RegExp(r'^(606282)').hasMatch(clean)) return 'Hipercard';
+    return '';
+  }
+
+  Widget _buildCardBrandBadge(String brand) {
+    if (brand.isEmpty) {
+      return const Icon(
+        Icons.credit_card_rounded,
+        color: MetaColors.textSecondary,
+        size: 20,
+      );
+    }
+    Color badgeColor = MetaColors.surfaceHighlight;
+    Color textColor = MetaColors.textPrimary;
+    if (brand == 'Visa') {
+      badgeColor = const Color(0xFF1A1F71);
+      textColor = Colors.white;
+    } else if (brand == 'Mastercard') {
+      badgeColor = const Color(0xFFEB001B);
+      textColor = Colors.white;
+    } else if (brand == 'Elo') {
+      badgeColor = const Color(0xFF00A4E8);
+      textColor = Colors.white;
+    } else if (brand == 'Amex') {
+      badgeColor = const Color(0xFF007BC1);
+      textColor = Colors.white;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(right: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: badgeColor,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: MetaColors.border, width: 0.8),
+      ),
+      child: Text(
+        brand.toUpperCase(),
+        style: TextStyle(
+          color: textColor,
+          fontWeight: FontWeight.w900,
+          fontSize: 10,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
   }
 
   void _startPixPolling() {
@@ -939,16 +1032,26 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
   }
 
   Future<void> _createSession() async {
+    if (_paymentMethod != 'pix') {
+      setState(() {
+        _isLoading = false;
+        _checkoutError = null;
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _checkoutError = null;
     });
     try {
+      final cleanCpf = _cpfCnpjController.text.replaceAll(RegExp(r'\D'), '');
       final session = await SubscriptionService.createCheckoutSession(
         planId: widget.plan.id,
         billingInterval: widget.isYearly ? 'yearly' : 'monthly',
         paymentMethod: _paymentMethod,
         provider: 'asaas',
+        cpfCnpj: cleanCpf.isNotEmpty ? cleanCpf : null,
       );
       if (session.sessionId.isEmpty ||
           (_paymentMethod == 'pix' &&
@@ -966,38 +1069,52 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
       }
     } catch (error) {
       if (!mounted) return;
+      final msg = error.toString().replaceAll('Exception: ', '');
       setState(() {
         _session = null;
-        _checkoutError = 'Não foi possível iniciar o pagamento. Tente novamente.';
+        _checkoutError = msg.isNotEmpty && !msg.contains('Format')
+            ? msg
+            : 'Não foi possível iniciar o pagamento Pix. Verifique o CPF/CNPJ informado.';
         _isLoading = false;
       });
     }
   }
 
   Future<void> _submitInAppCardPayment() async {
-    final rawNumber = _cardNumberController.text.replaceAll(RegExp(r'\s+'), '');
+    final rawNumber = _cardNumberController.text.replaceAll(RegExp(r'\D'), '');
     final holder = _cardHolderController.text.trim();
     final expiry = _expiryController.text.trim();
     final cvv = _cvvController.text.trim();
+    final cleanCpf = _cpfCnpjController.text.replaceAll(RegExp(r'\D'), '');
+    final cleanPhone = _phoneController.text.replaceAll(RegExp(r'\D'), '');
 
     if (rawNumber.length < 13 || rawNumber.length > 19) {
       _showError('Por favor, digite um número de cartão válido.');
       return;
     }
-    if (holder.isEmpty) {
-      _showError('Digite o nome impresso no cartão.');
+    if (holder.length < 3) {
+      _showError('Digite o nome completo impresso no cartão.');
       return;
     }
-    if (!expiry.contains('/') || expiry.length < 4) {
-      _showError('Digite a validade no formato MM/AA.');
+    if (!expiry.contains('/') || expiry.length < 5) {
+      _showError('Digite a validade completa no formato MM/AA (ex: 08/29).');
+      return;
+    }
+    final parts = expiry.split('/');
+    final monthInt = int.tryParse(parts[0]) ?? 0;
+    if (monthInt < 1 || monthInt > 12) {
+      _showError('Mês de validade inválido. Digite um mês entre 01 e 12.');
       return;
     }
     if (cvv.length < 3 || cvv.length > 4) {
-      _showError('Digite um código CVV válido de 3 ou 4 dígitos.');
+      _showError('Digite o código de segurança CVV (3 ou 4 dígitos).');
+      return;
+    }
+    if (cleanCpf.length != 11 && cleanCpf.length != 14) {
+      _showError('O campo CPF ou CNPJ do titular é obrigatório para emissão da assinatura.');
       return;
     }
 
-    final parts = expiry.split('/');
     final month = parts[0].trim();
     final year = parts[1].trim();
 
@@ -1012,6 +1129,8 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
         expiryMonth: month,
         expiryYear: year,
         ccv: cvv,
+        holderCpf: cleanCpf,
+        holderPhone: cleanPhone.isNotEmpty ? cleanPhone : null,
       );
 
       if (mounted) {
@@ -1323,12 +1442,78 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
     final pixCode = _session?.pixCopyPaste ?? '';
 
     if (pixCode.trim().isEmpty) {
-      return const Center(
-        child: Text(
-          'O provedor não retornou um código Pix. Nenhum pagamento foi iniciado.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: MetaColors.textSecondary),
-        ),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          MetaCard(
+            backgroundColor: MetaColors.surfaceHighlight,
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.pix_rounded, color: MetaColors.accentBlue, size: 26),
+                    SizedBox(width: 10),
+                    Text(
+                      'Gerar Cobrança Pix',
+                      style: TextStyle(
+                        color: MetaColors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'O Banco Central e o Asaas exigem a identificação por CPF ou CNPJ para emissão do QR Code instantâneo com conciliação automática.',
+                  style: TextStyle(
+                    color: MetaColors.textSecondary,
+                    fontSize: 12.5,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _cpfCnpjController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    CpfCnpjInputFormatter(),
+                  ],
+                  style: const TextStyle(color: MetaColors.textPrimary),
+                  decoration: const InputDecoration(
+                    labelText: 'CPF ou CNPJ do Pagador *',
+                    hintText: '000.000.000-00',
+                    prefixIcon: Icon(
+                      Icons.badge_outlined,
+                      color: MetaColors.textSecondary,
+                      size: 20,
+                    ),
+                    helperText: 'Exigido pelo BACEN para emissão de Pix nominal',
+                    helperStyle: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                SquircleButton(
+                  label: 'Gerar QR Code Pix',
+                  icon: Icons.qr_code_2_rounded,
+                  isPrimary: true,
+                  isLoading: _isLoading,
+                  onPressed: () {
+                    final clean = _cpfCnpjController.text.replaceAll(RegExp(r'\D'), '');
+                    if (clean.length != 11 && clean.length != 14) {
+                      _showError('Digite um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.');
+                      return;
+                    }
+                    _createSession();
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
       );
     }
 
@@ -1374,7 +1559,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                   border: Border.all(color: MetaColors.border),
                 ),
                 child: Text(
-                    pixCode,
+                  pixCode,
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -1453,50 +1638,101 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
   }
 
   Widget _buildCreditCardContent(double amount) {
+    final currentBrand = _detectCardBrand(_cardNumberController.text);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Security Banner
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: MetaColors.emerald.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.25)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.shield_outlined, color: MetaColors.emerald, size: 18),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Seus dados estão protegidos com criptografia de ponta a ponta (PCI-DSS).',
+                  style: TextStyle(color: MetaColors.textSecondary, fontSize: 11.5, height: 1.3),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Número do Cartão
         TextFormField(
           controller: _cardNumberController,
           keyboardType: TextInputType.number,
-          style: const TextStyle(color: MetaColors.textPrimary),
-          decoration: const InputDecoration(
-            labelText: 'Número do Cartão',
-            prefixIcon: Icon(
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            CardNumberInputFormatter(),
+          ],
+          onChanged: (_) => setState(() {}),
+          style: const TextStyle(color: MetaColors.textPrimary, letterSpacing: 1.2),
+          decoration: InputDecoration(
+            labelText: 'Número do Cartão *',
+            hintText: '0000 0000 0000 0000',
+            prefixIcon: const Icon(
               Icons.credit_card_rounded,
               color: MetaColors.textSecondary,
               size: 20,
             ),
+            suffixIcon: _buildCardBrandBadge(currentBrand),
+            helperText: 'Bandeiras: Visa, Mastercard, Elo, Amex e Hipercard',
+            helperStyle: const TextStyle(color: MetaColors.textSecondary, fontSize: 11),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
+
+        // Nome no Cartão
         TextFormField(
           controller: _cardHolderController,
+          textCapitalization: TextCapitalization.characters,
           style: const TextStyle(color: MetaColors.textPrimary),
           decoration: const InputDecoration(
-            labelText: 'Nome no Cartão',
+            labelText: 'Nome no Cartão *',
+            hintText: 'Como impresso no cartão',
             prefixIcon: Icon(
               Icons.person_outline_rounded,
               color: MetaColors.textSecondary,
               size: 20,
             ),
+            helperText: 'Ex: CLEUDSON J CAVALCANTE',
+            helperStyle: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
+
+        // Validade e CVV
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: TextFormField(
                 controller: _expiryController,
-                keyboardType: TextInputType.datetime,
-                style: const TextStyle(color: MetaColors.textPrimary),
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  CardExpiryInputFormatter(),
+                ],
+                style: const TextStyle(color: MetaColors.textPrimary, letterSpacing: 1.1),
                 decoration: const InputDecoration(
-                  labelText: 'Validade (MM/AA)',
+                  labelText: 'Validade *',
+                  hintText: 'MM/AA',
                   prefixIcon: Icon(
                     Icons.date_range_outlined,
                     color: MetaColors.textSecondary,
                     size: 20,
                   ),
+                  helperText: 'Ex: 08/29',
+                  helperStyle: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
                 ),
               ),
             ),
@@ -1506,27 +1742,206 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                 controller: _cvvController,
                 keyboardType: TextInputType.number,
                 obscureText: true,
-                style: const TextStyle(color: MetaColors.textPrimary),
-                decoration: const InputDecoration(
-                  labelText: 'CVV',
-                  prefixIcon: Icon(
-                    Icons.security_outlined,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(4),
+                ],
+                style: const TextStyle(color: MetaColors.textPrimary, letterSpacing: 2),
+                decoration: InputDecoration(
+                  labelText: 'CVV *',
+                  hintText: '123',
+                  prefixIcon: const Icon(
+                    Icons.lock_outline_rounded,
                     color: MetaColors.textSecondary,
                     size: 20,
                   ),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.help_outline_rounded, size: 18, color: MetaColors.textSecondary),
+                    tooltip: 'Código no verso do cartão',
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('CVV é o código de segurança de 3 dígitos no verso do cartão (ou 4 na frente para Amex).'),
+                          duration: Duration(seconds: 4),
+                        ),
+                      );
+                    },
+                  ),
+                  helperText: '3 dígitos no verso',
+                  helperStyle: const TextStyle(color: MetaColors.textSecondary, fontSize: 11),
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 14),
+
+        // CPF / CNPJ do Titular (Campo Crítico Solicitado)
+        TextFormField(
+          controller: _cpfCnpjController,
+          keyboardType: TextInputType.number,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            CpfCnpjInputFormatter(),
+          ],
+          style: const TextStyle(color: MetaColors.textPrimary),
+          decoration: const InputDecoration(
+            labelText: 'CPF ou CNPJ do Titular *',
+            hintText: '000.000.000-00',
+            prefixIcon: Icon(
+              Icons.badge_outlined,
+              color: MetaColors.textSecondary,
+              size: 20,
+            ),
+            helperText: 'Exigido pelo Banco Central e Asaas para emissão de nota fiscal',
+            helperStyle: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Telefone / WhatsApp do Titular
+        TextFormField(
+          controller: _phoneController,
+          keyboardType: TextInputType.phone,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            PhoneInputFormatter(),
+          ],
+          style: const TextStyle(color: MetaColors.textPrimary),
+          decoration: const InputDecoration(
+            labelText: 'Telefone / WhatsApp',
+            hintText: '(00) 00000-0000',
+            prefixIcon: Icon(
+              Icons.phone_outlined,
+              color: MetaColors.textSecondary,
+              size: 20,
+            ),
+            helperText: 'Para envio de comprovantes e confirmação de pagamento',
+            helperStyle: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+          ),
+        ),
+        const SizedBox(height: 22),
+
+        // Botão de Confirmação In-App
         SquircleButton(
-          label: 'Confirmar Pagamento de R\$ ${amount.toStringAsFixed(2)}',
+          label: 'Assinar por R\$ ${amount.toStringAsFixed(2)}${widget.isYearly ? "/ano" : "/mês"}',
           isPrimary: true,
           isLoading: _isSubmittingCard,
+          icon: Icons.check_circle_outline_rounded,
           onPressed: _submitInAppCardPayment,
         ),
       ],
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// FORMATADORES DE ENTRADA (MÁSCARAS NATIVAS MOBILE)
+// -----------------------------------------------------------------------------
+
+class CardNumberInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text.replaceAll(RegExp(r'\D'), '');
+    if (text.length > 19) return oldValue;
+    final buffer = StringBuffer();
+    for (int i = 0; i < text.length; i++) {
+      if (i > 0 && i % 4 == 0) buffer.write(' ');
+      buffer.write(text[i]);
+    }
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
+class CardExpiryInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    var text = newValue.text.replaceAll(RegExp(r'\D'), '');
+    if (text.length > 4) return oldValue;
+
+    if (text.length == 1 && int.tryParse(text) != null && int.parse(text) > 1) {
+      text = '0$text';
+    }
+
+    final buffer = StringBuffer();
+    for (int i = 0; i < text.length; i++) {
+      if (i == 2) buffer.write('/');
+      buffer.write(text[i]);
+    }
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
+class CpfCnpjInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    if (digits.length > 14) return oldValue;
+
+    final buffer = StringBuffer();
+    if (digits.length <= 11) {
+      for (int i = 0; i < digits.length; i++) {
+        if (i == 3 || i == 6) buffer.write('.');
+        if (i == 9) buffer.write('-');
+        buffer.write(digits[i]);
+      }
+    } else {
+      for (int i = 0; i < digits.length; i++) {
+        if (i == 2 || i == 5) buffer.write('.');
+        if (i == 8) buffer.write('/');
+        if (i == 12) buffer.write('-');
+        buffer.write(digits[i]);
+      }
+    }
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
+class PhoneInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    if (digits.length > 11) return oldValue;
+
+    final buffer = StringBuffer();
+    for (int i = 0; i < digits.length; i++) {
+      if (i == 0) buffer.write('(');
+      if (i == 2) buffer.write(') ');
+      if (digits.length > 10) {
+        if (i == 7) buffer.write('-');
+      } else {
+        if (i == 6) buffer.write('-');
+      }
+      buffer.write(digits[i]);
+    }
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

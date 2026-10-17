@@ -445,6 +445,7 @@ def test_checkout_session_fails_closed_in_production_if_persistence_fails(monkey
     from app.services.supabase_service import supabase_service
 
     monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(settings, "ASAAS_API_KEY", "")  # isola chamadas externas do teste de persistência
     app.dependency_overrides[get_current_user] = lambda: {
         "sub": "tr-fail-closed-test",
         "role": "authenticated",

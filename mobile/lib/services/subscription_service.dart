@@ -149,12 +149,13 @@ class SubscriptionService {
     }
   }
 
-  /// Gera a sessÃ£o de pagamento transparente (Pix ou CartÃ£o) via Asaas / InfinitePay
+  /// Gera a sessão de pagamento transparente (Pix ou Cartão) via Asaas / InfinitePay
   static Future<CheckoutSessionModel> createCheckoutSession({
     required String planId,
     required String billingInterval,
     required String paymentMethod,
     String provider = 'asaas',
+    String? cpfCnpj,
   }) async {
     try {
       final user = AuthService.currentUser;
@@ -169,17 +170,23 @@ class SubscriptionService {
         'trainer_id': user?.id ?? 'current-trainer',
         'trainer_name': user?.userMetadata?['full_name'] ?? 'Personal Trainer',
         'trainer_email': user?.email ?? 'personal@sheipados.com',
+        if (cpfCnpj != null && cpfCnpj.trim().isNotEmpty) 'cpf_cnpj': cpfCnpj.trim(),
       });
 
       final res = await _client
           .post(uri, headers: _headers, body: body)
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 10));
       if (res.statusCode == 200) {
         final data =
             jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
         return CheckoutSessionModel.fromJson(data);
       }
-      throw Exception('O servidor recusou a criação do checkout (${res.statusCode}).');
+      String detail = 'O servidor recusou a criação do checkout (${res.statusCode}).';
+      try {
+        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        detail = data['detail'] as String? ?? detail;
+      } catch (_) {}
+      throw Exception(detail);
     } catch (_) {
       rethrow;
     }
@@ -203,9 +210,9 @@ class SubscriptionService {
     return false;
   }
 
-  /// Realiza o pagamento com cartÃ£o com TokenizaÃ§Ã£o In-App (SoluÃ§Ã£o 1).
-  /// Envia os dados criptografados para ativaÃ§Ã£o imediata e nativa,
-  /// sem redirecionar para links externos ou pÃ¡ginas genÃ©ricas de fatura.
+  /// Realiza o pagamento com cartão com Tokenização In-App (Solução 1).
+  /// Envia os dados criptografados para ativação imediata e nativa,
+  /// sem redirecionar para links externos ou páginas genéricas de fatura.
   static Future<Map<String, dynamic>> payWithCardInApp({
     required String planId,
     required String billingInterval,
@@ -215,6 +222,9 @@ class SubscriptionService {
     required String expiryYear,
     required String ccv,
     String? holderCpf,
+    String? holderPhone,
+    String? holderPostalCode,
+    String? holderAddressNumber,
     String provider = 'asaas',
   }) async {
     try {
@@ -230,6 +240,9 @@ class SubscriptionService {
         'expiry_year': expiryYear,
         'ccv': ccv,
         'holder_cpf': holderCpf,
+        if (holderPhone != null && holderPhone.trim().isNotEmpty) 'holder_phone': holderPhone.trim(),
+        if (holderPostalCode != null && holderPostalCode.trim().isNotEmpty) 'holder_postal_code': holderPostalCode.trim(),
+        if (holderAddressNumber != null && holderAddressNumber.trim().isNotEmpty) 'holder_address_number': holderAddressNumber.trim(),
         'provider': provider,
       });
 

@@ -157,17 +157,23 @@ async def create_checkout_session(
         else selected_plan.price_monthly_cents
     )
 
-    checkout_data = PaymentProviderService.create_checkout(
-        provider=request.provider or "asaas",
-        plan_id=selected_plan.id,
-        plan_name=selected_plan.name,
-        amount_cents=amount,
-        billing_interval=request.billing_interval,
-        payment_method=request.payment_method,
-        trainer_name=request.trainer_name or "Personal Trainer",
-        trainer_email=request.trainer_email or "treinador@demo.com",
-        trainer_id=effective_trainer_id,
-    )
+    try:
+        checkout_data = PaymentProviderService.create_checkout(
+            provider=request.provider or "asaas",
+            plan_id=selected_plan.id,
+            plan_name=selected_plan.name,
+            amount_cents=amount,
+            billing_interval=request.billing_interval,
+            payment_method=request.payment_method,
+            trainer_name=(current_user.get("user_metadata") or {}).get("full_name") or request.trainer_name or "Personal Trainer",
+            trainer_email=current_user.get("email") or request.trainer_email or "treinador@demo.com",
+            trainer_id=effective_trainer_id,
+            cpf_cnpj=request.cpf_cnpj,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
 
     # Persiste a sessão de checkout no Supabase para sobreviver a restarts (PAY-003)
     try:

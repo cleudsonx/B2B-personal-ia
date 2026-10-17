@@ -55,6 +55,7 @@ class CheckoutSessionRequest(BaseModel):
     trainer_name: Optional[str] = "Personal Trainer"
     trainer_email: Optional[str] = "treinador@demo.com"
     trainer_id: Optional[str] = "current-trainer"
+    cpf_cnpj: Optional[str] = Field(None, description="CPF ou CNPJ do pagador (obrigatório para Pix no Asaas)")
 
 
 class CheckoutSessionResponse(BaseModel):
