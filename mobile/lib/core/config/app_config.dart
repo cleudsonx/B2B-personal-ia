@@ -46,10 +46,10 @@ class AppConfig {
   static const String supabaseAnonKey = supabasePublishableKey;
 
   // Informações Oficiais de Versionamento (SemVer) & Build
-  static const String appVersion = '1.4.3';
-  static const int buildNumber = 2026102877;
+  static const String appVersion = '1.4.4';
+  static const int buildNumber = 2026102878;
   static const String buildDate = '17 de Outubro, 2026';
-  static const String releaseNotes = 'Versao 1.4.3: unificacao do alerta flutuante PWA e melhorias';
+  static const String releaseNotes = 'Checkout UX: modal amigavel de recusa bancaria (padrao Nubank/Stripe) e correcao de legibilidade CEP';
 
   static String get fullVersionString => 'v$appVersion (Build $buildNumber)';
 }

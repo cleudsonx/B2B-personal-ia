@@ -115,12 +115,28 @@ class PaymentProviderService:
 
     @staticmethod
     def _asaas_error_message(response: Any, fallback: str) -> str:
-        """Extrai a mensagem amigável retornada pelo Asaas (errors[0].description)."""
+        """Extrai e traduz a mensagem amigável retornada pelo Asaas para o padrão de mercado."""
         try:
             data = response.json()
             errors = data.get("errors") or []
             if errors and errors[0].get("description"):
-                return str(errors[0]["description"])
+                desc = str(errors[0]["description"]).strip()
+                lower = desc.lower()
+
+                # Mapeamento semântico amigável (Benchmarks: Nubank, Stripe, Mercado Pago, iFood)
+                if any(k in lower for k in ["não autorizada", "recusad", "negad", "operadora", "banco"]):
+                    return "Compra não autorizada pelo seu banco emissor (ex: Itaú, Nubank). Abra o app do banco para autorizar compras online ou use PIX."
+                if any(k in lower for k in ["saldo", "limite", "insuficiente"]):
+                    return "Limite de crédito insuficiente no momento. Tente outro cartão ou opte pelo PIX Instantâneo."
+                if any(k in lower for k in ["cvv", "código de segurança", "ccv"]):
+                    return "Código de segurança (CVV) incorreto. Confira os 3 dígitos no verso do cartão."
+                if any(k in lower for k in ["validade", "expirad", "vencid"]):
+                    return "Data de validade do cartão vencida ou incorreta (formato MM/AA)."
+                if any(k in lower for k in ["número do cartão", "invalid card"]):
+                    return "Número do cartão inválido. Verifique os números digitados."
+                if any(k in lower for k in ["cpf", "cnpj", "titular"]):
+                    return "CPF ou CNPJ do titular divergente do cadastrado no banco."
+                return desc
         except Exception:
             pass
         return fallback

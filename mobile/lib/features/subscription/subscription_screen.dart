@@ -837,6 +837,87 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 // -----------------------------------------------------------------------------
 // CHECKOUT BOTTOM SHEET (PIX & CARTÃO)
 // -----------------------------------------------------------------------------
+class CardDeclineFeedback {
+  final String title;
+  final String message;
+  final List<String> commonReasons;
+  final String actionTip;
+  final bool isFraudOrBlock;
+
+  const CardDeclineFeedback({
+    required this.title,
+    required this.message,
+    required this.commonReasons,
+    required this.actionTip,
+    this.isFraudOrBlock = false,
+  });
+
+  factory CardDeclineFeedback.fromError(String rawError, double amount) {
+    final lower = rawError.toLowerCase();
+    final amountFormatted = 'R\$ ${amount.toStringAsFixed(2)}';
+
+    if (lower.contains('saldo') || lower.contains('limite') || lower.contains('insuficiente') || lower.contains('insufficient')) {
+      return CardDeclineFeedback(
+        title: 'Limite Insuficiente no Cartão',
+        message: 'A operadora do cartão recusou a cobrança de $amountFormatted por limite indisponível.',
+        commonReasons: [
+          'Limite de crédito total atingido no momento',
+          'Limite diário para compras online atingido',
+        ],
+        actionTip: 'Dica: você pode pagar via PIX Instantâneo agora para ativar seu plano imediatamente.',
+      );
+    }
+
+    if (lower.contains('cvv') || lower.contains('segurança') || lower.contains('security code') || lower.contains('código')) {
+      return CardDeclineFeedback(
+        title: 'Código de Segurança (CVV) Incorreto',
+        message: 'O código de segurança de 3 dígitos (ou 4 para Amex) não conferiu com a emissora.',
+        commonReasons: [
+          'Dígito digitado incorretamente',
+          'Cartão virtual com código dinâmico que expirou',
+        ],
+        actionTip: 'Verifique no app do seu banco o CVV atualizado do seu cartão virtual.',
+      );
+    }
+
+    if (lower.contains('validade') || lower.contains('expirad') || lower.contains('vencid') || lower.contains('expiry')) {
+      return CardDeclineFeedback(
+        title: 'Data de Validade Incorreta ou Vencida',
+        message: 'A data de validade informada (MM/AA) foi recusada pela operadora.',
+        commonReasons: [
+          'Cartão físico ou virtual já expirou',
+          'Mês ou ano digitados invertidos',
+        ],
+        actionTip: 'Confira a validade impressa ou gere um novo cartão virtual no app do banco.',
+      );
+    }
+
+    if (lower.contains('cpf') || lower.contains('cnpj') || lower.contains('titular')) {
+      return CardDeclineFeedback(
+        title: 'CPF/CNPJ do Titular Divergente',
+        message: 'O documento do titular precisa ser exatamente o mesmo registrado no banco emissor.',
+        commonReasons: [
+          'Cartão emitido em nome de outra pessoa ou CNPJ corporativo',
+          'Dígitos do CPF/CNPJ digitados incorretamente',
+        ],
+        actionTip: 'Informe o CPF do titular exato deste cartão ou utilize o PIX com o seu documento.',
+      );
+    }
+
+    return CardDeclineFeedback(
+      title: 'Compra Não Autorizada pelo Seu Banco',
+      message: 'A emissora do seu cartão (ex: Itaú, Nubank, Bradesco) recusou a cobrança de $amountFormatted.',
+      commonReasons: [
+        'Bloqueio temporário para novas assinaturas ou compras online no app do banco',
+        'Bloqueio preventivo de segurança (antifraude do banco)',
+        'Cartão virtual desativado ou com limite diário atingido',
+      ],
+      actionTip: 'Abra o aplicativo do seu banco para autorizar a compra, ou escolha PIX Instantâneo para aprovação na hora sem depender do banco emissor.',
+      isFraudOrBlock: true,
+    );
+  }
+}
+
 class _CheckoutBottomSheet extends StatefulWidget {
   final PlanModel plan;
   final bool isYearly;
@@ -862,6 +943,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
   int _pollAttempts = 0;
   CheckoutSessionModel? _session;
   String? _checkoutError;
+  CardDeclineFeedback? _declineFeedback;
   Timer? _pollingTimer;
   static const int _maxPixPollAttempts = 100;
 
@@ -1175,22 +1257,195 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
       if (mounted) {
         setState(() => _isSubmittingCard = false);
         if (res['success'] == true) {
-          setState(() => _isPaid = true);
+          setState(() {
+            _isPaid = true;
+            _declineFeedback = null;
+            _checkoutError = null;
+          });
           HapticFeedback.heavyImpact();
           _showSuccessNotification();
         } else {
-          _showError(res['error'] ?? 'Não foi possível autorizar o cartão.');
+          final errorRaw = res['error']?.toString() ?? 'Não foi possível autorizar o cartão.';
+          final amount = widget.isYearly ? widget.plan.priceYearlyTotal : widget.plan.priceMonthly;
+          final feedback = CardDeclineFeedback.fromError(errorRaw, amount);
+          setState(() {
+            _declineFeedback = feedback;
+            _checkoutError = feedback.message;
+          });
+          HapticFeedback.mediumImpact();
+          _showDeclineDialog(feedback);
         }
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isSubmittingCard = false);
-        _showError('Falha ao processar pagamento com cartão: $e');
+        final amount = widget.isYearly ? widget.plan.priceYearlyTotal : widget.plan.priceMonthly;
+        final feedback = CardDeclineFeedback.fromError(e.toString(), amount);
+        setState(() {
+          _isSubmittingCard = false;
+          _declineFeedback = feedback;
+          _checkoutError = feedback.message;
+        });
+        HapticFeedback.mediumImpact();
+        _showDeclineDialog(feedback);
       }
     }
   }
 
+  void _showDeclineDialog(CardDeclineFeedback feedback) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF131B2E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+          side: BorderSide(
+            color: Colors.amber.shade600.withValues(alpha: 0.6),
+            width: 1.5,
+          ),
+        ),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        contentPadding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.credit_card_off_rounded,
+                color: Colors.amberAccent,
+                size: 26,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                feedback.title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              feedback.message,
+              style: const TextStyle(
+                color: Color(0xFFE2E8F0),
+                fontSize: 13,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF334155)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Motivos mais comuns:',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  ...feedback.commonReasons.map(
+                    (r) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('• ', style: TextStyle(color: Colors.amberAccent, fontSize: 13)),
+                          Expanded(
+                            child: Text(
+                              r,
+                              style: const TextStyle(
+                                color: Color(0xFFCBD5E1),
+                                fontSize: 11.5,
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: MetaColors.accentBlue.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: MetaColors.accentBlue.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.lightbulb_outline_rounded, color: MetaColors.accentBlue, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      feedback.actionTip,
+                      style: const TextStyle(
+                        color: Color(0xFF93C5FD),
+                        fontSize: 11,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            SquircleButton(
+              label: 'Pagar com PIX Instantâneo',
+              icon: Icons.pix_rounded,
+              isPrimary: true,
+              onPressed: () {
+                Navigator.pop(ctx);
+                setState(() {
+                  _paymentMethod = 'pix';
+                  _declineFeedback = null;
+                  _checkoutError = null;
+                });
+                _createSession();
+              },
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text(
+                'Revisar dados do Cartão',
+                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12.5),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showError(String message) {
+    setState(() => _checkoutError = message);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: Colors.red.shade800,
@@ -1529,7 +1784,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                       size: 20,
                     ),
                     helperText: 'Exigido pelo BACEN para emissão de Pix nominal',
-                    helperStyle: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                    helperStyle: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w500),
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -1680,6 +1935,104 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Banner de Alerta de Recusa do Banco (Stripe / Nubank / Mercado Pago Pattern)
+        if (_declineFeedback != null) ...[
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2A1515), // Dark Crimson / Amber
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.amber.shade500.withValues(alpha: 0.8),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.credit_card_off_rounded,
+                        color: Colors.amberAccent,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _declineFeedback!.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _declineFeedback!.message,
+                  style: const TextStyle(
+                    color: Color(0xFFF1F5F9),
+                    fontSize: 12.5,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _paymentMethod = 'pix';
+                      _declineFeedback = null;
+                      _checkoutError = null;
+                    });
+                    _createSession();
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: MetaColors.accentBlue,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.pix_rounded, color: Colors.white, size: 16),
+                        SizedBox(width: 8),
+                        Text(
+                          'Pagar com PIX Instantâneo (Ativação na Hora)',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+
         // Security Banner
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -1695,7 +2048,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
               Expanded(
                 child: Text(
                   'Seus dados estão protegidos com criptografia de ponta a ponta (PCI-DSS).',
-                  style: TextStyle(color: MetaColors.textSecondary, fontSize: 11.5, height: 1.3),
+                  style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11.5, height: 1.3),
                 ),
               ),
             ],
@@ -1723,7 +2076,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
             ),
             suffixIcon: _buildCardBrandBadge(currentBrand),
             helperText: 'Bandeiras: Visa, Mastercard, Elo, Amex e Hipercard',
-            helperStyle: const TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+            helperStyle: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w500),
           ),
         ),
         const SizedBox(height: 14),
@@ -1742,7 +2095,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
               size: 20,
             ),
             helperText: 'Ex: CLEUDSON J CAVALCANTE',
-            helperStyle: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+            helperStyle: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w500),
           ),
         ),
         const SizedBox(height: 14),
@@ -1769,7 +2122,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                     size: 20,
                   ),
                   helperText: 'Ex: 08/29',
-                  helperStyle: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                  helperStyle: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w500),
                 ),
               ),
             ),
@@ -1805,7 +2158,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                     },
                   ),
                   helperText: '3 dígitos no verso',
-                  helperStyle: const TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                  helperStyle: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w500),
                 ),
               ),
             ),
@@ -1831,7 +2184,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
               size: 20,
             ),
             helperText: 'Exigido pelo Banco Central e Asaas para emissão de nota fiscal',
-            helperStyle: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+            helperStyle: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w500),
           ),
         ),
         const SizedBox(height: 14),
@@ -1854,12 +2207,12 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
               size: 20,
             ),
             helperText: 'Para envio de comprovantes e confirmação de pagamento',
-            helperStyle: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+            helperStyle: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w500),
           ),
         ),
         const SizedBox(height: 14),
 
-        // Endereço de Cobrança do Cartão (Exigido pelo Asaas e Antifraude)
+        // Endereço de Cobrança do Cartão (Item 2: Sem truncamento, 100% legível)
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1881,8 +2234,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                     color: MetaColors.textSecondary,
                     size: 20,
                   ),
-                  helperText: 'Exigido pelo banco do cartão',
-                  helperStyle: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                  helperText: null,
                 ),
               ),
             ),
@@ -1902,11 +2254,42 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                     size: 20,
                   ),
                   helperText: 'Ou S/N',
-                  helperStyle: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                  helperStyle: TextStyle(
+                    color: Color(0xFFCBD5E1),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 6),
+        // Explicação em largura total (100% legível, com ícone e alto contraste)
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E293B),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFF334155)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.shield_outlined, size: 14, color: MetaColors.emerald),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'CEP e número de cobrança do cartão (exigido pelos bancos para validação antifraude).',
+                  style: TextStyle(
+                    color: Color(0xFFE2E8F0),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 22),
 

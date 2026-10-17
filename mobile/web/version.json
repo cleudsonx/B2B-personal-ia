@@ -1,6 +1,6 @@
 {
-  "version": "1.4.3",
-  "build": 2026102877,
-  "updated_at": "2026-10-17T16:00:44.959706Z",
-  "notes": "Versao 1.4.3: unificacao do alerta flutuante PWA e melhorias"
+  "version": "1.4.4",
+  "build": 2026102878,
+  "updated_at": "2026-10-17T17:18:20.157367Z",
+  "notes": "Checkout UX: modal amigavel de recusa bancaria (padrao Nubank/Stripe) e correcao de legibilidade CEP"
 }

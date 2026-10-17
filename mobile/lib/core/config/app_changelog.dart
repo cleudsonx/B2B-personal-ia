@@ -38,11 +38,11 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
-      version: '1.4.3',
-      buildNumber: 2026102877,
+      version: '1.4.4',
+      buildNumber: 2026102878,
       date: '17 de Outubro, 2026',
       summary:
-          'Unificação do Alerta de Atualização PWA em Cápsula Nativa Elegante, Checkout com CEP/Endereço e Pix Nominal Desbloqueado.',
+          'Mensagens Amigáveis de Checkout (Padrão Nubank/Stripe), Modal de Recusa Bancária com Fallback para Pix e Correção de Legibilidade do CEP.',
       highlights: [
         ChangelogItem(
           icon: Icons.rocket_launch_rounded,
