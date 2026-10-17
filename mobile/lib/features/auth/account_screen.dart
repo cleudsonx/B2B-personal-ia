@@ -295,15 +295,15 @@ class _AccountScreenState extends State<AccountScreen> {
             letterSpacing: -0.5,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 16),
 
         // 1. Card de Perfil com Avatar: Foto/iniciais, nome completo, e-mail e badge da função
         MetaCard(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           child: Row(
             children: [
               CircleAvatar(
-                radius: 22,
+                radius: 26,
                 backgroundColor: MetaColors.highlight(context),
                 backgroundImage: safeImageProvider(_photoUrl),
                 child: safeImageProvider(_photoUrl) == null
@@ -314,12 +314,12 @@ class _AccountScreenState extends State<AccountScreen> {
                         style: const TextStyle(
                           color: MetaColors.emerald,
                           fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                          fontSize: 20,
                         ),
                       )
                     : null,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -328,20 +328,21 @@ class _AccountScreenState extends State<AccountScreen> {
                       _fullName ?? 'Usuário',
                       style: TextStyle(
                         color: MetaColors.text(context),
-                        fontSize: 16,
+                        fontSize: 16.5,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       _email ?? 'Carregando...',
                       style: TextStyle(
                         color: MetaColors.subtext(context),
-                        fontSize: 12,
+                        fontSize: 12.5,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: MetaColors.emerald.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(6),
@@ -364,15 +365,15 @@ class _AccountScreenState extends State<AccountScreen> {
         ),
 
         if (isTrainer) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
 
           // 2. Selo de Registro Profissional (CREF): Indicador visual de CREF Ativo vs Pendente
           MetaCard(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(9),
                   decoration: BoxDecoration(
                     color: hasActiveCref
                         ? MetaColors.emerald.withValues(alpha: 0.12)
@@ -382,10 +383,10 @@ class _AccountScreenState extends State<AccountScreen> {
                   child: Icon(
                     Icons.verified_outlined,
                     color: hasActiveCref ? MetaColors.emerald : Colors.orangeAccent,
-                    size: 20,
+                    size: 22,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,13 +397,13 @@ class _AccountScreenState extends State<AccountScreen> {
                             'Registro Profissional (CREF)',
                             style: TextStyle(
                               color: MetaColors.subtext(context),
-                              fontSize: 11.5,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: hasActiveCref
                                   ? MetaColors.emerald.withValues(alpha: 0.15)
@@ -413,19 +414,19 @@ class _AccountScreenState extends State<AccountScreen> {
                               hasActiveCref ? 'ATIVO' : 'PENDENTE',
                               style: TextStyle(
                                 color: hasActiveCref ? MetaColors.emerald : Colors.orangeAccent,
-                                fontSize: 9,
+                                fontSize: 9.5,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 1),
+                      const SizedBox(height: 3),
                       Text(
                         (_cref != null && _cref!.isNotEmpty) ? _cref! : 'CREF Pendente • Regularize seu perfil',
                         style: TextStyle(
                           color: MetaColors.text(context),
-                          fontSize: 13.5,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -450,22 +451,22 @@ class _AccountScreenState extends State<AccountScreen> {
             ),
           ),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
 
           // 3. Card do Plano SaaS & Limite de Vagas
           MetaCard(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(9),
                   decoration: BoxDecoration(
                     color: Colors.amber.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.workspace_premium_outlined, color: Colors.amber, size: 20),
+                  child: const Icon(Icons.workspace_premium_outlined, color: Colors.amber, size: 22),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -474,18 +475,18 @@ class _AccountScreenState extends State<AccountScreen> {
                         'Plano SaaS & Limite de Vagas',
                         style: TextStyle(
                           color: MetaColors.subtext(context),
-                          fontSize: 11.5,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: 1),
+                      const SizedBox(height: 3),
                       Text(
                         _activePlanName != null
                             ? 'Plano $_activePlanName - ${_maxStudents ?? 30} vagas'
                             : 'Plano Pro - 30 vagas',
                         style: TextStyle(
                           color: MetaColors.text(context),
-                          fontSize: 13.5,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -511,22 +512,22 @@ class _AccountScreenState extends State<AccountScreen> {
           ),
         ],
 
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
 
         // 4. Card de WhatsApp com Edição Rápida
         MetaCard(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(9),
                 decoration: BoxDecoration(
                   color: MetaColors.emerald.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.phone_android_rounded, color: MetaColors.emerald, size: 20),
+                child: const Icon(Icons.phone_android_rounded, color: MetaColors.emerald, size: 22),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -535,16 +536,16 @@ class _AccountScreenState extends State<AccountScreen> {
                       'WhatsApp Cadastrado',
                       style: TextStyle(
                         color: MetaColors.subtext(context),
-                        fontSize: 11.5,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 1),
+                    const SizedBox(height: 3),
                     Text(
                       _formatPhone(_phone),
                       style: TextStyle(
                         color: MetaColors.text(context),
-                        fontSize: 14,
+                        fontSize: 14.5,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -553,7 +554,7 @@ class _AccountScreenState extends State<AccountScreen> {
               ),
               IconButton(
                 visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.edit_outlined, size: 19),
+                icon: const Icon(Icons.edit_outlined, size: 20),
                 tooltip: 'Atualizar telefone',
                 color: MetaColors.emerald,
                 onPressed: _editPhoneNumber,
@@ -563,11 +564,11 @@ class _AccountScreenState extends State<AccountScreen> {
         ),
 
         if (isTrainer) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
 
           // 5. Card de Telemetria do Robô WhatsApp
           MetaCard(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             onTap: () {
               Navigator.push(
                 context,
@@ -577,14 +578,14 @@ class _AccountScreenState extends State<AccountScreen> {
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(9),
                   decoration: BoxDecoration(
                     color: MetaColors.emerald.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.smart_toy_outlined, color: MetaColors.emerald, size: 20),
+                  child: const Icon(Icons.smart_toy_outlined, color: MetaColors.emerald, size: 22),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -593,16 +594,16 @@ class _AccountScreenState extends State<AccountScreen> {
                         'Telemetria do Robô WhatsApp',
                         style: TextStyle(
                           color: MetaColors.text(context),
-                          fontSize: 13.5,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 1),
+                      const SizedBox(height: 2),
                       Text(
                         'Status Evolution API & QR Code de pareamento',
                         style: TextStyle(
                           color: MetaColors.subtext(context),
-                          fontSize: 11.5,
+                          fontSize: 12,
                         ),
                       ),
                     ],
@@ -611,7 +612,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 const Icon(
                   Icons.qr_code_scanner_rounded,
                   color: MetaColors.emerald,
-                  size: 20,
+                  size: 22,
                 ),
               ],
             ),
@@ -619,7 +620,7 @@ class _AccountScreenState extends State<AccountScreen> {
         ],
 
         if (roles.contains('trainer')) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: 16),
           ListTile(
             dense: true,
             visualDensity: VisualDensity.compact,

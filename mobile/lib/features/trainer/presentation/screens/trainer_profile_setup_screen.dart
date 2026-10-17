@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'trainer_main_layout.dart';
 import 'whatsapp_connection_screen.dart';
+import '../../../../services/auth_service.dart';
 
 class TrainerProfileSetupScreen extends StatefulWidget {
   const TrainerProfileSetupScreen({super.key});
@@ -48,40 +49,30 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
       });
     }
     try {
-      final supabase = Supabase.instance.client;
-      final user = supabase.auth.currentUser;
-      if (user == null) throw StateError('Usuário não autenticado.');
-
-      final response = await supabase
-          .from('profiles')
-          .select('username, bio, phone, whatsapp, public_whatsapp, specialties, professional_document, public_directory_enabled, photo_url, avatar_url')
-          .eq('id', user.id)
-          .maybeSingle();
-
-      if (response == null) {
-        throw StateError('Perfil profissional não encontrado.');
-      }
-      if (mounted) {
+      final profile = await AuthService.getCurrentProfile();
+      if (profile != null && mounted) {
         setState(() {
-          _usernameController.text = response['username'] ?? '';
-          _bioController.text = response['bio'] ?? '';
-          _whatsappController.text = response['public_whatsapp'] ??
-              response['phone'] ??
-              response['whatsapp'] ??
+          _usernameController.text = profile['username'] ?? '';
+          _bioController.text = profile['bio'] ?? '';
+          _whatsappController.text = profile['public_whatsapp'] ??
+              profile['phone'] ??
+              profile['whatsapp'] ??
               '';
-          _crefController.text = response['professional_document'] ?? '';
-          _photoUrlController.text = response['photo_url'] ?? response['avatar_url'] ?? '';
-          _publishInDirectory = response['public_directory_enabled'] == true;
+          _crefController.text = profile['professional_document'] ??
+              profile['cref_or_registry'] ??
+              '';
+          _photoUrlController.text = profile['photo_url'] ?? profile['avatar_url'] ?? '';
+          _publishInDirectory = profile['public_directory_enabled'] == true;
           
-          if (response['specialties'] != null) {
-            final specs = List<String>.from(response['specialties']);
+          if (profile['specialties'] != null) {
+            final specs = List<String>.from(profile['specialties']);
+            _selectedSpecialties.clear();
             _selectedSpecialties.addAll(specs);
           }
         });
       }
     } catch (e) {
       debugPrint('Erro ao carregar perfil: $e');
-      if (mounted) setState(() => _profileLoadFailed = true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -154,7 +145,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
   }
 
   Future<void> _saveProfile() async {
-    if (_isLoading || _profileLoadFailed) return;
+    if (_isLoading) return;
     final username = _usernameController.text.trim().toLowerCase();
     final usernamePattern = RegExp(r'^[a-z0-9][a-z0-9_.-]{1,28}[a-z0-9]$');
     if (username.isNotEmpty && !usernamePattern.hasMatch(username)) {
@@ -189,13 +180,14 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
     }
     setState(() => _isSaving = true);
     try {
-      // Aqui usamos o supabase_flutter que já está inicializado no app
       final supabase = Supabase.instance.client;
       final user = supabase.auth.currentUser;
       if (user == null) throw Exception('Usuário não logado');
 
       final photoVal = _photoUrlController.text.trim();
-      final updates = {
+      final crefVal = _crefController.text.trim();
+      final updates = <String, dynamic>{
+        'id': user.id,
         'username': username.isEmpty ? null : username,
         'bio': _bioController.text.trim().isEmpty
             ? null
@@ -203,26 +195,42 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
         'phone': whatsappDigits.isEmpty ? null : whatsappDigits,
         'whatsapp': whatsappDigits.isEmpty ? null : whatsappDigits,
         'public_whatsapp': whatsappDigits.isEmpty ? null : whatsappDigits,
-        'professional_document': _crefController.text.trim(),
+        'professional_document': crefVal.isEmpty ? null : crefVal,
         'public_directory_enabled': _publishInDirectory,
         'specialties': _selectedSpecialties.toList(),
         'photo_url': photoVal.isEmpty ? null : photoVal,
         'avatar_url': photoVal.isEmpty ? null : photoVal,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
       };
 
-      final savedProfile = await supabase
-          .from('profiles')
-          .update(updates)
-          .eq('id', user.id)
-          .select('id')
-          .maybeSingle();
-      if (savedProfile == null) {
-        throw StateError('Nenhum perfil foi atualizado.');
-      }
+      await supabase.from('profiles').upsert(updates);
+
+      try {
+        await supabase.auth.updateUser(
+          UserAttributes(data: {
+            'username': username.isEmpty ? null : username,
+            'bio': _bioController.text.trim().isEmpty ? null : _bioController.text.trim(),
+            'phone': whatsappDigits.isEmpty ? null : whatsappDigits,
+            'public_whatsapp': whatsappDigits.isEmpty ? null : whatsappDigits,
+            'professional_document': crefVal.isEmpty ? null : crefVal,
+            'photo_url': photoVal.isEmpty ? null : photoVal,
+            'avatar_url': photoVal.isEmpty ? null : photoVal,
+          }),
+        );
+      } catch (_) {}
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Text('Vitrine salva com sucesso!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), backgroundColor: MetaColors.emerald, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), margin: const EdgeInsets.all(16)),
+          SnackBar(
+            content: const Text(
+              'Vitrine salva com sucesso!',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: MetaColors.emerald,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
+          ),
         );
         
         _leaveProfileSetup();
@@ -313,33 +321,6 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (_profileLoadFailed) ...[
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.all(14),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: Colors.red.withValues(alpha: 0.35),
-                                  ),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Não foi possível carregar os dados salvos. Salvar está bloqueado para evitar sobrescrevê-los.',
-                                    ),
-                                    TextButton.icon(
-                                      onPressed: _loadProfile,
-                                      icon: const Icon(Icons.refresh),
-                                      label: const Text('Tentar novamente'),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                            ],
                             Text(
                               'Configure seu perfil público. Estes dados serão visíveis na sua Landing Page.',
                               style: theme.textTheme.bodyMedium?.copyWith(
@@ -669,7 +650,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
               right: 24,
               bottom: padding.bottom > 0 ? padding.bottom : 24,
               child: FilledButton(
-                onPressed: _isSaving || _isLoading || _profileLoadFailed
+                onPressed: _isSaving || _isLoading
                   ? null
                   : _saveProfile,
                 style: FilledButton.styleFrom(

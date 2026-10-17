@@ -231,11 +231,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
         _showAiAssistantModal();
         break;
       case _ToolType.publicShowcase:
-        if (!_hasCref) {
-          _showCrefLockedModal();
-        } else {
-          _showPublicShowcaseModal();
-        }
+        _showPublicShowcaseModal();
         break;
       case _ToolType.whatsappIntegration:
         _showWhatsAppIntegrationModal();
@@ -664,7 +660,10 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
   }
 
   void _showPublicShowcaseModal() {
-    final showcaseUrl = 'https://shaipados.com/#/prof/${Uri.encodeComponent(_username ?? '')}';
+    final cleanUser = (_username != null && _username!.isNotEmpty)
+        ? _username!.replaceFirst(RegExp(r'^@'), '')
+        : 'mrcoach';
+    final showcaseUrl = 'https://shaipados.com/#/prof/${Uri.encodeComponent(cleanUser)}';
     showModalBottomSheet(
       context: context,
       backgroundColor: MetaColors.surface,
@@ -977,9 +976,9 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
   Widget _buildSalesLinkCard() {
     final cleanUser = (_username != null && _username!.isNotEmpty)
         ? _username!.replaceFirst(RegExp(r'^@'), '')
-        : 'seunome';
-    final displayUrl = 'shaipados-labs.web.app/trainers/@$cleanUser';
-    final fullUrl = 'https://shaipados-labs.web.app/trainers/@$cleanUser';
+        : 'mrcoach';
+    final displayUrl = 'shaipados.com/#/prof/$cleanUser';
+    final fullUrl = 'https://shaipados.com/#/prof/$cleanUser';
 
     return SliverToBoxAdapter(
       child: Padding(

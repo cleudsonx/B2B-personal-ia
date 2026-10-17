@@ -39,6 +39,11 @@ void main() {
 
     await tester.tap(find.text('Conta').last);
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Verificação em duas etapas'),
+      300,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('Verificação em duas etapas'), findsOneWidget);
   });
 
