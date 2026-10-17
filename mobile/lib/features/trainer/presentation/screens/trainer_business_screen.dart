@@ -974,6 +974,112 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
     );
   }
 
+  Widget _buildSalesLinkCard() {
+    final cleanUser = (_username != null && _username!.isNotEmpty)
+        ? _username!.replaceFirst(RegExp(r'^@'), '')
+        : 'seunome';
+    final displayUrl = 'shaipados-labs.web.app/trainers/@$cleanUser';
+    final fullUrl = 'https://shaipados-labs.web.app/trainers/@$cleanUser';
+
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        child: MetaCard(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(9),
+                    decoration: BoxDecoration(
+                      color: MetaColors.emerald.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.link_rounded,
+                      color: MetaColors.emerald,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Link Direto da sua Vitrine B2B',
+                          style: TextStyle(
+                            color: MetaColors.subtext(context),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          displayUrl,
+                          style: TextStyle(
+                            color: MetaColors.text(context),
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Configurar @username',
+                    icon: Icon(
+                      Icons.tune_rounded,
+                      color: MetaColors.subtext(context),
+                      size: 20,
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const TrainerProfileSetupScreen(),
+                        ),
+                      ).then((_) => _checkProfileStatus());
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: SquircleButton(
+                  icon: Icons.copy_rounded,
+                  label: 'Copiar meu link de vendas',
+                  isPrimary: true,
+                  onPressed: () async {
+                    await Clipboard.setData(ClipboardData(text: fullUrl));
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: MetaColors.emerald,
+                        content: Text(
+                          'Link copiado: $displayUrl',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildIncompleteProfileBanner() {
     if (_isLoadingProfile || !_isProfileIncomplete) return const SliverToBoxAdapter(child: SizedBox.shrink());
     
@@ -1059,14 +1165,15 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                   'Ferramentas do Personal',
                   style: TextStyle(
                     color: MetaColors.text(context),
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.6,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.5,
                   ),
                 ),
               ),
             ),
 
+            _buildSalesLinkCard(),
             _buildIncompleteProfileBanner(),
             // Seção 1: "Como" (Dicas de Negócio em Cards Horizontais)
             SliverToBoxAdapter(

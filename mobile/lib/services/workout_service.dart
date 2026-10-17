@@ -293,6 +293,8 @@ class WorkoutService {
           final subStatus = map['subscription_status'] as String? ?? 'trial';
           map['status'] = subStatus == 'canceled' ? 'Arquivado' : 'Ativo';
           map['goal'] = map['goal'] ?? 'Consultoria Personalizada';
+          map['phone'] = map['phone'] ?? map['whatsapp'] ?? map['public_whatsapp'];
+          map['whatsapp'] = map['whatsapp'] ?? map['phone'];
 
           final stId = map['id']?.toString() ?? '';
           var activeWorkout = activeWorkoutsMap[stId];
@@ -371,7 +373,11 @@ class WorkoutService {
 
     for (final student in rawList) {
       final id = (student['id'] ?? '').toString();
-      final phone = normalizePhone(student['phone']);
+      final rawStudentPhone = student['phone'] ?? student['whatsapp'] ?? student['target_phone'];
+      if (student['phone'] == null && rawStudentPhone != null) {
+        student['phone'] = rawStudentPhone;
+      }
+      final phone = normalizePhone(rawStudentPhone);
       final email = normalizeEmail(student['email']);
       final name = normalizeName(student['full_name']);
 
@@ -385,7 +391,7 @@ class WorkoutService {
       } else {
         for (final entry in deduplicated.entries) {
           final existing = entry.value;
-          final exPhone = normalizePhone(existing['phone']);
+          final exPhone = normalizePhone(existing['phone'] ?? existing['whatsapp']);
           final exEmail = normalizeEmail(existing['email']);
           final exName = normalizeName(existing['full_name']);
           if ((phone.isNotEmpty && exPhone == phone) ||
@@ -416,6 +422,12 @@ class WorkoutService {
         }
         if (hasActive && (existing['last_session'] == null || existing['last_session'] == 'Aguardando treino')) {
           existing['last_session'] = 'Ficha ativa';
+        }
+        if ((existing['phone'] == null || existing['phone'].toString().trim().isEmpty) &&
+            rawStudentPhone != null &&
+            rawStudentPhone.toString().trim().isNotEmpty) {
+          existing['phone'] = rawStudentPhone;
+          existing['whatsapp'] = rawStudentPhone;
         }
         if (student['photo_url'] != null && student['photo_url'].toString().isNotEmpty) {
           existing['photo_url'] = student['photo_url'];
@@ -1102,10 +1114,37 @@ class WorkoutService {
       throw Exception(message);
     }
 
+    if (_clientOrNull != null) {
+      try {
+        final profilePatch = <String, dynamic>{
+          if (fullName != null) 'full_name': fullName.trim(),
+          if (phone != null) ...{
+            'phone': phone.trim(),
+            'whatsapp': phone.trim(),
+          },
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        };
+        if (profilePatch.length > 1) {
+          await _client.from('profiles').update(profilePatch).eq('id', studentId);
+        }
+      } catch (_) {}
+      if (phone != null) {
+        try {
+          await _client
+              .from('invite_tokens')
+              .update({'target_phone': phone.trim()})
+              .eq('id', studentId);
+        } catch (_) {}
+      }
+    }
+
     if (idx != -1) {
       if (fullName != null) _localStudentsCache[idx]['full_name'] = fullName;
       if (email != null) _localStudentsCache[idx]['email'] = email;
-      if (phone != null) _localStudentsCache[idx]['phone'] = phone;
+      if (phone != null) {
+        _localStudentsCache[idx]['phone'] = phone;
+        _localStudentsCache[idx]['whatsapp'] = phone;
+      }
       if (goal != null) _localStudentsCache[idx]['goal'] = goal;
       if (injuriesOrRestrictions != null) {
         _localStudentsCache[idx]['injuries_or_restrictions'] =
@@ -1114,6 +1153,7 @@ class WorkoutService {
       if (status != null) _localStudentsCache[idx]['status'] = status;
     }
 
+    studentsRefreshNotifier.value++;
     return true;
   }
 

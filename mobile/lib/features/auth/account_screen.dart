@@ -6,6 +6,7 @@ import '../../core/widgets/app_version_footer.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../services/auth_service.dart';
 import '../../services/subscription_service.dart';
+import '../../services/workout_service.dart';
 import '../subscription/subscription_screen.dart';
 import '../trainer/presentation/screens/trainer_profile_setup_screen.dart';
 import '../trainer/presentation/screens/whatsapp_connection_screen.dart';
@@ -197,6 +198,7 @@ class _AccountScreenState extends State<AccountScreen> {
           };
           await client.from('profiles').update(payload).eq('id', uid);
         }
+        WorkoutService.studentsRefreshNotifier.value++;
         if (mounted) {
           setState(() {
             _phone = updated;
@@ -276,31 +278,32 @@ class _AccountScreenState extends State<AccountScreen> {
   @override
   Widget build(BuildContext context) {
     final roles = _roles.isEmpty ? [widget.currentRole] : _roles;
-    final isDark = MetaColors.isDark(context);
     final isTrainer = widget.currentRole == 'trainer';
+    final hasActiveCref = _cref != null && _cref!.toUpperCase().startsWith('CREF');
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+      cacheExtent: 1200,
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
       children: [
-        // 1. Topo: Título da tela
+        // Topo: Título da tela
         Text(
           'Conta',
           style: TextStyle(
             color: MetaColors.text(context),
-            fontSize: 26,
+            fontSize: 24,
             fontWeight: FontWeight.w700,
             letterSpacing: -0.5,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 10),
 
-        // 2. Card Principal de Identificação
+        // 1. Card de Perfil com Avatar: Foto/iniciais, nome completo, e-mail e badge da função
         MetaCard(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Row(
             children: [
               CircleAvatar(
-                radius: 28,
+                radius: 22,
                 backgroundColor: MetaColors.highlight(context),
                 backgroundImage: safeImageProvider(_photoUrl),
                 child: safeImageProvider(_photoUrl) == null
@@ -311,12 +314,12 @@ class _AccountScreenState extends State<AccountScreen> {
                         style: const TextStyle(
                           color: MetaColors.emerald,
                           fontWeight: FontWeight.bold,
-                          fontSize: 22,
+                          fontSize: 18,
                         ),
                       )
                     : null,
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -325,19 +328,18 @@ class _AccountScreenState extends State<AccountScreen> {
                       _fullName ?? 'Usuário',
                       style: TextStyle(
                         color: MetaColors.text(context),
-                        fontSize: 17,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 2),
                     Text(
                       _email ?? 'Carregando...',
                       style: TextStyle(
                         color: MetaColors.subtext(context),
-                        fontSize: 13,
+                        fontSize: 12,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
@@ -348,7 +350,7 @@ class _AccountScreenState extends State<AccountScreen> {
                         isTrainer ? 'TREINADOR PROFISSIONAL' : 'ALUNO',
                         style: const TextStyle(
                           color: MetaColors.emerald,
-                          fontSize: 10,
+                          fontSize: 9.5,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.6,
                         ),
@@ -361,22 +363,170 @@ class _AccountScreenState extends State<AccountScreen> {
           ),
         ),
 
-        const SizedBox(height: 14),
+        if (isTrainer) ...[
+          const SizedBox(height: 8),
 
-        // 3. Card de Telefone / WhatsApp com Edição Rápida
+          // 2. Selo de Registro Profissional (CREF): Indicador visual de CREF Ativo vs Pendente
+          MetaCard(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: hasActiveCref
+                        ? MetaColors.emerald.withValues(alpha: 0.12)
+                        : Colors.orange.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.verified_outlined,
+                    color: hasActiveCref ? MetaColors.emerald : Colors.orangeAccent,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Registro Profissional (CREF)',
+                            style: TextStyle(
+                              color: MetaColors.subtext(context),
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: hasActiveCref
+                                  ? MetaColors.emerald.withValues(alpha: 0.15)
+                                  : Colors.orange.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              hasActiveCref ? 'ATIVO' : 'PENDENTE',
+                              style: TextStyle(
+                                color: hasActiveCref ? MetaColors.emerald : Colors.orangeAccent,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        (_cref != null && _cref!.isNotEmpty) ? _cref! : 'CREF Pendente • Regularize seu perfil',
+                        style: TextStyle(
+                          color: MetaColors.text(context),
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                  onPressed: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const TrainerProfileSetupScreen()),
+                    );
+                    await _loadAccount();
+                  },
+                  child: Text(hasActiveCref ? 'Editar' : 'Regularizar'),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // 3. Card do Plano SaaS & Limite de Vagas
+          MetaCard(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.workspace_premium_outlined, color: Colors.amber, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Plano SaaS & Limite de Vagas',
+                        style: TextStyle(
+                          color: MetaColors.subtext(context),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        _activePlanName != null
+                            ? 'Plano $_activePlanName - ${_maxStudents ?? 30} vagas'
+                            : 'Plano Pro - 30 vagas',
+                        style: TextStyle(
+                          color: MetaColors.text(context),
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                  onPressed: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+                    );
+                    await _loadAccount();
+                  },
+                  child: const Text('Upgrade'),
+                ),
+              ],
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 8),
+
+        // 4. Card de WhatsApp com Edição Rápida
         MetaCard(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: MetaColors.emerald.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.phone_android_rounded, color: MetaColors.emerald, size: 24),
+                child: const Icon(Icons.phone_android_rounded, color: MetaColors.emerald, size: 20),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -385,16 +535,16 @@ class _AccountScreenState extends State<AccountScreen> {
                       'WhatsApp Cadastrado',
                       style: TextStyle(
                         color: MetaColors.subtext(context),
-                        fontSize: 12,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 1),
                     Text(
                       _formatPhone(_phone),
                       style: TextStyle(
                         color: MetaColors.text(context),
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -402,7 +552,8 @@ class _AccountScreenState extends State<AccountScreen> {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.edit_outlined, size: 20),
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.edit_outlined, size: 19),
                 tooltip: 'Atualizar telefone',
                 color: MetaColors.emerald,
                 onPressed: _editPhoneNumber,
@@ -411,11 +562,69 @@ class _AccountScreenState extends State<AccountScreen> {
           ),
         ),
 
+        if (isTrainer) ...[
+          const SizedBox(height: 8),
+
+          // 5. Card de Telemetria do Robô WhatsApp
+          MetaCard(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const WhatsappConnectionScreen()),
+              );
+            },
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: MetaColors.emerald.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.smart_toy_outlined, color: MetaColors.emerald, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Telemetria do Robô WhatsApp',
+                        style: TextStyle(
+                          color: MetaColors.text(context),
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        'Status Evolution API & QR Code de pareamento',
+                        style: TextStyle(
+                          color: MetaColors.subtext(context),
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.qr_code_scanner_rounded,
+                  color: MetaColors.emerald,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ],
+
         if (roles.contains('trainer')) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
           ListTile(
+            dense: true,
+            visualDensity: VisualDensity.compact,
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.security_outlined),
+            leading: const Icon(Icons.security_outlined, size: 20),
             title: const Text('Verificação em duas etapas'),
             subtitle: Text(
               _totpFactorId == null
@@ -430,179 +639,6 @@ class _AccountScreenState extends State<AccountScreen> {
               );
               await _loadAccount();
             },
-          ),
-        ],
-
-        // 4. Recursos Específicos para o Treinador (CREF, Automação WhatsApp, Plano SaaS)
-        if (isTrainer) ...[
-          const SizedBox(height: 14),
-
-          // Card de Registro Profissional (CREF)
-          MetaCard(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: (_cref != null && _cref!.toUpperCase().startsWith('CREF'))
-                        ? MetaColors.emerald.withValues(alpha: 0.12)
-                        : Colors.orange.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.verified_outlined,
-                    color: (_cref != null && _cref!.toUpperCase().startsWith('CREF'))
-                        ? MetaColors.emerald
-                        : Colors.orangeAccent,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Registro Profissional',
-                        style: TextStyle(
-                          color: MetaColors.subtext(context),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        (_cref != null && _cref!.isNotEmpty) ? _cref! : 'CREF Pendente',
-                        style: TextStyle(
-                          color: MetaColors.text(context),
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const TrainerProfileSetupScreen()),
-                    );
-                    await _loadAccount();
-                  },
-                  child: const Text('Configurar'),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          // Card do Robô WhatsApp / Conexão
-          MetaCard(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: MetaColors.emerald.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.smart_toy_outlined, color: MetaColors.emerald, size: 24),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Robô de WhatsApp Mr. Coach',
-                        style: TextStyle(
-                          color: MetaColors.text(context),
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Envios automáticos & telemetria 24h',
-                        style: TextStyle(
-                          color: MetaColors.subtext(context),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right_rounded),
-                  color: MetaColors.text(context),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const WhatsappConnectionScreen()),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          // Card de Assinatura & Cotas de Alunos
-          MetaCard(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.workspace_premium_outlined, color: Colors.amber, size: 24),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Plano de Assinatura SaaS',
-                        style: TextStyle(
-                          color: MetaColors.subtext(context),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _activePlanName != null
-                            ? 'Plano $_activePlanName (${_maxStudents ?? 30} vagas)'
-                            : 'Plano Pro (30 vagas ativas)',
-                        style: TextStyle(
-                          color: MetaColors.text(context),
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
-                    );
-                  },
-                  child: const Text('Planos'),
-                ),
-              ],
-            ),
           ),
         ],
 
