@@ -1,6 +1,6 @@
 {
   "version": "1.5.0",
-  "build": 2026102898,
-  "updated_at": "2026-10-18T10:52:00.000000Z",
-  "notes": "Correcao definitiva no ciclo de vida do PWA Update Wrapper: eliminacao de loop de recarregamento e cache-busting aprimorado."
+  "build": 2026102899,
+  "updated_at": "2026-10-18T11:19:00.000000Z",
+  "notes": "Fase 3: Modo Treino Focus Mode no Salao (Segmented Story Bar, Recordes PR, Seletor Anatomico de Dores e Gym UX One-Hand)."
 }

@@ -39,11 +39,18 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.5.0',
-      buildNumber: 2026102898,
+      buildNumber: 2026102899,
       date: '18 de Outubro, 2026',
       summary:
-          'Evolução 360° do Aluno (Antes vs. Agora), Raio-X da Anamnese na Prescrição One UI 7 e Trava Clínica Preventiva de Renovação.',
+          'Fase 3: Modo Treino Focus Mode no Salão (Segmented Story Bar, Recordes PR, Seletor Anatômico de Dores e Gym UX One-Hand).',
       highlights: [
+        ChangelogItem(
+          icon: Icons.fitness_center_rounded,
+          title: 'Modo Treino Focus Mode no Salão (Fase 3)',
+          description:
+              'Segmented Story Bar estilo status, auto-rest timer com haptic feedback, ajuste tátil de carga sem teclado (+/- 2.5kg), recordes pessoais (PR), seletor de dores articulares e celebração com tonelagem total.',
+          badge: 'GYM UX',
+        ),
         ChangelogItem(
           icon: Icons.timeline_rounded,
           title: 'Linha do Tempo & Evolução do Aluno',

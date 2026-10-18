@@ -267,6 +267,23 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     ).then((completed) {
       if (completed == true && mounted) {
         _loadActiveWorkout();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: MetaColors.emerald,
+            content: Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Treino finalizado e registrado com sucesso!',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
       }
     });
   }

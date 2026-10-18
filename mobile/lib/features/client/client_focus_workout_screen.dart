@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/widgets/meta_components.dart';
@@ -73,8 +74,14 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
   int _restSecondsRemaining = 0;
   int _restInitialDuration = 60;
   bool _isRestTimerActive = false;
-
   bool _isAdapting = false;
+
+  // Persistência e detecção de Recordes Pessoais (PR)
+  Map<int, double> _referencePreviousWeights = {};
+  int _newPrCount = 0;
+
+  static String _weightKey(String clientId, String exerciseName) =>
+      'pwa_last_weight_${clientId}_${exerciseName.toLowerCase().trim()}';
 
   @override
   void initState() {
@@ -87,6 +94,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
     _pageController = PageController(initialPage: initialPage);
     _currentExercises = List.from(widget.exercises);
     _initSets();
+    _loadPreviousWeights();
 
     _startedAt = DateTime.now();
     _sessionTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -110,6 +118,85 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
         setsCount,
         (_) => _SetProgress(weightKg: defaultWeight, reps: defaultReps),
       );
+    }
+  }
+
+  Future<void> _loadPreviousWeights() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final uid = AuthService.currentUser?.id ?? 'guest';
+      final Map<int, double> refs = {};
+
+      for (int i = 0; i < _currentExercises.length; i++) {
+        final ex = _currentExercises[i];
+        final key = _weightKey(uid, ex.name);
+        final savedWeight = prefs.getDouble(key);
+        if (savedWeight != null && savedWeight > 0) {
+          refs[i] = savedWeight;
+          // Hidrata a carga atual com a última carga real utilizada
+          if (_exerciseSets.containsKey(i)) {
+            for (final s in _exerciseSets[i]!) {
+              s.weightKg = savedWeight;
+            }
+          }
+        } else {
+          refs[i] = _parseDefaultWeight(ex.notes);
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _referencePreviousWeights = refs;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveWeights() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final uid = AuthService.currentUser?.id ?? 'guest';
+
+      for (int i = 0; i < _currentExercises.length; i++) {
+        final ex = _currentExercises[i];
+        final sets = _exerciseSets[i] ?? [];
+        double maxWeight = 0.0;
+        for (final s in sets) {
+          if (s.isCompleted && s.weightKg > maxWeight) {
+            maxWeight = s.weightKg;
+          }
+        }
+        if (maxWeight > 0) {
+          await prefs.setDouble(_weightKey(uid, ex.name), maxWeight);
+        }
+      }
+    } catch (_) {}
+  }
+
+  bool _isExerciseFullyCompleted(int exIndex) {
+    final sets = _exerciseSets[exIndex];
+    if (sets == null || sets.isEmpty) return false;
+    return sets.every((s) => s.isCompleted);
+  }
+
+  void _addSet(int exerciseIndex) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      final sets = _exerciseSets[exerciseIndex] ?? [];
+      final lastWeight = sets.isNotEmpty ? sets.last.weightKg : 20.0;
+      final lastReps = sets.isNotEmpty ? sets.last.reps : 10;
+      sets.add(_SetProgress(weightKg: lastWeight, reps: lastReps));
+      _exerciseSets[exerciseIndex] = sets;
+    });
+  }
+
+  void _removeLastSet(int exerciseIndex) {
+    final sets = _exerciseSets[exerciseIndex];
+    if (sets != null && sets.length > 1) {
+      HapticFeedback.selectionClick();
+      setState(() {
+        sets.removeLast();
+      });
     }
   }
 
@@ -145,7 +232,6 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
   }
 
   void _onSetChecked(int exerciseIndex, int setIndex) {
-    HapticFeedback.lightImpact();
     final set = _exerciseSets[exerciseIndex]![setIndex];
 
     setState(() {
@@ -153,10 +239,19 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
     });
 
     if (set.isCompleted) {
+      final prevRef = _referencePreviousWeights[exerciseIndex] ?? 0.0;
+      if (prevRef > 0 && set.weightKg > prevRef) {
+        _newPrCount++;
+        HapticFeedback.heavyImpact();
+      } else {
+        HapticFeedback.mediumImpact();
+      }
       final currentEx = _currentExercises[exerciseIndex];
       final restDuration =
           currentEx.restSeconds > 0 ? currentEx.restSeconds : 60;
       _startRestTimer(restDuration);
+    } else {
+      HapticFeedback.lightImpact();
     }
   }
 
@@ -396,12 +491,111 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                   ),
                   onPressed: () {
                     Navigator.pop(ctx);
-                    _executeSubstitution(
-                      exerciseIndex,
-                      'Desconforto Articular',
-                    );
+                    _showJointPainSelectorModal(exerciseIndex);
                   },
                 ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showJointPainSelectorModal(int exerciseIndex) {
+    final currentEx = _currentExercises[exerciseIndex];
+    final joints = [
+      {'name': 'Ombro / Manguito', 'icon': Icons.accessibility_new_rounded},
+      {'name': 'Lombar / Coluna', 'icon': Icons.airline_seat_recline_normal_rounded},
+      {'name': 'Joelho', 'icon': Icons.directions_walk_rounded},
+      {'name': 'Cotovelo', 'icon': Icons.front_hand_rounded},
+      {'name': 'Punho / Mão', 'icon': Icons.pan_tool_rounded},
+      {'name': 'Quadril', 'icon': Icons.accessibility_rounded},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: MetaColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(22.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: const [
+                    Icon(Icons.health_and_safety_rounded, color: Color(0xFFF59E0B), size: 26),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Onde você está sentindo dor?',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                          color: MetaColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'A IA do Mr. Coach substituirá "${currentEx.name}" por uma alternativa que alivia a articulação afetada e alertará ${widget.trainerName}.',
+                  style: const TextStyle(
+                    color: MetaColors.textSecondary,
+                    fontSize: 12.5,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 10,
+                  children: joints.map((j) {
+                    final jName = j['name'] as String;
+                    final jIcon = j['icon'] as IconData;
+                    return InkWell(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _executeSubstitution(
+                          exerciseIndex,
+                          'Dor Articular ($jName)',
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: MetaColors.background,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(jIcon, size: 16, color: const Color(0xFFF59E0B)),
+                            const SizedBox(width: 8),
+                            Text(
+                              jName,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: MetaColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
               ],
             ),
           ),
@@ -472,6 +666,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
   }
 
   Future<void> _finishWorkout() async {
+    await _saveWeights();
     final totalVolume = _calculateTotalVolumeLoadKg();
     final totalCompleted = _countCompletedSets();
     final durationMin = (_elapsedSeconds / 60).round();
@@ -553,7 +748,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Métricas em Cards
+              // Métricas em Cards One UI 7
               Row(
                 children: [
                   Expanded(
@@ -684,7 +879,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                             ),
                           ),
                           const Text(
-                            'Meta diária de estímulo muscular concluída.',
+                            'Meta diária de estímulo muscular concluída com foco.',
                             style: TextStyle(
                               fontSize: 12,
                               color: MetaColors.textSecondary,
@@ -696,6 +891,49 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                   ],
                 ),
               ),
+
+              // Destaque de Recordes Pessoais (PR)
+              if (_newPrCount > 0) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: MetaColors.emerald.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: MetaColors.emerald.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text('🏆', style: TextStyle(fontSize: 22)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '$_newPrCount Novo(s) Recorde(s) de Carga Batido(s)!',
+                              style: const TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w900,
+                                color: MetaColors.emerald,
+                              ),
+                            ),
+                            const Text(
+                              'Sua progressão de sobrecarga está evoluindo.',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: MetaColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
 
               // Botão WhatsApp
@@ -719,11 +957,15 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                     final phoneWithCountry = cleanPhone.startsWith('55')
                         ? cleanPhone
                         : '55$cleanPhone';
+                    final prMsg = _newPrCount > 0
+                        ? '🏆 Recordes batidos: $_newPrCount novo(s) PR(s)!\n'
+                        : '';
                     final msg = Uri.encodeComponent(
                       'Fala Prof. ${widget.trainerName}! 💪 Acabei de concluir o ${widget.workoutTitle}!\n'
                       '⏱ Tempo: $durationMin min\n'
                       '📊 Volume total: ${totalVolume.toStringAsFixed(0)} kg\n'
-                      '🔥 Treino registrado pelo Mr. Coach AI.',
+                      '$prMsg'
+                      '🔥 Treino registrado com Focus Mode no Mr. Coach AI.',
                     );
                     launchUrl(
                       Uri.parse(
@@ -770,7 +1012,6 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
     }
 
     final totalEx = _currentExercises.length;
-    final progress = (totalEx > 0) ? (_currentPage + 1) / totalEx : 0.0;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -864,17 +1105,48 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: progress,
-                          backgroundColor: MetaColors.surface,
-                          valueColor: const AlwaysStoppedAnimation<Color>(
-                            MetaColors.emerald,
-                          ),
-                          minHeight: 4,
-                        ),
+                      const SizedBox(height: 12),
+                      // Segmented Story Pills (Instagram / WhatsApp Status Pattern)
+                      Row(
+                        children: List.generate(totalEx, (barIdx) {
+                          final isDone = _isExerciseFullyCompleted(barIdx);
+                          final isCurrent = barIdx == _currentPage;
+                          return Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                _pageController.animateToPage(
+                                  barIdx,
+                                  duration: const Duration(milliseconds: 280),
+                                  curve: Curves.easeOutCubic,
+                                );
+                              },
+                              child: Container(
+                                height: 5,
+                                margin: EdgeInsets.symmetric(
+                                  horizontal: totalEx > 6 ? 1.5 : 3.0,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isDone
+                                      ? MetaColors.emerald
+                                      : (isCurrent
+                                          ? MetaColors.emerald.withValues(alpha: 0.7)
+                                          : MetaColors.surfaceHighlight),
+                                  borderRadius: BorderRadius.circular(3),
+                                  boxShadow: isCurrent
+                                      ? [
+                                          BoxShadow(
+                                            color: MetaColors.emerald.withValues(alpha: 0.5),
+                                            blurRadius: 6,
+                                            spreadRadius: 1,
+                                          )
+                                        ]
+                                      : null,
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
                       ),
                     ],
                   ),
@@ -1117,6 +1389,15 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
     final sets = _exerciseSets[index] ?? [];
     final emg = _getEmgForExercise(ex.name);
 
+    final prevWeight = _referencePreviousWeights[index] ?? 0.0;
+    double currentMaxWeight = 0.0;
+    for (final s in sets) {
+      if (s.isCompleted && s.weightKg > currentMaxWeight) {
+        currentMaxWeight = s.weightKg;
+      }
+    }
+    final bool hasNewPr = prevWeight > 0 && currentMaxWeight > prevWeight;
+
     return ListView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 100),
@@ -1127,7 +1408,11 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
           decoration: BoxDecoration(
             color: MetaColors.surface,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: MetaColors.border),
+            border: Border.all(
+              color: hasNewPr
+                  ? const Color(0xFFF59E0B).withValues(alpha: 0.5)
+                  : MetaColors.border,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1184,6 +1469,50 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                             letterSpacing: -0.4,
                           ),
                         ),
+                        if (hasNewPr) ...[
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.emoji_events_rounded,
+                                  size: 13,
+                                  color: Color(0xFFF59E0B),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Novo Recorde: +${(currentMaxWeight - prevWeight).toStringAsFixed(1)} kg',
+                                  style: const TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFFF59E0B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ] else if (prevWeight > 0) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Carga anterior: ${prevWeight.toStringAsFixed(1)} kg',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: MetaColors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -1364,15 +1693,22 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                 // Número da série
                 SizedBox(
                   width: 32,
-                  child: Text(
-                    '#${sIdx + 1}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      color: isDone
-                          ? MetaColors.emerald
-                          : MetaColors.textSecondary,
-                    ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '#${sIdx + 1}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: isDone
+                              ? MetaColors.emerald
+                              : MetaColors.textSecondary,
+                        ),
+                      ),
+                      if (isDone && prevWeight > 0 && set.weightKg > prevWeight)
+                        const Text('🏆', style: TextStyle(fontSize: 10)),
+                    ],
                   ),
                 ),
 
@@ -1521,6 +1857,68 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
             ),
           );
         }),
+
+        // Ações de Séries (One-Hand Gym UX)
+        Padding(
+          padding: const EdgeInsets.only(top: 8, bottom: 20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton.icon(
+                icon: const Icon(
+                  Icons.add_circle_outline_rounded,
+                  size: 16,
+                  color: MetaColors.emerald,
+                ),
+                label: const Text(
+                  'Adicionar Série',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                    color: MetaColors.emerald,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  backgroundColor: MetaColors.emerald.withValues(alpha: 0.12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: MetaColors.emerald.withValues(alpha: 0.3),
+                    ),
+                  ),
+                ),
+                onPressed: () => _addSet(index),
+              ),
+              if (sets.length > 1) ...[
+                const SizedBox(width: 12),
+                TextButton.icon(
+                  icon: const Icon(
+                    Icons.remove_circle_outline_rounded,
+                    size: 16,
+                    color: MetaColors.textSecondary,
+                  ),
+                  label: const Text(
+                    'Remover Última',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: MetaColors.textSecondary,
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    backgroundColor: MetaColors.surfaceHighlight,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () => _removeLastSet(index),
+                ),
+              ],
+            ],
+          ),
+        ),
       ],
     );
   }
