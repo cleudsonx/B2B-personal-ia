@@ -37,6 +37,15 @@ class ApiService {
     String? targetFocus,
     String? additionalNotes,
     String? authToken,
+    String? biologicalSex,
+    String? sessionDuration,
+    List<String>? availableEquipment,
+    String? exercisesToAvoid,
+    String? cardioPreference,
+    String? trainingStyle,
+    String? sleepHours,
+    String? stressLevel,
+    List<String>? preferredDays,
   }) async {
     final payload = <String, dynamic>{
       'objective': objective,
@@ -51,6 +60,33 @@ class ApiService {
     }
     if (additionalNotes != null && additionalNotes.isNotEmpty) {
       payload['additional_notes'] = additionalNotes;
+    }
+    if (biologicalSex != null && biologicalSex.isNotEmpty) {
+      payload['biological_sex'] = biologicalSex;
+    }
+    if (sessionDuration != null && sessionDuration.isNotEmpty) {
+      payload['session_duration'] = sessionDuration;
+    }
+    if (availableEquipment != null && availableEquipment.isNotEmpty) {
+      payload['available_equipment'] = availableEquipment;
+    }
+    if (exercisesToAvoid != null && exercisesToAvoid.isNotEmpty) {
+      payload['exercises_to_avoid'] = exercisesToAvoid;
+    }
+    if (cardioPreference != null && cardioPreference.isNotEmpty) {
+      payload['cardio_preference'] = cardioPreference;
+    }
+    if (trainingStyle != null && trainingStyle.isNotEmpty) {
+      payload['training_style'] = trainingStyle;
+    }
+    if (sleepHours != null && sleepHours.isNotEmpty) {
+      payload['sleep_hours'] = sleepHours;
+    }
+    if (stressLevel != null && stressLevel.isNotEmpty) {
+      payload['stress_level'] = stressLevel;
+    }
+    if (preferredDays != null && preferredDays.isNotEmpty) {
+      payload['preferred_days'] = preferredDays;
     }
     final body = jsonEncode(payload);
     final uri = Uri.parse('$baseUrl/workouts/generate-plan');

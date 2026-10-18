@@ -13,12 +13,17 @@ class WelcomeOnboardingScreen extends StatefulWidget {
   final String? trainerId;
   final String? trainerAvatarUrl;
 
+  final bool isReviewMode;
+  final Map<String, dynamic>? initialData;
+
   const WelcomeOnboardingScreen({
     super.key,
     this.studentName,
     this.trainerName,
     this.trainerId,
     this.trainerAvatarUrl,
+    this.isReviewMode = false,
+    this.initialData,
   });
 
   @override
@@ -110,8 +115,114 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
     super.initState();
     _trainerId = widget.trainerId;
     _resolvedTrainerAvatarUrl = widget.trainerAvatarUrl;
+    if (widget.isReviewMode) {
+      _currentStep = 1;
+      _hydrateFromInitialOrDatabase();
+    }
     _loadTrainerInfo().whenComplete(() {
       if (mounted) setState(() => _isLoadingTrainerInfo = false);
+    });
+  }
+
+  Future<void> _hydrateFromInitialOrDatabase() async {
+    Map<String, dynamic>? data = widget.initialData;
+    if (data == null) {
+      final user = AuthService.currentUser;
+      if (user != null) {
+        data = await WorkoutService.getLatestStudentAnamnesis(user.id);
+      }
+    }
+    if (data == null || !mounted) return;
+
+    final details = (data['details'] as Map<String, dynamic>?) ?? {};
+
+    setState(() {
+      final sex = data!['biological_sex'] ?? details['biological_sex'];
+      if (sex != null && sex.toString().isNotEmpty) {
+        _biologicalSex = sex.toString();
+      }
+
+      final age = data['age'] ?? details['age'];
+      if (age != null) _ageCtrl.text = age.toString();
+
+      final weight = data['weight'] ?? details['weight'];
+      if (weight != null) _weightCtrl.text = weight.toString();
+
+      final height = data['height'] ?? details['height'];
+      if (height != null) _heightCtrl.text = height.toString();
+
+      final dailyAct = data['daily_activity'] ?? details['daily_activity'];
+      if (dailyAct != null) _dailyActivity = dailyAct.toString();
+
+      final sleep = data['sleep_hours'] ?? details['sleep_hours'];
+      if (sleep != null) _sleepHours = sleep.toString();
+
+      final stress = data['stress_level'] ?? details['stress_level'];
+      if (stress != null) _stressLevel = stress.toString();
+
+      final tLevel = data['training_level'] ?? details['training_level'];
+      if (tLevel != null) _trainingLevel = tLevel.toString();
+
+      final tHistory = data['training_history'] ?? details['training_history'];
+      if (tHistory != null) _trainingHistory = tHistory.toString();
+
+      final wDays = data['weekly_days'] ?? details['weekly_days'];
+      if (wDays is int) {
+        _weeklyDays = wDays;
+      } else if (wDays != null) {
+        _weeklyDays = int.tryParse(wDays.toString()) ?? _weeklyDays;
+      }
+
+      final prefDays = data['preferred_days'] ?? details['preferred_days'];
+      if (prefDays is List && prefDays.isNotEmpty) {
+        _preferredDays.clear();
+        _preferredDays.addAll(prefDays.map((e) => e.toString()));
+      }
+
+      final sDuration = data['session_duration'] ?? details['session_duration'];
+      if (sDuration != null) _sessionDuration = sDuration.toString();
+
+      final cardioPref = data['cardio_preference'] ?? details['cardio_preference'];
+      if (cardioPref != null) _cardioPreference = cardioPref.toString();
+
+      final clinCond = data['clinical_conditions'] ?? details['clinical_conditions'];
+      if (clinCond is List && clinCond.isNotEmpty) {
+        _clinicalConditions.clear();
+        _clinicalConditions.addAll(clinCond.map((e) => e.toString()));
+      }
+
+      final inj = data['injuries'] ?? details['injuries'];
+      if (inj is List && inj.isNotEmpty) {
+        _selectedInjuries.clear();
+        _selectedInjuries.addAll(inj.map((e) => e.toString()));
+      }
+
+      final injDet = data['injuries_details'] ?? details['injuries_details'];
+      if (injDet != null) _injuriesDetailsCtrl.text = injDet.toString();
+
+      final loc = data['workout_location'] ?? details['workout_location'];
+      if (loc != null) _workoutLocation = loc.toString();
+
+      final equip = data['available_equipment'] ?? details['available_equipment'];
+      if (equip is List && equip.isNotEmpty) {
+        _availableEquipment.clear();
+        _availableEquipment.addAll(equip.map((e) => e.toString()));
+      }
+
+      final avoid = data['exercises_to_avoid'] ?? details['exercises_to_avoid'];
+      if (avoid != null) _avoidExercisesCtrl.text = avoid.toString();
+
+      final obj = data['objective'] ?? details['objective'];
+      if (obj != null) _objective = obj.toString();
+
+      final priorities = data['muscle_priorities'] ?? details['muscle_priorities'];
+      if (priorities is List && priorities.isNotEmpty) {
+        _musclePriorities.clear();
+        _musclePriorities.addAll(priorities.map((e) => e.toString()));
+      }
+
+      final tStyle = data['training_style'] ?? details['training_style'];
+      if (tStyle != null) _trainingStyle = tStyle.toString();
     });
   }
 
@@ -416,6 +527,10 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
   }
 
   void _finishAndEnterApp() {
+    if (widget.isReviewMode) {
+      Navigator.pop(context, true);
+      return;
+    }
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -784,14 +899,18 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                 color: MetaColors.text(context),
                 onPressed: () {
                   HapticFeedback.selectionClick();
-                  setState(() => _currentStep--);
+                  if (_currentStep == 1 && widget.isReviewMode) {
+                    Navigator.pop(context);
+                  } else {
+                    setState(() => _currentStep--);
+                  }
                 },
               ),
               Column(
                 children: [
-                  const Text(
-                    'AVALIAÇÃO DO ALUNO',
-                    style: TextStyle(
+                  Text(
+                    widget.isReviewMode ? 'CHECK-IN BIOMÉDICO' : 'AVALIAÇÃO DO ALUNO',
+                    style: const TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 1.2,
@@ -809,7 +928,15 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                   ),
                 ],
               ),
-              const SizedBox(width: 44),
+              if (widget.isReviewMode)
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 22),
+                  color: MetaColors.subtext(context),
+                  tooltip: 'Fechar',
+                  onPressed: () => Navigator.pop(context),
+                )
+              else
+                const SizedBox(width: 44),
             ],
           ),
         ),
@@ -1901,19 +2028,21 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                 color: MetaColors.emerald,
                 borderRadius: BorderRadius.circular(18),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Entrar no Espaço de Treino',
-                    style: TextStyle(
+                    widget.isReviewMode
+                        ? 'Concluir e Voltar ao Perfil'
+                        : 'Entrar no Espaço de Treino',
+                    style: const TextStyle(
                       color: Colors.black,
                       fontSize: 15.5,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  SizedBox(width: 8),
-                  Icon(Icons.arrow_forward_rounded, color: Colors.black, size: 18),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.arrow_forward_rounded, color: Colors.black, size: 18),
                 ],
               ),
             ),

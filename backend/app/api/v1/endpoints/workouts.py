@@ -100,7 +100,16 @@ async def generate_workout_plan(
             injuries_or_restrictions=data.injuries_or_restrictions or "Nenhuma restrição articular.",
             split_type=data.split_type or "Automático (IA Sugere)",
             target_focus=data.target_focus,
-            additional_notes=data.additional_notes
+            additional_notes=data.additional_notes,
+            biological_sex=data.biological_sex,
+            session_duration=data.session_duration,
+            available_equipment=data.available_equipment,
+            exercises_to_avoid=data.exercises_to_avoid,
+            cardio_preference=data.cardio_preference,
+            training_style=data.training_style,
+            sleep_hours=data.sleep_hours,
+            stress_level=data.stress_level,
+            preferred_days=data.preferred_days
         )
         return plan
     except ValueError as e:

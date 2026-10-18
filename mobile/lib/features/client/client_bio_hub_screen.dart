@@ -5,6 +5,7 @@ import '../../core/widgets/meta_components.dart';
 import '../../services/auth_service.dart';
 import '../../services/evolution_photo_service.dart';
 import '../../services/workout_service.dart';
+import 'welcome_onboarding_screen.dart';
 import 'widgets/warmup_sheet.dart';
 
 /// Aba 4 do Aluno: 🧬 Bio-Hub
@@ -24,6 +25,10 @@ class ClientBioHubScreen extends StatefulWidget {
 class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _currentSubTab = 0;
+
+  // Histórico & Linha do Tempo de Anamnese State
+  List<Map<String, dynamic>> _anamnesisHistory = [];
+  bool _isLoadingAnamnesisHistory = true;
 
   // Pré-Treino State
   int _energyLevel = 4; // 1 a 5
@@ -93,6 +98,26 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
     });
     _loadEvolutionPhotos();
     _loadRecoveryAndLoads();
+    _loadAnamnesisHistory();
+  }
+
+  Future<void> _loadAnamnesisHistory() async {
+    final user = AuthService.currentUser;
+    if (user == null) {
+      if (mounted) setState(() => _isLoadingAnamnesisHistory = false);
+      return;
+    }
+    try {
+      final list = await WorkoutService.getStudentAnamnesisHistory(user.id);
+      if (mounted) {
+        setState(() {
+          _anamnesisHistory = list;
+          _isLoadingAnamnesisHistory = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingAnamnesisHistory = false);
+    }
   }
 
   Future<void> _loadRecoveryAndLoads() async {
@@ -1224,6 +1249,11 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
         bottom: bottomPadding + 32,
       ),
       children: [
+        // Bloco 1: Linha do Tempo & Evolução das Metas / Anamnese
+        _buildAnamnesisEvolutionSection(),
+        const SizedBox(height: 24),
+
+        // Bloco 2: Sobrecarga Progressiva
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -1369,6 +1399,426 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
         ),
       ],
     );
+  }
+
+  Widget _buildAnamnesisEvolutionSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          icon: Icons.timeline_rounded,
+          title: 'Evolução & Histórico de Metas',
+          tag: 'CHECK-IN BIOMÉDICO',
+          tagColor: MetaColors.emerald,
+        ),
+        const SizedBox(height: 12),
+        if (_isLoadingAnamnesisHistory)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: CircularProgressIndicator(strokeWidth: 2, color: MetaColors.emerald),
+            ),
+          )
+        else if (_anamnesisHistory.isEmpty)
+          MetaCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: MetaColors.emerald.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.assignment_turned_in_rounded, color: MetaColors.emerald, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Faça seu Primeiro Check-in',
+                            style: TextStyle(
+                              color: MetaColors.textPrimary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Registre seu peso, metas e restrições para orientar sua periodização.',
+                            style: TextStyle(color: MetaColors.textSecondary, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SquircleButton(
+                  label: 'Iniciar Avaliação Biomecânica',
+                  icon: Icons.arrow_forward_rounded,
+                  isPrimary: true,
+                  onPressed: () async {
+                    HapticFeedback.mediumImpact();
+                    final updated = await Navigator.push<bool>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const WelcomeOnboardingScreen(isReviewMode: true),
+                      ),
+                    );
+                    if (updated == true) _loadAnamnesisHistory();
+                  },
+                ),
+              ],
+            ),
+          )
+        else ...[
+          _buildBeforeAfterMetricsCard(),
+          const SizedBox(height: 12),
+          SquircleButton(
+            label: 'Novo Check-in / Atualizar Metas',
+            icon: Icons.published_with_changes_rounded,
+            isPrimary: true,
+            onPressed: () async {
+              HapticFeedback.mediumImpact();
+              final updated = await Navigator.push<bool>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const WelcomeOnboardingScreen(isReviewMode: true),
+                ),
+              );
+              if (updated == true) {
+                await _loadAnamnesisHistory();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: MetaColors.emerald,
+                      content: Text('✓ Check-in salvo e sincronizado com seu treinador!'),
+                    ),
+                  );
+                }
+              }
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildAnamnesisTimelineList(),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildBeforeAfterMetricsCard() {
+    final latest = _anamnesisHistory.first;
+    final earliest = _anamnesisHistory.last;
+
+    final latestW = (latest['weight'] as num?)?.toDouble();
+    final earliestW = (earliest['weight'] as num?)?.toDouble();
+
+    final latestH = (latest['height'] as num?)?.toDouble();
+    final earliestH = (earliest['height'] as num?)?.toDouble();
+
+    String? deltaStr;
+    Color deltaColor = MetaColors.textSecondary;
+    if (latestW != null && earliestW != null) {
+      final delta = latestW - earliestW;
+      if (delta > 0) {
+        deltaStr = '+${delta.toStringAsFixed(1)} kg';
+        deltaColor = const Color(0xFF38BDF8);
+      } else if (delta < 0) {
+        deltaStr = '${delta.toStringAsFixed(1)} kg';
+        deltaColor = MetaColors.emerald;
+      } else {
+        deltaStr = 'Estável';
+      }
+    }
+
+    String? calcBmi(double? w, double? h) {
+      if (w == null || h == null || w <= 0 || h <= 0) return null;
+      final hm = h > 3 ? h / 100 : h;
+      final bmi = w / (hm * hm);
+      return bmi.toStringAsFixed(1);
+    }
+
+    final latestBmi = calcBmi(latestW, latestH);
+    final earliestBmi = calcBmi(earliestW, earliestH);
+
+    final earliestInj = (earliest['injuries_summary'] ?? (earliest['injuries'] as List?)?.join(', ') ?? '').toString();
+    final latestInj = (latest['injuries_summary'] ?? (latest['injuries'] as List?)?.join(', ') ?? '').toString();
+    final overcamePain = earliestInj.isNotEmpty && !earliestInj.contains('Nenhuma') && (latestInj.isEmpty || latestInj.contains('Nenhuma'));
+
+    return MetaCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: MetaColors.emerald.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.compare_arrows_rounded, color: MetaColors.emerald, size: 18),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Antes vs. Agora',
+                    style: TextStyle(
+                      color: MetaColors.textPrimary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                ],
+              ),
+              if (deltaStr != null && _anamnesisHistory.length > 1)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: deltaColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: deltaColor.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    'Variação: $deltaStr',
+                    style: TextStyle(color: deltaColor, fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: MetaColors.surfaceHighlight,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: MetaColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.flag_outlined, size: 14, color: MetaColors.textSecondary),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatDate(earliest['created_at']?.toString()),
+                            style: const TextStyle(color: MetaColors.textSecondary, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        earliestW != null ? '${earliestW.toStringAsFixed(1)} kg' : '--',
+                        style: const TextStyle(
+                          color: MetaColors.textPrimary,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      if (earliestBmi != null)
+                        Text(
+                          'IMC: $earliestBmi',
+                          style: const TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                        ),
+                      const SizedBox(height: 6),
+                      Text(
+                        earliest['objective']?.toString() ?? 'Objetivo inicial',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                      ),
+                      Text(
+                        '${earliest['weekly_days'] ?? 3}x por semana',
+                        style: const TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: MetaColors.emerald.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.bolt_rounded, size: 14, color: MetaColors.emerald),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatDate(latest['created_at']?.toString()),
+                            style: const TextStyle(color: MetaColors.emerald, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        latestW != null ? '${latestW.toStringAsFixed(1)} kg' : '--',
+                        style: const TextStyle(
+                          color: MetaColors.textPrimary,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      if (latestBmi != null)
+                        Text(
+                          'IMC: $latestBmi',
+                          style: const TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                        ),
+                      const SizedBox(height: 6),
+                      Text(
+                        latest['objective']?.toString() ?? 'Objetivo atual',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: MetaColors.emerald, fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        '${latest['weekly_days'] ?? 4}x por semana',
+                        style: const TextStyle(color: MetaColors.textPrimary, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (overcamePain) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: MetaColors.emerald.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.verified_rounded, size: 14, color: MetaColors.emerald),
+                  SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Dores superadas! Seu condicionamento físico e articular evoluiu.',
+                      style: TextStyle(color: MetaColors.emerald, fontSize: 11.5, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnamnesisTimelineList() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Histórico de Atualizações',
+          style: TextStyle(
+            color: MetaColors.textPrimary,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.3,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ..._anamnesisHistory.take(4).map((item) {
+          final dateStr = _formatDate(item['created_at']?.toString());
+          final w = (item['weight'] as num?)?.toDouble();
+          final obj = item['objective']?.toString() ?? 'Check-in';
+          final days = item['weekly_days'] ?? 4;
+          final inj = item['injuries_summary'] ?? (item['injuries'] as List?)?.join(', ') ?? 'Sem restrições';
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: MetaColors.surfaceHighlight,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: MetaColors.border),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: MetaColors.surface,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.check_rounded, color: MetaColors.emerald, size: 18),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            obj,
+                            style: const TextStyle(
+                              color: MetaColors.textPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            dateStr,
+                            style: const TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${w != null ? "${w.toStringAsFixed(1)} kg • " : ""}${days}x/sem • $inj',
+                        style: const TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  String _formatDate(String? isoString) {
+    if (isoString == null || isoString.isEmpty) return 'Recente';
+    try {
+      final dt = DateTime.parse(isoString);
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+    } catch (_) {
+      return 'Recente';
+    }
   }
 
   Widget _buildExerciseLoadCard({

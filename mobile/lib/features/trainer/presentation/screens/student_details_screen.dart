@@ -433,8 +433,124 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
 
   Future<void> _renewActiveWorkout() async {
     final name = student['full_name'] as String? ?? 'Aluno';
+    final studentId = student['id'] as String;
     final isDark = MetaColors.isDark(context);
 
+    // Trava clínica: verifica se o aluno registrou nova dor/lesão pós emissão da ficha
+    final safety = await WorkoutService.checkAnamnesisRenewalSafety(
+      clientId: studentId,
+      workoutUpdatedAt: _activeWorkout is WorkoutPlanModel
+          ? (_activeWorkout as WorkoutPlanModel).createdAt?.toIso8601String()
+          : null,
+    );
+
+    if (safety['has_recent_changes'] == true && safety['has_restrictions'] == true) {
+      if (!mounted) return;
+      final injuries = safety['injuries_summary'] ?? 'Dores/Limitações relatadas';
+      final action = await showModalBottomSheet<String>(
+        context: context,
+        backgroundColor: MetaColors.background,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (ctx) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: MetaColors.subtext(context).withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade900.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.health_and_safety_rounded, color: Colors.amber, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Atenção Clínica • Trava de Segurança',
+                            style: TextStyle(
+                              color: MetaColors.textPrimary,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15.5,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Alteração recente na anamnese do aluno',
+                            style: TextStyle(color: Colors.amber, fontSize: 11.5, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: MetaColors.surfaceHighlight,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    '$name atualizou a anamnese após a emissão desta ficha e relatou: "$injuries".\n\n'
+                    'Recomendamos gerar uma nova periodização personalizada com a IA para poupar as articulações afetadas.',
+                    style: const TextStyle(color: MetaColors.textPrimary, fontSize: 13, height: 1.4),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SquircleButton(
+                  icon: Icons.auto_awesome_rounded,
+                  label: 'Prescrever Nova Periodização Adaptada',
+                  isPrimary: true,
+                  onPressed: () {
+                    Navigator.pop(ctx, 'prescribe');
+                  },
+                ),
+                const SizedBox(height: 10),
+                SquircleButton(
+                  icon: Icons.autorenew_rounded,
+                  label: 'Confirmar Renovação Sem Alterar Ficha',
+                  isPrimary: false,
+                  onPressed: () {
+                    Navigator.pop(ctx, 'renew');
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      );
+
+      if (action == 'prescribe') {
+        _openWorkoutPrescription();
+        return;
+      } else if (action != 'renew') {
+        return;
+      }
+    }
+
+    if (!mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(

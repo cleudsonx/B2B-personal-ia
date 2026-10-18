@@ -38,6 +38,43 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
+      version: '1.5.0',
+      buildNumber: 2026102897,
+      date: '18 de Outubro, 2026',
+      summary:
+          'Evolução 360° do Aluno (Antes vs. Agora), Raio-X da Anamnese na Prescrição One UI 7 e Trava Clínica Preventiva de Renovação.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.timeline_rounded,
+          title: 'Linha do Tempo & Evolução do Aluno',
+          description:
+              'Visualização comparativa "Antes vs. Agora" no Bio-Hub com delta de peso, evolução do IMC, frequência semanal, dores superadas e botão de 1 toque para novos check-ins.',
+          badge: 'EVOLUÇÃO',
+        ),
+        ChangelogItem(
+          icon: Icons.health_and_safety_rounded,
+          title: 'Raio-X da Anamnese na Nova Periodização',
+          description:
+              'Card One UI 7 / Meta no topo da prescrição do professor que auto-hidrata todos os campos, exibe badges clínicas táteis e modal com dados biomédicos completos.',
+          badge: 'ONE UI 7',
+        ),
+        ChangelogItem(
+          icon: Icons.alt_route_rounded,
+          title: 'Seletor de Split Tátil One UI 7',
+          description:
+              'Substituição do dropdown clássico por lista tátil de pílulas horizontais com ícones e subtítulos explicativos de cada metodologia de divisão.',
+          badge: 'DESIGN',
+        ),
+        ChangelogItem(
+          icon: Icons.shield_rounded,
+          title: 'Trava Clínica na Renovação de Ficha',
+          description:
+              'Proteção preventiva na renovação rápida: alerta o professor caso o aluno tenha relatado novas dores articulares ou restrições após a emissão da ficha vigente.',
+          badge: 'SEGURANÇA',
+        ),
+      ],
+    ),
+    VersionRelease(
       version: '1.4.9',
       buildNumber: 2026102895,
       date: '18 de Outubro, 2026',

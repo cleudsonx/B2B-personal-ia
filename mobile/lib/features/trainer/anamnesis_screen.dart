@@ -113,6 +113,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
     }
   }
 
+  Map<String, dynamic>? _selectedStudentAnamnesis;
+  bool _isLoadingAnamnesis = false;
+
   void _onSelectIndividualStudent(String studentId) {
     _selectedIndividualStudentId = studentId;
     if (!_selectedMultipleStudentIds.contains(studentId)) {
@@ -137,6 +140,95 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           ].contains(obj)) {
         _objective = obj as String;
       }
+    }
+    _loadStudentAnamnesis(studentId);
+  }
+
+  Future<void> _loadStudentAnamnesis(String studentId) async {
+    setState(() => _isLoadingAnamnesis = true);
+    try {
+      final anamnesis = await WorkoutService.getLatestStudentAnamnesis(studentId);
+      if (mounted && _selectedIndividualStudentId == studentId) {
+        setState(() {
+          _selectedStudentAnamnesis = anamnesis;
+          _isLoadingAnamnesis = false;
+          if (anamnesis != null) {
+            final details = (anamnesis['details'] as Map<String, dynamic>?) ?? {};
+
+            // Objetivo
+            final obj = anamnesis['objective'] ?? details['objective'];
+            if (obj != null && obj.toString().isNotEmpty) {
+              final objStr = obj.toString();
+              if (objStr.contains('Hipertrofia')) {
+                _objective = 'Hipertrofia Muscular';
+              } else if (objStr.contains('Emagrecimento') || objStr.contains('Definição')) {
+                _objective = 'Emagrecimento';
+              } else if (objStr.contains('Força')) {
+                _objective = 'Força Máxima';
+              } else {
+                _objective = 'Condicionamento Geral';
+              }
+            }
+
+            // Nível
+            final lvl = anamnesis['training_level'] ?? details['training_level'];
+            if (lvl != null && lvl.toString().isNotEmpty) {
+              final lvlStr = lvl.toString();
+              if (lvlStr.contains('Iniciante')) {
+                _trainingLevel = 'Iniciante';
+              } else if (lvlStr.contains('Avançado')) {
+                _trainingLevel = 'Avançado';
+              } else {
+                _trainingLevel = 'Intermediário';
+              }
+            }
+
+            // Frequência semanal
+            final days = anamnesis['weekly_days'] ?? details['weekly_days'];
+            if (days is int && days >= 2 && days <= 6) {
+              _daysPerWeek = days;
+            } else if (days != null) {
+              final parsed = int.tryParse(days.toString());
+              if (parsed != null && parsed >= 2 && parsed <= 6) {
+                _daysPerWeek = parsed;
+              }
+            }
+
+            // Restrições / Dores
+            final inj = anamnesis['injuries_summary'] ??
+                (anamnesis['injuries'] as List?)?.join(', ') ??
+                details['injuries_details'];
+            if (inj != null && inj.toString().isNotEmpty && !inj.toString().toLowerCase().contains('nenhuma')) {
+              _restrictionsCtrl.text = inj.toString();
+            }
+
+            // Local
+            final loc = anamnesis['workout_location'] ?? details['workout_location'];
+            if (loc != null && loc.toString().isNotEmpty) {
+              final locStr = loc.toString();
+              if (locStr.contains('Casa') && locStr.contains('Halteres')) {
+                _workoutLocation = 'Em casa com halteres';
+              } else if (locStr.contains('Casa') || locStr.contains('corpo')) {
+                _workoutLocation = 'Em casa (peso do corpo)';
+              } else if (locStr.contains('Condomínio') || locStr.contains('básica')) {
+                _workoutLocation = 'Academia de condomínio / básica';
+              } else {
+                _workoutLocation = 'Academia completa';
+              }
+            }
+
+            // Observações / Foco
+            final priorities = anamnesis['muscle_priorities'] ?? details['muscle_priorities'];
+            if (priorities is List && priorities.isNotEmpty) {
+              _notesCtrl.text = 'Foco em: ${priorities.join(", ")}. '
+                  'Estilo: ${anamnesis['training_style'] ?? details['training_style'] ?? "Equilibrado"}. '
+                  'Duração: ${anamnesis['session_duration'] ?? details['session_duration'] ?? "60 min"}.';
+            }
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingAnamnesis = false);
     }
   }
 
@@ -749,17 +841,17 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
   }
 
   Widget _buildSplitTypeSelector() {
-    const splitOptions = [
-      'Automático (IA Sugere o Ideal)',
-      'Full Body (1 a 3 dias - Corpo Inteiro)',
-      'Upper / Lower (2 ou 4 dias - Superiores / Inferiores)',
-      'Push / Pull / Legs (PPL - 3 a 6 dias)',
-      'Agonista / Antagonista (Superséries eficientes)',
-      'Divisão ABC Tradicional',
-      'Divisão ABCD Clássica (4 dias)',
-      'Divisão ABCDE Avançada (1 grupo/dia)',
-      'Especialização de Ponto Fraco',
-      'Reabilitação / Articularmente Poupadora',
+    final splitOptions = [
+      {'title': 'Automático IA', 'subtitle': 'A IA escolhe o melhor split', 'icon': Icons.auto_awesome, 'val': 'Automático (IA Sugere o Ideal)'},
+      {'title': 'Full Body', 'subtitle': '1 a 3 dias • Corpo inteiro', 'icon': Icons.accessibility_new_rounded, 'val': 'Full Body (1 a 3 dias - Corpo Inteiro)'},
+      {'title': 'Upper / Lower', 'subtitle': '2 ou 4 dias • Sup/Inf', 'icon': Icons.swap_vert_rounded, 'val': 'Upper / Lower (2 ou 4 dias - Superiores / Inferiores)'},
+      {'title': 'Push / Pull / Legs', 'subtitle': '3 a 6 dias • Empurrar/Puxar/Pernas', 'icon': Icons.fitness_center_rounded, 'val': 'Push / Pull / Legs (PPL - 3 a 6 dias)'},
+      {'title': 'Divisão ABC', 'subtitle': '3 dias • Tradicional', 'icon': Icons.view_column_rounded, 'val': 'Divisão ABC Tradicional'},
+      {'title': 'Divisão ABCD', 'subtitle': '4 dias • Clássico', 'icon': Icons.grid_view_rounded, 'val': 'Divisão ABCD Clássica (4 dias)'},
+      {'title': 'Divisão ABCDE', 'subtitle': '5 dias • 1 músculo/dia', 'icon': Icons.dashboard_rounded, 'val': 'Divisão ABCDE Avançada (1 grupo/dia)'},
+      {'title': 'Agonista / Antag.', 'subtitle': 'Superséries eficientes', 'icon': Icons.compare_arrows_rounded, 'val': 'Agonista / Antagonista (Superséries eficientes)'},
+      {'title': 'Ponto Fraco', 'subtitle': 'Especialização muscular', 'icon': Icons.filter_center_focus_rounded, 'val': 'Especialização de Ponto Fraco'},
+      {'title': 'Reabilitação', 'subtitle': 'Articularmente poupadora', 'icon': Icons.healing_rounded, 'val': 'Reabilitação / Articularmente Poupadora'},
     ];
 
     return Column(
@@ -767,25 +859,83 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
       children: [
         _buildSectionHeader('DIVISÃO / SPLIT', 'Estrutura dos Treinos'),
         const SizedBox(height: 10),
-        DropdownButtonFormField<String>(
-          initialValue: _splitType,
-          dropdownColor: MetaColors.surface,
-          style: const TextStyle(color: MetaColors.textPrimary, fontSize: 13),
-          isExpanded: true,
-          decoration: _inputDecoration(
-            context,
-            'Estrutura de Divisão / Split',
-            prefixIcon: Icons.alt_route_rounded,
-          ),
-          items: splitOptions
-              .map(
-                (e) => DropdownMenuItem(
-                  value: e,
-                  child: Text(e, overflow: TextOverflow.ellipsis),
+        SizedBox(
+          height: 68,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: splitOptions.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (ctx, idx) {
+              final opt = splitOptions[idx];
+              final val = opt['val'] as String;
+              final isSel = _splitType == val;
+              return InkWell(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _splitType = val);
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isSel
+                        ? MetaColors.emerald.withValues(alpha: 0.16)
+                        : MetaColors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSel ? MetaColors.emerald : MetaColors.border,
+                      width: isSel ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: isSel
+                              ? MetaColors.emerald.withValues(alpha: 0.22)
+                              : MetaColors.surfaceHighlight,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          opt['icon'] as IconData,
+                          size: 18,
+                          color: isSel ? MetaColors.emerald : MetaColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            opt['title'] as String,
+                            style: TextStyle(
+                              color: isSel ? MetaColors.emerald : MetaColors.textPrimary,
+                              fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            opt['subtitle'] as String,
+                            style: TextStyle(
+                              color: isSel
+                                  ? MetaColors.emerald.withValues(alpha: 0.8)
+                                  : MetaColors.textSecondary,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              )
-              .toList(),
-          onChanged: (val) => setState(() => _splitType = val!),
+              );
+            },
+          ),
         ),
       ],
     );
@@ -961,6 +1111,420 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
     );
   }
 
+  Widget _buildStudentAnamnesisXRayCard() {
+    final student = _selectedIndividualStudent;
+    if (student == null) return const SizedBox.shrink();
+
+    final name = student['full_name'] as String? ?? 'Aluno';
+    final anamnesis = _selectedStudentAnamnesis;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: MetaColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: anamnesis != null
+              ? MetaColors.emerald.withValues(alpha: 0.35)
+              : Colors.amber.shade700.withValues(alpha: 0.35),
+          width: 1.2,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: (anamnesis != null ? MetaColors.emerald : Colors.amber)
+                          .withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      anamnesis != null ? Icons.health_and_safety_rounded : Icons.pending_actions_rounded,
+                      color: anamnesis != null ? MetaColors.emerald : Colors.amber,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Raio-X da Anamnese • $name',
+                            style: const TextStyle(
+                              color: MetaColors.textPrimary,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13.5,
+                            ),
+                          ),
+                          if (anamnesis != null) ...[
+                            const SizedBox(width: 5),
+                            const Icon(Icons.verified_rounded, size: 14, color: MetaColors.emerald),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        anamnesis != null
+                            ? 'Auto-hidratado • Atualizado em ${_formatDate(anamnesis['created_at']?.toString())}'
+                            : 'Anamnese pendente no aplicativo do aluno',
+                        style: TextStyle(
+                          color: anamnesis != null ? MetaColors.emerald : Colors.amber,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              if (_isLoadingAnamnesis)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: MetaColors.emerald),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          if (anamnesis != null) ...[
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                if (anamnesis['weight'] != null)
+                  _buildXRayBadge(
+                    icon: Icons.monitor_weight_outlined,
+                    label: '${anamnesis['weight']} kg',
+                    color: MetaColors.emerald,
+                  ),
+                if (anamnesis['height'] != null)
+                  _buildXRayBadge(
+                    icon: Icons.height_rounded,
+                    label: '${anamnesis['height']} cm',
+                    color: MetaColors.textSecondary,
+                  ),
+                if (anamnesis['training_level'] != null)
+                  _buildXRayBadge(
+                    icon: Icons.bolt_rounded,
+                    label: '${anamnesis['training_level']}',
+                    color: const Color(0xFF38BDF8),
+                  ),
+                if (anamnesis['session_duration'] != null)
+                  _buildXRayBadge(
+                    icon: Icons.schedule_rounded,
+                    label: '${anamnesis['session_duration']}',
+                    color: MetaColors.textSecondary,
+                  ),
+                if (anamnesis['sleep_hours'] != null)
+                  _buildXRayBadge(
+                    icon: Icons.bedtime_outlined,
+                    label: 'Sono ${anamnesis['sleep_hours']}',
+                    color: MetaColors.textSecondary,
+                  ),
+                _buildInjuriesBadge(anamnesis),
+              ],
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: () => _showFullAnamnesisBottomSheet(anamnesis),
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: MetaColors.surfaceHighlight,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: MetaColors.border),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    Row(
+                      children: [
+                        Icon(Icons.visibility_outlined, size: 15, color: MetaColors.emerald),
+                        SizedBox(width: 8),
+                        Text(
+                          'Ver Detalhes Clínicos & Respostas Completas',
+                          style: TextStyle(
+                            color: MetaColors.textPrimary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Icon(Icons.chevron_right_rounded, size: 16, color: MetaColors.textSecondary),
+                  ],
+                ),
+              ),
+            ),
+          ] else ...[
+            Text(
+              'O aluno ainda não respondeu as 5 etapas da anamnese expandida. '
+              'Você pode prescrever usando seus próprios parâmetros ou solicitar a resposta agora.',
+              style: const TextStyle(color: MetaColors.textSecondary, fontSize: 12, height: 1.35),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.chat_outlined, size: 15, color: MetaColors.emerald),
+                    label: const Text(
+                      'Cobrar Anamnese no WhatsApp',
+                      style: TextStyle(color: MetaColors.emerald, fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      side: const BorderSide(color: MetaColors.emerald),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () => _openWhatsAppReminder(student),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildXRayBadge({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInjuriesBadge(Map<String, dynamic> anamnesis) {
+    final inj = (anamnesis['injuries_summary'] ?? (anamnesis['injuries'] as List?)?.join(', ') ?? '').toString();
+    final hasPain = inj.isNotEmpty && !inj.toLowerCase().contains('nenhuma');
+    final color = hasPain ? Colors.amber.shade600 : MetaColors.emerald;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(hasPain ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded, size: 13, color: color),
+          const SizedBox(width: 5),
+          Text(
+            hasPain ? 'Atenção: $inj' : 'Sem Restrições Articulares',
+            style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFullAnamnesisBottomSheet(Map<String, dynamic> anamnesis) {
+    final details = (anamnesis['details'] as Map<String, dynamic>?) ?? {};
+    final student = _selectedIndividualStudent;
+    final name = student?['full_name'] as String? ?? 'Aluno';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: MetaColors.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (_, scrollCtrl) {
+            return Column(
+              children: [
+                const SizedBox(height: 12),
+                Container(
+                  width: 38,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: MetaColors.subtext(context).withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Anamnese Completa • $name',
+                            style: const TextStyle(
+                              color: MetaColors.textPrimary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Respondida em ${_formatDate(anamnesis['created_at']?.toString())}',
+                            style: const TextStyle(color: MetaColors.emerald, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, color: MetaColors.textSecondary),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(color: MetaColors.border, height: 1),
+                Expanded(
+                  child: ListView(
+                    controller: scrollCtrl,
+                    padding: const EdgeInsets.all(20),
+                    children: [
+                      _buildModalSectionTitle('1. Biometria & Recuperação'),
+                      _buildModalDataRow('Sexo Biológico', anamnesis['biological_sex'] ?? details['biological_sex'] ?? 'Não informado'),
+                      _buildModalDataRow('Idade', '${anamnesis['age'] ?? details['age'] ?? "--"} anos'),
+                      _buildModalDataRow('Peso / Altura', '${anamnesis['weight'] ?? details['weight'] ?? "--"} kg • ${anamnesis['height'] ?? details['height'] ?? "--"} cm'),
+                      _buildModalDataRow('Atividade Diária', anamnesis['daily_activity'] ?? details['daily_activity'] ?? 'Sedentário'),
+                      _buildModalDataRow('Sono / Estresse', '${anamnesis['sleep_hours'] ?? details['sleep_hours'] ?? "7-8h"} • Estresse: ${anamnesis['stress_level'] ?? details['stress_level'] ?? "Normal"}'),
+                      const SizedBox(height: 16),
+
+                      _buildModalSectionTitle('2. Rotina de Treino & Cardio'),
+                      _buildModalDataRow('Nível de Treino', anamnesis['training_level'] ?? details['training_level'] ?? 'Intermediário'),
+                      _buildModalDataRow('Frequência', '${anamnesis['weekly_days'] ?? details['weekly_days'] ?? "4"} dias por semana'),
+                      _buildModalDataRow('Dias Preferidos', (anamnesis['preferred_days'] ?? details['preferred_days'] as List?)?.join(', ') ?? 'Não especificado'),
+                      _buildModalDataRow('Duração da Sessão', anamnesis['session_duration'] ?? details['session_duration'] ?? '60 min'),
+                      _buildModalDataRow('Cardio', anamnesis['cardio_preference'] ?? details['cardio_preference'] ?? 'Não especificado'),
+                      const SizedBox(height: 16),
+
+                      _buildModalSectionTitle('3. Saúde Articular & Limitações'),
+                      _buildModalDataRow('Condições Médicas', (details['clinical_conditions'] as List?)?.join(', ') ?? 'Nenhuma restrição médica'),
+                      _buildModalDataRow('Lesões / Dores', anamnesis['injuries_summary'] ?? (anamnesis['injuries'] as List?)?.join(', ') ?? 'Nenhuma restrição articular'),
+                      if (details['injuries_details'] != null && details['injuries_details'].toString().isNotEmpty)
+                        _buildModalDataRow('Detalhe da Dor', details['injuries_details'].toString()),
+                      const SizedBox(height: 16),
+
+                      _buildModalSectionTitle('4. Espaço & Equipamentos'),
+                      _buildModalDataRow('Local de Treino', anamnesis['workout_location'] ?? details['workout_location'] ?? 'Academia completa'),
+                      _buildModalDataRow('Equipamentos', (anamnesis['available_equipment'] ?? details['available_equipment'] as List?)?.join(', ') ?? 'Completo'),
+                      if (anamnesis['exercises_to_avoid'] != null && anamnesis['exercises_to_avoid'].toString().isNotEmpty)
+                        _buildModalDataRow('Exercícios a Evitar', anamnesis['exercises_to_avoid'].toString()),
+                      const SizedBox(height: 16),
+
+                      _buildModalSectionTitle('5. Metas Estéticas & Estilo'),
+                      _buildModalDataRow('Objetivo Principal', anamnesis['objective'] ?? details['objective'] ?? 'Hipertrofia Muscular'),
+                      _buildModalDataRow('Focos Musculares', (anamnesis['muscle_priorities'] ?? details['muscle_priorities'] as List?)?.join(', ') ?? 'Geral / Equilibrado'),
+                      _buildModalDataRow('Estilo de Treino', anamnesis['training_style'] ?? details['training_style'] ?? 'Equilibrado'),
+                      const SizedBox(height: 24),
+
+                      SquircleButton(
+                        label: 'Fechar Detalhes',
+                        icon: Icons.check_rounded,
+                        isPrimary: true,
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildModalSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        title,
+        style: const TextStyle(
+          color: MetaColors.emerald,
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModalDataRow(String label, String value) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: MetaColors.surfaceHighlight,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: const TextStyle(color: MetaColors.textSecondary, fontSize: 12),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(color: MetaColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(String? isoString) {
+    if (isoString == null || isoString.isEmpty) return 'Recente';
+    try {
+      final dt = DateTime.parse(isoString);
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+    } catch (_) {
+      return 'Recente';
+    }
+  }
+
   Widget _buildForm() {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     return Form(
@@ -973,6 +1537,15 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           bottom: bottomInset + 30,
         ),
         children: [
+          // 1. Destinatário da Periodização (no topo!)
+          _buildDispatchSection(context),
+          const SizedBox(height: 16),
+
+          // 2. Raio-X da Anamnese (se for individual)
+          if (_dispatchMode == StudentDispatchMode.individual)
+            _buildStudentAnamnesisXRayCard(),
+
+          // 3. Parâmetros de Prescrição Auto-Hidratados
           _buildObjectiveSelector(),
           const SizedBox(height: 20),
           _buildLevelSelector(),
@@ -999,8 +1572,6 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          _buildDispatchSection(context),
-          const SizedBox(height: 16),
           Builder(
             builder: (ctx) {
               final selectedStudent = _selectedIndividualStudent;

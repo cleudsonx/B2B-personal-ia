@@ -1281,16 +1281,35 @@ class WorkoutService {
       _localStudentsCache[index]['status'] = 'Ativo';
     }
 
-    // 2. Persiste na tabela 'anamnesis' e atualiza 'profiles' no Supabase
-    await _client.from('anamnesis').insert({
+    // 2. Persiste na tabela 'anamnesis' com detalhes ricos e atualiza 'profiles' no Supabase
+    final insertPayload = <String, dynamic>{
       'client_id': clientId,
       'objective': data['objective'] ?? 'Hipertrofia Muscular',
       'training_level': data['training_level'] ?? 'Iniciante',
       'days_per_week': data['weekly_days'] ?? 3,
       'workout_location': data['workout_location'] ?? 'Academia Convencional',
       'injuries_or_restrictions': data['injuries_summary'] ?? 'Nenhuma',
-      if (data['trainer_id'] != null) 'trainer_id': data['trainer_id'],
-    });
+      'biological_sex': data['biological_sex'],
+      'age': data['age'],
+      'weight': data['weight'],
+      'height': data['height'],
+      'daily_activity': data['daily_activity'],
+      'sleep_hours': data['sleep_hours'],
+      'stress_level': data['stress_level'],
+      'training_history': data['training_history'],
+      'preferred_days': data['preferred_days'] ?? [],
+      'session_duration': data['session_duration'],
+      'cardio_preference': data['cardio_preference'],
+      'clinical_conditions': data['clinical_conditions'] ?? [],
+      'available_equipment': data['available_equipment'] ?? [],
+      'exercises_to_avoid': data['exercises_to_avoid'],
+      'muscle_priorities': data['muscle_priorities'] ?? [],
+      'training_style': data['training_style'],
+      'details': data,
+      if (data['trainer_id'] != null && (data['trainer_id'] as String).isNotEmpty)
+        'trainer_id': data['trainer_id'],
+    };
+    await _client.from('anamnesis').insert(insertPayload);
 
     final profileUpdate = <String, dynamic>{
       'has_completed_anamnesis': true,
@@ -1326,7 +1345,44 @@ class WorkoutService {
       debugPrint('Aviso backend saveClientAnamnesis: $e');
     }
 
+    studentsRefreshNotifier.value++;
     return true;
+  }
+
+  /// Recupera o histórico completo de anamneses do aluno (mais recentes primeiro)
+  static Future<List<Map<String, dynamic>>> getStudentAnamnesisHistory(String clientId) async {
+    final client = _clientOrNull;
+    if (client == null || clientId.isEmpty) return [];
+    try {
+      final res = await client
+          .from('anamnesis')
+          .select('*')
+          .eq('client_id', clientId)
+          .order('created_at', ascending: false);
+      return (res as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (e) {
+      debugPrint('Aviso ao carregar histórico de anamnese: $e');
+      return [];
+    }
+  }
+
+  /// Recupera a última anamnese registrada do aluno
+  static Future<Map<String, dynamic>?> getLatestStudentAnamnesis(String clientId) async {
+    final client = _clientOrNull;
+    if (client == null || clientId.isEmpty) return null;
+    try {
+      final res = await client
+          .from('anamnesis')
+          .select('*')
+          .eq('client_id', clientId)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      return res != null ? Map<String, dynamic>.from(res) : null;
+    } catch (e) {
+      debugPrint('Aviso ao carregar última anamnese: $e');
+      return null;
+    }
   }
 
   static Future<String?> getClientWorkoutLocation() async {
@@ -1614,6 +1670,53 @@ class WorkoutService {
       return [];
     }
   }
+
+  /// Verifica se há alterações clínicas ou dores novas na anamnese após a emissão da ficha
+  static Future<Map<String, dynamic>> checkAnamnesisRenewalSafety({
+    required String clientId,
+    String? workoutUpdatedAt,
+  }) async {
+    try {
+      final latest = await getLatestStudentAnamnesis(clientId);
+      if (latest == null) {
+        return {'has_recent_changes': false};
+      }
+
+      final anamnesisCreatedAtStr = latest['created_at'] as String?;
+      if (anamnesisCreatedAtStr == null) {
+        return {'has_recent_changes': false};
+      }
+
+      final anamnesisDate = DateTime.tryParse(anamnesisCreatedAtStr);
+      final workoutDate = workoutUpdatedAt != null
+          ? DateTime.tryParse(workoutUpdatedAt)
+          : null;
+
+      // Se a anamnese foi submetida após o treino ativo:
+      final isNewerThanWorkout = workoutDate == null ||
+          (anamnesisDate != null && anamnesisDate.isAfter(workoutDate));
+
+      final injuries = (latest['injuries'] as List<dynamic>?) ?? [];
+      final injuriesSummary = latest['injuries_summary'] as String? ?? '';
+      final hasRestrictions = injuries.any((i) =>
+              i.toString().isNotEmpty &&
+              !i.toString().toLowerCase().contains('nenhuma')) ||
+          (injuriesSummary.isNotEmpty &&
+              !injuriesSummary.toLowerCase().contains('nenhuma'));
+
+      return {
+        'has_recent_changes': isNewerThanWorkout,
+        'has_restrictions': hasRestrictions,
+        'anamnesis_date': anamnesisDate,
+        'injuries_summary': injuriesSummary,
+        'latest_anamnesis': latest,
+      };
+    } catch (e) {
+      debugPrint('Aviso ao verificar segurança de renovação de anamnese: $e');
+      return {'has_recent_changes': false};
+    }
+  }
 }
+
 
 

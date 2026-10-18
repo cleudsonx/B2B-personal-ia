@@ -108,7 +108,16 @@ class GeminiService:
         split_type: str = "Automático (IA Sugere)",
         target_focus: Optional[str] = None,
         additional_notes: Optional[str] = None,
-        model_name: Optional[str] = None
+        model_name: Optional[str] = None,
+        biological_sex: Optional[str] = None,
+        session_duration: Optional[str] = None,
+        available_equipment: Optional[List[str]] = None,
+        exercises_to_avoid: Optional[str] = None,
+        cardio_preference: Optional[str] = None,
+        training_style: Optional[str] = None,
+        sleep_hours: Optional[str] = None,
+        stress_level: Optional[str] = None,
+        preferred_days: Optional[List[str]] = None
     ) -> WorkoutPlanResponse:
         try:
             self._ensure_client()
@@ -122,7 +131,16 @@ class GeminiService:
                 injuries_or_restrictions=injuries_or_restrictions,
                 split_type=split_type,
                 target_focus=target_focus or "",
-                additional_notes=additional_notes or ""
+                additional_notes=additional_notes or "",
+                biological_sex=biological_sex or "",
+                session_duration=session_duration or "",
+                available_equipment=available_equipment or [],
+                exercises_to_avoid=exercises_to_avoid or "",
+                cardio_preference=cardio_preference or "",
+                training_style=training_style or "",
+                sleep_hours=sleep_hours or "",
+                stress_level=stress_level or "",
+                preferred_days=preferred_days or []
             )
 
             config = types.GenerateContentConfig(

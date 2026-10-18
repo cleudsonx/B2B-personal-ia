@@ -46,8 +46,8 @@ class AppConfig {
   static const String supabaseAnonKey = supabasePublishableKey;
 
   // Informações Oficiais de Versionamento (SemVer) & Build
-  static const String appVersion = '1.4.9';
-  static const int buildNumber = 2026102895;
+  static const String appVersion = '1.5.0';
+  static const int buildNumber = 2026102897;
   static const String buildDate = '18 de Outubro, 2026';
   static const String releaseNotes = 'Cockpit One UI 7 dedicado do Consultor Ativo IA nas abas Vitrine e Conta, com trava comercial Pro, Elite Coach e Studio';
 

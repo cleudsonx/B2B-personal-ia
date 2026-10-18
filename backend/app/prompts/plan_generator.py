@@ -39,7 +39,16 @@ def build_plan_prompt(
     injuries_or_restrictions: str,
     split_type: str = "Automático (IA Sugere)",
     target_focus: str = "",
-    additional_notes: str = ""
+    additional_notes: str = "",
+    biological_sex: str = "",
+    session_duration: str = "",
+    available_equipment: list[str] = None,
+    exercises_to_avoid: str = "",
+    cardio_preference: str = "",
+    training_style: str = "",
+    sleep_hours: str = "",
+    stress_level: str = "",
+    preferred_days: list[str] = None
 ) -> str:
     prompt = f"""
 Gerar periodização e ficha de treino de elite com base nos seguintes parâmetros:
@@ -50,8 +59,24 @@ Gerar periodização e ficha de treino de elite com base nos seguintes parâmetr
 - Local e estrutura de treino: {workout_location}
 - Restrições, dores ou lesões: {injuries_or_restrictions}
 """
+    if biological_sex and biological_sex.strip():
+        prompt += f"- Sexo biológico (adaptação hormonal/biomecânica): {biological_sex.strip()}\n"
     if target_focus and target_focus.strip():
         prompt += f"- Grupamento prioritário / Foco Ponto Fraco: {target_focus.strip()}\n"
+    if session_duration and session_duration.strip():
+        prompt += f"- Duração máxima da sessão: {session_duration.strip()} (dosar quantidade de séries/exercícios)\n"
+    if available_equipment and len(available_equipment) > 0:
+        prompt += f"- Equipamentos disponíveis no local: {', '.join(available_equipment)} (prescrever APENAS exercícios compatíveis)\n"
+    if exercises_to_avoid and exercises_to_avoid.strip():
+        prompt += f"- Exercícios que o aluno prefere EVITAR (NÃO prescrever): {exercises_to_avoid.strip()}\n"
+    if training_style and training_style.strip():
+        prompt += f"- Estilo de treino preferido: {training_style.strip()}\n"
+    if cardio_preference and cardio_preference.strip():
+        prompt += f"- Preferência de cardio: {cardio_preference.strip()}\n"
+    if (sleep_hours and sleep_hours.strip()) or (stress_level and stress_level.strip()):
+        prompt += f"- Recuperação / Estresse: Sono: {sleep_hours or 'Normal'} | Carga de Estresse: {stress_level or 'Moderado'}\n"
+    if preferred_days and len(preferred_days) > 0:
+        prompt += f"- Dias preferidos para os treinos: {', '.join(preferred_days)}\n"
     if additional_notes and additional_notes.strip():
         prompt += f"- Observações complementares do treinador: {additional_notes.strip()}\n"
         

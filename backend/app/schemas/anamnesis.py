@@ -37,3 +37,39 @@ class AnamnesisInput(BaseModel):
         default=None,
         description="Observações adicionais ou preferências prescritas pelo treinador"
     )
+    biological_sex: Optional[str] = Field(
+        default=None,
+        description="Sexo biológico para ajuste metabólico e biomecânico ('Masculino', 'Feminino')"
+    )
+    session_duration: Optional[str] = Field(
+        default=None,
+        description="Tempo disponível por sessão (ex: '45 a 60 min', '60 minutos')"
+    )
+    available_equipment: Optional[list[str]] = Field(
+        default=None,
+        description="Lista de equipamentos disponíveis no local (ex: ['Halteres', 'Polia', 'Smith'])"
+    )
+    exercises_to_avoid: Optional[str] = Field(
+        default=None,
+        description="Exercícios que o aluno prefere evitar ou não gosta de executar"
+    )
+    cardio_preference: Optional[str] = Field(
+        default=None,
+        description="Preferência para treino aeróbio / cardio ('Pós-musculação', 'Em turno separado', 'Apenas musculação')"
+    )
+    training_style: Optional[str] = Field(
+        default=None,
+        description="Estilo de treino preferido ('Cargas Mais Altas / Força', 'Mais Reps & Pump', 'Equilibrado')"
+    )
+    sleep_hours: Optional[str] = Field(
+        default=None,
+        description="Média de sono diário ('Menos de 6h', '7 a 8 horas', etc.)"
+    )
+    stress_level: Optional[str] = Field(
+        default=None,
+        description="Nível de estresse e fadiga ('Baixo', 'Moderado', 'Elevado')"
+    )
+    preferred_days: Optional[list[str]] = Field(
+        default=None,
+        description="Dias da semana preferidos para treinar (ex: ['Seg', 'Ter', 'Qui', 'Sex'])"
+    )
