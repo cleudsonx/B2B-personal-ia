@@ -33,13 +33,13 @@ AI_MODELS = ["gemini-2.5-flash-lite", "gemini-2.5-flash"]
 _usage: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"day": 0, "count": 0})
 
 SYSTEM_PROMPT = (
-    "Você é o assistente virtual do personal trainer do aluno, respondendo pelo WhatsApp. "
-    "Responda em português, em no máximo 4 frases curtas, tom amigável e motivador. "
-    "Baseie-se SOMENTE na ficha de treino fornecida. Dúvidas sobre execução, cadência, "
-    "descanso e substituição de exercício são bem-vindas. "
-    "NUNCA diagnostique, prescreva medicamentos ou altere a ficha: se houver dor, lesão "
-    "ou mal-estar, oriente a parar e falar com o professor/médico. "
-    "Se não souber, diga que vai avisar o professor."
+    "Você é o assistente virtual do personal trainer do aluno, respondendo pelo WhatsApp com excelência e segurança. "
+    "Responda em português, em no máximo 4 frases curtas, tom amigável, motivador e profissional. "
+    "Baseie-se na ficha de treino e na anamnese clínica do aluno (objetivos, restrições e dores relatadas). "
+    "Dúvidas sobre postura, cadência, amplitude, descanso e substituição de aparelhos são bem-vindas. "
+    "Se o aluno relatar desconforto articular, oriente a não forçar e sugira adaptações seguras condizentes com a ficha. "
+    "NUNCA diagnostique doenças, prescreva medicamentos ou altere a estrutura base da ficha sem autorização do treinador. "
+    "Se houver dor aguda ou dúvida complexa, oriente a parar e avise que notificará o professor."
 )
 
 
@@ -149,6 +149,8 @@ MENU_GREETINGS = {"oi", "ola", "menu", "ajuda", "0", "bom dia", "boa tarde", "bo
 MENU_WORKOUT = {"1", "treino", "meu treino", "ficha", "qual meu treino", "minha ficha"}
 MENU_STREAK = {"2", "streak", "ofensiva", "foguinho", "minha ofensiva"}
 MENU_APP = {"3", "app", "link", "aplicativo", "acesso"}
+MENU_TRAINER_NOTE = {"4", "recado", "falar com professor", "deixar recado", "avisar professor"}
+
 PHASE2_ALLOWED_PLANS = {
     "pro",
     "personal_pro",
@@ -158,6 +160,28 @@ PHASE2_ALLOWED_PLANS = {
     "studio",
     "shaipados_studio",
 }
+
+
+def _is_greeting(cmd: str) -> bool:
+    if cmd in MENU_GREETINGS:
+        return True
+    starters = ("oi", "ola", "bom dia", "boa tarde", "boa noite", "opa", "fala mestre", "fala prof")
+    for st in starters:
+        if cmd == st or cmd.startswith(f"{st} ") or cmd.startswith(f"{st},") or cmd.startswith(f"{st}!"):
+            if len(cmd) < 90 or "gostaria de tirar uma duvida" in cmd or "sou aluno" in cmd:
+                if not any(k in cmd for k in ("exercicio", "substitu", "dor", "execut", "como faco", "posso trocar", "sinto")):
+                    return True
+    return False
+
+
+def _is_acute_pain(cmd: str) -> bool:
+    pain_triggers = (
+        "dor aguda", "travei a coluna", "dor no peito", "dor forte",
+        "lesionei", "machuquei", "muita dor", "estou com muita dor",
+        "dor insuportavel", "dor insuportável", "dor no coracao",
+        "falta de ar", "tontura forte"
+    )
+    return any(p in cmd for p in pain_triggers)
 
 
 def is_phase2_ai_allowed(sub: Any) -> bool:
@@ -184,153 +208,225 @@ def is_phase2_ai_allowed(sub: Any) -> bool:
 APP_URL = "https://shaipados-labs.web.app"
 
 
+async def process_whatsapp_question(trainer_id: str, student: Dict[str, Any], question: str) -> Dict[str, Any]:
+    """Processa a mensagem com triagem de custo zero, guardrails de dor e IA biomecânica com anamnese."""
+    nome = (student.get("full_name") or "Aluno").split()[0]
+    cmd = _normalize_command(question)
+
+    # 1. Se for o próprio treinador testando
+    if student.get("role") == "trainer_self_test":
+        return {
+            "reply": (
+                f"🧪 *Teste de Conexão Bem-Sucedido!*\n\n"
+                f"Olá, {nome}! O seu Robô WhatsApp do Mr. Coach está 100% ativo e operacional.\n\n"
+                f"Quando seus alunos mandarem mensagem aqui, eles receberão o menu automático e você não gastará tokens de IA nos comandos rápidos (1 = Ver Treino, 2 = Streak 🔥).\n\n"
+                f"Tudo pronto para atender seus alunos!"
+            ),
+            "cost_type": "free",
+            "tokens_used": 0,
+        }
+
+    # 2. Saudações e Mensagens de Abertura (Triagem de Custo Zero)
+    if _is_greeting(cmd):
+        return {
+            "reply": (
+                f"Olá, {nome}! 💪 Sou o assistente automático do seu treinador no Mr. Coach.\n\n"
+                "Digite uma opção:\n"
+                "*1* - Ver meu treino ativo\n"
+                "*2* - Ver minha ofensiva (Streak 🔥)\n"
+                "*3* - Link do App\n"
+                "*4* - Deixar recado para o professor\n\n"
+                "Ou envie sua dúvida sobre execução, postura ou substituição de exercício!"
+            ),
+            "cost_type": "free",
+            "tokens_used": 0,
+        }
+
+    # 3. Opção 1: Ficha ativa
+    if cmd in MENU_WORKOUT:
+        plan = await supabase_service.get_active_prescription(student["id"])
+        if not plan:
+            return {
+                "reply": "Ainda não encontrei uma ficha ativa para você. Vou avisar seu professor! 💪",
+                "cost_type": "free",
+                "tokens_used": 0,
+            }
+        return {
+            "reply": f"📋 *Seu Treino Ativo*\n\n{_plan_summary(plan)}\n\n📲 Acesse completo no app: {APP_URL}",
+            "cost_type": "free",
+            "tokens_used": 0,
+        }
+
+    # 4. Opção 2: Streak e consistência
+    if cmd in MENU_STREAK:
+        streak_days = 0
+        try:
+            gamification = await supabase_service.get_gamification_data(student["id"])
+            streak_days = int((gamification or {}).get("current_streak") or 0)
+        except Exception:
+            streak_days = int(student.get("streak_days") or 0)
+
+        if streak_days > 0:
+            msg_streak = (
+                f"🔥 *{nome}, sua ofensiva atual é de {streak_days} dia(s) seguido(s)!*\n\n"
+                f"Continue firme na consistência! Registre seu treino de hoje no app: {APP_URL} 💪"
+            )
+        else:
+            msg_streak = (
+                f"🔥 *{nome}, sua ofensiva está em 0 dias no momento.*\n\n"
+                f"Bora começar uma nova sequência hoje? Acesse seu treino e conclua a sessão no app: {APP_URL} 💪"
+            )
+        return {
+            "reply": msg_streak,
+            "cost_type": "free",
+            "tokens_used": 0,
+        }
+
+    # 5. Opção 3: Link do app
+    if cmd in MENU_APP:
+        return {
+            "reply": (
+                f"📲 *Acesso ao App Mr. Coach*\n\n"
+                f"Entre pelo link: {APP_URL}\n"
+                "Use seu e-mail cadastrado pelo treinador para visualizar sua ficha interativa, vídeos e registrar sua ofensiva! 💪"
+            ),
+            "cost_type": "free",
+            "tokens_used": 0,
+        }
+
+    # 6. Opção 4: Deixar recado para o treinador
+    if cmd in MENU_TRAINER_NOTE or "deixar recado" in cmd:
+        return {
+            "reply": (
+                f"📝 *Recado para o Professor*\n\n"
+                f"{nome}, pode digitar aqui a mensagem que deseja enviar. "
+                "Vou registrar e alertar o seu treinador para que ele te responda pessoalmente assim que possível! 💪"
+            ),
+            "cost_type": "free",
+            "tokens_used": 0,
+        }
+
+    # 7. Safety Guardrail: Alerta de dor aguda / lesão
+    if _is_acute_pain(cmd):
+        try:
+            client = await supabase_service.get_client()
+            if client:
+                await client.table("biomechanical_alerts").insert({
+                    "student_id": student["id"],
+                    "trainer_id": trainer_id,
+                    "type": "whatsapp_pain_report",
+                    "severity": "high",
+                    "details": f"Aluno relatou dor/lesão via WhatsApp: '{question[:200]}'",
+                    "status": "pending",
+                }).execute()
+        except Exception as alert_err:
+            logger.debug(f"[WhatsAppAI] Falha ao registrar alerta de dor: {alert_err}")
+
+        return {
+            "reply": (
+                f"⚠️ *Atenção, {nome}!* Por segurança biomecânica, *interrompa imediatamente o exercício*.\n\n"
+                f"Já registrei um alerta prioritário no painel do seu treinador para que ele avalie seu caso. "
+                f"Se a dor persistir ou for aguda, procure atendimento médico. Cuide-se! 💪"
+            ),
+            "cost_type": "free",
+            "tokens_used": 0,
+            "is_alert": True,
+        }
+
+    # 8. Trava Comercial do Treinador (Monetização por Plano)
+    sub = await supabase_service.get_trainer_subscription(trainer_id)
+    if not is_phase2_ai_allowed(sub):
+        return {
+            "reply": f"Recebi sua mensagem! Já encaminhei para o seu treinador responder pessoalmente. Para ver sua ficha agora, digite *1* ou acesse: {APP_URL} 💪",
+            "cost_type": "free",
+            "tokens_used": 0,
+        }
+
+    # 9. Limite diário por aluno
+    if not _within_limit(student["id"]):
+        return {
+            "reply": "Você atingiu o limite de dúvidas de hoje 😊 Seu professor vai te responder em breve!",
+            "cost_type": "free",
+            "tokens_used": 0,
+        }
+
+    # 10. Busca Ficha Ativa
+    plan = await supabase_service.get_active_prescription(student["id"])
+    if not plan:
+        return {
+            "reply": "Ainda não encontrei uma ficha ativa para você. Vou avisar seu professor! 💪",
+            "cost_type": "free",
+            "tokens_used": 0,
+        }
+
+    # 11. Busca Anamnese Expandida (Objetivos, Lesões e Restrições Físicas)
+    anamnesis_ctx = ""
+    try:
+        anam = await supabase_service.get_student_anamnesis(student["id"])
+        if anam:
+            parts = []
+            if anam.get("objective"):
+                parts.append(f"Objetivo: {anam['objective']}")
+            if anam.get("injuries_or_restrictions"):
+                parts.append(f"Lesões/Restrições/Dores: {anam['injuries_or_restrictions']}")
+            if anam.get("training_level") or anam.get("experience_level"):
+                parts.append(f"Nível de Treino: {anam.get('training_level') or anam.get('experience_level')}")
+            if anam.get("medical_conditions"):
+                parts.append(f"Condições Médicas: {anam['medical_conditions']}")
+            if parts:
+                anamnesis_ctx = "\nAnamnese do Aluno:\n- " + "\n- ".join(parts)
+    except Exception as e:
+        logger.warning(f"[WhatsAppAI] Erro ao buscar anamnese: {e}")
+
+    prompt = (
+        f"Aluno: {student.get('full_name') or 'Aluno'}{anamnesis_ctx}\n"
+        f"{_plan_summary(plan)}\n\n"
+        f"Pergunta: {question[:MAX_QUESTION_CHARS]}"
+    )
+    config = types.GenerateContentConfig(
+        system_instruction=SYSTEM_PROMPT, temperature=0.4, max_output_tokens=300
+    )
+    response = await gemini_service._generate_with_fallback_async(
+        candidate_models=AI_MODELS, contents=prompt, config=config, per_model_timeout=12.0
+    )
+    reply_text = response.text.strip()
+    return {
+        "reply": reply_text,
+        "cost_type": "ai_gemini",
+        "tokens_used": len(reply_text.split()),
+    }
+
+
 async def _answer(instance: str, number: str, digits: str, question: str) -> None:
     try:
         trainer_id = trainer_id_from_instance(instance)
         if not trainer_id:
             return
-        # Identifica o aluno ou professor
         student = await _find_student_by_phone(digits, trainer_id)
         if not student:
             logger.info(f"[WhatsAppAI] Mensagem ignorada de número não cadastrado: {digits}")
-            return  # número desconhecido: silêncio (evita custo e spam)
+            return
 
-        nome = (student.get("full_name") or "Aluno").split()[0]
-        cmd = _normalize_command(question)
+        result = await process_whatsapp_question(trainer_id, student, question)
+        text_to_send = result.get("reply") or ""
+        cost = result.get("cost_type") or "free"
+        tokens = result.get("tokens_used") or 0
 
-        async def _reply(text_to_send: str, cost: str = "free", tokens: int = 0):
-            await whatsapp_service.send_text_message(instance, number, text_to_send)
-            try:
-                await supabase_service.log_whatsapp_interaction(
-                    trainer_id=trainer_id,
-                    student_id=student.get("id"),
-                    student_name=student.get("full_name") or "Aluno",
-                    student_phone=digits,
-                    channel="whatsapp",
-                    message_in=question,
-                    message_out=text_to_send,
-                    cost_type=cost,
-                    tokens_used=tokens,
-                )
-            except Exception as log_err:
-                logger.debug(f"[WhatsAppAI] Falha ao gravar log transparente: {log_err}")
-
-        # Se for o próprio treinador testando
-        if student.get("role") == "trainer_self_test":
-            await _reply(
-                (
-                    f"🧪 *Teste de Conexão Bem-Sucedido!*\n\n"
-                    f"Olá, {nome}! O seu Robô WhatsApp do Mr. Coach está 100% ativo e operacional.\n\n"
-                    f"Quando seus alunos mandarem mensagem aqui, eles receberão o menu automático e você não gastará tokens de IA nos comandos rápidos (1 = Ver Treino, 2 = Streak 🔥).\n\n"
-                    f"Tudo pronto para atender seus alunos!"
-                ),
-                cost="free",
+        await whatsapp_service.send_text_message(instance, number, text_to_send)
+        try:
+            await supabase_service.log_whatsapp_interaction(
+                trainer_id=trainer_id,
+                student_id=student.get("id"),
+                student_name=student.get("full_name") or "Aluno",
+                student_phone=digits,
+                channel="whatsapp",
+                message_in=question,
+                message_out=text_to_send,
+                cost_type=cost,
+                tokens_used=tokens,
             )
-            return
-
-        # ---------------------------------------------------------------------
-        # PASSO 2.1 — Triagem de Custo Zero (Menu Rápido sem consumo de tokens)
-        # ---------------------------------------------------------------------
-        if cmd in MENU_GREETINGS:
-            await _reply(
-                (
-                    f"Olá, {nome}! 💪 Sou o assistente automático do seu treinador no Mr. Coach.\n\n"
-                    "Digite uma opção:\n"
-                    "*1* - Ver meu treino ativo\n"
-                    "*2* - Ver minha ofensiva (Streak 🔥)\n"
-                    "*3* - Link do App\n\n"
-                    "Ou envie sua dúvida sobre algum exercício!"
-                ),
-                cost="free",
-            )
-            return
-
-        if cmd in MENU_WORKOUT:
-            plan = await supabase_service.get_active_prescription(student["id"])
-            if not plan:
-                await _reply(
-                    "Ainda não encontrei uma ficha ativa para você. Vou avisar seu professor! 💪",
-                    cost="free",
-                )
-                return
-            await _reply(
-                f"📋 *Seu Treino Ativo*\n\n{_plan_summary(plan)}\n\n📲 Acesse completo no app: {APP_URL}",
-                cost="free",
-            )
-            return
-
-        if cmd in MENU_STREAK:
-            streak_days = 0
-            try:
-                gamification = await supabase_service.get_gamification_data(student["id"])
-                streak_days = int((gamification or {}).get("current_streak") or 0)
-            except Exception:
-                streak_days = int(student.get("streak_days") or 0)
-
-            if streak_days > 0:
-                msg_streak = (
-                    f"🔥 *{nome}, sua ofensiva atual é de {streak_days} dia(s) seguido(s)!*\n\n"
-                    f"Continue firme na consistência! Registre seu treino de hoje no app: {APP_URL} 💪"
-                )
-            else:
-                msg_streak = (
-                    f"🔥 *{nome}, sua ofensiva está em 0 dias no momento.*\n\n"
-                    f"Bora começar uma nova sequência hoje? Acesse seu treino e conclua a sessão no app: {APP_URL} 💪"
-                )
-            await _reply(msg_streak, cost="free")
-            return
-
-        if cmd in MENU_APP:
-            await _reply(
-                (
-                    f"📲 *Acesso ao App Mr. Coach*\n\n"
-                    f"Entre pelo link: {APP_URL}\n"
-                    "Use seu e-mail cadastrado pelo treinador para visualizar sua ficha interativa, vídeos e registrar sua ofensiva! 💪"
-                ),
-                cost="free",
-            )
-            return
-
-        # ---------------------------------------------------------------------
-        # PASSO 2.2 — Trava Comercial da Fase 2 (Monetização por Plano)
-        # ---------------------------------------------------------------------
-        sub = await supabase_service.get_trainer_subscription(trainer_id)
-        if not is_phase2_ai_allowed(sub):
-            await _reply(
-                f"Recebi sua mensagem! Já encaminhei para o seu treinador responder pessoalmente. Para ver sua ficha agora, digite *1* ou acesse: {APP_URL} 💪",
-                cost="free",
-            )
-            return
-
-        # ---------------------------------------------------------------------
-        # Consultor Ativo IA (Fase 2 — Planos Pro, Elite e Studio)
-        # ---------------------------------------------------------------------
-        if not _within_limit(student["id"]):
-            await _reply(
-                "Você atingiu o limite de dúvidas de hoje 😊 Seu professor vai te responder em breve!",
-                cost="free",
-            )
-            return
-
-        plan = await supabase_service.get_active_prescription(student["id"])
-        if not plan:
-            await _reply(
-                "Ainda não encontrei uma ficha ativa para você. Vou avisar seu professor! 💪",
-                cost="free",
-            )
-            return
-
-        prompt = (
-            f"Aluno: {student.get('full_name') or 'Aluno'}\n{_plan_summary(plan)}\n\n"
-            f"Pergunta: {question[:MAX_QUESTION_CHARS]}"
-        )
-        config = types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT, temperature=0.4, max_output_tokens=300
-        )
-        response = await gemini_service._generate_with_fallback_async(
-            candidate_models=AI_MODELS, contents=prompt, config=config, per_model_timeout=12.0
-        )
-        await _reply(response.text.strip(), cost="ai_gemini", tokens=len(response.text.split()))
+        except Exception as log_err:
+            logger.debug(f"[WhatsAppAI] Falha ao gravar log transparente: {log_err}")
     except Exception as e:
         logger.error(f"[WhatsAppAI] Falha ao responder: {e}")
 

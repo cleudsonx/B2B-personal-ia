@@ -33,6 +33,9 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
   bool _isWhatsAppConnected = false;
   MySubscriptionModel? _subscription;
   Map<String, dynamic>? _telemetry;
+  final TextEditingController _simulatorController = TextEditingController();
+  bool _isSimulating = false;
+  Map<String, dynamic>? _simulationResult;
 
   @override
   void initState() {
@@ -44,7 +47,55 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
   @override
   void dispose() {
     PwaNavigationState.clearActiveSubscreen();
+    _simulatorController.dispose();
     super.dispose();
+  }
+
+  Future<void> _runSimulation(String question) async {
+    if (question.trim().isEmpty) return;
+    setState(() {
+      _isSimulating = true;
+      _simulatorController.text = question;
+    });
+
+    try {
+      final token = Supabase.instance.client.auth.currentSession?.accessToken;
+      final res = await http.post(
+        Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/simulate'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'question': question}),
+      ).timeout(const Duration(seconds: 15));
+
+      if (res.statusCode == 200 && mounted) {
+        setState(() {
+          _simulationResult = jsonDecode(res.body);
+          _isSimulating = false;
+        });
+      } else {
+        if (mounted) {
+          setState(() => _isSimulating = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Falha ao simular: ${res.statusCode}'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSimulating = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro de conexão ao simular: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _loadData() async {
@@ -188,6 +239,10 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
 
                     // 4. Motor Biomecânico Gemini 2.5 Flash
                     _buildAiEngineSection(context),
+                    const SizedBox(height: 18),
+
+                    // 4.1 Simulador Interativo do Robô no WhatsApp
+                    _buildSimulatorSection(context),
                     const SizedBox(height: 18),
 
                     // 5. Telemetria Modular em Cards
@@ -730,6 +785,224 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSimulatorSection(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: MetaColors.card(context),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: MetaColors.emerald.withValues(alpha: 0.35),
+          width: 1.3,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: MetaColors.emerald.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.science_rounded, color: MetaColors.emerald, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Simulador do Robô no WhatsApp',
+                      style: TextStyle(
+                        color: MetaColors.text(context),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    Text(
+                      'Teste as respostas em tempo real como se fosse seu aluno',
+                      style: TextStyle(
+                        color: MetaColors.subtext(context),
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Testes rápidos de 1 toque:',
+            style: TextStyle(color: MetaColors.textSecondary, fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildQuickTestChip(context, '📋 1 - Treino', '1'),
+                const SizedBox(width: 8),
+                _buildQuickTestChip(context, '🔥 2 - Streak', '2'),
+                const SizedBox(width: 8),
+                _buildQuickTestChip(context, '💡 Substituir Peito', 'Posso trocar supino por peck deck?'),
+                const SizedBox(width: 8),
+                _buildQuickTestChip(context, '⚠️ Alerta de Dor', 'Estou sentindo muita dor no joelho'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _simulatorController,
+                  style: TextStyle(color: MetaColors.text(context), fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: 'Digite uma mensagem de teste...',
+                    hintStyle: TextStyle(color: MetaColors.subtext(context), fontSize: 12.5),
+                    filled: true,
+                    fillColor: MetaColors.highlight(context),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: MetaColors.border.withValues(alpha: 0.5)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: MetaColors.border.withValues(alpha: 0.5)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: MetaColors.emerald, width: 1.5),
+                    ),
+                  ),
+                  onSubmitted: _runSimulation,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                decoration: const BoxDecoration(
+                  color: MetaColors.emerald,
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: _isSimulating
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                  onPressed: _isSimulating
+                      ? null
+                      : () => _runSimulation(_simulatorController.text),
+                ),
+              ),
+            ],
+          ),
+          if (_simulationResult != null) ...[
+            const SizedBox(height: 14),
+            _buildSimulationBubble(context),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickTestChip(BuildContext context, String label, String query) {
+    return ActionChip(
+      label: Text(
+        label,
+        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+      ),
+      backgroundColor: MetaColors.highlight(context),
+      side: BorderSide(color: MetaColors.border.withValues(alpha: 0.6)),
+      onPressed: _isSimulating ? null : () => _runSimulation(query),
+    );
+  }
+
+  Widget _buildSimulationBubble(BuildContext context) {
+    final reply = _simulationResult?['reply'] ?? '';
+    final cost = _simulationResult?['cost_type'] ?? 'free';
+    final tokens = _simulationResult?['tokens_used'] ?? 0;
+    final isAlert = _simulationResult?['is_alert'] == true;
+    final isFree = cost == 'free';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isAlert
+              ? Colors.amber.withValues(alpha: 0.6)
+              : (isFree ? MetaColors.emerald.withValues(alpha: 0.4) : const Color(0xFF6366F1).withValues(alpha: 0.4)),
+          width: 1.2,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.chat_bubble_rounded, size: 14, color: Color(0xFF25D366)),
+                  const SizedBox(width: 6),
+                  const Text(
+                    'Resposta do Robô no WhatsApp:',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isAlert
+                      ? Colors.amber.withValues(alpha: 0.2)
+                      : (isFree ? MetaColors.emerald.withValues(alpha: 0.2) : const Color(0xFF6366F1).withValues(alpha: 0.2)),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  isAlert
+                      ? '⚠️ Alerta de Dor'
+                      : (isFree ? '⚡ Custo Zero (0 tokens)' : '🧠 IA Gemini ($tokens tokens)'),
+                  style: TextStyle(
+                    color: isAlert
+                        ? Colors.amber
+                        : (isFree ? MetaColors.emerald : const Color(0xFF818CF8)),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SelectableText(
+            reply,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              height: 1.45,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

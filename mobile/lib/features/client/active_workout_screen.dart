@@ -1658,14 +1658,39 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                             tooltip: 'Configurar IP do Servidor (Dev)',
                             onPressed: () => ServerConfigDialog.show(context),
                           ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.chat_bubble_outline_rounded,
-                            size: 20,
-                            color: MetaColors.emerald,
+                        InkWell(
+                          onTap: _contactTrainerWhatsApp,
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: MetaColors.emerald.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: MetaColors.emerald.withValues(alpha: 0.4),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.chat_bubble_rounded,
+                                  size: 14,
+                                  color: MetaColors.emerald,
+                                ),
+                                SizedBox(width: 5),
+                                Text(
+                                  'Zap 24h',
+                                  style: TextStyle(
+                                    color: MetaColors.emerald,
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          tooltip: 'Falar com o Treinador no WhatsApp',
-                          onPressed: _contactTrainerWhatsApp,
                         ),
                       ],
                     ),

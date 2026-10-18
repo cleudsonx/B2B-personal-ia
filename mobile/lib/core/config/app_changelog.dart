@@ -39,6 +39,43 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.5.0',
+      buildNumber: 2026102900,
+      date: '18 de Outubro, 2026',
+      summary:
+          'Fase 4: WhatsApp Ativo 24h com IA Biomecânica, injeção de Anamnese, Guardrail de Dor e Simulador Interativo.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.chat_rounded,
+          title: 'WhatsApp Ativo 24h & Assistente IA (Fase 4)',
+          description:
+              'Motor biomecânico Gemini conectado à Evolution API respondendo dúvidas de postura, cadência e substituição de aparelhos 24 horas por dia.',
+          badge: 'IA 24H',
+        ),
+        ChangelogItem(
+          icon: Icons.badge_rounded,
+          title: 'Injeção da Anamnese Expandida no Contexto da IA',
+          description:
+              'A IA no WhatsApp agora consulta em tempo real as lesões, restrições e objetivos da anamnese do aluno, garantindo respostas personalizadas e clinicamente seguras.',
+          badge: 'BIOMECÂNICA',
+        ),
+        ChangelogItem(
+          icon: Icons.warning_amber_rounded,
+          title: 'Safety Guardrail de Dor Aguda',
+          description:
+              'Detecção automática de relatos de dor forte no WhatsApp: o aluno é orientado a parar imediatamente e um alerta de alta prioridade é disparado no painel do treinador.',
+          badge: 'SEGURANÇA',
+        ),
+        ChangelogItem(
+          icon: Icons.science_rounded,
+          title: 'Simulador do Robô no Cockpit do Treinador',
+          description:
+              'Painel interativo para o personal trainer simular mensagens de alunos (ficha, streak, dores, substituição) e testar a IA em tempo real com auditoria de tokens.',
+          badge: 'ONE UI 7',
+        ),
+      ],
+    ),
+    VersionRelease(
+      version: '1.5.0',
       buildNumber: 2026102899,
       date: '18 de Outubro, 2026',
       summary:

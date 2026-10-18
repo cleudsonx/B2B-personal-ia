@@ -127,7 +127,85 @@ def test_zero_cost_menu_and_phase2_lock(monkeypatch):
         assert len(sent_messages) == 7
         assert len(gemini_calls) == 2
 
+        # 8. Mensagem de Abertura do App (Saudação padrão): Zero Custo
+        await whatsapp_ai._answer(
+            valid_instance,
+            "5511999999999",
+            "5511999999999",
+            "Olá professor! Sou aluno no Mr. Coach e gostaria de tirar uma dúvida sobre meu treino.",
+        )
+        assert len(sent_messages) == 8
+        assert "Sou o assistente automático" in sent_messages[-1][2]
+        assert len(gemini_calls) == 2  # Não chamou Gemini, zero tokens!
+
+        # 9. Guardrail de Segurança: Alerta de Dor Aguda
+        await whatsapp_ai._answer(
+            valid_instance,
+            "5511999999999",
+            "5511999999999",
+            "Senti muita dor no ombro e acho que lesionei",
+        )
+        assert len(sent_messages) == 9
+        assert "interrompa imediatamente o exercício" in sent_messages[-1][2]
+        assert len(gemini_calls) == 2  # Bloqueio de segurança sem tokens
+
+        # 10. Injeção de Anamnese Expandida no Prompt
+        async def fake_anamnesis(client_id: str):
+            return {
+                "objective": "Definição e Força",
+                "injuries_or_restrictions": "Condromalácia no joelho esquerdo",
+                "training_level": "Avançado",
+            }
+
+        monkeypatch.setattr(supabase_service, "get_student_anamnesis", fake_anamnesis)
+        await whatsapp_ai._answer(
+            valid_instance,
+            "5511999999999",
+            "5511999999999",
+            "Qual a cadência do supino inclinado?",
+        )
+        assert len(sent_messages) == 10
+        assert len(gemini_calls) == 3
+        last_prompt = gemini_calls[-1].get("contents", "")
+        assert "Condromalácia no joelho esquerdo" in last_prompt
+        assert "Definição e Força" in last_prompt
+
     asyncio.run(run_scenarios())
+
+
+def test_simulate_whatsapp_endpoint(monkeypatch):
+    from app.api.deps import get_current_trainer
+    from app.services.supabase_service import supabase_service
+    from types import SimpleNamespace
+
+    app.dependency_overrides[get_current_trainer] = lambda: {"sub": "631e76b9-3cb0-454f-8fd9-1d450e5560d6"}
+
+    async def fake_get_students(trainer_id: str):
+        return [
+            SimpleNamespace(
+                model_dump=lambda: {
+                    "id": "student-1",
+                    "full_name": "Juliana Lima",
+                    "trainer_id": trainer_id,
+                }
+            )
+        ]
+
+    async def fake_sub(trainer_id: str):
+        return SimpleNamespace(plan_id="pro")
+
+    monkeypatch.setattr(supabase_service, "list_students", fake_get_students)
+    monkeypatch.setattr(supabase_service, "get_trainer_subscription", fake_sub)
+
+    res = client.post("/api/v1/whatsapp/simulate", json={"question": "1"})
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert data["cost_type"] == "free"
+    assert "Juliana" in data["student_name"]
+
+    app.dependency_overrides.clear()
+
 
 
 def test_connect_resets_stale_instance_and_generates_fresh_code(monkeypatch):

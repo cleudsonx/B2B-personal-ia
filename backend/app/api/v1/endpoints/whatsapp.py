@@ -291,4 +291,54 @@ async def get_whatsapp_telemetry(user: Dict[str, Any] = Depends(get_current_trai
     return data
 
 
+class SimulateMessageRequest(BaseModel):
+    question: str
+    student_id: Optional[str] = None
+
+
+@router.post("/simulate")
+async def simulate_whatsapp_message(
+    req: SimulateMessageRequest,
+    user: Dict[str, Any] = Depends(get_current_trainer),
+):
+    """
+    Simula em tempo real uma mensagem de aluno respondida pelo Consultor Ativo IA.
+    Permite ao treinador testar os comandos e a IA biomecânica direto no app.
+    """
+    from app.api.v1.endpoints.whatsapp_ai import process_whatsapp_question
+
+    trainer_id = _trainer_id(user)
+    student = None
+
+    if req.student_id:
+        student_obj = await supabase_service.get_student_by_id(req.student_id)
+        if student_obj:
+            student = student_obj.model_dump()
+
+    if not student:
+        # Pega o primeiro aluno do treinador para contextualizar o teste
+        students = await supabase_service.list_students(trainer_id)
+        if students:
+            student = students[0].model_dump()
+        else:
+            student = {
+                "id": "simulated-student-1",
+                "full_name": "Aluno Exemplo",
+                "trainer_id": trainer_id,
+                "role": "client",
+            }
+
+    result = await process_whatsapp_question(trainer_id, student, req.question)
+    return {
+        "status": "success",
+        "student_name": student.get("full_name") or "Aluno Exemplo",
+        "question": req.question,
+        "reply": result.get("reply") or "",
+        "cost_type": result.get("cost_type") or "free",
+        "tokens_used": result.get("tokens_used") or 0,
+        "is_alert": bool(result.get("is_alert")),
+    }
+
+
+
 

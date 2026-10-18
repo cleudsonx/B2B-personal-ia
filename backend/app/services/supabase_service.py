@@ -1463,6 +1463,33 @@ class SupabaseService:
             return True
         return True
 
+    async def get_student_anamnesis(self, client_id: str) -> Optional[Dict[str, Any]]:
+        """Busca a anamnese mais recente de um aluno (objetivos, restrições, nível, dores)."""
+        c_uuid = to_valid_uuid_str(client_id)
+        client = await self.get_client()
+        if client and is_valid_uuid(c_uuid):
+            try:
+                res = await client.table("anamnesis")\
+                    .select("*")\
+                    .eq("client_id", c_uuid)\
+                    .order("created_at", desc=True)\
+                    .limit(1)\
+                    .execute()
+                if res and res.data and len(res.data) > 0:
+                    return res.data[0]
+            except Exception as e:
+                logger.warning(f"[get_student_anamnesis] Erro ao buscar anamnese de {client_id}: {e}")
+
+        # Fallback de memória ou invite_tokens
+        if not self._is_production() and client_id in self._mem_students:
+            mem = self._mem_students[client_id]
+            return {
+                "objective": mem.get("goal") or "Hipertrofia Muscular",
+                "injuries_or_restrictions": mem.get("injuries_or_restrictions") or "Nenhuma restrição",
+                "training_level": "Intermediário",
+            }
+        return None
+
     # =========================================================================
     # PRESCRIÇÕES E FICHAS DE TREINO (WORKOUTS)
     # =========================================================================
