@@ -39,7 +39,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.4.9',
-      buildNumber: 2026102887,
+      buildNumber: 2026102888,
       date: '18 de Outubro, 2026',
       summary:
           'Cockpit One UI 7 Dedicado do Consultor Ativo IA — Disponibilidade Completa nas Abas Vitrine e Conta, com Suporte Total e Explícito ao Plano Elite Coach na Trava Comercial da Fase 2.',

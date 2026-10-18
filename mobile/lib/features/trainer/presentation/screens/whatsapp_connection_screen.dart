@@ -156,13 +156,19 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
       final token = Supabase.instance.client.auth.currentSession?.accessToken;
       if (token == null) throw Exception('Sessão expirada. Faça login novamente.');
 
+      final rawDigits = _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
+      final normalizedPhone = rawDigits.isNotEmpty ? _normalizeWithDdi55(rawDigits) : null;
+
       final response = await http.post(
         Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/test-send'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      ).timeout(const Duration(seconds: 25));
+        body: jsonEncode({
+          if (normalizedPhone != null) 'phone': normalizedPhone,
+        }),
+      ).timeout(const Duration(seconds: 60));
 
       if (response.statusCode == 200) {
         if (!mounted) return;

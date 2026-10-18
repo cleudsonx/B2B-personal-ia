@@ -106,7 +106,7 @@ class WhatsAppService:
     async def get_instance_state(self, instance_name: str) -> dict:
         if self.provider == "mock":
             return {"status": "connected", "instanceName": instance_name, "mode": "mock"}
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=6) as client:
             r = await client.get(
                 f"{self._base()}/instance/connectionState/{instance_name}", headers=self._headers()
             )
@@ -166,7 +166,7 @@ class WhatsAppService:
         if self.provider == "mock" or not clean:
             return clean
         try:
-            async with httpx.AsyncClient(timeout=8) as client:
+            async with httpx.AsyncClient(timeout=4) as client:
                 r = await client.post(
                     f"{self._base()}/chat/whatsappNumbers/{instance_name}",
                     headers=self._headers(),
