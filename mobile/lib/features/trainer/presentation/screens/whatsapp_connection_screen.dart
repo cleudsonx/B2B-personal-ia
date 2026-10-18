@@ -317,6 +317,25 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
       }
 
       final data = jsonDecode(response.body);
+
+      if (data['status'] == 'already_connected' || data['state'] == 'open') {
+        if (mounted) {
+          setState(() {
+            _isConnected = true;
+            _pairingCode = null;
+            _isLoading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('🎉 Seu WhatsApp já está conectado e online!'),
+              backgroundColor: MetaColors.emerald,
+            ),
+          );
+          _loadTelemetryAndLogs();
+        }
+        return;
+      }
+
       final code = data['pairingCode'];
       if (code == null || code.toString().isEmpty) {
         throw Exception('O servidor não retornou o código de pareamento. Verifique o número e tente novamente.');
@@ -727,6 +746,16 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                         _pairingCode = null;
                       });
                     },
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: SquircleButton(
+                    label: _isLoading ? 'Gerando novo código...' : '🔄 Gerar novo código (se expirou)',
+                    icon: Icons.refresh_rounded,
+                    isPrimary: false,
+                    onPressed: _isLoading ? null : _generatePairingCode,
                   ),
                 ),
               ],

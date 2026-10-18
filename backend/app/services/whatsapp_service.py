@@ -126,6 +126,32 @@ class WhatsAppService:
                 logger.warning("[WhatsApp] Erro ao deletar instância %s: %s", instance_name, e)
                 return {"status": "error", "error": str(e)}
 
+    async def logout_instance(self, instance_name: str) -> dict:
+        """Desconecta a sessão do WhatsApp sem excluir a instância."""
+        if self.provider == "mock":
+            return {"status": "success", "mode": "mock"}
+        async with httpx.AsyncClient(timeout=15) as client:
+            try:
+                r = await client.delete(f"{self._base()}/instance/logout/{instance_name}", headers=self._headers())
+                r.raise_for_status()
+                return r.json()
+            except Exception as e:
+                logger.warning("[WhatsApp] Erro ao deslogar instância %s: %s", instance_name, e)
+                return {"status": "error", "error": str(e)}
+
+    async def restart_instance(self, instance_name: str) -> dict:
+        """Reinicia o socket da instância na Evolution API."""
+        if self.provider == "mock":
+            return {"status": "success", "mode": "mock"}
+        async with httpx.AsyncClient(timeout=15) as client:
+            try:
+                r = await client.post(f"{self._base()}/instance/restart/{instance_name}", headers=self._headers())
+                r.raise_for_status()
+                return r.json()
+            except Exception as e:
+                logger.warning("[WhatsApp] Erro ao reiniciar instância %s: %s", instance_name, e)
+                return {"status": "error", "error": str(e)}
+
     @staticmethod
     def _format_phone(phone: str) -> str:
         """Extrai dígitos e garante DDI 55 para números brasileiros de 10 ou 11 dígitos."""

@@ -121,6 +121,61 @@ def test_zero_cost_menu_and_phase2_lock(monkeypatch):
     asyncio.run(run_scenarios())
 
 
+def test_connect_resets_stale_instance_and_generates_fresh_code(monkeypatch):
+    import httpx
+    from app.api.deps import get_current_trainer
+    from app.services.whatsapp_service import whatsapp_service
+
+    app.dependency_overrides[get_current_trainer] = lambda: {"sub": "631e76b9-3cb0-454f-8fd9-1d450e5560d6"}
+
+    call_history = []
+
+    async def fake_get_state(instance):
+        call_history.append(("get_state", instance))
+        return {"instance": {"state": "connecting"}}
+
+    create_count = 0
+
+    async def fake_create_instance(instance, number):
+        nonlocal create_count
+        create_count += 1
+        call_history.append(("create_instance", instance, number))
+        if create_count == 1:
+            # Simula a primeira tentativa encontrando instância existente (403/409)
+            req = httpx.Request("POST", "http://test")
+            resp = httpx.Response(409, request=req)
+            raise httpx.HTTPStatusError("Instance already exists", request=req, response=resp)
+        # Segunda tentativa (após delete): sucesso gerando código limpo
+        return {"pairingCode": "NEW99999"}
+
+    async def fake_delete_instance(instance):
+        call_history.append(("delete_instance", instance))
+        return {"status": "success"}
+
+    async def fake_set_webhook(instance):
+        call_history.append(("set_webhook", instance))
+        return {"status": "success"}
+
+    monkeypatch.setattr(whatsapp_service, "get_instance_state", fake_get_state)
+    monkeypatch.setattr(whatsapp_service, "create_instance", fake_create_instance)
+    monkeypatch.setattr(whatsapp_service, "delete_instance", fake_delete_instance)
+    monkeypatch.setattr(whatsapp_service, "set_webhook", fake_set_webhook)
+
+    res = client.post("/api/v1/whatsapp/connect", json={"number": "5511988887777"})
+    assert res.status_code == 200
+    data = res.json()
+    assert data["pairingCode"] == "NEW99999"
+
+    # Valida sequência: tentou criar -> 409 -> deletou sessão antiga -> recriou com o novo número
+    actions = [c[0] for c in call_history]
+    assert "delete_instance" in actions
+    assert actions.count("create_instance") == 2
+    assert ("create_instance", "trainer_631e76b93cb0454f8fd91d450e5560d6", "5511988887777") in call_history
+
+    app.dependency_overrides.clear()
+
+
 if __name__ == "__main__":
     test_webhook()
+
 

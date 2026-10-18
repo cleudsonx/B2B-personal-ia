@@ -38,6 +38,29 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
+      version: '1.4.8',
+      buildNumber: 2026102884,
+      date: '17 de Outubro, 2026',
+      summary:
+          'Correção e Renovação Automática do Código de Pareamento do WhatsApp — Eliminação de Códigos Estagnados em Cache (Reset Limpo de Sessões Pendentes).',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.sync_problem_rounded,
+          title: 'Resolução de Código de Pareamento Congelado',
+          description:
+              'Corrigida inconsistência onde sessões pendentes na Evolution API retinham o código anterior em cache. Agora, a cada novo número ou tentativa, a sessão é reiniciada de forma limpa gerando um código 100% fresco do WhatsApp.',
+          badge: 'CORREÇÃO',
+        ),
+        ChangelogItem(
+          icon: Icons.refresh_rounded,
+          title: 'Botão de Renovação Rápida',
+          description:
+              'Adicionado botão direto para gerar novo código caso os 120 segundos de validade do WhatsApp expirem antes de digitar.',
+          badge: 'ONE UI 7',
+        ),
+      ],
+    ),
+    VersionRelease(
       version: '1.4.7',
       buildNumber: 2026102883,
       date: '17 de Outubro, 2026',

@@ -40,29 +40,67 @@ def _trainer_id(user: Dict[str, Any]) -> str:
 
 @router.post("/connect")
 async def connect_whatsapp(req: ConnectRequest, user: Dict[str, Any] = Depends(get_current_trainer)):
-    """Conecta o WhatsApp do professor autenticado (instância dele, nunca de outro)."""
+    """Conecta o WhatsApp do professor autenticado gerando código limpo e atualizado."""
     instance = instance_name_for(_trainer_id(user))
     number = whatsapp_service._format_phone(req.number or "") or None
     try:
+        # 1. Se a instância já estiver aberta (conectada com sucesso), evita recriar
+        try:
+            state_data = await whatsapp_service.get_instance_state(instance)
+            raw_state = (
+                state_data.get("state")
+                or state_data.get("instance", {}).get("state")
+                or ""
+            ).lower()
+            if raw_state == "open":
+                return {
+                    "instance_name": instance,
+                    "status": "already_connected",
+                    "pairingCode": None,
+                }
+        except Exception:
+            pass
+
+        # 2. Tenta criar a instância com o número informado
+        data = None
         try:
             data = await whatsapp_service.create_instance(instance, number)
         except httpx.HTTPStatusError as e:
-            # 403/409: instância já existe -> apenas gera novo código
+            # 403/409: instância já existe no servidor. Se não está 'open', a sessão anterior
+            # pode estar com pairingCode antigo/expirado em cache ou vinculada a outro número.
+            # Limpamos a instância antiga para forçar a Evolution API a gerar um NOVO código para o número atual.
             if e.response.status_code in (403, 409):
-                data = await whatsapp_service.connect_instance(instance, number)
+                logger.info(f"[WhatsApp] Instância {instance} já existia. Reiniciando sessão para gerar código limpo...")
+                await whatsapp_service.delete_instance(instance)
+                try:
+                    data = await whatsapp_service.create_instance(instance, number)
+                except Exception as create_err:
+                    logger.warning(f"[WhatsApp] Falha ao recriar após exclusão, usando connect_instance: {create_err}")
+                    data = await whatsapp_service.connect_instance(instance, number)
             else:
                 raise
-        # Garante registro do webhook na Evolution API mesmo em caso de reconexão
+
+        # 3. Garante registro do webhook na Evolution API mesmo em caso de reconexão
         try:
             await whatsapp_service.set_webhook(instance)
         except Exception:
             pass
 
-        qr = data.get("qrcode") if isinstance(data.get("qrcode"), dict) else data
+        # 4. Extração resiliente de pairingCode e QR Code
+        pairing_code = None
+        qr_base64 = None
+        if isinstance(data, dict):
+            pairing_code = data.get("pairingCode") or data.get("code")
+            qr_base64 = data.get("base64")
+            qr_obj = data.get("qrcode")
+            if isinstance(qr_obj, dict):
+                pairing_code = pairing_code or qr_obj.get("pairingCode") or qr_obj.get("code")
+                qr_base64 = qr_base64 or qr_obj.get("base64")
+
         return {
             "instance_name": instance,
-            "pairingCode": qr.get("pairingCode"),
-            "qr_code_base64": qr.get("base64"),
+            "pairingCode": pairing_code,
+            "qr_code_base64": qr_base64,
         }
     except RuntimeError as e:
         logger.error(f"[WhatsApp] Configuração ausente: {e}")
