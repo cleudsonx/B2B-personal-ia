@@ -232,9 +232,35 @@ async def test_send_whatsapp(req: TestSendRequest = TestSendRequest(), user: Dic
             cost_type="free",
         )
         return {"status": "success", "phone": clean_phone, "response": res}
+    except httpx.HTTPStatusError as e:
+        logger.error(f"[WhatsApp] Erro HTTP ao disparar mensagem de teste: %s", e)
+        detail_msg = ""
+        try:
+            err_json = e.response.json()
+            if isinstance(err_json, dict):
+                resp_field = err_json.get("response")
+                if isinstance(resp_field, dict):
+                    msg = resp_field.get("message")
+                    detail_msg = ", ".join(msg) if isinstance(msg, list) else str(msg or "")
+                elif isinstance(resp_field, list):
+                    detail_msg = ", ".join(str(m) for m in resp_field)
+                if not detail_msg:
+                    detail_msg = err_json.get("message") or err_json.get("error") or ""
+        except Exception:
+            detail_msg = e.response.text if hasattr(e, "response") else str(e)
+
+        if not detail_msg or not detail_msg.strip():
+            detail_msg = f"Servidor do WhatsApp retornou código {e.response.status_code}" if hasattr(e, "response") else str(e)
+
+        if any(w in detail_msg.lower() for w in ["connection", "closed", "not connected", "disconnected"]):
+            detail_msg = "Sessão do WhatsApp desconectada ou reiniciando no servidor. Por favor, clique em 'Desconectar' e reconecte seu número."
+
+        raise HTTPException(status_code=502, detail=f"Falha ao enviar mensagem de teste via Evolution API: {detail_msg}")
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="O servidor do WhatsApp demorou para responder (Timeout). Verifique se seu aparelho está conectado à internet.")
     except Exception as e:
         logger.error(f"[WhatsApp] Erro ao disparar mensagem de teste: %s", e)
-        err_msg = str(e)
+        err_msg = str(e) or "Erro interno de comunicação"
         if "timeout" in err_msg.lower():
             err_msg = "O servidor do WhatsApp demorou para responder. Verifique se o seu celular está conectado à internet."
         raise HTTPException(status_code=502, detail=f"Falha ao enviar mensagem de teste via Evolution API: {err_msg}")

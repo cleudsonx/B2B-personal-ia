@@ -1,12 +1,12 @@
 // ignore_for_file: unused_element, unused_local_variable, unused_field, override_on_non_overriding_member, use_build_context_synchronously
-import '../../../../core/widgets/meta_components.dart';
-import '../../../../core/widgets/avatar_selector_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/widgets/meta_components.dart';
+import '../../../../core/widgets/avatar_selector_sheet.dart';
+import '../../../../services/auth_service.dart';
 import 'trainer_main_layout.dart';
 import 'whatsapp_connection_screen.dart';
-import '../../../../services/auth_service.dart';
 
 class TrainerProfileSetupScreen extends StatefulWidget {
   const TrainerProfileSetupScreen({super.key});
@@ -28,11 +28,12 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
     'Emagrecimento',
     'Condicionamento',
     'Reabilitação',
+    'Mobilidade',
+    'Powerlifting',
   ];
   final Set<String> _selectedSpecialties = {};
   bool _isSaving = false;
   bool _isLoading = true;
-  bool _profileLoadFailed = false;
   bool _publishInDirectory = false;
 
   @override
@@ -42,12 +43,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
   }
 
   Future<void> _loadProfile() async {
-    if (mounted) {
-      setState(() {
-        _isLoading = true;
-        _profileLoadFailed = false;
-      });
-    }
+    if (mounted) setState(() => _isLoading = true);
     try {
       final profile = await AuthService.getCurrentProfile();
       if (profile != null && mounted) {
@@ -61,9 +57,10 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
           _crefController.text = profile['professional_document'] ??
               profile['cref_or_registry'] ??
               '';
-          _photoUrlController.text = profile['photo_url'] ?? profile['avatar_url'] ?? '';
+          _photoUrlController.text =
+              profile['photo_url'] ?? profile['avatar_url'] ?? '';
           _publishInDirectory = profile['public_directory_enabled'] == true;
-          
+
           if (profile['specialties'] != null) {
             final specs = List<String>.from(profile['specialties']);
             _selectedSpecialties.clear();
@@ -72,7 +69,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Erro ao carregar perfil: $e');
+      debugPrint('Erro ao carregar perfil do treinador: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -101,7 +98,13 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
 
   void _showValidationError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(
+        content: Text(message, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+      ),
     );
   }
 
@@ -136,6 +139,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             duration: const Duration(seconds: 2),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
@@ -174,15 +178,16 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
             _bioController.text.trim().isEmpty ||
             !_crefController.text.trim().toUpperCase().startsWith('CREF'))) {
       _showValidationError(
-        'Para publicar, informe username, biografia e registro CREF válido.',
+        'Para publicar no diretório, informe username, biografia e registro CREF válido (ex: CREF 012345-G/SP).',
       );
       return;
     }
+
     setState(() => _isSaving = true);
     try {
       final supabase = Supabase.instance.client;
       final user = supabase.auth.currentUser;
-      if (user == null) throw Exception('Usuário não logado');
+      if (user == null) throw Exception('Usuário não autenticado');
 
       final photoVal = _photoUrlController.text.trim();
       final crefVal = _crefController.text.trim();
@@ -232,7 +237,6 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
             margin: const EdgeInsets.all(16),
           ),
         );
-        
         _leaveProfileSetup();
       }
     } catch (e) {
@@ -251,12 +255,12 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(message, style: const TextStyle(color: Colors.white)),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              margin: const EdgeInsets.all(16),
-            ),
+            content: Text(message, style: const TextStyle(color: Colors.white)),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
+          ),
         );
       }
     } finally {
@@ -266,426 +270,774 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final padding = MediaQuery.paddingOf(context);
+    final isDark = MetaColors.isDark(context);
+    final textTheme = Theme.of(context).textTheme;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
+      value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarIconBrightness: Brightness.dark,
+        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: colorScheme.surface,
-        extendBody: true,
-        extendBodyBehindAppBar: true,
-        body: Stack(
-          children: [
-            CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                SliverAppBar(
-                  backgroundColor: Colors.transparent,
-                  surfaceTintColor: Colors.transparent,
-                  pinned: true,
-                  elevation: 0,
-                  scrolledUnderElevation: 0,
-                  automaticallyImplyLeading: false,
-                  titleSpacing: 16,
-                  title: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      OneUiFloatingCircleButton(
-                        icon: Icons.arrow_back_ios_new_rounded,
-                        tooltip: 'Voltar',
-                        onTap: _leaveProfileSetup,
-                      ),
-                      Text(
-                        'Montar Vitrine',
-                        style: TextStyle(
-                          color: MetaColors.text(context),
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      OneUiFloatingPillAction(
-                        label: 'Pular',
-                        onTap: _leaveProfileSetup,
-                      ),
-                    ],
+        backgroundColor: MetaColors.bg(context),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          centerTitle: true,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back_ios_new_rounded, color: MetaColors.text(context), size: 20),
+            tooltip: 'Voltar',
+            onPressed: _leaveProfileSetup,
+          ),
+          title: Text(
+            'Montar Vitrine',
+            style: TextStyle(
+              color: MetaColors.text(context),
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.4,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: _leaveProfileSetup,
+              child: Text(
+                'Pular',
+                style: TextStyle(
+                  color: MetaColors.subtext(context),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
+        bottomNavigationBar: _buildBottomConfirmBar(context),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: MetaColors.emerald))
+            : SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 1. Hero Card One UI 7
+                    _buildHeroHeader(context),
+                    const SizedBox(height: 16),
+
+                    // 2. Foto de Perfil & Avatar
+                    _buildAvatarCard(context),
+                    const SizedBox(height: 16),
+
+                    // 3. Endereço da Vitrine (URL & Slug)
+                    _buildUrlCard(context),
+                    const SizedBox(height: 16),
+
+                    // 4. Credencial CREF & Diretório
+                    _buildCrefCard(context),
+                    const SizedBox(height: 16),
+
+                    // 5. Especialidades
+                    _buildSpecialtiesCard(context),
+                    const SizedBox(height: 16),
+
+                    // 6. Biografia
+                    _buildBioCard(context),
+                    const SizedBox(height: 16),
+
+                    // 7. WhatsApp & Robô Assistente
+                    _buildContactCard(context),
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildHeroHeader(BuildContext context) {
+    return MetaCard(
+      padding: const EdgeInsets.all(18),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: MetaColors.emerald.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
+            ),
+            child: const Icon(Icons.storefront_rounded, color: MetaColors.emerald, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sua Vitrine Pública',
+                  style: TextStyle(
+                    color: MetaColors.text(context),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
                   ),
                 ),
-                SliverPadding(
-                  padding: EdgeInsets.only(
-                    left: 24,
-                    right: 24,
-                    top: 16,
-                    bottom: padding.bottom + 120, // Extra space for the floating button
-                  ),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      if (index == 0) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Configure seu perfil público. Estes dados serão visíveis na sua Landing Page.',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            const SizedBox(height: 32),
-                            _buildSectionTitle(context, 'Nome de Usuário (Sua URL)'),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _usernameController,
-                              textCapitalization: TextCapitalization.none,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                  RegExp(r'[a-z0-9_.-]'),
-                                ),
-                              ],
-                              maxLength: 30,
-                              decoration: InputDecoration(
-                                hintText: 'ex: joao-silva',
-                                helperText:
-                                    '3 a 30 caracteres; use letras minúsculas, números, ponto, hífen ou sublinhado.',
-                                prefixText: 'shaipados.com/#/prof/',
-                                prefixStyle: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold),
-                                filled: true,
-                                fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  borderSide: BorderSide.none,
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            _buildSectionTitle(context, 'Foto de Perfil ou Marca da Vitrine'),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Tire uma foto pela câmera, escolha da sua galeria ou use um dos nossos 8 avatares exclusivos de treinador.',
-                              style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
-                            ),
-                            const SizedBox(height: 14),
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-                                ),
-                              ),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    children: [
-                                      ValueListenableBuilder<TextEditingValue>(
-                                        valueListenable: _photoUrlController,
-                                        builder: (context, val, _) {
-                                          final url = val.text.trim();
-                                          final hasValidUrl = url.isNotEmpty;
-                                          return GestureDetector(
-                                            onTap: () async {
-                                              final selected = await AvatarSelectorSheet.show(
-                                                context: context,
-                                                isTrainer: true,
-                                                currentUrl: url,
-                                              );
-                                              if (selected != null && mounted) {
-                                                await _handleAvatarSelected(selected);
-                                              }
-                                            },
-                                            child: Container(
-                                              width: 72,
-                                              height: 72,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: MetaColors.surfaceHighlight,
-                                                border: Border.all(
-                                                  color: MetaColors.emerald,
-                                                  width: 2.5,
-                                                ),
-                                              ),
-                                              clipBehavior: Clip.antiAlias,
-                                              child: hasValidUrl
-                                                  ? (url.startsWith('assets/')
-                                                      ? Image.asset(url, fit: BoxFit.cover)
-                                                      : Image.network(
-                                                          url,
-                                                          fit: BoxFit.cover,
-                                                          errorBuilder: (_, _, _) => const Icon(
-                                                            Icons.broken_image_rounded,
-                                                            color: MetaColors.textSecondary,
-                                                            size: 32,
-                                                          ),
-                                                        ))
-                                                  : const Icon(
-                                                      Icons.add_a_photo_outlined,
-                                                      color: MetaColors.emerald,
-                                                      size: 30,
-                                                    ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            ElevatedButton.icon(
-                                              onPressed: () async {
-                                                final selected = await AvatarSelectorSheet.show(
-                                                  context: context,
-                                                  isTrainer: true,
-                                                  currentUrl: _photoUrlController.text.trim(),
-                                                );
-                                                if (selected != null && mounted) {
-                                                  await _handleAvatarSelected(selected);
-                                                }
-                                              },
-                                              icon: const Icon(Icons.add_photo_alternate_rounded, size: 18),
-                                              label: const Text('Escolher Imagem / Avatar'),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: MetaColors.emerald,
-                                                foregroundColor: Colors.white,
-                                                elevation: 0,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(12),
-                                                ),
-                                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                              ),
-                                            ),
-                                            const SizedBox(height: 6),
-                                            Text(
-                                              'Câmera • Galeria • 8 Avatares',
-                                              style: theme.textTheme.bodySmall?.copyWith(
-                                                color: colorScheme.onSurfaceVariant,
-                                                fontSize: 11,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  TextField(
-                                    controller: _photoUrlController,
-                                    keyboardType: TextInputType.url,
-                                    decoration: InputDecoration(
-                                      labelText: 'Link direto da imagem (opcional)',
-                                      hintText: 'https://exemplo.com/minha-foto.jpg',
-                                      filled: true,
-                                      fillColor: colorScheme.surface.withValues(alpha: 0.5),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        borderSide: BorderSide.none,
-                                      ),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            _buildSectionTitle(context, 'Biografia'),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _bioController,
-                              maxLines: 5,
-                              maxLength: 500,
-                              decoration: InputDecoration(
-                                hintText:
-                                    'Conte um pouco sobre sua trajetória...',
-                                filled: true,
-                                fillColor: colorScheme.surfaceContainerHighest
-                                    .withValues(alpha: 0.3),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  borderSide: BorderSide.none,
-                                ),
-                                contentPadding: const EdgeInsets.all(16),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            _buildSectionTitle(context, 'Registro CREF'),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _crefController,
-                              decoration: InputDecoration(
-                                hintText: 'CREF 00000-G/UF',
-                                helperText: 'Exibido no diretório público para identificação profissional.',
-                                filled: true,
-                                fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  borderSide: BorderSide.none,
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            SwitchListTile.adaptive(
-                              contentPadding: EdgeInsets.zero,
-                              value: _publishInDirectory,
-                              activeTrackColor: colorScheme.primary,
-                              title: const Text('Exibir no diretório Shaipados'),
-                              subtitle: const Text('Seu perfil e registro CREF poderão ser encontrados publicamente.'),
-                              onChanged: (value) => setState(() => _publishInDirectory = value),
-                            ),
-                            const SizedBox(height: 16),
-                            _buildSectionTitle(context, 'Especialidades'),
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children:
-                                  _specialties.map((specialty) {
-                                    final isSelected = _selectedSpecialties
-                                        .contains(specialty);
-                                    return FilterChip(
-                                      label: Text(specialty),
-                                      selected: isSelected,
-                                      onSelected: (selected) {
-                                        setState(() {
-                                          if (selected) {
-                                            _selectedSpecialties.add(specialty);
-                                          } else {
-                                            _selectedSpecialties.remove(
-                                              specialty,
-                                            );
-                                          }
-                                        });
-                                      },
-                                      backgroundColor: colorScheme
-                                          .surfaceContainerHighest
-                                          .withValues(alpha: 0.3),
-                                      selectedColor:
-                                          colorScheme.primaryContainer,
-                                      labelStyle: TextStyle(
-                                        color:
-                                            isSelected
-                                                ? colorScheme.onPrimaryContainer
-                                                : colorScheme.onSurfaceVariant,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        side: BorderSide.none,
-                                      ),
-                                      elevation: 0,
-                                      showCheckmark: false,
-                                    );
-                                  }).toList(),
-                            ),
-                            const SizedBox(height: 24),
-                            _buildSectionTitle(context, 'WhatsApp Público (Atendimento)'),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _whatsappController,
-                              keyboardType: TextInputType.phone,
-                              decoration: InputDecoration(
-                                hintText: '(11) 90000-0000',
-                                prefixIcon: Icon(
-                                  Icons.phone,
-                                  color: colorScheme.primary,
-                                ),
-                                filled: true,
-                                fillColor: colorScheme.surfaceContainerHighest
-                                    .withValues(alpha: 0.3),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  borderSide: BorderSide.none,
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 16,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 32),
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: colorScheme.secondaryContainer.withValues(alpha: 0.5),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.qr_code, color: colorScheme.onSecondaryContainer, size: 32),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text('Robô Assistente', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                                        Text('Vincule o WhatsApp para disparar notificações.', style: theme.textTheme.bodySmall),
-                                      ],
-                                    ),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => WhatsappConnectionScreen(
-                                            initialPhone: _whatsappController.text,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    child: const Text('Vincular'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        );
-                      }
-                      return null;
-                    }, childCount: 1),
+                const SizedBox(height: 4),
+                Text(
+                  'Personalize seu link exclusivo, apresente suas credenciais e receba novos alunos direto no WhatsApp.',
+                  style: TextStyle(
+                    color: MetaColors.subtext(context),
+                    fontSize: 13,
+                    height: 1.4,
                   ),
                 ),
               ],
             ),
-            Positioned(
-              left: 24,
-              right: 24,
-              bottom: padding.bottom > 0 ? padding.bottom + 8 : 24,
-              child: OneUiFloatingConfirmBar(
-                cancelLabel: 'Cancelar',
-                confirmLabel: 'Salvar Vitrine',
-                isLoading: _isSaving,
-                onCancel: _leaveProfileSetup,
-                onConfirm: _isSaving || _isLoading ? null : _saveProfile,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildSectionTitle(BuildContext context, String title) {
-    return Text(
-      title,
-      style: Theme.of(
-        context,
-      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+  Widget _buildAvatarCard(BuildContext context) {
+    return MetaCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const MetaSectionTitle(
+            title: 'Foto ou Marca da Vitrine',
+            subtitle: 'Transmita autoridade com sua foto profissional ou logotipo.',
+            fontSize: 16,
+          ),
+          const SizedBox(height: 18),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _photoUrlController,
+                builder: (context, val, _) {
+                  final url = val.text.trim();
+                  final hasValidUrl = url.isNotEmpty;
+                  return GestureDetector(
+                    onTap: () async {
+                      final selected = await AvatarSelectorSheet.show(
+                        context: context,
+                        isTrainer: true,
+                        currentUrl: url,
+                      );
+                      if (selected != null && mounted) {
+                        await _handleAvatarSelected(selected);
+                      }
+                    },
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 76,
+                          height: 76,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: MetaColors.highlight(context),
+                            border: Border.all(
+                              color: MetaColors.emerald,
+                              width: 2.5,
+                            ),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: hasValidUrl
+                              ? (url.startsWith('assets/')
+                                  ? Image.asset(url, fit: BoxFit.cover)
+                                  : Image.network(
+                                      url,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => const Icon(
+                                        Icons.broken_image_rounded,
+                                        color: MetaColors.textSecondary,
+                                        size: 32,
+                                      ),
+                                    ))
+                              : const Icon(
+                                  Icons.person_rounded,
+                                  color: MetaColors.emerald,
+                                  size: 38,
+                                ),
+                        ),
+                        Positioned(
+                          right: -2,
+                          bottom: -2,
+                          child: Container(
+                            width: 26,
+                            height: 26,
+                            decoration: BoxDecoration(
+                              color: MetaColors.emerald,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: MetaColors.card(context),
+                                width: 2,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt_rounded,
+                              color: Colors.white,
+                              size: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SquircleButton(
+                      label: 'Escolher Imagem / Avatar',
+                      icon: Icons.add_photo_alternate_rounded,
+                      isPrimary: true,
+                      height: 44,
+                      fontSize: 13.5,
+                      onPressed: () async {
+                        final selected = await AvatarSelectorSheet.show(
+                          context: context,
+                          isTrainer: true,
+                          currentUrl: _photoUrlController.text.trim(),
+                        );
+                        if (selected != null && mounted) {
+                          await _handleAvatarSelected(selected);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.check_circle_outline_rounded, size: 14, color: MetaColors.emerald),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Câmera • Galeria • 8 Avatares',
+                          style: TextStyle(
+                            color: MetaColors.subtext(context),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _photoUrlController,
+            keyboardType: TextInputType.url,
+            style: TextStyle(color: MetaColors.text(context), fontSize: 13),
+            decoration: InputDecoration(
+              labelText: 'Link direto da imagem (opcional)',
+              labelStyle: TextStyle(color: MetaColors.subtext(context), fontSize: 13),
+              hintText: 'https://exemplo.com/minha-foto.jpg',
+              hintStyle: TextStyle(color: MetaColors.subtext(context).withValues(alpha: 0.5), fontSize: 13),
+              prefixIcon: Icon(Icons.link_rounded, color: MetaColors.subtext(context), size: 18),
+              filled: true,
+              fillColor: MetaColors.highlight(context),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: MetaColors.cardBorder(context), width: 1),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: MetaColors.cardBorder(context), width: 1),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: MetaColors.emerald, width: 1.5),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUrlCard(BuildContext context) {
+    return MetaCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const MetaSectionTitle(
+            title: 'Endereço da sua Vitrine (URL)',
+            subtitle: 'Escolha seu slug personalizado para divulgação nas redes.',
+            fontSize: 16,
+          ),
+          const SizedBox(height: 14),
+
+          // Domain Pill Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: MetaColors.emerald.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.25)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.language_rounded, size: 15, color: MetaColors.emerald),
+                const SizedBox(width: 8),
+                const Text(
+                  'shaipados.com/#/prof/',
+                  style: TextStyle(
+                    color: MetaColors.emerald,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Slug Input Field
+          TextField(
+            controller: _usernameController,
+            textCapitalization: TextCapitalization.none,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[a-z0-9_.-]')),
+            ],
+            maxLength: 30,
+            style: TextStyle(color: MetaColors.text(context), fontSize: 15, fontWeight: FontWeight.w600),
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              prefixIcon: Padding(
+                padding: const EdgeInsets.only(left: 14, right: 8),
+                child: Text(
+                  '@',
+                  style: TextStyle(
+                    color: MetaColors.emerald,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+              hintText: 'joao-silva',
+              hintStyle: TextStyle(color: MetaColors.subtext(context).withValues(alpha: 0.5)),
+              helperText: 'De 3 a 30 caracteres (letras minúsculas, números, ponto, hífen).',
+              helperStyle: TextStyle(color: MetaColors.subtext(context), fontSize: 11.5),
+              filled: true,
+              fillColor: MetaColors.highlight(context),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: MetaColors.cardBorder(context), width: 1),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: MetaColors.cardBorder(context), width: 1),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: MetaColors.emerald, width: 1.5),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            ),
+          ),
+
+          // Live Link Preview
+          if (_usernameController.text.trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: MetaColors.highlight(context),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: MetaColors.cardBorder(context)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.link_rounded, size: 16, color: MetaColors.accentBlue),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'https://shaipados-labs.web.app/#/prof/${_usernameController.text.trim().toLowerCase()}',
+                      style: const TextStyle(
+                        color: MetaColors.accentBlue,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.underline,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.copy_rounded, size: 16, color: MetaColors.textSecondary),
+                    tooltip: 'Copiar link',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: () {
+                      final url = 'https://shaipados-labs.web.app/#/prof/${_usernameController.text.trim().toLowerCase()}';
+                      Clipboard.setData(ClipboardData(text: url));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Link da vitrine copiado para a área de transferência!'),
+                          backgroundColor: MetaColors.emerald,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCrefCard(BuildContext context) {
+    return MetaCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const MetaSectionTitle(
+            title: 'Credencial CREF & Diretório',
+            subtitle: 'Validação profissional exigida para exibição e confiança pública.',
+            fontSize: 16,
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _crefController,
+            textCapitalization: TextCapitalization.characters,
+            style: TextStyle(color: MetaColors.text(context), fontSize: 14, fontWeight: FontWeight.w600),
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.verified_user_outlined, color: MetaColors.emerald, size: 20),
+              labelText: 'Registro Profissional CREF',
+              labelStyle: TextStyle(color: MetaColors.subtext(context), fontSize: 13),
+              hintText: 'CREF 000000-G/UF',
+              hintStyle: TextStyle(color: MetaColors.subtext(context).withValues(alpha: 0.5)),
+              helperText: 'Exibido publicamente para garantir conformidade legal.',
+              helperStyle: TextStyle(color: MetaColors.subtext(context), fontSize: 11.5),
+              filled: true,
+              fillColor: MetaColors.highlight(context),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: MetaColors.cardBorder(context), width: 1),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: MetaColors.cardBorder(context), width: 1),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: MetaColors.emerald, width: 1.5),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: MetaColors.highlight(context),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: MetaColors.cardBorder(context)),
+            ),
+            child: SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              value: _publishInDirectory,
+              activeTrackColor: MetaColors.emerald,
+              title: Text(
+                'Exibir no Diretório Shaipados',
+                style: TextStyle(
+                  color: MetaColors.text(context),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              subtitle: Text(
+                'Alunos poderão encontrar seu perfil na busca de treinadores certificados.',
+                style: TextStyle(
+                  color: MetaColors.subtext(context),
+                  fontSize: 12,
+                  height: 1.35,
+                ),
+              ),
+              onChanged: (value) => setState(() => _publishInDirectory = value),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpecialtiesCard(BuildContext context) {
+    return MetaCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const MetaSectionTitle(
+            title: 'Especialidades de Atuação',
+            subtitle: 'Destaque as áreas em que você possui maior experiência.',
+            fontSize: 16,
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _specialties.map((specialty) {
+              final isSelected = _selectedSpecialties.contains(specialty);
+              return FilterChip(
+                label: Text(
+                  specialty,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : MetaColors.text(context),
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+                selected: isSelected,
+                onSelected: (selected) {
+                  setState(() {
+                    if (selected) {
+                      _selectedSpecialties.add(specialty);
+                    } else {
+                      _selectedSpecialties.remove(specialty);
+                    }
+                  });
+                },
+                backgroundColor: MetaColors.highlight(context),
+                selectedColor: MetaColors.emerald,
+                checkmarkColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: isSelected ? MetaColors.emerald : MetaColors.cardBorder(context),
+                    width: 1,
+                  ),
+                ),
+                elevation: 0,
+                showCheckmark: isSelected,
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBioCard(BuildContext context) {
+    return MetaCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const MetaSectionTitle(
+            title: 'Biografia do Treinador',
+            subtitle: 'Conte um pouco sobre sua formação, metodologia e histórico.',
+            fontSize: 16,
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _bioController,
+            maxLines: 4,
+            maxLength: 500,
+            style: TextStyle(color: MetaColors.text(context), fontSize: 14, height: 1.4),
+            decoration: InputDecoration(
+              hintText: 'Ex: Especialista em hipertrofia e emagrecimento com mais de 8 anos de experiência...',
+              hintStyle: TextStyle(color: MetaColors.subtext(context).withValues(alpha: 0.5)),
+              filled: true,
+              fillColor: MetaColors.highlight(context),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: MetaColors.cardBorder(context), width: 1),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: MetaColors.cardBorder(context), width: 1),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: MetaColors.emerald, width: 1.5),
+              ),
+              contentPadding: const EdgeInsets.all(14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContactCard(BuildContext context) {
+    return MetaCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const MetaSectionTitle(
+            title: 'WhatsApp de Atendimento & Notificações',
+            subtitle: 'Número público pelo qual os alunos entrarão em contato.',
+            fontSize: 16,
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _whatsappController,
+            keyboardType: TextInputType.phone,
+            style: TextStyle(color: MetaColors.text(context), fontSize: 15, fontWeight: FontWeight.w600),
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.chat_bubble_outline_rounded, color: MetaColors.emerald, size: 20),
+              labelText: 'WhatsApp do Treinador',
+              labelStyle: TextStyle(color: MetaColors.subtext(context), fontSize: 13),
+              hintText: '(11) 98765-4321',
+              hintStyle: TextStyle(color: MetaColors.subtext(context).withValues(alpha: 0.5)),
+              filled: true,
+              fillColor: MetaColors.highlight(context),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: MetaColors.cardBorder(context), width: 1),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: MetaColors.cardBorder(context), width: 1),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: MetaColors.emerald, width: 1.5),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Robô Assistente Tile
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: MetaColors.highlight(context),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: MetaColors.cardBorder(context)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: MetaColors.emerald.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.smart_toy_outlined, color: MetaColors.emerald, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Robô Assistente 24h',
+                        style: TextStyle(
+                          color: MetaColors.text(context),
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Envios automáticos de fichas e triagem com custo zero de tokens.',
+                        style: TextStyle(
+                          color: MetaColors.subtext(context),
+                          fontSize: 11.5,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => WhatsappConnectionScreen(
+                          initialPhone: _whatsappController.text,
+                        ),
+                      ),
+                    );
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor: MetaColors.emerald,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                  child: const Text('Vincular'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomConfirmBar(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: MetaColors.card(context),
+        border: Border(
+          top: BorderSide(color: MetaColors.cardBorder(context), width: 1.0),
+        ),
+      ),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 12,
+        bottom: MediaQuery.paddingOf(context).bottom > 0
+            ? MediaQuery.paddingOf(context).bottom + 6
+            : 16,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: SquircleButton(
+              label: 'Cancelar',
+              isPrimary: false,
+              height: 48,
+              onPressed: _isSaving ? null : _leaveProfileSetup,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 3,
+            child: SquircleButton(
+              label: 'Salvar Vitrine',
+              icon: Icons.check_rounded,
+              isPrimary: true,
+              isLoading: _isSaving,
+              height: 48,
+              onPressed: _isSaving || _isLoading ? null : _saveProfile,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
-
-
-
-
-
-
-
-

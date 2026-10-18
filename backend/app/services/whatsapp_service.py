@@ -188,11 +188,12 @@ class WhatsAppService:
         if self.provider == "mock":
             return {"status": "success", "mode": "mock", "instanceName": instance_name, "number": number, "text": text}
         target_number = await self.resolve_whatsapp_number(instance_name, number)
+        clean_target = "".join(c for c in (target_number or number or "") if c.isdigit())
         async with httpx.AsyncClient(timeout=35) as client:
             r = await client.post(
                 f"{self._base()}/message/sendText/{instance_name}",
                 headers=self._headers(),
-                json={"number": target_number, "text": text},
+                json={"number": clean_target, "text": text},
             )
             r.raise_for_status()
             return r.json()
