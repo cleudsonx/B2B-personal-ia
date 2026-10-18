@@ -34,6 +34,7 @@ import 'core/widgets/pwa_update_wrapper.dart';
 import 'core/widgets/workout_guide_modal.dart';
 import 'core/widgets/app_version_footer.dart';
 import 'core/widgets/meta_components.dart';
+import 'core/utils/pwa_navigation_state.dart';
 
 import 'package:flutter/services.dart';
 import 'features/invite/invite_landing_screen.dart';
@@ -207,10 +208,22 @@ class _MainShellScreenState extends State<MainShellScreen> {
     _currentIndex = widget.initialIndex;
     _activeRole = widget.activeRole;
     if (!_isTrainer) {
+      if (widget.initialIndex == 0) {
+        _restoreStudentTab();
+      }
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           AppVersionFooter.checkAndShowAutoModal(context);
         }
+      });
+    }
+  }
+
+  Future<void> _restoreStudentTab() async {
+    final savedTab = await PwaNavigationState.getStudentTab();
+    if (savedTab != null && mounted) {
+      setState(() {
+        _currentIndex = savedTab.clamp(0, 3);
       });
     }
   }
@@ -452,7 +465,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
                         return Container(
                           margin: const EdgeInsets.only(bottom: 6),
                           child: InkWell(
-                            onTap: () => setState(() => _currentIndex = idx),
+                            onTap: () {
+                              setState(() => _currentIndex = idx);
+                              if (!_isTrainer) PwaNavigationState.saveStudentTab(idx);
+                            },
                             borderRadius: BorderRadius.circular(12),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 180),
@@ -906,7 +922,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
         ),
         bottomNavigationBar: OneUiFloatingNavBar(
           selectedIndex: _currentIndex,
-          onDestinationSelected: (idx) => setState(() => _currentIndex = idx),
+          onDestinationSelected: (idx) {
+            setState(() => _currentIndex = idx);
+            if (!_isTrainer) PwaNavigationState.saveStudentTab(idx);
+          },
           items: navItems
               .map(
                 (item) => OneUiNavItem(

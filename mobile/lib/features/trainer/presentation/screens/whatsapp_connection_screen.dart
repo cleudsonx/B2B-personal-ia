@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/meta_components.dart';
 import '../../../../services/auth_service.dart';
 import '../../../../core/config/app_config.dart';
+import '../../../../core/utils/pwa_navigation_state.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class WhatsappConnectionScreen extends StatefulWidget {
@@ -33,6 +34,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
   @override
   void initState() {
     super.initState();
+    PwaNavigationState.saveActiveSubscreen('whatsapp_connection');
     final initialPhone = widget.initialPhone?.trim();
     if (initialPhone != null && initialPhone.isNotEmpty) {
       _phoneController.text = _stripLeadingDdi55(initialPhone);
@@ -42,6 +44,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
 
   @override
   void dispose() {
+    PwaNavigationState.clearActiveSubscreen();
     _phoneController.dispose();
     super.dispose();
   }

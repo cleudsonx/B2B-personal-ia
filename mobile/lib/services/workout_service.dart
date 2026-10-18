@@ -1120,7 +1120,7 @@ class WorkoutService {
           if (fullName != null) 'full_name': fullName.trim(),
           if (phone != null) ...{
             'phone': phone.trim(),
-            'whatsapp': phone.trim(),
+            'public_whatsapp': phone.trim(),
           },
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         };

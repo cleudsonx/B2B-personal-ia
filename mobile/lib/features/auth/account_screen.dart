@@ -192,7 +192,6 @@ class _AccountScreenState extends State<AccountScreen> {
         if (uid != null) {
           final payload = {
             'phone': updated,
-            'whatsapp': updated,
             'public_whatsapp': updated,
             'updated_at': DateTime.now().toUtc().toIso8601String(),
           };

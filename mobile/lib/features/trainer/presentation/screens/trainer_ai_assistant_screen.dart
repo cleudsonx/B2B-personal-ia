@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/meta_components.dart';
+import '../../../../core/utils/pwa_navigation_state.dart';
 import '../../../../models/subscription_model.dart';
 import '../../../../services/subscription_service.dart';
 import '../../../subscription/subscription_screen.dart';
@@ -36,7 +37,14 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
   @override
   void initState() {
     super.initState();
+    PwaNavigationState.saveActiveSubscreen('ai_assistant');
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    PwaNavigationState.clearActiveSubscreen();
+    super.dispose();
   }
 
   Future<void> _loadData() async {

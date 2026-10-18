@@ -12,6 +12,12 @@ import 'trainer_social_screen.dart';
 import 'trainer_business_screen.dart';
 import '../../../../core/widgets/app_version_footer.dart';
 
+import '../../../../core/utils/pwa_navigation_state.dart';
+import 'trainer_profile_setup_screen.dart';
+import 'whatsapp_connection_screen.dart';
+import '../../../subscription/subscription_screen.dart';
+import 'trainer_ai_assistant_screen.dart';
+
 /// Layout base de navegação do aplicativo do Personal Trainer.
 ///
 /// Implementa a fundação Edge-to-Edge nativa com o Design System da Meta
@@ -39,11 +45,50 @@ class _TrainerMainLayoutState extends State<TrainerMainLayout> {
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    _restoreNavigationState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         AppVersionFooter.checkAndShowAutoModal(context);
       }
     });
+  }
+
+  Future<void> _restoreNavigationState() async {
+    // 1. Restaura a última aba caso o layout tenha subido no índice padrão
+    if (widget.initialIndex == 0) {
+      final savedTab = await PwaNavigationState.getTrainerTab();
+      if (savedTab != null && mounted) {
+        setState(() {
+          _currentIndex = savedTab.clamp(0, 4);
+        });
+      }
+    }
+
+    // 2. Restaura subtela ativa caso o usuário estivesse com ela aberta ao atualizar
+    final subscreen = await PwaNavigationState.consumeActiveSubscreen();
+    if (subscreen != null && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Widget? target;
+        switch (subscreen) {
+          case 'trainer_profile_setup':
+            target = const TrainerProfileSetupScreen();
+            break;
+          case 'whatsapp_connection':
+            target = const WhatsappConnectionScreen();
+            break;
+          case 'subscription':
+            target = const SubscriptionScreen();
+            break;
+          case 'ai_assistant':
+            target = const TrainerAiAssistantScreen();
+            break;
+        }
+        if (target != null) {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => target!));
+        }
+      });
+    }
   }
 
   void _onDestinationSelected(int index) {
@@ -54,6 +99,7 @@ class _TrainerMainLayoutState extends State<TrainerMainLayout> {
       setState(() {
         _currentIndex = index;
       });
+      PwaNavigationState.saveTrainerTab(index);
       widget.onTabChanged?.call(index);
     }
   }

@@ -39,31 +39,38 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.4.9',
-      buildNumber: 2026102893,
+      buildNumber: 2026102894,
       date: '18 de Outubro, 2026',
       summary:
-          'Ergonomia de Treino do Aluno (Frente 1 / Hevy), Redesign One UI 7 da Vitrine Pública e Diagnóstico Resiliente de WhatsApp.',
+          'Persistência Total da Vitrine Pública, Links Oficiais com Domínio shaipados.com e Restauração Automática de Navegação no PWA.',
       highlights: [
+        ChangelogItem(
+          icon: Icons.storefront_rounded,
+          title: 'Correção e Persistência da Vitrine',
+          description:
+              'Ajuste definitivo no salvamento da Vitrine Pública no Supabase, garantindo compatibilidade estrita com o banco e validações sem erros de schema.',
+          badge: 'VITRINE B2B',
+        ),
+        ChangelogItem(
+          icon: Icons.link_rounded,
+          title: 'Link Oficial shaipados.com',
+          description:
+              'Todos os links gerados, exibidos e copiados para divulgação nas redes sociais utilizam exclusivamente o domínio canônico shaipados.com/#/prof/@seu_username.',
+          badge: 'DOMÍNIO',
+        ),
+        ChangelogItem(
+          icon: Icons.restore_page_rounded,
+          title: 'Restauração de Contexto no PWA',
+          description:
+              'Ao aceitar uma atualização do app, o PWA restaura automaticamente a aba, recurso ou subtela em que o usuário estava navegando (ex: Montar Vitrine, WhatsApp, Treinos).',
+          badge: 'PWA UX',
+        ),
         ChangelogItem(
           icon: Icons.fitness_center_rounded,
           title: 'Ergonomia do Aluno (Filosofia Hevy)',
           description:
-              'Lista compacta de exercícios com resumo de alta densidade (séries × reps, músculo e EMG), atalho de 1 toque direto para o Focus Mode horizontal e espaçamento seguro contra sobreposição da barra flutuante.',
+              'Lista compacta de exercícios com resumo de alta densidade (séries × reps, músculo e EMG), atalho de 1 toque direto para o Focus Mode horizontal e espaçamento seguro.',
           badge: 'ALUNO UX',
-        ),
-        ChangelogItem(
-          icon: Icons.storefront_rounded,
-          title: 'Redesign da Vitrine no Padrão One UI 7',
-          description:
-              'Pílula de domínio exclusiva (shaipados.com/#/prof/), campo @slug sem invasão de texto, link clicável com cópia rápida e botões de ação fixos no rodapé com SafeArea.',
-          badge: 'ONE UI 7',
-        ),
-        ChangelogItem(
-          icon: Icons.chat_rounded,
-          title: 'Diagnóstico Detalhado do WhatsApp',
-          description:
-              'Tratamento avançado de erros na Evolution API ao disparar mensagem de teste, orientando com clareza caso a sessão no servidor precise de reconexão.',
-          badge: 'WHATSAPP',
         ),
       ],
     ),

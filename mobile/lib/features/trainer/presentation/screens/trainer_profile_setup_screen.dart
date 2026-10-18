@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/widgets/meta_components.dart';
 import '../../../../core/widgets/avatar_selector_sheet.dart';
+import '../../../../core/utils/pwa_navigation_state.dart';
 import '../../../../services/auth_service.dart';
 import 'trainer_main_layout.dart';
 import 'whatsapp_connection_screen.dart';
@@ -39,6 +40,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
   @override
   void initState() {
     super.initState();
+    PwaNavigationState.saveActiveSubscreen('trainer_profile_setup');
     _loadProfile();
   }
 
@@ -52,7 +54,6 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
           _bioController.text = profile['bio'] ?? '';
           _whatsappController.text = profile['public_whatsapp'] ??
               profile['phone'] ??
-              profile['whatsapp'] ??
               '';
           _crefController.text = profile['professional_document'] ??
               profile['cref_or_registry'] ??
@@ -77,6 +78,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
 
   @override
   void dispose() {
+    PwaNavigationState.clearActiveSubscreen();
     _usernameController.dispose();
     _crefController.dispose();
     _bioController.dispose();
@@ -86,6 +88,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
   }
 
   void _leaveProfileSetup() {
+    PwaNavigationState.clearActiveSubscreen();
     final navigator = Navigator.of(context);
     if (navigator.canPop()) {
       navigator.pop();
@@ -192,13 +195,11 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
       final photoVal = _photoUrlController.text.trim();
       final crefVal = _crefController.text.trim();
       final updates = <String, dynamic>{
-        'id': user.id,
         'username': username.isEmpty ? null : username,
         'bio': _bioController.text.trim().isEmpty
             ? null
             : _bioController.text.trim(),
         'phone': whatsappDigits.isEmpty ? null : whatsappDigits,
-        'whatsapp': whatsappDigits.isEmpty ? null : whatsappDigits,
         'public_whatsapp': whatsappDigits.isEmpty ? null : whatsappDigits,
         'professional_document': crefVal.isEmpty ? null : crefVal,
         'public_directory_enabled': _publishInDirectory,
@@ -208,7 +209,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       };
 
-      await supabase.from('profiles').upsert(updates);
+      await supabase.from('profiles').update(updates).eq('id', user.id);
 
       try {
         await supabase.auth.updateUser(
@@ -672,7 +673,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'https://shaipados-labs.web.app/#/prof/${_usernameController.text.trim().toLowerCase()}',
+                      'https://shaipados.com/#/prof/${_usernameController.text.trim().toLowerCase()}',
                       style: const TextStyle(
                         color: MetaColors.accentBlue,
                         fontSize: 12.5,
@@ -688,7 +689,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                     onPressed: () {
-                      final url = 'https://shaipados-labs.web.app/#/prof/${_usernameController.text.trim().toLowerCase()}';
+                      final url = 'https://shaipados.com/#/prof/${_usernameController.text.trim().toLowerCase()}';
                       Clipboard.setData(ClipboardData(text: url));
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
