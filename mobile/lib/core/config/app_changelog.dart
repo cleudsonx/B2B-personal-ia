@@ -39,7 +39,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.5.0',
-      buildNumber: 2026102897,
+      buildNumber: 2026102898,
       date: '18 de Outubro, 2026',
       summary:
           'Evolução 360° do Aluno (Antes vs. Agora), Raio-X da Anamnese na Prescrição One UI 7 e Trava Clínica Preventiva de Renovação.',

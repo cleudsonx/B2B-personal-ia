@@ -118,6 +118,7 @@
       window.triggerPwaReload = async function() {
         if (isRefreshing) return;
         isRefreshing = true;
+        window._pwaHasPendingUpdate = false;
 
         if (waitingWorker) {
           try {
@@ -141,8 +142,21 @@
           } catch (_) {}
         }
 
+        // Atualiza registros do service worker
+        if ('serviceWorker' in navigator) {
+          try {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (let reg of registrations) {
+              await reg.update();
+            }
+          } catch (_) {}
+        }
+
         setTimeout(() => {
-          window.location.reload();
+          // Força recarregamento limpo contornando o cache de disco do PWA
+          const currentUrl = new URL(window.location.href);
+          currentUrl.searchParams.set('_pwa_reload', Date.now());
+          window.location.replace(currentUrl.toString());
         }, 300);
       };
 
@@ -155,8 +169,8 @@
         });
 
         navigator.serviceWorker.ready.then((registration) => {
-          // Checa imediatamente se já há um worker esperando (no Android pode não ter controller prévio)
-          if (registration.waiting) {
+          // Checa imediatamente se já há um worker esperando (apenas se já houver controller)
+          if (registration.waiting && navigator.serviceWorker.controller) {
             notifyUpdateAvailable(registration.waiting);
           }
 
@@ -165,7 +179,8 @@
             if (!installingWorker) return;
 
             installingWorker.addEventListener('statechange', () => {
-              if (installingWorker.state === 'installed') {
+              // Apenas notifica se houver controller ativo (não é primeira instalação)
+              if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
                 notifyUpdateAvailable(installingWorker);
               }
             });
@@ -173,7 +188,7 @@
 
           const checkForUpdates = () => {
             registration.update().catch(() => {});
-            if (registration.waiting) {
+            if (registration.waiting && navigator.serviceWorker.controller) {
               notifyUpdateAvailable(registration.waiting);
             }
           };
@@ -189,45 +204,11 @@
         });
       }
 
-      // =========================================================================
-      // Camada 2: Version Heartbeat via version.json (Resiliente a iOS e Android WebAPK)
-      // =========================================================================
-      const APP_CURRENT_BUILD = 2026102897;
-
-      async function checkVersionFile() {
-        try {
-          const origin = window.location.origin || '';
-          const versionUrl = origin + '/version.json?_t=' + Date.now();
-          const res = await fetch(versionUrl, { cache: 'no-store' });
-          if (res.ok) {
-            const data = await res.json();
-            console.log('[PWA Heartbeat] Build local:', APP_CURRENT_BUILD, '| Servidor:', data?.build);
-            if (data && data.build && Number(data.build) > APP_CURRENT_BUILD) {
-              console.log('[PWA Heartbeat] Nova versão encontrada! Notificando Flutter.');
-              notifyUpdateAvailable(null);
-            }
-          }
-        } catch (err) {
-          console.warn('[PWA Heartbeat] Checagem version.json:', err);
-        }
-      }
-
-      // Função pública para teste imediato de interface:
-      // Pode ser chamada no console do navegador via: window.simulatePwaUpdate()
+      // Função pública para teste imediato de interface no console:
+      // Pode ser chamada via: window.simulatePwaUpdate()
       window.simulatePwaUpdate = function() {
         notifyUpdateAvailable(null);
       };
-
-      // Dispara verificação rápida após 1.5s de carregamento e a cada 45s
-      setTimeout(checkVersionFile, 1500);
-      setInterval(checkVersionFile, 45 * 1000);
-
-      window.addEventListener('focus', checkVersionFile);
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-          checkVersionFile();
-        }
-      });
       // =========================================================================
       // Suporte WebAuthn / Biometria de Plataforma (Face ID, Touch ID, Digital)
       // =========================================================================

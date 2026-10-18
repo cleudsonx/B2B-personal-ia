@@ -32,6 +32,16 @@ class PwaUpdateNotifier extends ChangeNotifier {
     }
   }
 
+  void reset() {
+    if (_updateAvailable || _dismissed) {
+      _updateAvailable = false;
+      _dismissed = false;
+      _newVersion = '';
+      _newBuild = 0;
+      notifyListeners();
+    }
+  }
+
   void dismiss() {
     _dismissed = true;
     notifyListeners();
@@ -115,8 +125,10 @@ class _PwaUpdateWrapperState extends State<PwaUpdateWrapper> with WidgetsBinding
 
         if (serverBuild > AppConfig.buildNumber) {
           PwaUpdateNotifier.instance.setUpdateAvailable(serverVersion, serverBuild);
-        } else if (PwaInstaller.hasPendingUpdate) {
-          PwaUpdateNotifier.instance.setUpdateAvailable(AppConfig.appVersion, AppConfig.buildNumber + 1);
+        } else {
+          // Servidor está na mesma versão (ou o cliente é mais recente).
+          // Cancela qualquer alerta espúrio para impedir loops infinitos.
+          PwaUpdateNotifier.instance.reset();
         }
       }
     } catch (_) {
@@ -229,7 +241,10 @@ class _PwaUpdateWrapperState extends State<PwaUpdateWrapper> with WidgetsBinding
             ),
             const SizedBox(width: 8),
             ElevatedButton(
-              onPressed: () => PwaInstaller.triggerPwaReload(),
+              onPressed: () {
+                PwaUpdateNotifier.instance.dismiss();
+                PwaInstaller.triggerPwaReload();
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: MetaColors.emerald,
                 foregroundColor: Colors.white,

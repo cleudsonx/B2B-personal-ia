@@ -1,6 +1,6 @@
 {
   "version": "1.5.0",
-  "build": 2026102897,
-  "updated_at": "2026-10-18T10:40:14.000874Z",
-  "notes": "Frente 2: One UI 7 Fase 2 (Cockpit & Gestao do Treinador), cards 24px super-arredondados, triagem por risco e micro-acoes tateis"
+  "build": 2026102898,
+  "updated_at": "2026-10-18T10:52:00.000000Z",
+  "notes": "Correcao definitiva no ciclo de vida do PWA Update Wrapper: eliminacao de loop de recarregamento e cache-busting aprimorado."
 }
