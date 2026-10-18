@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
@@ -340,5 +340,149 @@ async def simulate_whatsapp_message(
     }
 
 
+@router.get("/proactive-radar")
+async def get_proactive_radar(
+    min_inactive_days: int = 4,
+    user: Dict[str, Any] = Depends(get_current_trainer),
+):
+    """
+    FASE 7 — Consultor Ativo IA 2.0 (Coach Proativo no WhatsApp):
+    Retorna o Radar de Retenção Proativa (alunos ausentes > min_inactive_days) e o
+    Resumo Executivo Semanal da consultoria do Personal Trainer.
+    """
+    trainer_id = _trainer_id(user)
+    return await supabase_service.get_proactive_radar_and_weekly_digest(
+        trainer_id=trainer_id,
+        min_inactive_days=max(1, min_inactive_days),
+    )
 
 
+class ProactiveCheckinRequest(BaseModel):
+    student_ids: Optional[List[str]] = None
+    force: bool = False
+    min_inactive_days: int = 4
+
+
+@router.post("/proactive-checkin")
+async def trigger_proactive_checkin(
+    req: ProactiveCheckinRequest,
+    user: Dict[str, Any] = Depends(get_current_trainer),
+):
+    """
+    FASE 7 — Dispara Check-in Proativo de Retenção via Robô WhatsApp (individual ou em lote)
+    com trava anti-spam de 48h (a menos que force=True) e atualiza last_contacted_at.
+    """
+    trainer_id = _trainer_id(user)
+    radar_data = await supabase_service.get_proactive_radar_and_weekly_digest(
+        trainer_id=trainer_id,
+        min_inactive_days=max(1, req.min_inactive_days),
+    )
+    inactive_list = radar_data.get("inactive_students") or []
+
+    # Filtra pelos IDs solicitados se fornecidos
+    if req.student_ids:
+        target_set = set(req.student_ids)
+        targets = [s for s in inactive_list if s.get("id") in target_set]
+    else:
+        targets = inactive_list
+
+    sent_count = 0
+    skipped_48h_count = 0
+    fallback_count = 0
+    results = []
+
+    for st in targets:
+        sid = st.get("id") or ""
+        sname = st.get("full_name") or "Aluno"
+        sphone = st.get("phone") or ""
+        days_off = int(st.get("days_inactive") or 4)
+        streak = int(st.get("streak_days") or 0)
+        recent_48h = bool(st.get("recently_contacted_48h"))
+
+        if recent_48h and not req.force:
+            skipped_48h_count += 1
+            results.append({
+                "student_id": sid,
+                "student_name": sname,
+                "status": "skipped_48h_lock",
+            })
+            continue
+
+        res = await whatsapp_service.notify_inactivity_checkin(
+            trainer_id=trainer_id,
+            student_name=sname,
+            student_phone=sphone,
+            days_inactive=days_off,
+            streak_days=streak,
+        )
+        st_status = res.get("status") or "skipped"
+        msg_text = res.get("message_text") or ""
+
+        if st_status == "sent":
+            sent_count += 1
+            await supabase_service.mark_student_contacted(sid)
+            try:
+                await supabase_service.log_whatsapp_interaction(
+                    trainer_id=trainer_id,
+                    student_id=sid,
+                    student_name=sname,
+                    student_phone=sphone,
+                    channel="whatsapp_proactive",
+                    message_in=f"[Check-in Proativo >{days_off}d ausente]",
+                    message_out=msg_text,
+                    cost_type="free",
+                    tokens_used=0,
+                )
+            except Exception:
+                pass
+        elif st_status == "fallback_wa":
+            fallback_count += 1
+            await supabase_service.mark_student_contacted(sid)
+
+        results.append({
+            "student_id": sid,
+            "student_name": sname,
+            "phone": res.get("phone") or sphone,
+            "status": st_status,
+            "message_text": msg_text,
+        })
+
+    return {
+        "status": "success",
+        "sent_count": sent_count,
+        "skipped_48h_count": skipped_48h_count,
+        "fallback_count": fallback_count,
+        "results": results,
+    }
+
+
+class SendWeeklyDigestRequest(BaseModel):
+    trainer_phone: Optional[str] = None
+
+
+@router.post("/send-weekly-digest")
+async def send_weekly_digest(
+    req: SendWeeklyDigestRequest,
+    user: Dict[str, Any] = Depends(get_current_trainer),
+):
+    """
+    FASE 7 — Gera e envia o Resumo Executivo Semanal para o WhatsApp do próprio Personal Trainer.
+    """
+    trainer_id = _trainer_id(user)
+    radar_data = await supabase_service.get_proactive_radar_and_weekly_digest(trainer_id=trainer_id)
+    digest = radar_data.get("weekly_digest") or {}
+    digest_message = digest.get("digest_message") or ""
+    target_phone = req.trainer_phone or digest.get("trainer_phone") or ""
+
+    res = await whatsapp_service.send_weekly_digest_to_trainer(
+        trainer_id=trainer_id,
+        trainer_phone=target_phone,
+        digest_message=digest_message,
+    )
+
+    return {
+        "status": res.get("status") or "fallback_wa",
+        "sent_via_evolution": res.get("status") == "sent",
+        "trainer_phone": res.get("phone") or target_phone,
+        "digest_message": digest_message,
+    }

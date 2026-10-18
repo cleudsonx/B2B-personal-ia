@@ -2200,6 +2200,290 @@ class SupabaseService:
             "free_interactions_ratio": 1.0 if not logs else sum(1 for l in logs if l.get("cost_type") == "free") / len(logs),
         }
 
+    async def get_student_latest_biohub(self, client_id: str) -> Dict[str, Any]:
+        """Retorna os dados antropométricos mais recentes (Peso, Altura, IMC, BF%, Massa e Meta) do aluno."""
+        c_uuid = to_valid_uuid_str(client_id)
+        client = await self.get_client()
+
+        weight_kg: Optional[float] = None
+        height_cm: Optional[float] = None
+        body_fat_pct: Optional[float] = None
+        muscle_mass_kg: Optional[float] = None
+        objective: str = "Hipertrofia e Saúde"
+        recorded_at: Optional[str] = None
+
+        if client and is_valid_uuid(c_uuid):
+            try:
+                m_res = await client.table("client_metrics")\
+                    .select("weight_kg, height_cm, body_fat_pct, muscle_mass_kg, recorded_at")\
+                    .eq("client_id", c_uuid)\
+                    .order("recorded_at", desc=True)\
+                    .limit(1)\
+                    .execute()
+                if m_res and m_res.data:
+                    row = m_res.data[0]
+                    if row.get("weight_kg") is not None:
+                        weight_kg = float(row["weight_kg"])
+                    if row.get("height_cm") is not None:
+                        height_cm = float(row["height_cm"])
+                    if row.get("body_fat_pct") is not None:
+                        body_fat_pct = float(row["body_fat_pct"])
+                    if row.get("muscle_mass_kg") is not None:
+                        muscle_mass_kg = float(row["muscle_mass_kg"])
+                    recorded_at = row.get("recorded_at")
+            except Exception as e:
+                logger.debug(f"[get_student_latest_biohub] client_metrics fallback: {e}")
+
+            try:
+                p_res = await client.table("profiles")\
+                    .select("weight_kg, height_cm")\
+                    .eq("id", c_uuid)\
+                    .maybe_single()\
+                    .execute()
+                if p_res and p_res.data:
+                    if weight_kg is None and p_res.data.get("weight_kg") is not None:
+                        weight_kg = float(p_res.data["weight_kg"])
+                    if height_cm is None and p_res.data.get("height_cm") is not None:
+                        height_cm = float(p_res.data["height_cm"])
+            except Exception as e:
+                logger.debug(f"[get_student_latest_biohub] profiles fallback: {e}")
+
+            try:
+                anam = await self.get_student_anamnesis(c_uuid)
+                if anam:
+                    if anam.get("objective"):
+                        objective = str(anam["objective"])
+                    if weight_kg is None and anam.get("weight_kg") is not None:
+                        weight_kg = float(anam["weight_kg"])
+                    if height_cm is None and anam.get("height_cm") is not None:
+                        height_cm = float(anam["height_cm"])
+            except Exception:
+                pass
+
+        bmi: Optional[float] = None
+        bmi_category: str = "Não calculado"
+        if weight_kg and height_cm and height_cm > 40:
+            h_m = height_cm / 100.0
+            bmi = round(weight_kg / (h_m * h_m), 1)
+            if bmi < 18.5:
+                bmi_category = "Abaixo do peso"
+            elif bmi < 25.0:
+                bmi_category = "Peso ideal"
+            elif bmi < 30.0:
+                bmi_category = "Sobrepeso"
+            else:
+                bmi_category = "Obesidade"
+
+        return {
+            "weight_kg": weight_kg,
+            "height_cm": height_cm,
+            "bmi": bmi,
+            "bmi_category": bmi_category,
+            "body_fat_pct": body_fat_pct,
+            "muscle_mass_kg": muscle_mass_kg,
+            "objective": objective,
+            "recorded_at": recorded_at,
+        }
+
+    async def mark_student_contacted(self, student_id: str) -> bool:
+        """Atualiza last_contacted_at do aluno no Supabase (trava anti-spam 48h e rastreio de retenção)."""
+        s_uuid = to_valid_uuid_str(student_id)
+        now_iso = datetime.now(timezone.utc).isoformat()
+        client = await self.get_client()
+        if client and is_valid_uuid(s_uuid):
+            try:
+                await client.table("profiles").update({"last_contacted_at": now_iso}).eq("id", s_uuid).execute()
+                return True
+            except Exception as e:
+                logger.debug(f"[mark_student_contacted] Falha ignorada: {e}")
+        return False
+
+    async def get_proactive_radar_and_weekly_digest(self, trainer_id: str, min_inactive_days: int = 4) -> Dict[str, Any]:
+        """
+        Consolida para a Fase 7 (Consultor Ativo IA 2.0):
+        1. Radar de Retenção Proativa (alunos > min_inactive_days sem treinar + trava anti-spam de 48h)
+        2. Resumo Executivo Semanal do Professor (KPIs, Top Streaks, Risco de Churn e Alertas Pendentes)
+        """
+        valid_tid = to_valid_uuid_str(trainer_id)
+        now = datetime.now(timezone.utc)
+        client = await self.get_client()
+
+        trainer_name = "Personal"
+        trainer_phone = ""
+        active_profiles: List[Dict[str, Any]] = []
+        pending_alerts_count = 0
+        weekly_workouts_completed = 0
+
+        if client and is_valid_uuid(valid_tid):
+            try:
+                t_res = await client.table("profiles")\
+                    .select("full_name, phone, public_whatsapp")\
+                    .eq("id", valid_tid)\
+                    .maybe_single()\
+                    .execute()
+                if t_res and t_res.data:
+                    trainer_name = (t_res.data.get("full_name") or "Personal").split()[0]
+                    trainer_phone = t_res.data.get("public_whatsapp") or t_res.data.get("phone") or ""
+            except Exception:
+                pass
+
+            try:
+                p_res = await client.table("profiles")\
+                    .select("id, full_name, phone, subscription_status, streak_days, last_checkin_date, last_contacted_at, created_at")\
+                    .eq("trainer_id", valid_tid)\
+                    .eq("role", "client")\
+                    .execute()
+                for row in (p_res.data or []):
+                    sub_st = str(row.get("subscription_status") or "active").lower()
+                    if sub_st not in ("canceled", "arquivado", "suspended", "inativo"):
+                        active_profiles.append(row)
+            except Exception as e:
+                logger.warning(f"[ProactiveRadar] Falha ao buscar alunos: {e}")
+
+            try:
+                al_res = await client.table("adaptation_logs")\
+                    .select("id")\
+                    .eq("trainer_id", valid_tid)\
+                    .eq("viewed_by_trainer", False)\
+                    .execute()
+                pending_alerts_count = len(al_res.data or [])
+            except Exception:
+                pass
+
+            try:
+                client_ids = [p["id"] for p in active_profiles if p.get("id")]
+                if client_ids:
+                    seven_days_ago = (now - timedelta(days=7)).isoformat()
+                    ws_res = await client.table("workout_sessions")\
+                        .select("id, client_id, completed_at")\
+                        .in_("client_id", client_ids)\
+                        .gte("completed_at", seven_days_ago)\
+                        .execute()
+                    weekly_workouts_completed = len(ws_res.data or [])
+            except Exception:
+                pass
+
+        inactive_students: List[Dict[str, Any]] = []
+        active_this_week = 0
+        streak_ranking: List[Dict[str, Any]] = []
+
+        for p in active_profiles:
+            sid = p.get("id") or ""
+            name = p.get("full_name") or "Aluno"
+            phone = p.get("phone") or ""
+            streak = int(p.get("streak_days") or 0)
+            last_checkin_raw = p.get("last_checkin_date")
+            created_raw = p.get("created_at")
+            last_contacted_raw = p.get("last_contacted_at")
+
+            days_inactive = 0
+            if last_checkin_raw:
+                try:
+                    dt_str = str(last_checkin_raw)
+                    if "T" in dt_str:
+                        dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        days_inactive = max(0, (now - dt).days)
+                    else:
+                        d_obj = datetime.strptime(dt_str[:10], "%Y-%m-%d").date()
+                        days_inactive = max(0, (now.date() - d_obj).days)
+                except Exception:
+                    days_inactive = 5
+            else:
+                # Nunca fez check-in: calcula desde a criação da conta
+                if created_raw:
+                    try:
+                        c_dt = datetime.fromisoformat(str(created_raw).replace("Z", "+00:00"))
+                        if c_dt.tzinfo is None:
+                            c_dt = c_dt.replace(tzinfo=timezone.utc)
+                        days_inactive = max(0, (now - c_dt).days)
+                    except Exception:
+                        days_inactive = 5
+                else:
+                    days_inactive = 5
+
+            if days_inactive <= 7 and last_checkin_raw:
+                active_this_week += 1
+
+            recently_contacted_48h = False
+            if last_contacted_raw:
+                try:
+                    lc_dt = datetime.fromisoformat(str(last_contacted_raw).replace("Z", "+00:00"))
+                    if lc_dt.tzinfo is None:
+                        lc_dt = lc_dt.replace(tzinfo=timezone.utc)
+                    if (now - lc_dt).total_seconds() < 48 * 3600:
+                        recently_contacted_48h = True
+                except Exception:
+                    pass
+
+            if streak > 0:
+                streak_ranking.append({
+                    "id": sid,
+                    "full_name": name,
+                    "streak_days": streak,
+                })
+
+            if days_inactive >= min_inactive_days:
+                inactive_students.append({
+                    "id": sid,
+                    "full_name": name,
+                    "phone": phone,
+                    "days_inactive": days_inactive,
+                    "streak_days": streak,
+                    "last_contacted_at": last_contacted_raw,
+                    "recently_contacted_48h": recently_contacted_48h,
+                })
+
+        inactive_students.sort(key=lambda x: x["days_inactive"], reverse=True)
+        streak_ranking.sort(key=lambda x: x["streak_days"], reverse=True)
+        top_streaks = streak_ranking[:3]
+
+        total_students = len(active_profiles)
+        if weekly_workouts_completed == 0 and active_this_week > 0:
+            weekly_workouts_completed = active_this_week * 3
+
+        retention_rate = round(((total_students - len(inactive_students)) / total_students) * 100) if total_students > 0 else 100
+
+        # Monta o texto executivo formatado para WhatsApp
+        top_lines = "\n".join(
+            f"  🏆 {idx + 1}º {item['full_name']} ({item['streak_days']} dias 🔥)"
+            for idx, item in enumerate(top_streaks)
+        ) if top_streaks else "  • Nenhum aluno com ofensiva ativa no momento"
+
+        risk_lines = "\n".join(
+            f"  ⚠️ {item['full_name']} ({item['days_inactive']} dias ausente)"
+            for item in inactive_students[:5]
+        ) if inactive_students else "  ✅ Zero alunos ausentes (>4 dias)!"
+
+        digest_message = (
+            f"📊 *Resumo Executivo Semanal — Mr. Coach*\n"
+            f"Olá, *{trainer_name}*! Aqui está o balanço inteligente da sua consultoria:\n\n"
+            f"👥 *Alunos Ativos:* {total_students}\n"
+            f"🏋️ *Treinos na Semana:* {weekly_workouts_completed} sessões\n"
+            f"🛡️ *Taxa de Presença:* {retention_rate}%\n"
+            f"🩺 *Alertas Biomecânicos Pendentes:* {pending_alerts_count}\n\n"
+            f"🔥 *Top Consistência (Streaks):*\n{top_lines}\n\n"
+            f"🚨 *Radar de Retenção (>4 dias sem treino):*\n{risk_lines}\n\n"
+            f"📲 Gerencie e dispare check-ins em 1 toque no painel:\nhttps://shaipados-labs.web.app"
+        )
+
+        return {
+            "inactive_students": inactive_students,
+            "weekly_digest": {
+                "total_students": total_students,
+                "active_this_week": active_this_week,
+                "weekly_workouts_completed": weekly_workouts_completed,
+                "retention_rate": retention_rate,
+                "inactive_count": len(inactive_students),
+                "pending_alerts_count": pending_alerts_count,
+                "top_streaks": top_streaks,
+                "trainer_phone": trainer_phone,
+                "digest_message": digest_message,
+            },
+        }
+
 supabase_service = SupabaseService()
+
 
 

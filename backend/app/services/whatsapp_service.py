@@ -284,6 +284,68 @@ class WhatsAppService:
             )
             return {"status": "skipped", "reason": str(e)}
 
+    async def notify_inactivity_checkin(
+        self,
+        trainer_id: str,
+        student_name: str,
+        student_phone: str,
+        days_inactive: int,
+        streak_days: int = 0,
+        trainer_name: str = "Seu Treinador",
+    ) -> dict:
+        """
+        Check-in Proativo de Retenção (Fase 7 - Coach Proativo no WhatsApp):
+        Envia mensagem acolhedora para alunos ausentes (>4 dias sem treinar).
+        """
+        first_name = (student_name or "Aluno").split()[0]
+        number = self._format_phone(student_phone)
+        text = (
+            f"👋 *Fala, {first_name}! Tudo bem com você?*\n\n"
+            f"Aqui é o assistente do *{trainer_name}* no Mr. Coach. "
+            f"Vi no radar que já faz *{days_inactive} dias* desde o seu último check-in de treino.\n\n"
+            f"Aconteceu algum imprevisto na rotina ou sentiu algum desconforto articular? "
+            f"Se precisar adaptar o treino de hoje para fazer mais rápido, é só responder aqui ou digitar *1* para ver sua ficha!\n\n"
+            f"📲 Acesse direto: https://shaipados-labs.web.app 💪"
+        )
+        if not number:
+            return {"status": "skipped", "reason": "invalid_phone", "message_text": text}
+
+        instance = instance_name_for(trainer_id)
+        try:
+            res = await self.send_text_message(instance, number, text)
+            return {"status": "sent", "provider_response": res, "message_text": text, "phone": number}
+        except Exception as e:
+            logger.warning(
+                "[WhatsApp] Falha no disparo proativo de retenção (instância %s): %s",
+                instance,
+                e,
+            )
+            return {"status": "fallback_wa", "reason": str(e), "message_text": text, "phone": number}
+
+    async def send_weekly_digest_to_trainer(
+        self,
+        trainer_id: str,
+        trainer_phone: str,
+        digest_message: str,
+    ) -> dict:
+        """Envia o Resumo Executivo Semanal diretamente para o WhatsApp do próprio Personal."""
+        number = self._format_phone(trainer_phone)
+        if not number:
+            return {"status": "fallback_wa", "reason": "missing_trainer_phone", "message_text": digest_message}
+
+        instance = instance_name_for(trainer_id)
+        try:
+            res = await self.send_text_message(instance, number, digest_message)
+            return {"status": "sent", "provider_response": res, "message_text": digest_message, "phone": number}
+        except Exception as e:
+            logger.warning(
+                "[WhatsApp] Não foi possível enviar resumo semanal via Evolution (instância %s): %s",
+                instance,
+                e,
+            )
+            return {"status": "fallback_wa", "reason": str(e), "message_text": digest_message, "phone": number}
+
 
 whatsapp_service = WhatsAppService()
+
 

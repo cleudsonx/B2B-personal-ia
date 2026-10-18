@@ -150,6 +150,7 @@ MENU_WORKOUT = {"1", "treino", "meu treino", "ficha", "qual meu treino", "minha 
 MENU_STREAK = {"2", "streak", "ofensiva", "foguinho", "minha ofensiva"}
 MENU_APP = {"3", "app", "link", "aplicativo", "acesso"}
 MENU_TRAINER_NOTE = {"4", "recado", "falar com professor", "deixar recado", "avisar professor"}
+MENU_BIOHUB = {"5", "bio", "biohub", "bio-hub", "peso", "imc", "meu peso", "meu imc", "medidas", "minhas medidas"}
 
 PHASE2_ALLOWED_PLANS = {
     "pro",
@@ -219,7 +220,7 @@ async def process_whatsapp_question(trainer_id: str, student: Dict[str, Any], qu
             "reply": (
                 f"🧪 *Teste de Conexão Bem-Sucedido!*\n\n"
                 f"Olá, {nome}! O seu Robô WhatsApp do Mr. Coach está 100% ativo e operacional.\n\n"
-                f"Quando seus alunos mandarem mensagem aqui, eles receberão o menu automático e você não gastará tokens de IA nos comandos rápidos (1 = Ver Treino, 2 = Streak 🔥).\n\n"
+                f"Quando seus alunos mandarem mensagem aqui, eles receberão o menu automático e você não gastará tokens de IA nos comandos rápidos (1 = Ver Treino, 2 = Streak 🔥, 4 = Recado, 5 = Bio-Hub).\n\n"
                 f"Tudo pronto para atender seus alunos!"
             ),
             "cost_type": "free",
@@ -235,7 +236,8 @@ async def process_whatsapp_question(trainer_id: str, student: Dict[str, Any], qu
                 "*1* - Ver meu treino ativo\n"
                 "*2* - Ver minha ofensiva (Streak 🔥)\n"
                 "*3* - Link do App\n"
-                "*4* - Deixar recado para o professor\n\n"
+                "*4* - Deixar recado para o professor\n"
+                "*5* - Meu Bio-Hub (Peso, IMC e Meta)\n\n"
                 "Ou envie sua dúvida sobre execução, postura ou substituição de exercício!"
             ),
             "cost_type": "free",
@@ -294,14 +296,105 @@ async def process_whatsapp_question(trainer_id: str, student: Dict[str, Any], qu
             "tokens_used": 0,
         }
 
-    # 6. Opção 4: Deixar recado para o treinador
-    if cmd in MENU_TRAINER_NOTE or "deixar recado" in cmd:
+    # 6. Opção 4: Deixar recado para o treinador (ou recado direto com prefixo "recado:")
+    if cmd in MENU_TRAINER_NOTE or "deixar recado" in cmd or cmd.startswith("recado:") or cmd.startswith("recado "):
+        note_body = ""
+        if ":" in question:
+            note_body = question.split(":", 1)[1].strip()
+        elif cmd.startswith("recado ") and len(question.strip()) > 7:
+            note_body = question.strip()[7:].strip()
+
+        if note_body:
+            try:
+                client = await supabase_service.get_client()
+                if client:
+                    await client.table("adaptation_logs").insert({
+                        "client_id": student["id"],
+                        "trainer_id": trainer_id,
+                        "original_exercise": "Recado via WhatsApp",
+                        "adapted_exercise": "Atenção Solicitada",
+                        "reason": note_body[:200],
+                        "adaptation_details": {
+                            "student_name": student.get("full_name") or nome,
+                            "pain_location": "Recado do Aluno",
+                            "severity": "Moderada",
+                        },
+                        "viewed_by_trainer": False,
+                    }).execute()
+            except Exception as note_err:
+                logger.debug(f"[WhatsAppAI] Falha ao registrar recado: {note_err}")
+
+            return {
+                "reply": (
+                    f"✅ *Recado Registrado, {nome}!*\n\n"
+                    f"Já enviei um alerta direto para o painel do seu treinador com a sua mensagem:\n"
+                    f"_\"{note_body[:150]}\"_\n\n"
+                    f"Ele verá assim que abrir o Mr. Coach! 💪"
+                ),
+                "cost_type": "free",
+                "tokens_used": 0,
+            }
+
         return {
             "reply": (
                 f"📝 *Recado para o Professor*\n\n"
-                f"{nome}, pode digitar aqui a mensagem que deseja enviar. "
-                "Vou registrar e alertar o seu treinador para que ele te responda pessoalmente assim que possível! 💪"
+                f"{nome}, para enviar um aviso prioritário direto para o painel do seu treinador, envie:\n"
+                f"*recado: sua mensagem aqui*\n\n"
+                "Exemplo: _recado: hoje treinei mais leve pois dormi pouco._ 💪"
             ),
+            "cost_type": "free",
+            "tokens_used": 0,
+        }
+
+    # 6.5 Opção 5: Meu Bio-Hub (Peso, IMC e Meta) - Custo Zero (0 Tokens)
+    if cmd in MENU_BIOHUB:
+        bio_data: Dict[str, Any] = {}
+        try:
+            bio_data = await supabase_service.get_student_latest_biohub(student["id"])
+        except Exception as e:
+            logger.debug(f"[WhatsAppAI] Fallback biohub: {e}")
+
+        weight = bio_data.get("weight_kg") or student.get("weight_kg")
+        height = bio_data.get("height_cm") or student.get("height_cm")
+        bmi = bio_data.get("bmi")
+        bmi_cat = bio_data.get("bmi_category") or "Não calculado"
+        bf = bio_data.get("body_fat_pct")
+        muscle = bio_data.get("muscle_mass_kg")
+        goal = bio_data.get("objective") or student.get("goal") or "Hipertrofia e Saúde"
+
+        if not bmi and weight and height and float(height) > 40:
+            h_m = float(height) / 100.0
+            bmi = round(float(weight) / (h_m * h_m), 1)
+            bmi_cat = "Peso ideal" if 18.5 <= bmi < 25 else ("Sobrepeso" if bmi < 30 else "Atenção nutricional")
+
+        if not weight and not height:
+            return {
+                "reply": (
+                    f"🧬 *Seu Bio-Hub — Mr. Coach*\n\n"
+                    f"{nome}, você ainda não possui medidas registradas no Bio-Hub.\n"
+                    f"🎯 *Meta Atual:* {goal}\n\n"
+                    f"📲 Acesse a aba *Bio-Hub* no app para atualizar seu peso e acompanhar seu IMC: {APP_URL} 💪"
+                ),
+                "cost_type": "free",
+                "tokens_used": 0,
+            }
+
+        lines = [f"🧬 *Seu Bio-Hub — {nome}*"]
+        if weight:
+            lines.append(f"⚖️ *Peso Atual:* {weight} kg")
+        if height:
+            lines.append(f"📏 *Altura:* {int(float(height))} cm")
+        if bmi:
+            lines.append(f"📊 *IMC:* {bmi} ({bmi_cat})")
+        if bf is not None:
+            lines.append(f"💧 *Gordura Corporal (BF):* {bf}%")
+        if muscle is not None:
+            lines.append(f"💪 *Massa Muscular:* {muscle} kg")
+        lines.append(f"🎯 *Objetivo:* {goal}")
+        lines.append(f"\n📲 Atualize suas medidas na aba *Bio-Hub* do app:\n{APP_URL}")
+
+        return {
+            "reply": "\n".join(lines),
             "cost_type": "free",
             "tokens_used": 0,
         }

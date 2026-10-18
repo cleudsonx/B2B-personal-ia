@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/config/app_config.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -13,12 +14,14 @@ import '../../../../services/subscription_service.dart';
 import '../../../subscription/subscription_screen.dart';
 import 'whatsapp_connection_screen.dart';
 
-/// Cockpit One UI 7 do Consultor Ativo IA no WhatsApp.
+/// Cockpit One UI 7 do Consultor Ativo IA 2.0 (Coach Proativo no WhatsApp).
 ///
 /// Interface ergonômica, 100% alinhada ao Design System Meta / One UI 7:
 /// - Header polido com badge balanceado sem quebras de linha estranhas
 /// - Cartão interativo de status do WhatsApp com chevron de navegação
-/// - Lista de comandos de Triagem com alinhamento pixel-perfect (grid de badges fixos)
+/// - Resumo Executivo Semanal da Consultoria + Envio 1-Toque para o WhatsApp do Personal
+/// - Radar de Retenção Proativa (>4 dias ausentes) com trava anti-spam de 48h e disparo em lote/individual
+/// - Lista de comandos de Triagem com alinhamento pixel-perfect (Comandos 1 a 5 a 0 Tokens)
 /// - Motor Biomecânico Gemini 2.5 Flash com badges de proteção e guardrails
 /// - Telemetria de impacto em cards modulares de alto contraste
 class TrainerAiAssistantScreen extends StatefulWidget {
@@ -33,6 +36,12 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
   bool _isWhatsAppConnected = false;
   MySubscriptionModel? _subscription;
   Map<String, dynamic>? _telemetry;
+  List<Map<String, dynamic>> _inactiveStudents = [];
+  Map<String, dynamic>? _weeklyDigest;
+  bool _isDispatchingBatch = false;
+  String? _dispatchingStudentId;
+  bool _isSendingDigest = false;
+
   final TextEditingController _simulatorController = TextEditingController();
   bool _isSimulating = false;
   Map<String, dynamic>? _simulationResult;
@@ -104,8 +113,9 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
       final subFuture = SubscriptionService.getMySubscription();
       final statusFuture = _fetchWhatsAppStatus();
       final telemetryFuture = _fetchTelemetry();
+      final radarFuture = _fetchProactiveRadar();
 
-      final results = await Future.wait([subFuture, statusFuture, telemetryFuture]);
+      final results = await Future.wait([subFuture, statusFuture, telemetryFuture, radarFuture]);
       if (mounted) {
         setState(() {
           _subscription = results[0] as MySubscriptionModel?;
@@ -163,6 +173,393 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
     } catch (_) {}
   }
 
+  Future<void> _fetchProactiveRadar() async {
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+      final token = session?.accessToken;
+      if (token != null) {
+        final res = await http.get(
+          Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/proactive-radar?min_inactive_days=4'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ).timeout(const Duration(seconds: 8));
+
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body);
+          final rawInactive = (data['inactive_students'] as List?) ?? [];
+          final rawDigest = data['weekly_digest'] as Map<String, dynamic>?;
+          if (mounted) {
+            setState(() {
+              _inactiveStudents = rawInactive.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+              _weeklyDigest = rawDigest;
+            });
+          }
+          return;
+        }
+      }
+    } catch (_) {}
+
+    // Fallback direto via Supabase caso o backend esteja acordando
+    try {
+      final client = Supabase.instance.client;
+      final uid = client.auth.currentUser?.id;
+      if (uid == null) return;
+
+      final trainerRes = await client
+          .from('profiles')
+          .select('full_name, phone, public_whatsapp')
+          .eq('id', uid)
+          .maybeSingle();
+      final trainerName = ((trainerRes?['full_name'] ?? 'Personal').toString()).split(' ').first;
+      final trainerPhone = (trainerRes?['public_whatsapp'] ?? trainerRes?['phone'] ?? '').toString();
+
+      final rows = await client
+          .from('profiles')
+          .select('id, full_name, phone, subscription_status, streak_days, last_checkin_date, last_contacted_at, created_at')
+          .eq('trainer_id', uid)
+          .eq('role', 'client');
+
+      int alertsCount = 0;
+      try {
+        final alRows = await client
+            .from('adaptation_logs')
+            .select('id')
+            .eq('trainer_id', uid)
+            .eq('viewed_by_trainer', false);
+        alertsCount = (alRows as List).length;
+      } catch (_) {}
+
+      final now = DateTime.now().toUtc();
+      final List<Map<String, dynamic>> inactiveList = [];
+      final List<Map<String, dynamic>> streakRanking = [];
+      int activeTotal = 0;
+      int activeThisWeek = 0;
+
+      for (final raw in (rows as List)) {
+        final p = Map<String, dynamic>.from(raw as Map);
+        final st = (p['subscription_status'] ?? 'active').toString().toLowerCase();
+        if (st == 'canceled' || st == 'arquivado' || st == 'suspended' || st == 'inativo') {
+          continue;
+        }
+        activeTotal++;
+        final sid = (p['id'] ?? '').toString();
+        final sname = (p['full_name'] ?? 'Aluno').toString();
+        final sphone = (p['phone'] ?? '').toString();
+        final streak = int.tryParse((p['streak_days'] ?? 0).toString()) ?? 0;
+
+        int daysOff = 5;
+        final lastCheckinStr = p['last_checkin_date']?.toString();
+        final createdStr = p['created_at']?.toString();
+        if (lastCheckinStr != null && lastCheckinStr.isNotEmpty) {
+          final parsed = DateTime.tryParse(lastCheckinStr)?.toUtc();
+          if (parsed != null) {
+            daysOff = now.difference(parsed).inDays;
+            if (daysOff < 0) daysOff = 0;
+          }
+          if (daysOff <= 7) activeThisWeek++;
+        } else if (createdStr != null && createdStr.isNotEmpty) {
+          final parsed = DateTime.tryParse(createdStr)?.toUtc();
+          if (parsed != null) {
+            daysOff = now.difference(parsed).inDays;
+            if (daysOff < 0) daysOff = 0;
+          }
+        }
+
+        bool recent48h = false;
+        final lastContactStr = p['last_contacted_at']?.toString();
+        if (lastContactStr != null && lastContactStr.isNotEmpty) {
+          final lc = DateTime.tryParse(lastContactStr)?.toUtc();
+          if (lc != null && now.difference(lc).inHours < 48) {
+            recent48h = true;
+          }
+        }
+
+        if (streak > 0) {
+          streakRanking.add({
+            'id': sid,
+            'full_name': sname,
+            'streak_days': streak,
+          });
+        }
+
+        if (daysOff >= 4) {
+          inactiveList.add({
+            'id': sid,
+            'full_name': sname,
+            'phone': sphone,
+            'days_inactive': daysOff,
+            'streak_days': streak,
+            'last_contacted_at': lastContactStr,
+            'recently_contacted_48h': recent48h,
+          });
+        }
+      }
+
+      inactiveList.sort((a, b) => (b['days_inactive'] as int).compareTo(a['days_inactive'] as int));
+      streakRanking.sort((a, b) => (b['streak_days'] as int).compareTo(a['streak_days'] as int));
+      final topStreaks = streakRanking.take(3).toList();
+      final retentionRate = activeTotal > 0
+          ? (((activeTotal - inactiveList.length) / activeTotal) * 100).round()
+          : 100;
+      final weeklyWorkouts = activeThisWeek * 3;
+
+      final topLines = topStreaks.isNotEmpty
+          ? topStreaks
+              .asMap()
+              .entries
+              .map((e) => '  🏆 ${e.key + 1}º ${e.value['full_name']} (${e.value['streak_days']} dias 🔥)')
+              .join('\n')
+          : '  • Nenhum aluno com ofensiva ativa no momento';
+
+      final riskLines = inactiveList.isNotEmpty
+          ? inactiveList
+              .take(5)
+              .map((e) => '  ⚠️ ${e['full_name']} (${e['days_inactive']} dias ausente)')
+              .join('\n')
+          : '  ✅ Zero alunos ausentes (>4 dias)!';
+
+      final digestMsg = '📊 *Resumo Executivo Semanal — Mr. Coach*\n'
+          'Olá, *$trainerName*! Aqui está o balanço inteligente da sua consultoria:\n\n'
+          '👥 *Alunos Ativos:* $activeTotal\n'
+          '🏋️ *Treinos na Semana:* $weeklyWorkouts sessões\n'
+          '🛡️ *Taxa de Presença:* $retentionRate%\n'
+          '🩺 *Alertas Biomecânicos Pendentes:* $alertsCount\n\n'
+          '🔥 *Top Consistência (Streaks):*\n$topLines\n\n'
+          '🚨 *Radar de Retenção (>4 dias sem treino):*\n$riskLines\n\n'
+          '📲 Gerencie e dispare check-ins em 1 toque no painel:\nhttps://shaipados-labs.web.app';
+
+      if (mounted) {
+        setState(() {
+          _inactiveStudents = inactiveList;
+          _weeklyDigest = {
+            'total_students': activeTotal,
+            'active_this_week': activeThisWeek,
+            'weekly_workouts_completed': weeklyWorkouts,
+            'retention_rate': retentionRate,
+            'inactive_count': inactiveList.length,
+            'pending_alerts_count': alertsCount,
+            'top_streaks': topStreaks,
+            'trainer_phone': trainerPhone,
+            'digest_message': digestMsg,
+          };
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _triggerProactiveCheckin({
+    List<String>? studentIds,
+    Map<String, dynamic>? singleStudentFallback,
+    bool force = false,
+  }) async {
+    setState(() {
+      if (singleStudentFallback != null) {
+        _dispatchingStudentId = singleStudentFallback['id']?.toString();
+      } else {
+        _isDispatchingBatch = true;
+      }
+    });
+
+    try {
+      final token = Supabase.instance.client.auth.currentSession?.accessToken;
+      final res = await http.post(
+        Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/proactive-checkin'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'student_ids': studentIds,
+          'force': force,
+          'min_inactive_days': 4,
+        }),
+      ).timeout(const Duration(seconds: 15));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final sentCount = (data['sent_count'] as int?) ?? 0;
+        final skippedCount = (data['skipped_48h_count'] as int?) ?? 0;
+        final results = (data['results'] as List?) ?? [];
+
+        // Se for individual e o Evolution API não estiver conectado (fallback_wa), abre wa.me direto
+        if (singleStudentFallback != null && sentCount == 0 && results.isNotEmpty) {
+          final firstRes = Map<String, dynamic>.from(results.first as Map);
+          if (firstRes['status'] == 'fallback_wa') {
+            await _openWaFallbackForStudent(
+              singleStudentFallback,
+              customText: firstRes['message_text']?.toString(),
+            );
+            await _fetchProactiveRadar();
+            return;
+          }
+        }
+
+        if (mounted) {
+          String msg;
+          if (sentCount > 0) {
+            msg = '✅ $sentCount check-in(s) proativo(s) enviado(s) pelo Robô WhatsApp!';
+            if (skippedCount > 0) {
+              msg += ' ($skippedCount ignorado(s) pela trava anti-spam de 48h).';
+            }
+          } else if (skippedCount > 0) {
+            msg = '🛡️ $skippedCount aluno(s) já receberam contato nas últimas 48h (trava anti-spam ativa).';
+          } else if (singleStudentFallback != null) {
+            await _openWaFallbackForStudent(singleStudentFallback);
+            await _fetchProactiveRadar();
+            return;
+          } else {
+            msg = 'WhatsApp desconectado para envio em lote. Use o botão individual para abrir no WhatsApp ou conecte o robô.';
+          }
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(msg),
+              backgroundColor: sentCount > 0 ? MetaColors.emerald : Colors.amber.shade800,
+            ),
+          );
+        }
+        await _fetchProactiveRadar();
+        return;
+      }
+    } catch (_) {}
+
+    // Fallback direto via wa.me se for disparo individual
+    if (singleStudentFallback != null) {
+      await _openWaFallbackForStudent(singleStudentFallback);
+      await _fetchProactiveRadar();
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Conecte o Robô WhatsApp para disparo em lote ou clique no botão de cada aluno.'),
+          backgroundColor: Colors.amber,
+        ),
+      );
+    }
+
+    if (mounted) {
+      setState(() {
+        _isDispatchingBatch = false;
+        _dispatchingStudentId = null;
+      });
+    }
+  }
+
+  Future<void> _openWaFallbackForStudent(
+    Map<String, dynamic> student, {
+    String? customText,
+  }) async {
+    final sid = (student['id'] ?? '').toString();
+    final fullName = (student['full_name'] ?? 'Aluno').toString();
+    final firstName = fullName.split(' ').first;
+    final daysOff = student['days_inactive'] ?? 4;
+    final rawPhone = (student['phone'] ?? '').toString().replaceAll(RegExp(r'\D'), '');
+    final phone = (rawPhone.length == 10 || rawPhone.length == 11) ? '55$rawPhone' : rawPhone;
+
+    final text = customText ??
+        '👋 *Fala, $firstName! Tudo bem com você?*\n\n'
+            'Vi aqui no Mr. Coach que já faz *$daysOff dias* desde o seu último check-in de treino.\n\n'
+            'Aconteceu algum imprevisto na rotina ou sentiu algum desconforto? '
+            'Se precisar adaptar o treino de hoje para fazer mais rápido, me avisa aqui!\n\n'
+            '📲 Seu treino está pronto em: https://shaipados-labs.web.app 💪';
+
+    try {
+      if (sid.isNotEmpty) {
+        await Supabase.instance.client
+            .from('profiles')
+            .update({'last_contacted_at': DateTime.now().toUtc().toIso8601String()})
+            .eq('id', sid);
+      }
+    } catch (_) {}
+
+    if (phone.isNotEmpty) {
+      final uri = Uri.parse('https://wa.me/$phone?text=${Uri.encodeComponent(text)}');
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      await Clipboard.setData(ClipboardData(text: text));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Aluno sem telefone cadastrado. Mensagem para $firstName copiada!'),
+            backgroundColor: MetaColors.emerald,
+          ),
+        );
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _isDispatchingBatch = false;
+        _dispatchingStudentId = null;
+      });
+    }
+  }
+
+  Future<void> _sendWeeklyDigestToMyWhatsApp() async {
+    setState(() => _isSendingDigest = true);
+    final digestMsg = (_weeklyDigest?['digest_message'] ?? '').toString();
+    final rawTrainerPhone = (_weeklyDigest?['trainer_phone'] ?? '').toString().replaceAll(RegExp(r'\D'), '');
+    final trainerPhone = (rawTrainerPhone.length == 10 || rawTrainerPhone.length == 11)
+        ? '55$rawTrainerPhone'
+        : rawTrainerPhone;
+
+    try {
+      final token = Supabase.instance.client.auth.currentSession?.accessToken;
+      final res = await http.post(
+        Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/send-weekly-digest'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'trainer_phone': trainerPhone}),
+      ).timeout(const Duration(seconds: 12));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final sentViaEvo = data['sent_via_evolution'] == true;
+        final serverMsg = (data['digest_message'] ?? digestMsg).toString();
+
+        if (sentViaEvo && mounted) {
+          setState(() => _isSendingDigest = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('📊 Resumo Executivo Semanal enviado para o seu WhatsApp via Robô!'),
+              backgroundColor: MetaColors.emerald,
+            ),
+          );
+          return;
+        }
+
+        if (trainerPhone.isNotEmpty && serverMsg.isNotEmpty) {
+          final uri = Uri.parse('https://wa.me/$trainerPhone?text=${Uri.encodeComponent(serverMsg)}');
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          if (mounted) setState(() => _isSendingDigest = false);
+          return;
+        }
+      }
+    } catch (_) {}
+
+    if (digestMsg.isNotEmpty) {
+      if (trainerPhone.isNotEmpty) {
+        final uri = Uri.parse('https://wa.me/$trainerPhone?text=${Uri.encodeComponent(digestMsg)}');
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        await Clipboard.setData(ClipboardData(text: digestMsg));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('📋 Resumo Executivo Semanal copiado para a área de transferência!'),
+              backgroundColor: MetaColors.emerald,
+            ),
+          );
+        }
+      }
+    }
+
+    if (mounted) setState(() => _isSendingDigest = false);
+  }
+
   bool get _hasAiActive {
     if (_subscription == null) return false;
     final pid = _subscription!.planId.toLowerCase();
@@ -194,7 +591,7 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Consultor Ativo IA',
+          'Consultor Ativo IA 2.0',
           style: TextStyle(
             color: MetaColors.text(context),
             fontSize: 18,
@@ -233,7 +630,15 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
                     _buildConnectionStatusBar(context),
                     const SizedBox(height: 18),
 
-                    // 3. Triagem de Custo Zero (Comandos Alinhados)
+                    // 2.1 Resumo Executivo Semanal do Professor (Fase 7)
+                    _buildWeeklyDigestCard(context),
+                    const SizedBox(height: 18),
+
+                    // 2.2 Radar de Retenção Proativa (>4 dias sem treinar) (Fase 7)
+                    _buildProactiveRetentionRadarCard(context),
+                    const SizedBox(height: 18),
+
+                    // 3. Triagem de Custo Zero (Comandos Alinhados 1 a 5)
                     _buildZeroCostSection(context),
                     const SizedBox(height: 18),
 
@@ -500,6 +905,443 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
     );
   }
 
+  Widget _buildWeeklyDigestCard(BuildContext context) {
+    final digest = _weeklyDigest ?? {};
+    final totalStudents = digest['total_students'] ?? 0;
+    final weeklyWorkouts = digest['weekly_workouts_completed'] ?? 0;
+    final retentionRate = digest['retention_rate'] ?? 100;
+    final pendingAlerts = digest['pending_alerts_count'] ?? 0;
+    final topStreaks = (digest['top_streaks'] as List?) ?? [];
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: MetaColors.card(context),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: MetaColors.accentBlue.withValues(alpha: 0.35),
+          width: 1.3,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: MetaColors.accentBlue.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.assessment_rounded, color: MetaColors.accentBlue, size: 19),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Resumo Executivo Semanal',
+                      style: TextStyle(
+                        color: MetaColors.text(context),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    Text(
+                      'Performance da consultoria, streaks e alertas da semana',
+                      style: TextStyle(
+                        color: MetaColors.subtext(context),
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: MetaColors.accentBlue.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'Coach 2.0',
+                  style: TextStyle(
+                    color: MetaColors.accentBlue,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _buildMetricTile(
+                  context,
+                  label: 'Alunos Ativos',
+                  value: '$totalStudents',
+                  color: MetaColors.accentBlue,
+                  icon: Icons.people_alt_outlined,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildMetricTile(
+                  context,
+                  label: 'Treinos (7d)',
+                  value: '$weeklyWorkouts',
+                  color: MetaColors.emerald,
+                  icon: Icons.fitness_center_rounded,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildMetricTile(
+                  context,
+                  label: 'Presença',
+                  value: '$retentionRate%',
+                  color: retentionRate >= 75 ? MetaColors.emerald : Colors.amber,
+                  icon: Icons.verified_user_outlined,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildMetricTile(
+                  context,
+                  label: 'Alertas Dor',
+                  value: '$pendingAlerts',
+                  color: pendingAlerts > 0 ? Colors.redAccent : MetaColors.emerald,
+                  icon: Icons.healing_outlined,
+                ),
+              ),
+            ],
+          ),
+          if (topStreaks.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text(
+              '🏆 Destaques de Consistência na Semana:',
+              style: TextStyle(
+                color: MetaColors.subtext(context),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: topStreaks.map((raw) {
+                final item = Map<String, dynamic>.from(raw as Map);
+                final name = (item['full_name'] ?? 'Aluno').toString().split(' ').first;
+                final st = item['streak_days'] ?? 0;
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: MetaColors.highlight(context),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                  ),
+                  child: Text(
+                    '🔥 $name ($st dias)',
+                    style: TextStyle(
+                      color: MetaColors.text(context),
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _isSendingDigest ? null : _sendWeeklyDigestToMyWhatsApp,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: MetaColors.accentBlue,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: _isSendingDigest
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Icon(Icons.send_to_mobile_rounded, size: 18),
+              label: Text(
+                _isSendingDigest
+                    ? 'Enviando Resumo...'
+                    : 'Enviar Resumo Executivo para o Meu WhatsApp',
+                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProactiveRetentionRadarCard(BuildContext context) {
+    final count = _inactiveStudents.length;
+    final eligibleCount = _inactiveStudents.where((s) => s['recently_contacted_48h'] != true).length;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: MetaColors.card(context),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: count > 0
+              ? Colors.amber.withValues(alpha: 0.45)
+              : MetaColors.emerald.withValues(alpha: 0.35),
+          width: 1.3,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: (count > 0 ? Colors.amber : MetaColors.emerald).withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  count > 0 ? Icons.radar_rounded : Icons.verified_rounded,
+                  color: count > 0 ? Colors.amber : MetaColors.emerald,
+                  size: 19,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Radar de Retenção Proativa (>4 dias)',
+                      style: TextStyle(
+                        color: MetaColors.text(context),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    Text(
+                      'Resgate automático de alunos ausentes com trava anti-spam 48h',
+                      style: TextStyle(
+                        color: MetaColors.subtext(context),
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: (count > 0 ? Colors.amber : MetaColors.emerald).withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  count > 0 ? '$count Ausente(s)' : '100% Em Dia',
+                  style: TextStyle(
+                    color: count > 0 ? Colors.amber : MetaColors.emerald,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (count == 0)
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: MetaColors.highlight(context),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.celebration_rounded, color: MetaColors.emerald, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Excelente! Nenhum aluno ativo está há mais de 4 dias sem registrar treino.',
+                      style: TextStyle(color: MetaColors.text(context), fontSize: 12.5, height: 1.35),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            ..._inactiveStudents.take(5).map((student) {
+              final sid = (student['id'] ?? '').toString();
+              final name = (student['full_name'] ?? 'Aluno').toString();
+              final daysOff = student['days_inactive'] ?? 4;
+              final locked48h = student['recently_contacted_48h'] == true;
+              final isBusy = _dispatchingStudentId == sid;
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: MetaColors.highlight(context),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: locked48h
+                          ? MetaColors.emerald.withValues(alpha: 0.35)
+                          : Colors.amber.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 17,
+                        backgroundColor: (locked48h ? MetaColors.emerald : Colors.amber).withValues(alpha: 0.15),
+                        child: Text(
+                          name.isNotEmpty ? name[0].toUpperCase() : 'A',
+                          style: TextStyle(
+                            color: locked48h ? MetaColors.emerald : Colors.amber,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: MetaColors.text(context),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Text(
+                                  '$daysOff dias sem treinar',
+                                  style: const TextStyle(
+                                    color: Colors.amber,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                  decoration: BoxDecoration(
+                                    color: (locked48h ? MetaColors.emerald : Colors.redAccent).withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                  child: Text(
+                                    locked48h ? '✓ Contatado <48h' : 'Pendente',
+                                    style: TextStyle(
+                                      color: locked48h ? MetaColors.emerald : Colors.redAccent,
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton.icon(
+                        onPressed: isBusy
+                            ? null
+                            : () => _triggerProactiveCheckin(
+                                  studentIds: [sid],
+                                  singleStudentFallback: student,
+                                  force: true,
+                                ),
+                        style: TextButton.styleFrom(
+                          backgroundColor: MetaColors.emerald.withValues(alpha: 0.15),
+                          foregroundColor: MetaColors.emerald,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        icon: isBusy
+                            ? const SizedBox(
+                                width: 13,
+                                height: 13,
+                                child: CircularProgressIndicator(color: MetaColors.emerald, strokeWidth: 2),
+                              )
+                            : const Icon(Icons.chat_rounded, size: 14),
+                        label: Text(
+                          locked48h ? 'Reenviar' : 'Check-in',
+                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 6),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isDispatchingBatch
+                    ? null
+                    : () => _triggerProactiveCheckin(force: eligibleCount == 0),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: MetaColors.emerald,
+                  foregroundColor: Colors.black,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                icon: _isDispatchingBatch
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
+                      )
+                    : const Icon(Icons.bolt_rounded, size: 19),
+                label: Text(
+                  _isDispatchingBatch
+                      ? 'Disparando Check-ins...'
+                      : (eligibleCount > 0
+                          ? 'Disparar Check-in em Lote via Robô ($eligibleCount pendente${eligibleCount > 1 ? 's' : ''})'
+                          : 'Reenviar Check-in em Lote para Todos ($count)'),
+                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildZeroCostSection(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(18),
@@ -594,10 +1436,26 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
           const SizedBox(height: 8),
           _buildCommandCard(
             context,
+            badge: '4',
+            commandLabel: '4 ou recado:',
+            title: 'Recado / Alerta ao Personal',
+            description: 'Registra um recado ou observação do aluno direto nos alertas do seu painel.',
+          ),
+          const SizedBox(height: 8),
+          _buildCommandCard(
+            context,
+            badge: '5',
+            commandLabel: '5 ou biohub',
+            title: 'Meu Bio-Hub (Peso, IMC e Meta)',
+            description: 'Retorna o último peso, altura, cálculo de IMC, BF% e objetivo do aluno.',
+          ),
+          const SizedBox(height: 8),
+          _buildCommandCard(
+            context,
             badge: '0',
             commandLabel: 'oi, ola ou menu',
             title: 'Menu de Opções Imediato',
-            description: 'Recepciona o aluno e exibe as opções de atendimento automático.',
+            description: 'Recepciona o aluno e exibe as 5 opções de atendimento automático.',
           ),
         ],
       ),
@@ -851,6 +1709,10 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
                 _buildQuickTestChip(context, '📋 1 - Treino', '1'),
                 const SizedBox(width: 8),
                 _buildQuickTestChip(context, '🔥 2 - Streak', '2'),
+                const SizedBox(width: 8),
+                _buildQuickTestChip(context, '🧬 5 - Bio-Hub', '5'),
+                const SizedBox(width: 8),
+                _buildQuickTestChip(context, '📝 4 - Recado', 'recado: Hoje finalizei o treino A em 45min!'),
                 const SizedBox(width: 8),
                 _buildQuickTestChip(context, '💡 Substituir Peito', 'Posso trocar supino por peck deck?'),
                 const SizedBox(width: 8),

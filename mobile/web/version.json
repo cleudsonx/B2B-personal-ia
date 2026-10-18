@@ -1,6 +1,6 @@
 {
-  "version": "1.5.0",
-  "build": 2026102902,
-  "updated_at": "2026-10-18T22:32:00.000000Z",
-  "notes": "Pacotes A e B: Sobrecarga progressiva real, sincronia Anamnese Bio-Hub, edicao rapida de ficha e troca biomecanica em 1 toque."
+  "version": "1.6.0",
+  "build": 2026102903,
+  "updated_at": "2026-10-18T22:57:00.000000Z",
+  "notes": "FASE 7 — Consultor Ativo IA 2.0: Radar de Retencao Proativa (>4 dias), Resumo Executivo Semanal e Comandos Custo Zero 4 e 5."
 }

@@ -38,6 +38,36 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
+      version: '1.6.0',
+      buildNumber: 2026102903,
+      date: '18 de Outubro, 2026',
+      summary:
+          'FASE 7 — Consultor Ativo IA 2.0 (Coach Proativo no WhatsApp): Radar de Retenção Proativa (>4 dias), Resumo Executivo Semanal e Comandos Custo Zero 4 e 5.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.radar_rounded,
+          title: 'Radar de Retenção Proativa (>4 Dias Ausente)',
+          description:
+              'Identifica alunos sem treinar há mais de 4 dias e dispara check-in acolhedor via Robô WhatsApp (em lote ou 1 toque) com trava anti-spam de 48h.',
+          badge: 'FASE 7',
+        ),
+        ChangelogItem(
+          icon: Icons.assessment_rounded,
+          title: 'Resumo Executivo Semanal no Seu WhatsApp',
+          description:
+              'Painel executivo da semana (Treinos concluídos, Taxa de Presença, Top Streaks e Alertas de Dor) com envio em 1 toque para o WhatsApp do Personal.',
+          badge: 'COACH 2.0',
+        ),
+        ChangelogItem(
+          icon: Icons.flash_on_rounded,
+          title: 'Menu Custo Zero Expandido (Opções 4 e 5)',
+          description:
+              'Alunos agora podem consultar o Bio-Hub (Peso, IMC e Meta) digitando 5 e enviar recados prioritários ao painel do professor digitando 4 — 0 tokens gastos.',
+          badge: '0 TOKENS',
+        ),
+      ],
+    ),
+    VersionRelease(
       version: '1.5.0',
       buildNumber: 2026102902,
       date: '18 de Outubro, 2026',

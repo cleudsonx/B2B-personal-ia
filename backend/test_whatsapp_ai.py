@@ -262,7 +262,100 @@ def test_connect_resets_stale_instance_and_generates_fresh_code(monkeypatch):
     app.dependency_overrides.clear()
 
 
+def test_fase7_biohub_note_and_proactive_radar(monkeypatch):
+    import asyncio
+    from app.api.deps import get_current_trainer
+    from app.api.v1.endpoints import whatsapp_ai
+    from app.services.supabase_service import supabase_service
+    from app.services.whatsapp_service import whatsapp_service
+
+    app.dependency_overrides[get_current_trainer] = lambda: {"sub": "631e76b9-3cb0-454f-8fd9-1d450e5560d6"}
+
+    async def fake_biohub(client_id: str):
+        return {
+            "weight_kg": 78.5,
+            "height_cm": 175,
+            "bmi": 25.6,
+            "bmi_category": "Sobrepeso",
+            "body_fat_pct": 16.2,
+            "muscle_mass_kg": 38.4,
+            "objective": "Hipertrofia Limpa",
+        }
+
+    monkeypatch.setattr(supabase_service, "get_student_latest_biohub", fake_biohub)
+
+    async def run_cmd_tests():
+        student = {"id": "student-1", "full_name": "Carlos Silva", "trainer_id": "631e76b9-3cb0-454f-8fd9-1d450e5560d6"}
+        res5 = await whatsapp_ai.process_whatsapp_question("631e76b9-3cb0-454f-8fd9-1d450e5560d6", student, "5")
+        assert res5["cost_type"] == "free"
+        assert res5["tokens_used"] == 0
+        assert "78.5 kg" in res5["reply"]
+        assert "25.6" in res5["reply"]
+
+        res4 = await whatsapp_ai.process_whatsapp_question(
+            "631e76b9-3cb0-454f-8fd9-1d450e5560d6",
+            student,
+            "recado: Hoje finalizei o treino A em 45min!",
+        )
+        assert res4["cost_type"] == "free"
+        assert "Recado Registrado" in res4["reply"]
+
+    asyncio.run(run_cmd_tests())
+
+    async def fake_radar(trainer_id: str, min_inactive_days: int = 4):
+        return {
+            "inactive_students": [
+                {
+                    "id": "st-inactive-1",
+                    "full_name": "Marina Costa",
+                    "phone": "5511977776666",
+                    "days_inactive": 6,
+                    "streak_days": 0,
+                    "last_contacted_at": None,
+                    "recently_contacted_48h": False,
+                }
+            ],
+            "weekly_digest": {
+                "total_students": 12,
+                "active_this_week": 11,
+                "weekly_workouts_completed": 33,
+                "retention_rate": 92,
+                "inactive_count": 1,
+                "pending_alerts_count": 0,
+                "top_streaks": [{"id": "st-1", "full_name": "Carlos Silva", "streak_days": 14}],
+                "trainer_phone": "5511999998888",
+                "digest_message": "📊 *Resumo Executivo Semanal — Mr. Coach*",
+            },
+        }
+
+    async def fake_mark_contacted(student_id: str):
+        return True
+
+    async def fake_send_text(instance: str, number: str, text: str):
+        return {"status": "sent"}
+
+    monkeypatch.setattr(supabase_service, "get_proactive_radar_and_weekly_digest", fake_radar)
+    monkeypatch.setattr(supabase_service, "mark_student_contacted", fake_mark_contacted)
+    monkeypatch.setattr(whatsapp_service, "send_text_message", fake_send_text)
+
+    r_radar = client.get("/api/v1/whatsapp/proactive-radar")
+    assert r_radar.status_code == 200
+    assert r_radar.json()["weekly_digest"]["retention_rate"] == 92
+    assert len(r_radar.json()["inactive_students"]) == 1
+
+    r_checkin = client.post("/api/v1/whatsapp/proactive-checkin", json={"min_inactive_days": 4})
+    assert r_checkin.status_code == 200
+    assert r_checkin.json()["sent_count"] == 1
+
+    r_digest = client.post("/api/v1/whatsapp/send-weekly-digest", json={})
+    assert r_digest.status_code == 200
+    assert r_digest.json()["sent_via_evolution"] is True
+
+    app.dependency_overrides.clear()
+
+
 if __name__ == "__main__":
     test_webhook()
+
 
 
