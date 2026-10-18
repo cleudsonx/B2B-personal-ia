@@ -14,10 +14,12 @@ import 'whatsapp_connection_screen.dart';
 
 /// Cockpit One UI 7 do Consultor Ativo IA no WhatsApp.
 ///
-/// Interface de comando do treinador para gerenciar e visualizar:
-/// 1. Triagem de Custo Zero (Comandos rápidos 1, 2 e 3).
-/// 2. Motor Biomecânico Gemini 2.5 Flash (IA 24h para Pro, Elite Coach e Studio).
-/// 3. Status de Conexão WhatsApp e Telemetria em Tempo Real.
+/// Interface ergonômica, 100% alinhada ao Design System Meta / One UI 7:
+/// - Header polido com badge balanceado sem quebras de linha estranhas
+/// - Cartão interativo de status do WhatsApp com chevron de navegação
+/// - Lista de comandos de Triagem com alinhamento pixel-perfect (grid de badges fixos)
+/// - Motor Biomecânico Gemini 2.5 Flash com badges de proteção e guardrails
+/// - Telemetria de impacto em cards modulares de alto contraste
 class TrainerAiAssistantScreen extends StatefulWidget {
   const TrainerAiAssistantScreen({super.key});
 
@@ -120,7 +122,7 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
     final isDark = MetaColors.isDark(context);
 
     return Scaffold(
-      backgroundColor: MetaColors.background,
+      backgroundColor: MetaColors.bg(context),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -129,18 +131,25 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
           statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: MetaColors.text(context)),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: MetaColors.text(context), size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Consultor Ativo IA',
           style: TextStyle(
             color: MetaColors.text(context),
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            letterSpacing: -0.5,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.4,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh_rounded, color: MetaColors.text(context), size: 22),
+            tooltip: 'Atualizar Diagnóstico',
+            onPressed: _loadData,
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(
@@ -150,25 +159,39 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
               onRefresh: _loadData,
               color: MetaColors.emerald,
               child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // 1. Hero Card One UI 7
                     _buildHeroHeader(context),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
+
+                    // 2. Status Interativo do WhatsApp (Click-to-Manage)
                     _buildConnectionStatusBar(context),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18),
+
+                    // 3. Triagem de Custo Zero (Comandos Alinhados)
                     _buildZeroCostSection(context),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
+
+                    // 4. Motor Biomecânico Gemini 2.5 Flash
                     _buildAiEngineSection(context),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18),
+
+                    // 5. Telemetria Modular em Cards
                     _buildTelemetryCard(context),
                     const SizedBox(height: 24),
+
+                    // 6. Ações Principais
                     SquircleButton(
-                      label: 'Configurar Conexão do WhatsApp',
+                      label: _isWhatsAppConnected ? 'Gerenciar Conexão do WhatsApp' : 'Conectar WhatsApp Agora',
                       icon: Icons.chat_rounded,
                       isPrimary: true,
+                      height: 52,
                       onPressed: () {
                         Navigator.push(
                           context,
@@ -183,6 +206,7 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
                       label: 'Ver Planos & Upgrades (Elite / Pro)',
                       icon: Icons.workspace_premium_outlined,
                       isPrimary: false,
+                      height: 50,
                       onPressed: () {
                         Navigator.push(
                           context,
@@ -192,7 +216,7 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
                         ).then((_) => _loadData());
                       },
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 36),
                   ],
                 ),
               ),
@@ -205,40 +229,41 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
     final hasAi = _hasAiActive;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: MetaColors.card(context),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: hasAi ? MetaColors.emerald.withValues(alpha: 0.3) : MetaColors.cardBorder(context),
-          width: 1.5,
+          color: hasAi ? MetaColors.emerald.withValues(alpha: 0.35) : MetaColors.cardBorder(context),
+          width: 1.4,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: 52,
-                height: 52,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: hasAi
-                        ? [const Color(0xFF10B981), const Color(0xFF06B6D4)]
+                        ? [const Color(0xFF10B981), const Color(0xFF0EA5E9)]
                         : [const Color(0xFF64748B), const Color(0xFF475569)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(15),
                 ),
                 child: const Icon(
                   Icons.smart_toy_rounded,
                   color: Colors.white,
-                  size: 28,
+                  size: 26,
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -248,29 +273,67 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
                       style: TextStyle(
                         color: MetaColors.text(context),
                         fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: hasAi
-                            ? MetaColors.emerald.withValues(alpha: 0.15)
-                            : Colors.amber.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        hasAi
-                            ? '👑 $planName • IA 24h LIBERADA'
-                            : '🛡️ $planName • TRIAGEM GRATUITA',
-                        style: TextStyle(
-                          color: hasAi ? MetaColors.emerald : Colors.amber.shade400,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5,
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: hasAi
+                                ? MetaColors.emerald.withValues(alpha: 0.15)
+                                : Colors.amber.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: hasAi
+                                  ? MetaColors.emerald.withValues(alpha: 0.4)
+                                  : Colors.amber.withValues(alpha: 0.4),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                hasAi ? Icons.verified_rounded : Icons.shield_outlined,
+                                size: 12,
+                                color: hasAi ? MetaColors.emerald : Colors.amber,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                planName,
+                                style: TextStyle(
+                                  color: hasAi ? MetaColors.emerald : Colors.amber,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: hasAi
+                                ? MetaColors.accentBlue.withValues(alpha: 0.15)
+                                : MetaColors.surfaceHighlight,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            hasAi ? 'IA 24h Liberada' : 'Triagem Gratuita',
+                            style: TextStyle(
+                              color: hasAi ? MetaColors.accentBlue : MetaColors.textSecondary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -284,7 +347,7 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
                 : 'O seu plano Starter inclui todas as automações de custo zero (envio de fichas e streak). Para liberar o consultor biomecânico inteligente 24h, faça upgrade para os planos Pro, Elite Coach ou Studio.',
             style: TextStyle(
               color: MetaColors.subtext(context),
-              fontSize: 13.5,
+              fontSize: 13,
               height: 1.45,
             ),
           ),
@@ -296,48 +359,80 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
   Widget _buildConnectionStatusBar(BuildContext context) {
     final connected = _isWhatsAppConnected;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: connected
-            ? MetaColors.emerald.withValues(alpha: 0.1)
-            : AppColors.warning.withValues(alpha: 0.1),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const WhatsappConnectionScreen(),
+            ),
+          ).then((_) => _loadData());
+        },
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: connected
-              ? MetaColors.emerald.withValues(alpha: 0.3)
-              : AppColors.warning.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-              color: connected ? MetaColors.emerald : AppColors.warning,
-              shape: BoxShape.circle,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: connected
+                ? MetaColors.emerald.withValues(alpha: 0.12)
+                : AppColors.warning.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: connected
+                  ? MetaColors.emerald.withValues(alpha: 0.4)
+                  : AppColors.warning.withValues(alpha: 0.4),
+              width: 1.2,
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              connected
-                  ? 'WhatsApp Conectado e Operacional'
-                  : 'WhatsApp Desconectado (Aguardando Pareamento)',
-              style: TextStyle(
-                color: connected ? MetaColors.emerald : AppColors.warning,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
+          child: Row(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: connected ? MetaColors.emerald : AppColors.warning,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: (connected ? MetaColors.emerald : AppColors.warning).withValues(alpha: 0.5),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
               ),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      connected ? 'WhatsApp Conectado e Operacional' : 'WhatsApp Desconectado',
+                      style: TextStyle(
+                        color: connected ? MetaColors.emerald : AppColors.warning,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      connected ? 'Toque para gerenciar ou disparar teste' : 'Toque para parear seu QR Code / Código',
+                      style: TextStyle(
+                        color: MetaColors.subtext(context),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: connected ? MetaColors.emerald : AppColors.warning,
+                size: 20,
+              ),
+            ],
           ),
-          Icon(
-            connected ? Icons.check_circle_rounded : Icons.link_off_rounded,
-            color: connected ? MetaColors.emerald : AppColors.warning,
-            size: 18,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -347,7 +442,7 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: MetaColors.card(context),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: MetaColors.cardBorder(context)),
       ),
       child: Column(
@@ -355,70 +450,184 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.money_off_csred_rounded, color: MetaColors.emerald, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Triagem de Custo Zero (Sem Gastar Tokens)',
-                style: TextStyle(
-                  color: MetaColors.text(context),
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: MetaColors.emerald.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.flash_on_rounded, color: MetaColors.emerald, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Triagem de Custo Zero',
+                      style: TextStyle(
+                        color: MetaColors.text(context),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    Text(
+                      'Respostas instantâneas sem gastar tokens de IA',
+                      style: TextStyle(
+                        color: MetaColors.subtext(context),
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: MetaColors.emerald.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  '0 Tokens',
+                  style: TextStyle(
+                    color: MetaColors.emerald,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
+          const SizedBox(height: 14),
+          const Text(
             'Comandos rápidos disponíveis para todos os seus alunos em qualquer plano:',
-            style: TextStyle(color: MetaColors.subtext(context), fontSize: 13),
+            style: TextStyle(color: MetaColors.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 12),
-          _buildCommandCard(context, '*1* ou *treino*', 'Envia a ficha de treino ativa completa com repetições e descanso.'),
+          _buildCommandCard(
+            context,
+            badge: '1',
+            commandLabel: '1 ou treino',
+            title: 'Ficha de Treino Ativa',
+            description: 'Envia o resumo da ficha completa com exercícios, séries e descanso.',
+          ),
           const SizedBox(height: 8),
-          _buildCommandCard(context, '*2* ou *streak*', 'Consulta e informa a ofensiva de treinos seguidos (Streak 🔥).'),
+          _buildCommandCard(
+            context,
+            badge: '2',
+            commandLabel: '2 ou streak',
+            title: 'Ofensiva & Consistência',
+            description: 'Informa os dias seguidos de treino do aluno (Streak 🔥).',
+          ),
           const SizedBox(height: 8),
-          _buildCommandCard(context, '*3* ou *app*', 'Envia o link direto de acesso à plataforma do aluno.'),
+          _buildCommandCard(
+            context,
+            badge: '3',
+            commandLabel: '3 ou app',
+            title: 'Acesso Direto ao App',
+            description: 'Envia o link direto seguro para o aluno acessar a plataforma.',
+          ),
           const SizedBox(height: 8),
-          _buildCommandCard(context, '*oi*, *ola*, *menu*', 'Exibe o menu de opções imediato sem consumir IA.'),
+          _buildCommandCard(
+            context,
+            badge: '0',
+            commandLabel: 'oi, ola ou menu',
+            title: 'Menu de Opções Imediato',
+            description: 'Recepciona o aluno e exibe as opções de atendimento automático.',
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildCommandCard(BuildContext context, String cmd, String desc) {
+  Widget _buildCommandCard(
+    BuildContext context, {
+    required String badge,
+    required String commandLabel,
+    required String title,
+    required String description,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: MetaColors.highlight(context),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: MetaColors.border.withValues(alpha: 0.5)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Badge Numérico de Largura Fixa para Alinhamento Perfeito
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
               color: MetaColors.emerald.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: MetaColors.emerald.withValues(alpha: 0.4),
+                width: 1,
+              ),
             ),
-            child: Text(
-              cmd,
-              style: const TextStyle(
-                color: MetaColors.emerald,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
+            child: Center(
+              child: Text(
+                badge,
+                style: const TextStyle(
+                  color: MetaColors.emerald,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              desc,
-              style: TextStyle(
-                color: MetaColors.text(context),
-                fontSize: 12.5,
-                height: 1.3,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          color: MetaColors.text(context),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        color: MetaColors.card(context),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        commandLabel,
+                        style: const TextStyle(
+                          color: MetaColors.emerald,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  description,
+                  style: TextStyle(
+                    color: MetaColors.subtext(context),
+                    fontSize: 11.5,
+                    height: 1.35,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -433,9 +642,10 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: MetaColors.card(context),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
           color: hasAi ? const Color(0xFF6366F1).withValues(alpha: 0.4) : MetaColors.cardBorder(context),
+          width: 1.3,
         ),
       ),
       child: Column(
@@ -443,22 +653,45 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.psychology_rounded, color: Color(0xFF818CF8), size: 22),
-              const SizedBox(width: 8),
-              Text(
-                'Motor Biomecânico Gemini (IA 24h)',
-                style: TextStyle(
-                  color: MetaColors.text(context),
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.psychology_rounded, color: Color(0xFF818CF8), size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Motor Biomecânico Gemini',
+                      style: TextStyle(
+                        color: MetaColors.text(context),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const Text(
+                      'IA 24h para dúvidas técnicas de exercícios',
+                      style: TextStyle(
+                        color: Color(0xFF818CF8),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             'Quando o aluno envia perguntas abertas (ex: "como posicionar os pés no leg press?", "posso trocar o crucifixo pelo voador?"), o Gemini 2.5 Flash responde no tom do seu método:',
-            style: TextStyle(color: MetaColors.subtext(context), fontSize: 13, height: 1.4),
+            style: TextStyle(color: MetaColors.subtext(context), fontSize: 12.5, height: 1.4),
           ),
           const SizedBox(height: 12),
           _buildBulletItem(context, 'Baseado estritamente na ficha prescrita por você.'),
@@ -477,12 +710,15 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.check_rounded, color: MetaColors.emerald, size: 16),
+        const Padding(
+          padding: EdgeInsets.only(top: 2),
+          child: Icon(Icons.check_circle_rounded, color: MetaColors.emerald, size: 15),
+        ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             text,
-            style: TextStyle(color: MetaColors.text(context), fontSize: 12.5),
+            style: TextStyle(color: MetaColors.text(context), fontSize: 12),
           ),
         ),
       ],
@@ -498,7 +734,7 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: MetaColors.card(context),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: MetaColors.cardBorder(context)),
       ),
       child: Column(
@@ -506,14 +742,23 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.insights_rounded, color: MetaColors.emerald, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Impacto do Robô no Mês',
-                style: TextStyle(
-                  color: MetaColors.text(context),
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: MetaColors.emerald.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.insights_rounded, color: MetaColors.emerald, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Impacto do Robô no Mês',
+                  style: TextStyle(
+                    color: MetaColors.text(context),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],
@@ -522,27 +767,32 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
           Row(
             children: [
               Expanded(
-                child: _buildMetricItem(
+                child: _buildMetricTile(
                   context,
-                  label: 'Economizados',
+                  label: 'Tempo Poupado',
                   value: '${hours}h',
                   color: MetaColors.emerald,
+                  icon: Icons.timer_outlined,
                 ),
               ),
+              const SizedBox(width: 10),
               Expanded(
-                child: _buildMetricItem(
+                child: _buildMetricTile(
                   context,
                   label: 'Alunos Atendidos',
                   value: '$students',
                   color: const Color(0xFF6366F1),
+                  icon: Icons.people_outline_rounded,
                 ),
               ),
+              const SizedBox(width: 10),
               Expanded(
-                child: _buildMetricItem(
+                child: _buildMetricTile(
                   context,
                   label: 'Mensagens',
                   value: '$total',
                   color: Colors.amber,
+                  icon: Icons.chat_bubble_outline_rounded,
                 ),
               ),
             ],
@@ -552,32 +802,46 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
     );
   }
 
-  Widget _buildMetricItem(
+  Widget _buildMetricTile(
     BuildContext context, {
     required String label,
     required String value,
     required Color color,
+    required IconData icon,
   }) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            color: color,
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      decoration: BoxDecoration(
+        color: MetaColors.highlight(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: MetaColors.border.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: MetaColors.subtext(context),
-            fontSize: 11,
+          const SizedBox(height: 3),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: MetaColors.subtext(context),
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
