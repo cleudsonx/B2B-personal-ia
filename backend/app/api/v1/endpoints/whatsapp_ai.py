@@ -149,7 +149,38 @@ MENU_GREETINGS = {"oi", "ola", "menu", "ajuda", "0", "bom dia", "boa tarde", "bo
 MENU_WORKOUT = {"1", "treino", "meu treino", "ficha", "qual meu treino", "minha ficha"}
 MENU_STREAK = {"2", "streak", "ofensiva", "foguinho", "minha ofensiva"}
 MENU_APP = {"3", "app", "link", "aplicativo", "acesso"}
-PHASE2_ALLOWED_PLANS = {"pro", "elite", "studio"}
+PHASE2_ALLOWED_PLANS = {
+    "pro",
+    "personal_pro",
+    "elite",
+    "elite_coach",
+    "coach_elite",
+    "studio",
+    "shaipados_studio",
+}
+
+
+def is_phase2_ai_allowed(sub: Any) -> bool:
+    """Verifica se o treinador possui plano com IA 24h liberada (Pro, Elite Coach e Studio)."""
+    if not sub:
+        return False
+    plan_id = str(getattr(sub, "plan_id", "") or "").lower().replace("-", "_").strip()
+    plan_name = str(getattr(sub, "plan_name", "") or "").lower().strip()
+
+    # Starter é plano básico: fica com a triagem gratuita de custo zero
+    if plan_id in {"starter", "free", "basic"} or "starter" in plan_name:
+        return False
+
+    if plan_id in PHASE2_ALLOWED_PLANS:
+        return True
+
+    for keyword in ("elite", "pro", "studio"):
+        if keyword in plan_id or keyword in plan_name:
+            return True
+
+    return False
+
+
 APP_URL = "https://shaipados-labs.web.app"
 
 
@@ -264,8 +295,7 @@ async def _answer(instance: str, number: str, digits: str, question: str) -> Non
         # PASSO 2.2 — Trava Comercial da Fase 2 (Monetização por Plano)
         # ---------------------------------------------------------------------
         sub = await supabase_service.get_trainer_subscription(trainer_id)
-        plan_id = str(getattr(sub, "plan_id", "") or "").lower()
-        if plan_id == "starter" or plan_id not in PHASE2_ALLOWED_PLANS:
+        if not is_phase2_ai_allowed(sub):
             await _reply(
                 f"Recebi sua mensagem! Já encaminhei para o seu treinador responder pessoalmente. Para ver sua ficha agora, digite *1* ou acesse: {APP_URL} 💪",
                 cost="free",

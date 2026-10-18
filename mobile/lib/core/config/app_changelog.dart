@@ -38,6 +38,36 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
+      version: '1.4.9',
+      buildNumber: 2026102885,
+      date: '18 de Outubro, 2026',
+      summary:
+          'Cockpit One UI 7 Dedicado do Consultor Ativo IA — Disponibilidade Completa nas Abas Vitrine e Conta, com Suporte Total e Explícito ao Plano Elite Coach na Trava Comercial da Fase 2.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.dashboard_rounded,
+          title: 'Tela Dedicada do Cockpit One UI 7',
+          description:
+              'Interface completa e imersiva para o Consultor Ativo IA acessível tanto na aba Vitrine ("Expanda sua empresa") quanto na aba Conta ("Consultor Ativo IA & WhatsApp"), eliminando dependência de bottom sheets em navegadores PWA.',
+          badge: 'ONE UI 7',
+        ),
+        ChangelogItem(
+          icon: Icons.workspace_premium_rounded,
+          title: 'Elite Coach na Trava Comercial',
+          description:
+              'Validação robusta que inclui expressamente o plano Elite Coach (além de Personal Pro e Studio) para uso irrestrito do motor biomecânico Gemini 2.5 Flash 24h no WhatsApp.',
+          badge: 'B2B',
+        ),
+        ChangelogItem(
+          icon: Icons.bolt_rounded,
+          title: 'Triagem Custo Zero & Telemetria em Tempo Real',
+          description:
+              'Simulador dos comandos rápidos 1, 2 e 3 na tela, indicador de status online/desconectado do WhatsApp e métricas de horas economizadas.',
+          badge: 'TELEMETRIA',
+        ),
+      ],
+    ),
+    VersionRelease(
       version: '1.4.8',
       buildNumber: 2026102884,
       date: '17 de Outubro, 2026',

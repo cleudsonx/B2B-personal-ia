@@ -118,6 +118,15 @@ def test_zero_cost_menu_and_phase2_lock(monkeypatch):
         assert len(gemini_calls) == 1
         assert "largura dos ombros" in sent_messages[-1][2]
 
+        # 7. Plano Elite Coach também libera Gemini em pergunta aberta
+        async def fake_sub_elite(trainer_id: str):
+            return SimpleNamespace(plan_id="elite", plan_name="Elite Coach")
+
+        monkeypatch.setattr(supabase_service, "get_trainer_subscription", fake_sub_elite)
+        await whatsapp_ai._answer(valid_instance, "5511999999999", "5511999999999", "Como fazer o supino?")
+        assert len(sent_messages) == 7
+        assert len(gemini_calls) == 2
+
     asyncio.run(run_scenarios())
 
 

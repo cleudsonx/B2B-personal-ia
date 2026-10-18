@@ -46,10 +46,10 @@ class AppConfig {
   static const String supabaseAnonKey = supabasePublishableKey;
 
   // Informações Oficiais de Versionamento (SemVer) & Build
-  static const String appVersion = '1.4.8';
-  static const int buildNumber = 2026102884;
-  static const String buildDate = '17 de Outubro, 2026';
-  static const String releaseNotes = 'Correção e renovação automática de Código de Pareamento WhatsApp e reset de sessões pendentes';
+  static const String appVersion = '1.4.9';
+  static const int buildNumber = 2026102885;
+  static const String buildDate = '18 de Outubro, 2026';
+  static const String releaseNotes = 'Cockpit One UI 7 dedicado do Consultor Ativo IA nas abas Vitrine e Conta, com trava comercial Pro, Elite Coach e Studio';
 
   static String get fullVersionString => 'v$appVersion (Build $buildNumber)';
 }

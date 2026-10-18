@@ -9,6 +9,7 @@ import '../../../../core/theme/theme_controller.dart';
 import '../../../subscription/subscription_screen.dart';
 import 'whatsapp_connection_screen.dart';
 import 'trainer_profile_setup_screen.dart';
+import 'trainer_ai_assistant_screen.dart';
 import '../../../landing/trainer_public_landing_screen.dart';
 
 /// Aba "Ferramentas do Personal" (Vitrine B2B)
@@ -229,7 +230,10 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
         );
         break;
       case _ToolType.aiAssistant:
-        _showAiAssistantModal();
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const TrainerAiAssistantScreen()),
+        );
         break;
       case _ToolType.publicShowcase:
         _showPublicShowcaseModal();
