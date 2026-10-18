@@ -39,6 +39,36 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.5.0',
+      buildNumber: 2026102901,
+      date: '18 de Outubro, 2026',
+      summary:
+          'Fase 5: Bio-Hub 2.0 com Split Photo Slider tátil, galeria sigilosa antes/depois e métricas antropométricas corporais.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.compare_arrows_rounded,
+          title: 'Split Photo Slider Tátil Antes & Depois (One UI 7)',
+          description:
+              'Visualizador interativo de fotos de evolução com slider tátil em tempo real, haptic feedback e exibição simultânea das datas e pesos.',
+          badge: 'VISUAL',
+        ),
+        ChangelogItem(
+          icon: Icons.straighten_rounded,
+          title: 'Medidas Corporais & Antropometria Integrada',
+          description:
+              'Acompanhamento de peso, IMC automático com classificação de saúde, % de gordura e circunferências (cintura, braço, tórax, quadril, coxa) com deltas evolutivos.',
+          badge: 'ANTROPOMETRIA',
+        ),
+        ChangelogItem(
+          icon: Icons.lock_outline_rounded,
+          title: 'Galeria Sigilosa no Prontuário do Treinador',
+          description:
+              'O professor tem acesso direto no prontuário do aluno à comparação com Split-Slider e ao histórico antropométrico com segurança e confidencialidade.',
+          badge: 'COCKPIT B2B',
+        ),
+      ],
+    ),
+    VersionRelease(
+      version: '1.5.0',
       buildNumber: 2026102900,
       date: '18 de Outubro, 2026',
       summary:

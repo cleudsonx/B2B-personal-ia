@@ -47,9 +47,9 @@ class AppConfig {
 
   // Informações Oficiais de Versionamento (SemVer) & Build
   static const String appVersion = '1.5.0';
-  static const int buildNumber = 2026102900;
+  static const int buildNumber = 2026102901;
   static const String buildDate = '18 de Outubro, 2026';
-  static const String releaseNotes = 'Fase 4: WhatsApp Ativo 24h com IA Biomecânica, injeção de Anamnese, Guardrail de Dor e Simulador Interativo';
+  static const String releaseNotes = 'Fase 5: Bio-Hub 2.0 com Split Photo Slider tátil, galeria sigilosa antes/depois e métricas antropométricas corporais';
 
   static String get fullVersionString => 'v$appVersion (Build $buildNumber)';
 }

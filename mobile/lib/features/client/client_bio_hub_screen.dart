@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/widgets/meta_components.dart';
+import '../../core/widgets/split_photo_slider.dart';
 import '../../services/auth_service.dart';
+import '../../services/body_metrics_service.dart';
 import '../../services/evolution_photo_service.dart';
 import '../../services/workout_service.dart';
 import 'welcome_onboarding_screen.dart';
@@ -56,6 +58,11 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
   EvolutionPhoto? _afterPhoto;
   bool _isLoadingPhotos = true;
   bool _isUploadingPhoto = false;
+  bool _useSplitSlider = true;
+
+  // Medidas Corporais & Antropometria State
+  List<BodyMetricsRecord> _metricsHistory = [];
+  bool _isLoadingMetrics = true;
 
   double get _calculatedReadinessScore {
     double sleepScore = 0;
@@ -99,6 +106,26 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
     _loadEvolutionPhotos();
     _loadRecoveryAndLoads();
     _loadAnamnesisHistory();
+    _loadBodyMetrics();
+  }
+
+  Future<void> _loadBodyMetrics() async {
+    final user = AuthService.currentUser;
+    if (user == null) {
+      if (mounted) setState(() => _isLoadingMetrics = false);
+      return;
+    }
+    try {
+      final list = await BodyMetricsService.getMetricsHistory(user.id);
+      if (mounted) {
+        setState(() {
+          _metricsHistory = list;
+          _isLoadingMetrics = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingMetrics = false);
+    }
   }
 
   Future<void> _loadAnamnesisHistory() async {
@@ -419,6 +446,263 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
           ),
         );
       },
+    );
+  }
+
+  void _showAddMetricsSheet() {
+    final latest = _metricsHistory.isNotEmpty ? _metricsHistory.first : null;
+    double weight = latest?.weightKg ?? 75.0;
+    double height = latest?.heightCm ?? 175.0;
+    double? bodyFat = latest?.bodyFatPct;
+    double waist = latest?.waistCm ?? 82.0;
+    double hip = latest?.hipCm ?? 96.0;
+    double chest = latest?.chestCm ?? 100.0;
+    double armRight = latest?.armRightCm ?? 36.0;
+    double thighRight = latest?.thighRightCm ?? 56.0;
+    final notesCtrl = TextEditingController();
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final isDark = MetaColors.isDark(ctx);
+        final bg = isDark ? MetaColors.surface : MetaColors.lightSurface;
+        final border = isDark ? MetaColors.border : MetaColors.lightBorder;
+        final textColor = isDark ? MetaColors.textPrimary : MetaColors.lightTextPrimary;
+        final subtextColor = isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary;
+
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) => Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            child: Container(
+              margin: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: border),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: subtextColor.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: MetaColors.emerald.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.straighten_rounded, color: MetaColors.emerald, size: 20),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Registrar Medidas Corporais',
+                                style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 16),
+                              ),
+                              Text(
+                                'Bio-Hub 2.0 • Sincronizado com seu treinador',
+                                style: TextStyle(color: subtextColor, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    // Peso e Altura
+                    _buildStepperField(
+                      title: 'Peso Corporal (kg)',
+                      value: weight,
+                      step: 0.5,
+                      textColor: textColor,
+                      subtextColor: subtextColor,
+                      border: border,
+                      onChanged: (val) => setSheetState(() => weight = val),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildStepperField(
+                      title: 'Altura (cm)',
+                      value: height,
+                      step: 1.0,
+                      textColor: textColor,
+                      subtextColor: subtextColor,
+                      border: border,
+                      onChanged: (val) => setSheetState(() => height = val),
+                    ),
+                    const SizedBox(height: 10),
+                    // Circunferências
+                    _buildStepperField(
+                      title: 'Cintura / Abdômen (cm)',
+                      value: waist,
+                      step: 0.5,
+                      textColor: textColor,
+                      subtextColor: subtextColor,
+                      border: border,
+                      onChanged: (val) => setSheetState(() => waist = val),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildStepperField(
+                      title: 'Quadril (cm)',
+                      value: hip,
+                      step: 0.5,
+                      textColor: textColor,
+                      subtextColor: subtextColor,
+                      border: border,
+                      onChanged: (val) => setSheetState(() => hip = val),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildStepperField(
+                      title: 'Braço Direito (cm)',
+                      value: armRight,
+                      step: 0.5,
+                      textColor: textColor,
+                      subtextColor: subtextColor,
+                      border: border,
+                      onChanged: (val) => setSheetState(() => armRight = val),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildStepperField(
+                      title: 'Coxa Direita (cm)',
+                      value: thighRight,
+                      step: 0.5,
+                      textColor: textColor,
+                      subtextColor: subtextColor,
+                      border: border,
+                      onChanged: (val) => setSheetState(() => thighRight = val),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildStepperField(
+                      title: 'Tórax / Peito (cm)',
+                      value: chest,
+                      step: 0.5,
+                      textColor: textColor,
+                      subtextColor: subtextColor,
+                      border: border,
+                      onChanged: (val) => setSheetState(() => chest = val),
+                    ),
+                    const SizedBox(height: 20),
+                    SquircleButton(
+                      label: 'Salvar Medições de Hoje',
+                      icon: Icons.check_circle_rounded,
+                      isPrimary: true,
+                      height: 48,
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        final saved = await BodyMetricsService.saveMetrics(
+                          weightKg: weight,
+                          heightCm: height,
+                          waistCm: waist,
+                          hipCm: hip,
+                          chestCm: chest,
+                          armRightCm: armRight,
+                          thighRightCm: thighRight,
+                          bodyFatPct: bodyFat,
+                          notes: notesCtrl.text.isNotEmpty ? notesCtrl.text : null,
+                        );
+                        if (saved != null && mounted) {
+                          setState(() {
+                            _metricsHistory.removeWhere((r) => r.id == saved.id);
+                            _metricsHistory.insert(0, saved);
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: MetaColors.emerald,
+                              content: Row(
+                                children: [
+                                  const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Medições registradas! Peso: ${weight.toStringAsFixed(1)} kg • IMC ${saved.bmi?.toStringAsFixed(1) ?? "--"}',
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStepperField({
+    required String title,
+    required double value,
+    required double step,
+    required Color textColor,
+    required Color subtextColor,
+    required Color border,
+    required ValueChanged<double> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: MetaColors.surfaceHighlight,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: border.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+          Row(
+            children: [
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.remove_circle_outline_rounded, size: 22, color: MetaColors.emerald),
+                onPressed: () => onChanged((value - step).clamp(10.0, 300.0)),
+              ),
+              Container(
+                constraints: const BoxConstraints(minWidth: 54),
+                child: Text(
+                  value.toStringAsFixed(1),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.w900),
+                ),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.add_circle_outline_rounded, size: 22, color: MetaColors.emerald),
+                onPressed: () => onChanged((value + step).clamp(10.0, 300.0)),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -1253,6 +1537,10 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
         _buildAnamnesisEvolutionSection(),
         const SizedBox(height: 24),
 
+        // Bloco 1.5: Medidas Corporais & Antropometria (Bio-Hub 2.0)
+        _buildBodyMetricsSection(),
+        const SizedBox(height: 24),
+
         // Bloco 2: Sobrecarga Progressiva
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1355,7 +1643,7 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                 ],
               ),
               const SizedBox(height: 16),
-              // Comparativo Antes x Atual Real
+              // Comparativo Antes x Atual Real com Split Slider
               if (_isLoadingPhotos)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
@@ -1363,7 +1651,110 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                     child: CircularProgressIndicator(strokeWidth: 2, color: MetaColors.emerald),
                   ),
                 )
-              else
+              else if (_beforePhoto != null && _afterPhoto != null) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        color: MetaColors.surfaceHighlight,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          InkWell(
+                            onTap: () => setState(() => _useSplitSlider = true),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: _useSplitSlider ? MetaColors.emerald : Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.swap_horiz_rounded, size: 14, color: _useSplitSlider ? Colors.white : MetaColors.textSecondary),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Split-Slider',
+                                    style: TextStyle(
+                                      color: _useSplitSlider ? Colors.white : MetaColors.textSecondary,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          InkWell(
+                            onTap: () => setState(() => _useSplitSlider = false),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: !_useSplitSlider ? MetaColors.emerald : Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.view_column_rounded, size: 14, color: !_useSplitSlider ? Colors.white : MetaColors.textSecondary),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Lado a Lado',
+                                    style: TextStyle(
+                                      color: !_useSplitSlider ? Colors.white : MetaColors.textSecondary,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (_useSplitSlider)
+                  SplitPhotoSlider(
+                    beforeImageUrl: _beforePhoto!.photoUrl,
+                    afterImageUrl: _afterPhoto!.photoUrl,
+                    beforeLabel: 'Início',
+                    afterLabel: 'Atual',
+                    beforeWeightKg: _beforePhoto!.weightKg,
+                    afterWeightKg: _afterPhoto!.weightKg,
+                    beforeDate: _beforePhoto!.takenAt,
+                    afterDate: _afterPhoto!.takenAt,
+                    height: 380,
+                  )
+                else
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildPhotoSlot(
+                          label: 'Início da Consultoria',
+                          fallbackDate: 'Mês 1',
+                          photo: _beforePhoto,
+                          onTap: () => _showAddPhotoSheet(defaultType: 'before'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildPhotoSlot(
+                          label: 'Atual (Mês Recente)',
+                          fallbackDate: 'Hoje',
+                          photo: _afterPhoto,
+                          onTap: () => _showAddPhotoSheet(defaultType: 'after'),
+                        ),
+                      ),
+                    ],
+                  ),
+              ] else
                 Row(
                   children: [
                     Expanded(
@@ -1398,6 +1789,272 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildBodyMetricsSection() {
+    final latest = _metricsHistory.isNotEmpty ? _metricsHistory.first : null;
+    final initial = _metricsHistory.length > 1 ? _metricsHistory.last : latest;
+
+    double? weightDelta;
+    if (latest?.weightKg != null && initial?.weightKg != null && _metricsHistory.length > 1) {
+      weightDelta = latest!.weightKg! - initial!.weightKg!;
+    }
+
+    double? waistDelta;
+    if (latest?.waistCm != null && initial?.waistCm != null && _metricsHistory.length > 1) {
+      waistDelta = latest!.waistCm! - initial!.waistCm!;
+    }
+
+    double? armDelta;
+    if (latest?.armRightCm != null && initial?.armRightCm != null && _metricsHistory.length > 1) {
+      armDelta = latest!.armRightCm! - initial!.armRightCm!;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: _buildSectionHeader(
+                icon: Icons.straighten_rounded,
+                title: 'Medidas Corporais & Antropometria',
+                tag: 'BIO-HUB 2.0',
+                tagColor: MetaColors.emerald,
+              ),
+            ),
+            TextButton.icon(
+              onPressed: _showAddMetricsSheet,
+              icon: const Icon(Icons.add, size: 16, color: MetaColors.emerald),
+              label: const Text(
+                'Novas Medidas',
+                style: TextStyle(color: MetaColors.emerald, fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (_isLoadingMetrics)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Center(
+              child: CircularProgressIndicator(strokeWidth: 2, color: MetaColors.emerald),
+            ),
+          )
+        else if (latest == null)
+          MetaCard(
+            child: Column(
+              children: [
+                const Icon(Icons.straighten_rounded, color: MetaColors.emerald, size: 36),
+                const SizedBox(height: 10),
+                const Text(
+                  'Acompanhe sua Evolução Corporal',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Registre peso, altura e circunferências para visualizar a redução de gordura e ganho de massa magra.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: MetaColors.textSecondary, fontSize: 12, height: 1.4),
+                ),
+                const SizedBox(height: 14),
+                SquircleButton(
+                  label: 'Registrar Primeira Medição',
+                  icon: Icons.add_chart_rounded,
+                  isPrimary: true,
+                  height: 44,
+                  onPressed: _showAddMetricsSheet,
+                ),
+              ],
+            ),
+          )
+        else
+          MetaCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'ÚLTIMO CHECK-IN',
+                          style: TextStyle(color: MetaColors.textSecondary, fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 0.8),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${latest.measuredAt.day.toString().padLeft(2, '0')}/${latest.measuredAt.month.toString().padLeft(2, '0')}/${latest.measuredAt.year}',
+                          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    if (latest.bmi != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: MetaColors.emerald.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.4), width: 0.8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.speed_rounded, size: 14, color: MetaColors.emerald),
+                            const SizedBox(width: 5),
+                            Text(
+                              'IMC ${latest.bmi!.toStringAsFixed(1)} • ${latest.bmiCategory}',
+                              style: const TextStyle(color: MetaColors.emerald, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Grid de métricas principais
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildMetricTile(
+                        label: 'Peso Atual',
+                        value: latest.weightKg != null ? '${latest.weightKg!.toStringAsFixed(1)} kg' : '--',
+                        delta: weightDelta != null ? '${weightDelta > 0 ? '+' : ''}${weightDelta.toStringAsFixed(1)} kg' : null,
+                        deltaColor: (weightDelta != null && weightDelta < 0) ? MetaColors.emerald : Colors.amber,
+                        icon: Icons.monitor_weight_outlined,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildMetricTile(
+                        label: 'Cintura',
+                        value: latest.waistCm != null ? '${latest.waistCm!.toStringAsFixed(1)} cm' : '--',
+                        delta: waistDelta != null ? '${waistDelta > 0 ? '+' : ''}${waistDelta.toStringAsFixed(1)} cm' : null,
+                        deltaColor: (waistDelta != null && waistDelta < 0) ? MetaColors.emerald : Colors.amber,
+                        icon: Icons.accessibility_new_rounded,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildMetricTile(
+                        label: 'Braço D.',
+                        value: latest.armRightCm != null ? '${latest.armRightCm!.toStringAsFixed(1)} cm' : '--',
+                        delta: armDelta != null ? '${armDelta > 0 ? '+' : ''}${armDelta.toStringAsFixed(1)} cm' : null,
+                        deltaColor: (armDelta != null && armDelta > 0) ? MetaColors.emerald : Colors.amber,
+                        icon: Icons.fitness_center_rounded,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildMetricTile(
+                        label: 'Quadril',
+                        value: latest.hipCm != null ? '${latest.hipCm!.toStringAsFixed(1)} cm' : '--',
+                        icon: Icons.straighten_rounded,
+                      ),
+                    ),
+                  ],
+                ),
+                if (latest.chestCm != null || latest.thighRightCm != null) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      if (latest.chestCm != null)
+                        Expanded(
+                          child: _buildMetricTile(
+                            label: 'Tórax/Peito',
+                            value: '${latest.chestCm!.toStringAsFixed(1)} cm',
+                            icon: Icons.health_and_safety_outlined,
+                          ),
+                        ),
+                      if (latest.chestCm != null && latest.thighRightCm != null)
+                        const SizedBox(width: 10),
+                      if (latest.thighRightCm != null)
+                        Expanded(
+                          child: _buildMetricTile(
+                            label: 'Coxa D.',
+                            value: '${latest.thighRightCm!.toStringAsFixed(1)} cm',
+                            icon: Icons.directions_walk_rounded,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${_metricsHistory.length} medição(ões) no histórico',
+                      style: const TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildMetricTile({
+    required String label,
+    required String value,
+    String? delta,
+    Color deltaColor = MetaColors.emerald,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: MetaColors.surfaceHighlight,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: MetaColors.emerald),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(color: MetaColors.textSecondary, fontSize: 10.5, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Text(
+                      value,
+                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900),
+                    ),
+                    if (delta != null) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: deltaColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          delta,
+                          style: TextStyle(color: deltaColor, fontSize: 10, fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

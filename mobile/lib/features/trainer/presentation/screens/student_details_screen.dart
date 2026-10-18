@@ -1,5 +1,7 @@
 import '../../../../services/workout_service.dart';
 import '../../../../services/evolution_photo_service.dart';
+import '../../../../services/body_metrics_service.dart';
+import '../../../../core/widgets/split_photo_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -55,6 +57,9 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
   EvolutionPhoto? _studentBeforePhoto;
   EvolutionPhoto? _studentAfterPhoto;
   bool _isLoadingPhotos = true;
+  bool _useSplitSlider = true;
+  List<BodyMetricsRecord> _studentMetrics = [];
+  bool _isLoadingMetrics = true;
   Map<String, dynamic>? _studentRecovery;
   List<Map<String, dynamic>> _studentOverloads = [];
 
@@ -74,6 +79,7 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
           setState(() {
             _isLoadingBioFeedback = false;
             _isLoadingPhotos = false;
+            _isLoadingMetrics = false;
           });
         }
         return;
@@ -115,11 +121,25 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
       } catch (_) {
         if (mounted) setState(() => _isLoadingPhotos = false);
       }
+
+      // Buscar Medidas Corporais Antropométricas (Bio-Hub 2.0)
+      try {
+        final metrics = await BodyMetricsService.getMetricsHistory(studentId);
+        if (mounted) {
+          setState(() {
+            _studentMetrics = metrics;
+            _isLoadingMetrics = false;
+          });
+        }
+      } catch (_) {
+        if (mounted) setState(() => _isLoadingMetrics = false);
+      }
     } catch (_) {
       if (mounted) {
         setState(() {
           _isLoadingBioFeedback = false;
           _isLoadingPhotos = false;
+          _isLoadingMetrics = false;
         });
       }
     }
@@ -240,6 +260,7 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
 
       if (!launched && mounted) {
         await Clipboard.setData(ClipboardData(text: '$messageText\n\n$inviteUrl'));
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Link de convite copiado para a área de transferência! Cole na conversa com o aluno.'),
@@ -1651,6 +1672,268 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
     );
   }
 
+  Widget _buildTrainerBodyMetrics(BuildContext context, bool isDark) {
+    if (_isLoadingMetrics) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2, color: MetaColors.emerald),
+          ),
+        ),
+      );
+    }
+
+    if (_studentMetrics.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF161F30) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: MetaColors.cardBorder(context), width: 0.8),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.straighten_outlined, size: 20, color: MetaColors.subtext(context)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Nenhuma medida antropométrica registrada ainda.',
+                style: TextStyle(
+                  color: MetaColors.subtext(context),
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final latest = _studentMetrics.first;
+    final previous = _studentMetrics.length > 1 ? _studentMetrics[1] : null;
+
+    final dateFormatted =
+        '${latest.measuredAt.day.toString().padLeft(2, '0')}/${latest.measuredAt.month.toString().padLeft(2, '0')}/${latest.measuredAt.year}';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF161F30) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: MetaColors.cardBorder(context), width: 0.8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.straighten_rounded, color: MetaColors.emerald, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                'Antropometria Recente',
+                style: TextStyle(
+                  color: MetaColors.text(context),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12.5,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'Aferido em $dateFormatted',
+                style: TextStyle(
+                  color: MetaColors.subtext(context),
+                  fontSize: 10.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Linha de Destaques: Peso & IMC
+          Row(
+            children: [
+              Expanded(
+                child: _buildTrainerMetricTile(
+                  context: context,
+                  label: 'Peso Atual',
+                  value: latest.weightKg != null ? '${latest.weightKg!.toStringAsFixed(1)} kg' : '--',
+                  delta: previous?.weightKg != null && latest.weightKg != null
+                      ? latest.weightKg! - previous!.weightKg!
+                      : null,
+                  unit: 'kg',
+                  isDark: isDark,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildTrainerMetricTile(
+                  context: context,
+                  label: 'IMC',
+                  value: latest.bmi != null ? latest.bmi!.toStringAsFixed(1) : '--',
+                  subLabel: latest.bmiCategory,
+                  isDark: isDark,
+                  isEmerald: true,
+                ),
+              ),
+              if (latest.bodyFatPct != null) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildTrainerMetricTile(
+                    context: context,
+                    label: '% Gordura',
+                    value: '${latest.bodyFatPct!.toStringAsFixed(1)}%',
+                    delta: previous?.bodyFatPct != null ? latest.bodyFatPct! - previous!.bodyFatPct! : null,
+                    unit: '%',
+                    isDark: isDark,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Circunferências em Mini-Chips
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              if (latest.waistCm != null)
+                _buildTrainerCircumferenceChip(context, 'Cintura', '${latest.waistCm}cm', isDark),
+              if (latest.armRightCm != null || latest.armLeftCm != null)
+                _buildTrainerCircumferenceChip(
+                  context,
+                  'Braço',
+                  '${latest.armRightCm ?? latest.armLeftCm}cm',
+                  isDark,
+                ),
+              if (latest.chestCm != null)
+                _buildTrainerCircumferenceChip(context, 'Tórax', '${latest.chestCm}cm', isDark),
+              if (latest.hipCm != null)
+                _buildTrainerCircumferenceChip(context, 'Quadril', '${latest.hipCm}cm', isDark),
+              if (latest.thighRightCm != null || latest.thighLeftCm != null)
+                _buildTrainerCircumferenceChip(
+                  context,
+                  'Coxa',
+                  '${latest.thighRightCm ?? latest.thighLeftCm}cm',
+                  isDark,
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrainerMetricTile({
+    required BuildContext context,
+    required String label,
+    required String value,
+    String? subLabel,
+    double? delta,
+    String? unit,
+    required bool isDark,
+    bool isEmerald = false,
+  }) {
+    Color? deltaColor;
+    String deltaText = '';
+    if (delta != null && delta != 0) {
+      final sign = delta > 0 ? '+' : '';
+      deltaText = '$sign${delta.toStringAsFixed(1)}${unit ?? ''}';
+      deltaColor = delta < 0 ? MetaColors.emerald : Colors.amber;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0).withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: MetaColors.cardBorder(context), width: 0.6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: MetaColors.subtext(context),
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  color: isEmerald ? MetaColors.emerald : MetaColors.text(context),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+              if (deltaText.isNotEmpty) ...[
+                const SizedBox(width: 4),
+                Text(
+                  deltaText,
+                  style: TextStyle(
+                    color: deltaColor,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          if (subLabel != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              subLabel,
+              style: TextStyle(
+                color: isEmerald ? MetaColors.emerald : MetaColors.subtext(context),
+                fontSize: 9,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrainerCircumferenceChip(BuildContext context, String part, String value, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0).withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: MetaColors.cardBorder(context), width: 0.6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$part: ',
+            style: TextStyle(
+              color: MetaColors.subtext(context),
+              fontSize: 10.5,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              color: MetaColors.text(context),
+              fontSize: 10.5,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final status = student['status'] ?? 'Aguardando Ativação';
@@ -2683,6 +2966,90 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                       'Acompanhe visualmente a postura e a transformação física de $name.',
                       style: TextStyle(color: MetaColors.subtext(context), fontSize: 11.5),
                     ),
+                    if (_studentBeforePhoto != null && _studentAfterPhoto != null) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              setState(() => _useSplitSlider = true);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: _useSplitSlider
+                                    ? MetaColors.emerald.withValues(alpha: 0.2)
+                                    : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: _useSplitSlider ? MetaColors.emerald : MetaColors.cardBorder(context),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.compare_arrows_rounded,
+                                    size: 13,
+                                    color: _useSplitSlider ? MetaColors.emerald : MetaColors.subtext(context),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Split-Slider',
+                                    style: TextStyle(
+                                      color: _useSplitSlider ? MetaColors.emerald : MetaColors.subtext(context),
+                                      fontSize: 11,
+                                      fontWeight: _useSplitSlider ? FontWeight.bold : FontWeight.normal,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              setState(() => _useSplitSlider = false);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: !_useSplitSlider
+                                    ? MetaColors.emerald.withValues(alpha: 0.2)
+                                    : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: !_useSplitSlider ? MetaColors.emerald : MetaColors.cardBorder(context),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.view_column_rounded,
+                                    size: 13,
+                                    color: !_useSplitSlider ? MetaColors.emerald : MetaColors.subtext(context),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Lado a Lado',
+                                    style: TextStyle(
+                                      color: !_useSplitSlider ? MetaColors.emerald : MetaColors.subtext(context),
+                                      fontSize: 11,
+                                      fontWeight: !_useSplitSlider ? FontWeight.bold : FontWeight.normal,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     if (_isLoadingPhotos)
                       const Padding(
@@ -2716,6 +3083,18 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                           ],
                         ),
                       )
+                    else if (_useSplitSlider && _studentBeforePhoto != null && _studentAfterPhoto != null)
+                      SplitPhotoSlider(
+                        beforeImageUrl: _studentBeforePhoto!.photoUrl,
+                        afterImageUrl: _studentAfterPhoto!.photoUrl,
+                        beforeLabel: 'Início',
+                        afterLabel: 'Atual',
+                        beforeWeightKg: _studentBeforePhoto!.weightKg,
+                        afterWeightKg: _studentAfterPhoto!.weightKg,
+                        beforeDate: _studentBeforePhoto!.takenAt,
+                        afterDate: _studentAfterPhoto!.takenAt,
+                        height: 300,
+                      )
                     else
                       Row(
                         children: [
@@ -2738,6 +3117,10 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                           ),
                         ],
                       ),
+
+                    const SizedBox(height: 16),
+                    // Antropometria Corporal (Bio-Hub 2.0)
+                    _buildTrainerBodyMetrics(context, isDark),
                   ],
                 ),
               ),
