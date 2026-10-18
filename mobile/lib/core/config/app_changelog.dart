@@ -39,6 +39,36 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.5.0',
+      buildNumber: 2026102902,
+      date: '18 de Outubro, 2026',
+      summary:
+          'Pacotes A & B: Sobrecarga progressiva real, sincronização automática Anamnese ➔ Bio-Hub, edição rápida de ficha e oficialização de troca biomecânica em 1 toque.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.swap_horiz_rounded,
+          title: 'Oficializar Troca Biomecânica em 1 Toque',
+          description:
+              'Professores agora podem substituir permanentemente o exercício adaptado na ficha ativa do aluno e resolver o alerta simultaneamente.',
+          badge: 'SUPERPODER',
+        ),
+        ChangelogItem(
+          icon: Icons.edit_note_rounded,
+          title: 'Edição Rápida In-Place na Ficha Ativa',
+          description:
+              'Edite nome, séries, repetições, descanso e observações de qualquer exercício, ou adicione/remova exercícios diretamente nos detalhes da ficha.',
+          badge: 'GESTÃO',
+        ),
+        ChangelogItem(
+          icon: Icons.trending_up_rounded,
+          title: 'Sobrecarga Progressiva Real & Sincronia Bio-Hub',
+          description:
+              'Cargas salvas no Modo Foco alimentam automaticamente a curva de progressão na nuvem e a Anamnese hidrata o histórico antropométrico.',
+          badge: 'BIO-HUB',
+        ),
+      ],
+    ),
+    VersionRelease(
+      version: '1.5.0',
       buildNumber: 2026102901,
       date: '18 de Outubro, 2026',
       summary:

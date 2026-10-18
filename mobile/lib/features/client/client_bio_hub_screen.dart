@@ -1572,7 +1572,31 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
               child: CircularProgressIndicator(strokeWidth: 2, color: MetaColors.emerald),
             ),
           )
-        else if (_progressiveOverloads.isNotEmpty)
+        else if (_progressiveOverloads.isNotEmpty) ...[
+          if (_progressiveOverloads.every((e) => e['is_baseline'] == true))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: MetaColors.emerald.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline_rounded, color: MetaColors.emerald, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Exercícios da sua ficha ativa carregados como Marco Inicial. Conclua seus treinos no Modo Foco para calcular a progressão de carga (%) automaticamente.',
+                        style: TextStyle(color: MetaColors.text(context), fontSize: 11.5, height: 1.35),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ..._progressiveOverloads.map((item) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
@@ -1584,33 +1608,47 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                 history: List<String>.from(item['history'] as List),
               ),
             );
-          })
-        else ...[
-          // Cards iniciais de referência
-          _buildExerciseLoadCard(
-            exercise: 'Supino Reto com Barra',
-            startLoad: '50 kg',
-            currentLoad: '72 kg',
-            gainPercent: '+44%',
-            history: ['50kg', '56kg', '62kg', '68kg', '72kg'],
+          }),
+        ] else
+          MetaCard(
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: MetaColors.emerald.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.trending_up_rounded, color: MetaColors.emerald, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Curva de Sobrecarga em Calibração',
+                        style: TextStyle(
+                          color: MetaColors.text(context),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Assim que sua ficha ativa estiver disponível e você registrar suas cargas no Modo Foco, sua evolução real por exercício aparecerá aqui.',
+                        style: TextStyle(
+                          color: MetaColors.subtext(context),
+                          fontSize: 12,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 10),
-          _buildExerciseLoadCard(
-            exercise: 'Agachamento Livre',
-            startLoad: '60 kg',
-            currentLoad: '90 kg',
-            gainPercent: '+50%',
-            history: ['60kg', '70kg', '78kg', '84kg', '90kg'],
-          ),
-          const SizedBox(height: 10),
-          _buildExerciseLoadCard(
-            exercise: 'Puxada Frontal Aberta',
-            startLoad: '45 kg',
-            currentLoad: '60 kg',
-            gainPercent: '+33%',
-            history: ['45kg', '50kg', '52kg', '55kg', '60kg'],
-          ),
-        ],
 
         const SizedBox(height: 24),
 

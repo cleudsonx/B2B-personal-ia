@@ -6,7 +6,9 @@ import '../../core/widgets/avatar_selector_sheet.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/app_version_footer.dart';
 import '../../services/auth_service.dart';
+import '../../services/body_metrics_service.dart';
 import '../../services/student_profile_service.dart';
+import '../../services/workout_service.dart';
 import '../auth/teacher_mfa_screen.dart';
 import 'welcome_onboarding_screen.dart';
 
@@ -41,6 +43,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
   List<String> _roles = const [];
   String? _totpFactorId;
   bool _isSwitchingRole = false;
+  Map<String, dynamic>? _latestAnamnesis;
 
   // Informações do Treinador Associado
   String? _trainerName;
@@ -122,6 +125,33 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       for (final r in data.restrictions) {
         if (!_availableRestrictions.contains(r)) _availableRestrictions.add(r);
       }
+
+      // Carrega a Anamnese Expandida para sincronizar biometria e mostrar o resumo clínico
+      try {
+        final anamnesis = await WorkoutService.getLatestStudentAnamnesis(uid);
+        if (anamnesis != null) {
+          _latestAnamnesis = anamnesis;
+          final details = (anamnesis['details'] as Map<String, dynamic>?) ?? {};
+          if (_ageCtrl.text.isEmpty) {
+            final ageVal = anamnesis['age'] ?? details['age'];
+            if (ageVal != null) _ageCtrl.text = ageVal.toString();
+          }
+          if (_weightCtrl.text.isEmpty) {
+            final weightVal = anamnesis['weight'] ?? details['weight'];
+            if (weightVal != null) _weightCtrl.text = weightVal.toString();
+          }
+          if (_heightCtrl.text.isEmpty) {
+            final heightVal = anamnesis['height'] ?? details['height'];
+            if (heightVal != null) {
+              final parsedH = double.tryParse(heightVal.toString());
+              if (parsedH != null && parsedH > 0) {
+                final cm = parsedH < 3.0 ? (parsedH * 100).round() : parsedH.round();
+                _heightCtrl.text = cm.toString();
+              }
+            }
+          }
+        }
+      } catch (_) {}
 
       // Carregar dados de conta e sessão
       _email = AuthService.currentUser?.email;
@@ -229,9 +259,24 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     setState(() => _isSaving = true);
     try {
       final updated = _currentFormData();
+      final weightChanged = updated.weightKg != original.weightKg;
+      final heightChanged = updated.heightCm != original.heightCm;
       final result =
           await _service.save(userId: uid, original: original, updated: updated);
       _original = updated;
+
+      if ((weightChanged || heightChanged) &&
+          (updated.weightKg != null || updated.heightCm != null)) {
+        try {
+          await BodyMetricsService.saveMetrics(
+            targetStudentId: uid,
+            weightKg: updated.weightKg,
+            heightCm: updated.heightCm?.toDouble(),
+            notes: 'Atualização rápida no Perfil',
+          );
+        } catch (_) {}
+      }
+
       if (!mounted) return;
 
       // Atualiza o cache do Smart Re-entry para refletir o novo nome ou foto em background
@@ -503,6 +548,15 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
   }
 
   Widget _buildAnamnesisHeroCard() {
+    final details = (_latestAnamnesis?['details'] as Map<String, dynamic>?) ?? {};
+    final objective = (_latestAnamnesis?['objective'] ?? details['objective'])?.toString();
+    final weeklyDays = (_latestAnamnesis?['weekly_days'] ?? details['weekly_days'])?.toString();
+    final location = (_latestAnamnesis?['workout_location'] ?? details['workout_location'])?.toString();
+    final rawPriorities = _latestAnamnesis?['muscle_priorities'] ?? details['muscle_priorities'];
+    final List<String> priorities = rawPriorities is List
+        ? rawPriorities.map((e) => e.toString()).toList()
+        : [];
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -563,9 +617,29 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               ),
             ],
           ),
+          if (objective != null || weeklyDays != null || location != null || priorities.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (objective != null && objective.isNotEmpty)
+                  _buildAnamnesisSummaryChip(Icons.flag_rounded, objective),
+                if (weeklyDays != null && weeklyDays.isNotEmpty)
+                  _buildAnamnesisSummaryChip(Icons.calendar_today_rounded, '${weeklyDays}x / semana'),
+                if (location != null && location.isNotEmpty)
+                  _buildAnamnesisSummaryChip(Icons.fitness_center_rounded, location),
+                if (priorities.isNotEmpty)
+                  _buildAnamnesisSummaryChip(
+                    Icons.bolt_rounded,
+                    'Foco: ${priorities.take(3).join(", ")}',
+                  ),
+              ],
+            ),
+          ],
           const SizedBox(height: 12),
           Text(
-            'Precisa ajustar suas metas, dias disponíveis, foco muscular ou o professor solicitou uma nova periodização? Refaça o formulário interativo de 5 passos.',
+            'Precisa ajustar suas metas, dias disponíveis, equipamentos, foco muscular ou o professor solicitou uma nova periodização? Revise seus 5 passos pré-preenchidos.',
             style: TextStyle(
               color: AppColors.subtext(context),
               fontSize: 13,
@@ -585,6 +659,8 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                           ? _nameCtrl.text
                           : _original?.name,
                       trainerId: _original?.trainerId,
+                      isReviewMode: true,
+                      initialData: _latestAnamnesis,
                     ),
                   ),
                 );
@@ -593,7 +669,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               },
               icon: const Icon(Icons.refresh_rounded, size: 18),
               label: const Text(
-                'Refazer / Atualizar Anamnese Completa',
+                'Revisar / Atualizar Anamnese Completa',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               style: ElevatedButton.styleFrom(
@@ -605,6 +681,38 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                 ),
                 elevation: 0,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnamnesisSummaryChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.emerald(context).withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: AppColors.emerald(context).withValues(alpha: 0.35),
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: AppColors.emerald(context)),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: AppColors.text(context),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

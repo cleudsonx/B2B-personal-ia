@@ -161,13 +161,20 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
         final ex = _currentExercises[i];
         final sets = _exerciseSets[i] ?? [];
         double maxWeight = 0.0;
+        int maxReps = 0;
         for (final s in sets) {
-          if (s.isCompleted && s.weightKg > maxWeight) {
+          if (s.isCompleted && s.weightKg >= maxWeight) {
             maxWeight = s.weightKg;
+            maxReps = s.reps;
           }
         }
         if (maxWeight > 0) {
           await prefs.setDouble(_weightKey(uid, ex.name), maxWeight);
+          await WorkoutService.recordExerciseLoad(
+            exerciseName: ex.name,
+            loadKg: maxWeight,
+            reps: maxReps > 0 ? maxReps : null,
+          );
         }
       }
     } catch (_) {}

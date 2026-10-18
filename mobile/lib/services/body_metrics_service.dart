@@ -105,7 +105,7 @@ class BodyMetricsService {
 
   static String _cacheKey(String studentId) => 'student_body_metrics_$studentId';
 
-  /// Busca histórico ordenado de medições corporais
+  /// Busca histórico ordenado de medições corporais (com fallback retrocompatível da Anamnese/Perfil)
   static Future<List<BodyMetricsRecord>> getMetricsHistory(String studentId) async {
     final client = _clientOrNull;
     if (client != null) {
@@ -126,7 +126,74 @@ class BodyMetricsService {
       }
     }
 
-    return _loadListFromLocalCache(studentId);
+    final cached = await _loadListFromLocalCache(studentId);
+    if (cached.isNotEmpty) return cached;
+
+    // Fallback retrocompatível: hidrata a partir da Anamnese ou Perfil existente do aluno
+    if (client != null) {
+      try {
+        final anamnesis = await client
+            .from('anamnesis')
+            .select('*')
+            .eq('client_id', studentId)
+            .order('created_at', ascending: false)
+            .limit(1)
+            .maybeSingle();
+
+        double? weight;
+        double? height;
+        DateTime? date;
+
+        if (anamnesis != null) {
+          final details = (anamnesis['details'] as Map<String, dynamic>?) ?? {};
+          weight = _parseNum(anamnesis['weight'] ?? details['weight']);
+          height = _parseNum(anamnesis['height'] ?? details['height']);
+          final rawDate = (anamnesis['completed_at'] ?? anamnesis['created_at'])?.toString();
+          if (rawDate != null) date = DateTime.tryParse(rawDate);
+        }
+
+        if (weight == null || height == null) {
+          final profile = await client
+              .from('profiles')
+              .select('weight_kg, height_cm, updated_at, created_at')
+              .eq('id', studentId)
+              .maybeSingle();
+          if (profile != null) {
+            weight ??= _parseNum(profile['weight_kg']);
+            height ??= _parseNum(profile['height_cm']);
+            final rawDate = (profile['updated_at'] ?? profile['created_at'])?.toString();
+            if (rawDate != null && date == null) date = DateTime.tryParse(rawDate);
+          }
+        }
+
+        if (height != null && height > 0 && height < 3.0) {
+          height = height * 100.0; // Converte metros (ex: 1.75) para cm (175)
+        }
+
+        if ((weight != null && weight > 0) || (height != null && height > 0)) {
+          final baseline = BodyMetricsRecord(
+            id: 'baseline_$studentId',
+            studentId: studentId,
+            weightKg: weight,
+            heightCm: height,
+            notes: 'Marco Inicial (Anamnese)',
+            measuredAt: date ?? DateTime.now(),
+          );
+          await _saveListToLocalCache(studentId, [baseline]);
+          return [baseline];
+        }
+      } catch (e) {
+        debugPrint('[BodyMetricsService] Aviso ao hidratar medidas da anamnese: $e');
+      }
+    }
+
+    return [];
+  }
+
+  static double? _parseNum(dynamic val) {
+    if (val == null) return null;
+    if (val is num) return val.toDouble();
+    return double.tryParse(val.toString().replaceAll(',', '.').trim());
   }
 
   /// Busca a medição corporal mais recente
@@ -137,6 +204,7 @@ class BodyMetricsService {
 
   /// Registra uma nova medição corporal
   static Future<BodyMetricsRecord?> saveMetrics({
+    String? targetStudentId,
     double? weightKg,
     double? heightCm,
     double? bodyFatPct,
@@ -149,17 +217,22 @@ class BodyMetricsService {
     double? thighLeftCm,
     String? notes,
   }) async {
-    final user = AuthService.currentUser;
-    if (user == null) return null;
+    final studentId = targetStudentId ?? AuthService.currentUser?.id;
+    if (studentId == null || studentId.isEmpty) return null;
+
+    double? normalizedHeight = heightCm;
+    if (normalizedHeight != null && normalizedHeight > 0 && normalizedHeight < 3.0) {
+      normalizedHeight = normalizedHeight * 100.0;
+    }
 
     final now = DateTime.now();
     final tempId = 'metric_${now.millisecondsSinceEpoch}';
 
     final record = BodyMetricsRecord(
       id: tempId,
-      studentId: user.id,
+      studentId: studentId,
       weightKg: weightKg,
-      heightCm: heightCm,
+      heightCm: normalizedHeight,
       bodyFatPct: bodyFatPct,
       waistCm: waistCm,
       hipCm: hipCm,
@@ -176,9 +249,9 @@ class BodyMetricsService {
     if (client != null) {
       try {
         final res = await client.from('student_body_metrics').insert({
-          'student_id': user.id,
+          'student_id': studentId,
           'weight_kg': weightKg,
-          'height_cm': heightCm,
+          'height_cm': normalizedHeight,
           'body_fat_pct': bodyFatPct,
           'waist_cm': waistCm,
           'hip_cm': hipCm,
@@ -193,7 +266,7 @@ class BodyMetricsService {
 
         if (res != null) {
           final saved = BodyMetricsRecord.fromJson(res);
-          await _appendLocalRecord(user.id, saved);
+          await _appendLocalRecord(studentId, saved);
           return saved;
         }
       } catch (e) {
@@ -202,7 +275,7 @@ class BodyMetricsService {
     }
 
     // Salva localmente com garantia imediata
-    await _appendLocalRecord(user.id, record);
+    await _appendLocalRecord(studentId, record);
     return record;
   }
 

@@ -1598,44 +1598,82 @@ class WorkoutService {
     }
   }
 
+  static String _exerciseLoadsCacheKey(String studentId) => 'b2b_exercise_loads_history_$studentId';
+
   /// Registra a carga executada em um exercício para calcular a progressão de força
   static Future<bool> recordExerciseLoad({
     required String exerciseName,
     required double loadKg,
     int? reps,
   }) async {
+    final user = AuthService.currentUser;
+    if (user == null) return false;
+    final cleanName = exerciseName.trim();
+    final nowIso = DateTime.now().toIso8601String();
+
+    // 1. Persiste no cache local para resposta instantânea e resiliência offline
     try {
-      final user = AuthService.currentUser;
+      final prefs = await SharedPreferences.getInstance();
+      final key = _exerciseLoadsCacheKey(user.id);
+      final raw = prefs.getString(key);
+      final List<dynamic> list = (raw != null && raw.isNotEmpty) ? jsonDecode(raw) : [];
+      list.add({
+        'client_id': user.id,
+        'exercise_name': cleanName,
+        'load_kg': loadKg,
+        if (reps != null) 'reps': reps,
+        'recorded_at': nowIso,
+      });
+      await prefs.setString(key, jsonEncode(list));
+    } catch (_) {}
+
+    // 2. Persiste na nuvem (Supabase)
+    try {
       final client = _clientOrNull;
-      if (user == null || client == null) return false;
+      if (client == null) return true;
 
       await client.from('student_exercise_loads').insert({
         'client_id': user.id,
-        'exercise_name': exerciseName.trim(),
+        'exercise_name': cleanName,
         'load_kg': loadKg,
         if (reps != null) 'reps': reps,
-        'recorded_at': DateTime.now().toIso8601String(),
+        'recorded_at': nowIso,
       });
       return true;
     } catch (e) {
-      debugPrint('Aviso ao registrar carga de exercício: $e');
-      return false;
+      debugPrint('Aviso ao registrar carga de exercício na nuvem: $e');
+      return true;
     }
   }
 
-  /// Agrupa o histórico de cargas e calcula a sobrecarga progressiva real de cada exercício
+  /// Agrupa o histórico de cargas e calcula a sobrecarga progressiva real de cada exercício.
+  /// Se o aluno ainda não registrou sessões no Modo Foco, exibe os exercícios reais da ficha ativa como Marco Inicial.
   static Future<List<Map<String, dynamic>>> getStudentProgressiveOverload(String studentId) async {
     try {
       final client = _clientOrNull;
-      if (client == null) return [];
+      List<dynamic> response = [];
 
-      final List<dynamic> response = await client
-          .from('student_exercise_loads')
-          .select('*')
-          .eq('client_id', studentId)
-          .order('recorded_at', ascending: true);
+      if (client != null) {
+        try {
+          response = await client
+              .from('student_exercise_loads')
+              .select('*')
+              .eq('client_id', studentId)
+              .order('recorded_at', ascending: true);
+        } catch (e) {
+          debugPrint('Aviso ao consultar student_exercise_loads: $e');
+        }
+      }
 
-      if (response.isEmpty) return [];
+      if (response.isEmpty) {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final raw = prefs.getString(_exerciseLoadsCacheKey(studentId));
+          if (raw != null && raw.isNotEmpty) {
+            response = jsonDecode(raw) as List<dynamic>;
+          }
+        } catch (_) {}
+      }
 
       final Map<String, List<double>> loadsByExercise = {};
       for (final item in response) {
@@ -1646,25 +1684,63 @@ class WorkoutService {
         }
       }
 
-      final List<Map<String, dynamic>> results = [];
-      loadsByExercise.forEach((exercise, history) {
-        final start = history.first;
-        final current = history.last;
-        final gain = start > 0 ? ((current - start) / start) * 100 : 0.0;
-        final gainPrefix = gain >= 0 ? '+' : '';
+      if (loadsByExercise.isNotEmpty) {
+        final List<Map<String, dynamic>> results = [];
+        loadsByExercise.forEach((exercise, history) {
+          final start = history.first;
+          final current = history.last;
+          final gain = start > 0 ? ((current - start) / start) * 100 : 0.0;
+          final gainPrefix = gain >= 0 ? '+' : '';
 
-        results.add({
-          'exercise': exercise,
-          'start_load': '${start.toStringAsFixed(start.truncateToDouble() == start ? 0 : 1)} kg',
-          'current_load': '${current.toStringAsFixed(current.truncateToDouble() == current ? 0 : 1)} kg',
-          'gain_percent': '$gainPrefix${gain.toStringAsFixed(0)}%',
-          'history': history
-              .map((h) => '${h.toStringAsFixed(h.truncateToDouble() == h ? 0 : 1)}kg')
-              .toList(),
+          results.add({
+            'exercise': exercise,
+            'start_load': '${start.toStringAsFixed(start.truncateToDouble() == start ? 0 : 1)} kg',
+            'current_load': '${current.toStringAsFixed(current.truncateToDouble() == current ? 0 : 1)} kg',
+            'gain_percent': history.length == 1 ? 'Marco Inicial' : '$gainPrefix${gain.toStringAsFixed(0)}%',
+            'is_baseline': history.length == 1,
+            'history': history
+                .map((h) => '${h.toStringAsFixed(h.truncateToDouble() == h ? 0 : 1)}kg')
+                .toList(),
+          });
         });
-      });
+        return results;
+      }
 
-      return results;
+      // Fallback Inteligente (Opção A1): Exibir os exercícios reais da ficha ativa do aluno como Marco Inicial
+      final activePlan = await getActiveWorkoutForClient(clientId: studentId);
+      if (activePlan != null && activePlan.splits.isNotEmpty) {
+        final List<Map<String, dynamic>> baselineResults = [];
+        final prefs = await SharedPreferences.getInstance();
+
+        for (final split in activePlan.splits) {
+          for (final ex in split.exercises) {
+            if (baselineResults.length >= 4) break;
+            if (baselineResults.any((r) => r['exercise'] == ex.name)) continue;
+
+            final weightKey = 'pwa_last_weight_${studentId}_${ex.name.toLowerCase().trim()}';
+            final savedLocalWeight = prefs.getDouble(weightKey);
+            final loadStr = savedLocalWeight != null && savedLocalWeight > 0
+                ? '${savedLocalWeight.toStringAsFixed(savedLocalWeight.truncateToDouble() == savedLocalWeight ? 0 : 1)} kg'
+                : '${ex.sets}x${ex.reps}';
+
+            baselineResults.add({
+              'exercise': ex.name,
+              'start_load': 'Ficha ${split.splitIdentifier}',
+              'current_load': loadStr,
+              'gain_percent': 'Marco Inicial',
+              'is_baseline': true,
+              'history': [
+                'Treino ${split.splitIdentifier}',
+                '${ex.sets} séries x ${ex.reps}',
+              ],
+            });
+          }
+          if (baselineResults.length >= 4) break;
+        }
+        return baselineResults;
+      }
+
+      return [];
     } catch (e) {
       debugPrint('Aviso ao calcular sobrecarga progressiva: $e');
       return [];
@@ -1714,6 +1790,124 @@ class WorkoutService {
     } catch (e) {
       debugPrint('Aviso ao verificar segurança de renovação de anamnese: $e');
       return {'has_recent_changes': false};
+    }
+  }
+
+  /// Atualiza a ficha de treino ativa de um aluno in-place (mantendo histórico de ciclo ou atualizando o JSON ativo)
+  static Future<WorkoutPlanModel?> updateActiveWorkoutPlan({
+    required String clientId,
+    required WorkoutPlanModel updatedPlan,
+  }) async {
+    final nowIso = DateTime.now().toUtc().toIso8601String();
+    final planWithDate = updatedPlan.copyWith(
+      updatedAt: DateTime.now().toUtc(),
+    );
+    final planJson = planWithDate.toJson();
+
+    if (_clientOrNull != null) {
+      try {
+        if (updatedPlan.id != null && updatedPlan.id!.isNotEmpty) {
+          await _client
+              .from('workouts')
+              .update({
+                'title': planWithDate.workoutPlanTitle,
+                'notes_for_trainer': planWithDate.notesForTrainer,
+                'plan_json': planJson,
+                'updated_at': nowIso,
+              })
+              .eq('id', updatedPlan.id!);
+        } else {
+          await _client
+              .from('workouts')
+              .update({
+                'title': planWithDate.workoutPlanTitle,
+                'notes_for_trainer': planWithDate.notesForTrainer,
+                'plan_json': planJson,
+                'updated_at': nowIso,
+              })
+              .eq('client_id', clientId)
+              .eq('is_active', true);
+        }
+      } catch (e) {
+        debugPrint('Aviso ao atualizar ficha in-place no Supabase: $e');
+      }
+    }
+
+    await _saveWorkoutToOfflineCache(clientId, planWithDate);
+    studentsRefreshNotifier.value++;
+    return planWithDate;
+  }
+
+  /// Oficializa a troca de um exercício na ficha ativa do aluno em 1 toque e dá baixa no alerta biomecânico
+  static Future<bool> swapExerciseInActivePlan({
+    required String studentId,
+    required String originalExercise,
+    required String adaptedExercise,
+    String? alertId,
+  }) async {
+    try {
+      final activePlan = await getActiveWorkoutForClient(clientId: studentId);
+      if (activePlan == null || activePlan.splits.isEmpty) {
+        return false;
+      }
+
+      final origNorm = originalExercise.trim().toLowerCase();
+      final newName = adaptedExercise.trim();
+      var replacedCount = 0;
+
+      final updatedSplits = activePlan.splits.map((split) {
+        final updatedExercises = split.exercises.map((ex) {
+          final exNorm = ex.name.trim().toLowerCase();
+          if (exNorm == origNorm ||
+              (origNorm.length >= 4 && exNorm.contains(origNorm)) ||
+              (exNorm.length >= 4 && origNorm.contains(exNorm))) {
+            replacedCount++;
+            final updatedNote = ex.notes.isEmpty
+                ? 'Substituído de "$originalExercise" com aval do treinador.'
+                : '${ex.notes} (Substituído de "$originalExercise")';
+            return ex.copyWith(
+              name: newName,
+              notes: updatedNote,
+            );
+          }
+          return ex;
+        }).toList();
+        return split.copyWith(exercises: updatedExercises);
+      }).toList();
+
+      // Caso o nome não bata exatamente por variação de texto, substitui no primeiro split como fallback seguro se houver só 1 exercício similar
+      if (replacedCount == 0 && updatedSplits.isNotEmpty && updatedSplits.first.exercises.isNotEmpty) {
+        final firstSplit = updatedSplits.first;
+        final exList = List.of(firstSplit.exercises);
+        final firstEx = exList.first;
+        exList[0] = firstEx.copyWith(
+          name: newName,
+          notes: firstEx.notes.isEmpty
+              ? 'Adaptado de "$originalExercise" pelo treinador.'
+              : firstEx.notes,
+        );
+        updatedSplits[0] = firstSplit.copyWith(exercises: exList);
+      }
+
+      final newPlan = activePlan.copyWith(
+        splits: updatedSplits,
+        updatedAt: DateTime.now().toUtc(),
+      );
+
+      await updateActiveWorkoutPlan(
+        clientId: studentId,
+        updatedPlan: newPlan,
+      );
+
+      await resolveBiomechanicalAlert(
+        studentId: studentId,
+        alertId: alertId,
+      );
+
+      return true;
+    } catch (e) {
+      debugPrint('Erro ao oficializar troca de exercício na ficha ativa: $e');
+      return false;
     }
   }
 }

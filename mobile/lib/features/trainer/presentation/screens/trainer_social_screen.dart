@@ -1137,6 +1137,54 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
     );
   }
 
+  Future<void> _congratulateStudentStreak(Map<String, dynamic> student) async {
+    HapticFeedback.lightImpact();
+    final clientId = student['client_id'] as String? ?? '';
+    final name = student['full_name']?.toString() ?? 'Aluno';
+    final firstName = name.trim().split(RegExp(r'\s+')).first;
+    final streak = (student['current_streak'] as num?)?.toInt() ?? 0;
+    final sessionsInWindow = (student['sessions_in_window'] as num?)?.toInt() ?? 0;
+    final phone = student['phone'] as String? ?? '';
+
+    String cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+    if (cleanPhone.isNotEmpty && (cleanPhone.length == 10 || cleanPhone.length == 11)) {
+      cleanPhone = '55$cleanPhone';
+    }
+
+    final msg = streak > 0
+        ? 'Fala $firstName! Vi aqui no Mr. Coach que você bateu $streak ${streak == 1 ? "dia seguido" : "dias seguidos"} de treino 🔥 Parabéns pela disciplina! Vamos pra cima! 💪'
+        : 'Fala $firstName! Passando pelo ranking do Mr. Coach pra reconhecer seus $sessionsInWindow treinos concluídos! Bora manter o ritmo! 🔥💪';
+
+    final encoded = Uri.encodeComponent(msg);
+    final uri = cleanPhone.isNotEmpty
+        ? Uri.parse('https://api.whatsapp.com/send?phone=$cleanPhone&text=$encoded')
+        : Uri.parse('https://api.whatsapp.com/send?text=$encoded');
+
+    // Atualiza last_contacted_at no perfil do aluno para zerar alertas de sem contato
+    if (clientId.isNotEmpty) {
+      try {
+        await Supabase.instance.client
+            .from('profiles')
+            .update({'last_contacted_at': DateTime.now().toUtc().toIso8601String()})
+            .eq('id', clientId);
+        WorkoutService.studentsRefreshNotifier.value++;
+      } catch (_) {}
+    }
+
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      }
+    } catch (_) {
+      try {
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      } catch (err) {
+        debugPrint('Erro ao abrir WhatsApp no Ranking: $err');
+      }
+    }
+  }
+
   Widget _buildRankingSliver() {
     if (_isLoading) {
       return const SliverToBoxAdapter(
@@ -1248,10 +1296,10 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 9,
+                  horizontal: 8,
                   vertical: 5,
                 ),
                 decoration: BoxDecoration(
@@ -1265,18 +1313,49 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                     const Icon(
                       Icons.local_fire_department_rounded,
                       color: Color(0xFFF97316),
-                      size: 16,
+                      size: 15,
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 3),
                     Text(
                       '${streak}d',
                       style: TextStyle(
                         color: badgeColor,
                         fontWeight: FontWeight.bold,
-                        fontSize: 12.5,
+                        fontSize: 12,
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Tooltip(
+                message: 'Parabenizar no WhatsApp',
+                child: InkWell(
+                  onTap: () => _congratulateStudentStreak(student),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: MetaColors.emerald.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.38)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('👏', style: TextStyle(fontSize: 12.5)),
+                        SizedBox(width: 4),
+                        Text(
+                          'Parabenizar',
+                          style: TextStyle(
+                            color: MetaColors.emerald,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ],

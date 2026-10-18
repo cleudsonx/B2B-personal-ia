@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../main.dart' show MainShellScreen;
 import '../../services/auth_service.dart';
+import '../../services/body_metrics_service.dart';
 import '../../services/student_profile_service.dart';
 import '../../services/workout_service.dart';
 
@@ -450,12 +451,16 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
           ? kNoRestriction
           : selectedInjuries.join(', ');
 
+      final parsedAge = int.parse(_ageCtrl.text.trim());
+      final parsedWeight = double.parse(_weightCtrl.text.trim().replaceAll(',', '.'));
+      final parsedHeight = double.parse(_heightCtrl.text.trim().replaceAll(',', '.'));
+
       final anamnesisPayload = {
         'client_id': clientId,
         'biological_sex': _biologicalSex,
-        'age': int.parse(_ageCtrl.text.trim()),
-        'weight': double.parse(_weightCtrl.text.trim().replaceAll(',', '.')),
-        'height': double.parse(_heightCtrl.text.trim().replaceAll(',', '.')),
+        'age': parsedAge,
+        'weight': parsedWeight,
+        'height': parsedHeight,
         'daily_activity': _dailyActivity,
         'sleep_hours': _sleepHours,
         'stress_level': _stressLevel,
@@ -485,15 +490,28 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
       );
       if (!saved) throw Exception('Não foi possível salvar sua avaliação. Tente novamente.');
 
-      if (_trainerId != null && _trainerId!.isNotEmpty) {
-        try {
-          final client = Supabase.instance.client;
-          await client
-              .from('profiles')
-              .update({'trainer_id': _trainerId})
-              .eq('id', clientId);
-        } catch (_) {}
+      // Sincroniza Peso, Altura e Idade diretamente com o Bio-Hub 2.0 e Perfil
+      try {
+        await BodyMetricsService.saveMetrics(
+          targetStudentId: clientId,
+          weightKg: parsedWeight,
+          heightCm: parsedHeight,
+          notes: widget.isReviewMode ? 'Revisão de Anamnese' : 'Marco Inicial (Anamnese)',
+        );
+      } catch (_) {}
 
+      try {
+        final client = Supabase.instance.client;
+        final normalizedHeight = parsedHeight < 3.0 ? (parsedHeight * 100).round() : parsedHeight.round();
+        await client.from('profiles').update({
+          'age': parsedAge,
+          'weight_kg': parsedWeight,
+          'height_cm': normalizedHeight,
+          if (_trainerId != null && _trainerId!.isNotEmpty) 'trainer_id': _trainerId,
+        }).eq('id', clientId);
+      } catch (_) {}
+
+      if (_trainerId != null && _trainerId!.isNotEmpty) {
         WorkoutService.notifyTrainerOnboardingCompleted(
           clientId: clientId,
           trainerId: _trainerId!,

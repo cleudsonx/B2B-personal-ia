@@ -442,33 +442,39 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Ação 1: Marcar como Visto / Resolver
+              // Ação 1: Oficializar Troca na Ficha Ativa (1 Toque + Resolve Alerta)
               InkWell(
                 onTap: () async {
                   Navigator.pop(modalCtx);
-                  await _resolveAlert(student, alertId);
+                  await _officializeSwap(
+                    student: student,
+                    alertId: alertId,
+                    originalExercise: original,
+                    adaptedExercise: adapted,
+                  );
                 },
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                    color: MetaColors.emerald.withValues(alpha: 0.15),
+                    color: MetaColors.emerald.withValues(alpha: 0.16),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: MetaColors.emerald.withValues(alpha: 0.4),
+                      color: MetaColors.emerald.withValues(alpha: 0.45),
+                      width: 1.2,
                     ),
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.check_circle_rounded, color: MetaColors.emerald, size: 22),
+                      Icon(Icons.swap_horiz_rounded, color: MetaColors.emerald, size: 24),
                       SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Marcar como Visto / Resolver',
+                              'Oficializar Troca na Ficha',
                               style: TextStyle(
                                 color: MetaColors.emerald,
                                 fontWeight: FontWeight.bold,
@@ -477,7 +483,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                             ),
                             SizedBox(height: 2),
                             Text(
-                              'Dá baixa imediata no alerta e retorna o status para "Em dia"',
+                              'Substitui o exercício permanentemente na ficha ativa e resolve o alerta',
                               style: TextStyle(
                                 color: MetaColors.emerald,
                                 fontSize: 11.5,
@@ -493,7 +499,56 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
               ),
               const SizedBox(height: 10),
 
-              // Ação 2: Ajustar Ficha
+              // Ação 2: Apenas Marcar como Visto / Resolver (Troca Pontual)
+              InkWell(
+                onTap: () async {
+                  Navigator.pop(modalCtx);
+                  await _resolveAlert(student, alertId);
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: MetaColors.highlight(context),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: MetaColors.cardBorder(context)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.check_circle_outline_rounded, color: MetaColors.text(context), size: 22),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Marcar como Visto (Troca Pontual)',
+                              style: TextStyle(
+                                color: MetaColors.text(context),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14.5,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Mantém a ficha original e dá baixa no alerta para "Em dia"',
+                              style: TextStyle(
+                                color: MetaColors.subtext(context),
+                                fontSize: 11.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_ios_rounded, color: MetaColors.subtext(context), size: 14),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Ação 3: Recriar Ficha com IA
               InkWell(
                 onTap: () {
                   Navigator.pop(modalCtx);
@@ -510,14 +565,14 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.edit_note_rounded, color: MetaColors.text(context), size: 22),
+                      Icon(Icons.auto_awesome_outlined, color: MetaColors.text(context), size: 22),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Ajustar Ficha do Aluno',
+                              'Redefinir Periodização com IA',
                               style: TextStyle(
                                 color: MetaColors.text(context),
                                 fontWeight: FontWeight.bold,
@@ -526,7 +581,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'Oficializar a troca ou redefinir a periodização',
+                              'Abrir o prescritor completo para gerar um novo ciclo de treinos',
                               style: TextStyle(
                                 color: MetaColors.subtext(context),
                                 fontSize: 11.5,
@@ -542,7 +597,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
               ),
               const SizedBox(height: 10),
 
-              // Ação 3: Falar no WhatsApp
+              // Ação 4: Falar no WhatsApp
               InkWell(
                 onTap: () {
                   Navigator.pop(modalCtx);
@@ -601,6 +656,61 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _officializeSwap({
+    required Map<String, dynamic> student,
+    required String alertId,
+    required String originalExercise,
+    required String adaptedExercise,
+  }) async {
+    HapticFeedback.mediumImpact();
+    final studentId = student['id'] as String? ?? '';
+    final studentName = student['full_name'] as String? ?? 'Aluno';
+
+    setState(() {
+      final idx = _students.indexWhere((s) => s['id'] == studentId);
+      if (idx != -1) {
+        _students[idx]['has_alert'] = false;
+        _students[idx]['alert_message'] = null;
+        _students[idx]['alert_data'] = null;
+      }
+    });
+
+    final swapped = await WorkoutService.swapExerciseInActivePlan(
+      studentId: studentId,
+      originalExercise: originalExercise,
+      adaptedExercise: adaptedExercise,
+      alertId: alertId.isNotEmpty ? alertId : null,
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: MetaColors.surfaceHighlight,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          content: Row(
+            children: [
+              Icon(
+                swapped ? Icons.swap_horiz_rounded : Icons.check_circle_rounded,
+                color: MetaColors.emerald,
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  swapped
+                      ? 'Troca oficializada! "$adaptedExercise" atualizado na ficha de $studentName e alerta resolvido.'
+                      : 'Alerta de $studentName resolvido!',
+                  style: const TextStyle(color: MetaColors.textPrimary),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _resolveAlert(Map<String, dynamic> student, String alertId) async {

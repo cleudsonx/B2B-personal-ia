@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/widgets/meta_components.dart';
+import '../../../../models/exercise_model.dart';
+import '../../../../models/split_model.dart';
 import '../../../../models/workout_plan_model.dart';
 import '../../../../services/invite_service.dart';
 import '../../anamnesis_screen.dart';
@@ -671,285 +673,601 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
     }
   }
 
-  void _viewFullWorkoutDetails(WorkoutPlanModel plan) {
+  void _viewFullWorkoutDetails(WorkoutPlanModel initialPlan) {
     final isDark = MetaColors.isDark(context);
-    final splits = plan.splits;
+    var currentPlan = initialPlan;
+    final studentId = student['id']?.toString() ?? '';
 
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (bottomSheetCtx) {
-        return Container(
-          height: MediaQuery.of(bottomSheetCtx).size.height * 0.88,
-          decoration: BoxDecoration(
-            color: isDark ? MetaColors.background : const Color(0xFFF8FAFC),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            border: Border.all(color: MetaColors.cardBorder(bottomSheetCtx)),
-          ),
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 48,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: MetaColors.cardBorder(bottomSheetCtx),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: MetaColors.emerald.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
-                                ),
-                                child: const Text(
-                                  'FICHA COMPLETA',
-                                  style: TextStyle(
-                                    color: MetaColors.emerald,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.8,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${splits.length} divisões de treino',
-                                style: TextStyle(
-                                  color: MetaColors.subtext(bottomSheetCtx),
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            plan.workoutPlanTitle,
-                            style: TextStyle(
-                              color: MetaColors.text(bottomSheetCtx),
-                              fontSize: 17,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.close_rounded, color: MetaColors.subtext(bottomSheetCtx)),
-                      onPressed: () => Navigator.pop(bottomSheetCtx),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              Divider(color: MetaColors.cardBorder(bottomSheetCtx), height: 1),
-              if (splits.isEmpty)
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      'Nenhum split detalhado nesta ficha.',
-                      style: TextStyle(color: MetaColors.subtext(bottomSheetCtx)),
-                    ),
-                  ),
-                )
-              else
-                Expanded(
-                  child: DefaultTabController(
-                    length: splits.length,
-                    child: Column(
+        return StatefulBuilder(
+          builder: (bottomSheetCtx, setSheetState) {
+            final splits = currentPlan.splits;
+
+            Future<void> savePlanChanges(WorkoutPlanModel nextPlan, String feedbackMessage) async {
+              setSheetState(() {
+                currentPlan = nextPlan;
+              });
+              final saved = await WorkoutService.updateActiveWorkoutPlan(
+                clientId: studentId,
+                updatedPlan: nextPlan,
+              );
+              if (mounted) {
+                setState(() {
+                  _activeWorkout = saved ?? nextPlan;
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    backgroundColor: MetaColors.surfaceHighlight,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    content: Row(
                       children: [
-                        Container(
-                          color: isDark ? MetaColors.surface : Colors.white,
-                          child: TabBar(
-                            isScrollable: splits.length > 3,
-                            tabAlignment: splits.length > 3 ? TabAlignment.start : null,
-                            indicatorColor: MetaColors.primaryColor(bottomSheetCtx),
-                            labelColor: MetaColors.primaryColor(bottomSheetCtx),
-                            unselectedLabelColor: MetaColors.subtext(bottomSheetCtx),
-                            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-                            tabs: splits.map((s) {
-                              return Tab(
-                                text: 'Split ${s.splitIdentifier}: ${s.splitName}',
-                              );
-                            }).toList(),
-                          ),
-                        ),
+                        const Icon(Icons.check_circle_rounded, color: MetaColors.emerald, size: 18),
+                        const SizedBox(width: 8),
                         Expanded(
-                          child: TabBarView(
-                            children: splits.map((split) {
-                              return ListView(
-                                padding: const EdgeInsets.all(16),
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                    decoration: BoxDecoration(
-                                      color: isDark ? MetaColors.surface : Colors.white,
-                                      borderRadius: BorderRadius.circular(14),
-                                      border: Border.all(color: MetaColors.cardBorder(bottomSheetCtx)),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.timer_outlined, size: 18, color: MetaColors.primaryColor(bottomSheetCtx)),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'Duração estimada: ${split.estimatedDurationMin} min',
-                                          style: TextStyle(
-                                            color: MetaColors.text(bottomSheetCtx),
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                        const Spacer(),
-                                        Text(
-                                          '${split.exercises.length} exercícios',
-                                          style: TextStyle(
-                                            color: MetaColors.subtext(bottomSheetCtx),
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  ...split.exercises.asMap().entries.map((entry) {
-                                    final idx = entry.key + 1;
-                                    final ex = entry.value;
-                                    return Container(
-                                      margin: const EdgeInsets.only(bottom: 10),
-                                      padding: const EdgeInsets.all(14),
-                                      decoration: BoxDecoration(
-                                        color: isDark ? MetaColors.surface : Colors.white,
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(color: MetaColors.cardBorder(bottomSheetCtx)),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Container(
-                                                width: 28,
-                                                height: 28,
-                                                alignment: Alignment.center,
-                                                decoration: BoxDecoration(
-                                                  color: MetaColors.primaryColor(bottomSheetCtx).withValues(alpha: 0.15),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: Text(
-                                                  '$idx',
-                                                  style: TextStyle(
-                                                    color: MetaColors.primaryColor(bottomSheetCtx),
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 13,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      ex.name,
-                                                      style: TextStyle(
-                                                        color: MetaColors.text(bottomSheetCtx),
-                                                        fontSize: 15,
-                                                        fontWeight: FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                    if (ex.targetMuscleGroup.isNotEmpty) ...[
-                                                      const SizedBox(height: 2),
-                                                      Text(
-                                                        ex.targetMuscleGroup,
-                                                        style: TextStyle(
-                                                          color: MetaColors.primaryColor(bottomSheetCtx),
-                                                          fontSize: 12,
-                                                          fontWeight: FontWeight.w500,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 12),
-                                          Wrap(
-                                            spacing: 8,
-                                            runSpacing: 6,
-                                            children: [
-                                              _buildDetailBadge(
-                                                bottomSheetCtx,
-                                                Icons.repeat_rounded,
-                                                '${ex.sets} séries × ${ex.reps}',
-                                              ),
-                                              _buildDetailBadge(
-                                                bottomSheetCtx,
-                                                Icons.hourglass_bottom_rounded,
-                                                'Descanso: ${ex.restSeconds}s',
-                                              ),
-                                            ],
-                                          ),
-                                          if (ex.notes.isNotEmpty) ...[
-                                            const SizedBox(height: 10),
-                                            Container(
-                                              padding: const EdgeInsets.all(10),
-                                              decoration: BoxDecoration(
-                                                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-                                                borderRadius: BorderRadius.circular(10),
-                                              ),
-                                              child: Row(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Icon(Icons.info_outline, size: 16, color: MetaColors.subtext(bottomSheetCtx)),
-                                                  const SizedBox(width: 8),
-                                                  Expanded(
-                                                    child: Text(
-                                                      ex.notes,
-                                                      style: TextStyle(
-                                                        color: MetaColors.text(bottomSheetCtx),
-                                                        fontSize: 12,
-                                                        height: 1.3,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                    );
-                                  }),
-                                ],
-                              );
-                            }).toList(),
+                          child: Text(
+                            feedbackMessage,
+                            style: const TextStyle(color: MetaColors.textPrimary),
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-            ],
-          ),
+                );
+              }
+            }
+
+            Future<void> openExerciseEditor({
+              required int splitIndex,
+              ExerciseModel? existingExercise,
+              int? exerciseIndex,
+            }) async {
+              final isNew = existingExercise == null;
+              final nameCtrl = TextEditingController(text: existingExercise?.name ?? '');
+              final muscleCtrl = TextEditingController(text: existingExercise?.targetMuscleGroup ?? '');
+              final setsCtrl = TextEditingController(text: (existingExercise?.sets ?? 3).toString());
+              final repsCtrl = TextEditingController(text: existingExercise?.reps ?? '10-12');
+              final restCtrl = TextEditingController(text: (existingExercise?.restSeconds ?? 60).toString());
+              final notesCtrl = TextEditingController(text: existingExercise?.notes ?? '');
+
+              await showDialog<void>(
+                context: bottomSheetCtx,
+                builder: (dialogCtx) {
+                  return AlertDialog(
+                    backgroundColor: isDark ? MetaColors.surface : Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(22),
+                      side: BorderSide(color: MetaColors.cardBorder(dialogCtx)),
+                    ),
+                    title: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: MetaColors.emerald.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            isNew ? Icons.add_circle_outline_rounded : Icons.edit_note_rounded,
+                            color: MetaColors.emerald,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            isNew ? 'Adicionar Exercício' : 'Editar Exercício',
+                            style: TextStyle(
+                              color: MetaColors.text(dialogCtx),
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    content: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextField(
+                            controller: nameCtrl,
+                            style: TextStyle(color: MetaColors.text(dialogCtx), fontSize: 14),
+                            decoration: InputDecoration(
+                              labelText: 'Nome do Exercício',
+                              labelStyle: TextStyle(color: MetaColors.subtext(dialogCtx), fontSize: 12),
+                              filled: true,
+                              fillColor: MetaColors.highlight(dialogCtx),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: muscleCtrl,
+                            style: TextStyle(color: MetaColors.text(dialogCtx), fontSize: 14),
+                            decoration: InputDecoration(
+                              labelText: 'Grupo Muscular (ex: Peitoral, Dorsais)',
+                              labelStyle: TextStyle(color: MetaColors.subtext(dialogCtx), fontSize: 12),
+                              filled: true,
+                              fillColor: MetaColors.highlight(dialogCtx),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: setsCtrl,
+                                  keyboardType: TextInputType.number,
+                                  style: TextStyle(color: MetaColors.text(dialogCtx), fontSize: 14),
+                                  decoration: InputDecoration(
+                                    labelText: 'Séries',
+                                    labelStyle: TextStyle(color: MetaColors.subtext(dialogCtx), fontSize: 12),
+                                    filled: true,
+                                    fillColor: MetaColors.highlight(dialogCtx),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: TextField(
+                                  controller: repsCtrl,
+                                  style: TextStyle(color: MetaColors.text(dialogCtx), fontSize: 14),
+                                  decoration: InputDecoration(
+                                    labelText: 'Repetições',
+                                    labelStyle: TextStyle(color: MetaColors.subtext(dialogCtx), fontSize: 12),
+                                    filled: true,
+                                    fillColor: MetaColors.highlight(dialogCtx),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: TextField(
+                                  controller: restCtrl,
+                                  keyboardType: TextInputType.number,
+                                  style: TextStyle(color: MetaColors.text(dialogCtx), fontSize: 14),
+                                  decoration: InputDecoration(
+                                    labelText: 'Descanso (s)',
+                                    labelStyle: TextStyle(color: MetaColors.subtext(dialogCtx), fontSize: 12),
+                                    filled: true,
+                                    fillColor: MetaColors.highlight(dialogCtx),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: notesCtrl,
+                            maxLines: 2,
+                            style: TextStyle(color: MetaColors.text(dialogCtx), fontSize: 13),
+                            decoration: InputDecoration(
+                              labelText: 'Observações / Cadência / Dica Técnica',
+                              labelStyle: TextStyle(color: MetaColors.subtext(dialogCtx), fontSize: 12),
+                              filled: true,
+                              fillColor: MetaColors.highlight(dialogCtx),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    actions: [
+                      if (!isNew && exerciseIndex != null)
+                        TextButton.icon(
+                          onPressed: () async {
+                            Navigator.pop(dialogCtx);
+                            final targetSplit = currentPlan.splits[splitIndex];
+                            final updatedExList = List<ExerciseModel>.from(targetSplit.exercises)
+                              ..removeAt(exerciseIndex);
+                            for (var i = 0; i < updatedExList.length; i++) {
+                              updatedExList[i] = updatedExList[i].copyWith(order: i + 1);
+                            }
+                            final nextSplits = List<SplitModel>.from(currentPlan.splits);
+                            nextSplits[splitIndex] = targetSplit.copyWith(exercises: updatedExList);
+                            await savePlanChanges(
+                              currentPlan.copyWith(splits: nextSplits),
+                              'Exercício removido da ficha ativa!',
+                            );
+                          },
+                          icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 18),
+                          label: const Text('Excluir', style: TextStyle(color: Colors.redAccent)),
+                        ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(dialogCtx),
+                        child: Text('Cancelar', style: TextStyle(color: MetaColors.subtext(dialogCtx))),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: MetaColors.emerald,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () async {
+                          final cleanName = nameCtrl.text.trim();
+                          if (cleanName.isEmpty) return;
+                          Navigator.pop(dialogCtx);
+
+                          final parsedSets = int.tryParse(setsCtrl.text.trim()) ?? 3;
+                          final parsedRest = int.tryParse(restCtrl.text.trim()) ?? 60;
+                          final cleanReps = repsCtrl.text.trim().isEmpty ? '10-12' : repsCtrl.text.trim();
+                          final targetSplit = currentPlan.splits[splitIndex];
+                          final updatedExList = List<ExerciseModel>.from(targetSplit.exercises);
+
+                          if (isNew) {
+                            updatedExList.add(
+                              ExerciseModel(
+                                order: updatedExList.length + 1,
+                                name: cleanName,
+                                targetMuscleGroup: muscleCtrl.text.trim(),
+                                sets: parsedSets,
+                                reps: cleanReps,
+                                restSeconds: parsedRest,
+                                notes: notesCtrl.text.trim(),
+                                substitutionVector: '',
+                              ),
+                            );
+                          } else if (exerciseIndex != null) {
+                            updatedExList[exerciseIndex] = existingExercise.copyWith(
+                              name: cleanName,
+                              targetMuscleGroup: muscleCtrl.text.trim(),
+                              sets: parsedSets,
+                              reps: cleanReps,
+                              restSeconds: parsedRest,
+                              notes: notesCtrl.text.trim(),
+                            );
+                          }
+
+                          final nextSplits = List<SplitModel>.from(currentPlan.splits);
+                          nextSplits[splitIndex] = targetSplit.copyWith(exercises: updatedExList);
+                          await savePlanChanges(
+                            currentPlan.copyWith(splits: nextSplits),
+                            isNew
+                                ? '"$cleanName" adicionado ao Split ${targetSplit.splitIdentifier}!'
+                                : '"$cleanName" atualizado na ficha ativa!',
+                          );
+                        },
+                        child: const Text('Salvar', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  );
+                },
+              );
+            }
+
+            return Container(
+              height: MediaQuery.of(bottomSheetCtx).size.height * 0.88,
+              decoration: BoxDecoration(
+                color: isDark ? MetaColors.background : const Color(0xFFF8FAFC),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border.all(color: MetaColors.cardBorder(bottomSheetCtx)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 48,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: MetaColors.cardBorder(bottomSheetCtx),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: MetaColors.emerald.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
+                                    ),
+                                    child: const Text(
+                                      'FICHA INTERATIVA • EDIÇÃO RÁPIDA',
+                                      style: TextStyle(
+                                        color: MetaColors.emerald,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.8,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${splits.length} divisões',
+                                    style: TextStyle(
+                                      color: MetaColors.subtext(bottomSheetCtx),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                currentPlan.workoutPlanTitle,
+                                style: TextStyle(
+                                  color: MetaColors.text(bottomSheetCtx),
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close_rounded, color: MetaColors.subtext(bottomSheetCtx)),
+                          onPressed: () => Navigator.pop(bottomSheetCtx),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Divider(color: MetaColors.cardBorder(bottomSheetCtx), height: 1),
+                  if (splits.isEmpty)
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          'Nenhum split detalhado nesta ficha.',
+                          style: TextStyle(color: MetaColors.subtext(bottomSheetCtx)),
+                        ),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: DefaultTabController(
+                        length: splits.length,
+                        child: Column(
+                          children: [
+                            Container(
+                              color: isDark ? MetaColors.surface : Colors.white,
+                              child: TabBar(
+                                isScrollable: splits.length > 3,
+                                tabAlignment: splits.length > 3 ? TabAlignment.start : null,
+                                indicatorColor: MetaColors.primaryColor(bottomSheetCtx),
+                                labelColor: MetaColors.primaryColor(bottomSheetCtx),
+                                unselectedLabelColor: MetaColors.subtext(bottomSheetCtx),
+                                labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                                tabs: splits.map((s) {
+                                  return Tab(
+                                    text: 'Split ${s.splitIdentifier}: ${s.splitName}',
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                            Expanded(
+                              child: TabBarView(
+                                children: splits.asMap().entries.map((splitEntry) {
+                                  final splitIdx = splitEntry.key;
+                                  final split = splitEntry.value;
+                                  return ListView(
+                                    padding: const EdgeInsets.all(16),
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                        decoration: BoxDecoration(
+                                          color: isDark ? MetaColors.surface : Colors.white,
+                                          borderRadius: BorderRadius.circular(14),
+                                          border: Border.all(color: MetaColors.cardBorder(bottomSheetCtx)),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.timer_outlined, size: 18, color: MetaColors.primaryColor(bottomSheetCtx)),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'Duração: ${split.estimatedDurationMin} min',
+                                              style: TextStyle(
+                                                color: MetaColors.text(bottomSheetCtx),
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                            const Spacer(),
+                                            TextButton.icon(
+                                              onPressed: () => openExerciseEditor(splitIndex: splitIdx),
+                                              style: TextButton.styleFrom(
+                                                foregroundColor: MetaColors.emerald,
+                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                                minimumSize: Size.zero,
+                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                              ),
+                                              icon: const Icon(Icons.add_circle_outline_rounded, size: 16),
+                                              label: const Text(
+                                                'Novo Exercício',
+                                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      ...split.exercises.asMap().entries.map((entry) {
+                                        final exIdx = entry.key;
+                                        final idx = exIdx + 1;
+                                        final ex = entry.value;
+                                        return Container(
+                                          margin: const EdgeInsets.only(bottom: 10),
+                                          padding: const EdgeInsets.all(14),
+                                          decoration: BoxDecoration(
+                                            color: isDark ? MetaColors.surface : Colors.white,
+                                            borderRadius: BorderRadius.circular(16),
+                                            border: Border.all(color: MetaColors.cardBorder(bottomSheetCtx)),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Container(
+                                                    width: 28,
+                                                    height: 28,
+                                                    alignment: Alignment.center,
+                                                    decoration: BoxDecoration(
+                                                      color: MetaColors.primaryColor(bottomSheetCtx).withValues(alpha: 0.15),
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: Text(
+                                                      '$idx',
+                                                      style: TextStyle(
+                                                        color: MetaColors.primaryColor(bottomSheetCtx),
+                                                        fontWeight: FontWeight.bold,
+                                                        fontSize: 13,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Text(
+                                                          ex.name,
+                                                          style: TextStyle(
+                                                            color: MetaColors.text(bottomSheetCtx),
+                                                            fontSize: 15,
+                                                            fontWeight: FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                        if (ex.targetMuscleGroup.isNotEmpty) ...[
+                                                          const SizedBox(height: 2),
+                                                          Text(
+                                                            ex.targetMuscleGroup,
+                                                            style: TextStyle(
+                                                              color: MetaColors.primaryColor(bottomSheetCtx),
+                                                              fontSize: 12,
+                                                              fontWeight: FontWeight.w500,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  IconButton(
+                                                    onPressed: () => openExerciseEditor(
+                                                      splitIndex: splitIdx,
+                                                      existingExercise: ex,
+                                                      exerciseIndex: exIdx,
+                                                    ),
+                                                    icon: const Icon(Icons.edit_outlined, size: 18, color: MetaColors.emerald),
+                                                    tooltip: 'Editar exercício',
+                                                    visualDensity: VisualDensity.compact,
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 10),
+                                              Wrap(
+                                                spacing: 8,
+                                                runSpacing: 6,
+                                                children: [
+                                                  _buildDetailBadge(
+                                                    bottomSheetCtx,
+                                                    Icons.repeat_rounded,
+                                                    '${ex.sets} séries × ${ex.reps}',
+                                                  ),
+                                                  _buildDetailBadge(
+                                                    bottomSheetCtx,
+                                                    Icons.hourglass_bottom_rounded,
+                                                    'Descanso: ${ex.restSeconds}s',
+                                                  ),
+                                                ],
+                                              ),
+                                              if (ex.notes.isNotEmpty) ...[
+                                                const SizedBox(height: 10),
+                                                Container(
+                                                  padding: const EdgeInsets.all(10),
+                                                  decoration: BoxDecoration(
+                                                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                                                    borderRadius: BorderRadius.circular(10),
+                                                  ),
+                                                  child: Row(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Icon(Icons.info_outline, size: 16, color: MetaColors.subtext(bottomSheetCtx)),
+                                                      const SizedBox(width: 8),
+                                                      Expanded(
+                                                        child: Text(
+                                                          ex.notes,
+                                                          style: TextStyle(
+                                                            color: MetaColors.text(bottomSheetCtx),
+                                                            fontSize: 12,
+                                                            height: 1.3,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        );
+                                      }),
+                                      const SizedBox(height: 6),
+                                      OutlinedButton.icon(
+                                        onPressed: () => openExerciseEditor(splitIndex: splitIdx),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: MetaColors.emerald,
+                                          side: BorderSide(color: MetaColors.emerald.withValues(alpha: 0.45)),
+                                          padding: const EdgeInsets.symmetric(vertical: 12),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                        ),
+                                        icon: const Icon(Icons.add_rounded, size: 18),
+                                        label: Text('Adicionar Exercício ao Split ${split.splitIdentifier}'),
+                                      ),
+                                      const SizedBox(height: 20),
+                                    ],
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
@@ -1672,6 +1990,258 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
     );
   }
 
+  Future<void> _openTrainerAddMetricsModal() async {
+    final studentId = student['id']?.toString() ?? '';
+    if (studentId.isEmpty) return;
+
+    final latest = _studentMetrics.isNotEmpty ? _studentMetrics.first : null;
+    final weightCtrl = TextEditingController(
+      text: latest?.weightKg?.toString() ?? (student['weight_kg']?.toString() ?? ''),
+    );
+    final heightCtrl = TextEditingController(
+      text: latest?.heightCm?.toString() ?? (student['height_cm']?.toString() ?? ''),
+    );
+    final bfCtrl = TextEditingController(text: latest?.bodyFatPct?.toString() ?? '');
+    final chestCtrl = TextEditingController(text: latest?.chestCm?.toString() ?? '');
+    final waistCtrl = TextEditingController(text: latest?.waistCm?.toString() ?? '');
+    final hipCtrl = TextEditingController(text: latest?.hipCm?.toString() ?? '');
+    final armRightCtrl = TextEditingController(text: latest?.armRightCm?.toString() ?? '');
+    final armLeftCtrl = TextEditingController(text: latest?.armLeftCm?.toString() ?? '');
+    final thighCtrl = TextEditingController(text: (latest?.thighRightCm ?? latest?.thighLeftCm)?.toString() ?? '');
+    final notesCtrl = TextEditingController();
+    var isSaving = false;
+
+    double? parseNum(String s) {
+      final cleaned = s.trim().replaceAll(',', '.');
+      if (cleaned.isEmpty) return null;
+      return double.tryParse(cleaned);
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalCtx) {
+        final isDark = MetaColors.isDark(modalCtx);
+        return StatefulBuilder(
+          builder: (modalCtx, setModalState) {
+            Widget buildField(String label, TextEditingController ctrl, {String? suffix}) {
+              return TextField(
+                controller: ctrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                style: TextStyle(color: MetaColors.text(modalCtx), fontSize: 13.5),
+                decoration: InputDecoration(
+                  labelText: label,
+                  suffixText: suffix,
+                  labelStyle: TextStyle(color: MetaColors.subtext(modalCtx), fontSize: 11.5),
+                  filled: true,
+                  fillColor: MetaColors.highlight(modalCtx),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              );
+            }
+
+            return Container(
+              decoration: BoxDecoration(
+                color: isDark ? MetaColors.surface : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border.all(color: MetaColors.cardBorder(modalCtx)),
+              ),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                14,
+                20,
+                MediaQuery.of(modalCtx).viewInsets.bottom + 24,
+              ),
+              child: SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 44,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: MetaColors.subtext(modalCtx).withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: MetaColors.emerald.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.straighten_rounded, color: MetaColors.emerald, size: 20),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Nova Avaliação Antropométrica',
+                                  style: TextStyle(
+                                    color: MetaColors.text(modalCtx),
+                                    fontSize: 16.5,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  'Registrar medidas presenciais ou online de ${student['full_name'] ?? 'Aluno'}',
+                                  style: TextStyle(color: MetaColors.subtext(modalCtx), fontSize: 11.5),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(modalCtx),
+                            icon: Icon(Icons.close_rounded, color: MetaColors.subtext(modalCtx)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(child: buildField('Peso (kg)', weightCtrl, suffix: 'kg')),
+                          const SizedBox(width: 8),
+                          Expanded(child: buildField('Altura (cm)', heightCtrl, suffix: 'cm')),
+                          const SizedBox(width: 8),
+                          Expanded(child: buildField('% Gordura', bfCtrl, suffix: '%')),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(child: buildField('Tórax (cm)', chestCtrl, suffix: 'cm')),
+                          const SizedBox(width: 8),
+                          Expanded(child: buildField('Cintura (cm)', waistCtrl, suffix: 'cm')),
+                          const SizedBox(width: 8),
+                          Expanded(child: buildField('Quadril (cm)', hipCtrl, suffix: 'cm')),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(child: buildField('Braço Dir.', armRightCtrl, suffix: 'cm')),
+                          const SizedBox(width: 8),
+                          Expanded(child: buildField('Braço Esq.', armLeftCtrl, suffix: 'cm')),
+                          const SizedBox(width: 8),
+                          Expanded(child: buildField('Coxa (cm)', thighCtrl, suffix: 'cm')),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: notesCtrl,
+                        maxLines: 2,
+                        style: TextStyle(color: MetaColors.text(modalCtx), fontSize: 13),
+                        decoration: InputDecoration(
+                          labelText: 'Observações da Avaliação (opcional)',
+                          labelStyle: TextStyle(color: MetaColors.subtext(modalCtx), fontSize: 11.5),
+                          filled: true,
+                          fillColor: MetaColors.highlight(modalCtx),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: MetaColors.emerald,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            elevation: 0,
+                          ),
+                          onPressed: isSaving
+                              ? null
+                              : () async {
+                                  final w = parseNum(weightCtrl.text);
+                                  final h = parseNum(heightCtrl.text);
+                                  setModalState(() => isSaving = true);
+                                  final record = await BodyMetricsService.saveMetrics(
+                                    targetStudentId: studentId,
+                                    weightKg: w,
+                                    heightCm: h,
+                                    bodyFatPct: parseNum(bfCtrl.text),
+                                    chestCm: parseNum(chestCtrl.text),
+                                    waistCm: parseNum(waistCtrl.text),
+                                    hipCm: parseNum(hipCtrl.text),
+                                    armRightCm: parseNum(armRightCtrl.text),
+                                    armLeftCm: parseNum(armLeftCtrl.text),
+                                    thighRightCm: parseNum(thighCtrl.text),
+                                    thighLeftCm: parseNum(thighCtrl.text),
+                                    notes: notesCtrl.text.trim().isEmpty ? null : notesCtrl.text.trim(),
+                                  );
+                                  if (modalCtx.mounted) Navigator.pop(modalCtx);
+                                  if (record != null && mounted) {
+                                    final refreshed = await BodyMetricsService.getMetricsHistory(studentId);
+                                    setState(() {
+                                      _studentMetrics = refreshed;
+                                      if (w != null) student['weight_kg'] = w;
+                                      if (h != null) student['height_cm'] = h;
+                                    });
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        backgroundColor: MetaColors.surfaceHighlight,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                        content: const Row(
+                                          children: [
+                                            Icon(Icons.check_circle_rounded, color: MetaColors.emerald, size: 18),
+                                            SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                'Avaliação antropométrica registrada com sucesso no Bio-Hub!',
+                                                style: TextStyle(color: MetaColors.textPrimary),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                          icon: isSaving
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                )
+                              : const Icon(Icons.save_outlined, size: 18),
+                          label: const Text(
+                            'Salvar Avaliação Antropométrica',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildTrainerBodyMetrics(BuildContext context, bool isDark) {
     if (_isLoadingMetrics) {
       return const Padding(
@@ -1707,6 +2277,20 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                 ),
               ),
             ),
+            TextButton.icon(
+              onPressed: _openTrainerAddMetricsModal,
+              style: TextButton.styleFrom(
+                foregroundColor: MetaColors.emerald,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              icon: const Icon(Icons.add_circle_outline_rounded, size: 15),
+              label: const Text(
+                'Nova Medida',
+                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+              ),
+            ),
           ],
         ),
       );
@@ -1732,20 +2316,53 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
             children: [
               const Icon(Icons.straighten_rounded, color: MetaColors.emerald, size: 16),
               const SizedBox(width: 6),
-              Text(
-                'Antropometria Recente',
-                style: TextStyle(
-                  color: MetaColors.text(context),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12.5,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Antropometria Recente',
+                      style: TextStyle(
+                        color: MetaColors.text(context),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12.5,
+                      ),
+                    ),
+                    Text(
+                      'Aferido em $dateFormatted',
+                      style: TextStyle(
+                        color: MetaColors.subtext(context),
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const Spacer(),
-              Text(
-                'Aferido em $dateFormatted',
-                style: TextStyle(
-                  color: MetaColors.subtext(context),
-                  fontSize: 10.5,
+              InkWell(
+                onTap: _openTrainerAddMetricsModal,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: MetaColors.emerald.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.35)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add_rounded, size: 13, color: MetaColors.emerald),
+                      SizedBox(width: 3),
+                      Text(
+                        'Nova Medida',
+                        style: TextStyle(
+                          color: MetaColors.emerald,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -2902,8 +3519,10 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                               children: [
                                 Text(
                                   _studentOverloads.isNotEmpty
-                                      ? 'Sobrecarga: ${_studentOverloads.first['gain_percent']} (${_studentOverloads.first['exercise']})'
-                                      : 'Curva de Sobrecarga: +44% de Força',
+                                      ? (_studentOverloads.first['is_baseline'] == true
+                                          ? 'Marco Inicial Ativo (${_studentOverloads.first['exercise']})'
+                                          : 'Sobrecarga: ${_studentOverloads.first['gain_percent']} (${_studentOverloads.first['exercise']})')
+                                      : 'Curva de Sobrecarga em Calibração',
                                   style: TextStyle(
                                     color: MetaColors.text(context),
                                     fontWeight: FontWeight.bold,
@@ -2913,7 +3532,7 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                                 Text(
                                   _studentOverloads.isNotEmpty
                                       ? _studentOverloads.map((e) => '${e['exercise']}: ${e['start_load']} ➔ ${e['current_load']}').take(2).join(' • ')
-                                      : 'Supino: 50kg ➔ 72kg • Agachamento: 60kg ➔ 90kg',
+                                      : 'Aguardando prescrição e 1º treino concluído no Modo Foco',
                                   style: TextStyle(
                                     color: MetaColors.subtext(context),
                                     fontSize: 11,
