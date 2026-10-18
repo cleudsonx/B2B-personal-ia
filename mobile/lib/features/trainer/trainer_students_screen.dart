@@ -138,6 +138,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
               'status': status,
               'has_alert': hasAlert,
               'alert_message': alertMsg,
+              'alert_data': hasAlert ? matchingAlert : null,
               'avatar_url': st['avatar_url'] ?? st['photo_url'],
               'photo_url': st['photo_url'] ?? st['avatar_url'],
               'age': st['age'],
@@ -159,7 +160,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     }
   }
 
-  Future<void> _openWhatsApp(Map<String, dynamic> student) async {
+  Future<void> _openWhatsApp(Map<String, dynamic> student, {String? customMessage}) async {
     final phone = student['phone'] as String? ?? '';
     final name = student['full_name'] as String? ?? 'Aluno';
     final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
@@ -182,7 +183,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
       }
 
       final finalNumber = cleanPhone.startsWith('55') ? cleanPhone : '55$cleanPhone';
-      final message =
+      final message = customMessage ??
           'Olá $name! 💪 Aqui é o Prof. $trainerName. Como estão os treinos essa semana?';
       final url = isPending
           ? Uri.tryParse(inviteUrl!)
@@ -203,6 +204,442 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                 ? 'Telefone de $name: $phone'
                 : 'Aluno não possui telefone cadastrado.',
             style: const TextStyle(color: MetaColors.textPrimary),
+          ),
+        ),
+      );
+    }
+  }
+
+  void _showBiomechanicsAlertModal(Map<String, dynamic> student) {
+    HapticFeedback.mediumImpact();
+    final alertData = (student['alert_data'] as Map<String, dynamic>?) ?? {};
+    final alertId = alertData['id']?.toString() ?? '';
+    final studentId = student['id'] as String? ?? '';
+    final studentName = student['full_name'] as String? ?? 'Aluno';
+    final alertMsg = student['alert_message'] as String? ?? 'Troca de exercício realizada';
+
+    String original = alertData['original_exercise'] as String? ?? '';
+    String adapted = alertData['adapted_exercise'] as String? ?? '';
+    if (original.isEmpty && alertMsg.contains('Trocou ') && alertMsg.contains(' por ')) {
+      final parts = alertMsg.replaceFirst('Trocou ', '').split(' por ');
+      if (parts.length >= 2) {
+        original = parts[0].trim();
+        adapted = parts[1].trim();
+      }
+    }
+    if (original.isEmpty) original = 'Exercício Original';
+    if (adapted.isEmpty) adapted = 'Exercício Adaptado';
+
+    final reason = alertData['reason'] as String? ?? 'Adaptação realizada no treino';
+    final painLocation = alertData['pain_location'] as String?;
+    final severity = alertData['severity'] as String? ?? 'Moderada';
+
+    final user = AuthService.currentUser;
+    final trainerName =
+        user?.userMetadata?['full_name'] as String? ?? 'Seu Treinador';
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalCtx) => Container(
+        decoration: BoxDecoration(
+          color: MetaColors.card(context),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border.all(color: MetaColors.cardBorder(context)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 14, 24, 28),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Drag Handle One UI 7
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: MetaColors.subtext(context).withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // Cabeçalho com Ícone Âmbar One UI 7
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Color(0xFFF59E0B),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Adaptação Biomecânica',
+                          style: TextStyle(
+                            color: MetaColors.text(context),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Aluno: $studentName',
+                          style: TextStyle(
+                            color: MetaColors.subtext(context),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close_rounded, color: MetaColors.subtext(context)),
+                    onPressed: () => Navigator.pop(modalCtx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Card Segmentado One UI 7: Comparativo dos Exercícios
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: MetaColors.highlight(context),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: MetaColors.cardBorder(context)),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'PLANEJADO',
+                                style: TextStyle(
+                                  color: MetaColors.subtext(context),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                original,
+                                style: const TextStyle(
+                                  color: Color(0xFFEF4444),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: const BoxDecoration(
+                            color: MetaColors.surfaceHighlight,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 16,
+                            color: MetaColors.emerald,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              const Text(
+                                'ADAPTADO PELA IA',
+                                style: TextStyle(
+                                  color: MetaColors.emerald,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                adapted,
+                                textAlign: TextAlign.end,
+                                style: const TextStyle(
+                                  color: MetaColors.emerald,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Divider(color: MetaColors.cardBorder(context), height: 1),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Icon(
+                          reason.toLowerCase().contains('dor')
+                              ? Icons.health_and_safety_outlined
+                              : Icons.fitness_center_outlined,
+                          size: 16,
+                          color: const Color(0xFFF59E0B),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Motivo relatado: $reason'
+                            '${painLocation != null && painLocation.isNotEmpty ? ' ($painLocation - severidade: $severity)' : ''}',
+                            style: TextStyle(
+                              color: MetaColors.text(context),
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 22),
+
+              Text(
+                'AÇÕES RÁPIDAS EM 1 TOQUE',
+                style: TextStyle(
+                  color: MetaColors.subtext(context),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Ação 1: Marcar como Visto / Resolver
+              InkWell(
+                onTap: () async {
+                  Navigator.pop(modalCtx);
+                  await _resolveAlert(student, alertId);
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: MetaColors.emerald.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: MetaColors.emerald.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.check_circle_rounded, color: MetaColors.emerald, size: 22),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Marcar como Visto / Resolver',
+                              style: TextStyle(
+                                color: MetaColors.emerald,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14.5,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Dá baixa imediata no alerta e retorna o status para "Em dia"',
+                              style: TextStyle(
+                                color: MetaColors.emerald,
+                                fontSize: 11.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_ios_rounded, color: MetaColors.emerald, size: 14),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Ação 2: Ajustar Ficha
+              InkWell(
+                onTap: () {
+                  Navigator.pop(modalCtx);
+                  _openPrescriptionForStudent(studentId, studentName);
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: MetaColors.highlight(context),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: MetaColors.cardBorder(context)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit_note_rounded, color: MetaColors.text(context), size: 22),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Ajustar Ficha do Aluno',
+                              style: TextStyle(
+                                color: MetaColors.text(context),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14.5,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Oficializar a troca ou redefinir a periodização',
+                              style: TextStyle(
+                                color: MetaColors.subtext(context),
+                                fontSize: 11.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_ios_rounded, color: MetaColors.subtext(context), size: 14),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Ação 3: Falar no WhatsApp
+              InkWell(
+                onTap: () {
+                  Navigator.pop(modalCtx);
+                  final isPain = reason.toLowerCase().contains('dor') || painLocation != null;
+                  final customMsg = 'Olá $studentName! 💪 Aqui é o Prof. $trainerName. '
+                      'Vi no sistema que você precisou substituir "$original" por "$adapted" no seu treino'
+                      '${isPain ? ' por desconforto articular' : ''}. '
+                      'Como você está se sentindo? Sentiu algum incômodo ou dor?';
+                  _openWhatsApp(student, customMessage: customMsg);
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF25D366).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0xFF25D366).withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.chat_rounded, color: Color(0xFF25D366), size: 22),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Falar no WhatsApp',
+                              style: TextStyle(
+                                color: Color(0xFF25D366),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14.5,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Enviar mensagem perguntando se o aluno sentiu desconforto',
+                              style: TextStyle(
+                                color: Color(0xFF25D366),
+                                fontSize: 11.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF25D366), size: 14),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _resolveAlert(Map<String, dynamic> student, String alertId) async {
+    HapticFeedback.mediumImpact();
+    final studentId = student['id'] as String? ?? '';
+    final studentName = student['full_name'] as String? ?? 'Aluno';
+
+    // Atualização otimista imediata na UI
+    setState(() {
+      final idx = _students.indexWhere((s) => s['id'] == studentId);
+      if (idx != -1) {
+        _students[idx]['has_alert'] = false;
+        _students[idx]['alert_message'] = null;
+        _students[idx]['alert_data'] = null;
+      }
+    });
+
+    await WorkoutService.resolveBiomechanicalAlert(
+      studentId: studentId,
+      alertId: alertId.isNotEmpty ? alertId : null,
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: MetaColors.surfaceHighlight,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: MetaColors.emerald, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Alerta de $studentName resolvido! Status atualizado para "Em dia".',
+                  style: const TextStyle(color: MetaColors.textPrimary),
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -1260,7 +1697,11 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                                       ),
                                                     ),
                                                     const SizedBox(width: 8),
-                                                    _buildTierBadge(tier),
+                                                    InkWell(
+                                                      onTap: hasAlert ? () => _showBiomechanicsAlertModal(student) : null,
+                                                      borderRadius: BorderRadius.circular(8),
+                                                      child: _buildTierBadge(tier),
+                                                    ),
                                                   ],
                                                 ),
                                                 const SizedBox(height: 5),
@@ -1283,32 +1724,81 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                       const SizedBox(height: 12),
                                       Row(
                                         children: [
-                                          Icon(
-                                            hasAlert
-                                                ? Icons.warning_amber_rounded
-                                                : Icons.access_time_rounded,
-                                            size: 14,
-                                            color: hasAlert
-                                                ? const Color(0xFFF59E0B)
-                                                : MetaColors.subtext(context),
-                                          ),
-                                          const SizedBox(width: 5),
-                                          Expanded(
-                                            child: Text(
-                                              hasAlert && student['alert_message'] != null
-                                                  ? '${student['alert_message']}'
-                                                  : (lastSession.isNotEmpty ? lastSession : 'Sincronizado'),
-                                              style: TextStyle(
-                                                color: hasAlert
-                                                    ? const Color(0xFFF59E0B)
-                                                    : MetaColors.subtext(context),
-                                                fontSize: 12,
-                                                fontWeight: hasAlert ? FontWeight.w600 : FontWeight.normal,
+                                          if (hasAlert) ...[
+                                            Expanded(
+                                              child: InkWell(
+                                                onTap: () => _showBiomechanicsAlertModal(student),
+                                                borderRadius: BorderRadius.circular(12),
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFFF59E0B).withValues(alpha: 0.14),
+                                                    borderRadius: BorderRadius.circular(12),
+                                                    border: Border.all(
+                                                      color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    children: [
+                                                      const Icon(
+                                                        Icons.warning_amber_rounded,
+                                                        size: 15,
+                                                        color: Color(0xFFF59E0B),
+                                                      ),
+                                                      const SizedBox(width: 6),
+                                                      Expanded(
+                                                        child: Text(
+                                                          student['alert_message'] ?? 'Adaptação realizada',
+                                                          style: const TextStyle(
+                                                            color: Color(0xFFF59E0B),
+                                                            fontSize: 12,
+                                                            fontWeight: FontWeight.w700,
+                                                          ),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 6),
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                                                        decoration: BoxDecoration(
+                                                          color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                                                          borderRadius: BorderRadius.circular(8),
+                                                        ),
+                                                        child: const Text(
+                                                          'Resolver',
+                                                          style: TextStyle(
+                                                            color: Color(0xFFF59E0B),
+                                                            fontSize: 10.5,
+                                                            fontWeight: FontWeight.w800,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
                                               ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
                                             ),
-                                          ),
+                                          ] else ...[
+                                            Icon(
+                                              Icons.access_time_rounded,
+                                              size: 14,
+                                              color: MetaColors.subtext(context),
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Expanded(
+                                              child: Text(
+                                                lastSession.isNotEmpty ? lastSession : 'Sincronizado',
+                                                style: TextStyle(
+                                                  color: MetaColors.subtext(context),
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.normal,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
                                           const SizedBox(width: 8),
 
                                           // Micro-ação: Prescrever Ficha rápida (se aplicável)

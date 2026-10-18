@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../core/theme/app_colors.dart';
+import '../../core/widgets/meta_components.dart';
 import '../../main.dart' show MainShellScreen;
 import '../../services/auth_service.dart';
 import '../../services/student_profile_service.dart';
@@ -30,28 +31,44 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
   bool _isSubmitting = false;
   final _stepFormKey = GlobalKey<FormState>();
 
-  // Step 1: Biometria & Rotina
+  // Step 1: Biometria, Sexo Biológico & Recuperação
+  String _biologicalSex = 'Masculino'; // 'Masculino' | 'Feminino'
   final _ageCtrl = TextEditingController();
   final _weightCtrl = TextEditingController();
   final _heightCtrl = TextEditingController();
-  String _dailyActivity = 'Sedentário (Trabalho em escritório/computador)';
+  String _dailyActivity = 'Sedentário (Trabalho em mesa / pouca caminhada)';
   String _sleepHours = '7 a 8 horas';
+  String _stressLevel = 'Moderado';
 
-  // Step 2: Experiência & Disponibilidade
-  String _trainingLevel = 'Intermediário';
+  // Step 2: Experiência, Frequência Semanal & Cardio
+  String _trainingLevel = 'Intermediário (6m a 2 anos)';
+  String _trainingHistory = '6 meses a 1 ano';
   int _weeklyDays = 4;
+  final Set<String> _preferredDays = {'Seg', 'Ter', 'Qui', 'Sex'};
   String _sessionDuration = '60 minutos';
+  String _cardioPreference = 'Sim (Pós-musculação)';
 
-  // Step 3: Articulações & Lesões
+  // Step 3: Triagem PAR-Q & Saúde Articular
+  final Set<String> _clinicalConditions = {'Nenhuma restrição médica'};
   final Set<String> _selectedInjuries = {kNoRestriction};
   final _injuriesDetailsCtrl = TextEditingController();
 
-  // Step 4: Espaço de Treino
+  // Step 4: Espaço de Treino & Equipamentos
   String _workoutLocation = 'Academia comercial completa';
+  final Set<String> _availableEquipment = {
+    'Halteres',
+    'Barras e Anilhas',
+    'Polia / Cabos',
+    'Máquinas Articuladas',
+    'Smith Machine',
+    'Leg Press',
+  };
+  final _avoidExercisesCtrl = TextEditingController();
 
-  // Step 5: Objetivo & Foco Muscular
+  // Step 5: Objetivo, Focos Musculares & Estilo de Treino
   String _objective = 'Hipertrofia Muscular';
-  final Set<String> _musclePriorities = {'Peitoral', 'Ombros'};
+  final Set<String> _musclePriorities = {'Peitoral', 'Costas / Dorsais', 'Ombros'};
+  String _trainingStyle = 'Equilibrado (Carga + Pump)';
 
   String _resolvedTrainerName = 'Seu Treinador';
   String _resolvedTrainerRegistry = 'Registro Profissional Ativo';
@@ -67,6 +84,25 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
       return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     }
     return clean.substring(0, clean.length >= 2 ? 2 : 1).toUpperCase();
+  }
+
+  String? _calculateBmi() {
+    final w = double.tryParse(_weightCtrl.text.trim().replaceAll(',', '.'));
+    final h = double.tryParse(_heightCtrl.text.trim().replaceAll(',', '.'));
+    if (w == null || h == null || w <= 0 || h <= 0) return null;
+    final heightM = h > 3 ? h / 100 : h;
+    final bmi = w / (heightM * heightM);
+    String classification;
+    if (bmi < 18.5) {
+      classification = 'Abaixo do peso';
+    } else if (bmi < 25.0) {
+      classification = 'Eutrofia (Peso normal)';
+    } else if (bmi < 30.0) {
+      classification = 'Sobrepeso';
+    } else {
+      classification = 'Obesidade';
+    }
+    return 'IMC: ${bmi.toStringAsFixed(1)} • $classification';
   }
 
   @override
@@ -86,7 +122,6 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
       debugPrint('Convite não pôde ser concluído durante o onboarding: $e');
     }
 
-    // 1. Prioriza dados passados explicitamente para o widget
     if (widget.trainerName != null && widget.trainerName!.isNotEmpty) {
       _resolvedTrainerName = widget.trainerName!;
     }
@@ -97,7 +132,6 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
       _resolvedTrainerAvatarUrl = widget.trainerAvatarUrl;
     }
 
-    // 2. Extrai da URL atual do navegador (Web query parameters ou fragment query)
     try {
       final queryParams = Map<String, String>.from(Uri.base.queryParameters);
       final fragment = Uri.base.fragment;
@@ -123,7 +157,6 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
       }
     } catch (_) {}
 
-    // 3. Se temos o trainer_id, busca o perfil real no Supabase para garantir os dados mais recentes
     if (_trainerId != null && _trainerId!.isNotEmpty) {
       try {
         final client = Supabase.instance.client;
@@ -156,7 +189,6 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
       } catch (_) {}
     }
 
-    // 4. Se o aluno já estiver autenticado, busca pelo vínculo do perfil dele
     try {
       final trainer = await AuthService.getTrainerForStudent();
       if (trainer != null && mounted) {
@@ -182,16 +214,12 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
       }
     } catch (_) {}
 
-    // 5. Auto-Recuperação Resiliente de Vínculo:
-    // Caso o aluno esteja autenticado mas _trainerId ainda seja nulo,
-    // buscamos convite pendente por telefone/email ou localizamos o professor pelo nome.
     try {
       final client = Supabase.instance.client;
       final currentUser = client.auth.currentUser;
       if (currentUser != null) {
         String? foundTrainerId;
 
-        // a) Procura convite em invite_tokens correspondente ao usuário
         final phone = currentUser.phone ?? (currentUser.userMetadata?['phone'] as String?);
         final email = currentUser.email;
 
@@ -222,7 +250,6 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
           }
         }
 
-        // b) Se não achou por convite mas temos o nome do treinador
         if (foundTrainerId == null && _resolvedTrainerName != 'Seu Treinador') {
           final cleanName = _resolvedTrainerName.replaceAll('Prof.', '').trim();
           final trainerProfile = await client
@@ -237,7 +264,6 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
           }
         }
 
-        // c) Se localizou o treinador, consolida o vínculo na tabela profiles
         if (foundTrainerId != null && foundTrainerId.isNotEmpty) {
           _trainerId = foundTrainerId;
           await client
@@ -283,6 +309,7 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
     _weightCtrl.dispose();
     _heightCtrl.dispose();
     _injuriesDetailsCtrl.dispose();
+    _avoidExercisesCtrl.dispose();
     super.dispose();
   }
 
@@ -305,41 +332,48 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
       final user = AuthService.currentUser!;
       final clientId = user.id;
 
-        final selectedInjuries = _selectedInjuries.isEmpty
+      final selectedInjuries = _selectedInjuries.isEmpty
           ? {kNoRestriction}
           : _selectedInjuries;
-        final injuriesSummary = selectedInjuries.contains(kNoRestriction)
+      final injuriesSummary = selectedInjuries.contains(kNoRestriction)
           ? kNoRestriction
           : selectedInjuries.join(', ');
 
       final anamnesisPayload = {
         'client_id': clientId,
+        'biological_sex': _biologicalSex,
         'age': int.parse(_ageCtrl.text.trim()),
         'weight': double.parse(_weightCtrl.text.trim().replaceAll(',', '.')),
         'height': double.parse(_heightCtrl.text.trim().replaceAll(',', '.')),
         'daily_activity': _dailyActivity,
         'sleep_hours': _sleepHours,
+        'stress_level': _stressLevel,
         'training_level': _trainingLevel,
+        'training_history': _trainingHistory,
         'weekly_days': _weeklyDays,
+        'preferred_days': _preferredDays.toList(),
         'session_duration': _sessionDuration,
+        'cardio_preference': _cardioPreference,
+        'clinical_conditions': _clinicalConditions.toList(),
         'injuries': selectedInjuries.toList(),
         'injuries_details': _injuriesDetailsCtrl.text.trim(),
         'injuries_summary': injuriesSummary,
         'workout_location': _workoutLocation,
+        'available_equipment': _availableEquipment.toList(),
+        'exercises_to_avoid': _avoidExercisesCtrl.text.trim(),
         'objective': _objective,
         'muscle_priorities': _musclePriorities.toList(),
+        'training_style': _trainingStyle,
         'completed_at': DateTime.now().toIso8601String(),
         if (_trainerId != null) 'trainer_id': _trainerId,
       };
 
-      // Persiste na tabela client_anamnesis e atualiza perfil do aluno
       final saved = await WorkoutService.saveClientAnamnesis(
         clientId: clientId,
         data: anamnesisPayload,
       );
       if (!saved) throw Exception('Não foi possível salvar sua avaliação. Tente novamente.');
 
-      // Garante o vínculo relacional do aluno com o personal trainer no Supabase
       if (_trainerId != null && _trainerId!.isNotEmpty) {
         try {
           final client = Supabase.instance.client;
@@ -349,7 +383,6 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
               .eq('id', clientId);
         } catch (_) {}
 
-        // Notifica o professor imediatamente (Alerta na central do app + WhatsApp + E-mail)
         WorkoutService.notifyTrainerOnboardingCompleted(
           clientId: clientId,
           trainerId: _trainerId!,
@@ -365,7 +398,7 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
 
       if (mounted) {
         setState(() {
-          _currentStep = 6; // Tela de sucesso e transição
+          _currentStep = 6;
         });
       }
     } catch (e) {
@@ -396,15 +429,14 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = AppColors.isDark(context);
+    final isDark = MetaColors.isDark(context);
 
     return Scaffold(
-      backgroundColor: AppColors.bg(context),
+      backgroundColor: MetaColors.bg(context),
       body: SafeArea(
-        child:
-            _currentStep == 0
-                ? _buildWelcomeScreen(isDark)
-                : _currentStep == 6
+        child: _currentStep == 0
+            ? _buildWelcomeScreen(isDark)
+            : _currentStep == 6
                 ? _buildSuccessScreen(isDark)
                 : _buildOnboardingStepScaffold(isDark),
       ),
@@ -412,15 +444,14 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
   }
 
   // -------------------------------------------------------------------------
-  // ETAPA 0: Tela Viral de Boas-Vindas (Apple Fitness / Equinox Minimalist)
+  // ETAPA 0: Tela Viral de Boas-Vindas (One UI 7 / Meta)
   // -------------------------------------------------------------------------
   Widget _buildWelcomeScreen(bool isDark) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Brand Badge
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -428,27 +459,26 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                 children: [
                   Image.asset(
                     'assets/images/logo_shaipados.png',
-                    height: 42,
+                    height: 40,
                     fit: BoxFit.contain,
-                    errorBuilder:
-                        (context, error, stackTrace) => Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: AppColors.emerald(context),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'S',
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 13,
-                              ),
-                            ),
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: MetaColors.emerald,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'S',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
                           ),
                         ),
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Column(
@@ -459,17 +489,17 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: 1.8,
-                          color: AppColors.text(context),
+                          letterSpacing: 1.5,
+                          color: MetaColors.text(context),
                         ),
                       ),
-                      Text(
+                      const Text(
                         'MR. COACH INTELLIGENCE',
                         style: TextStyle(
                           fontSize: 8.5,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w800,
                           letterSpacing: 0.6,
-                          color: AppColors.emerald(context),
+                          color: MetaColors.emerald,
                         ),
                       ),
                     ],
@@ -477,49 +507,50 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: AppColors.emeraldBg(context),
+                  color: MetaColors.emerald.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: AppColors.emerald(context).withValues(alpha: 0.4),
+                    color: MetaColors.emerald.withValues(alpha: 0.4),
                   ),
                 ),
-                child: Text(
-                  'CONVITE EXCLUSIVO',
-                  style: TextStyle(
-                    color: AppColors.emerald(context),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.6,
-                  ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.lock_rounded, size: 12, color: MetaColors.emerald),
+                    SizedBox(width: 4),
+                    Text(
+                      'CONVITE VIP',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: MetaColors.emerald,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
 
-          const Spacer(),
+          const SizedBox(height: 36),
 
-          // Editorial Headline
           Text(
-            'Treinamento de elite\nsob medida para você.',
+            'Seu Treinador Conectado.',
             style: TextStyle(
-              fontSize: 34,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -1.2,
+              fontSize: 32,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.8,
               height: 1.15,
-              color: AppColors.text(context),
+              color: MetaColors.text(context),
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Text(
-            'Uma experiência de musculação e biomecânica de precisão, conectada em tempo real ao seu treinador.',
+            'Responda a anamnese em 5 etapas rápidas. Seu personal terá os dados biomecânicos e clínicos necessários para prescrever seu treino exclusivo.',
             style: TextStyle(
-              fontSize: 15,
-              color: AppColors.subtext(context),
+              fontSize: 14.5,
+              color: MetaColors.subtext(context),
               height: 1.45,
             ),
           ),
@@ -530,41 +561,22 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.card(context),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.cardBorder(context)),
-              boxShadow: [
-                BoxShadow(
-                  color: isDark ? Colors.black26 : const Color(0x080F172A),
-                  blurRadius: 18,
-                  offset: const Offset(0, 6),
-                ),
-              ],
+              color: MetaColors.card(context),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: MetaColors.cardBorder(context)),
             ),
             child: Row(
               children: [
                 Container(
-                  width: 52,
-                  height: 52,
+                  width: 54,
+                  height: 54,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppColors.emerald(context),
-                        AppColors.accentBlue(context),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    color: MetaColors.highlight(context),
                     shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.emerald(
-                          context,
-                        ).withValues(alpha: 0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
+                    border: Border.all(
+                      color: MetaColors.emerald.withValues(alpha: 0.4),
+                      width: 1.5,
+                    ),
                   ),
                   child: Stack(
                     alignment: Alignment.center,
@@ -575,34 +587,32 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                           child: _resolvedTrainerAvatarUrl!.trim().startsWith('assets/')
                               ? Image.asset(
                                   _resolvedTrainerAvatarUrl!.trim(),
-                                  width: 52,
-                                  height: 52,
+                                  width: 54,
+                                  height: 54,
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, _, _) => Center(
                                     child: Text(
                                       _getTrainerInitials(),
-                                      style: const TextStyle(
-                                        color: Colors.black,
+                                      style: TextStyle(
+                                        color: MetaColors.text(context),
                                         fontWeight: FontWeight.w900,
                                         fontSize: 18,
-                                        letterSpacing: -0.5,
                                       ),
                                     ),
                                   ),
                                 )
                               : Image.network(
                                   _resolvedTrainerAvatarUrl!.trim(),
-                                  width: 52,
-                                  height: 52,
+                                  width: 54,
+                                  height: 54,
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, _, _) => Center(
                                     child: Text(
                                       _getTrainerInitials(),
-                                      style: const TextStyle(
-                                        color: Colors.black,
+                                      style: TextStyle(
+                                        color: MetaColors.text(context),
                                         fontWeight: FontWeight.w900,
                                         fontSize: 18,
-                                        letterSpacing: -0.5,
                                       ),
                                     ),
                                   ),
@@ -612,11 +622,10 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                         Center(
                           child: Text(
                             _getTrainerInitials(),
-                            style: const TextStyle(
-                              color: Colors.black,
+                            style: TextStyle(
+                              color: MetaColors.text(context),
                               fontWeight: FontWeight.w900,
                               fontSize: 18,
-                              letterSpacing: -0.5,
                             ),
                           ),
                         ),
@@ -625,12 +634,12 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                         right: 2,
                         bottom: 2,
                         child: Container(
-                          width: 12,
-                          height: 12,
+                          width: 13,
+                          height: 13,
                           decoration: BoxDecoration(
                             color: const Color(0xFF10B981),
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
+                            border: Border.all(color: MetaColors.card(context), width: 2),
                           ),
                         ),
                       ),
@@ -648,27 +657,27 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                             child: Text(
                               _resolvedTrainerName,
                               style: TextStyle(
-                                fontSize: 15,
+                                fontSize: 15.5,
                                 fontWeight: FontWeight.w800,
-                                color: AppColors.text(context),
+                                color: MetaColors.text(context),
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 4),
-                          Icon(
+                          const SizedBox(width: 5),
+                          const Icon(
                             Icons.verified_rounded,
                             size: 16,
-                            color: AppColors.accentBlue(context),
+                            color: Color(0xFF38BDF8),
                           ),
                         ],
                       ),
                       const SizedBox(height: 2),
                       Text(
                         '$_resolvedTrainerRegistry • Personal Trainer',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 12,
-                          color: AppColors.emerald(context),
+                          color: MetaColors.emerald,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -676,20 +685,20 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                       Text(
                         'Aguardando sua avaliação para liberar sua periodização.',
                         style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.subtext(context),
+                          fontSize: 11.5,
+                          color: MetaColors.subtext(context),
                         ),
                       ),
                       if (_isLoadingTrainerInfo) ...[
                         const SizedBox(height: 8),
-                        const LinearProgressIndicator(),
+                        const LinearProgressIndicator(color: MetaColors.emerald),
                       ] else if (_trainerId == null || _trainerId!.isEmpty) ...[
                         const SizedBox(height: 8),
-                        Text(
-                          'Não encontramos o vínculo com seu treinador. Abra o convite recebido ou peça um novo link antes de iniciar.',
+                        const Text(
+                          'Não encontramos o vínculo com seu treinador. Peça um novo convite antes de iniciar.',
                           style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.danger,
+                            color: Colors.redAccent,
                           ),
                         ),
                       ],
@@ -702,41 +711,54 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
 
           const Spacer(),
 
-          // Botão Iniciar Avaliação
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              icon: const Icon(
-                Icons.arrow_forward_rounded,
-                color: Colors.black,
+          // Botão Iniciar Avaliação One UI 7
+          InkWell(
+            onTap: _isLoadingTrainerInfo || _trainerId == null || _trainerId!.isEmpty
+                ? null
+                : () {
+                    HapticFeedback.mediumImpact();
+                    setState(() => _currentStep = 1);
+                  },
+            borderRadius: BorderRadius.circular(18),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              decoration: BoxDecoration(
+                color: _isLoadingTrainerInfo || _trainerId == null || _trainerId!.isEmpty
+                    ? MetaColors.highlight(context)
+                    : MetaColors.emerald,
+                borderRadius: BorderRadius.circular(18),
               ),
-              label: const Text('Iniciar Avaliação Biomecânica (3 min)'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.emerald(context),
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                elevation: 4,
-                shadowColor: AppColors.emerald(context).withValues(alpha: 0.35),
-                textStyle: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Iniciar Avaliação (3 min)',
+                    style: TextStyle(
+                      color: _isLoadingTrainerInfo || _trainerId == null || _trainerId!.isEmpty
+                          ? MetaColors.subtext(context)
+                          : Colors.black,
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.arrow_forward_rounded,
+                    color: _isLoadingTrainerInfo || _trainerId == null || _trainerId!.isEmpty
+                        ? MetaColors.subtext(context)
+                        : Colors.black,
+                    size: 18,
+                  ),
+                ],
               ),
-                onPressed: _isLoadingTrainerInfo ||
-                    _trainerId == null ||
-                    _trainerId!.isEmpty
-                  ? null
-                  : () => setState(() => _currentStep = 1),
             ),
           ),
           const SizedBox(height: 12),
           Center(
             child: Text(
               'Garantia de sigilo médico e conformidade biomecânica.',
-              style: TextStyle(fontSize: 11, color: AppColors.subtext(context)),
+              style: TextStyle(fontSize: 11.5, color: MetaColors.subtext(context)),
             ),
           ),
           const SizedBox(height: 10),
@@ -746,56 +768,74 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
   }
 
   // -------------------------------------------------------------------------
-  // ESTRUTURA DO STEPPER (Passos 1 a 5)
+  // ESTRUTURA DO STEPPER (Passos 1 a 5 no Padrão One UI 7 / Meta)
   // -------------------------------------------------------------------------
   Widget _buildOnboardingStepScaffold(bool isDark) {
     return Column(
       children: [
-        // Top Step Progress Header
+        // Top Step Progress Header One UI 7
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.fromLTRB(16, 10, 20, 10),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-                color: AppColors.subtext(context),
-                onPressed: () => setState(() => _currentStep--),
+                color: MetaColors.text(context),
+                onPressed: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _currentStep--);
+                },
               ),
               Column(
                 children: [
-                  Text(
+                  const Text(
                     'AVALIAÇÃO DO ALUNO',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 1.2,
-                      color: AppColors.emerald(context),
+                      color: MetaColors.emerald,
                     ),
                   ),
+                  const SizedBox(height: 2),
                   Text(
                     'Etapa $_currentStep de 5',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 13.5,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.text(context),
+                      color: MetaColors.text(context),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(width: 40),
+              const SizedBox(width: 44),
             ],
           ),
         ),
 
-        // Linear Progress Bar
-        ClipRRect(
-          borderRadius: BorderRadius.circular(2),
-          child: LinearProgressIndicator(
-            value: _currentStep / 5.0,
-            minHeight: 4,
-            color: AppColors.emerald(context),
-            backgroundColor: AppColors.cardBorder(context),
+        // Linear Progress Bar One UI 7
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          height: 5,
+          decoration: BoxDecoration(
+            color: MetaColors.highlight(context),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: LayoutBuilder(
+            builder: (ctx, constraints) => Stack(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  width: constraints.maxWidth * (_currentStep / 5.0),
+                  decoration: BoxDecoration(
+                    color: MetaColors.emerald,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
 
@@ -804,7 +844,7 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
           child: Form(
             key: _stepFormKey,
             child: ListView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
               children: [
                 if (_currentStep == 1) _buildStep1Biometrics(),
                 if (_currentStep == 2) _buildStep2Experience(),
@@ -816,455 +856,986 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
           ),
         ),
 
-        // Bottom Navigation Bar
+        // Bottom Navigation Bar One UI 7
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
           decoration: BoxDecoration(
-            color: AppColors.card(context),
+            color: MetaColors.card(context),
             border: Border(
-              top: BorderSide(color: AppColors.cardBorder(context)),
+              top: BorderSide(color: MetaColors.cardBorder(context)),
             ),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.emerald(context),
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    elevation: 3,
-                    textStyle: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  onPressed:
-                      _isSubmitting
-                          ? null
-                          : () {
-                            if (_currentStep == 1 &&
-                                !_stepFormKey.currentState!.validate()) {
-                              return;
-                            }
-                            if (_currentStep < 5) {
-                              setState(() => _currentStep++);
-                            } else {
-                              _submitAnamnesis();
-                            }
-                          },
-                  child:
-                      _isSubmitting
-                          ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.black,
-                              strokeWidth: 2,
-                            ),
-                          )
-                          : Text(
-                            _currentStep < 5
-                                ? 'Continuar →'
-                                : 'Enviar Avaliação ao Treinador ✓',
-                          ),
-                ),
+          child: InkWell(
+            onTap: _isSubmitting
+                ? null
+                : () {
+                    HapticFeedback.lightImpact();
+                    if (_currentStep == 1 &&
+                        !_stepFormKey.currentState!.validate()) {
+                      return;
+                    }
+                    if (_currentStep < 5) {
+                      setState(() => _currentStep++);
+                    } else {
+                      _submitAnamnesis();
+                    }
+                  },
+            borderRadius: BorderRadius.circular(18),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                color: MetaColors.emerald,
+                borderRadius: BorderRadius.circular(18),
               ),
-            ],
+              child: Center(
+                child: _isSubmitting
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          color: Colors.black,
+                          strokeWidth: 2.2,
+                        ),
+                      )
+                    : Text(
+                        _currentStep < 5
+                            ? 'Continuar →'
+                            : 'Enviar Avaliação ao Treinador ✓',
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+              ),
+            ),
           ),
         ),
       ],
     );
   }
 
-  // ETAPA 1: Biometria & Rotina
+  // -------------------------------------------------------------------------
+  // ETAPA 1: Biometria, Sexo Biológico & Sono/Estresse
+  // -------------------------------------------------------------------------
   Widget _buildStep1Biometrics() {
+    final bmiText = _calculateBmi();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        _buildSectionHeader(
           'Perfil Biométrico & Rotina',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            color: AppColors.text(context),
-          ),
+          'Fundamental para estimar sua taxa metabólica, recuperação tecidual e distribuição de volume.',
         ),
-        const SizedBox(height: 6),
-        Text(
-          'Dados fundamentais para calcular a taxa metabólica e a capacidade recuperativa.',
-          style: TextStyle(fontSize: 13, color: AppColors.subtext(context)),
-        ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 22),
+
+        // Sexo Biológico One UI 7
+        _buildLabel('Sexo Biológico (Fórmulas metabólicas & hormonais)'),
+        const SizedBox(height: 8),
         Row(
           children: [
             Expanded(
-              child: _buildTextField(
-                'Idade (anos)',
-                _ageCtrl,
-                keyboardType: TextInputType.number,
-                validator: (input) {
-                  final age = int.tryParse(input?.trim() ?? '');
-                  if (age == null) return 'Informe a idade.';
-                  if (age < 10 || age > 100) return 'Use uma idade entre 10 e 100.';
-                  return null;
+              child: _buildSelectablePill(
+                label: 'Masculino',
+                icon: Icons.male_rounded,
+                isSelected: _biologicalSex == 'Masculino',
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _biologicalSex = 'Masculino');
                 },
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
-              child: _buildTextField(
-                'Peso (kg)',
-                _weightCtrl,
+              child: _buildSelectablePill(
+                label: 'Feminino',
+                icon: Icons.female_rounded,
+                isSelected: _biologicalSex == 'Feminino',
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _biologicalSex = 'Feminino');
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        // Idade, Peso e Altura em 3 colunas táteis
+        _buildLabel('Medidas Principais'),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _buildBiometricField(
+                label: 'Idade',
+                unit: 'anos',
+                ctrl: _ageCtrl,
+                keyboardType: TextInputType.number,
+                validator: (input) {
+                  final v = int.tryParse(input?.trim() ?? '');
+                  if (v == null || v < 10 || v > 100) return 'Inválido';
+                  return null;
+                },
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildBiometricField(
+                label: 'Peso',
+                unit: 'kg',
+                ctrl: _weightCtrl,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 validator: (input) {
-                  final weight = double.tryParse(
-                    (input ?? '').trim().replaceAll(',', '.'),
-                  );
-                  if (weight == null) return 'Informe o peso.';
-                  if (weight < 20 || weight > 300) return 'Use 20 a 300 kg.';
+                  final v = double.tryParse((input ?? '').trim().replaceAll(',', '.'));
+                  if (v == null || v < 25 || v > 300) return 'Inválido';
                   return null;
                 },
+                onChanged: (_) => setState(() {}),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
-              child: _buildTextField(
-                'Altura (cm)',
-                _heightCtrl,
+              child: _buildBiometricField(
+                label: 'Altura',
+                unit: 'cm',
+                ctrl: _heightCtrl,
                 keyboardType: TextInputType.number,
                 validator: (input) {
-                  final height = int.tryParse(input?.trim() ?? '');
-                  if (height == null) return 'Informe a altura em centímetros.';
-                  if (height < 100 || height > 250) return 'Use 100 a 250 cm.';
+                  final v = int.tryParse(input?.trim() ?? '');
+                  if (v == null || v < 100 || v > 240) return 'Inválido';
                   return null;
                 },
+                onChanged: (_) => setState(() {}),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 20),
-        _buildDropdown(
-          label: 'Rotina de Trabalho / Atividade Diária',
-          value: _dailyActivity,
-          items: [
-            'Sedentário (Trabalho em escritório/computador)',
-            'Moderado (Boa parte do dia em pé ou caminhando)',
-            'Ativo (Trabalho braçal ou atividade física contínua)',
-          ],
-          onChanged: (val) => setState(() => _dailyActivity = val!),
-        ),
-        const SizedBox(height: 16),
-        _buildDropdown(
-          label: 'Média de Sono por Noite',
-          value: _sleepHours,
-          items: [
-            'Menos de 6 horas',
-            '6 a 7 horas',
-            '7 a 8 horas',
-            'Mais de 8 horas',
-          ],
-          onChanged: (val) => setState(() => _sleepHours = val!),
-        ),
-      ],
-    );
-  }
 
-  // ETAPA 2: Experiência & Disponibilidade
-  Widget _buildStep2Experience() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Experiência & Disponibilidade',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            color: AppColors.text(context),
+        // IMC Informativo em Tempo Real
+        if (bmiText != null) ...[
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: MetaColors.emerald.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.bolt_rounded, size: 16, color: MetaColors.emerald),
+                const SizedBox(width: 8),
+                Text(
+                  bmiText,
+                  style: const TextStyle(
+                    color: MetaColors.emerald,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Define o volume semanal e a complexidade técnica dos movimentos.',
-          style: TextStyle(fontSize: 13, color: AppColors.subtext(context)),
-        ),
-        const SizedBox(height: 24),
-        _buildDropdown(
-          label: 'Nível de Treino Atual',
-          value: _trainingLevel,
-          items: [
-            'Iniciante (Nunca treinou ou menos de 6 meses)',
-            'Intermediário (6 meses a 2 anos consistentes)',
-            'Avançado (+2 anos de musculação contínua)',
-          ],
-          onChanged: (val) => setState(() => _trainingLevel = val!),
-        ),
-        const SizedBox(height: 16),
-        _buildDropdown(
-          label: 'Frequência Semanal Pretendida',
-          value: '$_weeklyDays dias por semana',
-          items: [2, 3, 4, 5, 6].map((e) => '$e dias por semana').toList(),
-          onChanged: (val) {
-            setState(() {
-              _weeklyDays = int.parse(val!.split(' ')[0]);
-            });
+        ],
+
+        const SizedBox(height: 22),
+
+        // Nível de Atividade Diária / NEAT
+        _buildLabel('Rotina de Trabalho & Atividade Diária'),
+        const SizedBox(height: 8),
+        _buildSelectionCard(
+          title: 'Sedentário',
+          subtitle: 'Trabalho sentado / mesa maior parte do dia',
+          icon: Icons.chair_rounded,
+          isSelected: _dailyActivity.contains('Sedentário'),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _dailyActivity = 'Sedentário (Trabalho em mesa / pouca caminhada)');
           },
         ),
-        const SizedBox(height: 16),
-        _buildDropdown(
-          label: 'Tempo Disponível por Sessão',
-          value: _sessionDuration,
-          items: [
-            '30 a 45 minutos',
-            '45 a 60 minutos',
-            '60 minutos',
-            '75 a 90 minutos',
-          ],
-          onChanged: (val) => setState(() => _sessionDuration = val!),
+        const SizedBox(height: 8),
+        _buildSelectionCard(
+          title: 'Moderadamente Ativo',
+          subtitle: 'Boa parte do dia em pé, deslocamentos a pé frequentes',
+          icon: Icons.directions_walk_rounded,
+          isSelected: _dailyActivity.contains('Moderada') || _dailyActivity.contains('Moderado'),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _dailyActivity = 'Moderado (Boa parte do dia em pé ou caminhando)');
+          },
         ),
-      ],
-    );
-  }
+        const SizedBox(height: 8),
+        _buildSelectionCard(
+          title: 'Muito Ativo / Braçal',
+          subtitle: 'Trabalho físico contínuo ou treinos múltiplos',
+          icon: Icons.flash_on_rounded,
+          isSelected: _dailyActivity.contains('Ativo') || _dailyActivity.contains('Braçal'),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _dailyActivity = 'Ativo (Trabalho braçal ou atividade física contínua)');
+          },
+        ),
 
-  // ETAPA 3: Articulações & Lesões
-  Widget _buildStep3Injuries() {
-    final options = kStudentRestrictionOptions;
+        const SizedBox(height: 22),
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Mapeamento Articular & Lesões',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            color: AppColors.text(context),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Crucial para que o Mr. Coach AI e seu treinador excluam vetores de sobrecarga articular lesiva.',
-          style: TextStyle(fontSize: 13, color: AppColors.subtext(context)),
-        ),
-        const SizedBox(height: 20),
+        // Média de Sono
+        _buildLabel('Média de Sono por Noite'),
+        const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children:
-              options.map((opt) {
-                final isSelected = _selectedInjuries.contains(opt);
-                return FilterChip(
-                  selected: isSelected,
-                  showCheckmark: true,
-                  checkmarkColor: isSelected ? Colors.black : null,
-                  label: Text(
-                    opt,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight:
-                          isSelected ? FontWeight.w800 : FontWeight.w500,
-                      color:
-                          isSelected ? Colors.black : AppColors.text(context),
-                    ),
-                  ),
-                  backgroundColor: AppColors.pillBg(context),
-                  selectedColor: AppColors.emerald(context),
-                  side: BorderSide(
-                    color:
-                        isSelected
-                            ? AppColors.emerald(context)
-                            : AppColors.cardBorder(context),
-                  ),
-                  onSelected: (selected) {
-                    setState(() {
-                      if (opt == kNoRestriction) {
-                        _selectedInjuries.clear();
-                        if (selected) _selectedInjuries.add(opt);
-                      } else {
-                        _selectedInjuries.remove(kNoRestriction);
-                        if (selected) {
-                          _selectedInjuries.add(opt);
-                        } else {
-                          _selectedInjuries.remove(opt);
-                          if (_selectedInjuries.isEmpty) {
-                            _selectedInjuries.add(kNoRestriction);
-                          }
-                        }
-                      }
-                    });
-                  },
-                );
-              }).toList(),
+          children: ['Menos de 6h', '6 a 7 horas', '7 a 8 horas', 'Mais de 8h'].map((s) {
+            final isSel = _sleepHours.contains(s.split(' ')[0]);
+            return _buildOptionChip(
+              label: s,
+              isSelected: isSel,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _sleepHours = s);
+              },
+            );
+          }).toList(),
         ),
-        const SizedBox(height: 20),
-        TextFormField(
-          controller: _injuriesDetailsCtrl,
-          maxLines: 3,
-          style: TextStyle(color: AppColors.text(context), fontSize: 13),
-          decoration: InputDecoration(
-            labelText: 'Detalhes ou Diagnósticos Médicos (Opcional)',
-            hintText:
-                'Ex: Tenho leve impacto subacromial no ombro direito quando faço abdução acima de 90°...',
-            filled: true,
-            fillColor: AppColors.card(context),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-          ),
+
+        const SizedBox(height: 22),
+
+        // Nível de Estresse
+        _buildLabel('Nível de Estresse / Carga de Cortisol'),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _buildSelectablePill(
+                label: 'Baixo',
+                icon: Icons.sentiment_satisfied_alt_rounded,
+                isSelected: _stressLevel == 'Baixo',
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _stressLevel = 'Baixo');
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildSelectablePill(
+                label: 'Moderado',
+                icon: Icons.sentiment_neutral_rounded,
+                isSelected: _stressLevel == 'Moderado',
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _stressLevel = 'Moderado');
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildSelectablePill(
+                label: 'Elevado',
+                icon: Icons.sentiment_very_dissatisfied_rounded,
+                isSelected: _stressLevel == 'Elevado',
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _stressLevel = 'Elevado');
+                },
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  // ETAPA 4: Espaço de Treino
-  Widget _buildStep4Environment() {
+  // -------------------------------------------------------------------------
+  // ETAPA 2: Experiência, Frequência Semanal & Cardio
+  // -------------------------------------------------------------------------
+  Widget _buildStep2Experience() {
+    final daysOfWeek = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Espaço de Treino & Estrutura',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            color: AppColors.text(context),
-          ),
+        _buildSectionHeader(
+          'Experiência & Disponibilidade',
+          'Ajusta o volume semanal de séries e a curva de adaptação neuromuscular do plano.',
         ),
-        const SizedBox(height: 6),
-        Text(
-          'Permite selecionar máquinas guiadas, cabos ou halteres compatíveis com seu local.',
-          style: TextStyle(fontSize: 13, color: AppColors.subtext(context)),
+        const SizedBox(height: 22),
+
+        // Nível de Musculação
+        _buildLabel('Nível de Experiência Atual'),
+        const SizedBox(height: 8),
+        _buildSelectionCard(
+          title: 'Iniciante',
+          subtitle: 'Menos de 6 meses de treino contínuo ou retornando agora',
+          icon: Icons.fitness_center_outlined,
+          isSelected: _trainingLevel.contains('Iniciante'),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _trainingLevel = 'Iniciante (<6 meses)');
+          },
         ),
-        const SizedBox(height: 24),
-        _buildDropdown(
-          label: 'Ambiente Onde Irá Treinar',
-          value: _workoutLocation,
-          items: [
-            'Academia comercial completa',
-            'Espaço de musculação em condomínio / prédio',
-            'Em casa (Halteres, elásticos e peso corporal)',
+        const SizedBox(height: 8),
+        _buildSelectionCard(
+          title: 'Intermediário',
+          subtitle: '6 meses a 2 anos de treino consistente e boa técnica',
+          icon: Icons.fitness_center_rounded,
+          isSelected: _trainingLevel.contains('Intermediário'),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _trainingLevel = 'Intermediário (6m a 2 anos)');
+          },
+        ),
+        const SizedBox(height: 8),
+        _buildSelectionCard(
+          title: 'Avançado',
+          subtitle: '+2 anos ininterruptos com domínio de cargas e periodização',
+          icon: Icons.workspace_premium_rounded,
+          isSelected: _trainingLevel.contains('Avançado'),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _trainingLevel = 'Avançado (+2 anos)');
+          },
+        ),
+
+        const SizedBox(height: 22),
+
+        // Tempo de Prática Contínua
+        _buildLabel('Há quanto tempo você treina de forma consistente?'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            '< 6 meses',
+            '6 meses a 1 ano',
+            '1 a 3 anos',
+            '+3 anos',
+          ].map((hist) {
+            final isSel = _trainingHistory == hist;
+            return _buildOptionChip(
+              label: hist,
+              isSelected: isSel,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _trainingHistory = hist);
+              },
+            );
+          }).toList(),
+        ),
+
+        const SizedBox(height: 22),
+
+        // Frequência Semanal
+        _buildLabel('Quantos dias por semana pretende treinar?'),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [2, 3, 4, 5, 6].map((days) {
+            final isSel = _weeklyDays == days;
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _weeklyDays = days);
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isSel ? MetaColors.emerald : MetaColors.card(context),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isSel ? MetaColors.emerald : MetaColors.cardBorder(context),
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${days}x',
+                        style: TextStyle(
+                          color: isSel ? Colors.black : MetaColors.text(context),
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+
+        const SizedBox(height: 22),
+
+        // Dias preferidos da semana
+        _buildLabel('Quais dias da semana prefere treinar? (Toque para selecionar)'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 8,
+          children: daysOfWeek.map((day) {
+            final isSel = _preferredDays.contains(day);
+            return InkWell(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  if (isSel) {
+                    if (_preferredDays.length > 1) _preferredDays.remove(day);
+                  } else {
+                    _preferredDays.add(day);
+                  }
+                });
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSel
+                      ? MetaColors.emerald.withValues(alpha: 0.16)
+                      : MetaColors.card(context),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSel
+                        ? MetaColors.emerald
+                        : MetaColors.cardBorder(context),
+                  ),
+                ),
+                child: Text(
+                  day,
+                  style: TextStyle(
+                    color: isSel ? MetaColors.emerald : MetaColors.text(context),
+                    fontWeight: isSel ? FontWeight.w800 : FontWeight.w500,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+
+        const SizedBox(height: 22),
+
+        // Duração da Sessão
+        _buildLabel('Tempo Médio Disponível por Sessão'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            '30 a 45 min',
+            '45 a 60 min',
+            '60 minutos',
+            '75 a 90 min',
+          ].map((dur) {
+            final isSel = _sessionDuration.contains(dur.split(' ')[0]);
+            return _buildOptionChip(
+              label: dur,
+              isSelected: isSel,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _sessionDuration = dur);
+              },
+            );
+          }).toList(),
+        ),
+
+        const SizedBox(height: 22),
+
+        // Preferência de Cardio
+        _buildLabel('Incluir Treino Aeróbio / Cardio?'),
+        const SizedBox(height: 8),
+        Column(
+          children: [
+            _buildSelectionCard(
+              title: 'Sim, logo após a musculação',
+              subtitle: '15 a 30 min no mesmo dia (esteira, bike, etc.)',
+              icon: Icons.directions_run_rounded,
+              isSelected: _cardioPreference.contains('Pós-musculação') ||
+                  _cardioPreference.contains('Pós-treino'),
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _cardioPreference = 'Sim (Pós-musculação)');
+              },
+            ),
+            const SizedBox(height: 8),
+            _buildSelectionCard(
+              title: 'Sim, em horário ou dias separados',
+              subtitle: 'Cardio em turno oposto ou nos dias de descanso',
+              icon: Icons.timer_outlined,
+              isSelected: _cardioPreference.contains('outro turno') ||
+                  _cardioPreference.contains('separado'),
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _cardioPreference = 'Sim (Em turno separado)');
+              },
+            ),
+            const SizedBox(height: 8),
+            _buildSelectionCard(
+              title: 'Apenas musculação por enquanto',
+              subtitle: 'Foco total no ganho de força e hipertrofia',
+              icon: Icons.block_rounded,
+              isSelected: _cardioPreference.contains('Apenas'),
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _cardioPreference = 'Apenas musculação');
+              },
+            ),
           ],
-          onChanged: (val) => setState(() => _workoutLocation = val!),
         ),
       ],
     );
   }
 
-  // ETAPA 5: Objetivos & Focos
-  Widget _buildStep5Goals() {
-    final muscles = [
-      'Peitoral',
-      'Costas / Dorsais',
-      'Ombros',
-      'Quadríceps',
-      'Glúteos',
-      'Braços / Tríceps',
-      'Abdômen',
+  // -------------------------------------------------------------------------
+  // ETAPA 3: Triagem de Saúde (PAR-Q) & Mapeamento Articular
+  // -------------------------------------------------------------------------
+  Widget _buildStep3Injuries() {
+    final clinicalOptions = [
+      'Nenhuma restrição médica',
+      'Hipertensão arterial',
+      'Diabetes / Resistência à insulina',
+      'Problemas cardíacos',
+      'Labirintite / Tonturas',
+      'Hérnia de disco / Coluna',
+      'Gestante',
+    ];
+
+    final jointOptions = [
+      kNoRestriction,
+      'Ombro (Manguito/Impacto)',
+      'Joelho (Patela/Menisco)',
+      'Lombar / Coluna',
+      'Quadril',
+      'Cotovelo (Epicondilite)',
+      'Punho',
+      'Tornozelo',
+      'Cervical',
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Metas & Prioridades Estéticas',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            color: AppColors.text(context),
-          ),
+        _buildSectionHeader(
+          'Saúde & Mapeamento Articular',
+          'Segurança biomecânica: estes dados impedem que o sistema e seu treinador prescrevam ângulos ou vetores de sobrecarga lesiva.',
         ),
-        const SizedBox(height: 6),
-        Text(
-          'Qual é o seu objetivo de resultado principal?',
-          style: TextStyle(fontSize: 13, color: AppColors.subtext(context)),
-        ),
-        const SizedBox(height: 20),
-        _buildDropdown(
-          label: 'Objetivo Principal',
-          value: _objective,
-          items: [
-            'Hipertrofia Muscular',
-            'Emagrecimento & Definição',
-            'Força & Performance Atlética',
-            'Reabilitação Postural & Longevidade',
-          ],
-          onChanged: (val) => setState(() => _objective = val!),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          'Músculos com Maior Foco / Prioridade:',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: AppColors.text(context),
-          ),
-        ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 22),
+
+        // Triagem Clínica PAR-Q
+        _buildLabel('Triagem de Saúde Geral (PAR-Q)'),
+        const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children:
-              muscles.map((m) {
-                final isSelected = _musclePriorities.contains(m);
-                return FilterChip(
-                  selected: isSelected,
-                  showCheckmark: true,
-                  checkmarkColor: isSelected ? Colors.black : null,
-                  label: Text(
-                    m,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight:
-                          isSelected ? FontWeight.w800 : FontWeight.w500,
-                      color:
-                          isSelected ? Colors.black : AppColors.text(context),
-                    ),
-                  ),
-                  backgroundColor: AppColors.pillBg(context),
-                  selectedColor: AppColors.emerald(context),
-                  side: BorderSide(
-                    color:
-                        isSelected
-                            ? AppColors.emerald(context)
-                            : AppColors.cardBorder(context),
-                  ),
-                  onSelected: (selected) {
-                    setState(() {
-                      if (selected) {
-                        _musclePriorities.add(m);
-                      } else {
-                        _musclePriorities.remove(m);
+          children: clinicalOptions.map((cond) {
+            final isSel = _clinicalConditions.contains(cond);
+            return _buildFilterChipOneUi(
+              label: cond,
+              isSelected: isSel,
+              onSelected: (selected) {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  if (cond == 'Nenhuma restrição médica') {
+                    _clinicalConditions.clear();
+                    if (selected) _clinicalConditions.add(cond);
+                  } else {
+                    _clinicalConditions.remove('Nenhuma restrição médica');
+                    if (selected) {
+                      _clinicalConditions.add(cond);
+                    } else {
+                      _clinicalConditions.remove(cond);
+                      if (_clinicalConditions.isEmpty) {
+                        _clinicalConditions.add('Nenhuma restrição médica');
                       }
-                    });
-                  },
-                );
-              }).toList(),
+                    }
+                  }
+                });
+              },
+            );
+          }).toList(),
+        ),
+
+        const SizedBox(height: 24),
+
+        // Mapeamento Articular
+        _buildLabel('Articulações com Desconforto ou Histórico de Lesão'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: jointOptions.map((joint) {
+            final isSel = _selectedInjuries.contains(joint);
+            return _buildFilterChipOneUi(
+              label: joint,
+              isSelected: isSel,
+              onSelected: (selected) {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  if (joint == kNoRestriction) {
+                    _selectedInjuries.clear();
+                    if (selected) _selectedInjuries.add(joint);
+                  } else {
+                    _selectedInjuries.remove(kNoRestriction);
+                    if (selected) {
+                      _selectedInjuries.add(joint);
+                    } else {
+                      _selectedInjuries.remove(joint);
+                      if (_selectedInjuries.isEmpty) {
+                        _selectedInjuries.add(kNoRestriction);
+                      }
+                    }
+                  }
+                });
+              },
+            );
+          }).toList(),
+        ),
+
+        const SizedBox(height: 24),
+
+        // Detalhes Médicos
+        _buildLabel('Detalhes ou Diagnósticos Médicos (Opcional)'),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _injuriesDetailsCtrl,
+          maxLines: 3,
+          style: TextStyle(color: MetaColors.text(context), fontSize: 13.5),
+          decoration: InputDecoration(
+            hintText: 'Ex: Tenho leve condromalácia no joelho esquerdo quando agacho abaixo de 90°...',
+            hintStyle: TextStyle(color: MetaColors.subtext(context).withValues(alpha: 0.6), fontSize: 12.5),
+            filled: true,
+            fillColor: MetaColors.card(context),
+            contentPadding: const EdgeInsets.all(16),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: MetaColors.cardBorder(context)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: MetaColors.emerald),
+            ),
+          ),
         ),
       ],
     );
   }
 
   // -------------------------------------------------------------------------
-  // ETAPA 6: Tela de Sucesso & Boas-Vindas Confirmadas
+  // ETAPA 4: Espaço de Treino & Estrutura
+  // -------------------------------------------------------------------------
+  Widget _buildStep4Environment() {
+    final equipmentOptions = [
+      'Halteres',
+      'Barras e Anilhas',
+      'Polia / Cabos',
+      'Máquinas Articuladas',
+      'Smith Machine',
+      'Leg Press',
+      'Barra Fixa / Paralelas',
+      'Elásticos / Bands',
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          'Espaço de Treino & Equipamentos',
+          'Garante que as prescrições utilizem apenas os aparelhos que você realmente tem à disposição.',
+        ),
+        const SizedBox(height: 22),
+
+        // Ambiente Principal
+        _buildLabel('Onde você irá treinar?'),
+        const SizedBox(height: 8),
+        _buildSelectionCard(
+          title: 'Academia Comercial Completa',
+          subtitle: 'Smart Fit, Bluefit, Ironberg, Bodytech ou similar',
+          icon: Icons.domain_rounded,
+          isSelected: _workoutLocation.contains('comercial') || _workoutLocation.contains('completa'),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _workoutLocation = 'Academia comercial completa');
+          },
+        ),
+        const SizedBox(height: 8),
+        _buildSelectionCard(
+          title: 'Academia de Condomínio / Prédio',
+          subtitle: 'Equipamentos selecionados ou halteres até peso moderado',
+          icon: Icons.apartment_rounded,
+          isSelected: _workoutLocation.contains('condomínio') || _workoutLocation.contains('prédio'),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _workoutLocation = 'Espaço de musculação em condomínio / prédio');
+          },
+        ),
+        const SizedBox(height: 8),
+        _buildSelectionCard(
+          title: 'Em Casa / Calistenia',
+          subtitle: 'Halteres ajustáveis, elásticos e peso corporal',
+          icon: Icons.home_rounded,
+          isSelected: _workoutLocation.contains('casa') || _workoutLocation.contains('calistenia'),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _workoutLocation = 'Em casa (Halteres, elásticos e peso corporal)');
+          },
+        ),
+        const SizedBox(height: 8),
+        _buildSelectionCard(
+          title: 'Studio / Box de Funcional',
+          subtitle: 'Espaço com barras olímpicas, kettlebells e racks',
+          icon: Icons.sports_gymnastics_rounded,
+          isSelected: _workoutLocation.contains('Studio') || _workoutLocation.contains('Box'),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _workoutLocation = 'Studio / Box de Funcional');
+          },
+        ),
+
+        const SizedBox(height: 24),
+
+        // Equipamentos disponíveis
+        _buildLabel('Equipamentos Disponíveis no seu Local (Toque para marcar)'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: equipmentOptions.map((eq) {
+            final isSel = _availableEquipment.contains(eq);
+            return _buildFilterChipOneUi(
+              label: eq,
+              isSelected: isSel,
+              onSelected: (selected) {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  if (selected) {
+                    _availableEquipment.add(eq);
+                  } else {
+                    _availableEquipment.remove(eq);
+                  }
+                });
+              },
+            );
+          }).toList(),
+        ),
+
+        const SizedBox(height: 24),
+
+        // Exercícios que prefere evitar
+        _buildLabel('Exercícios que você prefere evitar ou não gosta (Opcional)'),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _avoidExercisesCtrl,
+          maxLines: 2,
+          style: TextStyle(color: MetaColors.text(context), fontSize: 13.5),
+          decoration: InputDecoration(
+            hintText: 'Ex: Agachamento livre com barra nas costas, elevação frontal...',
+            hintStyle: TextStyle(color: MetaColors.subtext(context).withValues(alpha: 0.6), fontSize: 12.5),
+            filled: true,
+            fillColor: MetaColors.card(context),
+            contentPadding: const EdgeInsets.all(16),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: MetaColors.cardBorder(context)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: MetaColors.emerald),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // ETAPA 5: Metas Estéticas, Focos & Estilo de Treino
+  // -------------------------------------------------------------------------
+  Widget _buildStep5Goals() {
+    final muscleOptions = [
+      'Peitoral',
+      'Costas / Dorsais',
+      'Ombros',
+      'Quadríceps',
+      'Glúteos',
+      'Posteriores de Coxa',
+      'Braços (Bíceps/Tríceps)',
+      'Abdômen / Core',
+      'Panturrilhas',
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          'Metas & Prioridades Estéticas',
+          'Personaliza as ênfases de volume e a intensidade metabólica do seu treino.',
+        ),
+        const SizedBox(height: 22),
+
+        // Objetivo Principal
+        _buildLabel('Objetivo Principal de Resultado'),
+        const SizedBox(height: 8),
+        _buildSelectionCard(
+          title: 'Hipertrofia Muscular',
+          subtitle: 'Ganho acelerado de massa muscular e volume estético',
+          icon: Icons.fitness_center_rounded,
+          isSelected: _objective == 'Hipertrofia Muscular',
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _objective = 'Hipertrofia Muscular');
+          },
+        ),
+        const SizedBox(height: 8),
+        _buildSelectionCard(
+          title: 'Emagrecimento & Definição',
+          subtitle: 'Queima de gordura preservando o tônus muscular',
+          icon: Icons.local_fire_department_rounded,
+          isSelected: _objective.contains('Emagrecimento') || _objective.contains('Definição'),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _objective = 'Emagrecimento & Definição');
+          },
+        ),
+        const SizedBox(height: 8),
+        _buildSelectionCard(
+          title: 'Recomposição Corporal',
+          subtitle: 'Perda simultânea de gordura com ganho de massa magra',
+          icon: Icons.swap_horiz_rounded,
+          isSelected: _objective.contains('Recomposição'),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _objective = 'Recomposição Corporal');
+          },
+        ),
+        const SizedBox(height: 8),
+        _buildSelectionCard(
+          title: 'Força Máxima & Performance',
+          subtitle: 'Progressão agressiva de carga e capacidade atlética',
+          icon: Icons.bolt_rounded,
+          isSelected: _objective.contains('Força') || _objective.contains('Performance'),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _objective = 'Força & Performance Atlética');
+          },
+        ),
+        const SizedBox(height: 8),
+        _buildSelectionCard(
+          title: 'Reabilitação & Longevidade',
+          subtitle: 'Correção postural, mobilidade e fortalecimento preventivo',
+          icon: Icons.spa_rounded,
+          isSelected: _objective.contains('Reabilitação') || _objective.contains('Longevidade'),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _objective = 'Reabilitação Postural & Longevidade');
+          },
+        ),
+
+        const SizedBox(height: 24),
+
+        // Prioridade Muscular
+        _buildLabel('Músculos com Maior Prioridade (Foco de Volume)'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: muscleOptions.map((m) {
+            final isSel = _musclePriorities.contains(m);
+            return _buildFilterChipOneUi(
+              label: m,
+              isSelected: isSel,
+              onSelected: (selected) {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  if (selected) {
+                    _musclePriorities.add(m);
+                  } else {
+                    _musclePriorities.remove(m);
+                  }
+                });
+              },
+            );
+          }).toList(),
+        ),
+
+        const SizedBox(height: 24),
+
+        // Estilo de Treino
+        _buildLabel('Estilo de Treino de sua Preferência'),
+        const SizedBox(height: 8),
+        Column(
+          children: [
+            _buildSelectionCard(
+              title: 'Cargas Mais Altas & Força',
+              subtitle: '6 a 10 repetições, mais descanso e tensão mecânica',
+              icon: Icons.trending_up_rounded,
+              isSelected: _trainingStyle.contains('Carga'),
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _trainingStyle = 'Cargas Mais Altas (Força / Tensão)');
+              },
+            ),
+            const SizedBox(height: 8),
+            _buildSelectionCard(
+              title: 'Mais Repetições & Pump',
+              subtitle: '10 a 15 repetições, menor descanso e estresse metabólico',
+              icon: Icons.bloodtype_outlined,
+              isSelected: _trainingStyle.contains('Pump') || _trainingStyle.contains('Mais Reps'),
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _trainingStyle = 'Mais Reps & Pump (Estresse Metabólico)');
+              },
+            ),
+            const SizedBox(height: 8),
+            _buildSelectionCard(
+              title: 'Equilibrado / Híbrido',
+              subtitle: 'Mix balanceado entre movimentos pesados e isoladores',
+              icon: Icons.tune_rounded,
+              isSelected: _trainingStyle.contains('Equilibrado'),
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _trainingStyle = 'Equilibrado (Carga + Pump)');
+              },
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // ETAPA 6: Tela de Sucesso One UI 7
   // -------------------------------------------------------------------------
   Widget _buildSuccessScreen(bool isDark) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 30),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 76,
-            height: 76,
+            width: 80,
+            height: 80,
             decoration: BoxDecoration(
-              color: AppColors.emeraldBg(context),
+              color: MetaColors.emerald.withValues(alpha: 0.16),
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.emerald(context), width: 2),
+              border: Border.all(color: MetaColors.emerald, width: 2),
             ),
-            child: Icon(
+            child: const Icon(
               Icons.check_rounded,
-              color: AppColors.emerald(context),
-              size: 44,
+              color: MetaColors.emerald,
+              size: 46,
             ),
           ),
           const SizedBox(height: 24),
@@ -1272,43 +1843,44 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
             'Avaliação Concluída!',
             style: TextStyle(
               fontSize: 26,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w900,
               letterSpacing: -0.5,
-              color: AppColors.text(context),
+              color: MetaColors.text(context),
             ),
           ),
           const SizedBox(height: 12),
           Text(
-            'Seus dados biomecânicos foram transmitidos com sucesso para o $_resolvedTrainerName.',
+            'Seus dados biomédicos e preferências foram salvos e transmitidos com segurança para o $_resolvedTrainerName.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
-              color: AppColors.subtext(context),
-              height: 1.4,
+              color: MetaColors.subtext(context),
+              height: 1.45,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 26),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.card(context),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.cardBorder(context)),
+              color: MetaColors.card(context),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: MetaColors.cardBorder(context)),
             ),
             child: Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.mark_chat_read_rounded,
-                  color: AppColors.emerald(context),
+                  color: MetaColors.emerald,
                   size: 24,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Text(
-                    'Sua avaliação foi salva e está disponível para o seu treinador.',
+                    'Seu treinador foi alertado em tempo real e já pode prescrever sua periodização personalizada.',
                     style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.text(context),
+                      fontSize: 12.5,
+                      color: MetaColors.text(context),
+                      height: 1.35,
                     ),
                   ),
                 ),
@@ -1316,23 +1888,34 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
             ),
           ),
           const SizedBox(height: 36),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.emerald(context),
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                ),
+          InkWell(
+            onTap: () {
+              HapticFeedback.mediumImpact();
+              _finishAndEnterApp();
+            },
+            borderRadius: BorderRadius.circular(18),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              decoration: BoxDecoration(
+                color: MetaColors.emerald,
+                borderRadius: BorderRadius.circular(18),
               ),
-              onPressed: _finishAndEnterApp,
-              child: const Text('Entrar no Espaço de Treino →'),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Entrar no Espaço de Treino',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Icon(Icons.arrow_forward_rounded, color: Colors.black, size: 18),
+                ],
+              ),
             ),
           ),
         ],
@@ -1340,63 +1923,312 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
     );
   }
 
-  // Auxiliares de UI
-  Widget _buildTextField(
-    String label,
-    TextEditingController ctrl, {
-    TextInputType keyboardType = TextInputType.text,
-    String? Function(String?)? validator,
+  // -------------------------------------------------------------------------
+  // COMPONENTES ATÔMICOS ONE UI 7 / META
+  // -------------------------------------------------------------------------
+  Widget _buildSectionHeader(String title, String subtitle) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.4,
+            color: MetaColors.text(context),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 13,
+            color: MetaColors.subtext(context),
+            height: 1.4,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLabel(String label) {
+    return Text(
+      label,
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+        color: MetaColors.text(context),
+        letterSpacing: -0.1,
+      ),
+    );
+  }
+
+  Widget _buildBiometricField({
+    required String label,
+    required String unit,
+    required TextEditingController ctrl,
+    required TextInputType keyboardType,
+    required String? Function(String?) validator,
+    required ValueChanged<String> onChanged,
   }) {
-    return TextFormField(
-      controller: ctrl,
-      keyboardType: keyboardType,
-      validator: validator,
-      style: TextStyle(color: AppColors.text(context), fontSize: 14),
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: AppColors.card(context),
-        labelStyle: TextStyle(color: AppColors.subtext(context), fontSize: 12),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: AppColors.cardBorder(context)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+            color: MetaColors.subtext(context),
+          ),
+        ),
+        const SizedBox(height: 5),
+        TextFormField(
+          controller: ctrl,
+          keyboardType: keyboardType,
+          validator: validator,
+          onChanged: onChanged,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: MetaColors.text(context),
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+          decoration: InputDecoration(
+            suffixText: unit,
+            suffixStyle: TextStyle(
+              color: MetaColors.subtext(context),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+            filled: true,
+            fillColor: MetaColors.card(context),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: MetaColors.cardBorder(context)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: MetaColors.emerald),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSelectablePill({
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? MetaColors.emerald.withValues(alpha: 0.16)
+              : MetaColors.card(context),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? MetaColors.emerald : MetaColors.cardBorder(context),
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected ? MetaColors.emerald : MetaColors.subtext(context),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? MetaColors.emerald : MetaColors.text(context),
+                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                  fontSize: 13,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildDropdown({
-    required String label,
-    required String value,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
+  Widget _buildSelectionCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
   }) {
-    return DropdownButtonFormField<String>(
-      initialValue: items.contains(value) ? value : items.first,
-      dropdownColor: AppColors.card(context),
-      style: TextStyle(color: AppColors.text(context), fontSize: 13),
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: AppColors.card(context),
-        labelStyle: TextStyle(color: AppColors.subtext(context), fontSize: 12),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: AppColors.cardBorder(context)),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? MetaColors.emerald.withValues(alpha: 0.14)
+              : MetaColors.card(context),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: isSelected ? MetaColors.emerald : MetaColors.cardBorder(context),
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? MetaColors.emerald.withValues(alpha: 0.22)
+                    : MetaColors.highlight(context),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                color: isSelected ? MetaColors.emerald : MetaColors.subtext(context),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: isSelected ? MetaColors.emerald : MetaColors.text(context),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: MetaColors.subtext(context),
+                      fontSize: 11.5,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected ? MetaColors.emerald : Colors.transparent,
+                border: Border.all(
+                  color: isSelected ? MetaColors.emerald : MetaColors.subtext(context),
+                  width: 1.5,
+                ),
+              ),
+              child: isSelected
+                  ? const Center(
+                      child: Icon(Icons.check, size: 13, color: Colors.black),
+                    )
+                  : null,
+            ),
+          ],
         ),
       ),
-      items:
-          items
-              .map(
-                (e) => DropdownMenuItem(
-                  value: e,
-                  child: Text(e, overflow: TextOverflow.ellipsis),
-                ),
-              )
-              .toList(),
-      onChanged: onChanged,
+    );
+  }
+
+  Widget _buildOptionChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? MetaColors.emerald.withValues(alpha: 0.16)
+              : MetaColors.card(context),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? MetaColors.emerald : MetaColors.cardBorder(context),
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? MetaColors.emerald : MetaColors.text(context),
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+            fontSize: 12.5,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChipOneUi({
+    required String label,
+    required bool isSelected,
+    required ValueChanged<bool> onSelected,
+  }) {
+    return InkWell(
+      onTap: () => onSelected(!isSelected),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? MetaColors.emerald.withValues(alpha: 0.16)
+              : MetaColors.card(context),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? MetaColors.emerald : MetaColors.cardBorder(context),
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSelected) ...[
+              const Icon(Icons.check_rounded, size: 14, color: MetaColors.emerald),
+              const SizedBox(width: 5),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? MetaColors.emerald : MetaColors.text(context),
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -1042,6 +1042,46 @@ class WorkoutService {
     }
   }
 
+  /// Dá baixa em alerta biomecânico garantindo sincronia no Supabase e no backend
+  static Future<bool> resolveBiomechanicalAlert({
+    required String studentId,
+    String? alertId,
+  }) async {
+    // 1. Notifica backend FastAPI se houver alertId
+    if (alertId != null && alertId.isNotEmpty) {
+      await acknowledgeAlert(alertId);
+    }
+    // 2. Atualiza adaptation_logs no Supabase
+    try {
+      if (alertId != null && alertId.isNotEmpty) {
+        await _client
+            .from('adaptation_logs')
+            .update({'viewed_by_trainer': true})
+            .eq('id', alertId);
+      }
+    } catch (e) {
+      debugPrint('Aviso ao atualizar adaptation_logs: $e');
+    }
+    // 3. Limpa alert_message no profile do aluno se aplicável
+    try {
+      if (studentId.isNotEmpty) {
+        await _client
+            .from('profiles')
+            .update({'alert_message': null})
+            .eq('id', studentId);
+      }
+    } catch (e) {
+      debugPrint('Aviso ao atualizar profiles.alert_message: $e');
+    }
+    // 4. Atualiza cache local
+    final idx = _localStudentsCache.indexWhere((s) => s['id'] == studentId);
+    if (idx != -1) {
+      _localStudentsCache[idx]['has_alert'] = false;
+      _localStudentsCache[idx]['alert_message'] = null;
+    }
+    return true;
+  }
+
   /// Atualiza os dados de um aluno (nome, email, telefone, objetivo, restrições)
   static Future<bool> updateStudent({
     required String studentId,

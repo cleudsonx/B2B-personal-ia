@@ -39,7 +39,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.4.9',
-      buildNumber: 2026102894,
+      buildNumber: 2026102895,
       date: '18 de Outubro, 2026',
       summary:
           'Persistência Total da Vitrine Pública, Links Oficiais com Domínio shaipados.com e Restauração Automática de Navegação no PWA.',
