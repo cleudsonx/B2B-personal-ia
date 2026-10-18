@@ -106,20 +106,43 @@ class WhatsAppService:
     async def get_instance_state(self, instance_name: str) -> dict:
         if self.provider == "mock":
             return {"status": "connected", "instanceName": instance_name, "mode": "mock"}
-        async with httpx.AsyncClient(timeout=6) as client:
+        async with httpx.AsyncClient(timeout=8) as client:
             r = await client.get(
                 f"{self._base()}/instance/connectionState/{instance_name}", headers=self._headers()
             )
             r.raise_for_status()
-            return r.json()
+            data = r.json()
+
+            # Validação anti-zumbi: verifica se o Baileys/WhatsApp deslogou via 401
+            try:
+                f_res = await client.get(
+                    f"{self._base()}/instance/fetchInstances",
+                    headers=self._headers(),
+                    params={"instanceName": instance_name},
+                )
+                if f_res.status_code == 200:
+                    instances = f_res.json()
+                    if isinstance(instances, list) and instances:
+                        inst_info = instances[0]
+                        if inst_info.get("disconnectionReasonCode") == 401:
+                            logger.info(f"[WhatsApp] Instância {instance_name} está deslogada no WhatsApp (código 401).")
+                            if "instance" in data:
+                                data["instance"]["state"] = "close"
+                                data["instance"]["disconnectionReasonCode"] = 401
+            except Exception as e:
+                logger.debug(f"[WhatsApp] Falha ao verificar fetchInstances para {instance_name}: {e}")
+
+            return data
 
     async def delete_instance(self, instance_name: str) -> dict:
         """Exclui a instância na Evolution API (limpando sessões antigas ou zumbis)."""
         if self.provider == "mock":
             return {"status": "success", "mode": "mock"}
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=20) as client:
             try:
                 r = await client.delete(f"{self._base()}/instance/delete/{instance_name}", headers=self._headers())
+                if r.status_code in (200, 204, 404):
+                    return r.json() if r.status_code == 200 else {"status": "deleted"}
                 r.raise_for_status()
                 return r.json()
             except Exception as e:
@@ -189,7 +212,7 @@ class WhatsAppService:
             return {"status": "success", "mode": "mock", "instanceName": instance_name, "number": number, "text": text}
         target_number = await self.resolve_whatsapp_number(instance_name, number)
         clean_target = "".join(c for c in (target_number or number or "") if c.isdigit())
-        async with httpx.AsyncClient(timeout=35) as client:
+        async with httpx.AsyncClient(timeout=20) as client:
             r = await client.post(
                 f"{self._base()}/message/sendText/{instance_name}",
                 headers=self._headers(),

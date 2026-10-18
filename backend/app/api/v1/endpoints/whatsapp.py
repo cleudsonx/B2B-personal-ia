@@ -47,12 +47,13 @@ async def connect_whatsapp(req: ConnectRequest, user: Dict[str, Any] = Depends(g
         # 1. Se a instância já estiver aberta (conectada com sucesso), evita recriar
         try:
             state_data = await whatsapp_service.get_instance_state(instance)
+            inst_dict = state_data.get("instance") or {}
             raw_state = (
                 state_data.get("state")
-                or state_data.get("instance", {}).get("state")
+                or inst_dict.get("state")
                 or ""
             ).lower()
-            if raw_state == "open":
+            if raw_state == "open" and inst_dict.get("disconnectionReasonCode") != 401:
                 return {
                     "instance_name": instance,
                     "status": "already_connected",
@@ -180,19 +181,27 @@ async def test_send_whatsapp(req: TestSendRequest = TestSendRequest(), user: Dic
     # 1. Verifica se a instância está aberta no WhatsApp antes de disparar
     try:
         state_data = await whatsapp_service.get_instance_state(instance)
+        inst_dict = state_data.get("instance") or {}
         raw_state = (
             state_data.get("state")
-            or state_data.get("instance", {}).get("state")
+            or inst_dict.get("state")
             or ""
         ).lower()
-        if raw_state != "open":
+        if inst_dict.get("disconnectionReasonCode") == 401 or raw_state != "open":
             raise HTTPException(
                 status_code=400,
-                detail=f"Seu WhatsApp não está com a conexão ativa no momento (Status: {raw_state or 'desconectado'}). "
-                       f"Aguarde o status ficar Online ou gere um novo código de pareamento."
+                detail=f"Sua sessão do WhatsApp está desconectada (Status: {raw_state or 'desconectado'}). "
+                       f"Por favor, clique em 'Desconectar Sessão' e gere um novo código de pareamento para reconectar."
             )
     except HTTPException:
         raise
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            raise HTTPException(
+                status_code=400,
+                detail="Nenhuma conexão do WhatsApp encontrada. Digite seu número e gere um código de pareamento para começar."
+            )
+        logger.warning("[WhatsApp] Não foi possível verificar estado prévio da instância: %s", e)
     except Exception as e:
         logger.warning("[WhatsApp] Não foi possível verificar estado prévio da instância: %s", e)
 

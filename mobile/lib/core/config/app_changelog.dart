@@ -39,7 +39,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.4.9',
-      buildNumber: 2026102892,
+      buildNumber: 2026102893,
       date: '18 de Outubro, 2026',
       summary:
           'Ergonomia de Treino do Aluno (Frente 1 / Hevy), Redesign One UI 7 da Vitrine Pública e Diagnóstico Resiliente de WhatsApp.',
