@@ -39,7 +39,37 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.4.9',
-      buildNumber: 2026102891,
+      buildNumber: 2026102892,
+      date: '18 de Outubro, 2026',
+      summary:
+          'Ergonomia de Treino do Aluno (Frente 1 / Hevy), Redesign One UI 7 da Vitrine Pública e Diagnóstico Resiliente de WhatsApp.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.fitness_center_rounded,
+          title: 'Ergonomia do Aluno (Filosofia Hevy)',
+          description:
+              'Lista compacta de exercícios com resumo de alta densidade (séries × reps, músculo e EMG), atalho de 1 toque direto para o Focus Mode horizontal e espaçamento seguro contra sobreposição da barra flutuante.',
+          badge: 'ALUNO UX',
+        ),
+        ChangelogItem(
+          icon: Icons.storefront_rounded,
+          title: 'Redesign da Vitrine no Padrão One UI 7',
+          description:
+              'Pílula de domínio exclusiva (shaipados.com/#/prof/), campo @slug sem invasão de texto, link clicável com cópia rápida e botões de ação fixos no rodapé com SafeArea.',
+          badge: 'ONE UI 7',
+        ),
+        ChangelogItem(
+          icon: Icons.chat_rounded,
+          title: 'Diagnóstico Detalhado do WhatsApp',
+          description:
+              'Tratamento avançado de erros na Evolution API ao disparar mensagem de teste, orientando com clareza caso a sessão no servidor precise de reconexão.',
+          badge: 'WHATSAPP',
+        ),
+      ],
+    ),
+    VersionRelease(
+      version: '1.4.9',
+      buildNumber: 2026102885,
       date: '18 de Outubro, 2026',
       summary:
           'Cockpit One UI 7 Dedicado do Consultor Ativo IA — Disponibilidade Completa nas Abas Vitrine e Conta, com Suporte Total e Explícito ao Plano Elite Coach na Trava Comercial da Fase 2.',
