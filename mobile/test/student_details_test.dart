@@ -316,7 +316,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Modal aberto com os detalhes
-    expect(find.text('FICHA COMPLETA'), findsOneWidget);
+    expect(find.text('FICHA INTERATIVA • EDIÇÃO RÁPIDA'), findsOneWidget);
     expect(find.text('Supino Inclinado com Halteres'), findsOneWidget);
     expect(find.textContaining('10-12'), findsWidgets);
 
