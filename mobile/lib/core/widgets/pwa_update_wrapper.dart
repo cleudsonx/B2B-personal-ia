@@ -108,8 +108,10 @@ class _PwaUpdateWrapperState extends State<PwaUpdateWrapper> with WidgetsBinding
 
     try {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      // Garante consulta direta na raiz com cache bust
-      final uri = Uri.parse('/version.json?_t=$timestamp');
+      // Garante consulta direta na raiz com cache bust e URL absoluta resolvida
+      final uri = kIsWeb
+          ? Uri.base.resolve('/version.json?_t=$timestamp')
+          : Uri.parse('/version.json?_t=$timestamp');
       final response = await http.get(uri).timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {

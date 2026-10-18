@@ -34,10 +34,10 @@ class AppVersionFooter extends StatelessWidget {
           : AppChangelog.current.buildNumber;
 
       if (currentBuild > lastSeen) {
-        await prefs.setInt(_lastSeenBuildKey, currentBuild);
         if (context.mounted) {
-          Future.delayed(const Duration(milliseconds: 1200), () {
+          Future.delayed(const Duration(milliseconds: 1200), () async {
             if (context.mounted) {
+              await prefs.setInt(_lastSeenBuildKey, currentBuild);
               showReleaseNotesModal(context);
             }
           });
