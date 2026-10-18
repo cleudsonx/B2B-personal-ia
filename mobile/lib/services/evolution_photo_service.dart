@@ -1,13 +1,10 @@
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../core/config/app_config.dart';
 import 'auth_service.dart';
-import 'package:http/http.dart' as http;
 
 /// Modelo de dados de uma foto confidencial de evolução física
 class EvolutionPhoto {

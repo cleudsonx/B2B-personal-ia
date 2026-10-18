@@ -60,7 +60,7 @@ class _AccountScreenState extends State<AccountScreen> {
       if (roles.contains('trainer')) {
         try {
           final sub = await SubscriptionService.getMySubscription();
-          if (mounted && sub != null) {
+          if (mounted) {
             _activePlanName = sub.planName;
             _maxStudents = sub.maxStudents;
           }

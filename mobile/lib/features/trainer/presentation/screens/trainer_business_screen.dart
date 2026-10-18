@@ -561,102 +561,281 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
   void _showAiAssistantModal() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: MetaColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 16,
-            bottom: MediaQuery.paddingOf(ctx).bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: MetaColors.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
+        return DraggableScrollableSheet(
+          initialChildSize: 0.72,
+          minChildSize: 0.5,
+          maxChildSize: 0.92,
+          expand: false,
+          builder: (context, scrollController) {
+            return SingleChildScrollView(
+              controller: scrollController,
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 14,
+                bottom: MediaQuery.paddingOf(ctx).bottom + 20,
               ),
-              const SizedBox(height: 20),
-              Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: MetaColors.border,
+                        borderRadius: BorderRadius.circular(2.5),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF10B981), Color(0xFF06B6D4)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.smart_toy_rounded,
+                          color: Colors.white,
+                          size: 26,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Consultor Ativo IA 24h',
+                              style: TextStyle(
+                                color: MetaColors.textPrimary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Suporte autônomo aos seus alunos no WhatsApp',
+                              style: TextStyle(
+                                color: MetaColors.textSecondary,
+                                fontSize: 12.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Card 1: Triagem Custo Zero
                   Container(
-                    width: 46,
-                    height: 46,
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: MetaColors.surfaceHighlight,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(18),
                       border: Border.all(color: MetaColors.border),
                     ),
-                    child: const Icon(
-                      Icons.smart_toy_outlined,
-                      color: MetaColors.accentBlue,
-                      size: 26,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Consultor Ativo IA',
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: MetaColors.emerald.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'CUSTO ZERO • TODOS OS PLANOS',
+                                style: TextStyle(
+                                  color: MetaColors.emerald,
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'Comandos Rápidos Automáticos',
                           style: TextStyle(
                             color: MetaColors.textPrimary,
-                            fontSize: 18,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Seu assistente virtual autônomo',
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Seus alunos recebem respostas imediatas sem consumir cotas de IA:',
                           style: TextStyle(
                             color: MetaColors.textSecondary,
-                            fontSize: 13,
+                            fontSize: 12.5,
                           ),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildAiFeatureRow(Icons.description_outlined, '*1* ou *treino*', 'Envia a ficha de treino ativa do aluno na hora.'),
+                        const SizedBox(height: 6),
+                        _buildAiFeatureRow(Icons.local_fire_department_outlined, '*2* ou *streak*', 'Informa os dias seguidos de treino (ofensiva).'),
+                        const SizedBox(height: 6),
+                        _buildAiFeatureRow(Icons.open_in_browser_rounded, '*3* ou *app*', 'Envia o link direto de acesso à plataforma.'),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Card 2: Consultor Biomecânico com Gemini
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: MetaColors.surfaceHighlight,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: MetaColors.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF6366F1).withValues(alpha: 0.18),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'IA AVANÇADA • PLANOS PRO & STUDIO',
+                                style: TextStyle(
+                                  color: Color(0xFF818CF8),
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'Dúvidas Biomecânicas e de Exercícios',
+                          style: TextStyle(
+                            color: MetaColors.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Quando o aluno manda perguntas abertas ("como posicionar os pés no agachamento?", "posso trocar o crucifixo por voador?"), o robô responde com base na prescrição atual, com tom amigável e limite diário seguro.',
+                          style: TextStyle(
+                            color: MetaColors.textSecondary,
+                            fontSize: 12.5,
+                            height: 1.35,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.shield_outlined, color: Colors.amber, size: 16),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'Guardrail médico: nunca medica e orienta procurar você em caso de dor.',
+                                style: TextStyle(
+                                  color: Colors.amber.shade300,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
+
+                  const SizedBox(height: 20),
+
+                  SquircleButton(
+                    label: 'Central do WhatsApp & Telemetria',
+                    isPrimary: true,
+                    icon: Icons.chat_rounded,
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const WhatsappConnectionScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  SquircleButton(
+                    label: 'Ver Planos & Upgrades',
+                    isPrimary: false,
+                    icon: Icons.workspace_premium_outlined,
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SubscriptionScreen(),
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: MetaColors.surfaceHighlight,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: MetaColors.border),
-                ),
-                child: const Text(
-                  'O Consultor Ativo analisa o histórico de execução de treinos dos seus alunos e envia feedbacks e respostas automáticas em tempo real para dúvidas sobre postura e intensidade.',
-                  style: TextStyle(
-                    color: MetaColors.textPrimary,
-                    fontSize: 13.5,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              SquircleButton(
-                label: 'Concluir',
-                isPrimary: true,
-                onPressed: () => Navigator.pop(ctx),
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
+    );
+  }
+
+  Widget _buildAiFeatureRow(IconData icon, String cmd, String desc) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: MetaColors.emerald),
+        const SizedBox(width: 8),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(fontSize: 12, color: MetaColors.textPrimary),
+              children: [
+                TextSpan(
+                  text: '$cmd: ',
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: MetaColors.emerald),
+                ),
+                TextSpan(
+                  text: desc,
+                  style: const TextStyle(color: MetaColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 

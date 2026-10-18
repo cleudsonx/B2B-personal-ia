@@ -38,6 +38,43 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
+      version: '1.4.7',
+      buildNumber: 2026102883,
+      date: '17 de Outubro, 2026',
+      summary:
+          'Frente 3: "Consultor Ativo" no WhatsApp (IA de Suporte 24h) — Triagem de Custo Zero (Comandos Rápidos 1, 2 e 3), IA Biomecânica Gemini 2.5 Flash, Trava Comercial Pro/Studio e Cockpit One UI 7.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.money_off_rounded,
+          title: 'Triagem Custo Zero de IA no WhatsApp',
+          description:
+              'Comandos automáticos no WhatsApp (*1* Treino Ativo, *2* Ofensiva/Streak 🔥, *3* Link do App) respondem instantaneamente sem consumir tokens de LLM.',
+          badge: 'CUSTO ZERO',
+        ),
+        ChangelogItem(
+          icon: Icons.smart_toy_rounded,
+          title: 'Consultor Biomecânico IA 24h',
+          description:
+              'Dúvidas sobre cadência, execução e postura respondidas em segundos pelo Gemini 2.5 Flash com base estrita na ficha de treino prescrita pelo professor.',
+          badge: 'IA 24H',
+        ),
+        ChangelogItem(
+          icon: Icons.workspace_premium_rounded,
+          title: 'Monetização de Planos & Trava Comercial',
+          description:
+              'Assistente de IA 24h exclusivo para os planos Pro e Studio; treinadores no Starter contam com a triagem gratuita e encaminhamento direto das dúvidas.',
+          badge: 'B2B',
+        ),
+        ChangelogItem(
+          icon: Icons.dashboard_customize_rounded,
+          title: 'Cockpit One UI 7 do Assistente',
+          description:
+              'Nova interface tátil na aba de Ferramentas com guia rápido dos comandos para alunos, status e atalho direto para a central de telemetria.',
+          badge: 'ONE UI 7',
+        ),
+      ],
+    ),
+    VersionRelease(
       version: '1.4.6',
       buildNumber: 2026102882,
       date: '17 de Outubro, 2026',
