@@ -25,6 +25,7 @@ class ClientFocusWorkoutScreen extends StatefulWidget {
   final String? trainerPhone;
   final String workoutLocation;
   final int? currentStreak;
+  final int initialExerciseIndex;
 
   const ClientFocusWorkoutScreen({
     super.key,
@@ -36,6 +37,7 @@ class ClientFocusWorkoutScreen extends StatefulWidget {
     this.trainerPhone,
     required this.workoutLocation,
     this.currentStreak,
+    this.initialExerciseIndex = 0,
   });
 
   @override
@@ -77,7 +79,12 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
+    final initialPage = (widget.initialExerciseIndex >= 0 &&
+            widget.initialExerciseIndex < widget.exercises.length)
+        ? widget.initialExerciseIndex
+        : 0;
+    _currentPage = initialPage;
+    _pageController = PageController(initialPage: initialPage);
     _currentExercises = List.from(widget.exercises);
     _initSets();
 

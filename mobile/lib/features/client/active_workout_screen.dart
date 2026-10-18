@@ -52,6 +52,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
   // Exercícios da ficha ativa real do aluno (vazio = sem ficha)
   late List<ExerciseModel> _exercises;
+  bool _showExpandedExerciseCards = false;
 
   @override
   void initState() {
@@ -246,7 +247,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     });
   }
 
-  void _startFocusMode() {
+  void _startFocusMode({int initialIndex = 0}) {
     if (_exercises.isEmpty) return;
     Navigator.push(
       context,
@@ -260,6 +261,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           trainerPhone: _trainerPhone,
           workoutLocation: _workoutLocation,
           currentStreak: currentStreak,
+          initialExerciseIndex: initialIndex,
         ),
       ),
     ).then((completed) {
@@ -897,6 +899,198 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     );
   }
 
+  Widget _buildCompactExerciseCard(int index) {
+    final item = _exercises[index];
+    final isAdapted = _adaptedIndices.contains(index);
+    final isCompleted = _completedExerciseIndices.contains(index);
+    final emg = _getEmgForExercise(item.name);
+    final setsCount = item.sets > 0 ? item.sets : 3;
+
+    return MetaCard(
+      backgroundColor: MetaColors.surface,
+      borderColor: isCompleted
+          ? MetaColors.emerald
+          : (isAdapted ? const Color(0xFFF59E0B) : MetaColors.border),
+      borderRadius: 18,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      margin: const EdgeInsets.only(bottom: 10),
+      onTap: () {
+        HapticFeedback.lightImpact();
+        _startFocusMode(initialIndex: index);
+      },
+      child: Row(
+        children: [
+          // 1. Badge de Ordem / Conclusão
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: isCompleted
+                  ? MetaColors.emerald
+                  : MetaColors.surfaceHighlight,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isCompleted
+                    ? MetaColors.emerald
+                    : MetaColors.border,
+                width: 1.2,
+              ),
+            ),
+            child: Center(
+              child: isCompleted
+                  ? const Icon(
+                      Icons.check_rounded,
+                      color: Colors.black,
+                      size: 20,
+                    )
+                  : Text(
+                      '${index + 1}',
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w900,
+                        color: MetaColors.textPrimary,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // 2. Informações do Exercício (Nome, Músculo & Metas)
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.name,
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w800,
+                          color: isCompleted
+                              ? MetaColors.textSecondary
+                              : MetaColors.textPrimary,
+                          decoration: isCompleted
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
+                          letterSpacing: -0.2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isAdapted) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'Adaptado',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFFF59E0B),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Text(
+                      item.targetMuscleGroup.isNotEmpty ? item.targetMuscleGroup : 'Geral',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: MetaColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    const Text(
+                      '•',
+                      style: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      '$setsCount séries × ${item.reps}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: MetaColors.emerald,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    const Text(
+                      '•',
+                      style: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      emg,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: MetaColors.accentBlue,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+
+          // 3. Ação Direta para o Focus Mode
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: isCompleted
+                  ? MetaColors.surfaceHighlight
+                  : MetaColors.emerald.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isCompleted
+                    ? MetaColors.border
+                    : MetaColors.emerald.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isCompleted
+                      ? Icons.done_all_rounded
+                      : Icons.play_arrow_rounded,
+                  size: 15,
+                  color: isCompleted
+                      ? MetaColors.textSecondary
+                      : MetaColors.emerald,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  isCompleted ? 'Feito' : 'Treinar',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: isCompleted
+                        ? MetaColors.textSecondary
+                        : MetaColors.emerald,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildExerciseCard(int index) {
     final item = _exercises[index];
     final isAdapted = _adaptedIndices.contains(index);
@@ -1323,7 +1517,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.only(
                 top: topPadding + 14,
-                bottom: bottomPadding + 110,
+                bottom: bottomPadding + 140, // Espaço seguro para o OneUiFloatingNavBar nunca cobrir os cards
                 left: 18,
                 right: 18,
               ),
@@ -1869,9 +2063,81 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // 4. Lista de Exercícios (MetaCards)
+                // 4. Cabeçalho da Seção de Exercícios com Toggle Resumo (Hevy/Apple Fitness)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Text(
+                          'EXERCÍCIOS DA FICHA',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.6,
+                            color: MetaColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: MetaColors.emerald.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${_completedExerciseIndices.length}/${_exercises.length} Feitos',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: MetaColors.emerald,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    InkWell(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() {
+                          _showExpandedExerciseCards = !_showExpandedExerciseCards;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _showExpandedExerciseCards
+                                  ? Icons.view_headline_rounded
+                                  : Icons.view_agenda_outlined,
+                              size: 14,
+                              color: MetaColors.textSecondary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _showExpandedExerciseCards ? 'Modo Resumo' : 'Expandir',
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: MetaColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Lista de Exercícios (Compacta por padrão, ou Expandida se selecionado)
                 for (int index = 0; index < _exercises.length; index++)
-                  _buildExerciseCard(index),
+                  _showExpandedExerciseCards
+                      ? _buildExerciseCard(index)
+                      : _buildCompactExerciseCard(index),
 
                 const SizedBox(height: 12),
 
