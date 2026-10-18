@@ -1,3 +1,5 @@
+import 'app_changelog.dart';
+
 class AppConfig {
   static String _customApiBaseUrl = '';
 
@@ -45,11 +47,11 @@ class AppConfig {
 
   static const String supabaseAnonKey = supabasePublishableKey;
 
-  // Informações Oficiais de Versionamento (SemVer) & Build
-  static const String appVersion = '1.5.0';
-  static const int buildNumber = 2026102901;
-  static const String buildDate = '18 de Outubro, 2026';
-  static const String releaseNotes = 'Fase 5: Bio-Hub 2.0 com Split Photo Slider tátil, galeria sigilosa antes/depois e métricas antropométricas corporais';
+  // Informações Oficiais de Versionamento (SemVer) & Build (Fonte Única da Verdade: AppChangelog.current)
+  static String get appVersion => AppChangelog.current.version;
+  static int get buildNumber => AppChangelog.current.buildNumber;
+  static String get buildDate => AppChangelog.current.date;
+  static String get releaseNotes => AppChangelog.current.summary;
 
   static String get fullVersionString => 'v$appVersion (Build $buildNumber)';
 }
