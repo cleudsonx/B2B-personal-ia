@@ -10,6 +10,7 @@ from app.api.deps import get_current_user, get_current_trainer
 from app.core.config import settings
 from app.services.supabase_service import supabase_service, is_valid_uuid
 from app.services.audit_service import log_audit_event
+from app.services.email_service import email_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -112,6 +113,32 @@ async def create_invite(
 
     # Constrói o link de convite usando o domínio web configurado.
     invite_url = f"{settings.APP_FRONTEND_URL.rstrip('/')}/#/invite/{token}"
+
+    # Dispara e-mail via Resend se o canal for 'email'
+    if body.channel == "email" and body.target_email:
+        trainer_name = "Seu Personal Trainer"
+        trainer_avatar_url = None
+        try:
+            client = await supabase_service.get_client()
+            if client:
+                t_res = await client.table("profiles").select("full_name, photo_url, avatar_url").eq("id", trainer_id).maybe_single().execute()
+                if t_res and t_res.data:
+                    trainer_name = t_res.data.get("full_name") or trainer_name
+                    trainer_avatar_url = t_res.data.get("photo_url") or t_res.data.get("avatar_url")
+        except Exception as t_err:
+            logger.debug(f"[Invites] Falha ao obter dados do treinador para o e-mail: {t_err}")
+
+        try:
+            await email_service.send_student_invitation_email(
+                student_email=str(body.target_email),
+                student_name=body.target_name or "Aluno",
+                trainer_name=trainer_name,
+                trainer_avatar_url=trainer_avatar_url,
+                confirmation_url=invite_url,
+            )
+            logger.info(f"[Invites] E-mail de convite disparado com sucesso para {body.target_email}")
+        except Exception as mail_err:
+            logger.warning(f"[Invites] Erro não bloqueante ao enviar e-mail de convite para {body.target_email}: {mail_err}")
 
     return CreateInviteResponse(
         token=token,
