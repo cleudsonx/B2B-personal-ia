@@ -1,5 +1,7 @@
 import re
+import json
 import logging
+from pathlib import Path
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Query, HTTPException
 from pydantic import BaseModel
@@ -74,6 +76,20 @@ INITIAL_EXERCISE_MEDIA: Dict[str, Dict[str, Any]] = {
 }
 
 
+def _get_combined_catalog() -> Dict[str, Dict[str, Any]]:
+    catalog = dict(INITIAL_EXERCISE_MEDIA)
+    catalog_path = Path(__file__).resolve().parent.parent.parent.parent / "data" / "exercise_catalog.json"
+    if catalog_path.exists():
+        try:
+            with open(catalog_path, "r", encoding="utf-8") as f:
+                extra = json.load(f)
+                if isinstance(extra, dict):
+                    catalog.update(extra)
+        except Exception as e:
+            logger.warning(f"[ExerciseLibrary] Erro ao ler exercise_catalog.json: {e}")
+    return catalog
+
+
 def _normalize(text: str) -> str:
     if not text:
         return ""
@@ -113,7 +129,7 @@ async def get_exercise_media(name: str = Query(..., description="Nome do exercí
 
     # 1. Tenta buscar no Supabase
     try:
-        client = await supabase_service._get_client()
+        client = await supabase_service.get_client()
         if client:
             res = await client.table("exercise_library").select("*").ilike("name", f"%{name}%").limit(1).execute()
             if res.data and len(res.data) > 0:
@@ -133,8 +149,9 @@ async def get_exercise_media(name: str = Query(..., description="Nome do exercí
     except Exception as e:
         logger.warning(f"[ExerciseLibrary] Supabase fallback: {e}")
 
-    # 2. Fallback de memória resiliente
-    for key, data in INITIAL_EXERCISE_MEDIA.items():
+    # 2. Fallback de memória resiliente (estático + catalog.json)
+    combined = _get_combined_catalog()
+    for key, data in combined.items():
         if key in norm or norm in key:
             return ExerciseMediaResponse(
                 name=data["name"],
@@ -164,7 +181,7 @@ async def list_exercise_library(
 
     # 1. Consulta Supabase
     try:
-        client = await supabase_service._get_client()
+        client = await supabase_service.get_client()
         if client:
             query = client.table("exercise_library").select("*").eq("is_active", True)
             if q:
@@ -193,7 +210,8 @@ async def list_exercise_library(
         logger.warning(f"[ExerciseLibrary] Falha ao listar do banco, usando catálogo base: {e}")
 
     # 2. Fallback
-    for data in INITIAL_EXERCISE_MEDIA.values():
+    combined = _get_combined_catalog()
+    for data in combined.values():
         if q and _normalize(q) not in _normalize(data["name"]):
             continue
         if muscle and _normalize(muscle) not in _normalize(data["muscle_group"]):

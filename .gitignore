@@ -16,6 +16,8 @@ develop-eggs/
 dist/
 downloads/
 eggs/
+.tmp_videos/
+*.tmp
 # Python virtualenv legacy libs
 backend/lib/
 backend/lib64/
