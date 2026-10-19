@@ -39,21 +39,28 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.7.0',
-      buildNumber: 2026102906,
-      date: '18 de Outubro, 2026',
+      buildNumber: 2026102907,
+      date: '19 de Outubro, 2026',
       summary:
-          'Catálogo de Exercícios & Mídias de Execução: Demonstrações em vídeo direto na ficha do aluno e do professor, integração 3D anatômica e arquitetura desacoplada de fontes de mídia.',
+          'Acervo Definitivo de Mídias (432 Exercícios): GIFs animados em loop contínuo direto no app, categorização por 8 grupamentos musculares + Calistenia e sincronização 100% no Supabase.',
       highlights: [
         ChangelogItem(
-          icon: Icons.play_circle_fill_rounded,
-          title: 'Vídeos de Execução de Exercícios',
+          icon: Icons.gif_box_rounded,
+          title: '432 Exercícios com GIFs Animados Inline',
           description:
-              'Acesso instantâneo a demonstrações em vídeo em cada exercício, com visualização nativa e link direto.',
+              'Demonstrações em loop automático sem delay diretamente no card do exercício, cobrindo Peito, Costas, Bíceps, Tríceps, Ombros, Pernas, Panturrilhas, Abdômen e Calistenia.',
+          badge: 'ACERVO',
+        ),
+        ChangelogItem(
+          icon: Icons.play_circle_fill_rounded,
+          title: 'Vídeos de Execução & Player Externo',
+          description:
+              'Suporte híbrido a vídeos em alta definição e GIFs animados com link direto e player de alta resolução.',
           badge: 'MÍDIA',
         ),
         ChangelogItem(
           icon: Icons.accessibility_new_rounded,
-          title: 'Integração Raio-X 3D & Dicas Biomecânicas',
+          title: 'Integração Raio-X 3D & Cinesiologia',
           description:
               'Guia biomecânico completo com músculos primários, secundários, dicas de postura e atalho direto para a visão anatômica 3D.',
           badge: 'BIOMECÂNICA',

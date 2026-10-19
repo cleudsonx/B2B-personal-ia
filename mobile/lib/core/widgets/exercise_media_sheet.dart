@@ -180,86 +180,47 @@ class ExerciseMediaSheet extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // Área do Vídeo / Player
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isDark
-                        ? [const Color(0xFF131B2E), const Color(0xFF0F172A)]
-                        : [const Color(0xFFF1F5F9), const Color(0xFFE2E8F0)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: MetaColors.emerald.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        color: MetaColors.emerald,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: MetaColors.emerald.withValues(alpha: 0.4),
-                            blurRadius: 16,
-                            spreadRadius: 2,
+              // Área de Mídia (GIF Animado nativo ou Player de Vídeo)
+              if (media?.thumbnailUrl != null && media!.thumbnailUrl!.isNotEmpty) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: Container(
+                    width: double.infinity,
+                    height: 210,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF0C1322) : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: MetaColors.emerald.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Image.network(
+                      media!.thumbnailUrl!,
+                      fit: BoxFit.contain,
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return const Center(
+                          child: SizedBox(
+                            width: 32,
+                            height: 32,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: MetaColors.emerald,
+                            ),
                           ),
-                        ],
-                      ),
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.play_arrow_rounded,
-                          color: Colors.white,
-                          size: 36,
-                        ),
-                        onPressed: hasVideo ? () => _openVideo(media!.mediaUrl) : null,
-                      ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return _buildVideoPlayerCard(isDark, textColor, subtextColor, hasVideo);
+                      },
                     ),
-                    const SizedBox(height: 14),
-                    Text(
-                      hasVideo
-                          ? 'Vídeo de Demonstração em Alta Definição'
-                          : 'Vídeo em processo de catalogação',
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      hasVideo
-                          ? 'Toque no play para assistir à execução biomecânica oficial.'
-                          : 'A demonstração em vídeo para este movimento estará disponível em breve.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: subtextColor,
-                        fontSize: 11.5,
-                      ),
-                    ),
-                    if (hasVideo) ...[
-                      const SizedBox(height: 14),
-                      OutlinedButton.icon(
-                        onPressed: () => _openVideo(media!.mediaUrl),
-                        icon: const Icon(Icons.open_in_new_rounded, size: 16),
-                        label: const Text('Assistir no Player Externo'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: MetaColors.emerald,
-                          side: BorderSide(color: MetaColors.emerald.withValues(alpha: 0.5)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(height: 16),
+              ] else ...[
+                _buildVideoPlayerCard(isDark, textColor, subtextColor, hasVideo),
+                const SizedBox(height: 16),
+              ],
 
               // Orientações da IA de Biomecânica
               if (media?.executionCues != null && media!.executionCues!.isNotEmpty) ...[
@@ -330,5 +291,93 @@ class ExerciseMediaSheet extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildVideoPlayerCard(
+    bool isDark,
+    Color textColor,
+    Color subtextColor,
+    bool hasVideo,
+  ) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF131B2E), const Color(0xFF0F172A)]
+              : [const Color(0xFFF1F5F9), const Color(0xFFE2E8F0)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: MetaColors.emerald.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: MetaColors.emerald,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: MetaColors.emerald.withValues(alpha: 0.4),
+                  blurRadius: 16,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: IconButton(
+              icon: const Icon(
+                Icons.play_arrow_rounded,
+                color: Colors.white,
+                size: 36,
+              ),
+              onPressed: hasVideo ? () => _openVideo(media!.mediaUrl) : null,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            hasVideo
+                ? 'Vídeo de Demonstração em Alta Definição'
+                : 'Vídeo em processo de catalogação',
+            style: TextStyle(
+              color: textColor,
+              fontSize: 13.5,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            hasVideo
+                ? 'Toque no play para assistir à execução biomecânica oficial.'
+                : 'A demonstração em vídeo para este movimento estará disponível em breve.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: subtextColor,
+              fontSize: 11.5,
+            ),
+          ),
+          if (hasVideo) ...[
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: () => _openVideo(media!.mediaUrl),
+              icon: const Icon(Icons.open_in_new_rounded, size: 16),
+              label: const Text('Assistir no Player Externo'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: MetaColors.emerald,
+                side: BorderSide(color: MetaColors.emerald.withValues(alpha: 0.5)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
+
 
