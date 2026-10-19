@@ -39,7 +39,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.6.0',
-      buildNumber: 2026102903,
+      buildNumber: 2026102905,
       date: '18 de Outubro, 2026',
       summary:
           'FASE 7 — Consultor Ativo IA 2.0 (Coach Proativo no WhatsApp): Radar de Retenção Proativa (>4 dias), Resumo Executivo Semanal e Comandos Custo Zero 4 e 5.',
