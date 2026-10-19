@@ -8,6 +8,7 @@ modelo barato (flash-lite). Pensado para custo mínimo e segurança:
 - limite de mensagens por aluno/dia;
 - resposta curta (max tokens) e sem aconselhamento médico.
 """
+import base64
 import hmac
 import logging
 import time
@@ -46,6 +47,19 @@ SYSTEM_PROMPT = (
 def _extract_text(data: Dict[str, Any]) -> Optional[str]:
     msg = data.get("message") or {}
     return msg.get("conversation") or (msg.get("extendedTextMessage") or {}).get("text")
+
+
+def _extract_media_info(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Detecta se a mensagem recebida é um áudio ou nota de voz (PTT)."""
+    msg = data.get("message") or {}
+    if "audioMessage" in msg:
+        audio = msg["audioMessage"]
+        return {
+            "type": "audio",
+            "mimetype": audio.get("mimetype") or "audio/ogg; codecs=opus",
+            "seconds": audio.get("seconds", 0),
+        }
+    return None
 
 
 def _within_limit(student_id: str) -> bool:
@@ -123,6 +137,49 @@ async def _find_student_by_phone(digits: str, trainer_id: str) -> Optional[Dict[
                 return p
     except Exception as e:
         logger.warning(f"[WhatsAppAI] Erro ao buscar fallback de cliente: {e}")
+
+    return None
+
+
+async def _find_student_by_phone_global(digits: str) -> Optional[Dict[str, Any]]:
+    """
+    Busca o aluno pelo telefone em toda a base da plataforma quando a mensagem
+    chega no número central (mr_coach_instance), identificando seu professor responsável.
+    """
+    client = await supabase_service.get_client()
+    clean_target = "".join(c for c in (digits or "") if c.isdigit())
+    if not client or len(clean_target) < 8:
+        return None
+
+    # 1. Busca em profiles de clientes ativos
+    try:
+        res = await client.table("profiles").select("id, full_name, trainer_id, role, subscription_status, phone") \
+            .eq("role", "client").execute()
+        for p in res.data or []:
+            p_phone = "".join(c for c in (p.get("phone") or "") if c.isdigit())
+            if len(p_phone) >= 8 and p_phone[-8:] == clean_target[-8:]:
+                if str(p.get("subscription_status") or "").lower() == "suspended":
+                    return None
+                return p
+    except Exception as e:
+        logger.warning(f"[WhatsAppAI] Erro ao buscar aluno globalmente: {e}")
+
+    # 2. Busca em convites pendentes
+    try:
+        inv_res = await client.table("invite_tokens").select("id, target_name, trainer_id, target_phone") \
+            .is_("used_at", "null").execute()
+        for inv in inv_res.data or []:
+            inv_phone = "".join(c for c in (inv.get("target_phone") or "") if c.isdigit())
+            if len(inv_phone) >= 8 and inv_phone[-8:] == clean_target[-8:]:
+                return {
+                    "id": inv["id"],
+                    "full_name": inv.get("target_name") or "Aluno",
+                    "trainer_id": inv.get("trainer_id"),
+                    "role": "client",
+                    "is_pending_invite": True,
+                }
+    except Exception as e:
+        logger.warning(f"[WhatsAppAI] Erro ao buscar convite globalmente: {e}")
 
     return None
 
@@ -209,7 +266,13 @@ def is_phase2_ai_allowed(sub: Any) -> bool:
 APP_URL = "https://shaipados-labs.web.app"
 
 
-async def process_whatsapp_question(trainer_id: str, student: Dict[str, Any], question: str) -> Dict[str, Any]:
+async def process_whatsapp_question(
+    trainer_id: str,
+    student: Dict[str, Any],
+    question: str,
+    audio_bytes: Optional[bytes] = None,
+    audio_mimetype: Optional[str] = None,
+) -> Dict[str, Any]:
     """Processa a mensagem com triagem de custo zero, guardrails de dor e IA biomecânica com anamnese."""
     nome = (student.get("full_name") or "Aluno").split()[0]
     cmd = _normalize_command(question)
@@ -471,40 +534,93 @@ async def process_whatsapp_question(trainer_id: str, student: Dict[str, Any], qu
     except Exception as e:
         logger.warning(f"[WhatsAppAI] Erro ao buscar anamnese: {e}")
 
-    prompt = (
-        f"Aluno: {student.get('full_name') or 'Aluno'}{anamnesis_ctx}\n"
-        f"{_plan_summary(plan)}\n\n"
-        f"Pergunta: {question[:MAX_QUESTION_CHARS]}"
-    )
+    if audio_bytes:
+        prompt = (
+            f"Aluno: {student.get('full_name') or 'Aluno'}{anamnesis_ctx}\n"
+            f"Ficha Ativa do Aluno:\n{_plan_summary(plan)}\n\n"
+            "O aluno enviou este áudio na academia com uma dúvida de treino. "
+            "Escute o áudio, compreenda a dúvida e responda com excelência técnica cinesiológica e tom amigável. "
+            "Responda em português claro, em no máximo 4 frases curtas, orientações seguras e sem aconselhamento médico. "
+            "Se for dúvida sobre aparelho ocupado, sugira variação biomecanicamente equivalente condizente com a ficha. "
+            "Se for desconforto articular, oriente a não forçar."
+        )
+        contents = [
+            types.Part.from_bytes(data=audio_bytes, mime_type=audio_mimetype or "audio/ogg"),
+            prompt,
+        ]
+    else:
+        prompt = (
+            f"Aluno: {student.get('full_name') or 'Aluno'}{anamnesis_ctx}\n"
+            f"{_plan_summary(plan)}\n\n"
+            f"Pergunta: {question[:MAX_QUESTION_CHARS]}"
+        )
+        contents = prompt
+
     config = types.GenerateContentConfig(
         system_instruction=SYSTEM_PROMPT, temperature=0.4, max_output_tokens=300
     )
     response = await gemini_service._generate_with_fallback_async(
-        candidate_models=AI_MODELS, contents=prompt, config=config, per_model_timeout=12.0
+        candidate_models=AI_MODELS, contents=contents, config=config, per_model_timeout=14.0
     )
     reply_text = response.text.strip()
     return {
         "reply": reply_text,
-        "cost_type": "ai_gemini",
+        "cost_type": "ai_gemini_voice" if audio_bytes else "ai_gemini",
         "tokens_used": len(reply_text.split()),
     }
 
 
-async def _answer(instance: str, number: str, digits: str, question: str) -> None:
+async def _answer(
+    instance: str,
+    number: str,
+    digits: str,
+    question: str,
+    message_key: Optional[Dict[str, Any]] = None,
+    media_info: Optional[Dict[str, Any]] = None,
+) -> None:
     try:
+        # 1. Identifica o treinador responsável (instância do professor ou número oficial da plataforma)
         trainer_id = trainer_id_from_instance(instance)
-        if not trainer_id:
-            return
-        student = await _find_student_by_phone(digits, trainer_id)
-        if not student:
-            logger.info(f"[WhatsAppAI] Mensagem ignorada de número não cadastrado: {digits}")
+        student = None
+        if trainer_id:
+            student = await _find_student_by_phone(digits, trainer_id)
+        else:
+            # Mensagem recebida na instância oficial da Plataforma (ex: mr_coach_instance)
+            student = await _find_student_by_phone_global(digits)
+            if student:
+                trainer_id = student.get("trainer_id")
+
+        if not trainer_id or not student:
+            logger.info(f"[WhatsAppAI] Mensagem ignorada de número não cadastrado: {digits} (instância: {instance})")
             return
 
-        result = await process_whatsapp_question(trainer_id, student, question)
+        # 2. Processa áudio caso tenha sido enviado uma nota de voz (PTT / audioMessage)
+        audio_bytes = None
+        audio_mimetype = None
+        if media_info and media_info.get("type") == "audio" and message_key:
+            try:
+                media_res = await whatsapp_service.get_base64_from_media(instance, message_key)
+                if media_res and media_res.get("base64"):
+                    b64_str = media_res["base64"]
+                    if "," in b64_str:
+                        b64_str = b64_str.split(",", 1)[1]
+                    audio_bytes = base64.b64decode(b64_str)
+                    audio_mimetype = media_res.get("mimetype") or media_info.get("mimetype") or "audio/ogg"
+            except Exception as e:
+                logger.warning(f"[WhatsAppAI] Falha ao recuperar áudio: {e}")
+
+        result = await process_whatsapp_question(
+            trainer_id=trainer_id,
+            student=student,
+            question=question,
+            audio_bytes=audio_bytes,
+            audio_mimetype=audio_mimetype,
+        )
         text_to_send = result.get("reply") or ""
         cost = result.get("cost_type") or "free"
         tokens = result.get("tokens_used") or 0
 
+        # Envia a resposta de volta pela mesma instância de entrada
         await whatsapp_service.send_text_message(instance, number, text_to_send)
         try:
             await supabase_service.log_whatsapp_interaction(
@@ -512,8 +628,8 @@ async def _answer(instance: str, number: str, digits: str, question: str) -> Non
                 student_id=student.get("id"),
                 student_name=student.get("full_name") or "Aluno",
                 student_phone=digits,
-                channel="whatsapp",
-                message_in=question,
+                channel="whatsapp_voice" if audio_bytes else "whatsapp",
+                message_in=f"[Mensagem de Áudio ({media_info.get('seconds', 0)}s)]" if audio_bytes else question,
                 message_out=text_to_send,
                 cost_type=cost,
                 tokens_used=tokens,
@@ -547,9 +663,19 @@ async def evolution_webhook(request: Request, background: BackgroundTasks):
         return {"status": "ignored"}  # ignora mensagens próprias e grupos
 
     text = _extract_text(data)
-    if not text or not text.strip():
+    media_info = _extract_media_info(data)
+
+    if (not text or not text.strip()) and not media_info:
         return {"status": "ignored"}
 
     digits = "".join(c for c in jid.split("@")[0] if c.isdigit())
-    background.add_task(_answer, body.get("instance", ""), digits, digits, text.strip())
+    background.add_task(
+        _answer,
+        body.get("instance", ""),
+        digits,
+        digits,
+        text.strip() if text else "",
+        key,
+        media_info,
+    )
     return {"status": "accepted"}

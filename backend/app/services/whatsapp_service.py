@@ -221,6 +221,28 @@ class WhatsAppService:
             r.raise_for_status()
             return r.json()
 
+    async def get_base64_from_media(self, instance_name: str, message_key: dict) -> Optional[dict]:
+        """
+        Obtém o arquivo de mídia (áudio/voz, imagem) em base64 da Evolution API v2.
+        Retorna dict com 'base64' e 'mimetype', ou None em caso de indisponibilidade.
+        """
+        if self.provider == "mock" or not message_key:
+            return None
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                r = await client.post(
+                    f"{self._base()}/chat/getBase64FromMediaMessage/{instance_name}",
+                    headers=self._headers(),
+                    json={"message": {"key": message_key}},
+                )
+                if r.status_code == 200:
+                    data = r.json()
+                    if isinstance(data, dict) and data.get("base64"):
+                        return data
+        except Exception as e:
+            logger.warning("[WhatsApp] Erro ao obter base64 de mídia na instância %s: %s", instance_name, e)
+        return None
+
     async def send_text_with_fallback(
         self,
         number: str,
