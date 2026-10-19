@@ -39,31 +39,31 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.7.0',
-      buildNumber: 2026102915,
+      buildNumber: 2026102916,
       date: '19 de Outubro, 2026',
       summary:
-          'Revisão de Treino Ergonômica, Edição/Substituição de Exercícios na Ficha e Curadoria Biomecânica Padrão CREF de 413 Movimentos.',
+          'Experiência do Aluno no Treino Reformulada (Padrão Ouro Hevy/Strong): Hero Card ergonômico, pílulas de splits horizontais e miniaturas interativas com Focus Mode de alta precisão.',
       highlights: [
         ChangelogItem(
-          icon: Icons.edit_note_rounded,
-          title: 'Tela de Revisão Otimizada',
-          description:
-              'Diretriz clínica colapsável por padrão, abas compactas em pílulas e banner informativo do split com duração estimada.',
-          badge: 'UI/UX',
-        ),
-        ChangelogItem(
-          icon: Icons.swap_horiz_rounded,
-          title: 'Substituição e Edição na Revisão',
-          description:
-              'Troque, exclua ou adicione exercícios na ficha gerada pela IA antes de aprovar e liberar para o aluno.',
-          badge: 'PRESCRIÇÃO',
-        ),
-        ChangelogItem(
           icon: Icons.fitness_center_rounded,
-          title: 'Catálogo Biomecânico Padrão CREF',
+          title: 'Design Ouro de Treino (Hevy / Strong)',
           description:
-              '413 exercícios com nomenclatura cinesiológica formal em português brasileiro e animações 60fps in-app.',
-          badge: 'BIOMECÂNICA',
+              'Novo Hero Card "Treino de Hoje" com CTA único de início imediato, sem cards empilhados bloqueando a visão da academia.',
+          badge: 'UX ALUNO',
+        ),
+        ChangelogItem(
+          icon: Icons.view_carousel_rounded,
+          title: 'Seletor de Splits em Pílulas',
+          description:
+              'Abas horizontais compactas e fluidas com indicador do split do dia, facilitando a troca ágil entre divisões.',
+          badge: 'ERGONOMIA',
+        ),
+        ChangelogItem(
+          icon: Icons.play_circle_fill_rounded,
+          title: 'Miniaturas Interativas 52x52',
+          description:
+              'Visualização direta da execução com animações fluidas na lista, toque para abrir vídeo instrutivo ou entrar direto no Focus Mode.',
+          badge: 'FOCUS MODE',
         ),
       ],
     ),
