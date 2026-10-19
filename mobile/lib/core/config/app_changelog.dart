@@ -39,23 +39,36 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.7.0',
-      buildNumber: 2026102909,
+      buildNumber: 2026102910,
       date: '19 de Outubro, 2026',
       summary:
-          'Player In-App Totalmente Integrado: Demonstrações e animações sem sair do aplicativo (com zoom in-app), resolução automática de thumbnails do Drive e Dicas Biomecânicas colapsáveis sob demanda.',
+          'Correção Crítica de Cota do Personal Pro (30 Alunos): Ativação e sincronização do status de assinatura, tolerância de ciclo no Supabase e revalidação resiliente antes de bloquear convites.',
       highlights: [
+        ChangelogItem(
+          icon: Icons.workspace_premium_rounded,
+          title: 'Cota Personal Pro Integral (30 Alunos)',
+          description:
+              'Ajuste definitivo do plano Personal Pro para até 30 alunos com sincronização ativa de cotas e tolerância a períodos de transição.',
+          badge: 'COTA',
+        ),
         ChangelogItem(
           icon: Icons.play_circle_filled_rounded,
           title: 'Vídeos e GIFs 100% In-App',
           description:
               'Visualização nativa in-app do movimento sem redirecionamento externo para navegador, com modo tela cheia e zoom interativo.',
+          badge: 'MÍDIA',
         ),
         ChangelogItem(
           icon: Icons.unfold_more_rounded,
           title: 'Instruções Biomecânicas Colapsáveis',
           description:
               'A descrição detalhada da postura agora fica recolhida por padrão e expande com um toque, poupando espaço e mantendo o foco no treino.',
+          badge: 'UX',
         ),
+        ChangelogItem(
+          icon: Icons.gif_box_rounded,
+          title: '432 Exercícios com GIFs Animados Inline',
+          description:
               'Demonstrações em loop automático sem delay diretamente no card do exercício, cobrindo Peito, Costas, Bíceps, Tríceps, Ombros, Pernas, Panturrilhas, Abdômen e Calistenia.',
           badge: 'ACERVO',
         ),

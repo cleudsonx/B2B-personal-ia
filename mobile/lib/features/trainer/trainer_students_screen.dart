@@ -9,6 +9,7 @@ import '../../core/widgets/app_version_footer.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
+import '../../services/subscription_service.dart';
 import '../subscription/subscription_screen.dart';
 import 'anamnesis_screen.dart';
 import 'presentation/screens/trainer_profile_setup_screen.dart';
@@ -62,6 +63,13 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
       _errorMessage = '';
     });
     try {
+      // Sincroniza em background a cota e o plano atualizado do treinador (ex: Personal Pro = 30 alunos)
+      if (AuthService.currentUser != null) {
+        SubscriptionService.refreshMySubscription().then((_) {}).catchError((e) {
+          debugPrint('Aviso ao sincronizar plano do treinador: $e');
+        });
+      }
+
       final dbStudents = await WorkoutService.getTrainerStudents();
       final alerts = await WorkoutService.getTrainerAlerts();
 

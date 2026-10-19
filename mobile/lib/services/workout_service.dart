@@ -49,7 +49,12 @@ class WorkoutService {
     String? phone,
     String? goal,
   }) async {
-    final currentSub = SubscriptionService.activeSubscriptionNotifier.value;
+    var currentSub = SubscriptionService.activeSubscriptionNotifier.value;
+    if (currentSub == null) {
+      try {
+        currentSub = await SubscriptionService.refreshMySubscription();
+      } catch (_) {}
+    }
     if (currentSub != null) {
       final occupiedCount =
           _localStudentsCache.where((s) {
@@ -57,10 +62,20 @@ class WorkoutService {
             return !st.contains('arquivado') && !st.contains('inativo');
           }).length;
       if (occupiedCount >= currentSub.maxStudents) {
-        throw Exception(
-          'Limite de ${currentSub.maxStudents} alunos ativos atingido no plano ${currentSub.planName}. '
-          'Faça upgrade do plano ou arquive alunos inativos antes de cadastrar novos.',
-        );
+        // Tenta revalidar com o servidor para garantir que o plano não foi atualizado (ex: Pro = 30 alunos)
+        try {
+          final refreshed = await SubscriptionService.refreshMySubscription();
+          if (refreshed.maxStudents > currentSub.maxStudents && occupiedCount < refreshed.maxStudents) {
+            currentSub = refreshed;
+          } else {
+            throw Exception(
+              'Limite de ${refreshed.maxStudents} alunos ativos atingido no plano ${refreshed.planName}. '
+              'Faça upgrade do plano ou arquive alunos inativos antes de cadastrar novos.',
+            );
+          }
+        } catch (e) {
+          if (e.toString().contains('Limite de')) rethrow;
+        }
       }
     }
 
