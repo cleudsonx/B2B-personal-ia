@@ -706,8 +706,8 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
     );
   }
 
-  void _showRecordLoadSheet() {
-    final exerciseCtrl = TextEditingController(text: 'Supino Reto com Barra');
+  void _showRecordLoadSheet({String? defaultExercise}) {
+    final exerciseCtrl = TextEditingController(text: defaultExercise ?? '');
     final loadCtrl = TextEditingController();
     final repsCtrl = TextEditingController(text: '10');
 
@@ -787,6 +787,8 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                       controller: exerciseCtrl,
                       style: TextStyle(color: textColor, fontSize: 14),
                       decoration: InputDecoration(
+                        hintText: 'Ex: Supino Reto, Agachamento Livre...',
+                        hintStyle: TextStyle(color: subtextColor.withValues(alpha: 0.6)),
                         filled: true,
                         fillColor: MetaColors.surfaceHighlight,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -1611,39 +1613,54 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
           }),
         ] else
           MetaCard(
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: MetaColors.emerald.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.trending_up_rounded, color: MetaColors.emerald, size: 22),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: MetaColors.emerald.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.trending_up_rounded, color: MetaColors.emerald, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Curva de Sobrecarga em Calibração',
+                            style: TextStyle(
+                              color: MetaColors.text(context),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13.5,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Assim que você concluir treinos no Modo Foco ou registrar uma carga inicial, sua progressão real de força aparecerá aqui.',
+                            style: TextStyle(
+                              color: MetaColors.subtext(context),
+                              fontSize: 12,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Curva de Sobrecarga em Calibração',
-                        style: TextStyle(
-                          color: MetaColors.text(context),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13.5,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Assim que sua ficha ativa estiver disponível e você registrar suas cargas no Modo Foco, sua evolução real por exercício aparecerá aqui.',
-                        style: TextStyle(
-                          color: MetaColors.subtext(context),
-                          fontSize: 12,
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: SquircleButton(
+                    label: 'Registrar Primeira Carga',
+                    icon: Icons.add_circle_outline_rounded,
+                    isPrimary: true,
+                    onPressed: _showRecordLoadSheet,
                   ),
                 ),
               ],
@@ -2523,6 +2540,8 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
     required String gainPercent,
     required List<String> history,
   }) {
+    final isSingleEntry = history.length <= 1 || startLoad == currentLoad;
+
     return MetaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2530,12 +2549,14 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                exercise,
-                style: const TextStyle(
-                  color: MetaColors.textPrimary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  exercise,
+                  style: const TextStyle(
+                    color: MetaColors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               Container(
@@ -2556,53 +2577,84 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
             ],
           ),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              Text(
-                'Inicial: $startLoad',
-                style: const TextStyle(color: MetaColors.textSecondary, fontSize: 13),
-              ),
-              const SizedBox(width: 12),
-              const Icon(Icons.arrow_forward_rounded, size: 14, color: MetaColors.textSecondary),
-              const SizedBox(width: 12),
-              Text(
-                'Atual: $currentLoad',
-                style: const TextStyle(
-                  color: MetaColors.textPrimary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+          if (isSingleEntry) ...[
+            Row(
+              children: [
+                const Icon(Icons.flag_circle_rounded, color: MetaColors.emerald, size: 16),
+                const SizedBox(width: 6),
+                Text(
+                  'Carga Base: $currentLoad (Marco Inicial)',
+                  style: const TextStyle(
+                    color: MetaColors.emerald,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13.5,
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ] else ...[
+            Row(
+              children: [
+                Text(
+                  'Inicial: $startLoad',
+                  style: const TextStyle(color: MetaColors.textSecondary, fontSize: 13),
+                ),
+                const SizedBox(width: 12),
+                const Icon(Icons.arrow_forward_rounded, size: 14, color: MetaColors.textSecondary),
+                const SizedBox(width: 12),
+                Text(
+                  'Atual: $currentLoad',
+                  style: const TextStyle(
+                    color: MetaColors.textPrimary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 12),
           // Mini Timeline de Cargas
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: history.map((val) {
-              final isLatest = val == currentLoad;
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isLatest
-                      ? MetaColors.emerald.withValues(alpha: 0.25)
-                      : MetaColors.surfaceHighlight,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isLatest ? MetaColors.emerald : Colors.transparent,
-                  ),
-                ),
-                child: Text(
-                  val,
-                  style: TextStyle(
-                    color: isLatest ? MetaColors.emerald : MetaColors.textSecondary,
-                    fontSize: 11,
-                    fontWeight: isLatest ? FontWeight.bold : FontWeight.normal,
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
+          if (history.length <= 1)
+            Text(
+              'Próximos treinos registrarão sua evolução percentual na linha do tempo.',
+              style: TextStyle(
+                color: MetaColors.subtext(context),
+                fontSize: 11.5,
+              ),
+            )
+          else
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: history.map((val) {
+                  final isLatest = val == currentLoad;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isLatest
+                            ? MetaColors.emerald.withValues(alpha: 0.25)
+                            : MetaColors.surfaceHighlight,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isLatest ? MetaColors.emerald : Colors.transparent,
+                        ),
+                      ),
+                      child: Text(
+                        val,
+                        style: TextStyle(
+                          color: isLatest ? MetaColors.emerald : MetaColors.textSecondary,
+                          fontSize: 11,
+                          fontWeight: isLatest ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
         ],
       ),
     );

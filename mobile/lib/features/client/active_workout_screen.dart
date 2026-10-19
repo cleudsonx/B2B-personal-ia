@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -755,6 +756,24 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               });
               try {
                 final status = await _sessionService.complete(record);
+                // Sincroniza cargas dos exercícios concluídos com a tabela de sobrecarga
+                try {
+                  final prefs = await SharedPreferences.getInstance();
+                  for (final idx in _completedExerciseIndices) {
+                    if (idx < _exercises.length) {
+                      final ex = _exercises[idx];
+                      final weightKey = 'pwa_last_weight_${uid}_${ex.name.toLowerCase().trim()}';
+                      final lastWeight = prefs.getDouble(weightKey);
+                      if (lastWeight != null && lastWeight > 0) {
+                        await WorkoutService.recordExerciseLoad(
+                          exerciseName: ex.name,
+                          loadKg: lastWeight,
+                        );
+                      }
+                    }
+                  }
+                } catch (_) {}
+
                 if (ctx.mounted) Navigator.pop(ctx);
                 messenger.showSnackBar(
                   SnackBar(

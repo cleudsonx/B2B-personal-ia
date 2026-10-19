@@ -1620,26 +1620,30 @@ class WorkoutService {
     required String exerciseName,
     required double loadKg,
     int? reps,
+    String? targetStudentId,
   }) async {
     final user = AuthService.currentUser;
-    if (user == null) return false;
+    final effectiveStudentId = targetStudentId ?? user?.id;
+    if (effectiveStudentId == null) return false;
     final cleanName = exerciseName.trim();
     final nowIso = DateTime.now().toIso8601String();
 
     // 1. Persiste no cache local para resposta instantânea e resiliência offline
     try {
       final prefs = await SharedPreferences.getInstance();
-      final key = _exerciseLoadsCacheKey(user.id);
+      final key = _exerciseLoadsCacheKey(effectiveStudentId);
       final raw = prefs.getString(key);
       final List<dynamic> list = (raw != null && raw.isNotEmpty) ? jsonDecode(raw) : [];
       list.add({
-        'client_id': user.id,
+        'client_id': effectiveStudentId,
         'exercise_name': cleanName,
         'load_kg': loadKg,
         if (reps != null) 'reps': reps,
         'recorded_at': nowIso,
       });
       await prefs.setString(key, jsonEncode(list));
+      final weightKey = 'pwa_last_weight_${effectiveStudentId}_${cleanName.toLowerCase().trim()}';
+      await prefs.setDouble(weightKey, loadKg);
     } catch (_) {}
 
     // 2. Persiste na nuvem (Supabase)
@@ -1648,7 +1652,7 @@ class WorkoutService {
       if (client == null) return true;
 
       await client.from('student_exercise_loads').insert({
-        'client_id': user.id,
+        'client_id': effectiveStudentId,
         'exercise_name': cleanName,
         'load_kg': loadKg,
         if (reps != null) 'reps': reps,
@@ -1662,7 +1666,7 @@ class WorkoutService {
   }
 
   /// Agrupa o histórico de cargas e calcula a sobrecarga progressiva real de cada exercício.
-  /// Se o aluno ainda não registrou sessões no Modo Foco, exibe os exercícios reais da ficha ativa como Marco Inicial.
+  /// Se o aluno ainda não registrou sessões de treino com carga, retorna lista vazia para exibição do empty state.
   static Future<List<Map<String, dynamic>>> getStudentProgressiveOverload(String studentId) async {
     try {
       final client = _clientOrNull;
@@ -1719,40 +1723,6 @@ class WorkoutService {
           });
         });
         return results;
-      }
-
-      // Fallback Inteligente (Opção A1): Exibir os exercícios reais da ficha ativa do aluno como Marco Inicial
-      final activePlan = await getActiveWorkoutForClient(clientId: studentId);
-      if (activePlan != null && activePlan.splits.isNotEmpty) {
-        final List<Map<String, dynamic>> baselineResults = [];
-        final prefs = await SharedPreferences.getInstance();
-
-        for (final split in activePlan.splits) {
-          for (final ex in split.exercises) {
-            if (baselineResults.length >= 4) break;
-            if (baselineResults.any((r) => r['exercise'] == ex.name)) continue;
-
-            final weightKey = 'pwa_last_weight_${studentId}_${ex.name.toLowerCase().trim()}';
-            final savedLocalWeight = prefs.getDouble(weightKey);
-            final loadStr = savedLocalWeight != null && savedLocalWeight > 0
-                ? '${savedLocalWeight.toStringAsFixed(savedLocalWeight.truncateToDouble() == savedLocalWeight ? 0 : 1)} kg'
-                : '${ex.sets}x${ex.reps}';
-
-            baselineResults.add({
-              'exercise': ex.name,
-              'start_load': 'Ficha ${split.splitIdentifier}',
-              'current_load': loadStr,
-              'gain_percent': 'Marco Inicial',
-              'is_baseline': true,
-              'history': [
-                'Treino ${split.splitIdentifier}',
-                '${ex.sets} séries x ${ex.reps}',
-              ],
-            });
-          }
-          if (baselineResults.length >= 4) break;
-        }
-        return baselineResults;
       }
 
       return [];

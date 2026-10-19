@@ -39,7 +39,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.7.0',
-      buildNumber: 2026102913,
+      buildNumber: 2026102914,
       date: '19 de Outubro, 2026',
       summary:
           'Revisão de Treino Ergonômica, Edição/Substituição de Exercícios na Ficha e Curadoria Biomecânica Padrão CREF de 413 Movimentos.',

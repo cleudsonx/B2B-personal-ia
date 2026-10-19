@@ -65,6 +65,7 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
   bool _isLoadingMetrics = true;
   Map<String, dynamic>? _studentRecovery;
   List<Map<String, dynamic>> _studentOverloads = [];
+  Map<String, dynamic>? _studentAlert;
 
   @override
   void initState() {
@@ -107,6 +108,23 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
       try {
         final overloads = await WorkoutService.getStudentProgressiveOverload(studentId);
         if (mounted) setState(() => _studentOverloads = overloads);
+      } catch (_) {}
+
+      // Buscar alertas biomecânicos pendentes de adaptação
+      try {
+        final alerts = await WorkoutService.getTrainerAlerts();
+        final pendingAlert = alerts.firstWhere(
+          (a) =>
+              (a['student_id']?.toString() == studentId ||
+                  a['client_id']?.toString() == studentId) &&
+              (a['status'] == 'active' || a['acknowledged'] == false),
+          orElse: () => <String, dynamic>{},
+        );
+        if (mounted) {
+          setState(() {
+            _studentAlert = pendingAlert.isNotEmpty ? pendingAlert : null;
+          });
+        }
       } catch (_) {}
 
       // Buscar fotos confidenciais de evolução (Antes x Depois)
@@ -2252,6 +2270,761 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
     );
   }
 
+  Future<void> _openTrainerAddLoadModal() async {
+    final studentId = student['id']?.toString() ?? '';
+    if (studentId.isEmpty) return;
+
+    final exerciseSuggestions = <String>{};
+    if (_activeWorkout != null && _activeWorkout.splits != null) {
+      for (final split in _activeWorkout.splits) {
+        if (split.exercises != null) {
+          for (final ex in split.exercises) {
+            final name = ex.name?.toString().trim();
+            if (name != null && name.isNotEmpty) {
+              exerciseSuggestions.add(name);
+            }
+          }
+        }
+      }
+    }
+
+    final exerciseCtrl = TextEditingController(
+      text: exerciseSuggestions.isNotEmpty ? exerciseSuggestions.first : '',
+    );
+    final weightCtrl = TextEditingController();
+    final repsCtrl = TextEditingController(text: '10');
+    final rpeCtrl = TextEditingController(text: '8');
+    final notesCtrl = TextEditingController();
+    var isSaving = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalCtx) {
+        final isDark = MetaColors.isDark(modalCtx);
+        return StatefulBuilder(
+          builder: (modalCtx, setModalState) {
+            return Container(
+              decoration: BoxDecoration(
+                color: isDark ? MetaColors.surface : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border.all(color: MetaColors.cardBorder(modalCtx)),
+              ),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                14,
+                20,
+                MediaQuery.of(modalCtx).viewInsets.bottom + 24,
+              ),
+              child: SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 44,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: MetaColors.subtext(modalCtx).withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: MetaColors.emerald.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.fitness_center_rounded, color: MetaColors.emerald, size: 20),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Calibrar Carga do Aluno',
+                                  style: TextStyle(
+                                    color: MetaColors.text(modalCtx),
+                                    fontSize: 16.5,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  'Registrar carga oficial para ${student['full_name'] ?? 'Aluno'}',
+                                  style: TextStyle(color: MetaColors.subtext(modalCtx), fontSize: 11.5),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(modalCtx),
+                            icon: Icon(Icons.close_rounded, color: MetaColors.subtext(modalCtx)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      if (exerciseSuggestions.isNotEmpty) ...[
+                        Text(
+                          'Exercício Prescrito',
+                          style: TextStyle(
+                            color: MetaColors.text(modalCtx),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: MetaColors.highlight(modalCtx),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              isExpanded: true,
+                              value: exerciseSuggestions.contains(exerciseCtrl.text)
+                                  ? exerciseCtrl.text
+                                  : exerciseSuggestions.first,
+                              dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                              items: exerciseSuggestions.map((e) {
+                                return DropdownMenuItem<String>(
+                                  value: e,
+                                  child: Text(
+                                    e,
+                                    style: TextStyle(color: MetaColors.text(modalCtx), fontSize: 13),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setModalState(() => exerciseCtrl.text = val);
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                      TextField(
+                        controller: exerciseCtrl,
+                        style: TextStyle(color: MetaColors.text(modalCtx), fontSize: 13.5),
+                        decoration: InputDecoration(
+                          labelText: 'Nome do Exercício',
+                          labelStyle: TextStyle(color: MetaColors.subtext(modalCtx), fontSize: 11.5),
+                          filled: true,
+                          fillColor: MetaColors.highlight(modalCtx),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: weightCtrl,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              style: TextStyle(color: MetaColors.text(modalCtx), fontSize: 13.5),
+                              decoration: InputDecoration(
+                                labelText: 'Carga (kg)',
+                                suffixText: 'kg',
+                                labelStyle: TextStyle(color: MetaColors.subtext(modalCtx), fontSize: 11.5),
+                                filled: true,
+                                fillColor: MetaColors.highlight(modalCtx),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: repsCtrl,
+                              keyboardType: TextInputType.text,
+                              style: TextStyle(color: MetaColors.text(modalCtx), fontSize: 13.5),
+                              decoration: InputDecoration(
+                                labelText: 'Repetições',
+                                labelStyle: TextStyle(color: MetaColors.subtext(modalCtx), fontSize: 11.5),
+                                filled: true,
+                                fillColor: MetaColors.highlight(modalCtx),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: rpeCtrl,
+                              keyboardType: TextInputType.number,
+                              style: TextStyle(color: MetaColors.text(modalCtx), fontSize: 13.5),
+                              decoration: InputDecoration(
+                                labelText: 'RPE (Percepção)',
+                                labelStyle: TextStyle(color: MetaColors.subtext(modalCtx), fontSize: 11.5),
+                                filled: true,
+                                fillColor: MetaColors.highlight(modalCtx),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: notesCtrl,
+                        maxLines: 2,
+                        style: TextStyle(color: MetaColors.text(modalCtx), fontSize: 13),
+                        decoration: InputDecoration(
+                          labelText: 'Observação Biomecânica / Ajuste do Treinador',
+                          labelStyle: TextStyle(color: MetaColors.subtext(modalCtx), fontSize: 11.5),
+                          filled: true,
+                          fillColor: MetaColors.highlight(modalCtx),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: MetaColors.emerald,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            elevation: 0,
+                          ),
+                          onPressed: isSaving
+                              ? null
+                              : () async {
+                                  final exName = exerciseCtrl.text.trim();
+                                  final w = double.tryParse(weightCtrl.text.trim().replaceAll(',', '.'));
+                                  if (exName.isEmpty || w == null) {
+                                    ScaffoldMessenger.of(modalCtx).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Informe o exercício e a carga em kg.'),
+                                        duration: Duration(seconds: 2),
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  setModalState(() => isSaving = true);
+                                  await WorkoutService.recordExerciseLoad(
+                                    targetStudentId: studentId,
+                                    exerciseName: exName,
+                                    loadKg: w,
+                                    reps: int.tryParse(repsCtrl.text.trim()) ?? 10,
+                                  );
+                                  if (modalCtx.mounted) Navigator.pop(modalCtx);
+                                  if (mounted) {
+                                    final refreshed = await WorkoutService.getStudentProgressiveOverload(studentId);
+                                    setState(() {
+                                      _studentOverloads = refreshed;
+                                    });
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        backgroundColor: MetaColors.surfaceHighlight,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                        content: Row(
+                                          children: [
+                                            const Icon(Icons.check_circle_rounded, color: MetaColors.emerald, size: 18),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                'Carga de $exName calibrada (${w.toStringAsFixed(1)} kg)!',
+                                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                          icon: isSaving
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                )
+                              : const Icon(Icons.save_rounded, size: 18),
+                          label: Text(
+                            isSaving ? 'Salvando...' : 'Salvar Calibração de Carga',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _openSocialEncouragementWhatsAppSheet() async {
+    final name = (student['full_name'] as String? ?? 'Aluno').trim();
+    final firstName = name.split(' ').first;
+    final phone = (student['phone'] as String? ?? '').trim();
+    final digits = phone.replaceAll(RegExp(r'\D'), '');
+    final cleanPhone = digits.startsWith('55') ? digits : '55$digits';
+
+    final bestExercise = _studentOverloads.isNotEmpty
+        ? ' no ${_studentOverloads.first['exercise']}'
+        : '';
+
+    final templates = <Map<String, String>>[
+      {
+        'title': 'Consistência & Foco 🔥',
+        'badge': 'Streak',
+        'text': 'Fala $firstName! 🔥 Vi aqui no Mr. Coach que você tá mantendo o foco total nos treinos. Parabéns pela disciplina! Seguimos firmes na periodização. Conta comigo pra ajustar as cargas se precisar!',
+      },
+      {
+        'title': 'Sobrecarga de Carga 🚀',
+        'badge': 'Progressão',
+        'text': 'Grande $firstName! 🚀 Analisei sua evolução de cargas no app e você tá progredindo de verdade$bestExercise! Esse é o caminho da hipertrofia consistente. Bora manter essa intensidade!',
+      },
+      {
+        'title': 'Check-in Semanal 💬',
+        'badge': 'Acompanhamento',
+        'text': 'Olá $firstName! Tudo bem? Passando pra checar como você tá se sentindo com os treinos desta semana. Teve alguma dor ou dificuldade em algum exercício? Qualquer coisa ajustamos a ficha!',
+      },
+      {
+        'title': 'Recuperação & Sono 💤',
+        'badge': 'Recovery',
+        'text': 'Fala $firstName! Notei pelo seu check-in diário no app que sua recuperação/sono tá pedindo um pouco de atenção hoje. Hidrate-se bem e me avisa se sentir fadiga excessiva durante as séries!',
+      },
+    ];
+
+    var selectedIndex = 0;
+    final messageCtrl = TextEditingController(text: templates.first['text']);
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        final isDark = MetaColors.isDark(sheetCtx);
+        return StatefulBuilder(
+          builder: (sheetCtx, setSheetState) {
+            return Container(
+              decoration: BoxDecoration(
+                color: isDark ? MetaColors.surface : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border.all(color: MetaColors.cardBorder(sheetCtx)),
+              ),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                14,
+                20,
+                MediaQuery.of(sheetCtx).viewInsets.bottom + 24,
+              ),
+              child: SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 44,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: MetaColors.subtext(sheetCtx).withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: MetaColors.emerald.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.forum_rounded, color: MetaColors.emerald, size: 20),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Incentivo & Feedbacks Sociais',
+                                  style: TextStyle(
+                                    color: MetaColors.text(sheetCtx),
+                                    fontSize: 16.5,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  'Envie uma mensagem personalizada no WhatsApp de $firstName',
+                                  style: TextStyle(color: MetaColors.subtext(sheetCtx), fontSize: 11.5),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(sheetCtx),
+                            icon: Icon(Icons.close_rounded, color: MetaColors.subtext(sheetCtx)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'Templates Rápidos',
+                        style: TextStyle(
+                          color: MetaColors.text(sheetCtx),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: List.generate(templates.length, (i) {
+                          final isSelected = selectedIndex == i;
+                          return ChoiceChip(
+                            label: Text(templates[i]['title']!),
+                            selected: isSelected,
+                            selectedColor: MetaColors.emerald,
+                            backgroundColor: MetaColors.highlight(sheetCtx),
+                            labelStyle: TextStyle(
+                              color: isSelected ? Colors.white : MetaColors.text(sheetCtx),
+                              fontSize: 11.5,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            ),
+                            onSelected: (val) {
+                              if (val) {
+                                setSheetState(() {
+                                  selectedIndex = i;
+                                  messageCtrl.text = templates[i]['text']!;
+                                });
+                              }
+                            },
+                          );
+                        }),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'Mensagem Personalizada',
+                        style: TextStyle(
+                          color: MetaColors.text(sheetCtx),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: messageCtrl,
+                        maxLines: 4,
+                        style: TextStyle(color: MetaColors.text(sheetCtx), fontSize: 13),
+                        decoration: InputDecoration(
+                          hintText: 'Digite a mensagem de incentivo...',
+                          hintStyle: TextStyle(color: MetaColors.subtext(sheetCtx), fontSize: 12),
+                          filled: true,
+                          fillColor: MetaColors.highlight(sheetCtx),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: MetaColors.emerald,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                elevation: 0,
+                              ),
+                              onPressed: () async {
+                                final text = messageCtrl.text.trim();
+                                if (text.isEmpty) return;
+                                if (digits.isEmpty) {
+                                  await Clipboard.setData(ClipboardData(text: text));
+                                  if (sheetCtx.mounted) Navigator.pop(sheetCtx);
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Aluno sem telefone cadastrado. Mensagem copiada!'),
+                                      ),
+                                    );
+                                  }
+                                  return;
+                                }
+                                final encodedMsg = Uri.encodeComponent(text);
+                                final nativeUri = Uri.parse('whatsapp://send?phone=$cleanPhone&text=$encodedMsg');
+                                final webUri = Uri.parse('https://api.whatsapp.com/send?phone=$cleanPhone&text=$encodedMsg');
+                                final waMeUri = Uri.parse('https://wa.me/$cleanPhone?text=$encodedMsg');
+
+                                var launched = false;
+                                try {
+                                  launched = await launchUrl(nativeUri, mode: LaunchMode.externalApplication);
+                                } catch (_) {}
+                                if (!launched) {
+                                  try {
+                                    launched = await launchUrl(webUri, mode: LaunchMode.externalApplication);
+                                  } catch (_) {}
+                                }
+                                if (!launched) {
+                                  try {
+                                    launched = await launchUrl(waMeUri, mode: LaunchMode.externalApplication);
+                                  } catch (_) {}
+                                }
+                                if (!launched && mounted) {
+                                  await Clipboard.setData(ClipboardData(text: text));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Mensagem copiada para a área de transferência!')),
+                                  );
+                                }
+                                if (sheetCtx.mounted) Navigator.pop(sheetCtx);
+                              },
+                              icon: const Icon(Icons.send_rounded, size: 18),
+                              label: const Text(
+                                'Enviar no WhatsApp',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            tooltip: 'Copiar Mensagem',
+                            style: IconButton.styleFrom(
+                              backgroundColor: MetaColors.highlight(sheetCtx),
+                              padding: const EdgeInsets.all(14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            icon: const Icon(Icons.copy_rounded, size: 20),
+                            onPressed: () async {
+                              await Clipboard.setData(ClipboardData(text: messageCtrl.text.trim()));
+                              if (sheetCtx.mounted) Navigator.pop(sheetCtx);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Mensagem copiada com sucesso!')),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildBiomechanicalAlertBanner(BuildContext context) {
+    if (_studentAlert == null) return const SizedBox.shrink();
+    final isDark = MetaColors.isDark(context);
+    final alert = _studentAlert!;
+    final alertId = alert['id']?.toString() ?? '';
+    final origEx = alert['original_exercise']?.toString() ?? 'Exercício';
+    final adaptEx = alert['adapted_exercise']?.toString() ?? '';
+    final reason = alert['reason']?.toString() ?? alert['message']?.toString() ?? 'Desconforto ou adaptação';
+    final studentId = student['id']?.toString() ?? '';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF2A1C14) : const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.6), width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Alerta Biomecânico de Treino',
+                      style: TextStyle(
+                        color: Colors.amber,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Adaptação solicitada durante o treino ativo',
+                      style: TextStyle(
+                        color: MetaColors.subtext(context),
+                        fontSize: 10.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'O aluno relatou "$reason" no exercício "$origEx".',
+            style: TextStyle(
+              color: MetaColors.text(context),
+              fontSize: 12.5,
+            ),
+          ),
+          if (adaptEx.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: MetaColors.emerald.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.auto_awesome, color: MetaColors.emerald, size: 14),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Sugestão IA: $adaptEx',
+                      style: const TextStyle(
+                        color: MetaColors.emerald,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: MetaColors.emerald,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: () async {
+                    final ok = await WorkoutService.swapExerciseInActivePlan(
+                      studentId: studentId,
+                      originalExercise: origEx,
+                      adaptedExercise: adaptEx.isNotEmpty ? adaptEx : origEx,
+                      alertId: alertId,
+                    );
+                    if (ok && mounted) {
+                      setState(() {
+                        _studentAlert = null;
+                      });
+                      _fetchWorkout();
+                      _fetchBioFeedback();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: MetaColors.surfaceHighlight,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          content: Row(
+                            children: [
+                              const Icon(Icons.check_circle_rounded, color: MetaColors.emerald, size: 18),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Substituição oficializada na periodização: $adaptEx!',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.check_rounded, size: 16),
+                  label: const Text(
+                    'Oficializar Troca (1-Toque)',
+                    style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: MetaColors.subtext(context),
+                  side: BorderSide(color: MetaColors.cardBorder(context)),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () async {
+                  if (alertId.isNotEmpty) {
+                    await WorkoutService.acknowledgeAlert(alertId);
+                  }
+                  if (mounted) {
+                    setState(() => _studentAlert = null);
+                  }
+                },
+                child: const Text('Dispensar', style: TextStyle(fontSize: 11.5)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTrainerBodyMetrics(BuildContext context, bool isDark) {
     if (_isLoadingMetrics) {
       return const Padding(
@@ -2600,6 +3373,13 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
             ),
           ),
           centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.forum_outlined, color: MetaColors.emerald),
+              tooltip: 'Incentivo no WhatsApp',
+              onPressed: _openSocialEncouragementWhatsAppSheet,
+            ),
+          ],
         ),
         body: SingleChildScrollView(
         child: Padding(
@@ -2648,6 +3428,68 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        InkWell(
+                          onTap: _openSocialEncouragementWhatsAppSheet,
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: MetaColors.emerald.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.4)),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.forum_rounded, color: MetaColors.emerald, size: 14),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Incentivar no WhatsApp',
+                                  style: TextStyle(
+                                    color: MetaColors.emerald,
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        InkWell(
+                          onTap: _openTrainerAddLoadModal,
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: MetaColors.cardBorder(context)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.fitness_center_rounded, color: MetaColors.emerald, size: 14),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Calibrar Cargas',
+                                  style: TextStyle(
+                                    color: MetaColors.text(context),
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
                   ],
                 ),
               ),
@@ -2825,6 +3667,9 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
               ],
 
               // 3. PERIODIZAÇÃO (Treino)
+              if (_studentAlert != null) ...[
+                _buildBiomechanicalAlertBanner(context),
+              ],
               const MetaSectionTitle(title: 'Periodização'),
               const SizedBox(height: 16),
               if (_isLoadingWorkout)
@@ -3542,7 +4387,7 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                                 Text(
                                   _studentOverloads.isNotEmpty
                                       ? _studentOverloads.map((e) => '${e['exercise']}: ${e['start_load']} ➔ ${e['current_load']}').take(2).join(' • ')
-                                      : 'Aguardando prescrição e 1º treino concluído no Modo Foco',
+                                      : 'Nenhuma carga registrada. Toque em "+ Calibrar" para iniciar o histórico.',
                                   style: TextStyle(
                                     color: MetaColors.subtext(context),
                                     fontSize: 11,
@@ -3551,6 +4396,34 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ],
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          InkWell(
+                            onTap: _openTrainerAddLoadModal,
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: MetaColors.emerald.withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.35)),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.add_rounded, size: 13, color: MetaColors.emerald),
+                                  SizedBox(width: 3),
+                                  Text(
+                                    'Calibrar',
+                                    style: TextStyle(
+                                      color: MetaColors.emerald,
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
