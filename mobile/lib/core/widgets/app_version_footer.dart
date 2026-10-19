@@ -21,11 +21,14 @@ class AppVersionFooter extends StatelessWidget {
   /// Controla a exibição automática do modal de novidades.
   /// Pode ser desativado em suítes de testes automatizados para evitar timers pendentes.
   static bool enableAutoModal = true;
+  static bool _isCheckingOrShowing = false;
+  static bool _hasAutoShown = false;
 
   /// Verifica se o usuário já viu as novidades desta versão. Se for a primeira vez,
   /// exibe o modal automaticamente após o carregamento da tela.
   static Future<void> checkAndShowAutoModal(BuildContext context) async {
-    if (!enableAutoModal) return;
+    if (!enableAutoModal || _isCheckingOrShowing || _hasAutoShown) return;
+    _isCheckingOrShowing = true;
     try {
       final prefs = await SharedPreferences.getInstance();
       final lastSeen = prefs.getInt(_lastSeenBuildKey) ?? 0;
@@ -34,20 +37,28 @@ class AppVersionFooter extends StatelessWidget {
           : AppChangelog.current.buildNumber;
 
       if (currentBuild > lastSeen) {
+        // Atualiza imediatamente na persistência para eliminar condições de corrida entre telas
+        await prefs.setInt(_lastSeenBuildKey, currentBuild);
+        _hasAutoShown = true;
         if (context.mounted) {
-          Future.delayed(const Duration(milliseconds: 1200), () async {
+          Future.delayed(const Duration(milliseconds: 1000), () {
             if (context.mounted) {
-              await prefs.setInt(_lastSeenBuildKey, currentBuild);
               showReleaseNotesModal(context);
             }
           });
         }
       }
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        _isCheckingOrShowing = false;
+      });
+    }
   }
 
   /// Exibe o modal interativo com as novidades da versão atual e histórico anterior
   static void showReleaseNotesModal(BuildContext context) {
+    if (!context.mounted) return;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,

@@ -403,20 +403,36 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: Colors.green,
-            content: Text('Periodização gerada com sucesso pela IA!'),
+          SnackBar(
+            backgroundColor: MetaColors.emerald,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Periodização gerada com sucesso pela IA!',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
+        final cleanMsg = e.toString().replaceFirst(RegExp(r'^(Exception|ClientException):\s*'), '');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.red.shade800,
-            content: Text('Erro ao gerar periodização: $e'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            content: Text('Falha ao gerar periodização: $cleanMsg'),
             action: SnackBarAction(
-              label: 'Mudar IP',
+              label: 'Servidor',
               textColor: Colors.yellow,
               onPressed: () => ServerConfigDialog.show(context),
             ),

@@ -89,6 +89,51 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
         return;
       }
 
+      // Sincronizar dados cadastrais, objetivo e restrições atualizados pelo aluno (profiles + anamnesis)
+      try {
+        final profileRes = await WorkoutService.getStudentProfile(studentId);
+        final latestAnamnesis = await WorkoutService.getLatestStudentAnamnesis(studentId);
+        if (mounted) {
+          setState(() {
+            if (profileRes != null) {
+              student['full_name'] = profileRes['full_name'] ?? student['full_name'];
+              student['age'] = profileRes['age'] ?? student['age'];
+              student['weight_kg'] = profileRes['weight_kg'] ?? student['weight_kg'];
+              student['height_cm'] = profileRes['height_cm'] ?? student['height_cm'];
+              student['phone'] = profileRes['phone'] ?? student['phone'];
+              student['goal'] = profileRes['goal'] ?? student['goal'];
+              student['clinical_restrictions'] = profileRes['clinical_restrictions'] ?? student['clinical_restrictions'];
+              student['injuries_or_restrictions'] = profileRes['injuries_or_restrictions'] ??
+                  profileRes['clinical_restrictions'] ??
+                  student['injuries_or_restrictions'];
+              student['avatar_url'] = profileRes['avatar_url'] ?? profileRes['photo_url'] ?? student['avatar_url'];
+              student['photo_url'] = profileRes['photo_url'] ?? profileRes['avatar_url'] ?? student['photo_url'];
+            }
+            if (latestAnamnesis != null) {
+              if (latestAnamnesis['objective'] != null && latestAnamnesis['objective'].toString().trim().isNotEmpty) {
+                student['goal'] = latestAnamnesis['objective'].toString().trim();
+              }
+              final med = latestAnamnesis['medical_conditions'] ?? latestAnamnesis['injuries'];
+              if (med != null && med.toString().trim().isNotEmpty) {
+                student['injuries_or_restrictions'] = med.toString().trim();
+                student['clinical_restrictions'] = med.toString().trim();
+              }
+              if (latestAnamnesis['weight'] != null) {
+                student['weight_kg'] = latestAnamnesis['weight'];
+              }
+              if (latestAnamnesis['height'] != null) {
+                student['height_cm'] = latestAnamnesis['height'];
+              }
+              if (latestAnamnesis['age'] != null) {
+                student['age'] = latestAnamnesis['age'];
+              }
+            }
+          });
+        }
+      } catch (e) {
+        debugPrint('Aviso ao sincronizar perfil do aluno em tempo real: $e');
+      }
+
       // Buscar telemetria de RPE e Dores
       final fb = await WorkoutService.getStudentWorkoutFeedback(studentId);
       if (mounted) {
@@ -1657,8 +1702,33 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
     });
 
     if (saved == true && mounted) {
-      await Future<void>.delayed(Duration.zero);
-      if (mounted) Navigator.pop(context, true);
+      setState(() {
+        student['full_name'] = nameController.text.trim();
+        student['phone'] = phoneController.text.trim();
+        student['goal'] = goalController.text.trim();
+        student['injuries_or_restrictions'] = restrictionsController.text.trim();
+        student['clinical_restrictions'] = restrictionsController.text.trim();
+      });
+      WorkoutService.studentsRefreshNotifier.value++;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: MetaColors.surfaceHighlight,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: MetaColors.emerald, size: 18),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Perfil e restrições do aluno atualizados com sucesso!',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
   }
 
@@ -3592,6 +3662,34 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: MetaColors.text(context),
+                          ),
+                        ),
+                        const Spacer(),
+                        InkWell(
+                          onTap: _editStudent,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: MetaColors.emerald.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.edit_outlined, size: 12, color: MetaColors.emerald),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Editar',
+                                  style: TextStyle(
+                                    color: MetaColors.emerald,
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],

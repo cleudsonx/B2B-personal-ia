@@ -1364,6 +1364,23 @@ class WorkoutService {
     return true;
   }
 
+  /// Busca os dados cadastrais atualizados do aluno no Supabase (profiles)
+  static Future<Map<String, dynamic>?> getStudentProfile(String studentId) async {
+    final client = _clientOrNull;
+    if (client == null || studentId.isEmpty) return null;
+    try {
+      final res = await client
+          .from('profiles')
+          .select('*')
+          .eq('id', studentId)
+          .maybeSingle();
+      return res != null ? Map<String, dynamic>.from(res) : null;
+    } catch (e) {
+      debugPrint('Aviso ao carregar perfil do aluno: $e');
+      return null;
+    }
+  }
+
   /// Recupera o histórico completo de anamneses do aluno (mais recentes primeiro)
   static Future<List<Map<String, dynamic>>> getStudentAnamnesisHistory(String clientId) async {
     final client = _clientOrNull;
