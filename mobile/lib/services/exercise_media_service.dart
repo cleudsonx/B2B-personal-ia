@@ -30,6 +30,18 @@ class ExerciseMedia {
   });
 
   factory ExerciseMedia.fromJson(Map<String, dynamic> json) {
+    String? thumb = json['thumbnail_url'] as String?;
+    final mediaUrl = json['media_url'] as String? ?? '';
+
+    // Extrai ID do Google Drive para animação/GIF in-app caso thumbnail esteja ausente
+    if ((thumb == null || thumb.trim().isEmpty) && mediaUrl.isNotEmpty) {
+      final regExp = RegExp(r'(?:id=|\/d\/|file\/d\/)([a-zA-Z0-9_\-]+)');
+      final match = regExp.firstMatch(mediaUrl);
+      if (match != null) {
+        thumb = 'https://lh3.googleusercontent.com/d/${match.group(1)}';
+      }
+    }
+
     return ExerciseMedia(
       name: json['name'] as String? ?? 'Exercício',
       slug: (json['slug'] ?? json['normalized_slug']) as String? ?? '',
@@ -39,9 +51,28 @@ class ExerciseMedia {
       motorPattern: json['motor_pattern'] as String?,
       executionCues: json['execution_cues'] as String?,
       mediaSource: json['media_source'] as String? ?? 'custom',
-      mediaUrl: json['media_url'] as String? ?? '',
-      thumbnailUrl: json['thumbnail_url'] as String?,
+      mediaUrl: mediaUrl,
+      thumbnailUrl: thumb,
     );
+  }
+
+  /// Retorna a URL otimizada para demonstração visual in-app sem redirecionamento externo
+  String? get inAppMediaUrl {
+    if (thumbnailUrl != null && thumbnailUrl!.trim().isNotEmpty) {
+      return thumbnailUrl!.trim();
+    }
+    if (mediaUrl.isNotEmpty) {
+      final regExp = RegExp(r'(?:id=|\/d\/|file\/d\/)([a-zA-Z0-9_\-]+)');
+      final match = regExp.firstMatch(mediaUrl);
+      if (match != null) {
+        return 'https://lh3.googleusercontent.com/d/${match.group(1)}';
+      }
+      final clean = mediaUrl.toLowerCase();
+      if (clean.endsWith('.gif') || clean.endsWith('.webp') || clean.endsWith('.png') || clean.endsWith('.jpg')) {
+        return mediaUrl;
+      }
+    }
+    return null;
   }
 }
 

@@ -39,15 +39,23 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.7.0',
-      buildNumber: 2026102908,
+      buildNumber: 2026102909,
       date: '19 de Outubro, 2026',
       summary:
-          'Acervo Definitivo de Mídias (432 Exercícios): GIFs animados em loop contínuo direto no app, categorização por 8 grupamentos musculares + Calistenia e sincronização 100% no Supabase.',
+          'Player In-App Totalmente Integrado: Demonstrações e animações sem sair do aplicativo (com zoom in-app), resolução automática de thumbnails do Drive e Dicas Biomecânicas colapsáveis sob demanda.',
       highlights: [
         ChangelogItem(
-          icon: Icons.gif_box_rounded,
-          title: '432 Exercícios com GIFs Animados Inline',
+          icon: Icons.play_circle_filled_rounded,
+          title: 'Vídeos e GIFs 100% In-App',
           description:
+              'Visualização nativa in-app do movimento sem redirecionamento externo para navegador, com modo tela cheia e zoom interativo.',
+        ),
+        ChangelogItem(
+          icon: Icons.unfold_more_rounded,
+          title: 'Instruções Biomecânicas Colapsáveis',
+          description:
+              'A descrição detalhada da postura agora fica recolhida por padrão e expande com um toque, poupando espaço e mantendo o foco no treino.',
+        ),
               'Demonstrações em loop automático sem delay diretamente no card do exercício, cobrindo Peito, Costas, Bíceps, Tríceps, Ombros, Pernas, Panturrilhas, Abdômen e Calistenia.',
           badge: 'ACERVO',
         ),

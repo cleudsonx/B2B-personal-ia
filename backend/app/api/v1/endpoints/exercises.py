@@ -76,6 +76,15 @@ INITIAL_EXERCISE_MEDIA: Dict[str, Dict[str, Any]] = {
 }
 
 
+def _extract_drive_thumbnail(media_url: Optional[str]) -> Optional[str]:
+    if not media_url:
+        return None
+    m = re.search(r'(?:id=|\/d\/|file\/d\/)([a-zA-Z0-9_\-]+)', media_url)
+    if m:
+        return f"https://lh3.googleusercontent.com/d/{m.group(1)}"
+    return None
+
+
 def _get_combined_catalog() -> Dict[str, Dict[str, Any]]:
     catalog = dict(INITIAL_EXERCISE_MEDIA)
     catalog_path = Path(__file__).resolve().parent.parent.parent.parent / "data" / "exercise_catalog.json"
@@ -87,6 +96,14 @@ def _get_combined_catalog() -> Dict[str, Dict[str, Any]]:
                     catalog.update(extra)
         except Exception as e:
             logger.warning(f"[ExerciseLibrary] Erro ao ler exercise_catalog.json: {e}")
+
+    # Garante que qualquer entrada com media_url do Drive tenha thumbnail_url in-app
+    for entry in catalog.values():
+        if not entry.get("thumbnail_url") and entry.get("media_url"):
+            extracted = _extract_drive_thumbnail(entry["media_url"])
+            if extracted:
+                entry["thumbnail_url"] = extracted
+
     return catalog
 
 
@@ -180,6 +197,7 @@ async def get_exercise_media(name: str = Query(..., description="Nome do exercí
                         best_row = row
 
                 if best_row:
+                    thumb = best_row.get("thumbnail_url") or _extract_drive_thumbnail(best_row.get("media_url"))
                     return ExerciseMediaResponse(
                         name=best_row["name"],
                         slug=best_row.get("normalized_slug") or _normalize(best_row["name"]).replace(" ", "-"),
@@ -190,7 +208,7 @@ async def get_exercise_media(name: str = Query(..., description="Nome do exercí
                         execution_cues=best_row.get("execution_cues"),
                         media_source=best_row.get("media_source", "custom"),
                         media_url=best_row["media_url"],
-                        thumbnail_url=best_row.get("thumbnail_url"),
+                        thumbnail_url=thumb,
                     )
     except Exception as e:
         logger.warning(f"[ExerciseLibrary] Supabase fallback: {e}")
@@ -212,6 +230,7 @@ async def get_exercise_media(name: str = Query(..., description="Nome do exercí
             best_data = data
 
     if best_data:
+        thumb = best_data.get("thumbnail_url") or _extract_drive_thumbnail(best_data.get("media_url"))
         return ExerciseMediaResponse(
             name=best_data["name"],
             slug=best_data["slug"],
@@ -222,7 +241,7 @@ async def get_exercise_media(name: str = Query(..., description="Nome do exercí
             execution_cues=best_data.get("execution_cues"),
             media_source=best_data["media_source"],
             media_url=best_data["media_url"],
-            thumbnail_url=best_data.get("thumbnail_url"),
+            thumbnail_url=thumb,
         )
 
     return None

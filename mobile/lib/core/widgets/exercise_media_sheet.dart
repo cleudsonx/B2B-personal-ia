@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../services/exercise_media_service.dart';
 import 'biomechanical_analysis_sheet.dart';
 import 'meta_components.dart';
 
-/// Modal interativo com demonstração em vídeo e orientações biomecânicas do exercício
-class ExerciseMediaSheet extends StatelessWidget {
+/// Modal interativo com demonstração in-app e orientações biomecânicas colapsáveis do exercício
+class ExerciseMediaSheet extends StatefulWidget {
   final String exerciseName;
   final ExerciseMedia? media;
 
@@ -35,15 +34,80 @@ class ExerciseMediaSheet extends StatelessWidget {
     );
   }
 
-  Future<void> _openVideo(String url) async {
-    try {
-      final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
-    } catch (e) {
-      debugPrint('[ExerciseMediaSheet] Erro ao abrir vídeo: $e');
-    }
+  @override
+  State<ExerciseMediaSheet> createState() => _ExerciseMediaSheetState();
+}
+
+class _ExerciseMediaSheetState extends State<ExerciseMediaSheet> {
+  // Controle de expansão das dicas biomecânicas (recolhido por padrão para otimizar espaço)
+  bool _isCuesExpanded = false;
+
+  void _openInAppFullScreenViewer(BuildContext context, String mediaUrl, String title) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.92),
+      builder: (dialogCtx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              InteractiveViewer(
+                minScale: 0.8,
+                maxScale: 4.0,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.network(
+                    mediaUrl,
+                    fit: BoxFit.contain,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: MetaColors.emerald,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: IconButton(
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black.withValues(alpha: 0.65),
+                  ),
+                  icon: const Icon(Icons.close_rounded, color: Colors.white, size: 24),
+                  onPressed: () => Navigator.pop(dialogCtx),
+                ),
+              ),
+              Positioned(
+                bottom: 16,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.75),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                  ),
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -55,17 +119,18 @@ class ExerciseMediaSheet extends StatelessWidget {
     final textColor = isDark ? MetaColors.textPrimary : MetaColors.lightTextPrimary;
     final subtextColor = isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary;
 
-    final resolvedTitle = media?.name ?? exerciseName;
-    final resolvedMuscle = media?.muscleGroup ?? 'Músculo Principal';
-    final resolvedEquip = media?.equipment ?? 'Equipamento de Academia';
-    final hasVideo = media != null && media!.mediaUrl.isNotEmpty;
+    final resolvedTitle = widget.media?.name ?? widget.exerciseName;
+    final resolvedMuscle = widget.media?.muscleGroup ?? 'Músculo Principal';
+    final resolvedEquip = widget.media?.equipment ?? 'Equipamento de Academia';
+    final inAppMediaUrl = widget.media?.inAppMediaUrl;
+    final hasInAppMedia = inAppMediaUrl != null && inAppMediaUrl.isNotEmpty;
 
     return SafeArea(
       child: Container(
         margin: const EdgeInsets.all(12),
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.88,
+          maxHeight: MediaQuery.sizeOf(context).height * 0.90,
         ),
         decoration: BoxDecoration(
           color: bg,
@@ -73,7 +138,7 @@ class ExerciseMediaSheet extends StatelessWidget {
           border: Border.all(color: border),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.6),
+              color: Colors.black.withValues(alpha: 0.65),
               blurRadius: 32,
               offset: const Offset(0, 10),
             ),
@@ -97,7 +162,7 @@ class ExerciseMediaSheet extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // Cabeçalho
+              // Cabeçalho do Exercício
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -111,9 +176,9 @@ class ExerciseMediaSheet extends StatelessWidget {
                       ),
                     ),
                     child: const Icon(
-                      Icons.play_circle_filled_rounded,
+                      Icons.fitness_center_rounded,
                       color: MetaColors.emerald,
-                      size: 24,
+                      size: 22,
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -178,94 +243,211 @@ class ExerciseMediaSheet extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
 
-              // Área de Mídia (GIF Animado nativo ou Player de Vídeo)
-              if (media?.thumbnailUrl != null && media!.thumbnailUrl!.isNotEmpty) ...[
+              // Área de Demonstração In-App (GIF Animado em Loop ou Banner de Processamento)
+              if (hasInAppMedia) ...[
                 ClipRRect(
                   borderRadius: BorderRadius.circular(18),
                   child: Container(
                     width: double.infinity,
-                    height: 210,
+                    height: 220,
                     decoration: BoxDecoration(
                       color: isDark ? const Color(0xFF0C1322) : const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(
-                        color: MetaColors.emerald.withValues(alpha: 0.3),
+                        color: MetaColors.emerald.withValues(alpha: 0.35),
                       ),
                     ),
-                    child: Image.network(
-                      media!.thumbnailUrl!,
-                      fit: BoxFit.contain,
-                      loadingBuilder: (context, child, progress) {
-                        if (progress == null) return child;
-                        return const Center(
-                          child: SizedBox(
-                            width: 32,
-                            height: 32,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              color: MetaColors.emerald,
-                            ),
-                          ),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        return _buildVideoPlayerCard(isDark, textColor, subtextColor, hasVideo);
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ] else ...[
-                _buildVideoPlayerCard(isDark, textColor, subtextColor, hasVideo),
-                const SizedBox(height: 16),
-              ],
-
-              // Orientações da IA de Biomecânica
-              if (media?.executionCues != null && media!.executionCues!.isNotEmpty) ...[
-                const SizedBox(height: 18),
-                Text(
-                  'COMO EXECUTAR (DICAS BIOMECÂNICAS)',
-                  style: TextStyle(
-                    color: subtextColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.1,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: cardBg,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: border),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.lightbulb_outline_rounded, size: 20, color: Colors.amber),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          media!.executionCues!,
-                          style: TextStyle(
-                            color: textColor,
-                            fontSize: 12.5,
-                            height: 1.4,
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Image.network(
+                            inAppMediaUrl,
+                            fit: BoxFit.contain,
+                            loadingBuilder: (context, child, progress) {
+                              if (progress == null) return child;
+                              return const Center(
+                                child: SizedBox(
+                                  width: 32,
+                                  height: 32,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: MetaColors.emerald,
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return _buildFallbackCard(isDark, textColor, subtextColor);
+                            },
                           ),
                         ),
+
+                        // Badge indicando execução contínua in-app
+                        Positioned(
+                          top: 10,
+                          left: 10,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: MetaColors.emerald.withValues(alpha: 0.4),
+                              ),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.repeat_rounded, size: 13, color: MetaColors.emerald),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Demonstração In-App',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // Botão para zoom e tela cheia in-app (sem redirecionar externamente)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.fullscreen_rounded, color: Colors.white, size: 20),
+                              tooltip: 'Ver em Tela Cheia In-App',
+                              onPressed: () => _openInAppFullScreenViewer(context, inAppMediaUrl, resolvedTitle),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ] else ...[
+                _buildFallbackCard(isDark, textColor, subtextColor),
+              ],
+
+              // Dicas Biomecânicas e Postura (Card Colapsável sob demanda)
+              if (widget.media?.executionCues != null && widget.media!.executionCues!.trim().isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: cardBg,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: _isCuesExpanded
+                          ? MetaColors.emerald.withValues(alpha: 0.45)
+                          : border,
+                    ),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _isCuesExpanded = !_isCuesExpanded;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.withValues(alpha: 0.15),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.lightbulb_outline_rounded,
+                                    size: 16,
+                                    color: Colors.amber,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'COMO EXECUTAR (POSTURA & BIOMECÂNICA)',
+                                        style: TextStyle(
+                                          color: subtextColor,
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 0.8,
+                                        ),
+                                      ),
+                                      if (!_isCuesExpanded) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'Toque para abrir orientações posturais detalhadas',
+                                          style: TextStyle(
+                                            color: textColor.withValues(alpha: 0.7),
+                                            fontSize: 11.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: MetaColors.surfaceHighlight,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    _isCuesExpanded
+                                        ? Icons.keyboard_arrow_up_rounded
+                                        : Icons.keyboard_arrow_down_rounded,
+                                    size: 18,
+                                    color: subtextColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (_isCuesExpanded) ...[
+                              const SizedBox(height: 12),
+                              Divider(color: border, height: 1),
+                              const SizedBox(height: 12),
+                              Text(
+                                widget.media!.executionCues!,
+                                style: TextStyle(
+                                  color: textColor,
+                                  fontSize: 13,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ],
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
 
-              // Ação secundária: Ver Análise 3D
+              // Ação Secundária: Ver Análise 3D
               SizedBox(
                 width: double.infinity,
                 child: TextButton.icon(
@@ -292,92 +474,51 @@ class ExerciseMediaSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildVideoPlayerCard(
-    bool isDark,
-    Color textColor,
-    Color subtextColor,
-    bool hasVideo,
-  ) {
+  Widget _buildFallbackCard(bool isDark, Color textColor, Color subtextColor) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDark
-              ? [const Color(0xFF131B2E), const Color(0xFF0F172A)]
-              : [const Color(0xFFF1F5F9), const Color(0xFFE2E8F0)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
+        color: isDark ? const Color(0xFF0C1322) : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: MetaColors.emerald.withValues(alpha: 0.3),
+          color: MetaColors.emerald.withValues(alpha: 0.25),
         ),
       ),
       child: Column(
         children: [
           Container(
-            width: 64,
-            height: 64,
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: MetaColors.emerald,
+              color: MetaColors.emerald.withValues(alpha: 0.15),
               shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: MetaColors.emerald.withValues(alpha: 0.4),
-                  blurRadius: 16,
-                  spreadRadius: 2,
-                ),
-              ],
             ),
-            child: IconButton(
-              icon: const Icon(
-                Icons.play_arrow_rounded,
-                color: Colors.white,
-                size: 36,
-              ),
-              onPressed: hasVideo ? () => _openVideo(media!.mediaUrl) : null,
+            child: const Icon(
+              Icons.hourglass_top_rounded,
+              size: 28,
+              color: MetaColors.emerald,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Text(
-            hasVideo
-                ? 'Vídeo de Demonstração em Alta Definição'
-                : 'Vídeo em processo de catalogação',
+            'Demonstração em Processamento',
             style: TextStyle(
               color: textColor,
-              fontSize: 13.5,
+              fontSize: 14,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            hasVideo
-                ? 'Toque no play para assistir à execução biomecânica oficial.'
-                : 'A demonstração em vídeo para este movimento estará disponível em breve.',
+            'A animação biomecânica deste movimento estará disponível em instantes.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: subtextColor,
-              fontSize: 11.5,
+              fontSize: 12,
             ),
           ),
-          if (hasVideo) ...[
-            const SizedBox(height: 14),
-            OutlinedButton.icon(
-              onPressed: () => _openVideo(media!.mediaUrl),
-              icon: const Icon(Icons.open_in_new_rounded, size: 16),
-              label: const Text('Assistir no Player Externo'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: MetaColors.emerald,
-                side: BorderSide(color: MetaColors.emerald.withValues(alpha: 0.5)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
 }
-
-
