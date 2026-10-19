@@ -221,6 +221,58 @@ class WhatsAppService:
             r.raise_for_status()
             return r.json()
 
+    async def send_text_with_fallback(
+        self,
+        number: str,
+        text: str,
+        trainer_id: Optional[str] = None,
+    ) -> dict:
+        """
+        Envia mensagem de WhatsApp com arquitetura resiliente de fallback em 2 níveis:
+        1. Tenta a instância própria do Treinador (White-label), se trainer_id fornecido.
+        2. Se a instância do treinador estiver desconectada, não existir ou falhar,
+           faz fallback automático transparente para o WhatsApp oficial da Plataforma
+           (settings.EVOLUTION_INSTANCE = "mr_coach_instance").
+        """
+        target_number = self._format_phone(number)
+        if not target_number:
+            logger.warning("[WhatsApp] Telefone inválido para envio: %s", number)
+            return {"status": "skipped", "reason": "invalid_phone"}
+
+        # Nível 1: Instância White-label do Treinador
+        if trainer_id:
+            trainer_inst = instance_name_for(trainer_id)
+            try:
+                res = await self.send_text_message(trainer_inst, target_number, text)
+                logger.info("[WhatsApp] Mensagem enviada via instância do treinador (%s)", trainer_inst)
+                return {
+                    "status": "sent",
+                    "channel": "trainer_instance",
+                    "instance": trainer_inst,
+                    "provider_response": res,
+                }
+            except Exception as e:
+                logger.info(
+                    "[WhatsApp] Instância do treinador (%s) indisponível ou offline (%s). Recorrendo ao WhatsApp da Plataforma.",
+                    trainer_inst,
+                    e,
+                )
+
+        # Nível 2: Instância Oficial da Plataforma Mr. Coach
+        platform_inst = settings.EVOLUTION_INSTANCE or "mr_coach_instance"
+        try:
+            res = await self.send_text_message(platform_inst, target_number, text)
+            logger.info("[WhatsApp] Mensagem enviada via instância oficial da Plataforma (%s)", platform_inst)
+            return {
+                "status": "sent",
+                "channel": "platform_instance",
+                "instance": platform_inst,
+                "provider_response": res,
+            }
+        except Exception as e:
+            logger.warning("[WhatsApp] Falha ao enviar via instância oficial da Plataforma (%s): %s", platform_inst, e)
+            return {"status": "failed", "reason": str(e), "phone": target_number}
+
     async def notify_new_workout(
         self,
         trainer_id: str,
@@ -235,22 +287,13 @@ class WhatsAppService:
             logger.warning("[WhatsApp] Telefone inválido ao notificar novo treino para %s.", student_name)
             return {"status": "skipped", "reason": "invalid_phone"}
 
-        instance = instance_name_for(trainer_id)
         text = (
             f"🚀 *Treino Atualizado no Mr. Coach!*\n\n"
             f"Fala, {student_name}! {trainer_name} acabou de liberar sua nova programação: *{workout_title}*.\n\n"
             f"Acesse agora pelo app ou digite *1* aqui para ver o resumo:\n"
             f"https://shaipados-labs.web.app"
         )
-        try:
-            return await self.send_text_message(instance, number, text)
-        except Exception as e:
-            logger.warning(
-                "[WhatsApp] Não foi possível enviar notificação de novo treino (instância %s): %s",
-                instance,
-                e,
-            )
-            return {"status": "skipped", "reason": str(e)}
+        return await self.send_text_with_fallback(number=number, text=text, trainer_id=trainer_id)
 
     async def notify_streak_risk(
         self,
@@ -266,7 +309,6 @@ class WhatsAppService:
             logger.warning("[WhatsApp] Telefone inválido ao notificar risco de ofensiva para %s.", student_name)
             return {"status": "skipped", "reason": "invalid_phone"}
 
-        instance = instance_name_for(trainer_id)
         text = (
             f"🔥 *Atenção à sua Ofensiva, {student_name}!*\n\n"
             f"Você está com *{current_streak} dias* de consistência, mas notamos sua falta nos últimos dias. "
@@ -274,15 +316,7 @@ class WhatsAppService:
             f"Seu treino já está pronto no Mr. Coach:\n"
             f"https://shaipados-labs.web.app"
         )
-        try:
-            return await self.send_text_message(instance, number, text)
-        except Exception as e:
-            logger.warning(
-                "[WhatsApp] Não foi possível enviar alerta de ofensiva (instância %s): %s",
-                instance,
-                e,
-            )
-            return {"status": "skipped", "reason": str(e)}
+        return await self.send_text_with_fallback(number=number, text=text, trainer_id=trainer_id)
 
     async def notify_inactivity_checkin(
         self,
@@ -307,20 +341,7 @@ class WhatsAppService:
             f"Se precisar adaptar o treino de hoje para fazer mais rápido, é só responder aqui ou digitar *1* para ver sua ficha!\n\n"
             f"📲 Acesse direto: https://shaipados-labs.web.app 💪"
         )
-        if not number:
-            return {"status": "skipped", "reason": "invalid_phone", "message_text": text}
-
-        instance = instance_name_for(trainer_id)
-        try:
-            res = await self.send_text_message(instance, number, text)
-            return {"status": "sent", "provider_response": res, "message_text": text, "phone": number}
-        except Exception as e:
-            logger.warning(
-                "[WhatsApp] Falha no disparo proativo de retenção (instância %s): %s",
-                instance,
-                e,
-            )
-            return {"status": "fallback_wa", "reason": str(e), "message_text": text, "phone": number}
+        return await self.send_text_with_fallback(number=number, text=text, trainer_id=trainer_id)
 
     async def send_weekly_digest_to_trainer(
         self,

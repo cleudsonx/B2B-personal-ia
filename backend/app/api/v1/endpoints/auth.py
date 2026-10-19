@@ -243,10 +243,9 @@ async def request_recovery_otp(req: RequestOtpRecovery):
             f"Ele é válido por 10 minutos. Se você não solicitou, ignore esta mensagem."
         )
         try:
-            await whatsapp_service.send_text_message(
-                instance_name="system_recovery",
+            await whatsapp_service.send_text_with_fallback(
                 number=formatted_phone,
-                text=msg_text
+                text=msg_text,
             )
         except Exception as e:
             logger.warning(f"[Recovery] Erro ao enviar mensagem WhatsApp: {e}")

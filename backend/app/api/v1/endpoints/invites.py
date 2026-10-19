@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.services.supabase_service import supabase_service, is_valid_uuid
 from app.services.audit_service import log_audit_event
 from app.services.email_service import email_service
+from app.services.whatsapp_service import whatsapp_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -139,6 +140,35 @@ async def create_invite(
             logger.info(f"[Invites] E-mail de convite disparado com sucesso para {body.target_email}")
         except Exception as mail_err:
             logger.warning(f"[Invites] Erro não bloqueante ao enviar e-mail de convite para {body.target_email}: {mail_err}")
+
+    # Dispara mensagem via WhatsApp (com fallback Treinador -> Plataforma) se o canal for 'whatsapp'
+    if body.channel == "whatsapp" and body.target_phone:
+        trainer_name = "Seu Personal Trainer"
+        try:
+            client = await supabase_service.get_client()
+            if client:
+                t_res = await client.table("profiles").select("full_name").eq("id", trainer_id).maybe_single().execute()
+                if t_res and t_res.data:
+                    trainer_name = t_res.data.get("full_name") or trainer_name
+        except Exception:
+            pass
+
+        wa_text = (
+            f"Olá, {body.target_name or 'Aluno'}! 👋\n\n"
+            f"O seu Personal Trainer *{trainer_name}* te convidou para o *Mr. Coach*.\n\n"
+            f"Clique no link seguro para confirmar seu acesso e preencher sua anamnese de treino:\n"
+            f"{invite_url}\n\n"
+            f"Bora treinar com alto nível! 💪"
+        )
+        try:
+            await whatsapp_service.send_text_with_fallback(
+                number=body.target_phone,
+                text=wa_text,
+                trainer_id=trainer_id,
+            )
+            logger.info(f"[Invites] Convite WhatsApp enviado automaticamente para {body.target_phone}")
+        except Exception as wa_err:
+            logger.warning(f"[Invites] Erro não bloqueante ao enviar WhatsApp de convite para {body.target_phone}: {wa_err}")
 
     return CreateInviteResponse(
         token=token,

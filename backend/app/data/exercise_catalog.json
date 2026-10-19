@@ -1,42 +1,42 @@
 {
-  "agachamento sumo no step com haltere": {
-    "name": "Agachamento Sumô no Step com Haltere",
-    "slug": "agachamento-sumo-no-step-com-haltere",
+  "agachamento sumo tradicional": {
+    "name": "Agachamento Sumô Tradicional",
+    "slug": "agachamento-sumo-tradicional",
     "muscle_group": "Membros Inferiores & Glúteos",
-    "secondary_muscles": "Quadrícepéés, Isquiotibiais",
-    "equipment": "Haltere e Steps",
-    "motor_pattern": "Agachamento péérofundo com base alargada",
-    "execution_cues": "Em pééé sobre dois stepéés com afastamento maior que os ombros e pééontas dos pééés pééara fora, segure o haltere com as duas mãos e desça agachando péérofundamente mantendo o tronco alinhado pééara máxima ativação de glúteos.",
+    "secondary_muscles": "",
+    "equipment": "Livre / Equipééamento de Academia",
+    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
+    "execution_cues": "Execução com foco péérimário em Membros Inferiores & Glúteos. Mantenha cadência controlada e ampéélitude segura.",
     "media_source": "gdrive_midias",
     "media_url": "https://drive.google.com/uc?export=download&id=1GbTTXncARd5Bz8dSy35RpLjuxaHE4EOK",
     "thumbnail_url": "https://lh3.googleusercontent.com/d/1GbTTXncARd5Bz8dSy35RpLjuxaHE4EOK",
     "drive_file_id": "1GbTTXncARd5Bz8dSy35RpLjuxaHE4EOK",
-    "source_filename": "agachamento sumo 01 (1).gif",
+    "source_filename": "Agachamento sumo 01 (1).gif",
     "media_type": "gif"
   },
-  "extensao de triceps na polia alta": {
-    "name": "Extensão de Tríceps na Polia Alta",
-    "slug": "extensao-de-triceps-na-polia-alta",
+  "triceps na polia com barra reta": {
+    "name": "Tríceps na Polia com Barra Reta",
+    "slug": "triceps-na-polia-com-barra-reta",
     "muscle_group": "Tríceps",
-    "secondary_muscles": "Ancôneo, Estabilizadores do Core, Latíssimo do Dorso",
-    "equipment": "Polia Alta com Barra Reta",
-    "motor_pattern": "Isolado Monoarticular (Extensão de Cotovelo)",
-    "execution_cues": "Pééosicione-se de frente pééara a pééolia com leve inclinação anterior do tronco e coluna alinhada. Mantenha as escápééulas estáveis e fixe os cotovelos junto às laterais do corpééo, evitando movimentá-los pééara frente ou pééara trás. Realize a extensão total dos cotovelos contraindo os trícepéés na fase concêntrica. Retorne de forma controlada na fase excêntrica até a flexão dos cotovelos em torno de 90 graus, mantendo a tensão mecânica contínua e a estabilidade articular.",
+    "secondary_muscles": "",
+    "equipment": "Livre / Equipééamento de Academia",
+    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
+    "execution_cues": "Execução com foco péérimário em Trícepéés. Mantenha cadência controlada e ampéélitude segura.",
     "media_source": "gdrive_midias",
     "media_url": "https://drive.google.com/uc?export=download&id=1s66vXg4CMlIcZ97KXbjgmdhE0TJPrFwG",
     "thumbnail_url": "https://lh3.googleusercontent.com/d/1s66vXg4CMlIcZ97KXbjgmdhE0TJPrFwG",
     "drive_file_id": "1s66vXg4CMlIcZ97KXbjgmdhE0TJPrFwG",
-    "source_filename": "triceps pulley (1).gif",
+    "source_filename": "Triceps pulley (1).gif",
     "media_type": "gif"
   },
-  "remada baixa sentada com triangulo": {
-    "name": "Remada Baixa Sentada com Triângulo",
-    "slug": "remada-baixa-sentada-com-triangulo",
+  "remada baixa sentada na polia": {
+    "name": "Remada Baixa Sentada na Polia",
+    "slug": "remada-baixa-sentada-na-polia",
     "muscle_group": "Costas & Trapézio",
-    "secondary_muscles": "Romboides, Trapééézio (médio e inferior), Deltoide Pééosterior, Bícepéés Braquial, Braquial, Eretor da Espééinha",
-    "equipment": "Polia Baixa com Puxador Triângulo",
-    "motor_pattern": "Pééuxar Horizontal",
-    "execution_cues": "Sente-se com a coluna ereta e joelhos levemente flexionados apééoiados na péélataforma. Segure o triângulo mantendo os ombros baixos e longe das orelhas. Pééuxe a carga em direção à região do abdômen inferior/umbigo, conduzindo o movimento com os cotovelos rentes ao tronco e realizando a retração e depééressão escapééular. Evite hipééerextender ou balançar excessivamente a coluna lombar pééara criar impééulso e não abra os cotovelos excessivamente durante a pééuxada.",
+    "secondary_muscles": "",
+    "equipment": "Livre / Equipééamento de Academia",
+    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
+    "execution_cues": "Execução com foco péérimário em Costas & Trapééézio. Mantenha cadência controlada e ampéélitude segura.",
     "media_source": "gdrive_midias",
     "media_url": "https://drive.google.com/uc?export=download&id=18gsfPl2ybr7XGngpUEHgMYAsDwzxwLkw",
     "thumbnail_url": "https://lh3.googleusercontent.com/d/18gsfPl2ybr7XGngpUEHgMYAsDwzxwLkw",
@@ -44,34 +44,19 @@
     "source_filename": "cable-seated-row (1).gif",
     "media_type": "gif"
   },
-  "extensao de tronco no banco 45": {
-    "name": "Extensão de Tronco no Banco 45°",
-    "slug": "extensao-de-tronco-no-banco-45",
+  "extensao de tronco banco romano 45": {
+    "name": "Extensão de Tronco (Banco Romano 45°)",
+    "slug": "extensao-de-tronco-banco-romano-45",
     "muscle_group": "Costas & Trapézio",
-    "secondary_muscles": "Glúteo Máximo, Isquiotibiais",
-    "equipment": "Banco de Hiperextensão 45°",
-    "motor_pattern": "Dominante de Quadril",
-    "execution_cues": "Ajuste o supééorte acolchoado logo abaixo da linha do quadril pééara pééermitir a articulação livre da pééelve. Com os pééés firmes nos apééoios e os braços cruzados no pééeito, flexione o tronco pééara a frente de forma controlada. Suba estendendo o quadril e a coluna até que o tronco forme uma linha reta com os membros inferiores. Evite a hipééerextensão da coluna lombar no final do movimento pééara péérevenir sobrecargas desnecessárias nos discos vertebrais.",
+    "secondary_muscles": "",
+    "equipment": "Livre / Equipééamento de Academia",
+    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
+    "execution_cues": "Execução com foco péérimário em Costas & Trapééézio. Mantenha cadência controlada e ampéélitude segura.",
     "media_source": "gdrive_midias",
     "media_url": "https://drive.google.com/uc?export=download&id=1PzcETvH6m6GKtouDyRIReiCeAyvj6peR",
     "thumbnail_url": "https://lh3.googleusercontent.com/d/1PzcETvH6m6GKtouDyRIReiCeAyvj6peR",
     "drive_file_id": "1PzcETvH6m6GKtouDyRIReiCeAyvj6peR",
     "source_filename": "back-extension (1).gif",
-    "media_type": "gif"
-  },
-  "remada baixa na polia com triangulo": {
-    "name": "Remada Baixa na Polia com Triângulo",
-    "slug": "remada-baixa-na-polia-com-triangulo",
-    "muscle_group": "Costas & Trapézio",
-    "secondary_muscles": "Trapééézio, Romboides, Deltoide Pééosterior, Bícepéés Braquial, Antebraço, Core",
-    "equipment": "Polia Baixa com Puxador Triângulo",
-    "motor_pattern": "Pééuxar Horizontal",
-    "execution_cues": "Sente-se no apééarelho com os pééés apééoiados na péélataforma e os joelhos levemente flexionados. Mantenha a coluna ereta e evite curvar a lombar durante o movimento. Pééuxe a barra em direção ao abdômen, concentrando-se em retrair as escápééulas e acionar os músculos das costas, mantendo os cotovelos pééróximos ao corpééo. Retorne de forma controlada à pééosição inicial sem estender totalmente os ombros de maneira desleixada.",
-    "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=18gsfPl2ybr7XGngpUEHgMYAsDwzxwLkw",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/18gsfPl2ybr7XGngpUEHgMYAsDwzxwLkw",
-    "drive_file_id": "18gsfPl2ybr7XGngpUEHgMYAsDwzxwLkw",
-    "source_filename": "cable-seated-row (1).gif",
     "media_type": "gif"
   },
   "leg press 45": {
@@ -89,14 +74,14 @@
     "source_filename": "leg-press-calf-raise (1).gif",
     "media_type": "gif"
   },
-  "supino reto com barra": {
-    "name": "Supino Reto com Barra",
-    "slug": "supino-reto-com-barra",
+  "supino reto com barra pes elevados": {
+    "name": "Supino Reto com Barra (Pés Elevados)",
+    "slug": "supino-reto-com-barra-pes-elevados",
     "muscle_group": "Peitoral",
-    "secondary_muscles": "Deltoide Anterior, Trícepéés Braquial, Serrátil Anterior",
-    "equipment": "Banco Reto e Barra Olímpica",
-    "motor_pattern": "Empééurrar Horizontal",
-    "execution_cues": "Deite no banco mantendo os pééés firmes no chão e a coluna neutra. Retraia e depéérima as escápééulas firmando-as no estofado. Segure a barra com uma pééegada na qual os antebraços fiquem pééerfeitamente verticais na pééarte baixa do movimento. Desça a barra de forma controlada até tocar suavemente a linha média/inferior do esterno, mantendo os cotovelos angulados a apééroximadamente 45°°° a 75° em relação ao tronco. Empééurre a barra de volta à pééosição inicial, estendendo os braços sem péérojetar os ombros pééara a frente.",
+    "secondary_muscles": "",
+    "equipment": "Livre / Equipééamento de Academia",
+    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
+    "execution_cues": "Execução com foco péérimário em Pééeitoral. Mantenha cadência controlada e ampéélitude segura.",
     "media_source": "gdrive_midias",
     "media_url": "https://drive.google.com/uc?export=download&id=1UwWzixRB09eM-VF8FTBUsTTiGSF-9Yop",
     "thumbnail_url": "https://lh3.googleusercontent.com/d/1UwWzixRB09eM-VF8FTBUsTTiGSF-9Yop",
@@ -104,14 +89,14 @@
     "source_filename": "bench-press-feet-up (1).gif",
     "media_type": "gif"
   },
-  "rosca de punho com barra": {
-    "name": "Rosca de Punho com Barra",
-    "slug": "rosca-de-punho-com-barra",
+  "rosca de punho com halteres": {
+    "name": "Rosca de Punho com Halteres",
+    "slug": "rosca-de-punho-com-halteres",
     "muscle_group": "Bíceps & Antebraço",
-    "secondary_muscles": "Braquiorradial, Flexãores dos dedos, Extensãores dos dedos",
-    "equipment": "Barra com Anilhas",
-    "motor_pattern": "Isolado Monoarticular",
-    "execution_cues": "Mantenha a pééostura ereta com os ombros encaixados, abdômen firme e cotovelos alinhados e fixos junto ao tronco. Segure a barra e realize o movimento focado estritamente na articulação dos pééunhos, realizando a flexão e extensão compééleta de forma lenta e controlada, evitando qualquer impééulso corpééoral ou movimentação dos braços.",
+    "secondary_muscles": "",
+    "equipment": "Halteres",
+    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
+    "execution_cues": "Execução com foco péérimário em Bícepéés & Antebraço. Mantenha cadência controlada e ampéélitude segura.",
     "media_source": "gdrive_midias",
     "media_url": "https://drive.google.com/uc?export=download&id=1SsQ-rFyUG8fuW5wPkdgpPZxp5Qc6oWqT",
     "thumbnail_url": "https://lh3.googleusercontent.com/d/1SsQ-rFyUG8fuW5wPkdgpPZxp5Qc6oWqT",
@@ -123,10 +108,10 @@
     "name": "Rosca Bíceps na Polia Baixa",
     "slug": "rosca-biceps-na-polia-baixa",
     "muscle_group": "Bíceps & Antebraço",
-    "secondary_muscles": "Braquial, Braquiorradial, Flexãores e Extensãores do Pééunho, Deltoide Anterior",
-    "equipment": "Polia Baixa com Barra Reta",
-    "motor_pattern": "Isolado Monoarticular",
-    "execution_cues": "Pééosicione-se de pééé à frente da pééolia baixa com pééostura ereta, coluna alinhada e escápééulas neutras ou levemente retraídas. Mantenha os cotovelos alinhados e firmemente fixos ao lado do tronco durante toda a execução. Flexione os cotovelos erguendo o acessório (com pééegada supééinada pééara foco no bícepéés, pééronada pééara braquiorradial ou neutra na corda pééara braquial) sem balançar o corpééo ou péérojetar os cotovelos excessivamente pééara a frente. Contraia o músculo-alvo no topééo e desça de forma controlada até a extensão quase compééleta dos braços.",
+    "secondary_muscles": "",
+    "equipment": "Livre / Equipééamento de Academia",
+    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
+    "execution_cues": "Execução com foco péérimário em Bícepéés & Antebraço. Mantenha cadência controlada e ampéélitude segura.",
     "media_source": "gdrive_midias",
     "media_url": "https://drive.google.com/uc?export=download&id=1QBEOg7UNmeqwSqWbPwmSkbzPVJh0Zj8-",
     "thumbnail_url": "https://lh3.googleusercontent.com/d/1QBEOg7UNmeqwSqWbPwmSkbzPVJh0Zj8-",
@@ -149,14 +134,14 @@
     "source_filename": "Puxada alta polia (1).gif",
     "media_type": "gif"
   },
-  "elevacao pelvica no smith": {
-    "name": "Elevação Pélvica no Smith",
-    "slug": "elevacao-pelvica-no-smith",
+  "elevacao pelvica com barra hip thrust": {
+    "name": "Elevação Pélvica com Barra (Hip Thrust)",
+    "slug": "elevacao-pelvica-com-barra-hip-thrust",
     "muscle_group": "Membros Inferiores & Glúteos",
-    "secondary_muscles": "Isquiotibiais, Quadrícepéés, Eretores da Espééinha, Core",
-    "equipment": "Máquina Smith e Banco",
-    "motor_pattern": "Extensão de Quadril",
-    "execution_cues": "Apééoie a pééarte supééerior das costas (linha das escápééulas) firmemente na borda de um banco péélano. Pééosicione a barra da máquina Smith sobre a linha da pééelve/quadril, pééreferencialmente utilizando um péérotetor acolchoado. Mantenha os pééés apééoiados no solo com abertura na largura do quadril, de modo que os joelhos formem um ângulo pééróximo a 90 graus no ápééice do movimento. Destrave a barra e inicie a descida controlada flexionando o quadril, mantendo o queixo levemente recolhido e a coluna alinhada. Empééurre com a força dos calcanhares até atingir a extensão compééleta do quadril, contraindo fortemente os glúteos pééor um segundo no topééo antes de retornar com controle.",
+    "secondary_muscles": "",
+    "equipment": "Livre / Equipééamento de Academia",
+    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
+    "execution_cues": "Execução com foco péérimário em Membros Inferiores & Glúteos. Mantenha cadência controlada e ampéélitude segura.",
     "media_source": "gdrive_midias",
     "media_url": "https://drive.google.com/uc?export=download&id=15V-daBh8wRpB1ZnG7Qdmk60ETzZMYkhK",
     "thumbnail_url": "https://lh3.googleusercontent.com/d/15V-daBh8wRpB1ZnG7Qdmk60ETzZMYkhK",
@@ -194,14 +179,14 @@
     "source_filename": "Cadeira extensora (1).gif",
     "media_type": "gif"
   },
-  "elevacao de panturrilha em pe no step": {
-    "name": "Elevação de Panturrilha em Pé no Step",
-    "slug": "elevacao-de-panturrilha-em-pe-no-step",
+  "panturrilha em pe na maquina": {
+    "name": "Panturrilha em Pé na Máquina",
+    "slug": "panturrilha-em-pe-na-maquina",
     "muscle_group": "Panturrilhas",
-    "secondary_muscles": "Tibial Anterior, Flexãores dos Dedos, Estabilizadores do Core",
-    "equipment": "Step e Halteres",
-    "motor_pattern": "Flexão Péélantar Unicondilar / Isolado Monoarticular",
-    "execution_cues": "Pééosicione a pééarte anterior dos pééés sobre a borda de um stepéé, mantendo os calcanhares pééara fora pééara pééermitir ampééla ampéélitude de movimento. Segure halteres ao lado do corpééo pééara sobrecarga. Inicie o movimento abaixando os calcanhares abaixo da linha do stepéé pééara um alongamento compééleto da pééanturrilha e, em seguida, empééurre firmemente na pééonta dos pééés o mais alto pééossível, contraindo a musculatura no topééo. Mantenha o tronco ereto, abdômen contraído e evite balançar o corpééo pééara garantir um trabalho isolado e eficiente.",
+    "secondary_muscles": "",
+    "equipment": "Livre / Equipééamento de Academia",
+    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
+    "execution_cues": "Execução com foco péérimário em Pééanturrilhas. Mantenha cadência controlada e ampéélitude segura.",
     "media_source": "gdrive_midias",
     "media_url": "https://drive.google.com/uc?export=download&id=1hQ14agK4hL8bYblJWUrC-CNBn2h0YMaN",
     "thumbnail_url": "https://lh3.googleusercontent.com/d/1hQ14agK4hL8bYblJWUrC-CNBn2h0YMaN",
@@ -213,10 +198,10 @@
     "name": "Glúteo Coice na Polia Baixa",
     "slug": "gluteo-coice-na-polia-baixa",
     "muscle_group": "Membros Inferiores & Glúteos",
-    "secondary_muscles": "Glúteo Médio, Glúteo Mínimo, Isquiotibiais, Core",
-    "equipment": "Polia Baixa e Tornozeleira",
-    "motor_pattern": "Isolado Monoarticular",
-    "execution_cues": "Fixe a tornozeleira na pééolia baixa. Pééosicione o tronco inclinado à frente e apééoie as mãos firmemente na estrutura do apééarelho, mantendo a coluna lombar alinhada e neutra com o abdômen contraído. Execute a extensão do quadril chutando a pééerna pééara trás e ligeiramente em diagonal pééara otimizar o alinhamento das fibras do glúteo máximo e médio. Evite hipééerestender a lombar ou girar a pééelve pééara compééensar o movimento. Retorne controlando a fase excêntrica até a pééerna voltar pééróxima à pééosição inicial sem pééerder a tensão.",
+    "secondary_muscles": "",
+    "equipment": "Livre / Equipééamento de Academia",
+    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
+    "execution_cues": "Execução com foco péérimário em Membros Inferiores & Glúteos. Mantenha cadência controlada e ampéélitude segura.",
     "media_source": "gdrive_midias",
     "media_url": "https://drive.google.com/uc?export=download&id=19AohH2sHB9V6ywwqAswhTvvaY-n20QHr",
     "thumbnail_url": "https://lh3.googleusercontent.com/d/19AohH2sHB9V6ywwqAswhTvvaY-n20QHr",
@@ -224,19 +209,19 @@
     "source_filename": "cable-kickback (1).gif",
     "media_type": "gif"
   },
-  "abdominal borboleta com pernas elevadas": {
-    "name": "Abdominal Borboleta com Pernas Elevadas",
-    "slug": "abdominal-borboleta-com-pernas-elevadas",
+  "abdominal crunch com bracos estendidos": {
+    "name": "Abdominal Crunch com Braços Estendidos",
+    "slug": "abdominal-crunch-com-bracos-estendidos",
     "muscle_group": "Abdômen & Core",
-    "secondary_muscles": "Oblíquos, Flexãores do Quadril",
-    "equipment": "Colchonete / Solo",
-    "motor_pattern": "Flexão de Tronco",
-    "execution_cues": "Deite-se de costas em um colchonete, una as solas dos pééés e deixe os joelhos caírem pééara os lados em formato de borboleta. Apééoie as mãos suavemente atrás da cabeça ou estendidas à frente. Contraia o abdome pééara elevar o tronco e os ombros do colchonete em direção aos joelhos, expééirando na subida. Retorne de forma controlada à pééosição inicial sem relaxar totalmente a musculatura abdominal.",
+    "secondary_muscles": "",
+    "equipment": "Livre / Equipééamento de Academia",
+    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
+    "execution_cues": "Execução com foco péérimário em Abdômen & Core. Mantenha cadência controlada e ampéélitude segura.",
     "media_source": "gdrive_midias",
     "media_url": "https://drive.google.com/uc?export=download&id=163PrWJKA0YMcOcPVI0cIwM1RFChoQhli",
     "thumbnail_url": "https://lh3.googleusercontent.com/d/163PrWJKA0YMcOcPVI0cIwM1RFChoQhli",
     "drive_file_id": "163PrWJKA0YMcOcPVI0cIwM1RFChoQhli",
-    "source_filename": "crunch 3 (1).gif",
+    "source_filename": "Crunch 3 (1).gif",
     "media_type": "gif"
   },
   "triceps no banco mergulho": {
@@ -244,14 +229,14 @@
     "slug": "triceps-no-banco-mergulho",
     "muscle_group": "Tríceps",
     "secondary_muscles": "",
-    "equipment": "Banco",
+    "equipment": "Livre / Equipééamento de Academia",
     "motor_pattern": "Biomecânica e Cinesiologia Guiada",
     "execution_cues": "Execução com foco péérimário em Trícepéés. Mantenha cadência controlada e ampéélitude segura.",
     "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1k09WhgxV-UK0yOdTNEBc-svfw_Oq6KsU",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1k09WhgxV-UK0yOdTNEBc-svfw_Oq6KsU",
-    "drive_file_id": "1k09WhgxV-UK0yOdTNEBc-svfw_Oq6KsU",
-    "source_filename": "Mergulho banco (1).gif",
+    "media_url": "https://drive.google.com/uc?export=download&id=1lnp5Bt6sbxL_mUK52ubBLDqw6ij2pxja",
+    "thumbnail_url": "https://lh3.googleusercontent.com/d/1lnp5Bt6sbxL_mUK52ubBLDqw6ij2pxja",
+    "drive_file_id": "1lnp5Bt6sbxL_mUK52ubBLDqw6ij2pxja",
+    "source_filename": "bench-tricep-dips (1).gif",
     "media_type": "gif"
   },
   "crucifixo reto com halteres": {
@@ -824,21 +809,6 @@
     "source_filename": "crunch (1).gif",
     "media_type": "gif"
   },
-  "abdominal crunch com bracos estendidos": {
-    "name": "Abdominal Crunch com Braços Estendidos",
-    "slug": "abdominal-crunch-com-bracos-estendidos",
-    "muscle_group": "Abdômen & Core",
-    "secondary_muscles": "",
-    "equipment": "Livre / Equipééamento de Academia",
-    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
-    "execution_cues": "Execução com foco péérimário em Abdômen & Core. Mantenha cadência controlada e ampéélitude segura.",
-    "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=163PrWJKA0YMcOcPVI0cIwM1RFChoQhli",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/163PrWJKA0YMcOcPVI0cIwM1RFChoQhli",
-    "drive_file_id": "163PrWJKA0YMcOcPVI0cIwM1RFChoQhli",
-    "source_filename": "Crunch 3 (1).gif",
-    "media_type": "gif"
-  },
   "abdominal crunch no banco declinado": {
     "name": "Abdominal Crunch no Banco Declinado",
     "slug": "abdominal-crunch-no-banco-declinado",
@@ -899,9 +869,9 @@
     "source_filename": "Crunch reverso (1).gif",
     "media_type": "gif"
   },
-  "abdominal crunch floor": {
-    "name": "Abdominal Crunch Floor",
-    "slug": "abdominal-crunch-floor",
+  "abdominal crunch no solo": {
+    "name": "Abdominal Crunch no Solo",
+    "slug": "abdominal-crunch-no-solo",
     "muscle_group": "Abdômen & Core",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -914,9 +884,9 @@
     "source_filename": "crunch-floor (1).gif",
     "media_type": "gif"
   },
-  "abdominal crunch with leg raise": {
-    "name": "Abdominal Crunch With Leg Raise",
-    "slug": "abdominal-crunch-with-leg-raise",
+  "abdominal crunch com elevacao de pernas": {
+    "name": "Abdominal Crunch com Elevação de Pernas",
+    "slug": "abdominal-crunch-com-elevacao-de-pernas",
     "muscle_group": "Abdômen & Core",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -1034,9 +1004,9 @@
     "source_filename": "arm-blaster-benefits (1).gif",
     "media_type": "gif"
   },
-  "barbell curl": {
-    "name": "Barbell Curl",
-    "slug": "barbell-curl",
+  "rosca direta com barra": {
+    "name": "Rosca Direta com Barra",
+    "slug": "rosca-direta-com-barra",
     "muscle_group": "Bíceps & Antebraço",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -1049,9 +1019,9 @@
     "source_filename": "barbell-curl (1).gif",
     "media_type": "gif"
   },
-  "bayesian curl": {
-    "name": "Bayesian Curl",
-    "slug": "bayesian-curl",
+  "rosca bayesian na polia cabo por tras": {
+    "name": "Rosca Bayesian na Polia (Cabo por Trás)",
+    "slug": "rosca-bayesian-na-polia-cabo-por-tras",
     "muscle_group": "Bíceps & Antebraço",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -1064,9 +1034,9 @@
     "source_filename": "bayesian-curl (1).gif",
     "media_type": "gif"
   },
-  "bicepee curl machine": {
-    "name": "Bicepéé Curl Machine",
-    "slug": "bicepee-curl-machine",
+  "rosca biceps na maquina": {
+    "name": "Rosca Bíceps na Máquina",
+    "slug": "rosca-biceps-na-maquina",
     "muscle_group": "Bíceps & Antebraço",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -1079,24 +1049,9 @@
     "source_filename": "bicep-curl-machine (1).gif",
     "media_type": "gif"
   },
-  "cable bicepee curl": {
-    "name": "Cable Bicepéé Curl",
-    "slug": "cable-bicepee-curl",
-    "muscle_group": "Bíceps & Antebraço",
-    "secondary_muscles": "",
-    "equipment": "Livre / Equipééamento de Academia",
-    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
-    "execution_cues": "Execução com foco péérimário em Bícepéés & Antebraço. Mantenha cadência controlada e ampéélitude segura.",
-    "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1QBEOg7UNmeqwSqWbPwmSkbzPVJh0Zj8-",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1QBEOg7UNmeqwSqWbPwmSkbzPVJh0Zj8-",
-    "drive_file_id": "1QBEOg7UNmeqwSqWbPwmSkbzPVJh0Zj8-",
-    "source_filename": "cable-bicep-curl (1).gif",
-    "media_type": "gif"
-  },
-  "cable one arm curl": {
-    "name": "Cable One Arm Curl",
-    "slug": "cable-one-arm-curl",
+  "rosca biceps unilateral na polia": {
+    "name": "Rosca Bíceps Unilateral na Polia",
+    "slug": "rosca-biceps-unilateral-na-polia",
     "muscle_group": "Bíceps & Antebraço",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -1109,9 +1064,9 @@
     "source_filename": "cable-one-arm-curl (1).gif",
     "media_type": "gif"
   },
-  "cable peereacher curl": {
-    "name": "Cable Pééreacher Curl",
-    "slug": "cable-peereacher-curl",
+  "rosca scott na polia com barra": {
+    "name": "Rosca Scott na Polia com Barra",
+    "slug": "rosca-scott-na-polia-com-barra",
     "muscle_group": "Bíceps & Antebraço",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -1124,9 +1079,9 @@
     "source_filename": "cable-preacher-curl (1).gif",
     "media_type": "gif"
   },
-  "cross body hammer curl": {
-    "name": "Cross Body Hammer Curl",
-    "slug": "cross-body-hammer-curl",
+  "rosca martelo cruzada no peito": {
+    "name": "Rosca Martelo Cruzada no Peito",
+    "slug": "rosca-martelo-cruzada-no-peito",
     "muscle_group": "Bíceps & Antebraço",
     "secondary_muscles": "",
     "equipment": "Pééolia / Cabo",
@@ -1139,9 +1094,9 @@
     "source_filename": "cross-body-hammer-curl (1).gif",
     "media_type": "gif"
   },
-  "dumbbell bicepee curl": {
-    "name": "Dumbbell Bicepéé Curl",
-    "slug": "dumbbell-bicepee-curl",
+  "rosca direta com halteres": {
+    "name": "Rosca Direta com Halteres",
+    "slug": "rosca-direta-com-halteres",
     "muscle_group": "Bíceps & Antebraço",
     "secondary_muscles": "",
     "equipment": "Halteres",
@@ -1154,9 +1109,9 @@
     "source_filename": "dumbbell-bicep-curl (1).gif",
     "media_type": "gif"
   },
-  "dumbbell hammer curl": {
-    "name": "Dumbbell Hammer Curl",
-    "slug": "dumbbell-hammer-curl",
+  "rosca martelo com halteres": {
+    "name": "Rosca Martelo com Halteres",
+    "slug": "rosca-martelo-com-halteres",
     "muscle_group": "Bíceps & Antebraço",
     "secondary_muscles": "",
     "equipment": "Halteres",
@@ -1169,9 +1124,9 @@
     "source_filename": "dumbbell-hammer-curl (1).gif",
     "media_type": "gif"
   },
-  "dumbbell incline hammer curl": {
-    "name": "Dumbbell Incline Hammer Curl",
-    "slug": "dumbbell-incline-hammer-curl",
+  "rosca martelo no banco inclinado": {
+    "name": "Rosca Martelo no Banco Inclinado",
+    "slug": "rosca-martelo-no-banco-inclinado",
     "muscle_group": "Bíceps & Antebraço",
     "secondary_muscles": "",
     "equipment": "Halteres",
@@ -1184,9 +1139,9 @@
     "source_filename": "dumbbell-incline-hammer-curl (1).gif",
     "media_type": "gif"
   },
-  "dumbbell peereacher curl": {
-    "name": "Dumbbell Pééreacher Curl",
-    "slug": "dumbbell-peereacher-curl",
+  "rosca scott com halteres": {
+    "name": "Rosca Scott com Halteres",
+    "slug": "rosca-scott-com-halteres",
     "muscle_group": "Bíceps & Antebraço",
     "secondary_muscles": "",
     "equipment": "Halteres",
@@ -1199,24 +1154,24 @@
     "source_filename": "dumbbell-preacher-curl (1).gif",
     "media_type": "gif"
   },
-  "dumbbell reverse curl": {
-    "name": "Dumbbell Reverse Curl",
-    "slug": "dumbbell-reverse-curl",
+  "rosca inversa com halteres": {
+    "name": "Rosca Inversa com Halteres",
+    "slug": "rosca-inversa-com-halteres",
     "muscle_group": "Bíceps & Antebraço",
     "secondary_muscles": "",
     "equipment": "Halteres",
     "motor_pattern": "Biomecânica e Cinesiologia Guiada",
     "execution_cues": "Execução com foco péérimário em Bícepéés & Antebraço. Mantenha cadência controlada e ampéélitude segura.",
     "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1Lkdp_hY8Zys4IhEjGa_UpOIGcBK1amNn",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1Lkdp_hY8Zys4IhEjGa_UpOIGcBK1amNn",
-    "drive_file_id": "1Lkdp_hY8Zys4IhEjGa_UpOIGcBK1amNn",
-    "source_filename": "dumbbell-reverse-curl (1).gif",
+    "media_url": "https://drive.google.com/uc?export=download&id=1g5iVB3AMvRW3TaybFh02oColix1gq5g2",
+    "thumbnail_url": "https://lh3.googleusercontent.com/d/1g5iVB3AMvRW3TaybFh02oColix1gq5g2",
+    "drive_file_id": "1g5iVB3AMvRW3TaybFh02oColix1gq5g2",
+    "source_filename": "Rosca inversa com halteres (1).gif",
     "media_type": "gif"
   },
-  "dumbbell seated zottman curl": {
-    "name": "Dumbbell Seated Zottman Curl",
-    "slug": "dumbbell-seated-zottman-curl",
+  "rosca zottman sentado com halteres": {
+    "name": "Rosca Zottman Sentado com Halteres",
+    "slug": "rosca-zottman-sentado-com-halteres",
     "muscle_group": "Bíceps & Antebraço",
     "secondary_muscles": "",
     "equipment": "Halteres",
@@ -1227,21 +1182,6 @@
     "thumbnail_url": "https://lh3.googleusercontent.com/d/1V8YFZ07GDTBPYA_-qzSC0qNy-iHTXRsO",
     "drive_file_id": "1V8YFZ07GDTBPYA_-qzSC0qNy-iHTXRsO",
     "source_filename": "dumbbell-seated-zottman-curl (1).gif",
-    "media_type": "gif"
-  },
-  "dumbbell wrist curl": {
-    "name": "Dumbbell Wrist Curl",
-    "slug": "dumbbell-wrist-curl",
-    "muscle_group": "Bíceps & Antebraço",
-    "secondary_muscles": "",
-    "equipment": "Halteres",
-    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
-    "execution_cues": "Execução com foco péérimário em Bícepéés & Antebraço. Mantenha cadência controlada e ampéélitude segura.",
-    "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1SsQ-rFyUG8fuW5wPkdgpPZxp5Qc6oWqT",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1SsQ-rFyUG8fuW5wPkdgpPZxp5Qc6oWqT",
-    "drive_file_id": "1SsQ-rFyUG8fuW5wPkdgpPZxp5Qc6oWqT",
-    "source_filename": "dumbbell-wrist-curl (1).gif",
     "media_type": "gif"
   },
   "enrolar": {
@@ -1259,9 +1199,9 @@
     "source_filename": "Enrolar (1).gif",
     "media_type": "gif"
   },
-  "ez bar bicepee curl": {
-    "name": "Ez Bar Bicepéé Curl",
-    "slug": "ez-bar-bicepee-curl",
+  "rosca direta com barra w": {
+    "name": "Rosca Direta com Barra W",
+    "slug": "rosca-direta-com-barra-w",
     "muscle_group": "Bíceps & Antebraço",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -1274,9 +1214,9 @@
     "source_filename": "ez-bar-bicep-curl (1).gif",
     "media_type": "gif"
   },
-  "ez bar peereacher curl": {
-    "name": "Ez Bar Pééreacher Curl",
-    "slug": "ez-bar-peereacher-curl",
+  "rosca scott com barra w": {
+    "name": "Rosca Scott com Barra W",
+    "slug": "rosca-scott-com-barra-w",
     "muscle_group": "Bíceps & Antebraço",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -1304,9 +1244,9 @@
     "source_filename": "Hand grip (1).gif",
     "media_type": "gif"
   },
-  "incline dumbbell curl": {
-    "name": "Incline Dumbbell Curl",
-    "slug": "incline-dumbbell-curl",
+  "rosca inclinada com halteres": {
+    "name": "Rosca Inclinada com Halteres",
+    "slug": "rosca-inclinada-com-halteres",
     "muscle_group": "Bíceps & Antebraço",
     "secondary_muscles": "",
     "equipment": "Halteres",
@@ -1319,24 +1259,24 @@
     "source_filename": "incline-dumbbell-curl (1).gif",
     "media_type": "gif"
   },
-  "overhead cable curl": {
-    "name": "Overhead Cable Curl",
-    "slug": "overhead-cable-curl",
+  "rosca dupla biceps na polia alta": {
+    "name": "Rosca Dupla Bíceps na Polia Alta",
+    "slug": "rosca-dupla-biceps-na-polia-alta",
     "muscle_group": "Bíceps & Antebraço",
     "secondary_muscles": "",
-    "equipment": "Livre / Equipééamento de Academia",
+    "equipment": "Pééolia / Cabo",
     "motor_pattern": "Biomecânica e Cinesiologia Guiada",
     "execution_cues": "Execução com foco péérimário em Bícepéés & Antebraço. Mantenha cadência controlada e ampéélitude segura.",
     "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1xNRfvsOiu35bd88Xcb1ury_rHHbGb4wc",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1xNRfvsOiu35bd88Xcb1ury_rHHbGb4wc",
-    "drive_file_id": "1xNRfvsOiu35bd88Xcb1ury_rHHbGb4wc",
-    "source_filename": "overhead-cable-curl (1).gif",
+    "media_url": "https://drive.google.com/uc?export=download&id=1Rg-MI-WvpaTlEckvgZityWlPnDlvLEpG",
+    "thumbnail_url": "https://lh3.googleusercontent.com/d/1Rg-MI-WvpaTlEckvgZityWlPnDlvLEpG",
+    "drive_file_id": "1Rg-MI-WvpaTlEckvgZityWlPnDlvLEpG",
+    "source_filename": "Rosca lateral polia alta (1).gif",
     "media_type": "gif"
   },
-  "peerone incline dumbbell curl": {
-    "name": "Péérone Incline Dumbbell Curl",
-    "slug": "peerone-incline-dumbbell-curl",
+  "rosca inclinada pronada no banco": {
+    "name": "Rosca Inclinada Pronada no Banco",
+    "slug": "rosca-inclinada-pronada-no-banco",
     "muscle_group": "Bíceps & Antebraço",
     "secondary_muscles": "",
     "equipment": "Halteres",
@@ -1679,21 +1619,6 @@
     "source_filename": "Rosca inversa (1).gif",
     "media_type": "gif"
   },
-  "rosca inversa com halteres": {
-    "name": "Rosca Inversa com Halteres",
-    "slug": "rosca-inversa-com-halteres",
-    "muscle_group": "Bíceps & Antebraço",
-    "secondary_muscles": "",
-    "equipment": "Halteres",
-    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
-    "execution_cues": "Execução com foco péérimário em Bícepéés & Antebraço. Mantenha cadência controlada e ampéélitude segura.",
-    "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1g5iVB3AMvRW3TaybFh02oColix1gq5g2",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1g5iVB3AMvRW3TaybFh02oColix1gq5g2",
-    "drive_file_id": "1g5iVB3AMvRW3TaybFh02oColix1gq5g2",
-    "source_filename": "Rosca inversa com halteres (1).gif",
-    "media_type": "gif"
-  },
   "rosca inversa no cabo": {
     "name": "Rosca Inversa no Cabo",
     "slug": "rosca-inversa-no-cabo",
@@ -1739,21 +1664,6 @@
     "source_filename": "Rosca lateral no cabo (1).gif",
     "media_type": "gif"
   },
-  "rosca dupla biceps na polia alta": {
-    "name": "Rosca Dupla Bíceps na Polia Alta",
-    "slug": "rosca-dupla-biceps-na-polia-alta",
-    "muscle_group": "Bíceps & Antebraço",
-    "secondary_muscles": "",
-    "equipment": "Pééolia / Cabo",
-    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
-    "execution_cues": "Execução com foco péérimário em Bícepéés & Antebraço. Mantenha cadência controlada e ampéélitude segura.",
-    "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1Rg-MI-WvpaTlEckvgZityWlPnDlvLEpG",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1Rg-MI-WvpaTlEckvgZityWlPnDlvLEpG",
-    "drive_file_id": "1Rg-MI-WvpaTlEckvgZityWlPnDlvLEpG",
-    "source_filename": "Rosca lateral polia alta (1).gif",
-    "media_type": "gif"
-  },
   "rosca martelo 01": {
     "name": "Rosca Martelo 01",
     "slug": "rosca-martelo-01",
@@ -1769,24 +1679,9 @@
     "source_filename": "Rosca martelo 01 (1).gif",
     "media_type": "gif"
   },
-  "back extension": {
-    "name": "Back Extension",
-    "slug": "back-extension",
-    "muscle_group": "Costas & Trapézio",
-    "secondary_muscles": "",
-    "equipment": "Livre / Equipééamento de Academia",
-    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
-    "execution_cues": "Execução com foco péérimário em Costas & Trapééézio. Mantenha cadência controlada e ampéélitude segura.",
-    "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1PzcETvH6m6GKtouDyRIReiCeAyvj6peR",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1PzcETvH6m6GKtouDyRIReiCeAyvj6peR",
-    "drive_file_id": "1PzcETvH6m6GKtouDyRIReiCeAyvj6peR",
-    "source_filename": "back-extension (1).gif",
-    "media_type": "gif"
-  },
-  "band assisted peeull upee": {
-    "name": "Band Assisted Pééull Upéé",
-    "slug": "band-assisted-peeull-upee",
+  "barra fixa assistida com elastico": {
+    "name": "Barra Fixa Assistida com Elástico",
+    "slug": "barra-fixa-assistida-com-elastico",
     "muscle_group": "Costas & Trapézio",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -1799,9 +1694,9 @@
     "source_filename": "band-assisted-pull-up (1).gif",
     "media_type": "gif"
   },
-  "banded wide gripee row": {
-    "name": "Banded Wide Gripéé Row",
-    "slug": "banded-wide-gripee-row",
+  "remada aberta com elastico": {
+    "name": "Remada Aberta com Elástico",
+    "slug": "remada-aberta-com-elastico",
     "muscle_group": "Costas & Trapézio",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -1889,9 +1784,9 @@
     "source_filename": "Barra pegada supinada (1).gif",
     "media_type": "gif"
   },
-  "cable face peeull": {
-    "name": "Cable Face Pééull",
-    "slug": "cable-face-peeull",
+  "face pull na polia com corda": {
+    "name": "Face Pull na Polia com Corda",
+    "slug": "face-pull-na-polia-com-corda",
     "muscle_group": "Costas & Trapézio",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -1904,9 +1799,9 @@
     "source_filename": "cable-face-pull (1).gif",
     "media_type": "gif"
   },
-  "cable rear delt fly": {
-    "name": "Cable Rear Delt Fly",
-    "slug": "cable-rear-delt-fly",
+  "crucifixo invertido na polia": {
+    "name": "Crucifixo Invertido na Polia",
+    "slug": "crucifixo-invertido-na-polia",
     "muscle_group": "Costas & Trapézio",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -1919,24 +1814,9 @@
     "source_filename": "cable-rear-delt-fly (1).gif",
     "media_type": "gif"
   },
-  "cable seated row": {
-    "name": "Cable Seated Row",
-    "slug": "cable-seated-row",
-    "muscle_group": "Costas & Trapézio",
-    "secondary_muscles": "",
-    "equipment": "Livre / Equipééamento de Academia",
-    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
-    "execution_cues": "Execução com foco péérimário em Costas & Trapééézio. Mantenha cadência controlada e ampéélitude segura.",
-    "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=18gsfPl2ybr7XGngpUEHgMYAsDwzxwLkw",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/18gsfPl2ybr7XGngpUEHgMYAsDwzxwLkw",
-    "drive_file_id": "18gsfPl2ybr7XGngpUEHgMYAsDwzxwLkw",
-    "source_filename": "cable-seated-row (1).gif",
-    "media_type": "gif"
-  },
-  "cable wide gripee row": {
-    "name": "Cable Wide Gripéé Row",
-    "slug": "cable-wide-gripee-row",
+  "remada baixa com barra pegada aberta": {
+    "name": "Remada Baixa com Barra Pegada Aberta",
+    "slug": "remada-baixa-com-barra-pegada-aberta",
     "muscle_group": "Costas & Trapézio",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -1949,9 +1829,9 @@
     "source_filename": "cable-wide-grip-row (1).gif",
     "media_type": "gif"
   },
-  "chin upees": {
-    "name": "Chin Upéés",
-    "slug": "chin-upees",
+  "barra fixa supinada chinup": {
+    "name": "Barra Fixa Supinada (Chin-Up)",
+    "slug": "barra-fixa-supinada-chinup",
     "muscle_group": "Costas & Trapézio",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -1964,9 +1844,9 @@
     "source_filename": "chin-ups (1).gif",
     "media_type": "gif"
   },
-  "close gripee lat peeulldown standard bar attachment": {
-    "name": "Close Gripéé Lat Pééulldown Standard Bar Attachment",
-    "slug": "close-gripee-lat-peeulldown-standard-bar-attachment",
+  "puxada alta com pegada fechada": {
+    "name": "Puxada Alta com Pegada Fechada",
+    "slug": "puxada-alta-com-pegada-fechada",
     "muscle_group": "Costas & Trapézio",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -2039,9 +1919,9 @@
     "source_filename": "Crucifixo invertido polia baixa (1).gif",
     "media_type": "gif"
   },
-  "dumbbell back extension": {
-    "name": "Dumbbell Back Extension",
-    "slug": "dumbbell-back-extension",
+  "extensao lombar com haltere": {
+    "name": "Extensão Lombar com Haltere",
+    "slug": "extensao-lombar-com-haltere",
     "muscle_group": "Costas & Trapézio",
     "secondary_muscles": "",
     "equipment": "Halteres",
@@ -2054,9 +1934,9 @@
     "source_filename": "dumbbell-back-extension (1).gif",
     "media_type": "gif"
   },
-  "dumbbell face peeull": {
-    "name": "Dumbbell Face Pééull",
-    "slug": "dumbbell-face-peeull",
+  "face pull com halteres": {
+    "name": "Face Pull com Halteres",
+    "slug": "face-pull-com-halteres",
     "muscle_group": "Costas & Trapézio",
     "secondary_muscles": "",
     "equipment": "Halteres",
@@ -2069,9 +1949,9 @@
     "source_filename": "dumbbell-face-pull (1).gif",
     "media_type": "gif"
   },
-  "dumbbell jefferson curl": {
-    "name": "Dumbbell Jefferson Curl",
-    "slug": "dumbbell-jefferson-curl",
+  "jefferson curl com haltere": {
+    "name": "Jefferson Curl com Haltere",
+    "slug": "jefferson-curl-com-haltere",
     "muscle_group": "Costas & Trapézio",
     "secondary_muscles": "",
     "equipment": "Halteres",
@@ -2084,9 +1964,9 @@
     "source_filename": "dumbbell-jefferson-curl (1).gif",
     "media_type": "gif"
   },
-  "eccentric peeull upee": {
-    "name": "Eccentric Pééull Upéé",
-    "slug": "eccentric-peeull-upee",
+  "barra fixa fase excentrica lenta": {
+    "name": "Barra Fixa Fase Excêntrica Lenta",
+    "slug": "barra-fixa-fase-excentrica-lenta",
     "muscle_group": "Costas & Trapézio",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -2189,9 +2069,9 @@
     "source_filename": "Facepull (1).gif",
     "media_type": "gif"
   },
-  "inverted row": {
-    "name": "Inverted Row",
-    "slug": "inverted-row",
+  "remada invertida peso corporal barra": {
+    "name": "Remada Invertida (Peso Corporal / Barra)",
+    "slug": "remada-invertida-peso-corporal-barra",
     "muscle_group": "Costas & Trapézio",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -2204,9 +2084,9 @@
     "source_filename": "inverted-row (1).gif",
     "media_type": "gif"
   },
-  "landmine row": {
-    "name": "Landmine Row",
-    "slug": "landmine-row",
+  "remada landmine remada cavalinho com barra": {
+    "name": "Remada Landmine (Remada Cavalinho com Barra)",
+    "slug": "remada-landmine-remada-cavalinho-com-barra",
     "muscle_group": "Costas & Trapézio",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -2219,9 +2099,9 @@
     "source_filename": "landmine-row (1).gif",
     "media_type": "gif"
   },
-  "peeull upee": {
-    "name": "Pééull Upéé",
-    "slug": "peeull-upee",
+  "barra fixa pronada pullup": {
+    "name": "Barra Fixa Pronada (Pull-Up)",
+    "slug": "barra-fixa-pronada-pullup",
     "muscle_group": "Costas & Trapézio",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -2489,9 +2369,9 @@
     "source_filename": "Arnolda press (1).gif",
     "media_type": "gif"
   },
-  "barbell peeush jerk muscles": {
-    "name": "Barbell Pééush Jerk Muscles",
-    "slug": "barbell-peeush-jerk-muscles",
+  "push jerk com barra levantamento olimpico": {
+    "name": "Push Jerk com Barra (Levantamento Olímpico)",
+    "slug": "push-jerk-com-barra-levantamento-olimpico",
     "muscle_group": "Deltoides",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -2969,9 +2849,9 @@
     "source_filename": "landmine-press (1).gif",
     "media_type": "gif"
   },
-  "lateral raise machine": {
-    "name": "Lateral Raise Machine",
-    "slug": "lateral-raise-machine",
+  "elevacao lateral na maquina": {
+    "name": "Elevação Lateral na Máquina",
+    "slug": "elevacao-lateral-na-maquina",
     "muscle_group": "Deltoides",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -3344,21 +3224,6 @@
     "source_filename": "Agachamento hack 03 (1).gif",
     "media_type": "gif"
   },
-  "agachamento sumo tradicional": {
-    "name": "Agachamento Sumô Tradicional",
-    "slug": "agachamento-sumo-tradicional",
-    "muscle_group": "Membros Inferiores & Glúteos",
-    "secondary_muscles": "",
-    "equipment": "Livre / Equipééamento de Academia",
-    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
-    "execution_cues": "Execução com foco péérimário em Membros Inferiores & Glúteos. Mantenha cadência controlada e ampéélitude segura.",
-    "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1GbTTXncARd5Bz8dSy35RpLjuxaHE4EOK",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1GbTTXncARd5Bz8dSy35RpLjuxaHE4EOK",
-    "drive_file_id": "1GbTTXncARd5Bz8dSy35RpLjuxaHE4EOK",
-    "source_filename": "Agachamento sumo 01 (1).gif",
-    "media_type": "gif"
-  },
   "agachamento sumo com barra": {
     "name": "Agachamento Sumô com Barra",
     "slug": "agachamento-sumo-com-barra",
@@ -3494,9 +3359,9 @@
     "source_filename": "AviÃ£o unilateral (1).gif",
     "media_type": "gif"
   },
-  "band standing hipee extension": {
-    "name": "Band Standing Hipéé Extension",
-    "slug": "band-standing-hipee-extension",
+  "extensao de quadril em pe com elastico": {
+    "name": "Extensão de Quadril em Pé com Elástico",
+    "slug": "extensao-de-quadril-em-pe-com-elastico",
     "muscle_group": "Membros Inferiores & Glúteos",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -3509,9 +3374,9 @@
     "source_filename": "band-standing-hip-extension (1).gif",
     "media_type": "gif"
   },
-  "barbell good morning": {
-    "name": "Barbell Good Morning",
-    "slug": "barbell-good-morning",
+  "bom dia good morning com barra": {
+    "name": "Bom Dia (Good Morning) com Barra",
+    "slug": "bom-dia-good-morning-com-barra",
     "muscle_group": "Membros Inferiores & Glúteos",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -3524,24 +3389,9 @@
     "source_filename": "barbell-good-morning (1).gif",
     "media_type": "gif"
   },
-  "barbell hipee thrust": {
-    "name": "Barbell Hipéé Thrust",
-    "slug": "barbell-hipee-thrust",
-    "muscle_group": "Membros Inferiores & Glúteos",
-    "secondary_muscles": "",
-    "equipment": "Livre / Equipééamento de Academia",
-    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
-    "execution_cues": "Execução com foco péérimário em Membros Inferiores & Glúteos. Mantenha cadência controlada e ampéélitude segura.",
-    "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=15V-daBh8wRpB1ZnG7Qdmk60ETzZMYkhK",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/15V-daBh8wRpB1ZnG7Qdmk60ETzZMYkhK",
-    "drive_file_id": "15V-daBh8wRpB1ZnG7Qdmk60ETzZMYkhK",
-    "source_filename": "barbell-hip-thrust (1).gif",
-    "media_type": "gif"
-  },
-  "barbell romanian deadlift movement": {
-    "name": "Barbell Romanian Deadlift Movement",
-    "slug": "barbell-romanian-deadlift-movement",
+  "levantamento terra romeno rdl com barra": {
+    "name": "Levantamento Terra Romeno (RDL) com Barra",
+    "slug": "levantamento-terra-romeno-rdl-com-barra",
     "muscle_group": "Membros Inferiores & Glúteos",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -3554,9 +3404,9 @@
     "source_filename": "barbell-romanian-deadlift-movement (1).gif",
     "media_type": "gif"
   },
-  "benefits of farmers walks": {
-    "name": "Benefits Of Farmers Walks",
-    "slug": "benefits-of-farmers-walks",
+  "caminhada do fazendeiro farmers walk": {
+    "name": "Caminhada do Fazendeiro (Farmer's Walk)",
+    "slug": "caminhada-do-fazendeiro-farmers-walk",
     "muscle_group": "Membros Inferiores & Glúteos",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -3569,9 +3419,9 @@
     "source_filename": "benefits-of-farmers-walks (1).gif",
     "media_type": "gif"
   },
-  "bodyweight hipee thrust": {
-    "name": "Bodyweight Hipéé Thrust",
-    "slug": "bodyweight-hipee-thrust",
+  "elevacao pelvica com peso corporal": {
+    "name": "Elevação Pélvica com Peso Corporal",
+    "slug": "elevacao-pelvica-com-peso-corporal",
     "muscle_group": "Membros Inferiores & Glúteos",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -3582,36 +3432,6 @@
     "thumbnail_url": "https://lh3.googleusercontent.com/d/1zfRpqcaGFQmpQNHzGw9-pq0vXJasfDDW",
     "drive_file_id": "1zfRpqcaGFQmpQNHzGw9-pq0vXJasfDDW",
     "source_filename": "bodyweight-hip-thrust (1).gif",
-    "media_type": "gif"
-  },
-  "bulgarian speelit speeuat": {
-    "name": "Bulgarian Spéélit Spééuat",
-    "slug": "bulgarian-speelit-speeuat",
-    "muscle_group": "Membros Inferiores & Glúteos",
-    "secondary_muscles": "",
-    "equipment": "Livre / Equipééamento de Academia",
-    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
-    "execution_cues": "Execução com foco péérimário em Membros Inferiores & Glúteos. Mantenha cadência controlada e ampéélitude segura.",
-    "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1G-1a-CZV_T5sNUKS7Cjz5PzygDuBo6Q7",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1G-1a-CZV_T5sNUKS7Cjz5PzygDuBo6Q7",
-    "drive_file_id": "1G-1a-CZV_T5sNUKS7Cjz5PzygDuBo6Q7",
-    "source_filename": "bulgarian-split-spuat (1).gif",
-    "media_type": "gif"
-  },
-  "agachamento bulgaro com barra": {
-    "name": "Agachamento Búlgaro com Barra",
-    "slug": "agachamento-bulgaro-com-barra",
-    "muscle_group": "Membros Inferiores & Glúteos",
-    "secondary_muscles": "",
-    "equipment": "Barra",
-    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
-    "execution_cues": "Execução com foco péérimário em Membros Inferiores & Glúteos. Mantenha cadência controlada e ampéélitude segura.",
-    "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1ASnlLyelxR9w2G94A1MZX0ru8Bi5l8YB",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1ASnlLyelxR9w2G94A1MZX0ru8Bi5l8YB",
-    "drive_file_id": "1ASnlLyelxR9w2G94A1MZX0ru8Bi5l8YB",
-    "source_filename": "Bulgaro com barra (1).gif",
     "media_type": "gif"
   },
   "agachamento bulgaro com halteres": {
@@ -3629,24 +3449,24 @@
     "source_filename": "Bulgaro com halteres (1).gif",
     "media_type": "gif"
   },
-  "cable kickback": {
-    "name": "Cable Kickback",
-    "slug": "cable-kickback",
+  "agachamento bulgaro com barra": {
+    "name": "Agachamento Búlgaro com Barra",
+    "slug": "agachamento-bulgaro-com-barra",
     "muscle_group": "Membros Inferiores & Glúteos",
     "secondary_muscles": "",
-    "equipment": "Livre / Equipééamento de Academia",
+    "equipment": "Barra",
     "motor_pattern": "Biomecânica e Cinesiologia Guiada",
     "execution_cues": "Execução com foco péérimário em Membros Inferiores & Glúteos. Mantenha cadência controlada e ampéélitude segura.",
     "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=19AohH2sHB9V6ywwqAswhTvvaY-n20QHr",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/19AohH2sHB9V6ywwqAswhTvvaY-n20QHr",
-    "drive_file_id": "19AohH2sHB9V6ywwqAswhTvvaY-n20QHr",
-    "source_filename": "cable-kickback (1).gif",
+    "media_url": "https://drive.google.com/uc?export=download&id=1ASnlLyelxR9w2G94A1MZX0ru8Bi5l8YB",
+    "thumbnail_url": "https://lh3.googleusercontent.com/d/1ASnlLyelxR9w2G94A1MZX0ru8Bi5l8YB",
+    "drive_file_id": "1ASnlLyelxR9w2G94A1MZX0ru8Bi5l8YB",
+    "source_filename": "Bulgaro com barra (1).gif",
     "media_type": "gif"
   },
-  "cable stepee upee": {
-    "name": "Cable Stepéé Upéé",
-    "slug": "cable-stepee-upee",
+  "subida no step com cabo": {
+    "name": "Subida no Step com Cabo",
+    "slug": "subida-no-step-com-cabo",
     "muscle_group": "Membros Inferiores & Glúteos",
     "secondary_muscles": "",
     "equipment": "Stepéé",
@@ -3734,9 +3554,9 @@
     "source_filename": "Clean (1).gif",
     "media_type": "gif"
   },
-  "dumbbell good morning": {
-    "name": "Dumbbell Good Morning",
-    "slug": "dumbbell-good-morning",
+  "bom dia com halteres good morning": {
+    "name": "Bom Dia com Halteres (Good Morning)",
+    "slug": "bom-dia-com-halteres-good-morning",
     "muscle_group": "Membros Inferiores & Glúteos",
     "secondary_muscles": "",
     "equipment": "Halteres",
@@ -3809,9 +3629,9 @@
     "source_filename": "ElevaÃ§Ã£o pÃ©lvica pÃ©s elevados 02 (1).gif",
     "media_type": "gif"
   },
-  "cable standing calf raise": {
-    "name": "Cable Standing Calf Raise",
-    "slug": "cable-standing-calf-raise",
+  "elevacao de panturrilha em pe na polia": {
+    "name": "Elevação de Panturrilha em Pé na Polia",
+    "slug": "elevacao-de-panturrilha-em-pe-na-polia",
     "muscle_group": "Panturrilhas",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -3839,9 +3659,9 @@
     "source_filename": "calf-squats (1).gif",
     "media_type": "gif"
   },
-  "donkey calf raise": {
-    "name": "Donkey Calf Raise",
-    "slug": "donkey-calf-raise",
+  "elevacao de panturrilha donkey burrinho": {
+    "name": "Elevação de Panturrilha Donkey (Burrinho)",
+    "slug": "elevacao-de-panturrilha-donkey-burrinho",
     "muscle_group": "Panturrilhas",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -3854,9 +3674,9 @@
     "source_filename": "donkey-calf-raise (1).gif",
     "media_type": "gif"
   },
-  "dumbbell calf raise": {
-    "name": "Dumbbell Calf Raise",
-    "slug": "dumbbell-calf-raise",
+  "elevacao de panturrilha com halteres": {
+    "name": "Elevação de Panturrilha com Halteres",
+    "slug": "elevacao-de-panturrilha-com-halteres",
     "muscle_group": "Panturrilhas",
     "secondary_muscles": "",
     "equipment": "Halteres",
@@ -3884,9 +3704,9 @@
     "source_filename": "Gemeos sentado (1).gif",
     "media_type": "gif"
   },
-  "leg peeress calf raise": {
-    "name": "Leg Pééress Calf Raise",
-    "slug": "leg-peeress-calf-raise",
+  "panturrilha no leg press": {
+    "name": "Panturrilha no Leg Press",
+    "slug": "panturrilha-no-leg-press",
     "muscle_group": "Panturrilhas",
     "secondary_muscles": "",
     "equipment": "Máquina Espééecífica",
@@ -3899,9 +3719,9 @@
     "source_filename": "leg-press-calf-raise (1).gif",
     "media_type": "gif"
   },
-  "negative calf raise": {
-    "name": "Negative Calf Raise",
-    "slug": "negative-calf-raise",
+  "panturrilha com fase excentrica lenta": {
+    "name": "Panturrilha com Fase Excêntrica Lenta",
+    "slug": "panturrilha-com-fase-excentrica-lenta",
     "muscle_group": "Panturrilhas",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -4004,9 +3824,9 @@
     "source_filename": "Panturrilha maquina 02 (1).gif",
     "media_type": "gif"
   },
-  "seated calf raise": {
-    "name": "Seated Calf Raise",
-    "slug": "seated-calf-raise",
+  "panturrilha sentado na maquina gemeos": {
+    "name": "Panturrilha Sentado na Máquina (Gêmeos)",
+    "slug": "panturrilha-sentado-na-maquina-gemeos",
     "muscle_group": "Panturrilhas",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -4019,9 +3839,9 @@
     "source_filename": "seated-calf-raise (1).gif",
     "media_type": "gif"
   },
-  "seated calf raise dumbbell": {
-    "name": "Seated Calf Raise Dumbbell",
-    "slug": "seated-calf-raise-dumbbell",
+  "panturrilha sentado com halteres": {
+    "name": "Panturrilha Sentado com Halteres",
+    "slug": "panturrilha-sentado-com-halteres",
     "muscle_group": "Panturrilhas",
     "secondary_muscles": "",
     "equipment": "Halteres",
@@ -4034,9 +3854,9 @@
     "source_filename": "seated-calf-raise-dumbbell (1).gif",
     "media_type": "gif"
   },
-  "single leg calf raise": {
-    "name": "Single Leg Calf Raise",
-    "slug": "single-leg-calf-raise",
+  "panturrilha unilateral em pe": {
+    "name": "Panturrilha Unilateral em Pé",
+    "slug": "panturrilha-unilateral-em-pe",
     "muscle_group": "Panturrilhas",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -4049,9 +3869,9 @@
     "source_filename": "single-leg-calf-raise (1).gif",
     "media_type": "gif"
   },
-  "smith machine calf raise": {
-    "name": "Smith Machine Calf Raise",
-    "slug": "smith-machine-calf-raise",
+  "panturrilha no smith machine": {
+    "name": "Panturrilha no Smith Machine",
+    "slug": "panturrilha-no-smith-machine",
     "muscle_group": "Panturrilhas",
     "secondary_muscles": "",
     "equipment": "Barra",
@@ -4079,21 +3899,6 @@
     "source_filename": "SÃ³leo 01 (1).gif",
     "media_type": "gif"
   },
-  "standing calf raise": {
-    "name": "Standing Calf Raise",
-    "slug": "standing-calf-raise",
-    "muscle_group": "Panturrilhas",
-    "secondary_muscles": "",
-    "equipment": "Livre / Equipééamento de Academia",
-    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
-    "execution_cues": "Execução com foco péérimário em Pééanturrilhas. Mantenha cadência controlada e ampéélitude segura.",
-    "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1hQ14agK4hL8bYblJWUrC-CNBn2h0YMaN",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1hQ14agK4hL8bYblJWUrC-CNBn2h0YMaN",
-    "drive_file_id": "1hQ14agK4hL8bYblJWUrC-CNBn2h0YMaN",
-    "source_filename": "standing-calf-raise (3).gif",
-    "media_type": "gif"
-  },
   "flexao de braco pliometrica com palma": {
     "name": "Flexão de Braço Pliométrica com Palma",
     "slug": "flexao-de-braco-pliometrica-com-palma",
@@ -4109,9 +3914,9 @@
     "source_filename": "Apoio batendo palmas (1).gif",
     "media_type": "gif"
   },
-  "barbell decline bench peeress": {
-    "name": "Barbell Decline Bench Pééress",
-    "slug": "barbell-decline-bench-peeress",
+  "supino declinado com barra": {
+    "name": "Supino Declinado com Barra",
+    "slug": "supino-declinado-com-barra",
     "muscle_group": "Peitoral",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -4124,9 +3929,9 @@
     "source_filename": "barbell-decline-bench-press (1).gif",
     "media_type": "gif"
   },
-  "barbell peeullover": {
-    "name": "Barbell Pééullover",
-    "slug": "barbell-peeullover",
+  "pullover com barra": {
+    "name": "Pullover com Barra",
+    "slug": "pullover-com-barra",
     "muscle_group": "Peitoral",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -4139,39 +3944,24 @@
     "source_filename": "barbell-pullover (1).gif",
     "media_type": "gif"
   },
-  "bench peeress feet upee": {
-    "name": "Bench Pééress Feet Upéé",
-    "slug": "bench-peeress-feet-upee",
-    "muscle_group": "Peitoral",
-    "secondary_muscles": "",
-    "equipment": "Livre / Equipééamento de Academia",
-    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
-    "execution_cues": "Execução com foco péérimário em Pééeitoral. Mantenha cadência controlada e ampéélitude segura.",
-    "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1UwWzixRB09eM-VF8FTBUsTTiGSF-9Yop",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1UwWzixRB09eM-VF8FTBUsTTiGSF-9Yop",
-    "drive_file_id": "1UwWzixRB09eM-VF8FTBUsTTiGSF-9Yop",
-    "source_filename": "bench-press-feet-up (1).gif",
-    "media_type": "gif"
-  },
-  "cable cross over": {
-    "name": "Cable Cross Over",
-    "slug": "cable-cross-over",
+  "crossover na polia media": {
+    "name": "Crossover na Polia Média",
+    "slug": "crossover-na-polia-media",
     "muscle_group": "Peitoral",
     "secondary_muscles": "",
     "equipment": "Pééolia / Cabo",
     "motor_pattern": "Biomecânica e Cinesiologia Guiada",
     "execution_cues": "Execução com foco péérimário em Pééeitoral. Mantenha cadência controlada e ampéélitude segura.",
     "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1XRoyeKRNUraqqAkbfikdZgp-wzP4tZ3h",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1XRoyeKRNUraqqAkbfikdZgp-wzP4tZ3h",
-    "drive_file_id": "1XRoyeKRNUraqqAkbfikdZgp-wzP4tZ3h",
-    "source_filename": "cable-cross-over (1).gif",
+    "media_url": "https://drive.google.com/uc?export=download&id=1Su7wwvpV9XphJcW_0xU5X9w1CHn3vhpM",
+    "thumbnail_url": "https://lh3.googleusercontent.com/d/1Su7wwvpV9XphJcW_0xU5X9w1CHn3vhpM",
+    "drive_file_id": "1Su7wwvpV9XphJcW_0xU5X9w1CHn3vhpM",
+    "source_filename": "Cross over 2 (1).gif",
     "media_type": "gif"
   },
-  "cable fly": {
-    "name": "Cable Fly",
-    "slug": "cable-fly",
+  "crucifixo na polia fly": {
+    "name": "Crucifixo na Polia (Fly)",
+    "slug": "crucifixo-na-polia-fly",
     "muscle_group": "Peitoral",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -4184,9 +3974,9 @@
     "source_filename": "cable-fly (1).gif",
     "media_type": "gif"
   },
-  "chest peeress machine": {
-    "name": "Chest Pééress Machine",
-    "slug": "chest-peeress-machine",
+  "supino reto na maquina articulada": {
+    "name": "Supino Reto na Máquina Articulada",
+    "slug": "supino-reto-na-maquina-articulada",
     "muscle_group": "Peitoral",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -4214,34 +4004,19 @@
     "source_filename": "Cross over alto (1).gif",
     "media_type": "gif"
   },
-  "crossover na polia media": {
-    "name": "Crossover na Polia Média",
-    "slug": "crossover-na-polia-media",
-    "muscle_group": "Peitoral",
-    "secondary_muscles": "",
-    "equipment": "Pééolia / Cabo",
-    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
-    "execution_cues": "Execução com foco péérimário em Pééeitoral. Mantenha cadência controlada e ampéélitude segura.",
-    "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1Su7wwvpV9XphJcW_0xU5X9w1CHn3vhpM",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1Su7wwvpV9XphJcW_0xU5X9w1CHn3vhpM",
-    "drive_file_id": "1Su7wwvpV9XphJcW_0xU5X9w1CHn3vhpM",
-    "source_filename": "Cross over 2 (1).gif",
-    "media_type": "gif"
-  },
   "crossover na polia baixa": {
     "name": "Crossover na Polia Baixa",
     "slug": "crossover-na-polia-baixa",
     "muscle_group": "Peitoral",
     "secondary_muscles": "",
-    "equipment": "Pééolia / Cabo",
+    "equipment": "Livre / Equipééamento de Academia",
     "motor_pattern": "Biomecânica e Cinesiologia Guiada",
     "execution_cues": "Execução com foco péérimário em Pééeitoral. Mantenha cadência controlada e ampéélitude segura.",
     "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1JcF5TWB2awGwS3Zs8TuPzsFsvis7pFn6",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1JcF5TWB2awGwS3Zs8TuPzsFsvis7pFn6",
-    "drive_file_id": "1JcF5TWB2awGwS3Zs8TuPzsFsvis7pFn6",
-    "source_filename": "Cross over polia baixa (1).gif",
+    "media_url": "https://drive.google.com/uc?export=download&id=1vEdBBqvDEMegerqEMn2wB0TcwynWKNI0",
+    "thumbnail_url": "https://lh3.googleusercontent.com/d/1vEdBBqvDEMegerqEMn2wB0TcwynWKNI0",
+    "drive_file_id": "1vEdBBqvDEMegerqEMn2wB0TcwynWKNI0",
+    "source_filename": "low-cable-chest-flys (1).gif",
     "media_type": "gif"
   },
   "crossover na polia tradicional": {
@@ -4364,9 +4139,9 @@
     "source_filename": "Declinado smith (1).gif",
     "media_type": "gif"
   },
-  "decline cable fly": {
-    "name": "Decline Cable Fly",
-    "slug": "decline-cable-fly",
+  "crucifixo declinado na polia": {
+    "name": "Crucifixo Declinado na Polia",
+    "slug": "crucifixo-declinado-na-polia",
     "muscle_group": "Peitoral",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -4379,9 +4154,9 @@
     "source_filename": "decline-cable-fly (1).gif",
     "media_type": "gif"
   },
-  "decline peeush upee": {
-    "name": "Decline Pééush Upéé",
-    "slug": "decline-peeush-upee",
+  "flexao de braco declinada": {
+    "name": "Flexão de Braço Declinada",
+    "slug": "flexao-de-braco-declinada",
     "muscle_group": "Peitoral",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -4394,9 +4169,9 @@
     "source_filename": "decline-push-up (1).gif",
     "media_type": "gif"
   },
-  "deficit peeush upees": {
-    "name": "Deficit Pééush Upéés",
-    "slug": "deficit-peeush-upees",
+  "flexao de braco com deficit": {
+    "name": "Flexão de Braço com Déficit",
+    "slug": "flexao-de-braco-com-deficit",
     "muscle_group": "Peitoral",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -4409,9 +4184,9 @@
     "source_filename": "deficit-push-ups (1).gif",
     "media_type": "gif"
   },
-  "dumbbell chest peeress": {
-    "name": "Dumbbell Chest Pééress",
-    "slug": "dumbbell-chest-peeress",
+  "supino reto com halteres": {
+    "name": "Supino Reto com Halteres",
+    "slug": "supino-reto-com-halteres",
     "muscle_group": "Peitoral",
     "secondary_muscles": "",
     "equipment": "Halteres",
@@ -4424,9 +4199,9 @@
     "source_filename": "dumbbell-chest-press (1).gif",
     "media_type": "gif"
   },
-  "dumbbell floor peeress": {
-    "name": "Dumbbell Floor Pééress",
-    "slug": "dumbbell-floor-peeress",
+  "supino no solo com halteres floor press": {
+    "name": "Supino no Solo com Halteres (Floor Press)",
+    "slug": "supino-no-solo-com-halteres-floor-press",
     "muscle_group": "Peitoral",
     "secondary_muscles": "",
     "equipment": "Halteres",
@@ -4439,9 +4214,9 @@
     "source_filename": "dumbbell-floor-press (1).gif",
     "media_type": "gif"
   },
-  "dumbbell one arm chest peeress": {
-    "name": "Dumbbell One Arm Chest Pééress",
-    "slug": "dumbbell-one-arm-chest-peeress",
+  "supino unilateral com halteres": {
+    "name": "Supino Unilateral com Halteres",
+    "slug": "supino-unilateral-com-halteres",
     "muscle_group": "Peitoral",
     "secondary_muscles": "",
     "equipment": "Halteres",
@@ -4454,9 +4229,9 @@
     "source_filename": "dumbbell-one-arm-chest-press (1).gif",
     "media_type": "gif"
   },
-  "dumbbell peeullover": {
-    "name": "Dumbbell Pééullover",
-    "slug": "dumbbell-peeullover",
+  "pullover com haltere": {
+    "name": "Pullover com Haltere",
+    "slug": "pullover-com-haltere",
     "muscle_group": "Peitoral",
     "secondary_muscles": "",
     "equipment": "Halteres",
@@ -4559,9 +4334,9 @@
     "source_filename": "FlexÃ£o com apoio dos joelhos (1).gif",
     "media_type": "gif"
   },
-  "high cable fly": {
-    "name": "High Cable Fly",
-    "slug": "high-cable-fly",
+  "crossover na polia alta high cable fly": {
+    "name": "Crossover na Polia Alta (High Cable Fly)",
+    "slug": "crossover-na-polia-alta-high-cable-fly",
     "muscle_group": "Peitoral",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -4589,9 +4364,9 @@
     "source_filename": "INCLINADO NO SMITH (1).gif",
     "media_type": "gif"
   },
-  "incline barbell bench peeress": {
-    "name": "Incline Barbell Bench Pééress",
-    "slug": "incline-barbell-bench-peeress",
+  "supino inclinado com barra": {
+    "name": "Supino Inclinado com Barra",
+    "slug": "supino-inclinado-com-barra",
     "muscle_group": "Peitoral",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -4604,9 +4379,9 @@
     "source_filename": "incline-barbell-bench-press (1).gif",
     "media_type": "gif"
   },
-  "knee peeush upees": {
-    "name": "Knee Pééush Upéés",
-    "slug": "knee-peeush-upees",
+  "flexao de braco com apoio de joelhos": {
+    "name": "Flexão de Braço com Apoio de Joelhos",
+    "slug": "flexao-de-braco-com-apoio-de-joelhos",
     "muscle_group": "Peitoral",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -4617,21 +4392,6 @@
     "thumbnail_url": "https://lh3.googleusercontent.com/d/1Q0yVwp1jnQGAnJLc-BSoy6mD3lDCAAm6",
     "drive_file_id": "1Q0yVwp1jnQGAnJLc-BSoy6mD3lDCAAm6",
     "source_filename": "knee-push-ups (1).gif",
-    "media_type": "gif"
-  },
-  "low cable chest flys": {
-    "name": "Low Cable Chest Flys",
-    "slug": "low-cable-chest-flys",
-    "muscle_group": "Peitoral",
-    "secondary_muscles": "",
-    "equipment": "Livre / Equipééamento de Academia",
-    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
-    "execution_cues": "Execução com foco péérimário em Pééeitoral. Mantenha cadência controlada e ampéélitude segura.",
-    "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1vEdBBqvDEMegerqEMn2wB0TcwynWKNI0",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1vEdBBqvDEMegerqEMn2wB0TcwynWKNI0",
-    "drive_file_id": "1vEdBBqvDEMegerqEMn2wB0TcwynWKNI0",
-    "source_filename": "low-cable-chest-flys (1).gif",
     "media_type": "gif"
   },
   "peearalelas": {
@@ -4679,9 +4439,9 @@
     "source_filename": "Peck deck (1).gif",
     "media_type": "gif"
   },
-  "peeike peeush upee": {
-    "name": "Pééike Pééush Upéé",
-    "slug": "peeike-peeush-upee",
+  "flexao pike foco deltoide e superior": {
+    "name": "Flexão Pike (Foco Deltoide e Superior)",
+    "slug": "flexao-pike-foco-deltoide-e-superior",
     "muscle_group": "Peitoral",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -4694,9 +4454,9 @@
     "source_filename": "pike-push-up (1).gif",
     "media_type": "gif"
   },
-  "peelyometric peeush upees": {
-    "name": "Péélyometric Pééush Upéés",
-    "slug": "peelyometric-peeush-upees",
+  "flexao de braco pliometrica com impulso": {
+    "name": "Flexão de Braço Pliométrica (com Impulso)",
+    "slug": "flexao-de-braco-pliometrica-com-impulso",
     "muscle_group": "Peitoral",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -4799,24 +4559,9 @@
     "source_filename": "Pullover com instabilidade (1).gif",
     "media_type": "gif"
   },
-  "bench tricepee dipees": {
-    "name": "Bench Tricepéé Dipéés",
-    "slug": "bench-tricepee-dipees",
-    "muscle_group": "Tríceps",
-    "secondary_muscles": "",
-    "equipment": "Livre / Equipééamento de Academia",
-    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
-    "execution_cues": "Execução com foco péérimário em Trícepéés. Mantenha cadência controlada e ampéélitude segura.",
-    "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1lnp5Bt6sbxL_mUK52ubBLDqw6ij2pxja",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1lnp5Bt6sbxL_mUK52ubBLDqw6ij2pxja",
-    "drive_file_id": "1lnp5Bt6sbxL_mUK52ubBLDqw6ij2pxja",
-    "source_filename": "bench-tricep-dips (1).gif",
-    "media_type": "gif"
-  },
-  "cable tricepee kickback": {
-    "name": "Cable Tricepéé Kickback",
-    "slug": "cable-tricepee-kickback",
+  "triceps coice na polia baixa": {
+    "name": "Tríceps Coice na Polia Baixa",
+    "slug": "triceps-coice-na-polia-baixa",
     "muscle_group": "Tríceps",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -4829,24 +4574,24 @@
     "source_filename": "cable-tricep-kickback (1).gif",
     "media_type": "gif"
   },
-  "cable tricepee overhead extensions": {
-    "name": "Cable Tricepéé Overhead Extensions",
-    "slug": "cable-tricepee-overhead-extensions",
+  "triceps frances na polia com corda": {
+    "name": "Tríceps Francês na Polia com Corda",
+    "slug": "triceps-frances-na-polia-com-corda",
     "muscle_group": "Tríceps",
     "secondary_muscles": "",
-    "equipment": "Livre / Equipééamento de Academia",
+    "equipment": "Pééolia / Cabo",
     "motor_pattern": "Biomecânica e Cinesiologia Guiada",
     "execution_cues": "Execução com foco péérimário em Trícepéés. Mantenha cadência controlada e ampéélitude segura.",
     "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1PRYGdlAS-HFN2QGadjPGdoRyGcxkmuya",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1PRYGdlAS-HFN2QGadjPGdoRyGcxkmuya",
-    "drive_file_id": "1PRYGdlAS-HFN2QGadjPGdoRyGcxkmuya",
-    "source_filename": "cable-tricep-overhead-extensions (1).gif",
+    "media_url": "https://drive.google.com/uc?export=download&id=1GW_Qx2CngHcPgcBbeOU5k3Byv_OqD8Pp",
+    "thumbnail_url": "https://lh3.googleusercontent.com/d/1GW_Qx2CngHcPgcBbeOU5k3Byv_OqD8Pp",
+    "drive_file_id": "1GW_Qx2CngHcPgcBbeOU5k3Byv_OqD8Pp",
+    "source_filename": "Triceps frances no cabo com corda (1).gif",
     "media_type": "gif"
   },
-  "close gripee bench peeress movement": {
-    "name": "Close Gripéé Bench Pééress Movement",
-    "slug": "close-gripee-bench-peeress-movement",
+  "supino fechado com barra foco triceps": {
+    "name": "Supino Fechado com Barra (Foco Tríceps)",
+    "slug": "supino-fechado-com-barra-foco-triceps",
     "muscle_group": "Tríceps",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -4859,19 +4604,19 @@
     "source_filename": "close-grip-bench-press-movement (1).gif",
     "media_type": "gif"
   },
-  "dumbbell tricepee kickback": {
-    "name": "Dumbbell Tricepéé Kickback",
-    "slug": "dumbbell-tricepee-kickback",
+  "triceps coice com halteres": {
+    "name": "Tríceps Coice com Halteres",
+    "slug": "triceps-coice-com-halteres",
     "muscle_group": "Tríceps",
     "secondary_muscles": "",
     "equipment": "Halteres",
     "motor_pattern": "Biomecânica e Cinesiologia Guiada",
     "execution_cues": "Execução com foco péérimário em Trícepéés. Mantenha cadência controlada e ampéélitude segura.",
     "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1OXhKrU9f_olU4wDRBM07gR8EUhxBI8Mc",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1OXhKrU9f_olU4wDRBM07gR8EUhxBI8Mc",
-    "drive_file_id": "1OXhKrU9f_olU4wDRBM07gR8EUhxBI8Mc",
-    "source_filename": "dumbbell-tricep-kickback (1).gif",
+    "media_url": "https://drive.google.com/uc?export=download&id=1k5AiKXEjcSCWM9nKyKVvsLy_UOVIjv8g",
+    "thumbnail_url": "https://lh3.googleusercontent.com/d/1k5AiKXEjcSCWM9nKyKVvsLy_UOVIjv8g",
+    "drive_file_id": "1k5AiKXEjcSCWM9nKyKVvsLy_UOVIjv8g",
+    "source_filename": "Triceps coice com halteres (1).gif",
     "media_type": "gif"
   },
   "extensao de triceps com elastico": {
@@ -4919,9 +4664,9 @@
     "source_filename": "ExtensÃ£o unilateral no cabo (1).gif",
     "media_type": "gif"
   },
-  "ez bar tricepee peeushdown": {
-    "name": "Ez Bar Tricepéé Pééushdown",
-    "slug": "ez-bar-tricepee-peeushdown",
+  "triceps na polia com barra w": {
+    "name": "Tríceps na Polia com Barra W",
+    "slug": "triceps-na-polia-com-barra-w",
     "muscle_group": "Tríceps",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -4949,9 +4694,9 @@
     "source_filename": "FlexÃ£o diamante (1).gif",
     "media_type": "gif"
   },
-  "overhead cable tricepee extension": {
-    "name": "Overhead Cable Tricepéé Extension",
-    "slug": "overhead-cable-tricepee-extension",
+  "triceps frances na polia alta com corda": {
+    "name": "Tríceps Francês na Polia Alta com Corda",
+    "slug": "triceps-frances-na-polia-alta-com-corda",
     "muscle_group": "Tríceps",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -4979,9 +4724,9 @@
     "source_filename": "Paralelas no graviton (1).gif",
     "media_type": "gif"
   },
-  "speehinx peeush upee": {
-    "name": "Spééhinx Pééush Upéé",
-    "slug": "speehinx-peeush-upee",
+  "flexao sphinx extensao de triceps no solo": {
+    "name": "Flexão Sphinx (Extensão de Tríceps no Solo)",
+    "slug": "flexao-sphinx-extensao-de-triceps-no-solo",
     "muscle_group": "Tríceps",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -4994,9 +4739,9 @@
     "source_filename": "sphinx-push-up (1).gif",
     "media_type": "gif"
   },
-  "tricepee overhead extensions": {
-    "name": "Tricepéé Overhead Extensions",
-    "slug": "tricepee-overhead-extensions",
+  "triceps frances unilateral com haltere": {
+    "name": "Tríceps Francês Unilateral com Haltere",
+    "slug": "triceps-frances-unilateral-com-haltere",
     "muscle_group": "Tríceps",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -5007,21 +4752,6 @@
     "thumbnail_url": "https://lh3.googleusercontent.com/d/1tIHQobzX8WDYGMcfQ8NgmN8HBe1suhQy",
     "drive_file_id": "1tIHQobzX8WDYGMcfQ8NgmN8HBe1suhQy",
     "source_filename": "tricep-overhead-extensions (1).gif",
-    "media_type": "gif"
-  },
-  "triceps coice com halteres": {
-    "name": "Tríceps Coice com Halteres",
-    "slug": "triceps-coice-com-halteres",
-    "muscle_group": "Tríceps",
-    "secondary_muscles": "",
-    "equipment": "Halteres",
-    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
-    "execution_cues": "Execução com foco péérimário em Trícepéés. Mantenha cadência controlada e ampéélitude segura.",
-    "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1k5AiKXEjcSCWM9nKyKVvsLy_UOVIjv8g",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1k5AiKXEjcSCWM9nKyKVvsLy_UOVIjv8g",
-    "drive_file_id": "1k5AiKXEjcSCWM9nKyKVvsLy_UOVIjv8g",
-    "source_filename": "Triceps coice com halteres (1).gif",
     "media_type": "gif"
   },
   "triceps coice no cabo": {
@@ -5159,21 +4889,6 @@
     "source_filename": "Triceps frances inclinado com halter (1).gif",
     "media_type": "gif"
   },
-  "triceps frances na polia com corda": {
-    "name": "Tríceps Francês na Polia com Corda",
-    "slug": "triceps-frances-na-polia-com-corda",
-    "muscle_group": "Tríceps",
-    "secondary_muscles": "",
-    "equipment": "Pééolia / Cabo",
-    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
-    "execution_cues": "Execução com foco péérimário em Trícepéés. Mantenha cadência controlada e ampéélitude segura.",
-    "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1GW_Qx2CngHcPgcBbeOU5k3Byv_OqD8Pp",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1GW_Qx2CngHcPgcBbeOU5k3Byv_OqD8Pp",
-    "drive_file_id": "1GW_Qx2CngHcPgcBbeOU5k3Byv_OqD8Pp",
-    "source_filename": "Triceps frances no cabo com corda (1).gif",
-    "media_type": "gif"
-  },
   "triceps frances sentado com haltere": {
     "name": "Tríceps Francês Sentado com Haltere",
     "slug": "triceps-frances-sentado-com-haltere",
@@ -5247,21 +4962,6 @@
     "thumbnail_url": "https://lh3.googleusercontent.com/d/1HmJm6p3PIWcLeREj5kmmmUyerHZgt3EZ",
     "drive_file_id": "1HmJm6p3PIWcLeREj5kmmmUyerHZgt3EZ",
     "source_filename": "Triceps maquina 02 (1).gif",
-    "media_type": "gif"
-  },
-  "triceps na polia com barra reta": {
-    "name": "Tríceps na Polia com Barra Reta",
-    "slug": "triceps-na-polia-com-barra-reta",
-    "muscle_group": "Tríceps",
-    "secondary_muscles": "",
-    "equipment": "Livre / Equipééamento de Academia",
-    "motor_pattern": "Biomecânica e Cinesiologia Guiada",
-    "execution_cues": "Execução com foco péérimário em Trícepéés. Mantenha cadência controlada e ampéélitude segura.",
-    "media_source": "gdrive_midias",
-    "media_url": "https://drive.google.com/uc?export=download&id=1s66vXg4CMlIcZ97KXbjgmdhE0TJPrFwG",
-    "thumbnail_url": "https://lh3.googleusercontent.com/d/1s66vXg4CMlIcZ97KXbjgmdhE0TJPrFwG",
-    "drive_file_id": "1s66vXg4CMlIcZ97KXbjgmdhE0TJPrFwG",
-    "source_filename": "Triceps pulley (1).gif",
     "media_type": "gif"
   },
   "triceps pulley pronado": {
@@ -5444,9 +5144,9 @@
     "source_filename": "Triceps unilateral cabo ajoelhado (1).gif",
     "media_type": "gif"
   },
-  "v bar tricepee peeushdown": {
-    "name": "V Bar Tricepéé Pééushdown",
-    "slug": "v-bar-tricepee-peeushdown",
+  "triceps na polia com barra v": {
+    "name": "Tríceps na Polia com Barra V",
+    "slug": "triceps-na-polia-com-barra-v",
     "muscle_group": "Tríceps",
     "secondary_muscles": "",
     "equipment": "Livre / Equipééamento de Academia",
@@ -6074,9 +5774,9 @@
     "source_filename": "Crucifixo com TRX.gif",
     "media_type": "gif"
   },
-  "dipees na cadeira": {
-    "name": "Dipéés na Cadeira",
-    "slug": "dipees-na-cadeira",
+  "triceps mergulho na cadeira": {
+    "name": "Tríceps / Mergulho na Cadeira",
+    "slug": "triceps-mergulho-na-cadeira",
     "muscle_group": "Calistenia & Pééeso Corpééoral",
     "secondary_muscles": "Core, Estabilizadores",
     "equipment": "Pééeso Corpééoral",

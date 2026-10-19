@@ -16,6 +16,7 @@ import re
 import json
 import asyncio
 import logging
+from typing import Optional
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -239,6 +240,71 @@ CANONICAL_NAME_MAP = {
     "dumbbell-good-morning": "Bom Dia com Haltere",
     "elevacao pelvica": "Elevação Pélvica Tradicional",
 
+    # Peitoral Adicionais & Typos
+    "barbell decline bench peeress": "Supino Declinado com Barra",
+    "bench peeress feet upee": "Supino Reto com Barra (Pés Elevados)",
+    "dumbbell chest peeress": "Supino Reto com Halteres",
+    "dumbbell floor peeress": "Supino no Solo com Halteres (Floor Press)",
+    "dumbbell one arm chest peeress": "Supino Unilateral com Haltere",
+    "incline barbell bench peeress": "Supino Inclinado com Barra",
+    "low cable chest flys": "Crossover na Polia Baixa",
+    "cable rear delt fly": "Crucifixo Invertido na Polia",
+
+    # Bíceps & Antebraço Adicionais & Typos
+    "barbell curl": "Rosca Direta com Barra",
+    "bayesian curl": "Rosca Bayesian na Polia (Cabo por Trás)",
+    "bicepee curl machine": "Rosca Bíceps na Máquina",
+    "cable bicepee curl": "Rosca Bíceps na Polia Baixa",
+    "cable one arm curl": "Rosca Bíceps Unilateral na Polia",
+    "cable peereacher curl": "Rosca Scott na Polia",
+    "cross body hammer curl": "Rosca Martelo Cruzada no Peito",
+    "dumbbell bicepee curl": "Rosca Direta com Halteres",
+    "dumbbell hammer curl": "Rosca Martelo com Halteres",
+    "dumbbell incline hammer curl": "Rosca Martelo no Banco Inclinado",
+    "dumbbell peereacher curl": "Rosca Scott com Halteres",
+    "dumbbell reverse curl": "Rosca Inversa com Halteres",
+    "dumbbell seated zottman curl": "Rosca Zottman Sentado com Halteres",
+    "dumbbell wrist curl": "Rosca de Punho com Halteres",
+    "ez bar bicepee curl": "Rosca Direta com Barra W",
+    "ez bar peereacher curl": "Rosca Scott com Barra W",
+    "incline dumbbell curl": "Rosca Inclinada com Halteres",
+    "overhead cable curl": "Rosca Dupla Bíceps na Polia Alta",
+    "peerone incline dumbbell curl": "Rosca Inclinada Pronada no Banco",
+
+    # Tríceps Adicionais & Typos
+    "bench tricepee dipees": "Tríceps no Banco (Mergulho)",
+    "cable tricepee kickback": "Tríceps Coice na Polia Baixa",
+    "close gripee bench peeress movement": "Supino Fechado com Barra (Foco Tríceps)",
+    "dipees na cadeira": "Tríceps / Mergulho na Cadeira",
+    "dumbbell tricepee kickback": "Tríceps Coice com Halteres",
+
+    # Costas & Trapézio Adicionais & Typos
+    "barbell peeullover": "Pullover com Barra",
+    "dumbbell back extension": "Extensão Lombar com Haltere",
+    "dumbbell face peeull": "Face Pull com Halteres",
+    "dumbbell jefferson curl": "Jefferson Curl com Haltere",
+    "dumbbell peeullover": "Pullover com Haltere",
+
+    # Membros Inferiores, Panturrilhas & Glúteos Adicionais & Typos
+    "barbell hipee thrust": "Elevação Pélvica com Barra (Hip Thrust)",
+    "barbell good morning": "Bom Dia (Good Morning) com Barra",
+    "barbell peeush jerk muscles": "Push Jerk com Barra (Levantamento Olímpico)",
+    "barbell romanian deadlift movement": "Levantamento Terra Romeno (RDL) com Barra",
+    "bodyweight hipee thrust": "Elevação Pélvica com Peso Corporal",
+    "cable kickback": "Glúteo Coice na Polia Baixa",
+    "cable standing calf raise": "Elevação de Panturrilha em Pé na Polia",
+    "donkey calf raise": "Elevação de Panturrilha Donkey (Burrinho)",
+    "dumbbell calf raise": "Elevação de Panturrilha com Halteres",
+    "dumbbell good morning": "Bom Dia com Halteres (Good Morning)",
+    "lateral raise machine": "Elevação Lateral na Máquina",
+    "leg peeress calf raise": "Panturrilha no Leg Press",
+    "negative calf raise": "Panturrilha com Fase Excêntrica Lenta",
+    "seated calf raise": "Panturrilha Sentado na Máquina (Gêmeos)",
+    "seated calf raise dumbbell": "Panturrilha Sentado com Halteres",
+    "single leg calf raise": "Panturrilha Unilateral em Pé",
+    "smith machine calf raise": "Panturrilha no Smith Machine",
+    "standing calf raise": "Panturrilha em Pé na Máquina",
+
     # Abdômen & Core
     "abdominal bicleta": "Abdominal Bicicleta",
     "abdominal com rotacao de tronco": "Abdominal com Rotação de Tronco",
@@ -256,7 +322,32 @@ CANONICAL_NAME_MAP = {
     "crunch reverso": "Abdominal Crunch Reverso",
     "crunch-floor": "Abdominal Crunch no Solo",
     "crunch-with-leg-raise": "Abdominal Crunch com Elevação de Pernas",
+    "abdominal crunch floor": "Abdominal Crunch no Solo",
+    "abdominal crunch with leg raise": "Abdominal Crunch com Elevação de Pernas",
 }
+
+# Índice bidirecional com slugs e espaços para lookup tolerante a traços ou espaços
+NORMALIZED_CANONICAL_MAP = {}
+for _k, _v in CANONICAL_NAME_MAP.items():
+    NORMALIZED_CANONICAL_MAP[_k.lower().strip()] = _v
+    NORMALIZED_CANONICAL_MAP[_k.lower().replace("-", " ").strip()] = _v
+    NORMALIZED_CANONICAL_MAP[re.sub(r'[^a-z0-9]', '', _k.lower())] = _v
+
+
+def find_canonical_name(val: str) -> Optional[str]:
+    if not val:
+        return None
+    v = val.lower().strip()
+    if v in NORMALIZED_CANONICAL_MAP:
+        return NORMALIZED_CANONICAL_MAP[v]
+    v_spaced = v.replace("-", " ").replace("_", " ")
+    if v_spaced in NORMALIZED_CANONICAL_MAP:
+        return NORMALIZED_CANONICAL_MAP[v_spaced]
+    v_clean = re.sub(r'[^a-z0-9]', '', v)
+    if v_clean in NORMALIZED_CANONICAL_MAP:
+        return NORMALIZED_CANONICAL_MAP[v_clean]
+    return None
+
 
 # Normalização de Grupo Muscular Canônico
 MUSCLE_GROUP_CLEAN = {
@@ -503,13 +594,14 @@ async def curate_catalog():
         if file_id in MP4_CANONICAL_NAMES:
             canonical_name = MP4_CANONICAL_NAMES[file_id]["name"]
             muscle_group = MP4_CANONICAL_NAMES[file_id]["muscle_group"]
-            equipment = MP4_CANONICAL_NAMES[file_id]["equipment"]
-        elif src_key in CANONICAL_NAME_MAP:
-            canonical_name = CANONICAL_NAME_MAP[src_key]
-        elif normalize_slug(raw_name).replace("-", " ") in CANONICAL_NAME_MAP:
-            canonical_name = CANONICAL_NAME_MAP[normalize_slug(raw_name).replace("-", " ")]
         else:
-            canonical_name = sanitize_text(raw_name)
+            canonical_name = (
+                find_canonical_name(src_key)
+                or find_canonical_name(raw_name)
+                or find_canonical_name(key)
+                or find_canonical_name(normalize_slug(raw_name))
+                or sanitize_text(raw_name)
+            )
 
         # 2. Higieniza Grupo Muscular e Equipamento se não for do MP4
         if file_id not in MP4_CANONICAL_NAMES:
