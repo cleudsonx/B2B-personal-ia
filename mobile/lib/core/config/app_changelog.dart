@@ -39,6 +39,36 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.7.0',
+      buildNumber: 2026102913,
+      date: '19 de Outubro, 2026',
+      summary:
+          'Revisão de Treino Ergonômica, Edição/Substituição de Exercícios na Ficha e Curadoria Biomecânica Padrão CREF de 413 Movimentos.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.edit_note_rounded,
+          title: 'Tela de Revisão Otimizada',
+          description:
+              'Diretriz clínica colapsável por padrão, abas compactas em pílulas e banner informativo do split com duração estimada.',
+          badge: 'UI/UX',
+        ),
+        ChangelogItem(
+          icon: Icons.swap_horiz_rounded,
+          title: 'Substituição e Edição na Revisão',
+          description:
+              'Troque, exclua ou adicione exercícios na ficha gerada pela IA antes de aprovar e liberar para o aluno.',
+          badge: 'PRESCRIÇÃO',
+        ),
+        ChangelogItem(
+          icon: Icons.fitness_center_rounded,
+          title: 'Catálogo Biomecânico Padrão CREF',
+          description:
+              '413 exercícios com nomenclatura cinesiológica formal em português brasileiro e animações 60fps in-app.',
+          badge: 'BIOMECÂNICA',
+        ),
+      ],
+    ),
+    VersionRelease(
+      version: '1.7.0',
       buildNumber: 2026102910,
       date: '19 de Outubro, 2026',
       summary:
