@@ -104,6 +104,17 @@ def _normalize(text: str) -> str:
     return " ".join(clean.split())
 
 
+STOPWORDS = {
+    'de', 'da', 'do', 'das', 'dos', 'em', 'no', 'na', 'nos', 'nas', 
+    'com', 'e', 'para', 'o', 'a', 'os', 'as', 'um', 'uma', 'ao', 'aos'
+}
+
+
+def _tokenize(text: str) -> List[str]:
+    clean = _normalize(text)
+    return [w for w in clean.split() if len(w) > 1 and w not in STOPWORDS]
+
+
 class ExerciseMediaResponse(BaseModel):
     name: str
     slug: str
@@ -120,51 +131,99 @@ class ExerciseMediaResponse(BaseModel):
 @router.get("/media", response_model=Optional[ExerciseMediaResponse])
 async def get_exercise_media(name: str = Query(..., description="Nome do exercício para buscar mídia")):
     """
-    Busca mídia (vídeo/animação) do exercício por nome aproximado ou slug.
+    Busca mídia (vídeo/animação) do exercício por busca inteligente de correspondência.
     Resiliente: Consulta o Supabase e usa fallback local caso o banco esteja sincronizando.
     """
     norm = _normalize(name)
     if not norm:
         raise HTTPException(status_code=400, detail="Nome de exercício inválido")
 
-    # 1. Tenta buscar no Supabase
+    tokens = _tokenize(name)
+
+    # 1. Tenta buscar no Supabase com busca inteligente por tokens
     try:
         client = await supabase_service.get_client()
         if client:
-            res = await client.table("exercise_library").select("*").ilike("name", f"%{name}%").limit(1).execute()
-            if res.data and len(res.data) > 0:
-                row = res.data[0]
-                return ExerciseMediaResponse(
-                    name=row["name"],
-                    slug=row.get("normalized_slug") or _normalize(row["name"]).replace(" ", "-"),
-                    muscle_group=row["muscle_group"],
-                    secondary_muscles=row.get("secondary_muscles"),
-                    equipment=row["equipment"],
-                    motor_pattern=row.get("motor_pattern"),
-                    execution_cues=row.get("execution_cues"),
-                    media_source=row.get("media_source", "custom"),
-                    media_url=row["media_url"],
-                    thumbnail_url=row.get("thumbnail_url"),
-                )
+            candidates = []
+            if tokens:
+                # Busca pelo primeiro token principal (ex: desenvolvimento, agachamento, supino, puxada)
+                res = await client.table("exercise_library").select("*").ilike("name", f"%{tokens[0]}%").limit(25).execute()
+                candidates = res.data or []
+            
+            # Se não encontrou, tenta buscar por qualquer outro token
+            if not candidates and len(tokens) > 1:
+                for t in tokens[1:]:
+                    res = await client.table("exercise_library").select("*").ilike("name", f"%{t}%").limit(25).execute()
+                    if res.data:
+                        candidates.extend(res.data)
+                        break
+
+            # Se ainda não encontrou, tenta busca ilike direta no nome completo
+            if not candidates:
+                res = await client.table("exercise_library").select("*").ilike("name", f"%{name}%").limit(10).execute()
+                candidates = res.data or []
+
+            if candidates:
+                # Pontua cada candidato por correspondência e proximidade semântica
+                best_row = None
+                best_score = -1
+                for row in candidates:
+                    row_tokens = set(_tokenize(row["name"]))
+                    score = sum(2 if t in row_tokens else 0 for t in tokens)
+                    if tokens and tokens[0] in row_tokens:
+                        score += 3
+                    row_norm = _normalize(row["name"])
+                    if row_norm in norm or norm in row_norm:
+                        score += 5
+                    if score > best_score:
+                        best_score = score
+                        best_row = row
+
+                if best_row:
+                    return ExerciseMediaResponse(
+                        name=best_row["name"],
+                        slug=best_row.get("normalized_slug") or _normalize(best_row["name"]).replace(" ", "-"),
+                        muscle_group=best_row["muscle_group"],
+                        secondary_muscles=best_row.get("secondary_muscles"),
+                        equipment=best_row["equipment"],
+                        motor_pattern=best_row.get("motor_pattern"),
+                        execution_cues=best_row.get("execution_cues"),
+                        media_source=best_row.get("media_source", "custom"),
+                        media_url=best_row["media_url"],
+                        thumbnail_url=best_row.get("thumbnail_url"),
+                    )
     except Exception as e:
         logger.warning(f"[ExerciseLibrary] Supabase fallback: {e}")
 
-    # 2. Fallback de memória resiliente (estático + catalog.json)
+    # 2. Fallback de memória resiliente com pontuação de tokens (estático + catalog.json)
     combined = _get_combined_catalog()
-    for key, data in combined.items():
+    best_data = None
+    best_score = -1
+    for data in combined.values():
+        data_tokens = set(_tokenize(data["name"]))
+        score = sum(2 if t in data_tokens else 0 for t in tokens)
+        if tokens and tokens[0] in data_tokens:
+            score += 3
+        key = _normalize(data["name"])
         if key in norm or norm in key:
-            return ExerciseMediaResponse(
-                name=data["name"],
-                slug=data["slug"],
-                muscle_group=data["muscle_group"],
-                secondary_muscles=data.get("secondary_muscles"),
-                equipment=data["equipment"],
-                motor_pattern=data.get("motor_pattern"),
-                execution_cues=data.get("execution_cues"),
-                media_source=data["media_source"],
-                media_url=data["media_url"],
-                thumbnail_url=data.get("thumbnail_url"),
-            )
+            score += 5
+        if score > best_score and score >= 3:
+            best_score = score
+            best_data = data
+
+    if best_data:
+        return ExerciseMediaResponse(
+            name=best_data["name"],
+            slug=best_data["slug"],
+            muscle_group=best_data["muscle_group"],
+            secondary_muscles=best_data.get("secondary_muscles"),
+            equipment=best_data["equipment"],
+            motor_pattern=best_data.get("motor_pattern"),
+            execution_cues=best_data.get("execution_cues"),
+            media_source=best_data["media_source"],
+            media_url=best_data["media_url"],
+            thumbnail_url=best_data.get("thumbnail_url"),
+        )
 
     return None
 

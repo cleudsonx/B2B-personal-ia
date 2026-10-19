@@ -39,7 +39,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.7.0',
-      buildNumber: 2026102907,
+      buildNumber: 2026102908,
       date: '19 de Outubro, 2026',
       summary:
           'Acervo Definitivo de Mídias (432 Exercícios): GIFs animados em loop contínuo direto no app, categorização por 8 grupamentos musculares + Calistenia e sincronização 100% no Supabase.',

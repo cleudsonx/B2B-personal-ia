@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/config/app_config.dart';
 
 class ExerciseMedia {
@@ -31,7 +32,7 @@ class ExerciseMedia {
   factory ExerciseMedia.fromJson(Map<String, dynamic> json) {
     return ExerciseMedia(
       name: json['name'] as String? ?? 'Exercício',
-      slug: json['slug'] as String? ?? '',
+      slug: (json['slug'] ?? json['normalized_slug']) as String? ?? '',
       muscleGroup: json['muscle_group'] as String? ?? 'Geral',
       secondaryMuscles: json['secondary_muscles'] as String?,
       equipment: json['equipment'] as String? ?? 'Geral',
@@ -45,7 +46,7 @@ class ExerciseMedia {
 }
 
 class ExerciseMediaService {
-  static final Map<String, ExerciseMedia?> _cache = {};
+  static final Map<String, ExerciseMedia> _cache = {};
 
   /// Busca mídia (vídeo/animação) vinculada ao nome do exercício
   static Future<ExerciseMedia?> getMediaFor(String exerciseName) async {
@@ -57,11 +58,57 @@ class ExerciseMediaService {
       return _cache[key];
     }
 
+    // 1. Tenta buscar no Supabase diretamente do app (resposta instantânea em ~30ms, imune a sleep do Render)
+    try {
+      final supabase = Supabase.instance.client;
+      final tokens = key
+          .split(' ')
+          .map((w) => w.replaceAll(RegExp(r'[^a-z0-9]'), ''))
+          .where((w) => w.length > 2 && !{'para', 'com', 'dos', 'das', 'nos', 'nas'}.contains(w))
+          .toList();
+
+      if (tokens.isNotEmpty) {
+        final res = await supabase
+            .from('exercise_library')
+            .select('*')
+            .ilike('name', '%${tokens.first}%')
+            .limit(10);
+
+        if (res.isNotEmpty) {
+          // Seleciona o melhor candidato por sobreposição de palavras
+          Map<String, dynamic>? best;
+          int bestScore = -1;
+          for (final dynamic item in res) {
+            final row = item as Map<String, dynamic>;
+            final rowName = (row['name'] as String? ?? '').toLowerCase();
+            int score = 0;
+            for (final t in tokens) {
+              if (rowName.contains(t)) score += 2;
+            }
+            if (rowName.contains(tokens.first)) score += 3;
+            if (score > bestScore) {
+              bestScore = score;
+              best = row;
+            }
+          }
+
+          if (best != null && best['media_url'] != null && (best['media_url'] as String).isNotEmpty) {
+            final media = ExerciseMedia.fromJson(best);
+            _cache[key] = media;
+            return media;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[ExerciseMediaService] Supabase direto info: $e');
+    }
+
+    // 2. Consulta a API backend oficial com timeout estendido de 12s
     try {
       final uri = Uri.parse('${AppConfig.apiBaseUrl}/exercises/media').replace(
         queryParameters: {'name': clean},
       );
-      final res = await http.get(uri).timeout(const Duration(seconds: 4));
+      final res = await http.get(uri).timeout(const Duration(seconds: 12));
 
       if (res.statusCode == 200 && res.body.isNotEmpty && res.body != 'null') {
         final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
@@ -92,8 +139,10 @@ class ExerciseMediaService {
       return fallback;
     }
 
-    _cache[key] = null;
     return null;
   }
-}
 
+  static void clearCache() {
+    _cache.clear();
+  }
+}
