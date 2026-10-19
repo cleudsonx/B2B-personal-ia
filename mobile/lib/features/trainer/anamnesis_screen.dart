@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/ai_generation_stepper.dart';
+import '../../core/widgets/exercise_media_sheet.dart';
 import '../../core/widgets/server_config_dialog.dart';
 import '../../models/exercise_model.dart';
 import '../../models/split_model.dart';
@@ -49,6 +50,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
 
   bool _isLoading = false;
   bool _isSavingPlan = false;
+  bool _isClinicalNotesExpanded = false;
   WorkoutPlanModel? _generatedPlan;
 
   List<Map<String, dynamic>> _students = [];
@@ -2371,12 +2373,77 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  'Diretriz Clínica: ${plan.notesForTrainer}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: MetaColors.textSecondary,
-                    height: 1.3,
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _isClinicalNotesExpanded = !_isClinicalNotesExpanded;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: MetaColors.surfaceHighlight,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: MetaColors.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.lightbulb_outline_rounded,
+                              size: 15,
+                              color: MetaColors.emerald,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Diretriz Clínica do Treinador',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: MetaColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              _isClinicalNotesExpanded
+                                  ? 'Ocultar'
+                                  : 'Ver diretriz',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: MetaColors.emerald,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              _isClinicalNotesExpanded
+                                  ? Icons.keyboard_arrow_up_rounded
+                                  : Icons.keyboard_arrow_down_rounded,
+                              size: 16,
+                              color: MetaColors.emerald,
+                            ),
+                          ],
+                        ),
+                        if (_isClinicalNotesExpanded) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            plan.notesForTrainer,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: MetaColors.textSecondary,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -2460,11 +2527,12 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
             labelColor: MetaColors.emerald,
             unselectedLabelColor: MetaColors.textSecondary,
             indicatorWeight: 3,
+            labelPadding: const EdgeInsets.symmetric(horizontal: 18),
             tabs:
                 plan.splits
                     .map(
                       (s) => Tab(
-                        text: 'Treino ${s.splitIdentifier} (${s.splitName})',
+                        text: 'Treino ${s.splitIdentifier}',
                       ),
                     )
                     .toList(),
@@ -2475,22 +2543,78 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                 final split = plan.splits[splitIndex];
                 return ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: split.exercises.length + 1,
+                  itemCount: split.exercises.length + 2,
                   itemBuilder: (ctx, i) {
+                    if (i == 0) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: MetaColors.surfaceHighlight,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: MetaColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(7),
+                              decoration: BoxDecoration(
+                                color: AppColors.emeraldBg(context),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.fitness_center_rounded,
+                                size: 15,
+                                color: MetaColors.emerald,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Treino ${split.splitIdentifier}: ${split.splitName}',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: MetaColors.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 1),
+                                  Text(
+                                    '${split.exercises.length} exercícios • ~${split.estimatedDurationMin} min estimados',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: MetaColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    final exerciseIndex = i - 1;
                     // BOTÃO INCLUIR NOVO EXERCÍCIO AO FINAL DO SPLIT
-                    if (i == split.exercises.length) {
+                    if (exerciseIndex == split.exercises.length) {
                       return Container(
                         margin: const EdgeInsets.only(top: 8, bottom: 24),
                         width: double.infinity,
                         child: OutlinedButton.icon(
-                          icon: Icon(
+                          icon: const Icon(
                             Icons.add_circle_outline_rounded,
                             color: MetaColors.emerald,
                             size: 18,
                           ),
                           label: Text(
                             'Incluir Novo Exercício no Treino ${split.splitIdentifier}',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               color: MetaColors.emerald,
                               fontSize: 13,
@@ -2516,7 +2640,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                       );
                     }
 
-                    final ex = split.exercises[i];
+                    final ex = split.exercises[exerciseIndex];
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(14),
@@ -2531,7 +2655,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               Container(
                                 width: 28,
@@ -2547,8 +2671,8 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                 ),
                                 child: Center(
                                   child: Text(
-                                    '${i + 1}',
-                                    style: TextStyle(
+                                    '${exerciseIndex + 1}',
+                                    style: const TextStyle(
                                       color: MetaColors.emerald,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 12,
@@ -2565,7 +2689,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                       ex.name,
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 15,
+                                        fontSize: 14.5,
                                         color: MetaColors.textPrimary,
                                       ),
                                     ),
@@ -2574,11 +2698,50 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                       ex.targetMuscleGroup,
                                       style: TextStyle(
                                         color: MetaColors.textSecondary,
-                                        fontSize: 12,
+                                        fontSize: 11.5,
                                       ),
                                     ),
                                   ],
                                 ),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.play_circle_fill_rounded,
+                                  size: 24,
+                                ),
+                                color: MetaColors.emerald,
+                                tooltip: 'Ver demonstração in-app',
+                                visualDensity: VisualDensity.compact,
+                                padding: const EdgeInsets.all(4),
+                                constraints: const BoxConstraints(
+                                  minWidth: 32,
+                                  minHeight: 32,
+                                ),
+                                onPressed:
+                                    () => ExerciseMediaSheet.show(
+                                      context,
+                                      exerciseName: ex.name,
+                                    ),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.swap_horiz_rounded,
+                                  size: 20,
+                                ),
+                                color: MetaColors.textSecondary,
+                                tooltip: 'Substituir exercício',
+                                visualDensity: VisualDensity.compact,
+                                padding: const EdgeInsets.all(4),
+                                constraints: const BoxConstraints(
+                                  minWidth: 32,
+                                  minHeight: 32,
+                                ),
+                                onPressed:
+                                    () => _showSwapExerciseDialog(
+                                      splitIndex,
+                                      exerciseIndex,
+                                      ex,
+                                    ),
                               ),
                               IconButton(
                                 icon: const Icon(
@@ -2588,7 +2751,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                 color: Colors.red.shade400,
                                 tooltip: 'Remover exercício',
                                 visualDensity: VisualDensity.compact,
-                                padding: EdgeInsets.zero,
+                                padding: const EdgeInsets.all(4),
                                 constraints: const BoxConstraints(
                                   minWidth: 32,
                                   minHeight: 32,
@@ -2596,7 +2759,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                 onPressed:
                                     () => _confirmRemoveExercise(
                                       splitIndex,
-                                      i,
+                                      exerciseIndex,
                                       ex.name,
                                     ),
                               ),
@@ -2624,23 +2787,38 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                 label: 'Séries',
                                 value: '${ex.sets}',
                                 onDecrement:
-                                    () =>
-                                        _updateExerciseSets(splitIndex, i, -1),
+                                    () => _updateExerciseSets(
+                                      splitIndex,
+                                      exerciseIndex,
+                                      -1,
+                                    ),
                                 onIncrement:
-                                    () => _updateExerciseSets(splitIndex, i, 1),
+                                    () => _updateExerciseSets(
+                                      splitIndex,
+                                      exerciseIndex,
+                                      1,
+                                    ),
                               ),
                               const SizedBox(width: 8),
                               _buildParamStepper(
                                 label: 'Reps',
                                 value: ex.reps,
                                 onDecrement:
-                                    () => _cycleExerciseReps(splitIndex, i, -1),
+                                    () => _cycleExerciseReps(
+                                      splitIndex,
+                                      exerciseIndex,
+                                      -1,
+                                    ),
                                 onIncrement:
-                                    () => _cycleExerciseReps(splitIndex, i, 1),
+                                    () => _cycleExerciseReps(
+                                      splitIndex,
+                                      exerciseIndex,
+                                      1,
+                                    ),
                                 onTapValue:
                                     () => _editRepsDirectly(
                                       splitIndex,
-                                      i,
+                                      exerciseIndex,
                                       ex.reps,
                                     ),
                               ),
@@ -2649,11 +2827,17 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                                 label: 'Descanso',
                                 value: '${ex.restSeconds}s',
                                 onDecrement:
-                                    () =>
-                                        _updateExerciseRest(splitIndex, i, -15),
+                                    () => _updateExerciseRest(
+                                      splitIndex,
+                                      exerciseIndex,
+                                      -15,
+                                    ),
                                 onIncrement:
-                                    () =>
-                                        _updateExerciseRest(splitIndex, i, 15),
+                                    () => _updateExerciseRest(
+                                      splitIndex,
+                                      exerciseIndex,
+                                      15,
+                                    ),
                               ),
                             ],
                           ),
@@ -3247,6 +3431,449 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
     setState(() {
       _generatedPlan = _generatedPlan!.copyWith(splits: splits);
     });
+  }
+
+  void _swapExercise(
+    int splitIndex,
+    int exerciseIndex,
+    ExerciseModel newExercise,
+  ) {
+    if (_generatedPlan == null) return;
+    final splits = List<SplitModel>.from(_generatedPlan!.splits);
+    final split = splits[splitIndex];
+    final exercises = List<ExerciseModel>.from(split.exercises);
+    exercises[exerciseIndex] = newExercise.copyWith(order: exerciseIndex + 1);
+    splits[splitIndex] = split.copyWith(exercises: exercises);
+    setState(() {
+      _generatedPlan = _generatedPlan!.copyWith(splits: splits);
+    });
+  }
+
+  void _showSwapExerciseDialog(
+    int splitIndex,
+    int exerciseIndex,
+    ExerciseModel currentEx,
+  ) {
+    if (_generatedPlan == null) return;
+    final split = _generatedPlan!.splits[splitIndex];
+
+    final nameCtrl = TextEditingController(text: currentEx.name);
+    final notesCtrl = TextEditingController(text: currentEx.notes);
+    String selectedMuscle =
+        currentEx.targetMuscleGroup.isNotEmpty
+            ? currentEx.targetMuscleGroup
+            : 'Peitoral';
+    int sets = currentEx.sets;
+    String reps = currentEx.reps;
+    int restSeconds = currentEx.restSeconds;
+
+    const muscleOptions = [
+      'Peitoral',
+      'Dorsais / Costas',
+      'Deltoides / Ombros',
+      'Quadríceps',
+      'Posterior de Coxa',
+      'Glúteos',
+      'Bíceps',
+      'Tríceps',
+      'Panturrilhas',
+      'Abdômen / Core',
+      'Geral',
+    ];
+
+    const suggestions = [
+      'Supino Inclinado com Halteres',
+      'Puxada Alta (Lat Pulldown)',
+      'Elevação Lateral na Polia',
+      'Agachamento Búlgaro',
+      'Leg Press 45°',
+      'Cadeira Extensora',
+      'Tríceps na Polia com Corda',
+      'Rosca Direta com Barra W',
+      'Mesa Flexora',
+      'Elevação Pélvica',
+      'Crucifixo Reto com Halteres',
+      'Remada Curvada com Barra',
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: MetaColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.swap_horiz_rounded,
+                              color: MetaColors.emerald,
+                              size: 22,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Substituir Exercício',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: MetaColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Substituindo "${currentEx.name}" no Treino ${split.splitIdentifier}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: MetaColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: nameCtrl,
+                      style: TextStyle(color: MetaColors.textPrimary),
+                      decoration: _inputDecoration(
+                        context,
+                        'Novo Nome do Exercício',
+                        prefixIcon: Icons.fitness_center_rounded,
+                        hint: 'Ex: Supino Inclinado com Halteres',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children:
+                          suggestions.take(6).map((sug) {
+                            return ActionChip(
+                              label: Text(
+                                sug,
+                                style: const TextStyle(fontSize: 10),
+                              ),
+                              backgroundColor: MetaColors.surfaceHighlight,
+                              side: const BorderSide(
+                                color: MetaColors.border,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
+                              onPressed: () {
+                                setModalState(() {
+                                  nameCtrl.text = sug;
+                                });
+                              },
+                            );
+                          }).toList(),
+                    ),
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String>(
+                      initialValue:
+                          muscleOptions.contains(selectedMuscle)
+                              ? selectedMuscle
+                              : 'Peitoral',
+                      dropdownColor: MetaColors.surface,
+                      style: TextStyle(
+                        color: MetaColors.textPrimary,
+                        fontSize: 13,
+                      ),
+                      decoration: _inputDecoration(
+                        context,
+                        'Grupo Muscular Alvo',
+                        prefixIcon: Icons.accessibility_new_rounded,
+                      ),
+                      items:
+                          muscleOptions
+                              .map(
+                                (m) =>
+                                    DropdownMenuItem(value: m, child: Text(m)),
+                              )
+                              .toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setModalState(() => selectedMuscle = val);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: MetaColors.surfaceHighlight,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: MetaColors.border,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  'SÉRIES',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: MetaColors.textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    InkWell(
+                                      onTap:
+                                          sets > 1
+                                              ? () =>
+                                                  setModalState(() => sets--)
+                                              : null,
+                                      child: Icon(
+                                        Icons.remove_circle_outline,
+                                        size: 20,
+                                        color: MetaColors.textPrimary,
+                                      ),
+                                    ),
+                                    Text(
+                                      '$sets',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: MetaColors.textPrimary,
+                                      ),
+                                    ),
+                                    InkWell(
+                                      onTap:
+                                          sets < 10
+                                              ? () =>
+                                                  setModalState(() => sets++)
+                                              : null,
+                                      child: Icon(
+                                        Icons.add_circle_outline,
+                                        size: 20,
+                                        color: MetaColors.textPrimary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: MetaColors.surfaceHighlight,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: MetaColors.border,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  'REPETIÇÕES',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: MetaColors.textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                DropdownButton<String>(
+                                  value:
+                                      _commonRepRanges.contains(reps)
+                                          ? reps
+                                          : '10-12',
+                                  dropdownColor: MetaColors.surface,
+                                  underline: const SizedBox(),
+                                  isDense: true,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: MetaColors.textPrimary,
+                                  ),
+                                  items:
+                                      _commonRepRanges
+                                          .map(
+                                            (r) => DropdownMenuItem(
+                                              value: r,
+                                              child: Text(r),
+                                            ),
+                                          )
+                                          .toList(),
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setModalState(() => reps = val);
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: MetaColors.surfaceHighlight,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: MetaColors.border,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  'DESCANSO',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: MetaColors.textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    InkWell(
+                                      onTap:
+                                          restSeconds > 15
+                                              ? () => setModalState(
+                                                () => restSeconds -= 15,
+                                              )
+                                              : null,
+                                      child: Icon(
+                                        Icons.remove_circle_outline,
+                                        size: 20,
+                                        color: MetaColors.textPrimary,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${restSeconds}s',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: MetaColors.textPrimary,
+                                      ),
+                                    ),
+                                    InkWell(
+                                      onTap:
+                                          restSeconds < 300
+                                              ? () => setModalState(
+                                                () => restSeconds += 15,
+                                              )
+                                              : null,
+                                      child: Icon(
+                                        Icons.add_circle_outline,
+                                        size: 20,
+                                        color: MetaColors.textPrimary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: notesCtrl,
+                      style: TextStyle(
+                        color: MetaColors.textPrimary,
+                        fontSize: 13,
+                      ),
+                      decoration: _inputDecoration(
+                        context,
+                        'Notas de Execução / Ajuste',
+                        prefixIcon: Icons.notes_rounded,
+                        hint: 'Ex: Movimento controlado sem impulso',
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(
+                          Icons.check_rounded,
+                          color: Colors.black,
+                        ),
+                        label: const Text(
+                          'Confirmar Substituição',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: MetaColors.emerald,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          final name = nameCtrl.text.trim();
+                          if (name.isEmpty) return;
+
+                          final updatedExercise = currentEx.copyWith(
+                            name: name,
+                            targetMuscleGroup: selectedMuscle,
+                            sets: sets,
+                            reps: reps,
+                            restSeconds: restSeconds,
+                            notes: notesCtrl.text.trim(),
+                          );
+
+                          _swapExercise(
+                            splitIndex,
+                            exerciseIndex,
+                            updatedExercise,
+                          );
+                          Navigator.pop(ctx);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   void _showAddExerciseDialog(int splitIndex) {
