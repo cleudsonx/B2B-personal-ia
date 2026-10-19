@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import workouts, adaptations, assistant, subscriptions, validators, auth, webhooks, public, whatsapp, whatsapp_ai, invites
+from app.api.v1.endpoints import workouts, adaptations, assistant, subscriptions, validators, auth, webhooks, public, whatsapp, whatsapp_ai, invites, exercises
 
 api_router = APIRouter()
 
@@ -7,6 +7,7 @@ api_router.include_router(public.router, prefix="/public", tags=["Public"])
 api_router.include_router(auth.router, prefix="/auth", tags=["Auth"])
 api_router.include_router(invites.router, prefix="/invites", tags=["Invites"])
 api_router.include_router(workouts.router, prefix="/workouts", tags=["Workouts"])
+api_router.include_router(exercises.router, prefix="/exercises", tags=["Exercises"])
 api_router.include_router(adaptations.router, prefix="/adaptations", tags=["Adaptations"])
 api_router.include_router(assistant.router, prefix="/assistant", tags=["Assistant"])
 api_router.include_router(subscriptions.router, prefix="/subscriptions", tags=["Subscriptions"])

@@ -9,6 +9,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/rest_timer_sheet.dart';
 import '../../core/widgets/biomechanical_analysis_sheet.dart';
+import '../../core/widgets/exercise_media_sheet.dart';
 import '../../core/widgets/server_config_dialog.dart';
 import '../../core/widgets/workout_guide_modal.dart';
 import '../../core/widgets/app_version_footer.dart';
@@ -1404,6 +1405,79 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
               ),
             ),
+          ),
+
+          const SizedBox(height: 10),
+
+          // Botões de Ação Visual (Vídeo Demonstrativo + Raio-X 3D)
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () => ExerciseMediaSheet.show(context, exerciseName: item.name),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: MetaColors.emerald.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: MetaColors.emerald.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.play_circle_fill_rounded,
+                          size: 16,
+                          color: MetaColors.emerald,
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          'Vídeo Execução',
+                          style: TextStyle(
+                            color: MetaColors.emerald,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: () => BiomechanicalAnalysisSheet.show(
+                  context,
+                  exerciseName: item.name,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: MetaColors.surfaceHighlight,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: MetaColors.border),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.view_in_ar_rounded, size: 16, color: MetaColors.accentBlue),
+                      SizedBox(width: 6),
+                      Text(
+                        'Raio-X 3D',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
 
           const SizedBox(height: 14),

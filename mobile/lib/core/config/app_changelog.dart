@@ -38,6 +38,36 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
+      version: '1.7.0',
+      buildNumber: 2026102906,
+      date: '18 de Outubro, 2026',
+      summary:
+          'Catálogo de Exercícios & Mídias de Execução: Demonstrações em vídeo direto na ficha do aluno e do professor, integração 3D anatômica e arquitetura desacoplada de fontes de mídia.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.play_circle_fill_rounded,
+          title: 'Vídeos de Execução de Exercícios',
+          description:
+              'Acesso instantâneo a demonstrações em vídeo em cada exercício, com visualização nativa e link direto.',
+          badge: 'MÍDIA',
+        ),
+        ChangelogItem(
+          icon: Icons.accessibility_new_rounded,
+          title: 'Integração Raio-X 3D & Dicas Biomecânicas',
+          description:
+              'Guia biomecânico completo com músculos primários, secundários, dicas de postura e atalho direto para a visão anatômica 3D.',
+          badge: 'BIOMECÂNICA',
+        ),
+        ChangelogItem(
+          icon: Icons.cloud_sync_rounded,
+          title: 'Arquitetura Desacoplada de Mídias',
+          description:
+              'Suporte a múltiplas fontes de mídia (Google Drive, Cloud Storage, CDNs) sem alterar as fichas cadastradas.',
+          badge: 'ARQUITETURA',
+        ),
+      ],
+    ),
+    VersionRelease(
       version: '1.6.0',
       buildNumber: 2026102905,
       date: '18 de Outubro, 2026',

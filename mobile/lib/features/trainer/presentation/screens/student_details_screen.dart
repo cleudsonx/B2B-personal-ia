@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/widgets/meta_components.dart';
+import '../../../../core/widgets/exercise_media_sheet.dart';
 import '../../../../models/exercise_model.dart';
 import '../../../../models/split_model.dart';
 import '../../../../models/workout_plan_model.dart';
@@ -1181,6 +1182,15 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                                                         ],
                                                       ],
                                                     ),
+                                                  ),
+                                                  IconButton(
+                                                    onPressed: () => ExerciseMediaSheet.show(
+                                                      bottomSheetCtx,
+                                                      exerciseName: ex.name,
+                                                    ),
+                                                    icon: const Icon(Icons.play_circle_fill_rounded, size: 20, color: MetaColors.emerald),
+                                                    tooltip: 'Vídeo Demonstrativo',
+                                                    visualDensity: VisualDensity.compact,
                                                   ),
                                                   IconButton(
                                                     onPressed: () => openExerciseEditor(
