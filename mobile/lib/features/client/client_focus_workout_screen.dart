@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/widgets/meta_components.dart';
@@ -699,18 +700,24 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
 
     if (!mounted) return;
 
+    // Feedback tátil de triunfo (conquista neurológica padrão Apple Fitness / Nike)
+    HapticFeedback.heavyImpact();
+    Future.delayed(const Duration(milliseconds: 140), () {
+      HapticFeedback.mediumImpact();
+    });
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: MetaColors.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       builder: (ctx) {
         return Padding(
           padding: EdgeInsets.fromLTRB(
             24,
-            24,
+            20,
             24,
             MediaQuery.paddingOf(ctx).bottom + 24,
           ),
@@ -718,49 +725,171 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Drag handle bar refinado
               Center(
                 child: Container(
-                  width: 48,
-                  height: 5,
+                  width: 44,
+                  height: 4.5,
                   decoration: BoxDecoration(
-                    color: MetaColors.border,
+                    color: Colors.white.withValues(alpha: 0.22),
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
-              const Center(
-                child: Text('🎉', style: TextStyle(fontSize: 48)),
-              ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 22),
+
+              // Hero Emblem de Celebração com Aura & Animação Elástica
+              Center(
+                child: SizedBox(
+                  width: 92,
+                  height: 92,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Aura neon pulsante esmeralda em loop
+                      Container(
+                        width: 82,
+                        height: 82,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: MetaColors.emerald.withValues(alpha: 0.15),
+                          boxShadow: [
+                            BoxShadow(
+                              color: MetaColors.emerald.withValues(alpha: 0.35),
+                              blurRadius: 36,
+                              spreadRadius: 4,
+                            ),
+                          ],
+                        ),
+                      )
+                          .animate(onPlay: (c) => c.repeat(reverse: true))
+                          .scale(
+                            begin: const Offset(1, 1),
+                            end: const Offset(1.08, 1.08),
+                            duration: 1800.ms,
+                            curve: Curves.easeInOut,
+                          ),
+
+                      // Círculo central com borda luminescente
+                      Container(
+                        width: 82,
+                        height: 82,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            colors: [
+                              MetaColors.surfaceHighlight,
+                              MetaColors.surface,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(
+                            color: MetaColors.emerald.withValues(alpha: 0.5),
+                            width: 2.2,
+                          ),
+                        ),
+                        child: const Center(
+                          child: Text('🎉', style: TextStyle(fontSize: 42)),
+                        ),
+                      ),
+
+                      // Partícula 1 (Sparkle Âmbar superior-direita)
+                      Positioned(
+                        top: 2,
+                        right: 4,
+                        child: const Text('✨', style: TextStyle(fontSize: 18))
+                            .animate(onPlay: (c) => c.repeat(reverse: true))
+                            .scale(
+                              begin: const Offset(0.8, 0.8),
+                              end: const Offset(1.25, 1.25),
+                              duration: 1200.ms,
+                            )
+                            .fadeIn(delay: 200.ms),
+                      ),
+
+                      // Partícula 2 (Sparkle Dourada inferior-esquerda)
+                      Positioned(
+                        bottom: 4,
+                        left: 4,
+                        child: const Text('⚡', style: TextStyle(fontSize: 16))
+                            .animate(onPlay: (c) => c.repeat(reverse: true))
+                            .scale(
+                              begin: const Offset(1.15, 1.15),
+                              end: const Offset(0.75, 0.75),
+                              duration: 1400.ms,
+                            )
+                            .fadeIn(delay: 300.ms),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+                  .animate()
+                  .scale(
+                    begin: const Offset(0.35, 0.35),
+                    end: const Offset(1, 1),
+                    duration: 650.ms,
+                    curve: Curves.elasticOut,
+                  )
+                  .rotate(
+                    begin: -0.06,
+                    end: 0,
+                    duration: 600.ms,
+                    curve: Curves.easeOutBack,
+                  ),
+              const SizedBox(height: 14),
+
+              // Título principal com entrada escalonada
               const Center(
                 child: Text(
                   'Treino Concluído com Sucesso!',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
                     color: MetaColors.textPrimary,
                   ),
                 ),
-              ),
-              const SizedBox(height: 6),
+              )
+                  .animate()
+                  .fadeIn(duration: 400.ms, delay: 150.ms)
+                  .slideY(begin: 0.18, end: 0, curve: Curves.easeOutCubic),
+              const SizedBox(height: 8),
+
+              // Subtítulo em Pill com nome do treino e treinador
               Center(
-                child: Text(
-                  '${widget.workoutTitle} · ${widget.trainerName}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: MetaColors.textSecondary,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: MetaColors.surfaceHighlight.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: MetaColors.border),
+                  ),
+                  child: Text(
+                    '${widget.workoutTitle} · ${widget.trainerName}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: MetaColors.textSecondary,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
+              )
+                  .animate()
+                  .fadeIn(duration: 400.ms, delay: 220.ms)
+                  .slideY(begin: 0.15, end: 0, curve: Curves.easeOutCubic),
+              const SizedBox(height: 22),
 
-              // Métricas em Cards One UI 7
+              // Métricas em Cards One UI 7 com Animação em Cascata
               Row(
                 children: [
+                  // Card TEMPO
                   Expanded(
                     child: Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                       decoration: BoxDecoration(
                         color: MetaColors.background,
                         borderRadius: BorderRadius.circular(16),
@@ -768,47 +897,85 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                       ),
                       child: Column(
                         children: [
-                          const Text(
-                            'TEMPO',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: MetaColors.textSecondary,
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(
+                                Icons.timer_outlined,
+                                size: 12,
+                                color: MetaColors.textSecondary,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'TEMPO',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: MetaColors.textSecondary,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 5),
                           Text(
                             '$durationMin min',
                             style: const TextStyle(
-                              fontSize: 18,
+                              fontSize: 17,
                               fontWeight: FontWeight.w900,
                               color: MetaColors.textPrimary,
                             ),
                           ),
                         ],
                       ),
-                    ),
+                    )
+                        .animate()
+                        .fadeIn(duration: 350.ms, delay: 280.ms)
+                        .slideY(begin: 0.2, end: 0, curve: Curves.easeOutQuad),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
+
+                  // Card VOLUME (Destaque Esmeralda com Shimmer)
                   Expanded(
                     child: Container(
-                      padding: const EdgeInsets.all(14),
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                       decoration: BoxDecoration(
                         color: MetaColors.background,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: MetaColors.border),
+                        border: Border.all(
+                          color: MetaColors.emerald.withValues(alpha: 0.38),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: MetaColors.emerald.withValues(alpha: 0.08),
+                            blurRadius: 16,
+                            spreadRadius: 1,
+                          ),
+                        ],
                       ),
                       child: Column(
                         children: [
-                          const Text(
-                            'VOLUME',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: MetaColors.textSecondary,
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(
+                                Icons.fitness_center_rounded,
+                                size: 12,
+                                color: MetaColors.emerald,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'VOLUME',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: MetaColors.emerald,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 5),
                           Text(
                             '${totalVolume.toStringAsFixed(0)} kg',
                             style: const TextStyle(
@@ -819,12 +986,18 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                           ),
                         ],
                       ),
-                    ),
+                    )
+                        .animate()
+                        .fadeIn(duration: 350.ms, delay: 350.ms)
+                        .slideY(begin: 0.2, end: 0, curve: Curves.easeOutQuad)
+                        .shimmer(delay: 750.ms, duration: 1100.ms, color: Colors.white12),
                   ),
                   const SizedBox(width: 8),
+
+                  // Card SÉRIES
                   Expanded(
                     child: Container(
-                      padding: const EdgeInsets.all(14),
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                       decoration: BoxDecoration(
                         color: MetaColors.background,
                         borderRadius: BorderRadius.circular(16),
@@ -832,15 +1005,27 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                       ),
                       child: Column(
                         children: [
-                          const Text(
-                            'SÉRIES',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: MetaColors.textSecondary,
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(
+                                Icons.check_circle_outline_rounded,
+                                size: 12,
+                                color: MetaColors.textSecondary,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'SÉRIES',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: MetaColors.textSecondary,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 5),
                           Text(
                             '$totalCompleted/${_countTotalSets()}',
                             style: const TextStyle(
@@ -851,25 +1036,43 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                           ),
                         ],
                       ),
-                    ),
+                    )
+                        .animate()
+                        .fadeIn(duration: 350.ms, delay: 420.ms)
+                        .slideY(begin: 0.2, end: 0, curve: Curves.easeOutQuad),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
 
-              // Streak / Ofensiva
+              // Streak / Ofensiva com Fogo Vivo Animado
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFFF59E0B).withValues(alpha: 0.14),
+                      const Color(0xFFD97706).withValues(alpha: 0.08),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.38),
+                    width: 1.2,
                   ),
                 ),
                 child: Row(
                   children: [
-                    const Text('🔥', style: TextStyle(fontSize: 22)),
+                    const Text('🔥', style: TextStyle(fontSize: 24))
+                        .animate(onPlay: (controller) => controller.repeat(reverse: true))
+                        .scale(
+                          begin: const Offset(1, 1),
+                          end: const Offset(1.18, 1.18),
+                          duration: 900.ms,
+                          curve: Curves.easeInOut,
+                        ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -885,6 +1088,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                               color: MetaColors.textPrimary,
                             ),
                           ),
+                          const SizedBox(height: 2),
                           const Text(
                             'Meta diária de estímulo muscular concluída com foco.',
                             style: TextStyle(
@@ -897,23 +1101,40 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                     ),
                   ],
                 ),
-              ),
+              )
+                  .animate()
+                  .fadeIn(duration: 380.ms, delay: 490.ms)
+                  .slideY(begin: 0.15, end: 0, curve: Curves.easeOutCubic),
 
-              // Destaque de Recordes Pessoais (PR)
+              // Destaque de Recordes Pessoais (PR) com Shimmer de Celebração
               if (_newPrCount > 0) ...[
                 const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
                   decoration: BoxDecoration(
-                    color: MetaColors.emerald.withValues(alpha: 0.12),
+                    gradient: LinearGradient(
+                      colors: [
+                        MetaColors.emerald.withValues(alpha: 0.16),
+                        MetaColors.emerald.withValues(alpha: 0.08),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: MetaColors.emerald.withValues(alpha: 0.4),
+                      color: MetaColors.emerald.withValues(alpha: 0.45),
+                      width: 1.2,
                     ),
                   ),
                   child: Row(
                     children: [
-                      const Text('🏆', style: TextStyle(fontSize: 22)),
+                      const Text('🏆', style: TextStyle(fontSize: 24))
+                          .animate(onPlay: (c) => c.repeat(reverse: true))
+                          .scale(
+                            begin: const Offset(1, 1),
+                            end: const Offset(1.16, 1.16),
+                            duration: 1100.ms,
+                          ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -927,6 +1148,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                                 color: MetaColors.emerald,
                               ),
                             ),
+                            const SizedBox(height: 2),
                             const Text(
                               'Sua progressão de sobrecarga está evoluindo.',
                               style: TextStyle(
@@ -939,61 +1161,111 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                       ),
                     ],
                   ),
-                ),
+                )
+                    .animate()
+                    .fadeIn(duration: 380.ms, delay: 550.ms)
+                    .slideY(begin: 0.15, end: 0, curve: Curves.easeOutCubic)
+                    .shimmer(delay: 900.ms, duration: 1200.ms, color: Colors.white24),
               ],
               const SizedBox(height: 24),
 
-              // Botão WhatsApp
+              // Botão Compartilhar WhatsApp com Gradiente e Squircle Oficial
               if (widget.trainerPhone != null &&
                   widget.trainerPhone!.trim().isNotEmpty) ...[
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.send_rounded, size: 18),
-                  label: Text('Compartilhar no WhatsApp de ${widget.trainerName}'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF25D366),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
-                  ),
-                  onPressed: () {
-                    final cleanPhone = widget.trainerPhone!
-                        .replaceAll(RegExp(r'\D'), '');
-                    final phoneWithCountry = cleanPhone.startsWith('55')
-                        ? cleanPhone
-                        : '55$cleanPhone';
-                    final prMsg = _newPrCount > 0
-                        ? '🏆 Recordes batidos: $_newPrCount novo(s) PR(s)!\n'
-                        : '';
-                    final msg = Uri.encodeComponent(
-                      'Fala Prof. ${widget.trainerName}! 💪 Acabei de concluir o ${widget.workoutTitle}!\n'
-                      '⏱ Tempo: $durationMin min\n'
-                      '📊 Volume total: ${totalVolume.toStringAsFixed(0)} kg\n'
-                      '$prMsg'
-                      '🔥 Treino registrado com Focus Mode no Mr. Coach AI.',
-                    );
-                    launchUrl(
-                      Uri.parse(
-                        'https://api.whatsapp.com/send?phone=$phoneWithCountry&text=$msg',
+                Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                  child: InkWell(
+                    onTap: () {
+                      final cleanPhone = widget.trainerPhone!
+                          .replaceAll(RegExp(r'\D'), '');
+                      final phoneWithCountry = cleanPhone.startsWith('55')
+                          ? cleanPhone
+                          : '55$cleanPhone';
+                      final prMsg = _newPrCount > 0
+                          ? '🏆 Recordes batidos: $_newPrCount novo(s) PR(s)!\n'
+                          : '';
+                      final msg = Uri.encodeComponent(
+                        'Fala Prof. ${widget.trainerName}! 💪 Acabei de concluir o ${widget.workoutTitle}!\n'
+                        '⏱ Tempo: $durationMin min\n'
+                        '📊 Volume total: ${totalVolume.toStringAsFixed(0)} kg\n'
+                        '$prMsg'
+                        '🔥 Treino registrado com Focus Mode no Mr. Coach AI.',
+                      );
+                      launchUrl(
+                        Uri.parse(
+                          'https://api.whatsapp.com/send?phone=$phoneWithCountry&text=$msg',
+                        ),
+                        mode: LaunchMode.externalApplication,
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Ink(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF25D366), Color(0xFF1EBE5D)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF25D366).withValues(alpha: 0.28),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      mode: LaunchMode.externalApplication,
-                    );
-                  },
-                ),
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.chat_bubble_rounded,
+                            size: 19,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: Text(
+                              'Compartilhar no WhatsApp de ${widget.trainerName}',
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+                    .animate()
+                    .fadeIn(delay: 600.ms, duration: 350.ms)
+                    .slideY(begin: 0.1, end: 0),
                 const SizedBox(height: 12),
               ],
 
+              // Botão Secundário Concluir e Sair com SquircleButton
               SquircleButton(
                 label: 'Concluir e Sair',
                 icon: Icons.check_circle_outline_rounded,
-                isPrimary: true,
+                isPrimary: false,
+                backgroundColor: MetaColors.surfaceHighlight,
+                foregroundColor: MetaColors.textPrimary,
                 onPressed: () {
                   Navigator.pop(ctx); // fecha modal
                   Navigator.pop(context, true); // fecha Focus Mode
                 },
-              ),
+              )
+                  .animate()
+                  .fadeIn(delay: 660.ms, duration: 350.ms)
+                  .slideY(begin: 0.1, end: 0),
             ],
           ),
         );
