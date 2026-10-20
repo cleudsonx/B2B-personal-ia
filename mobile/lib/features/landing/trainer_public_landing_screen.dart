@@ -101,6 +101,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
         username: widget.username,
         plan: plan,
         trainerName: _trainerData?['full_name'] as String? ?? 'Personal Trainer',
+        trainerWhatsapp: _trainerData?['public_whatsapp'] as String?,
       ),
     );
   }
@@ -685,11 +686,13 @@ class _PublicCheckoutModal extends StatefulWidget {
   final String username;
   final ConsultancyPlan plan;
   final String trainerName;
+  final String? trainerWhatsapp;
 
   const _PublicCheckoutModal({
     required this.username,
     required this.plan,
     required this.trainerName,
+    this.trainerWhatsapp,
   });
 
   @override
@@ -726,6 +729,29 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
     _cardCcvCtrl.dispose();
     _cardCpfCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _shareOnWhatsapp(String customMessage) async {
+    final rawNumber = widget.trainerWhatsapp ?? '';
+    var number = rawNumber.replaceAll(RegExp(r'\D'), '');
+    if (number.length == 10 || number.length == 11) {
+      number = '55$number';
+    }
+    if (number.length != 12 && number.length != 13) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('WhatsApp do treinador não informado no perfil.'),
+          backgroundColor: Colors.orangeAccent,
+        ),
+      );
+      return;
+    }
+    final uri = Uri.parse('https://wa.me/$number?text=${Uri.encodeComponent(customMessage)}');
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {}
   }
 
   Future<void> _processPayment() async {
@@ -805,7 +831,7 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
-        top: 20,
+        top: 12,
         bottom: MediaQuery.of(context).viewInsets.bottom + 24,
       ),
       child: _checkoutResult == null
@@ -822,8 +848,21 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Handle Bar
+            Center(
+              child: Container(
+                width: 48,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -847,7 +886,7 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                   style: const TextStyle(color: MetaColors.emerald, fontSize: 20, fontWeight: FontWeight.w900),
                 ),
               ],
-            ),
+            ).animate().fadeIn(duration: 300.ms),
             const SizedBox(height: 16),
             const Divider(color: Colors.white10),
             const SizedBox(height: 14),
@@ -913,7 +952,7 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
               keyboardType: TextInputType.number,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                labelText: 'CPF (obrigatório para nota e emissão)',
+                labelText: 'CPF (para nota e cadastro)',
                 hintText: '000.000.000-00',
                 labelStyle: const TextStyle(color: MetaColors.textSecondary),
                 hintStyle: const TextStyle(color: Colors.white24),
@@ -924,7 +963,6 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
               ),
               validator: (v) {
                 if (_paymentMethod == 'PIX') return null;
-                // Para cartão, se cardCpf estiver vazio, cpf do aluno é obrigatório
                 if (_cardCpfCtrl.text.trim().isEmpty) {
                   final clean = (v ?? '').replaceAll(RegExp(r'\D'), '');
                   if (clean.length < 11) return 'Informe o CPF';
@@ -1164,7 +1202,7 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                   return null;
                 },
               ),
-            ],
+            ].animate().fadeIn(duration: 300.ms).slideY(begin: 0.08, end: 0),
 
             const SizedBox(height: 24),
 
@@ -1192,124 +1230,269 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
   }
 
   Widget _buildSuccessCardStep() {
-    final res = _checkoutResult!;
     return SingleChildScrollView(
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: MetaColors.emerald.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
+          // Drag handle pill
+          Center(
+            child: Container(
+              width: 48,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            child: const Icon(Icons.check_circle_rounded, color: MetaColors.emerald, size: 48),
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'Pagamento Aprovado com Sucesso!',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-          ),
+          const SizedBox(height: 20),
+
+          // Emoji celebração em movimento
+          const Center(
+            child: Text('🎉', style: TextStyle(fontSize: 48)),
+          )
+              .animate()
+              .scale(duration: 500.ms, curve: Curves.easeOutBack)
+              .shake(delay: 450.ms, duration: 600.ms),
+
+          const SizedBox(height: 10),
+
+          // Título principal
+          const Center(
+            child: Text(
+              'Assinatura Concluída com Sucesso!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                color: MetaColors.textPrimary,
+              ),
+            ),
+          ).animate().fadeIn(duration: 350.ms, delay: 100.ms).slideY(begin: 0.1, end: 0),
+
           const SizedBox(height: 6),
-          Text(
-            'Plano ${widget.plan.name} • R\$ ${widget.plan.price.toStringAsFixed(2).replaceAll('.', ',')}',
-            style: const TextStyle(color: MetaColors.emerald, fontSize: 14, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 20),
 
-          // Card informativo de confirmação
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: MetaColors.surfaceHighlight,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
+          // Subtítulo
+          Center(
+            child: Text(
+              '${widget.plan.name} · ${widget.trainerName}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13,
+                color: MetaColors.textSecondary,
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.verified_rounded, color: MetaColors.emerald, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Assinatura Ativa com ${res.trainerName}',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Divider(color: Colors.white10),
-                const SizedBox(height: 12),
-                _buildConfirmInfoRow(Icons.mail_outline_rounded, 'E-mail cadastrado:', _emailCtrl.text.trim()),
-                const SizedBox(height: 8),
-                _buildConfirmInfoRow(Icons.phone_outlined, 'WhatsApp informado:', _phoneCtrl.text.trim()),
-                const SizedBox(height: 8),
-                _buildConfirmInfoRow(Icons.payment_rounded, 'Forma:', 'Cartão de Crédito (Instantâneo)'),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 20),
-          const Text(
-            'Próximos Passos:',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            '1. Seu cadastro de aluno foi criado e vinculado ao professor.\n'
-            '2. Clique no botão abaixo para acessar o App Mr. Coach com seu e-mail.\n'
-            '3. Preencha sua anamnese inicial para o professor prescrever seus treinos!',
-            style: TextStyle(color: MetaColors.textSecondary, fontSize: 12, height: 1.45),
-          ),
+          ).animate().fadeIn(duration: 350.ms, delay: 150.ms),
 
           const SizedBox(height: 24),
-          SquircleButton(
-            label: 'ENTRAR NO APP MR. COACH',
-            icon: Icons.login_rounded,
-            isPrimary: true,
-            onPressed: () {
-              Navigator.pop(context); // Fechar modal
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => LoginScreen(
-                    initialRole: 'client',
-                    initialEmail: _emailCtrl.text.trim(),
+
+          // Métricas em Cards One UI 7 (Padrão do Sistema)
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: MetaColors.background,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: MetaColors.border),
+                  ),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'VALOR',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: MetaColors.textSecondary,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'R\$ ${widget.plan.price.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                          color: MetaColors.textPrimary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: MetaColors.background,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: MetaColors.border),
+                  ),
+                  child: const Column(
+                    children: [
+                      Text(
+                        'STATUS',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: MetaColors.textSecondary,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Aprovado',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: MetaColors.emerald,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: MetaColors.background,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: MetaColors.border),
+                  ),
+                  child: const Column(
+                    children: [
+                      Text(
+                        'ACESSO',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: MetaColors.textSecondary,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Imediato ⚡',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          color: MetaColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ).animate().fadeIn(duration: 400.ms, delay: 200.ms).slideY(begin: 0.15, end: 0),
+
+          const SizedBox(height: 14),
+
+          // Banner de Status / Matrícula (Estilo Streak One UI)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Text('🔥', style: TextStyle(fontSize: 22)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Matrícula Ativa: Acesso Imediato!',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: MetaColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        'Vínculo criado com ${widget.trainerName}. Você já pode entrar e fazer sua anamnese.',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: MetaColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ).animate().fadeIn(duration: 400.ms, delay: 280.ms).slideY(begin: 0.15, end: 0),
+
+          const SizedBox(height: 24),
+
+          // Botão 1: Compartilhar no WhatsApp do Treinador (Padrão Screenshot)
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                _shareOnWhatsapp(
+                  'Olá, ${widget.trainerName}! Acabei de assinar o plano ${widget.plan.name} pelo Mr. Coach. Meu e-mail de acesso é ${_emailCtrl.text.trim()}!',
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: MetaColors.emerald,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              icon: const Icon(Icons.send_rounded, size: 20),
+              label: Text(
+                'Compartilhar no WhatsApp de ${widget.trainerName}',
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ).animate().fadeIn(duration: 400.ms, delay: 350.ms).scale(begin: const Offset(0.96, 0.96), end: const Offset(1, 1)),
+
+          const SizedBox(height: 12),
+
+          // Botão 2: Concluir e Acessar o App
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.pop(context); // Fechar modal
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => LoginScreen(
+                      initialRole: 'client',
+                      initialEmail: _emailCtrl.text.trim(),
+                    ),
+                  ),
+                );
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: MetaColors.emerald,
+                side: const BorderSide(color: MetaColors.emerald, width: 1.5),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              icon: const Icon(Icons.check_circle_outline_rounded, size: 20),
+              label: const Text(
+                'Concluir e Entrar no App',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ).animate().fadeIn(duration: 400.ms, delay: 420.ms),
         ],
       ),
-    );
-  }
-
-  Widget _buildConfirmInfoRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, color: MetaColors.textSecondary, size: 16),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: const TextStyle(color: MetaColors.textSecondary, fontSize: 12),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            value,
-            textAlign: TextAlign.end,
-            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
     );
   }
 
@@ -1320,27 +1503,205 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
     return SingleChildScrollView(
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: MetaColors.emerald.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
+          // Drag handle pill
+          Center(
+            child: Container(
+              width: 48,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            child: const Icon(Icons.check_circle_outline_rounded, color: MetaColors.emerald, size: 40),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Cobrança Gerada com Sucesso!',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Plano ${widget.plan.name} • R\$ ${widget.plan.price.toStringAsFixed(2).replaceAll('.', ',')}',
-            style: const TextStyle(color: MetaColors.emerald, fontSize: 14, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 20),
+
+          // Ícone animado
+          const Center(
+            child: Text('⚡', style: TextStyle(fontSize: 48)),
+          )
+              .animate()
+              .scale(duration: 500.ms, curve: Curves.easeOutBack)
+              .shake(delay: 450.ms, duration: 600.ms),
+
+          const SizedBox(height: 10),
+
+          const Center(
+            child: Text(
+              'Cobrança Pix Gerada com Sucesso!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                color: MetaColors.textPrimary,
+              ),
+            ),
+          ).animate().fadeIn(duration: 350.ms, delay: 100.ms).slideY(begin: 0.1, end: 0),
+
+          const SizedBox(height: 6),
+
+          Center(
+            child: Text(
+              '${widget.plan.name} · ${widget.trainerName}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13,
+                color: MetaColors.textSecondary,
+              ),
+            ),
+          ).animate().fadeIn(duration: 350.ms, delay: 150.ms),
+
+          const SizedBox(height: 24),
+
+          // Métricas em Cards One UI 7
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: MetaColors.background,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: MetaColors.border),
+                  ),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'VALOR',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: MetaColors.textSecondary,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'R\$ ${widget.plan.price.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                          color: MetaColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: MetaColors.background,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: MetaColors.border),
+                  ),
+                  child: const Column(
+                    children: [
+                      Text(
+                        'MÉTODO',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: MetaColors.textSecondary,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Pix ⚡',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: MetaColors.emerald,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: MetaColors.background,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: MetaColors.border),
+                  ),
+                  child: const Column(
+                    children: [
+                      Text(
+                        'LIBERAÇÃO',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: MetaColors.textSecondary,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Automática',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          color: MetaColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ).animate().fadeIn(duration: 400.ms, delay: 200.ms).slideY(begin: 0.15, end: 0),
+
+          const SizedBox(height: 14),
+
+          // Banner Asaas
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: MetaColors.emerald.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: MetaColors.emerald.withValues(alpha: 0.35),
+              ),
+            ),
+            child: const Row(
+              children: [
+                Text('🛡️', style: TextStyle(fontSize: 22)),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Compensação Instantânea via Asaas',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: MetaColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        'Pague no app do seu banco com o código abaixo. O acesso é liberado em segundos.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: MetaColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ).animate().fadeIn(duration: 400.ms, delay: 280.ms).slideY(begin: 0.15, end: 0),
+
+          const SizedBox(height: 18),
 
           // Código Pix Copia e Cola
           Container(
@@ -1358,7 +1719,7 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                     Icon(Icons.pix_rounded, color: MetaColors.emerald, size: 18),
                     SizedBox(width: 8),
                     Text(
-                      'Pix Copia e Cola:',
+                      'Código Pix Copia e Cola:',
                       style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                     ),
                   ],
@@ -1373,12 +1734,14 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                 const SizedBox(height: 14),
                 SizedBox(
                   width: double.infinity,
+                  height: 48,
                   child: ElevatedButton.icon(
                     onPressed: () => _copyPixCode(pixCode),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: MetaColors.emerald,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     icon: const Icon(Icons.copy_rounded, size: 16),
                     label: const Text('COPIAR CÓDIGO PIX', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
@@ -1386,27 +1749,55 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                 ),
               ],
             ),
-          ),
+          ).animate().fadeIn(duration: 400.ms, delay: 340.ms),
 
           const SizedBox(height: 20),
-          const Text(
-            'Como funciona a liberação?',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            '1. Abra o app do seu banco e pague com o Pix Copia e Cola.\n'
-            '2. O Asaas confirma o pagamento instantaneamente.\n'
-            '3. Seu acesso e anamnese serão liberados e o professor avisado no WhatsApp!',
-            style: TextStyle(color: MetaColors.textSecondary, fontSize: 12, height: 1.45),
-          ),
 
-          const SizedBox(height: 24),
-          SquircleButton(
-            label: 'Concluir / Já Realizei o Pagamento',
-            isPrimary: true,
-            onPressed: () => Navigator.pop(context),
-          ),
+          // Botão WhatsApp se disponível
+          if (widget.trainerWhatsapp != null && widget.trainerWhatsapp!.trim().isNotEmpty) ...[
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  _shareOnWhatsapp(
+                    'Olá, ${widget.trainerName}! Acabei de gerar o Pix do plano ${widget.plan.name} pelo Mr. Coach. Meu e-mail é ${_emailCtrl.text.trim()}!',
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: MetaColors.emerald,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                icon: const Icon(Icons.send_rounded, size: 20),
+                label: Text(
+                  'Avisar no WhatsApp de ${widget.trainerName}',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ).animate().fadeIn(duration: 400.ms, delay: 400.ms),
+            const SizedBox(height: 12),
+          ],
+
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.pop(context),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: const BorderSide(color: Colors.white24, width: 1.5),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              icon: const Icon(Icons.check_circle_outline_rounded, size: 20),
+              label: const Text(
+                'Concluir e Sair',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ).animate().fadeIn(duration: 400.ms, delay: 450.ms),
         ],
       ),
     );
