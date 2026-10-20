@@ -267,7 +267,7 @@ class EvolutionPhotoService {
           fit: fit,
           width: width,
           height: height,
-          errorBuilder: (_, __, ___) => const Center(
+          errorBuilder: (_, _, _) => const Center(
             child: Icon(Icons.broken_image_rounded, color: Color(0xFF8E8E93)),
           ),
         );
@@ -283,7 +283,7 @@ class EvolutionPhotoService {
       fit: fit,
       width: width,
       height: height,
-      errorBuilder: (_, __, ___) => const Center(
+      errorBuilder: (_, _, _) => const Center(
         child: Icon(Icons.broken_image_rounded, color: Color(0xFF8E8E93)),
       ),
       loadingBuilder: (context, child, loadingProgress) {
