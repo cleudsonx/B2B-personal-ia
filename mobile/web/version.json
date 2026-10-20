@@ -1,80 +1,63 @@
 {
-  "version": "1.8.0",
-  "build": 2026103001,
-  "updated_at": "2026-10-20T10:45:00.000000Z",
-  "title": "Versão 1.8.0 • Consultoria & Tempo Real",
-  "notes": "Planos de consultoria, checkout transparente, celebração WhatsApp e atualizações de treino em tempo real.",
+  "version": "1.9.0",
+  "build": 2026103008,
+  "updated_at": "2026-10-20T21:59:04.595849Z",
+  "notes": "Versão 1.9.0: Fechamento do Ciclo Financeiro com Webhook Asaas, Indução ao PWA (iOS/Android), Gestão Estrita de Vagas e Automação de Boas-Vindas no WhatsApp.",
   "changelog": {
     "student": [
       {
-        "title": "Avisos de Treino no WhatsApp",
-        "description": "Receba uma notificação no WhatsApp no exato instante em que seu treinador liberar ou alterar sua ficha.",
-        "icon": "message",
-        "tag": "TEMPO REAL"
+        "title": "Instalação do Aplicativo (PWA)",
+        "description": "Guia interativo ensinando a instalar o app na tela inicial do celular com 1 toque no iPhone (Safari) e Android (Chrome).",
+        "badge": "EXPERIÊNCIA"
       },
       {
-        "title": "Ficha Sincronizada ao Vivo",
-        "description": "Seu treino atualiza na hora dentro do aplicativo sem precisar fechar ou recarregar a tela.",
-        "icon": "bolt",
-        "tag": "NOVIDADE"
+        "title": "Boas-Vindas Instantâneas no WhatsApp",
+        "description": "Ao confirmar o pagamento, você recebe seu link seguro no WhatsApp para ativar o acesso e preencher sua avaliação física inicial.",
+        "badge": "ACESSO RÁPIDO"
       },
       {
-        "title": "Checkout Transparente Seguro",
-        "description": "Pague e renove sua consultoria via Pix com QR Code instantâneo ou Cartão de Crédito sem sair do app.",
-        "icon": "credit_card",
-        "tag": "PAGAMENTO"
+        "title": "Checkout Seguro e Sem Interrupções",
+        "description": "Geração instantânea de Pix Copia e Cola e Cartão de Crédito com validação de vagas e mensagens claras dentro da própria tela.",
+        "badge": "PAGAMENTO"
       },
       {
-        "title": "Ofensiva (Streak 🔥) Otimizada",
-        "description": "Contador de consistência e dias seguidos de treino calibrado pelo fuso horário do seu celular.",
-        "icon": "fire",
-        "tag": "GAMIFICAÇÃO"
+        "title": "Celebração de Treino com Haptic Feedback",
+        "description": "Modal de triunfo animado com confetes e feedback tátil ao finalizar a sessão com sucesso.",
+        "badge": "CELEBRAÇÃO"
       }
     ],
     "trainer": [
       {
-        "title": "Meus Planos de Consultoria",
-        "description": "Cadastre planos livremente com seus próprios valores e receba 95% líquido na sua conta via Pix ou Cartão.",
-        "icon": "payments",
-        "tag": "RECEITA"
+        "title": "Baixa e Crédito Automático via Asaas",
+        "description": "Ao pagar a consultoria por Pix ou Cartão na sua vitrine, o valor líquido (95%) é creditado automaticamente na sua carteira em tempo real.",
+        "badge": "RECEITA"
       },
       {
-        "title": "Conexão WhatsApp Dinâmica & Animada",
-        "description": "Transição automática para celebração ao conectar o robô, pronto para atender seus alunos 24h por dia.",
-        "icon": "whatsapp",
-        "tag": "AUTOMAÇÃO"
+        "title": "Alerta de Novo Aluno no WhatsApp",
+        "description": "Notificação direta no seu WhatsApp com o nome do aluno, plano contratado e valor recebido assim que o pagamento for compensado.",
+        "badge": "AUTOMAÇÃO"
       },
       {
-        "title": "Cockpit e Consultas 4x Mais Rápidas",
-        "description": "Consultas ao banco de dados com paralelismo e novos índices compostos para carregamento instantâneo.",
-        "icon": "speed",
-        "tag": "PERFORMANCE"
+        "title": "Gestão Estrita de Vagas & Escassez",
+        "description": "Controle automático de vagas do plano contratado com badge \"TURMA LOTADA • LISTA DE ESPERA\" e proteção contra novos cadastros excedentes.",
+        "badge": "CONSULTORIA"
       },
       {
-        "title": "Selo e Validação de CREF",
-        "description": "Sua vitrine pública agora conta com selo e trava de documento profissional para máxima autoridade.",
-        "icon": "verified",
-        "tag": "SEGURANÇA"
+        "title": "Modal de Orientação Premium nas Cotas",
+        "description": "Aviso elegante e direto orientando sobre o limite de vagas atingido, com opção de upgrade e desativação de alunos.",
+        "badge": "EXPERIÊNCIA"
       }
     ],
     "admin": [
       {
-        "title": "Split Financeiro Automatizado",
-        "description": "Integração transparente com gateway Asaas para processamento de split líquido e repasses bancários.",
-        "icon": "account_balance",
-        "tag": "FINANCEIRO"
+        "title": "Webhook Unificado Asaas com Idempotência",
+        "description": "Processamento atômico de eventos PAYMENT_RECEIVED e PAYMENT_CONFIRMED, com suporte a leases duráveis e proteção contra duplicidade.",
+        "badge": "INFRAESTRUTURA"
       },
       {
-        "title": "Índices Compostos no Supabase",
-        "description": "Migration com índices de alta performance em perfis, alunos, prescrições e cobranças.",
-        "icon": "database",
-        "tag": "BANCO"
-      },
-      {
-        "title": "Recuperação de Instâncias WhatsApp",
-        "description": "Limpeza automática de instâncias presas na Evolution API e polling assíncrono de status.",
-        "icon": "hub",
-        "tag": "INFRA"
+        "title": "Roteamento Transversal Resiliente",
+        "description": "Interceptação inteligente de faturas de alunos em /subscriptions/webhook/asaas e /webhooks/asaas para 100% de tolerância a falhas externas.",
+        "badge": "BACKEND"
       }
     ]
   }

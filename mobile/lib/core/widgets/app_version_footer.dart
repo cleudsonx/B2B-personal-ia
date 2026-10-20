@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/app_changelog.dart';
 import '../config/app_config.dart';
+import '../utils/pwa_installer.dart';
 import 'meta_components.dart';
 import '../../services/auth_service.dart';
 
@@ -14,6 +15,7 @@ class AppVersionFooter extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final String? userRole;
   static const String _lastSeenBuildKey = 'pwa_last_seen_changelog_build';
+  static const String _lastSeenVersionKey = 'pwa_last_seen_changelog_version';
 
   const AppVersionFooter({
     super.key,
@@ -27,20 +29,22 @@ class AppVersionFooter extends StatelessWidget {
   static bool _isCheckingOrShowing = false;
   static bool _hasAutoShown = false;
 
-  /// Verifica se o usuário já viu as novidades desta versão. Se for a primeira vez,
-  /// exibe o modal automaticamente após o carregamento da tela.
+  /// Verifica se o usuário já viu as novidades desta versão. Se for a primeira vez
+  /// de uma nova versão semântica, exibe o modal automaticamente após o carregamento da tela.
   static Future<void> checkAndShowAutoModal(BuildContext context) async {
     if (!enableAutoModal || _isCheckingOrShowing || _hasAutoShown) return;
     _isCheckingOrShowing = true;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final lastSeen = prefs.getInt(_lastSeenBuildKey) ?? 0;
+      final lastSeenVersion = prefs.getString(_lastSeenVersionKey);
+      final currentVersion = AppChangelog.current.version;
       final currentBuild = AppConfig.buildNumber > AppChangelog.current.buildNumber
           ? AppConfig.buildNumber
           : AppChangelog.current.buildNumber;
 
-      if (currentBuild > lastSeen) {
-        // Atualiza imediatamente na persistência para eliminar condições de corrida entre telas
+      // Abre automaticamente se nunca visualizou ou se a versão semântica mudou (ex: 1.8.0 -> 1.9.0)
+      if (lastSeenVersion == null || lastSeenVersion != currentVersion) {
+        await prefs.setString(_lastSeenVersionKey, currentVersion);
         await prefs.setInt(_lastSeenBuildKey, currentBuild);
         _hasAutoShown = true;
         if (context.mounted) {
@@ -59,14 +63,21 @@ class AppVersionFooter extends StatelessWidget {
     }
   }
 
-  /// Exibe o modal interativo com as novidades da versão atual e histórico anterior
-  static void showReleaseNotesModal(BuildContext context, {String? roleOverride}) {
+  /// Exibe o modal interativo com as novidades da versão atual ou de atualização remota disponível
+  static void showReleaseNotesModal(
+    BuildContext context, {
+    String? roleOverride,
+    Map<String, dynamic>? remoteReleaseData,
+  }) {
     if (!context.mounted) return;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) => _ReleaseNotesModalContent(roleOverride: roleOverride),
+      builder: (ctx) => _ReleaseNotesModalContent(
+        roleOverride: roleOverride,
+        remoteReleaseData: remoteReleaseData,
+      ),
     );
   }
 
@@ -164,8 +175,12 @@ class AppVersionFooter extends StatelessWidget {
 
 class _ReleaseNotesModalContent extends StatefulWidget {
   final String? roleOverride;
+  final Map<String, dynamic>? remoteReleaseData;
 
-  const _ReleaseNotesModalContent({this.roleOverride});
+  const _ReleaseNotesModalContent({
+    this.roleOverride,
+    this.remoteReleaseData,
+  });
 
   @override
   State<_ReleaseNotesModalContent> createState() => _ReleaseNotesModalContentState();
@@ -368,6 +383,12 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
     final textColor = isDark ? MetaColors.textPrimary : MetaColors.lightTextPrimary;
     final subtextColor = isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary;
 
+    final isRemoteUpdate = widget.remoteReleaseData != null;
+    final remoteVersion = widget.remoteReleaseData?['version']?.toString() ?? '';
+    final remoteBuild = widget.remoteReleaseData?['build']?.toString() ?? '';
+    final remoteNotes = widget.remoteReleaseData?['notes']?.toString();
+    final remoteChangelog = widget.remoteReleaseData?['changelog'];
+
     final currentRelease = AppChangelog.current;
     final previousReleases = AppChangelog.previousReleases;
 
@@ -375,9 +396,58 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
     final isAdmin = _currentRole == 'admin';
     final isClient = _currentRole == 'client';
 
-    final trainerItems = _filterItems(currentRelease.highlights, 'trainer');
-    final studentItems = _filterItems(currentRelease.highlights, 'student');
-    final adminItems = _filterItems(currentRelease.highlights, 'admin');
+    List<ChangelogItem> trainerItems = [];
+    List<ChangelogItem> studentItems = [];
+    List<ChangelogItem> adminItems = [];
+
+    if (isRemoteUpdate && remoteChangelog is Map) {
+      ChangelogItem parseRemoteItem(Map item, List<String> roles) {
+        return ChangelogItem(
+          icon: roles.contains('trainer')
+              ? Icons.business_center_rounded
+              : roles.contains('admin')
+                  ? Icons.admin_panel_settings_rounded
+                  : Icons.fitness_center_rounded,
+          title: item['title']?.toString() ?? '',
+          description: item['description']?.toString() ?? '',
+          badge: item['badge']?.toString() ?? 'NOVO',
+          targetRoles: roles,
+        );
+      }
+
+      if (remoteChangelog['student'] is List) {
+        studentItems = (remoteChangelog['student'] as List)
+            .whereType<Map>()
+            .map((it) => parseRemoteItem(it, ['student']))
+            .toList();
+      }
+      if (remoteChangelog['trainer'] is List) {
+        trainerItems = (remoteChangelog['trainer'] as List)
+            .whereType<Map>()
+            .map((it) => parseRemoteItem(it, ['trainer']))
+            .toList();
+      }
+      if (remoteChangelog['admin'] is List) {
+        adminItems = (remoteChangelog['admin'] as List)
+            .whereType<Map>()
+            .map((it) => parseRemoteItem(it, ['admin']))
+            .toList();
+      }
+    } else if (isRemoteUpdate && (remoteNotes != null && remoteNotes.isNotEmpty)) {
+      studentItems = [
+        ChangelogItem(
+          icon: Icons.rocket_launch_rounded,
+          title: 'Melhorias de Desempenho e Estabilidade',
+          description: remoteNotes,
+          badge: 'ATUALIZAÇÃO',
+          targetRoles: ['student'],
+        ),
+      ];
+    } else {
+      trainerItems = _filterItems(currentRelease.highlights, 'trainer');
+      studentItems = _filterItems(currentRelease.highlights, 'student');
+      adminItems = _filterItems(currentRelease.highlights, 'admin');
+    }
 
     int pertinentCount = 0;
     if (isAdmin) {
@@ -460,7 +530,9 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             Text(
-                              currentRelease.fullTitle,
+                              isRemoteUpdate
+                                  ? 'v$remoteVersion (Build $remoteBuild)'
+                                  : currentRelease.fullTitle,
                               style: const TextStyle(
                                 color: MetaColors.emerald,
                                 fontSize: 12,
@@ -469,10 +541,13 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
                               ),
                             ),
                             Text(
-                              '• ${currentRelease.date}',
+                              isRemoteUpdate
+                                  ? '• Atualização Disponível'
+                                  : '• ${currentRelease.date}',
                               style: TextStyle(
-                                color: subtextColor,
+                                color: isRemoteUpdate ? MetaColors.emerald : subtextColor,
                                 fontSize: 11,
+                                fontWeight: isRemoteUpdate ? FontWeight.w600 : FontWeight.normal,
                               ),
                             ),
                           ],
@@ -488,7 +563,7 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
               Row(
                 children: [
                   Text(
-                    'NOVIDADES DESTA VERSÃO',
+                    isRemoteUpdate ? 'O QUE VEM NA NOVA VERSÃO' : 'NOVIDADES DESTA VERSÃO',
                     style: TextStyle(
                       color: subtextColor,
                       fontSize: 11,
@@ -612,22 +687,25 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
                 Divider(color: border, height: 1),
                 const SizedBox(height: 14),
                 ...previousReleases.map((release) {
+                  final histItems = _filterItems(release.highlights, _currentRole);
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 2,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             Text(
                               release.fullTitle,
                               style: TextStyle(
-                                color: textColor.withValues(alpha: 0.8),
+                                color: textColor.withValues(alpha: 0.85),
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(width: 8),
                             Text(
                               release.date,
                               style: TextStyle(
@@ -637,15 +715,57 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          release.summary,
-                          style: TextStyle(
-                            color: subtextColor,
-                            fontSize: 11.5,
-                            height: 1.3,
+                        const SizedBox(height: 6),
+                        if (histItems.isNotEmpty)
+                          ...histItems.map(
+                            (item) => Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 2),
+                                    child: Icon(
+                                      item.icon,
+                                      size: 13,
+                                      color: MetaColors.emerald,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: RichText(
+                                      text: TextSpan(
+                                        style: TextStyle(
+                                          color: subtextColor,
+                                          fontSize: 11.5,
+                                          height: 1.3,
+                                        ),
+                                        children: [
+                                          TextSpan(
+                                            text: '${item.title}: ',
+                                            style: TextStyle(
+                                              color: textColor.withValues(alpha: 0.9),
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          TextSpan(text: item.description),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        else
+                          Text(
+                            release.summary,
+                            style: TextStyle(
+                              color: subtextColor,
+                              fontSize: 11.5,
+                              height: 1.3,
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   );
@@ -653,36 +773,82 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
               ],
 
               const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    try {
-                      final prefs = await SharedPreferences.getInstance();
-                      await prefs.setInt(
-                        AppVersionFooter._lastSeenBuildKey,
-                        currentRelease.buildNumber,
-                      );
-                    } catch (_) {}
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: MetaColors.emerald,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+              if (isRemoteUpdate) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          PwaInstaller.triggerPwaReload();
+                        },
+                        icon: const Icon(Icons.bolt_rounded, size: 20),
+                        label: const Text(
+                          'Atualizar e Recarregar Agora',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: MetaColors.emerald,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          elevation: 0,
+                        ),
+                      ),
                     ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    'Entendido',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Center(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'Lembrar mais tarde',
+                      style: TextStyle(
+                        color: subtextColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ] else
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      try {
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setString(
+                          AppVersionFooter._lastSeenVersionKey,
+                          currentRelease.version,
+                        );
+                        await prefs.setInt(
+                          AppVersionFooter._lastSeenBuildKey,
+                          currentRelease.buildNumber,
+                        );
+                      } catch (_) {}
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: MetaColors.emerald,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'Entendido',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

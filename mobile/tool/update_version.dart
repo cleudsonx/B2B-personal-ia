@@ -172,29 +172,50 @@ void main(List<String> args) {
     stdout.writeln('✅ Atualizado: mobile/lib/core/config/app_changelog.dart');
   }
 
-  // 7. Atualiza web/version.json
+  // 7. Atualiza web/version.json com Changelog Estruturado por Perfil
   String existingNotes = 'Atualização automática de sistema';
+  Map<String, dynamic> existingChangelog = {};
+
   if (webVersionFile.existsSync()) {
     try {
       final json = jsonDecode(webVersionFile.readAsStringSync()) as Map<String, dynamic>;
       if (json['notes'] != null && json['notes'].toString().isNotEmpty) {
         existingNotes = json['notes'].toString();
       }
+      if (json['changelog'] is Map<String, dynamic>) {
+        existingChangelog = Map<String, dynamic>.from(json['changelog'] as Map);
+      }
     } catch (_) {}
   }
+
+  // Extrai o changelog e resumo do app_changelog.dart para alimentar o version.json
+  Map<String, dynamic> structuredChangelog = existingChangelog;
+  if (changelogFile.existsSync()) {
+    final changelogContent = changelogFile.readAsStringSync();
+    final extracted = _extractChangelogData(changelogContent);
+    if (extracted['changelog'] != null &&
+        (extracted['changelog'] as Map).values.any((list) => (list as List).isNotEmpty)) {
+      structuredChangelog = extracted['changelog'] as Map<String, dynamic>;
+    }
+    if (extracted['summary'] != null && (extracted['summary'] as String).isNotEmpty) {
+      existingNotes = extracted['summary'] as String;
+    }
+  }
+
   if (customNotes != null && customNotes.isNotEmpty) {
     existingNotes = customNotes;
   }
 
-  final versionJsonData = {
+  final versionJsonData = <String, dynamic>{
     'version': targetSemVer,
     'build': newBuildNumber,
     'updated_at': isoTimestamp,
     'notes': existingNotes,
+    if (structuredChangelog.isNotEmpty) 'changelog': structuredChangelog,
   };
   final jsonString = const JsonEncoder.withIndent('  ').convert(versionJsonData);
   webVersionFile.writeAsStringSync('$jsonString\n');
-  stdout.writeln('✅ Atualizado: mobile/web/version.json');
+  stdout.writeln('✅ Atualizado: mobile/web/version.json (com changelog segmentado)');
 
   // 8. Atualiza web/index.html (APP_CURRENT_BUILD)
   if (indexHtmlFile.existsSync()) {
@@ -218,5 +239,85 @@ void main(List<String> args) {
   }
 
   stdout.writeln('🎉 Auto-versionamento concluído com sucesso!');
+}
+
+/// Extrai itens de changelog por perfil e resumo do arquivo app_changelog.dart
+Map<String, dynamic> _extractChangelogData(String content) {
+  final studentList = <Map<String, dynamic>>[];
+  final trainerList = <Map<String, dynamic>>[];
+  final adminList = <Map<String, dynamic>>[];
+  String? summary;
+
+  // Localiza a primeira versão registrada dentro do histórico oficial (evitando a definição de classe)
+  final historyIdx = content.indexOf('List<VersionRelease> history = [');
+  if (historyIdx == -1) return {};
+
+  final firstReleaseIdx = content.indexOf('VersionRelease(', historyIdx);
+  if (firstReleaseIdx == -1) return {};
+
+  final nextReleaseIdx = content.indexOf('VersionRelease(', firstReleaseIdx + 15);
+  final releaseBlock = nextReleaseIdx != -1
+      ? content.substring(firstReleaseIdx, nextReleaseIdx)
+      : content.substring(firstReleaseIdx);
+
+  // Extrai summary
+  final summaryMatch = RegExp(r"summary:\s*'([^']*(?:\\.[^']*)*)'").firstMatch(releaseBlock);
+  if (summaryMatch != null) {
+    summary = summaryMatch.group(1)?.replaceAll(r"\'", "'")?.replaceAll('\n', ' ')?.replaceAll(RegExp(r'\s+'), ' ')?.trim();
+  }
+
+  // Extrai cada ChangelogItem(...) individualmente respeitando parênteses internos
+  final itemBlocks = RegExp(r'ChangelogItem\s*\(([\s\S]*?targetRoles:\s*\[[^\]]*\]\s*,?\s*)\)', multiLine: true).allMatches(releaseBlock);
+
+  for (final match in itemBlocks) {
+    final block = match.group(1) ?? '';
+    final titleMatch = RegExp(r"title:\s*'([^']*(?:\\.[^']*)*)'").firstMatch(block);
+    final descMatch = RegExp(r"description:\s*'([^']*(?:\\.[^']*)*)'").firstMatch(block);
+    final badgeMatch = RegExp(r"badge:\s*'([^']*)'").firstMatch(block);
+    final rolesMatch = RegExp(r"targetRoles:\s*\[([^\]]*)\]").firstMatch(block);
+
+    if (titleMatch == null || descMatch == null) continue;
+
+    final title = titleMatch.group(1)!.replaceAll(r"\'", "'").trim();
+    final description = descMatch.group(1)!
+        .replaceAll(r"\'", "'")
+        .replaceAll('\n', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    final badge = badgeMatch?.group(1)?.trim();
+    final rolesStr = rolesMatch?.group(1) ?? "'student', 'trainer', 'admin'";
+    final roles = rolesStr
+        .split(',')
+        .map((r) => r.replaceAll("'", "").replaceAll('"', "").trim())
+        .where((r) => r.isNotEmpty)
+        .toList();
+
+    final itemMap = <String, dynamic>{
+      'title': title,
+      'description': description,
+    };
+    if (badge != null && badge.isNotEmpty) {
+      itemMap['badge'] = badge;
+    }
+
+    if (roles.contains('student') || roles.contains('client')) {
+      studentList.add(itemMap);
+    }
+    if (roles.contains('trainer')) {
+      trainerList.add(itemMap);
+    }
+    if (roles.contains('admin')) {
+      adminList.add(itemMap);
+    }
+  }
+
+  return {
+    'summary': summary,
+    'changelog': {
+      'student': studentList,
+      'trainer': trainerList,
+      'admin': adminList,
+    },
+  };
 }
 

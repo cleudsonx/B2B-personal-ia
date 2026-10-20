@@ -17,16 +17,19 @@ class PwaUpdateNotifier extends ChangeNotifier {
   bool _updateAvailable = false;
   String _newVersion = '';
   int _newBuild = 0;
+  Map<String, dynamic>? _remoteData;
   bool _dismissed = false;
 
   bool get updateAvailable => _updateAvailable && !_dismissed;
   String get newVersion => _newVersion;
   int get newBuild => _newBuild;
+  Map<String, dynamic>? get remoteData => _remoteData;
 
-  void setUpdateAvailable(String version, int build) {
-    if (_newBuild != build || !_updateAvailable) {
+  void setUpdateAvailable(String version, int build, [Map<String, dynamic>? remoteData]) {
+    if (_newBuild != build || !_updateAvailable || _remoteData != remoteData) {
       _newVersion = version;
       _newBuild = build;
+      _remoteData = remoteData;
       _updateAvailable = true;
       _dismissed = false;
       notifyListeners();
@@ -39,6 +42,7 @@ class PwaUpdateNotifier extends ChangeNotifier {
       _dismissed = false;
       _newVersion = '';
       _newBuild = 0;
+      _remoteData = null;
       notifyListeners();
     }
   }
@@ -121,7 +125,7 @@ class _PwaUpdateWrapperState extends State<PwaUpdateWrapper> with WidgetsBinding
         final serverVersion = data['version']?.toString() ?? '';
 
         if (serverBuild > AppConfig.buildNumber) {
-          PwaUpdateNotifier.instance.setUpdateAvailable(serverVersion, serverBuild);
+          PwaUpdateNotifier.instance.setUpdateAvailable(serverVersion, serverBuild, data);
         } else {
           // Servidor está na mesma versão (ou o cliente é mais recente).
           // Cancela qualquer alerta espúrio para impedir loops infinitos.
@@ -214,7 +218,10 @@ class _PwaUpdateWrapperState extends State<PwaUpdateWrapper> with WidgetsBinding
             const SizedBox(width: 12),
             Expanded(
               child: InkWell(
-                onTap: () => AppVersionFooter.showReleaseNotesModal(context),
+                onTap: () => AppVersionFooter.showReleaseNotesModal(
+                  context,
+                  remoteReleaseData: PwaUpdateNotifier.instance.remoteData,
+                ),
                 borderRadius: BorderRadius.circular(8),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
