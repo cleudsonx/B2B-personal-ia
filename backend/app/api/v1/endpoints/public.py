@@ -202,3 +202,62 @@ async def upload_avatar_endpoint(payload: AvatarUploadRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Falha ao realizar upload da imagem: {str(e)}")
 
+
+
+# ==============================================================================
+# FASE 6: Planos de Consultoria e Checkout Transparente na Vitrine Pública
+# ==============================================================================
+
+from app.schemas.consultancy_plan import (
+    ConsultancyPlanResponse,
+    PublicCheckoutRequest,
+    PublicCheckoutResponse,
+)
+from app.services.consultancy_plan_service import ConsultancyPlanService
+
+
+@router.get(
+    "/trainers/{username}/plans",
+    response_model=List[ConsultancyPlanResponse],
+    summary="Listar Planos de Consultoria Ativos do Treinador",
+    description="Retorna os planos e preços ativos na Vitrine Pública para contratação por novos alunos.",
+)
+async def list_public_trainer_plans(username: str):
+    clean_user = username.strip().lower()
+    client = await supabase_service.get_client()
+    trainer_id = None
+
+    if client:
+        try:
+            res = await client.table("profiles").select("id").ilike("username", clean_user).maybe_single().execute()
+            if res and res.data:
+                trainer_id = res.data["id"]
+        except Exception:
+            pass
+
+    if not trainer_id and is_valid_uuid(clean_user):
+        trainer_id = clean_user
+
+    if not trainer_id:
+        if clean_user == "mrcoach":
+            trainer_id = "6f645308-f1b2-4d73-ac45-9890c27e20d4"
+        else:
+            raise HTTPException(status_code=404, detail="Treinador não encontrado.")
+
+    return await ConsultancyPlanService.list_trainer_plans(trainer_id, only_active=True)
+
+
+@router.post(
+    "/trainers/{username}/checkout",
+    response_model=PublicCheckoutResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Checkout Transparente do Aluno na Vitrine",
+    description="Gera a cobrança (Pix com QR Code ou Cartão via Asaas) para o aluno assinar a consultoria do personal.",
+)
+async def public_trainer_checkout(username: str, req: PublicCheckoutRequest):
+    try:
+        return await ConsultancyPlanService.process_public_checkout(username, req)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao processar checkout: {str(e)}")

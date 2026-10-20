@@ -159,3 +159,4 @@ def test_invite_rejects_active_student_phone():
     })
     assert inv.status_code == 400
     assert "já possui este telefone" in inv.json()["detail"] or "já existe" in inv.json()["detail"].lower()
+
