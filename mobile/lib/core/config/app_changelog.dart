@@ -38,6 +38,36 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
+      version: '1.8.0',
+      buildNumber: 2026103001,
+      date: '20 de Outubro, 2026',
+      summary:
+          'FASE 6: Monetização B2B2C Híbrida — Gestão de Planos de Consultoria na aba Ferramentas e Checkout Transparente Asaas (Pix com QR Code e Cartão) na Vitrine Pública do Personal.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.sell_rounded,
+          title: 'Planos de Consultoria & Preços',
+          description:
+              'Configure seus planos mensais, trimestrais e fichas avulsas diretamente na aba Ferramentas com ativação em 1 toque.',
+          badge: 'NOVO',
+        ),
+        ChangelogItem(
+          icon: Icons.pix_rounded,
+          title: 'Checkout Transparente Asaas',
+          description:
+              'Seus alunos contratam seus planos pela Vitrine Pública com Pix instantâneo, QR Code e confirmação automática.',
+          badge: 'B2B2C',
+        ),
+        ChangelogItem(
+          icon: Icons.phone_android_rounded,
+          title: 'Unicidade de Telefone por Treinador',
+          description:
+              'Proteção contra duplicidade de alunos sob o mesmo personal, permitindo que alunos treinem com múltiplos professores.',
+          badge: 'SEGURANÇA',
+        ),
+      ],
+    ),
+    VersionRelease(
       version: '1.7.0',
       buildNumber: 2026102921,
       date: '19 de Outubro, 2026',
