@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/widgets/meta_components.dart';
+import '../../core/widgets/pwa_install_prompt_card.dart';
 import '../auth/register_screen.dart';
 
 class InviteSuccessScreen extends StatelessWidget {
@@ -139,7 +140,15 @@ class InviteSuccessScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    // Recomendação PWA inteligente se estiver no navegador
+                    const PwaInstallPromptCard(
+                      compact: true,
+                      margin: EdgeInsets.only(top: 20),
+                      title: 'Instale o App para Iniciar',
+                      subtitle: 'Adicione o Mr. Coach à sua tela inicial para acompanhar sua consultoria com alta performance e notificações em tempo real.',
+                    ),
+
+                    const SizedBox(height: 24),
 
                     // Botão de Avançar
                     SizedBox(

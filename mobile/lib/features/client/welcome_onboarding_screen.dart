@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/widgets/meta_components.dart';
+import '../../core/widgets/pwa_install_prompt_card.dart';
 import '../../main.dart' show MainShellScreen;
 import '../../services/auth_service.dart';
 import '../../services/body_metrics_service.dart';
@@ -2032,7 +2033,13 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 36),
+          // Indução inteligente de instalação do PWA na tela inicial
+          const PwaInstallPromptCard(
+            title: 'Instale o App para seus Treinos',
+            subtitle: 'Adicione à tela inicial para abrir seus treinos na academia sem barras de navegador, com suporte offline e alertas instantâneos.',
+            margin: EdgeInsets.only(top: 20),
+          ),
+          const SizedBox(height: 28),
           InkWell(
             onTap: () {
               HapticFeedback.mediumImpact();
