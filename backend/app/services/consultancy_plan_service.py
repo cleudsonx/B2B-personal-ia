@@ -1,6 +1,7 @@
 import re
 # backend/app/services/consultancy_plan_service.py
 import uuid
+import secrets
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
@@ -8,6 +9,7 @@ import httpx
 
 from app.core.config import settings
 from app.services.supabase_service import supabase_service, to_valid_uuid_str, is_valid_uuid
+from app.services.whatsapp_service import whatsapp_service
 from app.services.payment_service import (
     PaymentProviderService,
     resolve_asaas_base_url,
@@ -31,6 +33,7 @@ class ConsultancyPlanService:
     """Gerencia os planos de consultoria do personal e o checkout público de novos alunos."""
 
     _mem_plans: Dict[str, Dict[str, Any]] = {}
+    _mem_invoices: Dict[str, Dict[str, Any]] = {}
 
     @classmethod
     async def list_trainer_plans(
@@ -458,38 +461,44 @@ class ConsultancyPlanService:
                 status_result = "paid"
 
         # 4. Registra na tabela `student_invoices`
+        inv_record = {
+            "id": invoice_id,
+            "trainer_id": trainer_id,
+            "plan_id": plan.id,
+            "student_name": req.student_name.strip(),
+            "student_email": req.student_email.strip().lower() if req.student_email else None,
+            "student_phone": req.student_phone.strip() if req.student_phone else None,
+            "title": f"Consultoria {plan.name} - {trainer_name}",
+            "description": f"Plano {plan.name} contratado via Vitrine Pública",
+            "amount_cents": amount_cents,
+            "platform_fee_cents": fee_cents,
+            "net_amount_cents": net_cents,
+            "due_date": due_date_str,
+            "status": status_result,
+            "payment_method": req.payment_method.lower(),
+            "paid_at": datetime.now(timezone.utc).isoformat() if status_result == "paid" else None,
+            "payment_link": checkout_url,
+            "pix_copy_paste": pix_code,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        cls._mem_invoices[invoice_id] = inv_record
+
         if client:
             try:
-                await client.table("student_invoices").insert({
-                    "id": invoice_id,
-                    "trainer_id": trainer_id,
-                    "plan_id": plan.id,
-                    "student_name": req.student_name.strip(),
-                    "student_email": req.student_email.strip().lower(),
-                    "student_phone": req.student_phone.strip(),
-                    "amount_cents": amount_cents,
-                    "fee_cents": fee_cents,
-                    "net_amount_cents": net_cents,
-                    "due_date": due_date_str,
-                    "status": status_result,
-                    "payment_method": req.payment_method.lower(),
-                    "paid_at": datetime.now(timezone.utc).isoformat() if status_result == "paid" else None,
-                    "pix_copy_paste": pix_code,
-                    "pix_qr_code": pix_qr_base64,
-                    "description": f"Plano {plan.name} contratado via Vitrine Pública",
-                }).execute()
-
-                # Se o pagamento foi aprovado (Cartão ou Pix instantâneo), credita na carteira do treinador
-                if status_result == "paid":
-                    w_res = await client.table("trainer_wallets").select("balance_cents").eq("trainer_id", trainer_id).maybe_single().execute()
-                    current_bal = w_res.data.get("balance_cents", 0) if w_res and w_res.data else 0
-                    await client.table("trainer_wallets").upsert({
-                        "trainer_id": trainer_id,
-                        "balance_cents": current_bal + net_cents,
-                        "updated_at": datetime.now(timezone.utc).isoformat(),
-                    }).execute()
+                await client.table("student_invoices").insert(inv_record).execute()
             except Exception as e:
                 logger.error(f"[Checkout] Erro ao gravar fatura no Supabase: {e}")
+
+        # Se o pagamento foi aprovado instantaneamente (Cartão de Crédito),
+        # dispara imediatamente o ciclo financeiro, vínculo de aluno e boas-vindas:
+        if status_result == "paid":
+            try:
+                await cls.process_student_payment_confirmation(
+                    invoice_id=invoice_id,
+                    payment_method=req.payment_method.lower(),
+                )
+            except Exception as e:
+                logger.warning(f"[Checkout] Falha ao processar ciclo de confirmação imediato: {e}")
 
         return PublicCheckoutResponse(
             invoice_id=invoice_id,
@@ -506,4 +515,217 @@ class ConsultancyPlanService:
             trainer_name=trainer_name,
             plan_name=plan.name,
         )
+
+    @classmethod
+    async def process_student_payment_confirmation(
+        cls,
+        invoice_id: str,
+        payment_method: str = "pix",
+        provider_payment_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Confirma o pagamento de uma consultoria (via Webhook Asaas ou aprovação de Cartão):
+        1. Localiza a fatura em `student_invoices`.
+        2. Idempotência estrita: se já paga, retorna imediatamente sem duplicar saldos ou mensagens.
+        3. Marca fatura como 'paid' com timestamp de pagamento.
+        4. Credita o valor líquido (net_amount_cents) na carteira do treinador (trainer_wallets).
+        5. Vincula ou gera convite de ativação para o aluno:
+           - Se aluno já possui conta em `profiles`: vincula ao treinador e ativa status.
+           - Se aluno novo: cria registro em `invite_tokens` com link seguro de onboarding.
+        6. Envia mensagem de boas-vindas no WhatsApp do aluno com link direto para PWA/anamnese.
+        7. Notifica o treinador no WhatsApp com o valor creditado e novo aluno a bordo.
+        """
+        now_utc = datetime.now(timezone.utc)
+        now_iso = now_utc.isoformat()
+        client = await supabase_service.get_client()
+
+        # 1. Localiza a fatura
+        invoice = None
+        if client and is_valid_uuid(invoice_id):
+            try:
+                res = await client.table("student_invoices").select("*").eq("id", invoice_id).maybe_single().execute()
+                invoice = res.data if res else None
+            except Exception as e:
+                logger.error(f"[PaymentConfirmation] Erro ao buscar fatura {invoice_id}: {e}")
+
+        # Fallback memória
+        if not invoice and invoice_id in cls._mem_invoices:
+            invoice = cls._mem_invoices[invoice_id]
+
+        if not invoice:
+            logger.warning(f"[PaymentConfirmation] Fatura {invoice_id} não encontrada.")
+            return {"status": "not_found", "invoice_id": invoice_id}
+
+        # 2. Idempotência estrita
+        if invoice.get("status") == "paid" and invoice.get("processed_at"):
+            logger.info(f"[PaymentConfirmation] Fatura {invoice_id} já processada anteriormente. Ignorando duplicata.")
+            return {"status": "already_paid", "invoice_id": invoice_id}
+
+        trainer_id = invoice["trainer_id"]
+        student_name = invoice.get("student_name") or "Aluno"
+        first_name = student_name.split()[0]
+        student_phone = invoice.get("student_phone") or ""
+        student_email = invoice.get("student_email") or ""
+        amount_cents = invoice.get("amount_cents", 0)
+        net_cents = invoice.get("net_amount_cents") or int(round(amount_cents * 0.95))
+
+        # 3. Marca fatura como paga
+        invoice["status"] = "paid"
+        invoice["paid_at"] = invoice.get("paid_at") or now_iso
+        invoice["processed_at"] = now_iso
+        invoice["payment_method"] = payment_method.lower()
+
+        if client and is_valid_uuid(invoice_id):
+            try:
+                await client.table("student_invoices").update({
+                    "status": "paid",
+                    "paid_at": invoice["paid_at"],
+                    "payment_method": payment_method.lower(),
+                }).eq("id", invoice_id).execute()
+            except Exception as e:
+                logger.error(f"[PaymentConfirmation] Erro ao atualizar status da fatura {invoice_id}: {e}")
+
+        # 4. Credita o valor líquido na carteira do treinador
+        if client and is_valid_uuid(trainer_id):
+            try:
+                w_res = await client.table("trainer_wallets").select("balance_cents").eq("trainer_id", trainer_id).maybe_single().execute()
+                current_bal = w_res.data.get("balance_cents", 0) if w_res and w_res.data else 0
+                new_bal = current_bal + net_cents
+                await client.table("trainer_wallets").upsert({
+                    "trainer_id": trainer_id,
+                    "balance_cents": new_bal,
+                    "updated_at": now_iso,
+                }).execute()
+                logger.info(f"[PaymentConfirmation] R$ {net_cents/100:.2f} creditados na carteira do treinador {trainer_id}. Novo saldo: R$ {new_bal/100:.2f}")
+            except Exception as e:
+                logger.error(f"[PaymentConfirmation] Erro ao creditar carteira do treinador {trainer_id}: {e}")
+
+        # 5. Localiza dados do Treinador para mensagens
+        trainer_name = "Seu Personal Trainer"
+        trainer_phone = None
+        if client and is_valid_uuid(trainer_id):
+            try:
+                t_res = await client.table("profiles").select("full_name, phone, public_whatsapp").eq("id", trainer_id).maybe_single().execute()
+                if t_res and t_res.data:
+                    trainer_name = t_res.data.get("full_name") or trainer_name
+                    trainer_phone = t_res.data.get("public_whatsapp") or t_res.data.get("phone")
+            except Exception as e:
+                logger.warning(f"[PaymentConfirmation] Erro ao buscar perfil do treinador {trainer_id}: {e}")
+
+        # 6. Vinculação do Aluno / Geração de Convite de Onboarding
+        student_profile = None
+        clean_phone = re.sub(r"\D", "", student_phone)
+        norm_phone = clean_phone[2:] if clean_phone.startswith("55") and len(clean_phone) > 11 else clean_phone
+
+        if client:
+            try:
+                if student_email:
+                    p_res = await client.table("profiles").select("id, full_name, email, phone").eq("email", student_email.strip().lower()).maybe_single().execute()
+                    student_profile = p_res.data if p_res else None
+                if not student_profile and norm_phone:
+                    p_res = await client.table("profiles").select("id, full_name, email, phone").ilike("phone", f"%{norm_phone}%").maybe_single().execute()
+                    student_profile = p_res.data if p_res else None
+            except Exception as e:
+                logger.warning(f"[PaymentConfirmation] Erro ao buscar profile do aluno: {e}")
+
+        invite_token = None
+        access_url = "https://shaipados-labs.web.app"
+
+        if student_profile:
+            # Aluno já possui cadastro: vincula ao treinador e ativa
+            s_id = student_profile["id"]
+            if client and is_valid_uuid(s_id):
+                try:
+                    await client.table("profiles").update({
+                        "trainer_id": trainer_id,
+                        "role": "client",
+                        "subscription_status": "active",
+                    }).eq("id", s_id).execute()
+
+                    # Vincula student_id na fatura
+                    await client.table("student_invoices").update({
+                        "student_id": s_id,
+                    }).eq("id", invoice_id).execute()
+                except Exception as e:
+                    logger.warning(f"[PaymentConfirmation] Falha ao atualizar vínculo de aluno existente: {e}")
+
+            wa_student_text = (
+                f"Olá, *{first_name}*! 🎉\n\n"
+                f"O seu pagamento da consultoria com o Personal *{trainer_name}* foi confirmado com sucesso!\n\n"
+                f"Seu acesso já está liberado no aplicativo. Acesse para iniciar sua avaliação física e conferir seus treinos:\n"
+                f"👉 {access_url}\n\n"
+                f"Bora buscar o shape com alto nível! 💪"
+            )
+        else:
+            # Aluno novo: gera convite seguro de ativação e anamnese
+            invite_token = secrets.token_hex(32)
+            expires_at = (now_utc + timedelta(days=30)).isoformat()
+
+            if client:
+                try:
+                    await client.table("invite_tokens").insert({
+                        "token": invite_token,
+                        "trainer_id": trainer_id,
+                        "channel": "whatsapp" if student_phone else "email",
+                        "target_name": student_name,
+                        "target_phone": student_phone or None,
+                        "target_email": student_email or None,
+                        "expires_at": expires_at,
+                        "created_at": now_iso,
+                    }).execute()
+                except Exception as e:
+                    logger.warning(f"[PaymentConfirmation] Erro ao criar invite_token: {e}")
+
+            access_url = f"https://shaipados-labs.web.app/#/invite/{invite_token}"
+            wa_student_text = (
+                f"Olá, *{first_name}*! 🎉\n\n"
+                f"O seu pagamento da consultoria com o Personal *{trainer_name}* foi confirmado com sucesso!\n\n"
+                f"Clique no link seguro abaixo para criar seu acesso, instalar o app e preencher sua avaliação física inicial:\n"
+                f"👉 {access_url}\n\n"
+                f"Bora começar a sua transformação! 💪"
+            )
+
+        # 7. Disparo WhatsApp para o Aluno
+        if student_phone:
+            try:
+                await whatsapp_service.send_text_with_fallback(
+                    number=student_phone,
+                    text=wa_student_text,
+                    trainer_id=trainer_id,
+                )
+                logger.info(f"[PaymentConfirmation] WhatsApp de boas-vindas enviado para o aluno {student_phone}")
+            except Exception as e:
+                logger.warning(f"[PaymentConfirmation] Erro não impeditivo ao enviar WhatsApp para o aluno: {e}")
+
+        # 8. Notifica o Treinador no WhatsApp
+        if trainer_phone:
+            val_formatado = f"R$ {net_cents / 100:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            wa_trainer_text = (
+                f"🚀 *Novo Aluno Confirmado!*\n\n"
+                f"Fala, *{trainer_name}*!\n"
+                f"O pagamento de *{student_name}* para a sua consultoria foi confirmado com sucesso! 🎉\n\n"
+                f"💰 Valor líquido creditado na carteira: *{val_formatado}*\n"
+                f"📲 O link de boas-vindas e ficha inicial já foi enviado no WhatsApp do aluno.\n\n"
+                f"Acompanhe pelo seu painel: https://shaipados-labs.web.app"
+            )
+            try:
+                await whatsapp_service.send_text_with_fallback(
+                    number=trainer_phone,
+                    text=wa_trainer_text,
+                    trainer_id=trainer_id,
+                )
+                logger.info(f"[PaymentConfirmation] Notificação de novo aluno enviada para o treinador {trainer_phone}")
+            except Exception as e:
+                logger.warning(f"[PaymentConfirmation] Erro ao notificar treinador no WhatsApp: {e}")
+
+        return {
+            "status": "processed",
+            "invoice_id": invoice_id,
+            "trainer_id": trainer_id,
+            "student_name": student_name,
+            "net_amount_cents": net_cents,
+            "access_url": access_url,
+            "token": invite_token,
+        }
+
 
