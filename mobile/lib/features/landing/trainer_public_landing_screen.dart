@@ -106,7 +106,9 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     );
   }
 
-  Future<void> _openTrainerWhatsapp() async {
+  bool get _acceptsNewStudents => _trainerData?['accepts_new_students'] != false;
+
+  Future<void> _openTrainerWhatsapp({String? customMessage}) async {
     final rawNumber = _trainerData?['public_whatsapp']?.toString() ?? '';
     var number = rawNumber.replaceAll(RegExp(r'\D'), '');
     if (number.length == 10 || number.length == 11) {
@@ -122,7 +124,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     }
 
     final trainerName = _trainerData?['full_name'] as String? ?? 'Treinador';
-    final message = 'Olá, $trainerName! Vi seus planos de consultoria no Mr. Coach e gostaria de tirar uma dúvida.';
+    final message = customMessage ?? 'Olá, $trainerName! Vi seus planos de consultoria no Mr. Coach e gostaria de tirar uma dúvida.';
     final encodedMsg = Uri.encodeComponent(message);
 
     final nativeUri = Uri.parse('whatsapp://send?phone=$number&text=$encodedMsg');
@@ -140,6 +142,12 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     } catch (_) {
       await launchUrl(waMeUri, mode: LaunchMode.externalApplication);
     }
+  }
+
+  Future<void> _openWaitlistWhatsapp(ConsultancyPlan plan) async {
+    final trainerName = _trainerData?['full_name'] as String? ?? 'Personal';
+    final msg = 'Olá, professor(a) $trainerName! Vi o plano "${plan.name}" na sua vitrine, mas vi que as vagas estão lotadas no momento. Gostaria de entrar na lista de espera para ser avisado assim que abrir uma vaga! 💪';
+    await _openTrainerWhatsapp(customMessage: msg);
   }
 
   @override
@@ -575,13 +583,49 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
               )),
             ],
 
+            if (!_acceptsNewStudents) ...[
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.hourglass_top_rounded, color: Colors.amber, size: 14),
+                    SizedBox(width: 6),
+                    Text(
+                      'TURMA LOTADA • LISTA DE ESPERA',
+                      style: TextStyle(
+                        color: Colors.amber,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             const SizedBox(height: 16),
-            SquircleButton(
-              label: 'Assinar Plano (${plan.billingPeriodLabel})',
-              icon: Icons.lock_outline,
-              isPrimary: true,
-              onPressed: () => _openCheckoutModal(plan),
-            ),
+            if (_acceptsNewStudents)
+              SquircleButton(
+                label: 'Assinar Plano (${plan.billingPeriodLabel})',
+                icon: Icons.lock_outline,
+                isPrimary: true,
+                onPressed: () => _openCheckoutModal(plan),
+              )
+            else
+              SquircleButton(
+                label: 'Entrar na Lista de Espera',
+                icon: Icons.mark_chat_unread_outlined,
+                isPrimary: false,
+                onPressed: () => _openWaitlistWhatsapp(plan),
+              ),
           ],
         ),
       ),
@@ -716,6 +760,7 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
   String _paymentMethod = 'PIX';
   bool _isSubmitting = false;
   PublicCheckoutResult? _checkoutResult;
+  String? _checkoutError;
 
   @override
   void dispose() {
@@ -757,7 +802,10 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
   Future<void> _processPayment() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+      _checkoutError = null;
+    });
     try {
       Map<String, dynamic>? creditCardData;
       if (_paymentMethod == 'CREDIT_CARD') {
@@ -803,13 +851,10 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        setState(() {
+          _isSubmitting = false;
+          _checkoutError = e.toString().replaceAll('Exception: ', '');
+        });
       }
     }
   }
@@ -1205,6 +1250,78 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
             ].animate().fadeIn(duration: 300.ms).slideY(begin: 0.08, end: 0),
 
             const SizedBox(height: 24),
+
+            if (_checkoutError != null) ...[
+              Builder(builder: (context) {
+                final isWaitlist = _checkoutError!.toLowerCase().contains('vagas') ||
+                    _checkoutError!.toLowerCase().contains('esgotad');
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isWaitlist
+                        ? Colors.amber.withValues(alpha: 0.12)
+                        : Colors.redAccent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isWaitlist
+                          ? Colors.amber.withValues(alpha: 0.45)
+                          : Colors.redAccent.withValues(alpha: 0.45),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            isWaitlist
+                                ? Icons.hourglass_top_rounded
+                                : Icons.error_outline_rounded,
+                            color: isWaitlist ? Colors.amber : Colors.redAccent,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              isWaitlist
+                                  ? 'Vagas Temporariamente Esgotadas'
+                                  : 'Atenção no Pagamento',
+                              style: TextStyle(
+                                color: isWaitlist ? Colors.amber : Colors.redAccent,
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _checkoutError!,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12.5,
+                          height: 1.4,
+                        ),
+                      ),
+                      if (isWaitlist) ...[
+                        const SizedBox(height: 14),
+                        SquircleButton(
+                          label: 'Falar no WhatsApp (Lista de Espera)',
+                          icon: Icons.chat_bubble_outline,
+                          isPrimary: false,
+                          onPressed: () {
+                            final msg = 'Olá, professor(a) ${widget.trainerName}! Vi o plano "${widget.plan.name}", mas notei que as vagas estão esgotadas no momento. Gostaria de entrar na lista de espera para ser avisado assim que abrir uma vaga! 💪';
+                            _shareOnWhatsapp(msg);
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                ).animate().fadeIn(duration: 250.ms);
+              }),
+            ],
 
             SquircleButton(
               label: _isSubmitting

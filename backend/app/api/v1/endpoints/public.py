@@ -29,6 +29,7 @@ class TrainerPublicProfile(BaseModel):
     photo_url: Optional[str] = None
     username: Optional[str] = None
     cref: Optional[str] = None
+    accepts_new_students: bool = True
 
 
 @router.get("/trainers", response_model=List[TrainerPublicProfile], summary="Listar vitrines públicas de treinadores")
@@ -145,6 +146,15 @@ async def get_public_trainer_profile(username: str):
         if not isinstance(specialties, list):
             specialties = []
 
+        # Verifica cota de vagas do treinador
+        accepts_new_students = True
+        try:
+            occupied = await supabase_service.count_trainer_occupied_slots(data["id"])
+            sub = await supabase_service.get_trainer_subscription(data["id"])
+            accepts_new_students = occupied < sub.max_students
+        except Exception as q_err:
+            logger.warning(f"[Public] Falha ao checar vagas do treinador {clean_key}: {q_err}")
+
         prof = TrainerPublicProfile(
             id=data.get("id"),
             full_name=data.get("full_name") or "Treinador",
@@ -154,6 +164,7 @@ async def get_public_trainer_profile(username: str):
             photo_url=data.get("photo_url") or data.get("avatar_url"),
             username=data.get("username"),
             cref=public_cref,
+            accepts_new_students=accepts_new_students,
         )
         _PUBLIC_TRAINER_CACHE[clean_key] = (now_ts, prof)
         if prof.id:
