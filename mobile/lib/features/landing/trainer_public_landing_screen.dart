@@ -735,10 +735,9 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
     try {
       Map<String, dynamic>? creditCardData;
       if (_paymentMethod == 'CREDIT_CARD') {
-        final expiryText = _cardExpiryCtrl.text.trim();
-        final parts = expiryText.split('/');
-        final expMonth = parts.isNotEmpty ? parts[0].trim() : '';
-        var expYear = parts.length > 1 ? parts[1].trim() : '';
+        final cleanExp = _cardExpiryCtrl.text.replaceAll(RegExp(r'\D'), '');
+        final expMonth = cleanExp.length >= 2 ? cleanExp.substring(0, 2) : '';
+        var expYear = cleanExp.length >= 4 ? cleanExp.substring(2, 4) : (cleanExp.length >= 2 ? cleanExp.substring(2) : '');
         if (expYear.length == 2) {
           expYear = '20$expYear';
         }
@@ -1029,7 +1028,7 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                 style: const TextStyle(color: Colors.white),
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(16),
+                  _CardNumberInputFormatter(),
                 ],
                 decoration: InputDecoration(
                   labelText: 'Número do Cartão',
@@ -1086,7 +1085,8 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                       keyboardType: TextInputType.number,
                       style: const TextStyle(color: Colors.white),
                       inputFormatters: [
-                        LengthLimitingTextInputFormatter(5),
+                        FilteringTextInputFormatter.digitsOnly,
+                        _CardExpiryInputFormatter(),
                       ],
                       decoration: InputDecoration(
                         labelText: 'Validade',
@@ -1100,10 +1100,10 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                       ),
                       validator: (v) {
                         if (_paymentMethod != 'CREDIT_CARD') return null;
-                        if (v == null || !v.contains('/')) return 'Formato MM/AA';
-                        final p = v.split('/');
-                        final m = int.tryParse(p[0].trim());
-                        if (m == null || m < 1 || m > 12) return 'Mês inválido';
+                        final digits = (v ?? '').replaceAll(RegExp(r'\D'), '');
+                        if (digits.length < 4) return 'Informe MM/AA (ex: 05/34)';
+                        final month = int.tryParse(digits.substring(0, 2));
+                        if (month == null || month < 1 || month > 12) return 'Mês inválido (01 a 12)';
                         return null;
                       },
                     ),
@@ -1409,6 +1409,63 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Formata a validade do cartão no padrão MM/AA
+class _CardExpiryInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    var text = newValue.text.replaceAll(RegExp(r'\D'), '');
+    if (text.length > 4) return oldValue;
+
+    // Se o usuário está apagando e o caractere anterior era a barra
+    if (oldValue.text.length > newValue.text.length &&
+        oldValue.text.endsWith('/') &&
+        text.isNotEmpty) {
+      text = text.substring(0, text.length - 1);
+    }
+
+    // Se primeiro dígito for > 1 (ex: digitou '5'), formata para '05/'
+    if (text.length == 1 && int.tryParse(text) != null && int.parse(text) > 1) {
+      text = '0$text';
+    }
+
+    final buffer = StringBuffer();
+    for (int i = 0; i < text.length; i++) {
+      if (i == 2) buffer.write('/');
+      buffer.write(text[i]);
+    }
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
+/// Formata o número do cartão com espaçamento a cada 4 dígitos
+class _CardNumberInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text.replaceAll(RegExp(r'\D'), '');
+    if (text.length > 16) return oldValue;
+    final buffer = StringBuffer();
+    for (int i = 0; i < text.length; i++) {
+      if (i > 0 && i % 4 == 0) buffer.write(' ');
+      buffer.write(text[i]);
+    }
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }
