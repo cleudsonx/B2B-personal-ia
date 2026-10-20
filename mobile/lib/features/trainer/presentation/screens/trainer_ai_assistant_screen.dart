@@ -919,7 +919,7 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
         color: MetaColors.card(context),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: MetaColors.accentBlue.withValues(alpha: 0.35),
+          color: MetaColors.emerald.withValues(alpha: 0.35),
           width: 1.3,
         ),
       ),
@@ -931,10 +931,10 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
               Container(
                 padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
-                  color: MetaColors.accentBlue.withValues(alpha: 0.15),
+                  color: MetaColors.emerald.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.assessment_rounded, color: MetaColors.accentBlue, size: 19),
+                child: const Icon(Icons.assessment_rounded, color: MetaColors.emerald, size: 19),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -963,13 +963,13 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: MetaColors.accentBlue.withValues(alpha: 0.12),
+                  color: MetaColors.emerald.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Text(
                   'Coach 2.0',
                   style: TextStyle(
-                    color: MetaColors.accentBlue,
+                    color: MetaColors.emerald,
                     fontSize: 10.5,
                     fontWeight: FontWeight.w900,
                   ),
@@ -978,48 +978,51 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
             ],
           ),
           const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _buildMetricTile(
-                  context,
-                  label: 'Alunos Ativos',
-                  value: '$totalStudents',
-                  color: MetaColors.accentBlue,
-                  icon: Icons.people_alt_outlined,
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: _buildMetricTile(
+                    context,
+                    label: 'Alunos',
+                    value: '$totalStudents',
+                    color: MetaColors.emerald,
+                    icon: Icons.people_alt_outlined,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildMetricTile(
-                  context,
-                  label: 'Treinos (7d)',
-                  value: '$weeklyWorkouts',
-                  color: MetaColors.emerald,
-                  icon: Icons.fitness_center_rounded,
+                const SizedBox(width: 6),
+                Expanded(
+                  child: _buildMetricTile(
+                    context,
+                    label: 'Treinos',
+                    value: '$weeklyWorkouts',
+                    color: MetaColors.emerald,
+                    icon: Icons.fitness_center_rounded,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildMetricTile(
-                  context,
-                  label: 'Presença',
-                  value: '$retentionRate%',
-                  color: retentionRate >= 75 ? MetaColors.emerald : Colors.amber,
-                  icon: Icons.verified_user_outlined,
+                const SizedBox(width: 6),
+                Expanded(
+                  child: _buildMetricTile(
+                    context,
+                    label: 'Presença',
+                    value: '$retentionRate%',
+                    color: retentionRate >= 75 ? MetaColors.emerald : (retentionRate > 0 ? Colors.amber : MetaColors.subtext(context)),
+                    icon: Icons.verified_user_outlined,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildMetricTile(
-                  context,
-                  label: 'Alertas Dor',
-                  value: '$pendingAlerts',
-                  color: pendingAlerts > 0 ? Colors.redAccent : MetaColors.emerald,
-                  icon: Icons.healing_outlined,
+                const SizedBox(width: 6),
+                Expanded(
+                  child: _buildMetricTile(
+                    context,
+                    label: 'Alertas',
+                    value: '$pendingAlerts',
+                    color: pendingAlerts > 0 ? Colors.redAccent : MetaColors.emerald,
+                    icon: Icons.healing_outlined,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           if (topStreaks.isNotEmpty) ...[
             const SizedBox(height: 14),
@@ -1061,15 +1064,16 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
           const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
+            height: 50,
             child: ElevatedButton.icon(
               onPressed: _isSendingDigest ? null : _sendWeeklyDigestToMyWhatsApp,
               style: ElevatedButton.styleFrom(
-                backgroundColor: MetaColors.accentBlue,
+                backgroundColor: MetaColors.emerald,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
               icon: _isSendingDigest
@@ -1078,12 +1082,12 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
                       height: 16,
                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                     )
-                  : const Icon(Icons.send_to_mobile_rounded, size: 18),
+                  : const Icon(Icons.send_rounded, size: 18),
               label: Text(
                 _isSendingDigest
                     ? 'Enviando Resumo...'
                     : 'Enviar Resumo Executivo para o Meu WhatsApp',
-                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800),
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
               ),
             ),
           ),
@@ -1953,34 +1957,41 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
     required IconData icon,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
       decoration: BoxDecoration(
         color: MetaColors.highlight(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: MetaColors.border.withValues(alpha: 0.5)),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(icon, size: 16, color: color),
           const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: TextStyle(
+                color: color,
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: MetaColors.subtext(context),
-              fontSize: 10.5,
-              fontWeight: FontWeight.w600,
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              style: TextStyle(
+                color: MetaColors.subtext(context),
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],

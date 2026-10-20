@@ -6,6 +6,12 @@ import uuid
 from app.core.config import settings
 from app.services.supabase_service import supabase_service, is_valid_uuid
 from app.services.ai_news_service import get_ai_news
+import time
+
+_PUBLIC_TRAINER_CACHE: dict[str, tuple[float, Any]] = {}
+_PUBLIC_PLANS_CACHE: dict[str, tuple[float, Any]] = {}
+_PUBLIC_CACHE_TTL = 30  # 30 segundos de cache em memória
+
 
 router = APIRouter()
 
@@ -80,6 +86,13 @@ async def get_public_trainer_profile(username: str):
     Retorna os dados públicos de um Personal Trainer usando o seu username (slug) ou ID.
     Esta rota não exige autenticação e é usada para renderizar a Landing Page B2B.
     """
+    clean_key = username.strip().lower()
+    now_ts = time.time()
+    if clean_key in _PUBLIC_TRAINER_CACHE:
+        cached_ts, cached_prof = _PUBLIC_TRAINER_CACHE[clean_key]
+        if now_ts - cached_ts < _PUBLIC_CACHE_TTL:
+            return cached_prof
+
     client = await supabase_service.get_client()
     if not client:
         raise HTTPException(status_code=500, detail="Database connection error")
@@ -132,7 +145,7 @@ async def get_public_trainer_profile(username: str):
         if not isinstance(specialties, list):
             specialties = []
 
-        return TrainerPublicProfile(
+        prof = TrainerPublicProfile(
             id=data.get("id"),
             full_name=data.get("full_name") or "Treinador",
             bio=data.get("bio"),
@@ -142,6 +155,10 @@ async def get_public_trainer_profile(username: str):
             username=data.get("username"),
             cref=public_cref,
         )
+        _PUBLIC_TRAINER_CACHE[clean_key] = (now_ts, prof)
+        if prof.id:
+            _PUBLIC_TRAINER_CACHE[str(prof.id).lower()] = (now_ts, prof)
+        return prof
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e
@@ -224,6 +241,11 @@ from app.services.consultancy_plan_service import ConsultancyPlanService
 )
 async def list_public_trainer_plans(username: str):
     clean_user = username.strip().lower()
+    now_ts = time.time()
+    if clean_user in _PUBLIC_PLANS_CACHE:
+        cached_ts, cached_plans = _PUBLIC_PLANS_CACHE[clean_user]
+        if now_ts - cached_ts < _PUBLIC_CACHE_TTL:
+            return cached_plans
     client = await supabase_service.get_client()
     trainer_id = None
 
@@ -244,7 +266,9 @@ async def list_public_trainer_plans(username: str):
         else:
             raise HTTPException(status_code=404, detail="Treinador não encontrado.")
 
-    return await ConsultancyPlanService.list_trainer_plans(trainer_id, only_active=True)
+    plans = await ConsultancyPlanService.list_trainer_plans(trainer_id, only_active=True)
+    _PUBLIC_PLANS_CACHE[clean_user] = (now_ts, plans)
+    return plans
 
 
 @router.post(

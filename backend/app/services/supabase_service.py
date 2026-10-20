@@ -2396,40 +2396,56 @@ class SupabaseService:
         weekly_workouts_completed = 0
 
         if client and is_valid_uuid(valid_tid):
-            try:
-                t_res = await client.table("profiles")\
-                    .select("full_name, phone, public_whatsapp")\
-                    .eq("id", valid_tid)\
-                    .maybe_single()\
-                    .execute()
-                if t_res and t_res.data:
-                    trainer_name = (t_res.data.get("full_name") or "Personal").split()[0]
-                    trainer_phone = t_res.data.get("public_whatsapp") or t_res.data.get("phone") or ""
-            except Exception:
-                pass
+            async def _fetch_trainer():
+                try:
+                    return await client.table("profiles")\
+                        .select("full_name, phone, public_whatsapp")\
+                        .eq("id", valid_tid)\
+                        .maybe_single()\
+                        .execute()
+                except Exception:
+                    return None
 
-            try:
-                p_res = await client.table("profiles")\
-                    .select("id, full_name, phone, subscription_status, streak_days, last_checkin_date, last_contacted_at, created_at")\
-                    .eq("trainer_id", valid_tid)\
-                    .eq("role", "client")\
-                    .execute()
-                for row in (p_res.data or []):
+            async def _fetch_students():
+                try:
+                    return await client.table("profiles")\
+                        .select("id, full_name, phone, subscription_status, streak_days, last_checkin_date, last_contacted_at, created_at")\
+                        .eq("trainer_id", valid_tid)\
+                        .eq("role", "client")\
+                        .execute()
+                except Exception as e:
+                    logger.warning(f"[ProactiveRadar] Falha ao buscar alunos: {e}")
+                    return None
+
+            async def _fetch_alerts():
+                try:
+                    return await client.table("adaptation_logs")\
+                        .select("id")\
+                        .eq("trainer_id", valid_tid)\
+                        .eq("viewed_by_trainer", False)\
+                        .execute()
+                except Exception:
+                    return None
+
+            t_res, p_res, al_res = await asyncio.gather(
+                _fetch_trainer(),
+                _fetch_students(),
+                _fetch_alerts(),
+                return_exceptions=True,
+            )
+
+            if t_res and not isinstance(t_res, Exception) and hasattr(t_res, "data") and t_res.data:
+                trainer_name = (t_res.data.get("full_name") or "Personal").split()[0]
+                trainer_phone = t_res.data.get("public_whatsapp") or t_res.data.get("phone") or ""
+
+            if p_res and not isinstance(p_res, Exception) and hasattr(p_res, "data") and p_res.data:
+                for row in p_res.data:
                     sub_st = str(row.get("subscription_status") or "active").lower()
                     if sub_st not in ("canceled", "arquivado", "suspended", "inativo"):
                         active_profiles.append(row)
-            except Exception as e:
-                logger.warning(f"[ProactiveRadar] Falha ao buscar alunos: {e}")
 
-            try:
-                al_res = await client.table("adaptation_logs")\
-                    .select("id")\
-                    .eq("trainer_id", valid_tid)\
-                    .eq("viewed_by_trainer", False)\
-                    .execute()
-                pending_alerts_count = len(al_res.data or [])
-            except Exception:
-                pass
+            if al_res and not isinstance(al_res, Exception) and hasattr(al_res, "data") and al_res.data:
+                pending_alerts_count = len(al_res.data)
 
             try:
                 client_ids = [p["id"] for p in active_profiles if p.get("id")]
@@ -2524,7 +2540,7 @@ class SupabaseService:
         if weekly_workouts_completed == 0 and active_this_week > 0:
             weekly_workouts_completed = active_this_week * 3
 
-        retention_rate = round(((total_students - len(inactive_students)) / total_students) * 100) if total_students > 0 else 100
+        retention_rate = round(((total_students - len(inactive_students)) / total_students) * 100) if total_students > 0 else 0
 
         # Monta o texto executivo formatado para WhatsApp
         top_lines = "\n".join(
