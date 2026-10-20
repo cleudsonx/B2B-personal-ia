@@ -6,12 +6,14 @@ class ChangelogItem {
   final String title;
   final String description;
   final String? badge; // ex: 'NOVO', 'MELHORIA', 'CORREÇÃO', 'SEGURANÇA'
+  final List<String> targetRoles; // ['student'], ['trainer'], ['admin'] ou padrão todos
 
   const ChangelogItem({
     required this.icon,
     required this.title,
     required this.description,
     this.badge,
+    this.targetRoles = const ['student', 'trainer', 'admin'],
   });
 }
 
@@ -42,28 +44,92 @@ class AppChangelog {
       buildNumber: 2026103001,
       date: '20 de Outubro, 2026',
       summary:
-          'FASE 6: Monetização B2B2C Híbrida — Gestão de Planos de Consultoria na aba Ferramentas e Checkout Transparente Asaas (Pix com QR Code e Cartão) na Vitrine Pública do Personal.',
+          'Versão 1.8.0: Gestão de Planos de Consultoria, Checkout Transparente Asaas, Conexão WhatsApp Dinâmica e Notificações de Treino em Tempo Real.',
       highlights: [
+        // --- PARA O PROFESSOR ---
         ChangelogItem(
-          icon: Icons.sell_rounded,
-          title: 'Planos de Consultoria & Preços',
+          icon: Icons.payments_rounded,
+          title: 'Meus Planos de Consultoria',
           description:
-              'Configure seus planos mensais, trimestrais e fichas avulsas diretamente na aba Ferramentas com ativação em 1 toque.',
-          badge: 'NOVO',
+              'Cadastre seus planos livremente com seus próprios valores e receba 95% líquido na sua conta via Pix ou Cartão.',
+          badge: 'RECEITA',
+          targetRoles: ['trainer'],
         ),
         ChangelogItem(
-          icon: Icons.pix_rounded,
-          title: 'Checkout Transparente Asaas',
+          icon: Icons.chat_bubble_outline_rounded,
+          title: 'Conexão WhatsApp Dinâmica & Animada',
           description:
-              'Seus alunos contratam seus planos pela Vitrine Pública com Pix instantâneo, QR Code e confirmação automática.',
-          badge: 'B2B2C',
+              'Transição automática e tela vibrante ao parear o robô inteligente, ativo 24h para seus alunos.',
+          badge: 'AUTOMAÇÃO',
+          targetRoles: ['trainer'],
         ),
         ChangelogItem(
-          icon: Icons.phone_android_rounded,
-          title: 'Unicidade de Telefone por Treinador',
+          icon: Icons.speed_rounded,
+          title: 'Cockpit e Consultas 4x Mais Rápidas',
           description:
-              'Proteção contra duplicidade de alunos sob o mesmo personal, permitindo que alunos treinem com múltiplos professores.',
+              'Consultas ao banco de dados com paralelismo e novos índices compostos para carregamento instantâneo.',
+          badge: 'PERFORMANCE',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.verified_user_rounded,
+          title: 'Selo e Validação de CREF',
+          description:
+              'Sua vitrine pública agora conta com selo e trava de documento profissional para máxima autoridade.',
           badge: 'SEGURANÇA',
+          targetRoles: ['trainer'],
+        ),
+
+        // --- PARA O ALUNO ---
+        ChangelogItem(
+          icon: Icons.chat_bubble_outline_rounded,
+          title: 'Avisos de Treino no WhatsApp',
+          description:
+              'Receba uma notificação no WhatsApp no exato instante em que seu treinador liberar ou alterar sua ficha.',
+          badge: 'TEMPO REAL',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.bolt_rounded,
+          title: 'Ficha Sincronizada ao Vivo',
+          description:
+              'Seu treino atualiza na hora dentro do aplicativo sem precisar fechar ou recarregar a tela.',
+          badge: 'NOVIDADE',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.credit_card_rounded,
+          title: 'Checkout Transparente Seguro',
+          description:
+              'Pague e renove sua consultoria via Pix com QR Code instantâneo ou Cartão de Crédito sem sair do app.',
+          badge: 'PAGAMENTO',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.local_fire_department_rounded,
+          title: 'Ofensiva (Streak 🔥) Otimizada',
+          description:
+              'Contador de consistência e dias seguidos de treino calibrado pelo fuso horário do seu celular.',
+          badge: 'GAMIFICAÇÃO',
+          targetRoles: ['student'],
+        ),
+
+        // --- PARA ADMIN ---
+        ChangelogItem(
+          icon: Icons.account_balance_rounded,
+          title: 'Split Financeiro Automatizado',
+          description:
+              'Integração transparente com gateway Asaas para processamento de split líquido e repasses bancários.',
+          badge: 'FINANCEIRO',
+          targetRoles: ['admin'],
+        ),
+        ChangelogItem(
+          icon: Icons.storage_rounded,
+          title: 'Índices Compostos no Supabase',
+          description:
+              'Migration com índices de alta performance em perfis, alunos, prescrições e cobranças.',
+          badge: 'BANCO',
+          targetRoles: ['admin'],
         ),
       ],
     ),

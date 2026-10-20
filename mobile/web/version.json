@@ -1,6 +1,81 @@
 {
   "version": "1.8.0",
   "build": 2026103001,
-  "updated_at": "2026-10-20T03:42:00.000000Z",
-  "notes": "FASE 6: Gestão de Planos de Consultoria do Personal e Checkout Transparente Asaas na Vitrine Pública"
+  "updated_at": "2026-10-20T10:45:00.000000Z",
+  "title": "Versão 1.8.0 • Consultoria & Tempo Real",
+  "notes": "Planos de consultoria, checkout transparente, celebração WhatsApp e atualizações de treino em tempo real.",
+  "changelog": {
+    "student": [
+      {
+        "title": "Avisos de Treino no WhatsApp",
+        "description": "Receba uma notificação no WhatsApp no exato instante em que seu treinador liberar ou alterar sua ficha.",
+        "icon": "message",
+        "tag": "TEMPO REAL"
+      },
+      {
+        "title": "Ficha Sincronizada ao Vivo",
+        "description": "Seu treino atualiza na hora dentro do aplicativo sem precisar fechar ou recarregar a tela.",
+        "icon": "bolt",
+        "tag": "NOVIDADE"
+      },
+      {
+        "title": "Checkout Transparente Seguro",
+        "description": "Pague e renove sua consultoria via Pix com QR Code instantâneo ou Cartão de Crédito sem sair do app.",
+        "icon": "credit_card",
+        "tag": "PAGAMENTO"
+      },
+      {
+        "title": "Ofensiva (Streak 🔥) Otimizada",
+        "description": "Contador de consistência e dias seguidos de treino calibrado pelo fuso horário do seu celular.",
+        "icon": "fire",
+        "tag": "GAMIFICAÇÃO"
+      }
+    ],
+    "trainer": [
+      {
+        "title": "Meus Planos de Consultoria",
+        "description": "Cadastre planos livremente com seus próprios valores e receba 95% líquido na sua conta via Pix ou Cartão.",
+        "icon": "payments",
+        "tag": "RECEITA"
+      },
+      {
+        "title": "Conexão WhatsApp Dinâmica & Animada",
+        "description": "Transição automática para celebração ao conectar o robô, pronto para atender seus alunos 24h por dia.",
+        "icon": "whatsapp",
+        "tag": "AUTOMAÇÃO"
+      },
+      {
+        "title": "Cockpit e Consultas 4x Mais Rápidas",
+        "description": "Consultas ao banco de dados com paralelismo e novos índices compostos para carregamento instantâneo.",
+        "icon": "speed",
+        "tag": "PERFORMANCE"
+      },
+      {
+        "title": "Selo e Validação de CREF",
+        "description": "Sua vitrine pública agora conta com selo e trava de documento profissional para máxima autoridade.",
+        "icon": "verified",
+        "tag": "SEGURANÇA"
+      }
+    ],
+    "admin": [
+      {
+        "title": "Split Financeiro Automatizado",
+        "description": "Integração transparente com gateway Asaas para processamento de split líquido e repasses bancários.",
+        "icon": "account_balance",
+        "tag": "FINANCEIRO"
+      },
+      {
+        "title": "Índices Compostos no Supabase",
+        "description": "Migration com índices de alta performance em perfis, alunos, prescrições e cobranças.",
+        "icon": "database",
+        "tag": "BANCO"
+      },
+      {
+        "title": "Recuperação de Instâncias WhatsApp",
+        "description": "Limpeza automática de instâncias presas na Evolution API e polling assíncrono de status.",
+        "icon": "hub",
+        "tag": "INFRA"
+      }
+    ]
+  }
 }

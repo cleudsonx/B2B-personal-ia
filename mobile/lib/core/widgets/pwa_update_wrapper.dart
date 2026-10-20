@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../utils/pwa_installer.dart';
 import 'meta_components.dart';
+import 'app_version_footer.dart';
 
 /// Notificador reativo de atualização disponível
 class PwaUpdateNotifier extends ChangeNotifier {
@@ -212,27 +213,37 @@ class _PwaUpdateWrapperState extends State<PwaUpdateWrapper> with WidgetsBinding
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Nova versão disponível!',
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
+              child: InkWell(
+                onTap: () => AppVersionFooter.showReleaseNotesModal(context),
+                borderRadius: BorderRadius.circular(8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Nova versão disponível!',
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.info_outline_rounded, size: 14, color: MetaColors.emerald),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Toque para aplicar as melhorias.',
-                    style: TextStyle(
-                      color: subtextColor,
-                      fontSize: 11,
+                    const SizedBox(height: 2),
+                    Text(
+                      'Toque para ver o que mudou e aplicar.',
+                      style: TextStyle(
+                        color: subtextColor,
+                        fontSize: 11,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             const SizedBox(width: 8),

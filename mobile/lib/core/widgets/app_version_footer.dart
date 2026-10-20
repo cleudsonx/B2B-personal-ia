@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_changelog.dart';
 import '../config/app_config.dart';
 import 'meta_components.dart';
+import '../../services/auth_service.dart';
 
 /// Rodapé elegante de versionamento para o ecossistema Mr. Coach / Shaipados.
 ///
@@ -168,6 +169,54 @@ class _ReleaseNotesModalContent extends StatefulWidget {
 
 class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
   bool _showPreviousReleases = false;
+  String _currentRole = 'client'; // 'client', 'trainer', 'admin'
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserRole();
+  }
+
+  Future<void> _loadUserRole() async {
+    try {
+      final profile = await AuthService.getCurrentProfile();
+      final role = profile?['role']?.toString().toLowerCase();
+      if (profile?['is_admin'] == true || role == 'admin') {
+        _currentRole = 'admin';
+      } else if (role == 'trainer' || role == 'coach' || role == 'personal') {
+        _currentRole = 'trainer';
+      } else {
+        _currentRole = 'client';
+      }
+    } catch (_) {
+      _currentRole = 'client';
+    }
+  }
+
+  List<ChangelogItem> _filterItems(List<ChangelogItem> allItems, String targetRole) {
+    return allItems.where((it) => it.targetRoles.contains(targetRole)).toList();
+  }
+
+  Widget _buildRoleSectionHeader(String title, IconData icon, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10, bottom: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 7),
+          Text(
+            title,
+            style: TextStyle(
+              color: color,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.8,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildBadge(String badge) {
     Color bg = MetaColors.emerald.withValues(alpha: 0.15);
@@ -424,15 +473,70 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
                 ],
               ),
               const SizedBox(height: 14),
-              ...currentRelease.highlights.map(
-                (item) => _buildChangelogItem(
-                  icon: item.icon,
-                  title: item.title,
-                  description: item.description,
-                  badge: item.badge,
-                  textColor: textColor,
-                  subtextColor: subtextColor,
-                ),
+              // Renderização segmentada e inteligente por perfil
+              Builder(
+                builder: (context) {
+                  final trainerItems = _filterItems(currentRelease.highlights, 'trainer');
+                  final studentItems = _filterItems(currentRelease.highlights, 'student');
+                  final adminItems = _filterItems(currentRelease.highlights, 'admin');
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 1. ADMIN: Vê Sistema & Infraestrutura
+                      if (_currentRole == 'admin' && adminItems.isNotEmpty) ...[
+                        _buildRoleSectionHeader('SISTEMA & INFRAESTRUTURA', Icons.admin_panel_settings_rounded, MetaColors.accentBlue),
+                        ...adminItems.map(
+                          (item) => _buildChangelogItem(
+                            icon: item.icon,
+                            title: item.title,
+                            description: item.description,
+                            badge: item.badge,
+                            textColor: textColor,
+                            subtextColor: subtextColor,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // 2. PROFESSOR e ADMIN: Vêem melhorias de Negócio / Consultoria
+                      if ((_currentRole == 'trainer' || _currentRole == 'admin') && trainerItems.isNotEmpty) ...[
+                        _buildRoleSectionHeader('PARA SUA CONSULTORIA & NEGÓCIO', Icons.business_center_rounded, MetaColors.emerald),
+                        ...trainerItems.map(
+                          (item) => _buildChangelogItem(
+                            icon: item.icon,
+                            title: item.title,
+                            description: item.description,
+                            badge: item.badge,
+                            textColor: textColor,
+                            subtextColor: subtextColor,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // 3. ALUNO, PROFESSOR e ADMIN: Vêem melhorias de Treino do Aluno
+                      // (Professor vê para saber o que mudou na experiência do seu aluno)
+                      if (studentItems.isNotEmpty) ...[
+                        _buildRoleSectionHeader(
+                          _currentRole == 'client' ? 'NOVIDADES NO SEU TREINO' : 'MELHORIAS PARA OS SEUS ALUNOS',
+                          Icons.fitness_center_rounded,
+                          const Color(0xFFF59E0B),
+                        ),
+                        ...studentItems.map(
+                          (item) => _buildChangelogItem(
+                            icon: item.icon,
+                            title: item.title,
+                            description: item.description,
+                            badge: item.badge,
+                            textColor: textColor,
+                            subtextColor: subtextColor,
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+                },
               ),
 
               if (previousReleases.isNotEmpty) ...[
