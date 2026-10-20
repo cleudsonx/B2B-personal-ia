@@ -214,3 +214,4 @@ async def test_asaas_webhook_cancellation():
     data = res.json()
     assert data["type"] == "student_invoice"
     assert data["status"] == "canceled"
+

@@ -40,6 +40,100 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
+      version: '1.9.0',
+      buildNumber: 2026103002,
+      date: '20 de Outubro, 2026',
+      summary:
+          'Versão 1.9.0: Fechamento do Ciclo Financeiro com Webhook Asaas, Indução ao PWA (iOS/Android), Gestão Estrita de Vagas e Automação de Boas-Vindas no WhatsApp.',
+      highlights: [
+        // --- PARA O PROFESSOR ---
+        ChangelogItem(
+          icon: Icons.account_balance_wallet_rounded,
+          title: 'Baixa e Crédito Automático via Asaas',
+          description:
+              'Ao pagar a consultoria por Pix ou Cartão na sua vitrine, o valor líquido (95%) é creditado automaticamente na sua carteira em tempo real.',
+          badge: 'RECEITA',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.mark_chat_read_rounded,
+          title: 'Alerta de Novo Aluno no WhatsApp',
+          description:
+              'Notificação direta no seu WhatsApp com o nome do aluno, plano contratado e valor recebido assim que o pagamento for compensado.',
+          badge: 'AUTOMAÇÃO',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.event_seat_rounded,
+          title: 'Gestão Estrita de Vagas & Escassez',
+          description:
+              'Controle automático de vagas do plano contratado com badge "TURMA LOTADA • LISTA DE ESPERA" e proteção contra novos cadastros excedentes.',
+          badge: 'CONSULTORIA',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.workspace_premium_rounded,
+          title: 'Modal de Orientação Premium nas Cotas',
+          description:
+              'Aviso elegante e direto orientando sobre o limite de vagas atingido, com opção de upgrade e desativação de alunos.',
+          badge: 'EXPERIÊNCIA',
+          targetRoles: ['trainer'],
+        ),
+
+        // --- PARA O ALUNO ---
+        ChangelogItem(
+          icon: Icons.install_mobile_rounded,
+          title: 'Instalação do Aplicativo (PWA)',
+          description:
+              'Guia interativo ensinando a instalar o app na tela inicial do celular com 1 toque no iPhone (Safari) e Android (Chrome).',
+          badge: 'EXPERIÊNCIA',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.celebration_rounded,
+          title: 'Boas-Vindas Instantâneas no WhatsApp',
+          description:
+              'Ao confirmar o pagamento, você recebe seu link seguro no WhatsApp para ativar o acesso e preencher sua avaliação física inicial.',
+          badge: 'ACESSO RÁPIDO',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.check_circle_outline_rounded,
+          title: 'Checkout Seguro e Sem Interrupções',
+          description:
+              'Geração instantânea de Pix Copia e Cola e Cartão de Crédito com validação de vagas e mensagens claras dentro da própria tela.',
+          badge: 'PAGAMENTO',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.emoji_events_rounded,
+          title: 'Celebração de Treino com Haptic Feedback',
+          description:
+              'Modal de triunfo animado com confetes e feedback tátil ao finalizar a sessão com sucesso.',
+          badge: 'CELEBRAÇÃO',
+          targetRoles: ['student'],
+        ),
+
+        // --- PARA ADMIN ---
+        ChangelogItem(
+          icon: Icons.security_update_good_rounded,
+          title: 'Webhook Unificado Asaas com Idempotência',
+          description:
+              'Processamento atômico de eventos PAYMENT_RECEIVED e PAYMENT_CONFIRMED, com suporte a leases duráveis e proteção contra duplicidade.',
+          badge: 'INFRAESTRUTURA',
+          targetRoles: ['admin'],
+        ),
+        ChangelogItem(
+          icon: Icons.alt_route_rounded,
+          title: 'Roteamento Transversal Resiliente',
+          description:
+              'Interceptação inteligente de faturas de alunos em /subscriptions/webhook/asaas e /webhooks/asaas para 100% de tolerância a falhas externas.',
+          badge: 'BACKEND',
+          targetRoles: ['admin'],
+        ),
+      ],
+    ),
+    VersionRelease(
       version: '1.8.0',
       buildNumber: 2026103001,
       date: '20 de Outubro, 2026',

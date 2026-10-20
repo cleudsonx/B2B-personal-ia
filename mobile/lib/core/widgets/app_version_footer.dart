@@ -175,10 +175,17 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
   bool _showPreviousReleases = false;
   late String _currentRole;
 
+  static String _normalizeRole(String? role) {
+    final r = role?.trim().toLowerCase() ?? 'client';
+    if (r == 'admin' || r == 'administrator') return 'admin';
+    if (r == 'trainer' || r == 'coach' || r == 'personal') return 'trainer';
+    return 'client';
+  }
+
   @override
   void initState() {
     super.initState();
-    _currentRole = widget.roleOverride ?? 'client';
+    _currentRole = _normalizeRole(widget.roleOverride);
     if (widget.roleOverride == null) {
       _loadUserRole();
     }
@@ -187,13 +194,9 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
   Future<void> _loadUserRole() async {
     try {
       final profile = await AuthService.getCurrentProfile();
-      final role = profile?['role']?.toString().toLowerCase();
-      String resolved = 'client';
-      if (profile?['is_admin'] == true || role == 'admin') {
-        resolved = 'admin';
-      } else if (role == 'trainer' || role == 'coach' || role == 'personal') {
-        resolved = 'trainer';
-      }
+      final resolved = _normalizeRole(
+        profile?['is_admin'] == true ? 'admin' : profile?['role']?.toString(),
+      );
       if (mounted) {
         setState(() {
           _currentRole = resolved;
@@ -209,7 +212,14 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
   }
 
   List<ChangelogItem> _filterItems(List<ChangelogItem> allItems, String targetRole) {
-    return allItems.where((it) => it.targetRoles.contains(targetRole)).toList();
+    return allItems.where((it) {
+      if (it.targetRoles.contains(targetRole)) return true;
+      if ((targetRole == 'student' || targetRole == 'client') &&
+          (it.targetRoles.contains('student') || it.targetRoles.contains('client'))) {
+        return true;
+      }
+      return false;
+    }).toList();
   }
 
   Widget _buildRoleSectionHeader(String title, IconData icon, Color color) {
@@ -361,6 +371,23 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
     final currentRelease = AppChangelog.current;
     final previousReleases = AppChangelog.previousReleases;
 
+    final isTrainer = _currentRole == 'trainer';
+    final isAdmin = _currentRole == 'admin';
+    final isClient = _currentRole == 'client';
+
+    final trainerItems = _filterItems(currentRelease.highlights, 'trainer');
+    final studentItems = _filterItems(currentRelease.highlights, 'student');
+    final adminItems = _filterItems(currentRelease.highlights, 'admin');
+
+    int pertinentCount = 0;
+    if (isAdmin) {
+      pertinentCount = adminItems.length + trainerItems.length + studentItems.length;
+    } else if (isTrainer) {
+      pertinentCount = trainerItems.length + studentItems.length;
+    } else {
+      pertinentCount = studentItems.length;
+    }
+
     return SafeArea(
       child: Container(
         margin: const EdgeInsets.all(16),
@@ -477,7 +504,7 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      '${currentRelease.highlights.length} novidades',
+                      '$pertinentCount novidades',
                       style: TextStyle(
                         color: subtextColor,
                         fontSize: 10,
@@ -491,15 +518,11 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
               // Renderização segmentada e inteligente por perfil
               Builder(
                 builder: (context) {
-                  final trainerItems = _filterItems(currentRelease.highlights, 'trainer');
-                  final studentItems = _filterItems(currentRelease.highlights, 'student');
-                  final adminItems = _filterItems(currentRelease.highlights, 'admin');
-
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // 1. ADMIN: Vê Sistema & Infraestrutura
-                      if (_currentRole == 'admin' && adminItems.isNotEmpty) ...[
+                      if (isAdmin && adminItems.isNotEmpty) ...[
                         _buildRoleSectionHeader('SISTEMA & INFRAESTRUTURA', Icons.admin_panel_settings_rounded, MetaColors.accentBlue),
                         ...adminItems.map(
                           (item) => _buildChangelogItem(
@@ -515,7 +538,7 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
                       ],
 
                       // 2. PROFESSOR e ADMIN: Vêem melhorias de Negócio / Consultoria
-                      if ((_currentRole == 'trainer' || _currentRole == 'admin') && trainerItems.isNotEmpty) ...[
+                      if ((isTrainer || isAdmin) && trainerItems.isNotEmpty) ...[
                         _buildRoleSectionHeader('PARA SUA CONSULTORIA & NEGÓCIO', Icons.business_center_rounded, MetaColors.emerald),
                         ...trainerItems.map(
                           (item) => _buildChangelogItem(
@@ -534,7 +557,7 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
                       // (Professor vê para saber o que mudou na experiência do seu aluno)
                       if (studentItems.isNotEmpty) ...[
                         _buildRoleSectionHeader(
-                          _currentRole == 'client' ? 'NOVIDADES NO SEU TREINO' : 'MELHORIAS PARA OS SEUS ALUNOS',
+                          isClient ? 'NOVIDADES NO SEU TREINO' : 'MELHORIAS PARA OS SEUS ALUNOS',
                           Icons.fitness_center_rounded,
                           const Color(0xFFF59E0B),
                         ),
