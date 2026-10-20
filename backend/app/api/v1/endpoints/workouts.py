@@ -4,7 +4,7 @@ import uuid
 import urllib.parse
 from datetime import datetime, timezone
 from typing import Dict, Any, List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from app.schemas.anamnesis import AnamnesisInput
 from app.schemas.workout import (
     WorkoutPlanResponse,
@@ -126,6 +126,34 @@ async def generate_workout_plan(
         )
 
 
+async def _dispatch_new_workout_notification(trainer_id: str, client_id: str, workout_title: str):
+    """Notifica proativamente o aluno via WhatsApp quando uma nova ficha é aprovada/liberada."""
+    try:
+        student = await supabase_service.get_student_by_id(client_id)
+        if not student or not student.phone:
+            logger.info(f"[NotifyNewWorkout] Aluno {client_id} sem telefone para notificação WhatsApp.")
+            return
+
+        trainer_name = "Seu Treinador"
+        try:
+            profile = await supabase_service.get_profile(trainer_id)
+            if profile and (profile.get("full_name") or profile.get("name")):
+                trainer_name = profile.get("full_name") or profile.get("name")
+        except Exception:
+            pass
+
+        await whatsapp_service.notify_new_workout(
+            trainer_id=trainer_id,
+            student_name=student.name,
+            student_phone=student.phone,
+            workout_title=workout_title,
+            trainer_name=trainer_name,
+        )
+        logger.info(f"[NotifyNewWorkout] Notificação WhatsApp enviada para {student.name} ({student.phone}) com sucesso.")
+    except Exception as e:
+        logger.warning(f"[NotifyNewWorkout] Erro ao disparar notificação WhatsApp de novo treino: {e}")
+
+
 @router.post(
     "/save-prescription",
     response_model=PrescriptionSaveResponse,
@@ -135,11 +163,19 @@ async def generate_workout_plan(
 )
 async def save_prescription(
     data: PrescriptionSaveRequest,
+    background_tasks: BackgroundTasks,
     current_user: Dict[str, Any] = Depends(get_current_trainer)
 ) -> PrescriptionSaveResponse:
     trainer_id = current_user.get("sub") or "current-trainer"
     try:
-        return await supabase_service.save_prescription(trainer_id, data)
+        res = await supabase_service.save_prescription(trainer_id, data)
+        background_tasks.add_task(
+            _dispatch_new_workout_notification,
+            trainer_id=trainer_id,
+            client_id=data.client_id,
+            workout_title=data.plan.workout_plan_title
+        )
+        return res
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

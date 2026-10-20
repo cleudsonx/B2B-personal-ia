@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -30,6 +32,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
   bool _loadingTelemetry = false;
   Map<String, dynamic>? _telemetry;
   List<dynamic> _logs = [];
+  Timer? _statusPollingTimer;
 
   @override
   void initState() {
@@ -44,6 +47,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
 
   @override
   void dispose() {
+    _stopPolling();
     PwaNavigationState.clearActiveSubscreen();
     _phoneController.dispose();
     super.dispose();
@@ -65,6 +69,23 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
     return digits;
   }
 
+  
+  void _startPolling() {
+    _stopPolling();
+    _statusPollingTimer = Timer.periodic(const Duration(seconds: 4), (_) async {
+      if (!mounted || _isConnected) {
+        _stopPolling();
+        return;
+      }
+      await _checkConnectionStatus(silent: true);
+    });
+  }
+
+  void _stopPolling() {
+    _statusPollingTimer?.cancel();
+    _statusPollingTimer = null;
+  }
+
   Future<void> _initializeScreen() async {
     await _checkConnectionStatus();
     if (!_isConnected && mounted) {
@@ -72,8 +93,8 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
     }
   }
 
-  Future<void> _checkConnectionStatus() async {
-    if (mounted) {
+  Future<void> _checkConnectionStatus({bool silent = false}) async {
+    if (mounted && !silent) {
       setState(() => _checkingStatus = true);
     }
     try {
@@ -103,18 +124,31 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
             data['connected'] == true;
 
         if (mounted) {
+          final wasNotConnected = !_isConnected;
           setState(() {
             _isConnected = connected;
+            if (connected) {
+              _pairingCode = null;
+            }
           });
           if (connected) {
+            _stopPolling();
             _loadTelemetryAndLogs();
+            if (wasNotConnected && silent) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('🎉 WhatsApp conectado com sucesso!'),
+                  backgroundColor: MetaColors.emerald,
+                ),
+              );
+            }
           }
         }
       }
     } catch (_) {
       // Mantém estado padrão (aguardando pareamento) caso falhe silenciosamente
     } finally {
-      if (mounted) {
+      if (mounted && !silent) {
         setState(() => _checkingStatus = false);
       }
     }
@@ -240,6 +274,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
       ).timeout(const Duration(seconds: 20));
 
       if (response.statusCode == 200 && mounted) {
+        _stopPolling();
         setState(() {
           _isConnected = false;
           _pairingCode = null;
@@ -334,6 +369,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
             _pairingCode = null;
             _isLoading = false;
           });
+          _stopPolling();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('🎉 Seu WhatsApp já está conectado e online!'),
@@ -355,6 +391,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
           _pairedPhoneDisplay = '+$normalizedPhone';
           _isLoading = false;
         });
+        _startPolling();
       }
     } catch (e) {
       if (mounted) {
@@ -544,266 +581,426 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: MetaColors.textPrimary),
+        title: Text(
+          _isConnected ? 'Automação WhatsApp' : 'Conectar WhatsApp',
+          style: const TextStyle(
+            color: MetaColors.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Atualizar status',
+            icon: const Icon(Icons.refresh_rounded, color: MetaColors.textPrimary),
+            onPressed: () => _checkConnectionStatus(),
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _buildStatusIndicator(),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: const BoxDecoration(
-                  color: MetaColors.surfaceHighlight,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.phone_android_rounded,
-                  size: 48,
-                  color: MetaColors.emerald,
-                ),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Conectar WhatsApp',
-                style: TextStyle(
-                  color: MetaColors.textPrimary,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Como você está usando o celular, o pareamento via QR Code não é possível.\n\nConfirme seu número abaixo para gerarmos um Código de Pareamento automático.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: MetaColors.textSecondary,
-                  fontSize: 16,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 32),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+          child: _isConnected
+              ? _buildConnectedSuccessView()
+              : _buildPairingView(),
+        ),
+      ),
+    );
+  }
 
-              if (_isConnected && _pairingCode == null) ...[
-                MetaCard(
-                  borderColor: MetaColors.emerald.withValues(alpha: 0.4),
-                  child: Column(
-                    children: [
-                      const Icon(
-                        Icons.verified_rounded,
-                        color: MetaColors.emerald,
-                        size: 40,
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Seu WhatsApp está conectado!',
-                        style: TextStyle(
-                          color: MetaColors.textPrimary,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Sua instância está ativa e pronta para disparar notificações de treino e responder seus alunos automaticamente.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: MetaColors.textSecondary,
-                          fontSize: 14,
-                          height: 1.4,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        child: SquircleButton(
-                          label: _isSendingTest
-                              ? 'Enviando...'
-                              : '📲 Disparar Teste',
-                          icon: Icons.send_rounded,
-                          isPrimary: true,
-                          onPressed: _isSendingTest ? null : _sendTestMessage,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        child: SquircleButton(
-                          label: _isDisconnecting ? 'Desconectando...' : '⚠️ Desconectar Sessão',
-                          icon: Icons.link_off_rounded,
-                          isPrimary: false,
-                          onPressed: _isDisconnecting ? null : _disconnectInstance,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                _buildTelemetryCard(),
-                const SizedBox(height: 28),
-                _buildLogsSection(),
-              ] else if (_pairingCode == null && !_isConnected) ...[
-                MetaCard(
-                  child: TextField(
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    onChanged: (_) => setState(() {}),
-                    style: const TextStyle(color: MetaColors.textPrimary, fontSize: 18),
-                    decoration: InputDecoration(
-                      labelText: 'Seu número com DDD (Ex: 11999999999)',
-                      hintText: '11999999999',
-                      hintStyle: TextStyle(color: MetaColors.textSecondary.withValues(alpha: 0.5)),
-                      labelStyle: const TextStyle(color: MetaColors.textSecondary),
-                      border: InputBorder.none,
-                      prefixIcon: const Icon(Icons.message_rounded, color: MetaColors.emerald),
-                      suffixIcon: _phoneController.text.isNotEmpty
-                          ? IconButton(
-                              tooltip: 'Limpar número',
-                              icon: const Icon(Icons.clear_rounded, color: MetaColors.textSecondary),
-                              onPressed: () {
-                                setState(() {
-                                  _phoneController.clear();
-                                });
-                              },
-                            )
-                          : null,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: SquircleButton(
-                    label: _isLoading ? 'Gerando...' : 'Gerar Código de Pareamento',
-                    icon: Icons.vpn_key_rounded,
-                    isPrimary: true,
-                    onPressed: _isLoading ? null : _generatePairingCode,
-                  ),
-                ),
-              ] else if (_pairingCode != null) ...[
-                MetaCard(
-                  child: Column(
-                    children: [
-                      Text(
-                        _pairedPhoneDisplay != null
-                            ? 'Código gerado para $_pairedPhoneDisplay:'
-                            : 'Seu código de conexão:',
-                        style: const TextStyle(color: MetaColors.textSecondary, fontSize: 14),
-                      ),
-                      const SizedBox(height: 16),
-                      GestureDetector(
-                        onTap: _copyPairingCode,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-                          decoration: BoxDecoration(
-                            color: MetaColors.surfaceHighlight,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3), width: 2),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                _pairingCode!,
-                                style: const TextStyle(
-                                  color: MetaColors.textPrimary,
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 4,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              const Icon(Icons.copy_rounded, color: MetaColors.emerald),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      const Text(
-                        '1. Toque no código para copiar\n2. Abra as Configurações do seu WhatsApp\n3. Vá em "Aparelhos Conectados" > "Conectar Aparelho"\n4. Na tela de QR Code, clique em "Conectar com Número de Telefone" na parte inferior\n5. Cole o código copiado',
-                        textAlign: TextAlign.left,
-                        style: TextStyle(
-                          color: MetaColors.textSecondary,
-                          height: 1.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: SquircleButton(
-                    label: 'Copiar código',
-                    icon: Icons.copy_rounded,
-                    isPrimary: true,
-                    onPressed: _copyPairingCode,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: SquircleButton(
-                    label: 'Alterar número / Digitar outro telefone',
-                    icon: Icons.edit_rounded,
-                    isPrimary: false,
-                    onPressed: () {
-                      setState(() {
-                        _pairingCode = null;
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: SquircleButton(
-                    label: _isLoading ? 'Gerando novo código...' : '🔄 Gerar novo código (se expirou)',
-                    icon: Icons.refresh_rounded,
-                    isPrimary: false,
-                    onPressed: _isLoading ? null : _generatePairingCode,
-                  ),
-                ),
-              ],
+  Widget _buildConnectedSuccessView() {
+    final phoneDisplay = _phoneController.text.trim().isNotEmpty
+        ? '+55 ${_phoneController.text.trim()}'
+        : (_pairedPhoneDisplay ?? 'Instância Própria');
 
-              const SizedBox(height: 40),
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'AUTOMAÇÕES ATIVAS NO SEU NÚMERO',
-                  style: TextStyle(
-                    color: MetaColors.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              _buildAutomationCard(
-                icon: Icons.local_fire_department_rounded,
-                accentColor: MetaColors.emerald,
-                title: 'Notificador de Ficha & Ofensiva (Fase 1 & 3)',
-                badgeText: 'ATIVO • CUSTO ZERO',
-                description:
-                    'Dispara avisos de ficha nova, recuperação de alunos ausentes (Streak 🔥) e responde comandos rápidos (1 = Ver Treino, 2 = Ver Ofensiva) automaticamente.',
-              ),
-              const SizedBox(height: 16),
-              _buildAutomationCard(
-                icon: Icons.auto_awesome_rounded,
-                accentColor: AppColors.warning,
-                title: 'Consultor Ativo IA 24h (Fase 2)',
-                badgeText: 'EXCLUSIVO PRO & STUDIO',
-                description:
-                    'Tira dúvidas biomecânicas e sugere substituições de aparelhos pelo WhatsApp usando Gemini Flash com proteção de cota diária.',
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _buildStatusIndicator(),
+        const SizedBox(height: 24),
+
+        // Glowing Pulsing Celebration Icon
+        Container(
+          width: 96,
+          height: 96,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: MetaColors.emerald.withValues(alpha: 0.12),
+            border: Border.all(
+              color: MetaColors.emerald.withValues(alpha: 0.45),
+              width: 2.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: MetaColors.emerald.withValues(alpha: 0.25),
+                blurRadius: 36,
+                spreadRadius: 4,
               ),
             ],
           ),
+          child: const Center(
+            child: Icon(
+              Icons.check_circle_rounded,
+              size: 56,
+              color: MetaColors.emerald,
+            ),
+          ),
+        )
+            .animate(onPlay: (controller) => controller.repeat(reverse: true))
+            .scale(
+              begin: const Offset(1, 1),
+              end: const Offset(1.06, 1.06),
+              duration: 1600.ms,
+              curve: Curves.easeInOut,
+            ),
+
+        const SizedBox(height: 22),
+
+        const Text(
+          'WhatsApp Conectado!',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: MetaColors.textPrimary,
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+          ),
+        ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2, end: 0),
+
+        const SizedBox(height: 10),
+
+        const Text(
+          'Seu robô inteligente está online 24h. Suas fichas de treino, lembretes de rotina e respostas aos alunos agora são sincronizados automaticamente pelo WhatsApp.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: MetaColors.textSecondary,
+            fontSize: 14.5,
+            height: 1.45,
+          ),
+        ).animate().fadeIn(delay: 150.ms, duration: 400.ms),
+
+        const SizedBox(height: 20),
+
+        // Connected Phone & Active Tag Pill
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: MetaColors.surfaceHighlight,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: MetaColors.emerald.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.phone_android_rounded, size: 16, color: MetaColors.emerald),
+              const SizedBox(width: 8),
+              Text(
+                phoneDisplay,
+                style: const TextStyle(
+                  color: MetaColors.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: MetaColors.emerald,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Text(
+                'Operacional 24h',
+                style: TextStyle(
+                  color: MetaColors.emerald,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ).animate().fadeIn(delay: 250.ms).scale(),
+
+        const SizedBox(height: 26),
+
+        // Action Buttons
+        SizedBox(
+          width: double.infinity,
+          child: SquircleButton(
+            label: _isSendingTest ? 'Disparando teste...' : '📲 Disparar Mensagem de Teste',
+            icon: Icons.send_rounded,
+            isPrimary: true,
+            onPressed: _isSendingTest ? null : _sendTestMessage,
+          ),
         ),
-      ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: SquircleButton(
+            label: 'Voltar ao Cockpit',
+            icon: Icons.arrow_back_rounded,
+            isPrimary: false,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextButton.icon(
+          onPressed: _isDisconnecting ? null : _disconnectInstance,
+          icon: const Icon(Icons.link_off_rounded, size: 16, color: AppColors.danger),
+          label: Text(
+            _isDisconnecting ? 'Desconectando...' : 'Desconectar Sessão do WhatsApp',
+            style: const TextStyle(
+              color: AppColors.danger,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 28),
+        _buildTelemetryCard(),
+        const SizedBox(height: 28),
+        _buildLogsSection(),
+        const SizedBox(height: 36),
+        _buildAutomationsSection(),
+      ],
+    );
+  }
+
+  Widget _buildPairingView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _buildStatusIndicator(),
+        const SizedBox(height: 20),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            color: MetaColors.surfaceHighlight,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.phone_android_rounded,
+            size: 48,
+            color: MetaColors.emerald,
+          ),
+        ),
+        const SizedBox(height: 24),
+        const Text(
+          'Conectar WhatsApp',
+          style: TextStyle(
+            color: MetaColors.textPrimary,
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          'Como você está usando o celular, o pareamento via QR Code não é possível.\n\nConfirme seu número abaixo para gerarmos um Código de Pareamento automático de 8 dígitos.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: MetaColors.textSecondary,
+            fontSize: 15,
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 32),
+
+        if (_pairingCode == null) ...[
+          MetaCard(
+            child: TextField(
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              onChanged: (_) => setState(() {}),
+              style: const TextStyle(color: MetaColors.textPrimary, fontSize: 18),
+              decoration: InputDecoration(
+                labelText: 'Seu número com DDD (Ex: 11999999999)',
+                hintText: '11999999999',
+                hintStyle: TextStyle(color: MetaColors.textSecondary.withValues(alpha: 0.5)),
+                labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                border: InputBorder.none,
+                prefixIcon: const Icon(Icons.message_rounded, color: MetaColors.emerald),
+                suffixIcon: _phoneController.text.isNotEmpty
+                    ? IconButton(
+                        tooltip: 'Limpar número',
+                        icon: const Icon(Icons.clear_rounded, color: MetaColors.textSecondary),
+                        onPressed: () {
+                          setState(() {
+                            _phoneController.clear();
+                          });
+                        },
+                      )
+                    : null,
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: SquircleButton(
+              label: _isLoading ? 'Gerando...' : 'Gerar Código de Pareamento',
+              icon: Icons.vpn_key_rounded,
+              isPrimary: true,
+              onPressed: _isLoading ? null : _generatePairingCode,
+            ),
+          ),
+        ] else ...[
+          MetaCard(
+            child: Column(
+              children: [
+                Text(
+                  _pairedPhoneDisplay != null
+                      ? 'Código gerado para $_pairedPhoneDisplay:'
+                      : 'Seu código de conexão:',
+                  style: const TextStyle(color: MetaColors.textSecondary, fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: _copyPairingCode,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                    decoration: BoxDecoration(
+                      color: MetaColors.surfaceHighlight,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3), width: 2),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _pairingCode!,
+                          style: const TextStyle(
+                            color: MetaColors.textPrimary,
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 4,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        const Icon(Icons.copy_rounded, color: MetaColors.emerald),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(MetaColors.emerald),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Aguardando pareamento no seu WhatsApp...',
+                      style: TextStyle(
+                        color: MetaColors.emerald.withValues(alpha: 0.9),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  '1. Toque no código para copiar\n2. Abra as Configurações do seu WhatsApp\n3. Vá em "Aparelhos Conectados" > "Conectar Aparelho"\n4. Na tela de QR Code, clique em "Conectar com Número de Telefone" na parte inferior\n5. Cole o código copiado',
+                  textAlign: TextAlign.left,
+                  style: TextStyle(
+                    color: MetaColors.textSecondary,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: SquircleButton(
+              label: 'Copiar código',
+              icon: Icons.copy_rounded,
+              isPrimary: true,
+              onPressed: _copyPairingCode,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: SquircleButton(
+              label: 'Alterar número / Digitar outro telefone',
+              icon: Icons.edit_rounded,
+              isPrimary: false,
+              onPressed: () {
+                _stopPolling();
+                setState(() {
+                  _pairingCode = null;
+                });
+              },
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: SquircleButton(
+              label: _isLoading ? 'Gerando novo código...' : '🔄 Gerar novo código (se expirou)',
+              icon: Icons.refresh_rounded,
+              isPrimary: false,
+              onPressed: _isLoading ? null : _generatePairingCode,
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 40),
+        _buildAutomationsSection(),
+      ],
+    );
+  }
+
+  Widget _buildAutomationsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'AUTOMAÇÕES ATIVAS NO SEU NÚMERO',
+            style: TextStyle(
+              color: MetaColors.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildAutomationCard(
+          icon: Icons.local_fire_department_rounded,
+          accentColor: MetaColors.emerald,
+          title: 'Notificador de Ficha & Ofensiva (Fase 1 & 3)',
+          badgeText: 'ATIVO • CUSTO ZERO',
+          description:
+              'Dispara avisos de ficha nova, recuperação de alunos ausentes (Streak 🔥) e responde comandos rápidos (1 = Ver Treino, 2 = Ver Ofensiva) automaticamente.',
+        ),
+        const SizedBox(height: 16),
+        _buildAutomationCard(
+          icon: Icons.auto_awesome_rounded,
+          accentColor: AppColors.warning,
+          title: 'Consultor Ativo IA 24h (Fase 2)',
+          badgeText: 'EXCLUSIVO PRO & STUDIO',
+          description:
+              'Tira dúvidas biomecânicas e sugere substituições de aparelhos pelo WhatsApp usando Gemini Flash com proteção de cota diária.',
+        ),
+      ],
     );
   }
 

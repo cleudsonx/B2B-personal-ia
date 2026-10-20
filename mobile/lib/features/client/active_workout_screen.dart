@@ -21,6 +21,7 @@ import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
 import '../../services/workout_session_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ActiveWorkoutScreen extends StatefulWidget {
   const ActiveWorkoutScreen({super.key});
@@ -48,6 +49,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   List<SplitModel> _splits = [];
   int _selectedSplitIndex = 0;
   Timer? _ticker;
+  RealtimeChannel? _workoutRealtimeChannel;
 
   // Variáveis reais de Gamificação (Backend)
   int? currentStreak;
@@ -67,12 +69,84 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       if (mounted && _startedAt != null) setState(() {});
     });
     _loadActiveWorkout();
+    _initRealtimeWorkoutListener();
   }
 
   @override
   void dispose() {
+    _workoutRealtimeChannel?.unsubscribe();
     _ticker?.cancel();
     super.dispose();
+  }
+
+
+  void _initRealtimeWorkoutListener() {
+    final uid = AuthService.currentUser?.id;
+    if (uid == null) return;
+    try {
+      _workoutRealtimeChannel = Supabase.instance.client
+          .channel('public:workouts:client:$uid')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'workouts',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'client_id',
+              value: uid,
+            ),
+            callback: (payload) {
+              if (!mounted) return;
+              debugPrint('[Realtime] Atualização de treino recebida para $uid: ${payload.eventType}');
+              _loadActiveWorkout();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      const Icon(Icons.bolt_rounded, color: MetaColors.emerald),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          'Sua ficha de treino foi atualizada pelo seu treinador!',
+                          style: TextStyle(
+                            color: MetaColors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                          _loadActiveWorkout();
+                        },
+                        child: const Text(
+                          'Recarregar',
+                          style: TextStyle(
+                            color: MetaColors.emerald,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  backgroundColor: MetaColors.surfaceHighlight,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: MetaColors.emerald.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  duration: const Duration(seconds: 5),
+                ),
+              );
+            },
+          )
+          .subscribe();
+    } catch (e) {
+      debugPrint('[Realtime] Erro ao subscrever canal de treinos: $e');
+    }
   }
 
   String _getTrainerInitials() {
@@ -284,6 +358,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     ).then((completed) {
       if (completed == true && mounted) {
         _loadActiveWorkout();
+    _initRealtimeWorkoutListener();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             backgroundColor: MetaColors.emerald,
