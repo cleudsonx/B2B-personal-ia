@@ -456,3 +456,4 @@ class PwaInstallPromptCard extends StatelessWidget {
     );
   }
 }
+

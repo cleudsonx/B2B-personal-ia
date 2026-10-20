@@ -22,7 +22,8 @@ from app.schemas.subscription import (
     InAppCardPaymentResponse,
 )
 from app.services.payment_service import PaymentProviderService
-from app.services.supabase_service import supabase_service
+from app.services.supabase_service import supabase_service, is_valid_uuid
+from app.services.consultancy_plan_service import ConsultancyPlanService
 
 router = APIRouter()
 
@@ -356,6 +357,48 @@ async def webhook_asaas(payload: dict, request: Request):
             (payload.get("payment") or {}).get("externalReference")
             or payload.get("externalReference")
         )
+
+        # Interceptador resiliente: Se o webhook for de fatura de consultoria de aluno
+        if ext_ref and is_valid_uuid(ext_ref):
+            client = await supabase_service.get_client()
+            is_student_inv = False
+            if client:
+                try:
+                    s_res = await client.table("student_invoices").select("id").eq("id", ext_ref).maybe_single().execute()
+                    if s_res and s_res.data:
+                        is_student_inv = True
+                except Exception:
+                    pass
+            if not is_student_inv and ext_ref in ConsultancyPlanService._mem_invoices:
+                is_student_inv = True
+
+            if is_student_inv:
+                event_name = payload.get("event", "UNKNOWN")
+                if event_name in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"):
+                    billing_type = (payload.get("payment") or {}).get("billingType") or "PIX"
+                    res = await ConsultancyPlanService.process_student_payment_confirmation(
+                        invoice_id=ext_ref,
+                        payment_method=billing_type,
+                        provider_payment_id=(payload.get("payment") or {}).get("id"),
+                    )
+                    if event_id and claim_token:
+                        try:
+                            await supabase_service.complete_subscription_webhook_v2(
+                                event_id=event_id,
+                                token=claim_token,
+                                action="none",
+                                trainer_id=None,
+                                plan_id=None,
+                                payment_method=billing_type.lower(),
+                            )
+                        except Exception:
+                            pass
+                    return {"processed": True, "type": "student_invoice", "result": res}
+                elif event_name in ("PAYMENT_REFUNDED", "PAYMENT_DELETED"):
+                    if client and is_valid_uuid(ext_ref):
+                        await client.table("student_invoices").update({"status": "canceled"}).eq("id", ext_ref).execute()
+                    return {"processed": True, "type": "student_invoice", "status": "canceled"}
+                return {"processed": True, "type": "student_invoice", "event": event_name}
         order_meta = (
             (await supabase_service.get_checkout_session(ext_ref))
             or PaymentProviderService._PENDING_ORDERS.get(ext_ref or "", {})
