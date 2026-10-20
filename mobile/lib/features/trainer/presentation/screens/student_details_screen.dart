@@ -11,6 +11,10 @@ import '../../../../models/exercise_model.dart';
 import '../../../../models/split_model.dart';
 import '../../../../models/workout_plan_model.dart';
 import '../../../../services/invite_service.dart';
+import '../../../../services/subscription_service.dart';
+import '../../../../models/subscription_model.dart';
+import '../../../../features/subscription/subscription_screen.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../anamnesis_screen.dart';
 
 typedef StudentUpdateAction = Future<bool> Function({
@@ -1783,6 +1787,231 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
     }
   }
 
+  /// Exibe o BottomSheet premium de limite de quota de alunos.
+  /// Padrão Spotify/Notion: ícone animado, contexto claro do plano,
+  /// e duas ações acionáveis: arquivar aluno ou fazer upgrade.
+  Future<void> _showQuotaLimitModal() async {
+    MySubscriptionModel? subscription;
+    try {
+      subscription = await SubscriptionService.getMySubscription();
+    } catch (_) {
+      // Se não conseguir buscar, exibe modal com dados genéricos
+    }
+
+    if (!mounted) return;
+
+    final planName = subscription?.planName ?? 'seu plano atual';
+    final maxStudents = subscription?.maxStudents ?? 0;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: BoxDecoration(
+            color: MetaColors.bg(ctx),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border.all(color: MetaColors.cardBorder(ctx), width: 0.5),
+          ),
+          padding: EdgeInsets.fromLTRB(
+            24,
+            20,
+            24,
+            24 + MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle bar
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: MetaColors.cardBorder(ctx),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Ícone + Headline
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.group_off_rounded,
+                      color: Color(0xFFF59E0B),
+                      size: 26,
+                    ),
+                  )
+                      .animate()
+                      .scale(
+                        begin: const Offset(0.6, 0.6),
+                        duration: const Duration(milliseconds: 380),
+                        curve: Curves.elasticOut,
+                      )
+                      .fadeIn(duration: const Duration(milliseconds: 220)),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Limite de Alunos Atingido',
+                          style: TextStyle(
+                            color: MetaColors.text(ctx),
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.3,
+                          ),
+                        )
+                            .animate()
+                            .fadeIn(
+                              delay: const Duration(milliseconds: 100),
+                              duration: const Duration(milliseconds: 300),
+                            )
+                            .slideX(
+                              begin: 0.12,
+                              curve: Curves.easeOut,
+                            ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Plano $planName · $maxStudents vagas',
+                          style: TextStyle(
+                            color: MetaColors.subtext(ctx),
+                            fontSize: 13,
+                          ),
+                        )
+                            .animate()
+                            .fadeIn(
+                              delay: const Duration(milliseconds: 160),
+                              duration: const Duration(milliseconds: 280),
+                            ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 20),
+              Divider(color: MetaColors.cardBorder(ctx), height: 1),
+              const SizedBox(height: 20),
+
+              // Contexto explicativo
+              Text(
+                'Todas as vagas do seu plano $planName estão ocupadas. '
+                'Para reativar este aluno, você tem duas opções:',
+                style: TextStyle(
+                  color: MetaColors.subtext(ctx),
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              )
+                  .animate()
+                  .fadeIn(
+                    delay: const Duration(milliseconds: 200),
+                    duration: const Duration(milliseconds: 300),
+                  ),
+
+              const SizedBox(height: 20),
+
+              // Opção A — Arquivar outro aluno
+              _QuotaOptionTile(
+                icon: Icons.archive_outlined,
+                title: 'Arquivar outro aluno',
+                subtitle: 'Libera uma vaga sem custos extras. O histórico é preservado.',
+                delay: 240,
+              )
+                  .animate()
+                  .fadeIn(
+                    delay: const Duration(milliseconds: 240),
+                    duration: const Duration(milliseconds: 280),
+                  )
+                  .slideY(
+                    begin: 0.08,
+                    curve: Curves.easeOut,
+                  ),
+
+              const SizedBox(height: 10),
+
+              // Opção B — Fazer upgrade
+              _QuotaOptionTile(
+                icon: Icons.bolt_rounded,
+                title: 'Fazer upgrade de plano',
+                subtitle: 'Aumente o limite de alunos ativos da sua consultoria.',
+                isHighlighted: true,
+                delay: 300,
+              )
+                  .animate()
+                  .fadeIn(
+                    delay: const Duration(milliseconds: 300),
+                    duration: const Duration(milliseconds: 280),
+                  )
+                  .slideY(
+                    begin: 0.08,
+                    curve: Curves.easeOut,
+                  ),
+
+              const SizedBox(height: 28),
+
+              // CTAs
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SquircleButton(
+                    label: 'Ver lista de alunos para arquivar',
+                    icon: Icons.people_outline_rounded,
+                    isPrimary: true,
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.pop(context);
+                    },
+                  )
+                      .animate()
+                      .fadeIn(
+                        delay: const Duration(milliseconds: 360),
+                        duration: const Duration(milliseconds: 280),
+                      )
+                      .slideY(begin: 0.1, curve: Curves.easeOut),
+                  const SizedBox(height: 12),
+                  SquircleButton(
+                    label: 'Ver planos e fazer upgrade',
+                    icon: Icons.upgrade_rounded,
+                    isPrimary: false,
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.push<void>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SubscriptionScreen(),
+                        ),
+                      );
+                    },
+                  )
+                      .animate()
+                      .fadeIn(
+                        delay: const Duration(milliseconds: 400),
+                        duration: const Duration(milliseconds: 260),
+                      ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _reactivateStudent() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1819,10 +2048,21 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
       if (mounted) {
-        final message = _formatErrorMessage(error);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Não foi possível reativar o aluno: $message')),
-        );
+        final errStr = error.toString().toLowerCase();
+        final isQuotaError = errStr.contains('limite') ||
+            errStr.contains('máximo') ||
+            errStr.contains('maximo') ||
+            errStr.contains('23514') ||
+            errStr.contains('max_students') ||
+            errStr.contains('quota');
+        if (isQuotaError) {
+          await _showQuotaLimitModal();
+        } else {
+          final message = _formatErrorMessage(error);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Não foi possível reativar o aluno: $message')),
+          );
+        }
       }
     }
   }
@@ -4788,3 +5028,83 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
     ),);
   }
 }
+
+class _QuotaOptionTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool isHighlighted;
+  final int delay;
+
+  const _QuotaOptionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.isHighlighted = false,
+    this.delay = 0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isHighlighted
+            ? MetaColors.emerald.withValues(alpha: 0.08)
+            : MetaColors.highlight(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isHighlighted
+              ? MetaColors.emerald.withValues(alpha: 0.3)
+              : MetaColors.cardBorder(context),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isHighlighted
+                  ? MetaColors.emerald.withValues(alpha: 0.15)
+                  : Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: isHighlighted ? MetaColors.emerald : Colors.white70,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: MetaColors.text(context),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: MetaColors.subtext(context),
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
