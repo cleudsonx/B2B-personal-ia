@@ -39,7 +39,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.7.0',
-      buildNumber: 2026102920,
+      buildNumber: 2026102921,
       date: '19 de Outubro, 2026',
       summary:
           'Experiência do Aluno no Treino Reformulada (Padrão Ouro Hevy/Strong): Hero Card ergonômico, pílulas de splits horizontais e miniaturas interativas com Focus Mode de alta precisão.',
