@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 from fastapi import APIRouter, HTTPException, Depends, Request, status
-from app.api.deps import get_current_trainer
+from app.api.deps import get_current_trainer, get_current_user
 from app.core.config import settings
 from app.schemas.subscription import (
     PlanResponse,
@@ -57,12 +57,20 @@ async def list_subscription_plans():
 @router.get("/my-subscription", response_model=MySubscriptionResponse)
 async def get_my_subscription(
     trainer_id: str = "current-trainer",
-    current_user: Dict[str, Any] = Depends(get_current_trainer)
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """
     Retorna o plano ativo e consumo de cotas do Personal Trainer autenticado.
     Busca no Supabase com contagem real de alunos ocupando vagas na assessoria.
     """
+    profile = current_user.get("profile") or {}
+    roles = profile.get("roles") or [profile.get("role")]
+    if "trainer" not in roles and "admin" not in roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso exclusivo para treinadores."
+        )
+
     auth_trainer_id = current_user.get("sub") or current_user.get("id")
     if settings.ENVIRONMENT.lower() == "production" and auth_trainer_id:
         effective_id = auth_trainer_id

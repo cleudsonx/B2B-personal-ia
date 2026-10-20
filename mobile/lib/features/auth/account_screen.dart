@@ -36,8 +36,8 @@ class _AccountScreenState extends State<AccountScreen> {
   String? _photoUrl;
   String? _cref;
   String? _totpFactorId;
-  String? _activePlanName;
-  int? _maxStudents;
+  String? _activePlanName = SubscriptionService.currentSubscription?.planName;
+  int? _maxStudents = SubscriptionService.currentSubscription?.maxStudents;
   bool _loading = true;
   bool _isSwitchingRole = false;
 
@@ -61,8 +61,10 @@ class _AccountScreenState extends State<AccountScreen> {
         try {
           final sub = await SubscriptionService.getMySubscription();
           if (mounted) {
-            _activePlanName = sub.planName;
-            _maxStudents = sub.maxStudents;
+            setState(() {
+              _activePlanName = sub.planName;
+              _maxStudents = sub.maxStudents;
+            });
           }
         } catch (_) {}
       }
@@ -481,8 +483,8 @@ class _AccountScreenState extends State<AccountScreen> {
                       const SizedBox(height: 3),
                       Text(
                         _activePlanName != null
-                            ? 'Plano $_activePlanName - ${_maxStudents ?? 30} vagas'
-                            : 'Plano Pro - 30 vagas',
+                            ? 'Plano $_activePlanName - ${_maxStudents ?? 60} vagas'
+                            : (_loading ? 'Carregando plano...' : 'Plano Elite Coach - 60 vagas'),
                         style: TextStyle(
                           color: MetaColors.text(context),
                           fontSize: 14,

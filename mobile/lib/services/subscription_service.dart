@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/config/app_config.dart';
 import '../models/subscription_model.dart';
 import 'auth_service.dart';
@@ -86,23 +87,85 @@ class SubscriptionService {
       throw StateError('Sessão expirada. Entre novamente para consultar o plano.');
     }
 
-    final uri = Uri.parse(
-      '${AppConfig.apiBaseUrl}/subscriptions/my-subscription?trainer_id=$trainerId',
-    );
-    final response = await _client
-        .get(uri, headers: _headers)
-        .timeout(const Duration(seconds: 5));
-    if (response.statusCode != 200) {
-      throw Exception('Não foi possível atualizar a assinatura (${response.statusCode}).');
+    // 1. Tenta consulta via API Backend oficial
+    try {
+      final uri = Uri.parse(
+        '${AppConfig.apiBaseUrl}/subscriptions/my-subscription?trainer_id=$trainerId',
+      );
+      final response = await _client
+          .get(uri, headers: _headers)
+          .timeout(const Duration(seconds: 4));
+      if (response.statusCode == 200) {
+        final payload = jsonDecode(utf8.decode(response.bodyBytes))
+            as Map<String, dynamic>;
+        final model = MySubscriptionModel.fromJson(payload);
+        _currentSubscriptionCache = model;
+        activeSubscriptionNotifier.value = model;
+        await _saveToLocalCache(model);
+        return model;
+      }
+    } catch (e) {
+      debugPrint('[SubscriptionService] Falha ao consultar backend, ativando fallback Supabase: $e');
     }
 
-    final payload = jsonDecode(utf8.decode(response.bodyBytes))
-        as Map<String, dynamic>;
-    final model = MySubscriptionModel.fromJson(payload);
-    _currentSubscriptionCache = model;
-    activeSubscriptionNotifier.value = model;
-    await _saveToLocalCache(model);
-    return model;
+    // 2. Fallback direto ao Supabase (resiliente a cold-starts de servidores externos)
+    try {
+      final supabase = Supabase.instance.client;
+      final subRes = await supabase
+          .from('subscriptions')
+          .select('*, plans(*)')
+          .eq('trainer_id', trainerId)
+          .maybeSingle();
+
+      if (subRes != null) {
+        final planData = subRes['plans'] as Map<String, dynamic>? ?? {};
+        final planId = subRes['plan_id']?.toString() ?? 'elite';
+        final planName = planData['name']?.toString() ??
+            (planId == 'elite'
+                ? 'Elite Coach'
+                : (planId == 'studio'
+                    ? 'Studio Scale'
+                    : (planId == 'starter' ? 'Starter Trial' : 'Personal Pro')));
+        final maxStudents = (planData['max_students'] as num?)?.toInt() ??
+            (planId == 'elite' ? 60 : (planId == 'studio' ? 100 : (planId == 'starter' ? 3 : 30)));
+
+        int currentStudents = 0;
+        try {
+          final countRes = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('trainer_id', trainerId)
+              .eq('role', 'client');
+          currentStudents = (countRes as List).length;
+        } catch (_) {}
+
+        final model = MySubscriptionModel(
+          planId: planId,
+          planName: planName,
+          status: subRes['status']?.toString() ?? 'active',
+          billingInterval: subRes['billing_interval']?.toString() ?? 'monthly',
+          currentStudents: currentStudents,
+          maxStudents: maxStudents,
+          aiGenerationsUsed: 0,
+          maxAiGenerations: (planData['max_ai_generations_per_month'] as num?)?.toInt() ?? -1,
+          paymentMethod: subRes['payment_provider']?.toString() ?? 'pix',
+          canCreateStudent: currentStudents < maxStudents,
+          canGenerateAi: true,
+        );
+        _currentSubscriptionCache = model;
+        activeSubscriptionNotifier.value = model;
+        await _saveToLocalCache(model);
+        return model;
+      }
+    } catch (e) {
+      debugPrint('[SubscriptionService] Fallback Supabase falhou: $e');
+    }
+
+    // 3. Fallback em cache local persistido
+    final cached = _currentSubscriptionCache;
+    if (cached != null) return cached;
+
+    throw Exception('Não foi possível obter dados da assinatura.');
   }
 
   /// Ativa ou troca o plano do Personal Trainer imediatamente e garante persistÃªncia total
