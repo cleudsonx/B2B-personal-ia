@@ -76,3 +76,4 @@ class PublicCheckoutResponse(BaseModel):
     message: str
     trainer_name: str
     plan_name: str
+

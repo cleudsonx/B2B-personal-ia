@@ -140,3 +140,39 @@ def test_public_checkout_pix_generation():
     assert res["net_amount_cents"] == 17100
     assert res["pix_copy_paste"] is not None
     assert len(res["pix_copy_paste"]) > 20
+
+
+
+def test_public_checkout_credit_card():
+    """Aluno pode realizar checkout pagando diretamente com Cartão de Crédito."""
+    r_plan = client.post("/api/v1/trainers/consultancy-plans", json={
+        "name": "Consultoria Trimestral Card",
+        "price_cents": 39000,  # R$ 390,00
+        "billing_period": "quarterly",
+        "is_active": True,
+    })
+    plan_id = r_plan.json()["id"]
+
+    checkout_payload = {
+        "plan_id": plan_id,
+        "student_name": "Fernanda Lima",
+        "student_email": "fernanda.lima@teste.com",
+        "student_phone": "(11) 98888-4444",
+        "payment_method": "CREDIT_CARD",
+        "credit_card": {
+            "holder_name": "Fernanda Lima",
+            "number": "4111111111111111",
+            "expiry_month": "12",
+            "expiry_year": "2029",
+            "ccv": "123",
+            "holder_cpf": "12345678901",
+        }
+    }
+    r_check = client.post("/api/v1/public/trainers/mrcoach/checkout", json=checkout_payload)
+    assert r_check.status_code == 201
+    res = r_check.json()
+    assert res["status"] == "paid"
+    assert res["payment_method"] == "CREDIT_CARD"
+    assert res["amount_cents"] == 39000
+    assert res["net_amount_cents"] == 37050  # 95%
+    assert res["platform_fee_cents"] == 1950  # 5%

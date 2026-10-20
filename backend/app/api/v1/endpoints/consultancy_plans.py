@@ -81,3 +81,4 @@ async def delete_plan(
             detail="Plano não encontrado ou não pertence a este treinador.",
         )
     return {"ok": True, "message": "Plano excluído com sucesso."}
+

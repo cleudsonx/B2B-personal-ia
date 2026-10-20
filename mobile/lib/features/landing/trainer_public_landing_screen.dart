@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/config/app_config.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../services/consultancy_plan_service.dart';
+import '../auth/login_screen.dart';
 
 class TrainerPublicLandingScreen extends StatefulWidget {
   final String username;
@@ -702,6 +703,13 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
   final _phoneCtrl = TextEditingController();
   final _cpfCtrl = TextEditingController();
 
+  // Dados do Cartão de Crédito
+  final _cardNumberCtrl = TextEditingController();
+  final _cardHolderCtrl = TextEditingController();
+  final _cardExpiryCtrl = TextEditingController();
+  final _cardCcvCtrl = TextEditingController();
+  final _cardCpfCtrl = TextEditingController();
+
   String _paymentMethod = 'PIX';
   bool _isSubmitting = false;
   PublicCheckoutResult? _checkoutResult;
@@ -712,6 +720,11 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
     _emailCtrl.dispose();
     _phoneCtrl.dispose();
     _cpfCtrl.dispose();
+    _cardNumberCtrl.dispose();
+    _cardHolderCtrl.dispose();
+    _cardExpiryCtrl.dispose();
+    _cardCcvCtrl.dispose();
+    _cardCpfCtrl.dispose();
     super.dispose();
   }
 
@@ -720,6 +733,32 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
 
     setState(() => _isSubmitting = true);
     try {
+      Map<String, dynamic>? creditCardData;
+      if (_paymentMethod == 'CREDIT_CARD') {
+        final expiryText = _cardExpiryCtrl.text.trim();
+        final parts = expiryText.split('/');
+        final expMonth = parts.isNotEmpty ? parts[0].trim() : '';
+        var expYear = parts.length > 1 ? parts[1].trim() : '';
+        if (expYear.length == 2) {
+          expYear = '20$expYear';
+        }
+
+        final holderCpf = _cardCpfCtrl.text.trim().isNotEmpty
+            ? _cardCpfCtrl.text.replaceAll(RegExp(r'\D'), '')
+            : _cpfCtrl.text.replaceAll(RegExp(r'\D'), '');
+
+        creditCardData = {
+          'holder_name': _cardHolderCtrl.text.trim().toUpperCase(),
+          'number': _cardNumberCtrl.text.replaceAll(RegExp(r'\D'), ''),
+          'expiry_month': expMonth,
+          'expiry_year': expYear,
+          'ccv': _cardCcvCtrl.text.trim(),
+          'holder_cpf': holderCpf,
+          'postal_code': '70000-000',
+          'address_number': '1',
+        };
+      }
+
       final res = await ConsultancyPlanService.publicCheckout(
         username: widget.username,
         planId: widget.plan.id,
@@ -728,6 +767,7 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
         studentPhone: _phoneCtrl.text.trim(),
         studentCpf: _cpfCtrl.text.trim().isNotEmpty ? _cpfCtrl.text.trim() : null,
         paymentMethod: _paymentMethod,
+        creditCard: creditCardData,
       );
 
       if (mounted) {
@@ -769,7 +809,11 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
         top: 20,
         bottom: MediaQuery.of(context).viewInsets.bottom + 24,
       ),
-      child: _checkoutResult == null ? _buildFormStep() : _buildSuccessPixStep(),
+      child: _checkoutResult == null
+          ? _buildFormStep()
+          : (_checkoutResult!.paymentMethod == 'CREDIT_CARD'
+              ? _buildSuccessCardStep()
+              : _buildSuccessPixStep()),
     );
   }
 
@@ -870,7 +914,7 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
               keyboardType: TextInputType.number,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                labelText: 'CPF (para emissão do Pix)',
+                labelText: 'CPF (obrigatório para nota e emissão)',
                 hintText: '000.000.000-00',
                 labelStyle: const TextStyle(color: MetaColors.textSecondary),
                 hintStyle: const TextStyle(color: Colors.white24),
@@ -879,6 +923,15 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                 prefixIcon: const Icon(Icons.badge_outlined, color: MetaColors.textSecondary),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
               ),
+              validator: (v) {
+                if (_paymentMethod == 'PIX') return null;
+                // Para cartão, se cardCpf estiver vazio, cpf do aluno é obrigatório
+                if (_cardCpfCtrl.text.trim().isEmpty) {
+                  final clean = (v ?? '').replaceAll(RegExp(r'\D'), '');
+                  if (clean.length < 11) return 'Informe o CPF';
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 16),
 
@@ -954,10 +1007,173 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                 ),
               ],
             ),
+
+            if (_paymentMethod == 'CREDIT_CARD') ...[
+              const SizedBox(height: 20),
+              const Row(
+                children: [
+                  Icon(Icons.credit_card_rounded, color: MetaColors.emerald, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Dados do Cartão de Crédito',
+                    style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Número do Cartão
+              TextFormField(
+                controller: _cardNumberCtrl,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(16),
+                ],
+                decoration: InputDecoration(
+                  labelText: 'Número do Cartão',
+                  hintText: '0000 0000 0000 0000',
+                  labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                  hintStyle: const TextStyle(color: Colors.white24),
+                  filled: true,
+                  fillColor: MetaColors.surfaceHighlight,
+                  prefixIcon: const Icon(Icons.payment_rounded, color: MetaColors.textSecondary),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+                validator: (v) {
+                  if (_paymentMethod != 'CREDIT_CARD') return null;
+                  final clean = (v ?? '').replaceAll(RegExp(r'\D'), '');
+                  if (clean.length < 13 || clean.length > 19) {
+                    return 'Número de cartão inválido';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+
+              // Nome impresso no Cartão
+              TextFormField(
+                controller: _cardHolderCtrl,
+                textCapitalization: TextCapitalization.characters,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Nome do Titular (como no cartão)',
+                  hintText: 'NOME C SOBRENOME',
+                  labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                  hintStyle: const TextStyle(color: Colors.white24),
+                  filled: true,
+                  fillColor: MetaColors.surfaceHighlight,
+                  prefixIcon: const Icon(Icons.person_pin_outlined, color: MetaColors.textSecondary),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+                validator: (v) {
+                  if (_paymentMethod != 'CREDIT_CARD') return null;
+                  if (v == null || v.trim().length < 3) {
+                    return 'Informe o nome impresso no cartão';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+
+              // Validade e CVV
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _cardExpiryCtrl,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(color: Colors.white),
+                      inputFormatters: [
+                        LengthLimitingTextInputFormatter(5),
+                      ],
+                      decoration: InputDecoration(
+                        labelText: 'Validade',
+                        hintText: 'MM/AA',
+                        labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                        hintStyle: const TextStyle(color: Colors.white24),
+                        filled: true,
+                        fillColor: MetaColors.surfaceHighlight,
+                        prefixIcon: const Icon(Icons.calendar_month_outlined, color: MetaColors.textSecondary),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
+                      validator: (v) {
+                        if (_paymentMethod != 'CREDIT_CARD') return null;
+                        if (v == null || !v.contains('/')) return 'Formato MM/AA';
+                        final p = v.split('/');
+                        final m = int.tryParse(p[0].trim());
+                        if (m == null || m < 1 || m > 12) return 'Mês inválido';
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _cardCcvCtrl,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(color: Colors.white),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(4),
+                      ],
+                      decoration: InputDecoration(
+                        labelText: 'CVV',
+                        hintText: '123',
+                        labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                        hintStyle: const TextStyle(color: Colors.white24),
+                        filled: true,
+                        fillColor: MetaColors.surfaceHighlight,
+                        prefixIcon: const Icon(Icons.lock_outline, color: MetaColors.textSecondary),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
+                      validator: (v) {
+                        if (_paymentMethod != 'CREDIT_CARD') return null;
+                        if (v == null || v.trim().length < 3) return 'CVV inválido';
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // CPF do Titular
+              TextFormField(
+                controller: _cardCpfCtrl,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'CPF do Titular do Cartão',
+                  hintText: 'Deixe em branco se for o mesmo CPF acima',
+                  labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                  hintStyle: const TextStyle(color: Colors.white24),
+                  filled: true,
+                  fillColor: MetaColors.surfaceHighlight,
+                  prefixIcon: const Icon(Icons.badge_outlined, color: MetaColors.textSecondary),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+                validator: (v) {
+                  if (_paymentMethod != 'CREDIT_CARD') return null;
+                  final holderCpf = (v != null && v.trim().isNotEmpty) ? v : _cpfCtrl.text;
+                  final clean = holderCpf.replaceAll(RegExp(r'\D'), '');
+                  if (clean.length < 11) {
+                    return 'Informe o CPF do titular do cartão';
+                  }
+                  return null;
+                },
+              ),
+            ],
+
             const SizedBox(height: 24),
 
             SquircleButton(
-              label: _isSubmitting ? 'Gerando Cobrança...' : 'Confirmar e Pagar Agora',
+              label: _isSubmitting
+                  ? (_paymentMethod == 'CREDIT_CARD' ? 'Processando Cartão...' : 'Gerando Cobrança...')
+                  : (_paymentMethod == 'CREDIT_CARD'
+                      ? 'Pagar R\$ ${widget.plan.price.toStringAsFixed(2).replaceAll('.', ',')} no Cartão'
+                      : 'Confirmar e Pagar com Pix'),
               icon: Icons.shield_outlined,
               isPrimary: true,
               onPressed: _isSubmitting ? null : _processPayment,
@@ -972,6 +1188,128 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSuccessCardStep() {
+    final res = _checkoutResult!;
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: MetaColors.emerald.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.check_circle_rounded, color: MetaColors.emerald, size: 48),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Pagamento Aprovado com Sucesso!',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Plano ${widget.plan.name} • R\$ ${widget.plan.price.toStringAsFixed(2).replaceAll('.', ',')}',
+            style: const TextStyle(color: MetaColors.emerald, fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 20),
+
+          // Card informativo de confirmação
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: MetaColors.surfaceHighlight,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.verified_rounded, color: MetaColors.emerald, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Assinatura Ativa com ${res.trainerName}',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Divider(color: Colors.white10),
+                const SizedBox(height: 12),
+                _buildConfirmInfoRow(Icons.mail_outline_rounded, 'E-mail cadastrado:', _emailCtrl.text.trim()),
+                const SizedBox(height: 8),
+                _buildConfirmInfoRow(Icons.phone_outlined, 'WhatsApp informado:', _phoneCtrl.text.trim()),
+                const SizedBox(height: 8),
+                _buildConfirmInfoRow(Icons.payment_rounded, 'Forma:', 'Cartão de Crédito (Instantâneo)'),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+          const Text(
+            'Próximos Passos:',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '1. Seu cadastro de aluno foi criado e vinculado ao professor.\n'
+            '2. Clique no botão abaixo para acessar o App Mr. Coach com seu e-mail.\n'
+            '3. Preencha sua anamnese inicial para o professor prescrever seus treinos!',
+            style: TextStyle(color: MetaColors.textSecondary, fontSize: 12, height: 1.45),
+          ),
+
+          const SizedBox(height: 24),
+          SquircleButton(
+            label: 'ENTRAR NO APP MR. COACH',
+            icon: Icons.login_rounded,
+            isPrimary: true,
+            onPressed: () {
+              Navigator.pop(context); // Fechar modal
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => LoginScreen(
+                    initialRole: 'client',
+                    initialEmail: _emailCtrl.text.trim(),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConfirmInfoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, color: MetaColors.textSecondary, size: 16),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: const TextStyle(color: MetaColors.textSecondary, fontSize: 12),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 
