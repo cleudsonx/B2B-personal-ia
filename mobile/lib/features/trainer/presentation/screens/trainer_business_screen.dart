@@ -11,6 +11,7 @@ import 'whatsapp_connection_screen.dart';
 import 'trainer_profile_setup_screen.dart';
 import 'trainer_ai_assistant_screen.dart';
 import 'trainer_wallet_screen.dart';
+import 'trainer_consultancy_plans_screen.dart';
 import '../../../landing/trainer_public_landing_screen.dart';
 
 /// Aba "Ferramentas do Personal" (Vitrine B2B)
@@ -107,6 +108,12 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
 
   // Itens da seção "Expanda sua empresa"
   final List<_BusinessToolItem> _toolItems = const [
+    _BusinessToolItem(
+      title: 'Planos de Consultoria & Preços',
+      subtitle: 'Configure seus planos, fichas e valores para a Vitrine',
+      icon: Icons.sell_outlined,
+      type: _ToolType.consultancyPlans,
+    ),
     _BusinessToolItem(
       title: 'Carteira do Personal',
       subtitle: 'Saldo, cobranças de alunos e saques via Pix',
@@ -230,6 +237,12 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
 
   void _handleToolTap(_BusinessToolItem item) {
     switch (item.type) {
+      case _ToolType.consultancyPlans:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const TrainerConsultancyPlansScreen()),
+        );
+        break;
       case _ToolType.wallet:
         Navigator.push(
           context,
@@ -1604,6 +1617,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
 
 enum _ToolType {
   wallet,
+  consultancyPlans,
   subscription,
   aiAssistant,
   publicShowcase,
