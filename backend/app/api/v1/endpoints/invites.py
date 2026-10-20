@@ -79,6 +79,39 @@ async def create_invite(
     if body.channel == "whatsapp" and not body.target_phone:
         raise HTTPException(status_code=400, detail="Telefone de destino é obrigatório para canal 'whatsapp'.")
 
+    # Validação preventiva de cota na camada da API
+    occupied = await supabase_service.count_trainer_occupied_slots(trainer_id)
+    sub = await supabase_service.get_trainer_subscription(trainer_id)
+    max_allowed = sub.max_students
+    if occupied >= max_allowed:
+        # Permite apenas se já existir convite pendente para o mesmo email/telefone (reenvio/lembrete)
+        has_existing = False
+        client = await supabase_service.get_client()
+        if client:
+            try:
+                clean_target_phone = _normalize_phone(body.target_phone or "")
+                norm_email = (body.target_email or "").strip().lower()
+                query = client.table("invite_tokens").select("id, target_email, target_phone").eq("trainer_id", trainer_id).is_("used_at", "null")
+                existing_res = await query.execute()
+                for inv in (existing_res.data or []):
+                    inv_email = (inv.get("target_email") or "").strip().lower()
+                    inv_phone = _normalize_phone(inv.get("target_phone") or "")
+                    if norm_email and inv_email == norm_email:
+                        has_existing = True
+                        break
+                    if clean_target_phone and inv_phone == clean_target_phone:
+                        has_existing = True
+                        break
+            except Exception as check_err:
+                logger.warning(f"[Invites] Erro ao checar convite existente: {check_err}")
+        
+        if not has_existing:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Limite de {max_allowed} alunos atingido no seu plano atual ({sub.plan_name}). "
+                       f"Faça upgrade do plano ou arquive alunos inativos antes de convidar novos."
+            )
+
     # Gera token seguro de alta entropia
     token = secrets.token_urlsafe(32)
 
@@ -97,7 +130,7 @@ async def create_invite(
         expires_at_str = invite.get("expires_at", "")
     except Exception as e:
         logger.error(f"[Invites] Erro ao salvar invite_token: {e}", exc_info=True)
-        if "limite" in str(e).lower() or "23514" in str(e):
+        if "limite" in str(e).lower() or "23514" in str(e) or "p0001" in str(e).lower():
             raise HTTPException(status_code=403, detail=str(e)) from e
         raise HTTPException(status_code=503, detail="Não foi possível reservar uma vaga para o convite.") from e
 

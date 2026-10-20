@@ -12,11 +12,13 @@ import '../../services/auth_service.dart';
 /// de changelog alimentado por [AppChangelog] e suporte a auto-abertura no primeiro acesso à versão.
 class AppVersionFooter extends StatelessWidget {
   final EdgeInsetsGeometry padding;
+  final String? userRole;
   static const String _lastSeenBuildKey = 'pwa_last_seen_changelog_build';
 
   const AppVersionFooter({
     super.key,
     this.padding = const EdgeInsets.only(top: 24, bottom: 32),
+    this.userRole,
   });
 
   /// Controla a exibição automática do modal de novidades.
@@ -58,13 +60,13 @@ class AppVersionFooter extends StatelessWidget {
   }
 
   /// Exibe o modal interativo com as novidades da versão atual e histórico anterior
-  static void showReleaseNotesModal(BuildContext context) {
+  static void showReleaseNotesModal(BuildContext context, {String? roleOverride}) {
     if (!context.mounted) return;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) => const _ReleaseNotesModalContent(),
+      builder: (ctx) => _ReleaseNotesModalContent(roleOverride: roleOverride),
     );
   }
 
@@ -82,7 +84,7 @@ class AppVersionFooter extends StatelessWidget {
       padding: padding,
       child: Center(
         child: InkWell(
-          onTap: () => showReleaseNotesModal(context),
+          onTap: () => showReleaseNotesModal(context, roleOverride: userRole),
           borderRadius: BorderRadius.circular(20),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -161,7 +163,9 @@ class AppVersionFooter extends StatelessWidget {
 }
 
 class _ReleaseNotesModalContent extends StatefulWidget {
-  const _ReleaseNotesModalContent();
+  final String? roleOverride;
+
+  const _ReleaseNotesModalContent({this.roleOverride});
 
   @override
   State<_ReleaseNotesModalContent> createState() => _ReleaseNotesModalContentState();
@@ -169,27 +173,38 @@ class _ReleaseNotesModalContent extends StatefulWidget {
 
 class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
   bool _showPreviousReleases = false;
-  String _currentRole = 'client'; // 'client', 'trainer', 'admin'
+  late String _currentRole;
 
   @override
   void initState() {
     super.initState();
-    _loadUserRole();
+    _currentRole = widget.roleOverride ?? 'client';
+    if (widget.roleOverride == null) {
+      _loadUserRole();
+    }
   }
 
   Future<void> _loadUserRole() async {
     try {
       final profile = await AuthService.getCurrentProfile();
       final role = profile?['role']?.toString().toLowerCase();
+      String resolved = 'client';
       if (profile?['is_admin'] == true || role == 'admin') {
-        _currentRole = 'admin';
+        resolved = 'admin';
       } else if (role == 'trainer' || role == 'coach' || role == 'personal') {
-        _currentRole = 'trainer';
-      } else {
-        _currentRole = 'client';
+        resolved = 'trainer';
+      }
+      if (mounted) {
+        setState(() {
+          _currentRole = resolved;
+        });
       }
     } catch (_) {
-      _currentRole = 'client';
+      if (mounted) {
+        setState(() {
+          _currentRole = 'client';
+        });
+      }
     }
   }
 

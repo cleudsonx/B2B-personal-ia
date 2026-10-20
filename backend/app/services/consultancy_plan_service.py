@@ -317,6 +317,16 @@ class ConsultancyPlanService:
         trainer_id = trainer["id"]
         trainer_name = trainer.get("full_name") or "Personal Trainer"
 
+        # Validação estrita da cota de alunos do plano SaaS do Treinador
+        occupied = await supabase_service.count_trainer_occupied_slots(trainer_id)
+        sub = await supabase_service.get_trainer_subscription(trainer_id)
+        max_allowed = sub.max_students
+        if occupied >= max_allowed:
+            raise ValueError(
+                f"As vagas para novos alunos da consultoria de {trainer_name} estão temporariamente esgotadas. "
+                "Entre em contato diretamente com o personal para consultar a lista de espera."
+            )
+
         # 2. Localiza o plano de consultoria
         plan = await cls.get_plan_by_id(req.plan_id)
         if not plan or not plan.is_active:
