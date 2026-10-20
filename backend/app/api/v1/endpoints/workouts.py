@@ -225,13 +225,23 @@ async def create_student(
 
     trainer_id = current_user.get("sub") or "current-trainer"
 
-    # Verifica duplicidade no treinador
+    # Verifica duplicidade de e-mail no treinador
     existing_students = await supabase_service.list_students(trainer_id)
     for st in existing_students:
         if st.email.lower() == data.email.strip().lower():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Já existe um aluno cadastrado com o e-mail '{data.email}'."
+            )
+
+    # Verifica duplicidade de telefone no treinador (regra B2B: mesmo número apenas para treinadores distintos)
+    if data.phone:
+        phone_conflict = await supabase_service.check_student_phone_conflict(trainer_id, data.phone)
+        if phone_conflict:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Já existe um aluno ({phone_conflict.get('full_name')}) cadastrado com este telefone na sua consultoria. "
+                       f"O mesmo número não pode ser usado por mais de um aluno com o mesmo treinador."
             )
 
     # Validação estrita da cota de alunos do plano SaaS
@@ -281,6 +291,17 @@ async def update_student(
         )
 
     trainer_id = _require_student_owner(existing_student, current_user)
+
+    # Validação de telefone duplicado no mesmo treinador ao atualizar
+    if data.phone:
+        phone_conflict = await supabase_service.check_student_phone_conflict(
+            trainer_id, data.phone, exclude_student_id=student_id
+        )
+        if phone_conflict:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Já existe outro aluno ({phone_conflict.get('full_name')}) cadastrado com este telefone na sua consultoria."
+            )
 
     if data.status is not None:
         data.status = _normalize_student_status(data.status)
@@ -488,6 +509,15 @@ async def invite_student(
                    f"Faça upgrade do plano ou arquive alunos inativos antes de cadastrar novos."
         )
 
+    # Se for informado telefone no convite, verifica se já pertence a um aluno ativo do treinador
+    if payload.phone:
+        phone_conflict = await supabase_service.check_student_phone_conflict(trainer_id, payload.phone)
+        if phone_conflict and phone_conflict.get("source") in ("profile", "memory"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"O aluno(a) '{phone_conflict.get('full_name')}' já possui este telefone cadastrado na sua consultoria."
+            )
+
     invite_token = secrets.token_urlsafe(32)
     try:
         invite_record = await supabase_service.create_student_invite(
@@ -500,6 +530,11 @@ async def invite_student(
             injuries_or_restrictions=payload.injuries_or_restrictions or "Nenhuma restrição relatada.",
         )
     except Exception as e:
+        if "23505" in str(e) or "já está cadastrado com este telefone" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Este número de telefone já está cadastrado para outro aluno neste treinador."
+            ) from e
         if "limite" in str(e).lower() or "23514" in str(e):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

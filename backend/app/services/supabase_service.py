@@ -50,6 +50,19 @@ def to_valid_uuid_str(raw_id: str, default: Optional[str] = None) -> str:
     return str(uuid.uuid5(uuid.NAMESPACE_DNS, raw_id))
 
 
+def normalize_phone_digits(phone: Optional[str]) -> str:
+    """
+    Normaliza o telefone removendo caracteres não numéricos e prefixo DDI 55
+    para garantir comparações e índices consistentes de DDD + número.
+    """
+    if not phone:
+        return ""
+    clean = re.sub(r"\D", "", str(phone).strip())
+    if len(clean) >= 12 and clean.startswith("55"):
+        clean = clean[2:]
+    return clean if len(clean) >= 8 else ""
+
+
 class SupabaseService:
     def __init__(self):
         self._client: Optional[AsyncClient] = None
@@ -1023,6 +1036,74 @@ class SupabaseService:
                     self._raise_if_production("contar alunos", e)
 
         return mem_count
+
+    async def check_student_phone_conflict(
+        self,
+        trainer_id: str,
+        phone: str,
+        exclude_student_id: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Verifica se já existe algum aluno cadastrado (profiles) ou com convite pendente (invite_tokens)
+        para este MESMO treinador com o mesmo número de telefone normalizado.
+        Retorna um dicionário com os dados do aluno conflitante se houver, ou None se estiver livre.
+        """
+        clean_target = normalize_phone_digits(phone)
+        if not clean_target:
+            return None
+
+        t_uuid = to_valid_uuid_str(trainer_id)
+        excl_uuid = to_valid_uuid_str(exclude_student_id) if exclude_student_id else None
+
+        client = await self.get_client()
+        if client:
+            try:
+                # 1. Busca em profiles de alunos do mesmo treinador
+                q = client.table("profiles").select("id, full_name, phone, role").eq("trainer_id", t_uuid).eq("role", "client")
+                if excl_uuid and is_valid_uuid(excl_uuid):
+                    q = q.neq("id", excl_uuid)
+                res = await q.execute()
+                for p in (res.data or []):
+                    p_phone = normalize_phone_digits(p.get("phone"))
+                    if p_phone and p_phone == clean_target:
+                        return {
+                            "id": p["id"],
+                            "full_name": p.get("full_name") or "Aluno",
+                            "phone": p.get("phone"),
+                            "source": "profile",
+                        }
+
+                # 2. Busca em invite_tokens ativos/pendentes do mesmo treinador
+                iq = client.table("invite_tokens").select("id, target_name, target_phone").eq("trainer_id", t_uuid).is_("used_at", "null")
+                if excl_uuid and is_valid_uuid(excl_uuid):
+                    iq = iq.neq("id", excl_uuid)
+                ires = await iq.execute()
+                for inv in (ires.data or []):
+                    inv_phone = normalize_phone_digits(inv.get("target_phone"))
+                    if inv_phone and inv_phone == clean_target:
+                        return {
+                            "id": inv["id"],
+                            "full_name": inv.get("target_name") or "Convite Pendente",
+                            "phone": inv.get("target_phone"),
+                            "source": "invite",
+                        }
+            except Exception as e:
+                logger.warning(f"Erro ao verificar conflito de telefone no Supabase: {e}")
+
+        # Fallback memória
+        for sid, s in self._mem_students.items():
+            if exclude_student_id and (sid == exclude_student_id or (excl_uuid and sid == excl_uuid)):
+                continue
+            if s.get("trainer_id") in (trainer_id, t_uuid):
+                mem_ph = normalize_phone_digits(s.get("phone"))
+                if mem_ph and mem_ph == clean_target:
+                    return {
+                        "id": sid,
+                        "full_name": s.get("full_name") or "Aluno",
+                        "phone": s.get("phone"),
+                        "source": "memory",
+                    }
+        return None
 
     async def list_students(self, trainer_id: str) -> List[StudentResponse]:
         """Lista os alunos vinculados ao personal trainer."""

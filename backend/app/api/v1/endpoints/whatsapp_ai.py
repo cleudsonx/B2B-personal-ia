@@ -125,18 +125,8 @@ async def _find_student_by_phone(digits: str, trainer_id: str) -> Optional[Dict[
     except Exception as e:
         logger.warning(f"[WhatsAppAI] Erro ao buscar invite_tokens: {e}")
 
-    # 4. Fallback: busca em qualquer perfil de cliente no sistema cujo telefone coincida
-    try:
-        all_res = await client.table("profiles").select("id, full_name, trainer_id, role, subscription_status, phone") \
-            .eq("role", "client").execute()
-        for p in all_res.data or []:
-            p_phone = "".join(c for c in (p.get("phone") or "") if c.isdigit())
-            if len(p_phone) >= 8 and p_phone[-8:] == clean_target[-8:]:
-                if str(p.get("subscription_status") or "").lower() == "suspended":
-                    return None
-                return p
-    except Exception as e:
-        logger.warning(f"[WhatsAppAI] Erro ao buscar fallback de cliente: {e}")
+    # 4. Quando a instância pertence a um treinador específico, não cruzamos com alunos de outros professores
+    # O isolamento por treinador é estritamente garantido (aluno pode treinar com múltiplos professores).
 
     return None
 
