@@ -11,6 +11,7 @@ import 'screens/admin_retention_screen.dart';
 import 'screens/admin_whatsapp_screen.dart';
 import 'screens/admin_ai_usage_screen.dart';
 import 'screens/admin_simulator_screen.dart';
+import 'screens/admin_pricing_manager_screen.dart';
 
 class AdminShellScreen extends StatefulWidget {
   final VoidCallback onExitAdmin;
@@ -149,7 +150,13 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
       case 8:
         return const AdminAiUsageScreen();
       case 9:
-        return const AdminSimulatorScreen();
+        return AdminSimulatorScreen(
+          onNavigateToPricingManager: () => setState(() => _currentSectionIndex = 10),
+        );
+      case 10:
+        return AdminPricingManagerScreen(
+          onNavigateToSimulator: () => setState(() => _currentSectionIndex = 9),
+        );
       default:
         return AdminDashboardScreen(
           onNavigateToUsers: () => setState(() => _currentSectionIndex = 1),
@@ -296,6 +303,13 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                   icon: Icons.calculate_rounded,
                   label: 'Simulador & Margem',
                   badge: 'UNIT ECON',
+                ),
+                const SizedBox(height: 4),
+                _buildSidebarItem(
+                  index: 10,
+                  icon: Icons.sell_rounded,
+                  label: 'Preços & Planos SaaS',
+                  badge: 'PRICING',
                 ),
               ],
             ),
@@ -525,6 +539,15 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
               selected: _currentSectionIndex == 9,
               onTap: () {
                 setState(() => _currentSectionIndex = 9);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.sell_rounded, color: Color(0xFF818CF8)),
+              title: const Text('Preços & Planos SaaS', style: TextStyle(color: Colors.white)),
+              selected: _currentSectionIndex == 10,
+              onTap: () {
+                setState(() => _currentSectionIndex = 10);
                 Navigator.pop(context);
               },
             ),

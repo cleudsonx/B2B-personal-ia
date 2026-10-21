@@ -41,12 +41,20 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103022,
+      buildNumber: 2026103024,
       date: '21 de Outubro, 2026',
       summary:
-          'Versão 1.9.0: Auditoria Avançada de Segurança & Sessões Ativas (Kill-Switch), Simulador de Margem SaaS (Unit Economics) e Mission Control Administrativo.',
+          'Versão 1.9.0: Gestão Dinâmica de Preços & Planos SaaS, Auditoria de Segurança & Sessões Ativas (Kill-Switch) e Simulador de Margem Unit Economics.',
       highlights: [
         // --- PARA O ADMIN / GESTOR ---
+        ChangelogItem(
+          icon: Icons.sell_rounded,
+          title: 'Gestão Dinâmica de Preços & Planos SaaS',
+          description:
+              'Controle em tempo real de mensalidade, anuidade, capacidade de alunos, taxa de split (5%) e cotas de IA Gemini dos planos Starter, Pro e Elite com sincronização instantânea.',
+          badge: 'PRICING',
+          targetRoles: ['admin'],
+        ),
         ChangelogItem(
           icon: Icons.shield_rounded,
           title: 'Auditoria Avançada de Sessões & Radar de Ameaças',

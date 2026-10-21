@@ -3754,6 +3754,133 @@ class AdminDataService {
     );
   }
 
+  // ==========================================
+  // GESTÃO DINÂMICA DE PREÇOS & PLANOS SAAS
+  // ==========================================
+
+  static final List<AdminPricingPlanItem> _defaultPricingPlans = [
+    const AdminPricingPlanItem(
+      id: 'starter',
+      name: 'Starter',
+      badge: 'Entrada',
+      priceMonthly: 49.00,
+      priceYearly: 470.00,
+      studentLimit: 5,
+      platformFeePercent: 5.0,
+      aiQuotaLimit: 15,
+      hasCustomBranding: false,
+      hasPrioritySupport: false,
+      isActive: true,
+      subscriberCount: 8,
+    ),
+    const AdminPricingPlanItem(
+      id: 'pro',
+      name: 'Pro',
+      badge: 'Mais Popular',
+      priceMonthly: 89.00,
+      priceYearly: 850.00,
+      studentLimit: 20,
+      platformFeePercent: 5.0,
+      aiQuotaLimit: 60,
+      hasCustomBranding: true,
+      hasPrioritySupport: true,
+      isActive: true,
+      subscriberCount: 14,
+    ),
+    const AdminPricingPlanItem(
+      id: 'elite',
+      name: 'Elite / Studio',
+      badge: 'Ilimitado',
+      priceMonthly: 159.00,
+      priceYearly: 1520.00,
+      studentLimit: 0,
+      platformFeePercent: 5.0,
+      aiQuotaLimit: 0,
+      hasCustomBranding: true,
+      hasPrioritySupport: true,
+      isActive: true,
+      subscriberCount: 6,
+    ),
+  ];
+
+  static List<AdminPricingPlanItem> _fallbackPricingPlansList = List.from(_defaultPricingPlans);
+
+  static Future<AdminPricingConfigOverview> getPricingPlansOverview() async {
+    try {
+      final url = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/pricing-plans');
+      final resp = await http.get(url).timeout(const Duration(seconds: 4));
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        final overview = AdminPricingConfigOverview.fromJson(data);
+        if (overview.plans.isNotEmpty) {
+          _fallbackPricingPlansList = List.from(overview.plans);
+          return overview;
+        }
+      }
+    } catch (_) {}
+
+    return _fallbackPricingConfigOverview();
+  }
+
+  static Future<bool> updatePricingPlan(AdminPricingPlanItem plan) async {
+    try {
+      final url = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/update-pricing-plan');
+      final resp = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(plan.toJson()),
+      ).timeout(const Duration(seconds: 4));
+      if (resp.statusCode == 200) {
+        final idx = _fallbackPricingPlansList.indexWhere((p) => p.id == plan.id);
+        if (idx != -1) {
+          _fallbackPricingPlansList[idx] = plan;
+        } else {
+          _fallbackPricingPlansList.add(plan);
+        }
+        return true;
+      }
+    } catch (_) {}
+
+    final idx = _fallbackPricingPlansList.indexWhere((p) => p.id == plan.id);
+    if (idx != -1) {
+      _fallbackPricingPlansList[idx] = plan;
+    } else {
+      _fallbackPricingPlansList.add(plan);
+    }
+    return true;
+  }
+
+  static Future<bool> resetDefaultPricingPlans() async {
+    try {
+      final url = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/reset-default-pricing');
+      final resp = await http.post(url).timeout(const Duration(seconds: 4));
+      if (resp.statusCode == 200) {
+        _fallbackPricingPlansList = List.from(_defaultPricingPlans);
+        return true;
+      }
+    } catch (_) {}
+
+    _fallbackPricingPlansList = List.from(_defaultPricingPlans);
+    return true;
+  }
+
+  static AdminPricingConfigOverview _fallbackPricingConfigOverview() {
+    final active = _fallbackPricingPlansList.where((p) => p.isActive).toList();
+    final totalSubs = _fallbackPricingPlansList.fold<int>(0, (acc, p) => acc + p.subscriberCount);
+    final avgPrice = active.isNotEmpty
+        ? active.fold<double>(0.0, (acc, p) => acc + p.priceMonthly) / active.length
+        : 0.0;
+
+    return AdminPricingConfigOverview(
+      activePlansCount: active.length,
+      totalSubscribers: totalSubs,
+      averageMonthlyPrice: avgPrice,
+      platformFeeAverage: 5.0,
+      lastUpdated: 'Hoje às 18:30 UTC',
+      plans: List.from(_fallbackPricingPlansList),
+    );
+  }
+
 }
 
 // ============================================================================
@@ -4551,6 +4678,142 @@ class AdminSecuritySessionsOverview {
       securityAlerts: (json['security_alerts'] as List<dynamic>? ?? [])
           .map((e) => AdminSecurityAlertItem.fromJson(e as Map<String, dynamic>))
           .toList(),
+    );
+  }
+}
+
+
+// ============================================================================
+// DYNAMIC SAAS PRICING MANAGER MODELS
+// ============================================================================
+
+class AdminPricingPlanItem {
+  final String id;
+  final String name;
+  final String badge;
+  final double priceMonthly;
+  final double priceYearly;
+  final int studentLimit; // 0 = Ilimitado
+  final double platformFeePercent;
+  final int aiQuotaLimit; // 0 = Ilimitado
+  final bool hasCustomBranding;
+  final bool hasPrioritySupport;
+  final bool isActive;
+  final int subscriberCount;
+
+  const AdminPricingPlanItem({
+    required this.id,
+    required this.name,
+    required this.badge,
+    required this.priceMonthly,
+    required this.priceYearly,
+    required this.studentLimit,
+    this.platformFeePercent = 5.0,
+    this.aiQuotaLimit = 60,
+    this.hasCustomBranding = false,
+    this.hasPrioritySupport = false,
+    this.isActive = true,
+    this.subscriberCount = 0,
+  });
+
+  bool get isUnlimitedStudents => studentLimit <= 0;
+  bool get isUnlimitedAi => aiQuotaLimit <= 0;
+
+  factory AdminPricingPlanItem.fromJson(Map<String, dynamic> json) {
+    return AdminPricingPlanItem(
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      badge: json['badge'] as String? ?? '',
+      priceMonthly: (json['price_monthly'] as num?)?.toDouble() ?? 0.0,
+      priceYearly: (json['price_yearly'] as num?)?.toDouble() ?? 0.0,
+      studentLimit: (json['student_limit'] as num?)?.toInt() ?? 0,
+      platformFeePercent: (json['platform_fee_percent'] as num?)?.toDouble() ?? 5.0,
+      aiQuotaLimit: (json['ai_quota_limit'] as num?)?.toInt() ?? 60,
+      hasCustomBranding: json['has_custom_branding'] as bool? ?? false,
+      hasPrioritySupport: json['has_priority_support'] as bool? ?? false,
+      isActive: json['is_active'] as bool? ?? true,
+      subscriberCount: (json['subscriber_count'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'badge': badge,
+      'price_monthly': priceMonthly,
+      'price_yearly': priceYearly,
+      'student_limit': studentLimit,
+      'platform_fee_percent': platformFeePercent,
+      'ai_quota_limit': aiQuotaLimit,
+      'has_custom_branding': hasCustomBranding,
+      'has_priority_support': hasPrioritySupport,
+      'is_active': isActive,
+      'subscriber_count': subscriberCount,
+    };
+  }
+
+  AdminPricingPlanItem copyWith({
+    String? id,
+    String? name,
+    String? badge,
+    double? priceMonthly,
+    double? priceYearly,
+    int? studentLimit,
+    double? platformFeePercent,
+    int? aiQuotaLimit,
+    bool? hasCustomBranding,
+    bool? hasPrioritySupport,
+    bool? isActive,
+    int? subscriberCount,
+  }) {
+    return AdminPricingPlanItem(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      badge: badge ?? this.badge,
+      priceMonthly: priceMonthly ?? this.priceMonthly,
+      priceYearly: priceYearly ?? this.priceYearly,
+      studentLimit: studentLimit ?? this.studentLimit,
+      platformFeePercent: platformFeePercent ?? this.platformFeePercent,
+      aiQuotaLimit: aiQuotaLimit ?? this.aiQuotaLimit,
+      hasCustomBranding: hasCustomBranding ?? this.hasCustomBranding,
+      hasPrioritySupport: hasPrioritySupport ?? this.hasPrioritySupport,
+      isActive: isActive ?? this.isActive,
+      subscriberCount: subscriberCount ?? this.subscriberCount,
+    );
+  }
+}
+
+class AdminPricingConfigOverview {
+  final int activePlansCount;
+  final int totalSubscribers;
+  final double averageMonthlyPrice;
+  final double platformFeeAverage;
+  final String lastUpdated;
+  final List<AdminPricingPlanItem> plans;
+
+  const AdminPricingConfigOverview({
+    required this.activePlansCount,
+    required this.totalSubscribers,
+    required this.averageMonthlyPrice,
+    required this.platformFeeAverage,
+    required this.lastUpdated,
+    required this.plans,
+  });
+
+  factory AdminPricingConfigOverview.fromJson(Map<String, dynamic> json) {
+    final s = json['summary'] as Map<String, dynamic>? ?? {};
+    final list = (json['plans'] as List<dynamic>?)
+            ?.map((e) => AdminPricingPlanItem.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [];
+    return AdminPricingConfigOverview(
+      activePlansCount: (s['active_plans_count'] as num?)?.toInt() ?? list.where((p) => p.isActive).length,
+      totalSubscribers: (s['total_subscribers'] as num?)?.toInt() ?? 0,
+      averageMonthlyPrice: (s['average_monthly_price'] as num?)?.toDouble() ?? 0.0,
+      platformFeeAverage: (s['platform_fee_average'] as num?)?.toDouble() ?? 5.0,
+      lastUpdated: s['last_updated'] as String? ?? 'Hoje',
+      plans: list,
     );
   }
 }

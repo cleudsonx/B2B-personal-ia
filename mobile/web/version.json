@@ -1,8 +1,8 @@
 {
   "version": "1.9.0",
-  "build": 2026103022,
-  "updated_at": "2026-10-21T22:07:41.473619Z",
-  "notes": "Versão 1.9.0: Auditoria Avançada de Segurança & Sessões Ativas (Kill-Switch), Simulador de Margem SaaS (Unit Economics) e Mission Control Administrativo.",
+  "build": 2026103024,
+  "updated_at": "2026-10-21T22:35:19.066619Z",
+  "notes": "Versão 1.9.0: Gestão Dinâmica de Preços & Planos SaaS, Auditoria de Segurança & Sessões Ativas (Kill-Switch) e Simulador de Margem Unit Economics.",
   "changelog": {
     "student": [
       {
@@ -49,6 +49,11 @@
       }
     ],
     "admin": [
+      {
+        "title": "Gestão Dinâmica de Preços & Planos SaaS",
+        "description": "Controle em tempo real de mensalidade, anuidade, capacidade de alunos, taxa de split (5%) e cotas de IA Gemini dos planos Starter, Pro e Elite com sincronização instantânea.",
+        "badge": "PRICING"
+      },
       {
         "title": "Auditoria Avançada de Sessões & Radar de Ameaças",
         "description": "Monitoramento em tempo real de sessões ativas com IP, dispositivo e geolocalização. Detecção instantânea de acessos simultâneos, tentativas suspeitas e kill-switch para revogação imediata.",

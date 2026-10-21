@@ -4,7 +4,12 @@ import '../services/admin_data_service.dart';
 import '../widgets/admin_simulator_export_modal.dart';
 
 class AdminSimulatorScreen extends StatefulWidget {
-  const AdminSimulatorScreen({super.key});
+  final VoidCallback? onNavigateToPricingManager;
+
+  const AdminSimulatorScreen({
+    super.key,
+    this.onNavigateToPricingManager,
+  });
 
   @override
   State<AdminSimulatorScreen> createState() => _AdminSimulatorScreenState();
@@ -135,6 +140,20 @@ class _AdminSimulatorScreenState extends State<AdminSimulatorScreen> {
         final actions = Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (widget.onNavigateToPricingManager != null) ...[
+              OutlinedButton.icon(
+                onPressed: widget.onNavigateToPricingManager,
+                icon: const Icon(Icons.sell_rounded, size: 16, color: Color(0xFF818CF8)),
+                label: const Text('Gestão de Preços', style: TextStyle(color: Color(0xFF818CF8), fontSize: 13, fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF1F2937)),
+                  backgroundColor: const Color(0xFF111827),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
             if (_overview != null) ...[
               ElevatedButton.icon(
                 onPressed: () => AdminSimulatorExportModal.show(

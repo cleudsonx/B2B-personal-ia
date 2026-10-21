@@ -1902,3 +1902,139 @@ async def resolve_security_alert_endpoint(req: ResolveSecurityAlertRequest):
         "action_taken": req.action,
         "message": "Alerta resolvido e medidas de proteção ativadas com sucesso.",
     }
+
+
+# ==========================================
+# GESTÃO DINÂMICA DE PREÇOS & PLANOS SAAS
+# ==========================================
+
+class UpdatePricingPlanRequest(BaseModel):
+    id: str
+    name: str
+    badge: Optional[str] = None
+    price_monthly: float
+    price_yearly: float
+    student_limit: int
+    platform_fee_percent: float = 5.0
+    ai_quota_limit: int = 60
+    has_custom_branding: bool = False
+    has_priority_support: bool = False
+    is_active: bool = True
+
+
+DEFAULT_PRICING_PLANS = [
+    {
+        "id": "starter",
+        "name": "Starter",
+        "badge": "Entrada",
+        "price_monthly": 49.00,
+        "price_yearly": 470.00,
+        "student_limit": 5,
+        "platform_fee_percent": 5.0,
+        "ai_quota_limit": 15,
+        "has_custom_branding": False,
+        "has_priority_support": False,
+        "is_active": True,
+        "subscriber_count": 8,
+    },
+    {
+        "id": "pro",
+        "name": "Pro",
+        "badge": "Mais Popular",
+        "price_monthly": 89.00,
+        "price_yearly": 850.00,
+        "student_limit": 20,
+        "platform_fee_percent": 5.0,
+        "ai_quota_limit": 60,
+        "has_custom_branding": True,
+        "has_priority_support": True,
+        "is_active": True,
+        "subscriber_count": 14,
+    },
+    {
+        "id": "elite",
+        "name": "Elite / Studio",
+        "badge": "Ilimitado",
+        "price_monthly": 159.00,
+        "price_yearly": 1520.00,
+        "student_limit": 0,
+        "platform_fee_percent": 5.0,
+        "ai_quota_limit": 0,
+        "has_custom_branding": True,
+        "has_priority_support": True,
+        "is_active": True,
+        "subscriber_count": 6,
+    },
+]
+
+ADMIN_PRICING_PLANS = [dict(p) for p in DEFAULT_PRICING_PLANS]
+
+
+@router.get("/admin/pricing-plans")
+async def get_admin_pricing_plans():
+    """
+    Retorna panorama de configuracao dos planos SaaS, precos, cotas e split.
+    """
+    active_plans = [p for p in ADMIN_PRICING_PLANS if p.get("is_active")]
+    total_subscribers = sum(p.get("subscriber_count", 0) for p in ADMIN_PRICING_PLANS)
+    avg_price = (
+        sum(p["price_monthly"] for p in active_plans) / len(active_plans)
+        if active_plans else 0.0
+    )
+
+    return {
+        "summary": {
+            "active_plans_count": len(active_plans),
+            "total_subscribers": total_subscribers,
+            "average_monthly_price": round(avg_price, 2),
+            "platform_fee_average": 5.0,
+            "last_updated": datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC"),
+        },
+        "plans": ADMIN_PRICING_PLANS,
+    }
+
+
+@router.post("/admin/update-pricing-plan")
+async def update_pricing_plan_endpoint(req: UpdatePricingPlanRequest):
+    """
+    Atualiza precos, limites de alunos, split e cota IA de um plano SaaS.
+    """
+    plan = next((p for p in ADMIN_PRICING_PLANS if p["id"] == req.id), None)
+    if not plan:
+        plan = {"id": req.id, "subscriber_count": 0}
+        ADMIN_PRICING_PLANS.append(plan)
+
+    plan.update({
+        "name": req.name,
+        "badge": req.badge or plan.get("badge", ""),
+        "price_monthly": req.price_monthly,
+        "price_yearly": req.price_yearly,
+        "student_limit": req.student_limit,
+        "platform_fee_percent": req.platform_fee_percent,
+        "ai_quota_limit": req.ai_quota_limit,
+        "has_custom_branding": req.has_custom_branding,
+        "has_priority_support": req.has_priority_support,
+        "is_active": req.is_active,
+    })
+
+    logger.info(f"[PricingManager] Plano '{req.id}' atualizado: R$ {req.price_monthly}/mês, {req.student_limit} alunos, split {req.platform_fee_percent}%.")
+    return {
+        "success": True,
+        "plan": plan,
+        "message": f"Plano '{req.name}' atualizado com sucesso!",
+    }
+
+
+@router.post("/admin/reset-default-pricing")
+async def reset_default_pricing_endpoint():
+    """
+    Restaura os precos e parametros dos planos para os valores padrao de fabrica.
+    """
+    global ADMIN_PRICING_PLANS
+    ADMIN_PRICING_PLANS = [dict(p) for p in DEFAULT_PRICING_PLANS]
+    logger.info("[PricingManager] Planos SaaS restaurados para os valores de fábrica.")
+    return {
+        "success": True,
+        "plans": ADMIN_PRICING_PLANS,
+        "message": "Planos e preços restaurados para os valores padrão.",
+    }
