@@ -4,6 +4,8 @@ import 'screens/admin_dashboard_screen.dart';
 import 'screens/admin_users_screen.dart';
 import 'screens/admin_finance_screen.dart';
 import 'screens/admin_exercises_screen.dart';
+import 'screens/admin_audit_screen.dart';
+import 'screens/admin_broadcast_screen.dart';
 
 class AdminShellScreen extends StatefulWidget {
   final VoidCallback onExitAdmin;
@@ -71,7 +73,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
           : NavigationBar(
               backgroundColor: const Color(0xFF111827),
               indicatorColor: const Color(0xFF6366F1).withValues(alpha: 0.3),
-              selectedIndex: _currentSectionIndex.clamp(0, 1),
+              selectedIndex: _currentSectionIndex.clamp(0, 3),
               onDestinationSelected: (idx) {
                 setState(() => _currentSectionIndex = idx);
               },
@@ -115,6 +117,10 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
         return const AdminFinanceScreen();
       case 3:
         return const AdminExercisesScreen();
+      case 4:
+        return const AdminAuditScreen();
+      case 5:
+        return const AdminBroadcastScreen();
       default:
         return AdminDashboardScreen(
           onNavigateToUsers: () => setState(() => _currentSectionIndex = 1),
@@ -215,6 +221,20 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                   icon: Icons.fitness_center_rounded,
                   label: 'Catálogo de Exercícios',
                   badge: 'GLOBAL',
+                ),
+                const SizedBox(height: 4),
+                _buildSidebarItem(
+                  index: 4,
+                  icon: Icons.security_rounded,
+                  label: 'Auditoria & Telemetria',
+                  badge: 'LOGS',
+                ),
+                const SizedBox(height: 4),
+                _buildSidebarItem(
+                  index: 5,
+                  icon: Icons.campaign_rounded,
+                  label: 'Broadcast & Avisos',
+                  badge: 'PUSH',
                 ),
               ],
             ),
@@ -389,6 +409,24 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
               selected: _currentSectionIndex == 3,
               onTap: () {
                 setState(() => _currentSectionIndex = 3);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.security_rounded, color: Color(0xFF818CF8)),
+              title: const Text('Auditoria & Telemetria', style: TextStyle(color: Colors.white)),
+              selected: _currentSectionIndex == 4,
+              onTap: () {
+                setState(() => _currentSectionIndex = 4);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.campaign_rounded, color: Color(0xFF818CF8)),
+              title: const Text('Broadcast & Avisos', style: TextStyle(color: Colors.white)),
+              selected: _currentSectionIndex == 5,
+              onTap: () {
+                setState(() => _currentSectionIndex = 5);
                 Navigator.pop(context);
               },
             ),
