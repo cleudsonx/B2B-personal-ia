@@ -83,7 +83,7 @@ class _AuthGateState extends State<AuthGate> {
 
   Future<void> _ensureBrandDuration() async {
     final elapsedMs = _brandTimer.elapsedMilliseconds;
-    const targetBrandDurationMs = 5000;
+    const targetBrandDurationMs = 1200;
     if (elapsedMs < targetBrandDurationMs) {
       await Future.delayed(
         Duration(milliseconds: targetBrandDurationMs - elapsedMs),

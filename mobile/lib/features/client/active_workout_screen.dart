@@ -8,6 +8,7 @@ import 'student_profile_screen.dart';
 import 'client_focus_workout_screen.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/meta_components.dart';
+import '../../core/widgets/workout_triumph_modal.dart';
 import '../../core/widgets/rest_timer_sheet.dart';
 import '../../core/widgets/biomechanical_analysis_sheet.dart';
 import '../../core/widgets/exercise_media_sheet.dart';
@@ -34,7 +35,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
   String _workoutTitle = '';
-  String _workoutLocation = 'Academia completa e espaço de musculação';
+  String _workoutLocation = 'Academia completa e espaÃ§o de musculaÃ§Ã£o';
   String _trainerName = 'Carregando treinador...';
   String? _trainerPhone;
   String _trainerCref = 'CREF Ativo';
@@ -51,14 +52,14 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   Timer? _ticker;
   RealtimeChannel? _workoutRealtimeChannel;
 
-  // Variáveis reais de Gamificação (Backend)
+  // VariÃ¡veis reais de GamificaÃ§Ã£o (Backend)
   int? currentStreak;
 
-  // Exercícios da ficha ativa real do aluno (vazio = sem ficha)
+  // ExercÃ­cios da ficha ativa real do aluno (vazio = sem ficha)
   late List<ExerciseModel> _exercises;
   final bool _showExpandedExerciseCards = false;
 
-  // Cache de miniaturas de alta resolução (Padrão Hevy / Strong)
+  // Cache de miniaturas de alta resoluÃ§Ã£o (PadrÃ£o Hevy / Strong)
   final Map<String, String?> _exerciseThumbnails = {};
 
   @override
@@ -97,18 +98,23 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             ),
             callback: (payload) {
               if (!mounted) return;
-              debugPrint('[Realtime] Atualização de treino recebida para $uid: ${payload.eventType}');
-              _loadActiveWorkout();
+              debugPrint('[Realtime] AtualizaÃ§Ã£o de treino recebida para $uid: ${payload.eventType}');
+              final isWorkoutInProgress = _completedExerciseIndices.isNotEmpty;
+              if (!isWorkoutInProgress) {
+                _loadActiveWorkout();
+              }
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Row(
                     children: [
                       const Icon(Icons.bolt_rounded, color: MetaColors.emerald),
                       const SizedBox(width: 10),
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Sua ficha de treino foi atualizada pelo seu treinador!',
-                          style: TextStyle(
+                          isWorkoutInProgress
+                              ? 'Nova versÃ£o da ficha disponÃ­vel! Conclua seu treino ou recarregue.'
+                              : 'Sua ficha de treino foi atualizada pelo seu treinador!',
+                          style: const TextStyle(
                             color: MetaColors.textPrimary,
                             fontWeight: FontWeight.w700,
                             fontSize: 13,
@@ -174,14 +180,14 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       return 'assets/images/biomech_3d_chest.jpg';
     } else if (name.contains('desenvolvimento') ||
         name.contains('elevacao') ||
-        name.contains('elevação') ||
+        name.contains('elevaÃ§Ã£o') ||
         name.contains('ombro') ||
         muscle.contains('deltoid')) {
       return 'assets/images/biomech_3d_shoulders.jpg';
     } else if (name.contains('triceps') ||
-        name.contains('tríceps') ||
+        name.contains('trÃ­ceps') ||
         name.contains('biceps') ||
-        name.contains('bíceps') ||
+        name.contains('bÃ­ceps') ||
         name.contains('rosca') ||
         muscle.contains('braco') ||
         muscle.contains('braquial')) {
@@ -191,7 +197,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         name.contains('extensora') ||
         name.contains('quadr') ||
         muscle.contains('perna') ||
-        muscle.contains('glúteo') ||
+        muscle.contains('glÃºteo') ||
         muscle.contains('gluteo')) {
       return 'assets/images/biomech_3d_legs.jpg';
     } else if (name.contains('puxada') ||
@@ -206,11 +212,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
   String _getEmgForExercise(String exerciseName) {
     final lower = exerciseName.toLowerCase();
-    if (lower.contains('triceps') || lower.contains('tríceps')) {
+    if (lower.contains('triceps') || lower.contains('trÃ­ceps')) {
       return '96% EMG';
     }
     if (lower.contains('elevacao') ||
-        lower.contains('elevação') ||
+        lower.contains('elevaÃ§Ã£o') ||
         lower.contains('agachamento')) {
       return '95% EMG';
     }
@@ -281,15 +287,15 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         });
       } else if (mounted && _trainerName == 'Carregando treinador...') {
         setState(() {
-          _trainerName = 'Prof. Cleudson Cavalcante';
-          _trainerCref = 'CREF 012345-G/DF';
+          _trainerName = 'Seu Personal Trainer';
+          _trainerCref = 'CREF Ativo';
         });
       }
     } catch (_) {
       if (mounted && _trainerName == 'Carregando treinador...') {
         setState(() {
-          _trainerName = 'Prof. Cleudson Cavalcante';
-          _trainerCref = 'CREF 012345-G/DF';
+          _trainerName = 'Seu Personal Trainer';
+          _trainerCref = 'CREF Ativo';
         });
       }
     }
@@ -355,10 +361,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           initialExerciseIndex: initialIndex,
         ),
       ),
-    ).then((completed) {
-      if (completed == true && mounted) {
+    ).then((result) {
+      if (!mounted) return;
+      if (result == true) {
         _loadActiveWorkout();
-    _initRealtimeWorkoutListener();
+        _initRealtimeWorkoutListener();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             backgroundColor: MetaColors.emerald,
@@ -376,6 +383,41 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             ),
           ),
         );
+      } else if (result is Set<int> && result.isNotEmpty) {
+        setState(() {
+          _completedExerciseIndices.addAll(result);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: MetaColors.surfaceHighlight,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: MetaColors.emerald.withValues(alpha: 0.3),
+              ),
+            ),
+            content: Row(
+              children: [
+                const Icon(
+                  Icons.bookmark_added_rounded,
+                  color: MetaColors.emerald,
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Progresso salvo (${result.length} exercício(s) concluído(s))!',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
       }
     });
   }
@@ -387,7 +429,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Seu treinador ($_trainerName) ainda não cadastrou o WhatsApp profissional.',
+            'Seu treinador ($_trainerName) ainda nÃ£o cadastrou o WhatsApp profissional.',
             style: const TextStyle(color: Colors.white, fontSize: 13),
           ),
           backgroundColor: const Color(0xFF1E293B),
@@ -403,7 +445,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         ? digits
         : (digits.length >= 10 && digits.length <= 11 ? '55$digits' : digits);
     final msg = Uri.encodeComponent(
-      'Olá professor(a) $_trainerName! Sou aluno no Mr. Coach e gostaria de tirar uma dúvida sobre meu treino.',
+      'OlÃ¡ professor(a) $_trainerName! Sou aluno no Mr. Coach e gostaria de tirar uma dÃºvida sobre meu treino.',
     );
     final uri = Uri.parse('https://api.whatsapp.com/send?phone=$phone&text=$msg');
 
@@ -418,7 +460,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text(
-            'Não foi possível abrir o WhatsApp automaticamente.',
+            'NÃ£o foi possÃ­vel abrir o WhatsApp automaticamente.',
             style: TextStyle(color: Colors.white, fontSize: 13),
           ),
           backgroundColor: Colors.redAccent,
@@ -464,7 +506,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'O Mr. Coach AI encontrará uma variação biomecanicamente equivalente e notificará seu professor:',
+                  'O Mr. Coach AI encontrarÃ¡ uma variaÃ§Ã£o biomecanicamente equivalente e notificarÃ¡ seu professor:',
                   style: TextStyle(color: MetaColors.textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 20),
@@ -535,7 +577,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       {'name': 'Dor no Joelho / Patela', 'loc': 'Joelho / Patela'},
       {'name': 'Desconforto na Coluna / Lombar', 'loc': 'Coluna Lombar'},
       {'name': 'Dor no Cotovelo / Punho', 'loc': 'Cotovelo'},
-      {'name': 'Outro Desconforto Articular', 'loc': 'Articulação Geral'},
+      {'name': 'Outro Desconforto Articular', 'loc': 'ArticulaÃ§Ã£o Geral'},
     ];
 
     showModalBottomSheet(
@@ -563,7 +605,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Qual articulação apresenta desconforto?',
+                        'Qual articulaÃ§Ã£o apresenta desconforto?',
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
@@ -575,7 +617,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Exercício: ${currentExercise.name}',
+                  'ExercÃ­cio: ${currentExercise.name}',
                   style: const TextStyle(
                     color: MetaColors.textSecondary,
                     fontSize: 13,
@@ -643,8 +685,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     final target = _exercises[index];
     final restrictionsDesc =
         painLocation != null
-            ? 'Relato de $painLocation. Eliminar compressão e estresse nesta articulação mantendo o estímulo muscular.'
-            : 'Aparelho indisponível no espaço de treino presencial.';
+            ? 'Relato de $painLocation. Eliminar compressÃ£o e estresse nesta articulaÃ§Ã£o mantendo o estÃ­mulo muscular.'
+            : 'Aparelho indisponÃ­vel no espaÃ§o de treino presencial.';
 
     try {
       final AdaptationModel result = await _apiService.adaptExercise(
@@ -667,7 +709,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         );
       });
 
-      // Dispara persistência e alerta em tempo real para o professor
+      // Dispara persistÃªncia e alerta em tempo real para o professor
       await WorkoutService.logAdaptation(
         originalExercise: target.name,
         adaptedExercise: result.adaptedExercise,
@@ -681,7 +723,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           SnackBar(
             backgroundColor: MetaColors.emerald,
             content: Text(
-              'Substituído: ${result.adaptedExercise}',
+              'SubstituÃ­do: ${result.adaptedExercise}',
               style: const TextStyle(
                 color: Colors.black,
                 fontWeight: FontWeight.bold,
@@ -693,12 +735,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       }
     } catch (e) {
       if (mounted) {
-        debugPrint('Erro ao adaptar exercício: $e');
+        debugPrint('Erro ao adaptar exercÃ­cio: $e');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppColors.danger,
             content: const Text(
-              'Não foi possível adaptar este exercício. Tente novamente.',
+              'NÃ£o foi possÃ­vel adaptar este exercÃ­cio. Tente novamente.',
             ),
             action: kDebugMode
                 ? SnackBarAction(
@@ -779,7 +821,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     const Text(
                       'Quando seu professor liberar sua ficha, ela aparece aqui. '
                       'Enquanto isso, aguarde o contato dele para conversar sobre a consultoria. '
-                      'Se você está sem conexão, conecte-se e atualize.',
+                      'Se vocÃª estÃ¡ sem conexÃ£o, conecte-se e atualize.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: MetaColors.textSecondary,
@@ -802,7 +844,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     );
   }
 
-  void _finishWorkout() {
+  Future<void> _finishWorkout() async {
     final completedCount = _completedExerciseIndices.length;
     final totalCount = _exercises.length;
     final uid = AuthService.currentUser?.id;
@@ -820,208 +862,62 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             completedAt: completedAt,
           );
     final minutes = (record?.durationSeconds ?? 0) ~/ 60;
-    final messenger = ScaffoldMessenger.of(context);
-    bool saving = false;
-    String? error;
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: MetaColors.surface,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        side: BorderSide(color: MetaColors.border),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setSheet) {
-            Future<void> save() async {
-              if (record == null) {
-                setSheet(() => error = 'Sessão expirada. Faça login novamente.');
-                return;
-              }
-              setSheet(() {
-                saving = true;
-                error = null;
-              });
-              try {
-                final status = await _sessionService.complete(record);
-                // Sincroniza cargas dos exercícios concluídos com a tabela de sobrecarga
-                try {
-                  final prefs = await SharedPreferences.getInstance();
-                  for (final idx in _completedExerciseIndices) {
-                    if (idx < _exercises.length) {
-                      final ex = _exercises[idx];
-                      final weightKey = 'pwa_last_weight_${uid}_${ex.name.toLowerCase().trim()}';
-                      final lastWeight = prefs.getDouble(weightKey);
-                      if (lastWeight != null && lastWeight > 0) {
-                        await WorkoutService.recordExerciseLoad(
-                          exerciseName: ex.name,
-                          loadKg: lastWeight,
-                        );
-                      }
-                    }
-                  }
-                } catch (_) {}
+    // Calcula volume estimado com base nas cargas salvas
+    double totalVolume = 0;
+    int totalSets = 0;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      for (final idx in _completedExerciseIndices) {
+        if (idx < _exercises.length) {
+          final ex = _exercises[idx];
+          final setsCount = ex.sets;
+          final repsCount =
+              int.tryParse(ex.reps.replaceAll(RegExp(r'\D'), '')) ?? 10;
+          totalSets += setsCount;
+          final weightKey =
+              'pwa_last_weight_${uid}_${ex.name.toLowerCase().trim()}';
+          final lastWeight = prefs.getDouble(weightKey) ?? 20.0;
+          totalVolume += setsCount * repsCount * lastWeight;
+          if (uid != null && lastWeight > 0) {
+            WorkoutService.recordExerciseLoad(
+              exerciseName: ex.name,
+              loadKg: lastWeight,
+            ).catchError((_) => false);
+          }
+        }
+      }
+    } catch (_) {}
 
-                if (ctx.mounted) Navigator.pop(ctx);
-                messenger.showSnackBar(
-                  SnackBar(
-                    backgroundColor: status == SessionSaveStatus.synced
-                        ? MetaColors.emerald
-                        : const Color(0xFFF59E0B),
-                    content: Text(
-                      status == SessionSaveStatus.synced
-                          ? 'Treino registrado no diário do seu professor.'
-                          : 'Sem conexão: treino guardado no aparelho. '
-                              'Ele ainda NÃO foi enviado e será sincronizado '
-                              'quando houver internet.',
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                );
-                if (mounted) {
-                  setState(() {
-                    _completedExerciseIndices.clear();
-                    _startedAt = DateTime.now();
-                  });
-                }
-              } catch (_) {
-                setSheet(() {
-                  saving = false;
-                  error =
-                      'Não foi possível registrar o treino. Tente novamente.';
-                });
-              }
-            }
+    if (record != null) {
+      try {
+        await _sessionService.complete(record);
+      } catch (e) {
+        debugPrint('[ActiveWorkout] Erro ao salvar sessÃ£o: $e');
+      }
+    }
 
-            return SafeArea(
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Center(
-                      child: Text(
-                        'Concluir treino',
-                        style: TextStyle(
-                          color: MetaColors.textPrimary,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Center(
-                      child: Text(
-                        completedCount == 0
-                            ? 'Marque ao menos um exercício como feito para registrar o treino.'
-                            : 'Você completou $completedCount de $totalCount exercícios.',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: MetaColors.textSecondary,
-                          fontSize: 14,
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: MetaColors.surfaceHighlight,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: MetaColors.border),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          Column(
-                            children: [
-                              const Text(
-                                'TEMPO',
-                                style: TextStyle(
-                                  color: MetaColors.textSecondary,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '$minutes min',
-                                style: const TextStyle(
-                                  color: MetaColors.textPrimary,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Container(
-                              height: 36, width: 1, color: MetaColors.border),
-                          Column(
-                            children: [
-                              const Text(
-                                'EXERCÍCIOS',
-                                style: TextStyle(
-                                  color: MetaColors.textSecondary,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '$completedCount/$totalCount',
-                                style: const TextStyle(
-                                  color: MetaColors.emerald,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (error != null) ...[
-                      const SizedBox(height: 14),
-                      Text(
-                        error!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFFEF4444),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                    SquircleButton(
-                      label: saving
-                          ? 'Salvando...'
-                          : (error != null
-                              ? 'Tentar novamente'
-                              : 'Salvar e Concluir'),
-                      icon: Icons.check_circle_outline_rounded,
-                      isPrimary: true,
-                      backgroundColor: MetaColors.emerald,
-                      foregroundColor: Colors.black,
-                      height: 56,
-                      onPressed:
-                          (saving || completedCount == 0) ? null : save,
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
+    if (!mounted) return;
+
+    await WorkoutTriumphModal.show(
+      context,
+      workoutTitle:
+          _workoutTitle.isNotEmpty ? _workoutTitle : 'Treino ConcluÃ­do',
+      trainerName: _trainerName,
+      trainerPhone: _trainerPhone,
+      durationMin: minutes,
+      totalVolumeKg: totalVolume,
+      completedSets: totalSets > 0 ? totalSets : completedCount,
+      totalSets: totalSets > 0 ? totalSets : totalCount,
+      currentStreak: currentStreak,
+      newPrCount: 0,
+      onDismiss: () {
+        if (mounted) {
+          setState(() {
+            _completedExerciseIndices.clear();
+            _startedAt = DateTime.now();
+          });
+        }
       },
     );
   }
@@ -1063,7 +959,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       },
       child: Row(
         children: [
-          // 1. Miniatura Visual Interativa (Toque abre o vídeo em tela cheia)
+          // 1. Miniatura Visual Interativa (Toque abre o vÃ­deo em tela cheia)
           GestureDetector(
             onTap: () {
               HapticFeedback.selectionClick();
@@ -1113,7 +1009,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           ),
           const SizedBox(width: 12),
 
-          // 2. Informações Cinesiológicas (Nome, Séries x Reps, Descanso)
+          // 2. InformaÃ§Ãµes CinesiolÃ³gicas (Nome, SÃ©ries x Reps, Descanso)
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1170,10 +1066,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       ),
                     ),
                     const SizedBox(width: 5),
-                    const Text('•', style: TextStyle(color: MetaColors.textSecondary, fontSize: 11)),
+                    const Text('â€¢', style: TextStyle(color: MetaColors.textSecondary, fontSize: 11)),
                     const SizedBox(width: 5),
                     Text(
-                      '$setsCount séries × ${item.reps}',
+                      '$setsCount sÃ©ries Ã— ${item.reps}',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -1181,7 +1077,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       ),
                     ),
                     const SizedBox(width: 5),
-                    const Text('•', style: TextStyle(color: MetaColors.textSecondary, fontSize: 11)),
+                    const Text('â€¢', style: TextStyle(color: MetaColors.textSecondary, fontSize: 11)),
                     const SizedBox(width: 5),
                     Text(
                       '${item.restSeconds}s',
@@ -1198,7 +1094,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           ),
           const SizedBox(width: 10),
 
-          // 3. Ação Rápida de Conclusão / Ir Treinar
+          // 3. AÃ§Ã£o RÃ¡pida de ConclusÃ£o / Ir Treinar
           InkWell(
             onTap: () {
               HapticFeedback.selectionClick();
@@ -1271,7 +1167,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Top Row: Ordem, EMG pill & Checkbox gigante de conclusão
+          // 1. Top Row: Ordem, EMG pill & Checkbox gigante de conclusÃ£o
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1288,7 +1184,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       border: Border.all(color: MetaColors.border),
                     ),
                     child: Text(
-                      'EXERCÍCIO ${index + 1} DE ${_exercises.length}',
+                      'EXERCÃCIO ${index + 1} DE ${_exercises.length}',
                       style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
@@ -1321,7 +1217,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   ),
                 ],
               ),
-              // Botão circular de marcar exercício concluído
+              // BotÃ£o circular de marcar exercÃ­cio concluÃ­do
               InkWell(
                 onTap: () {
                   HapticFeedback.selectionClick();
@@ -1383,7 +1279,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           ),
           const SizedBox(height: 12),
 
-          // 2. Nome do Exercício (Texto Grande e Alto Contraste)
+          // 2. Nome do ExercÃ­cio (Texto Grande e Alto Contraste)
           Text(
             item.name,
             style: const TextStyle(
@@ -1435,7 +1331,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
           const SizedBox(height: 14),
 
-          // 3. Miniatura / Preview Biomecânico 3D interativo
+          // 3. Miniatura / Preview BiomecÃ¢nico 3D interativo
           GestureDetector(
             onTap:
                 () => BiomechanicalAnalysisSheet.show(
@@ -1499,7 +1395,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                             ),
                             SizedBox(width: 6),
                             Text(
-                              '3D Biomecânica & EMG',
+                              '3D BiomecÃ¢nica & EMG',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 11,
@@ -1554,7 +1450,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
           const SizedBox(height: 10),
 
-          // Botões de Ação Visual (Vídeo Demonstrativo + Raio-X 3D)
+          // BotÃµes de AÃ§Ã£o Visual (VÃ­deo Demonstrativo + Raio-X 3D)
           Row(
             children: [
               Expanded(
@@ -1580,7 +1476,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                         ),
                         SizedBox(width: 6),
                         Text(
-                          'Vídeo Execução',
+                          'VÃ­deo ExecuÃ§Ã£o',
                           style: TextStyle(
                             color: MetaColors.emerald,
                             fontSize: 12,
@@ -1627,17 +1523,17 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
           const SizedBox(height: 14),
 
-          // 4. Grade HUD de Telemetria (Séries, Reps, Cadência, Descanso)
+          // 4. Grade HUD de Telemetria (SÃ©ries, Reps, CadÃªncia, Descanso)
           Row(
             children: [
               Expanded(
-                child: _HudStatTile(label: 'Séries', value: '${item.sets}'),
+                child: _HudStatTile(label: 'SÃ©ries', value: '${item.sets}'),
               ),
               const SizedBox(width: 8),
               Expanded(child: _HudStatTile(label: 'Reps', value: item.reps)),
               const SizedBox(width: 8),
               const Expanded(
-                child: _HudStatTile(label: 'Cadência', value: '3-0-1-0'),
+                child: _HudStatTile(label: 'CadÃªncia', value: '3-0-1-0'),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -1656,7 +1552,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             ],
           ),
 
-          // 5. Dica de Execução (se houver)
+          // 5. Dica de ExecuÃ§Ã£o (se houver)
           if (item.notes.isNotEmpty) ...[
             const SizedBox(height: 12),
             Container(
@@ -1694,7 +1590,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
           const SizedBox(height: 14),
 
-          // 6. Botão de Pânico (Aparelho Ocupado / Dor)
+          // 6. BotÃ£o de PÃ¢nico (Aparelho Ocupado / Dor)
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
@@ -1704,7 +1600,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 color: Color(0xFFF59E0B),
               ),
               label: const Text(
-                'Substituir • Aparelho Ocupado ou Dor',
+                'Substituir â€¢ Aparelho Ocupado ou Dor',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
@@ -1753,12 +1649,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.only(
                 top: topPadding + 14,
-                bottom: bottomPadding + 140, // Espaço seguro para o OneUiFloatingNavBar nunca cobrir os cards
+                bottom: bottomPadding + 140, // EspaÃ§o seguro para o OneUiFloatingNavBar nunca cobrir os cards
                 left: 18,
                 right: 18,
               ),
               children: [
-                // 1. Topo: Treinador & Ações
+                // 1. Topo: Treinador & AÃ§Ãµes
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1917,10 +1813,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // 2. Topo: Barra de Progresso do Treino em Pílula + Indicador de Streak 🔥
+                // 2. Topo: Barra de Progresso do Treino em PÃ­lula + Indicador de Streak ðŸ”¥
                 Row(
                   children: [
-                    // Indicador de "Streak 🔥" (ofensiva)
+                    // Indicador de "Streak ðŸ”¥" (ofensiva)
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 14,
@@ -1937,12 +1833,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text('🔥', style: TextStyle(fontSize: 16)),
+                          const Text('ðŸ”¥', style: TextStyle(fontSize: 16)),
                           const SizedBox(width: 6),
                           Text(
-                            currentStreak == null ? '—' : '$currentStreak dias',
+                            currentStreak == null ? 'â€”' : '$currentStreak dias',
                             semanticsLabel: currentStreak == null
-                                ? 'Sequência indisponível'
+                                ? 'SequÃªncia indisponÃ­vel'
                                 : '$currentStreak dias',
                             style: const TextStyle(
                               fontWeight: FontWeight.w900,
@@ -1955,7 +1851,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     ),
                     const SizedBox(width: 10),
 
-                    // Barra de progresso do treino em formato de pílula
+                    // Barra de progresso do treino em formato de pÃ­lula
                     Expanded(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -2019,7 +1915,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // 3. SELETOR DE DIVISÕES (Carrossel Compacto de Pílulas - Hevy / Strong)
+                // 3. SELETOR DE DIVISÃ•ES (Carrossel Compacto de PÃ­lulas - Hevy / Strong)
                 if (_splits.length > 1) ...[
                   SizedBox(
                     height: 40,
@@ -2104,7 +2000,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   const SizedBox(height: 14),
                 ],
 
-                // 4. CARD HERO: SEU TREINO DE HOJE (Padrão Ouro das Melhores Academias)
+                // 4. CARD HERO: SEU TREINO DE HOJE (PadrÃ£o Ouro das Melhores Academias)
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
@@ -2145,7 +2041,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                               ),
                             ),
                             child: Text(
-                              'DIVISÃO ${(_splitIdentifier ?? 'A').toUpperCase()} • PROGRAMADO',
+                              'DIVISÃƒO ${(_splitIdentifier ?? 'A').toUpperCase()} â€¢ PROGRAMADO',
                               style: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w900,
@@ -2188,7 +2084,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           const Icon(Icons.fitness_center_rounded, size: 14, color: MetaColors.textSecondary),
                           const SizedBox(width: 5),
                           Text(
-                            '${_exercises.length} exercícios',
+                            '${_exercises.length} exercÃ­cios',
                             style: const TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w600,
@@ -2196,7 +2092,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Text('•', style: TextStyle(color: MetaColors.textSecondary)),
+                          const Text('â€¢', style: TextStyle(color: MetaColors.textSecondary)),
                           const SizedBox(width: 8),
                           const Icon(Icons.timer_outlined, size: 14, color: MetaColors.textSecondary),
                           const SizedBox(width: 5),
@@ -2209,7 +2105,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Text('•', style: TextStyle(color: MetaColors.textSecondary)),
+                          const Text('â€¢', style: TextStyle(color: MetaColors.textSecondary)),
                           const SizedBox(width: 8),
                           Text(
                             '${_completedExerciseIndices.length}/${_exercises.length} Feitos',
@@ -2253,14 +2149,14 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
                 const SizedBox(height: 18),
 
-                // 5. CABEÇALHO DA SEÇÃO DE EXERCÍCIOS
+                // 5. CABEÃ‡ALHO DA SEÃ‡ÃƒO DE EXERCÃCIOS
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
                       children: [
                         const Text(
-                          'EXERCÍCIOS DA SESSÃO',
+                          'EXERCÃCIOS DA SESSÃƒO',
                           style: TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w900,
@@ -2313,7 +2209,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Lista de Exercícios (Compacta por padrão, ou Expandida se selecionado)
+                // Lista de ExercÃ­cios (Compacta por padrÃ£o, ou Expandida se selecionado)
                 for (int index = 0; index < _exercises.length; index++)
                   _showExpandedExerciseCards
                       ? _buildExerciseCard(index)
@@ -2321,7 +2217,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
                 const SizedBox(height: 12),
 
-                // Botão de Concluir no Fim da Lista (Scroll Natural)
+                // BotÃ£o de Concluir no Fim da Lista (Scroll Natural)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 24),
                   child: SquircleButton(
@@ -2344,43 +2240,21 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               ],
             ),
 
-            // Botão de Finalizar Flutuante (Rodapé) - Só aparece condicionalmente quando o aluno marcou ao menos 1 exercício
+            // BotÃ£o de Finalizar Flutuante (RodapÃ©) - Flutua acima da dock bar flutuante sem colisÃ£o
             if (_completedExerciseIndices.isNotEmpty)
               Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        MetaColors.background.withValues(alpha: 0.0),
-                        MetaColors.background.withValues(alpha: 0.9),
-                        MetaColors.background,
-                      ],
-                    ),
-                  ),
-                  padding: EdgeInsets.only(
-                    left: 18,
-                    right: 18,
-                    top: 14,
-                    bottom: bottomPadding > 0 ? bottomPadding + 8 : 16,
-                  ),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: SquircleButton(
-                      label: 'Concluir Treino (${_completedExerciseIndices.length}/${_exercises.length})',
-                      icon: Icons.check_circle_rounded,
-                      isPrimary: true,
-                      backgroundColor: MetaColors.emerald,
-                      foregroundColor: Colors.black,
-                      height: 56.0,
-                      borderRadius: 18.0,
-                      onPressed: _finishWorkout,
-                    ),
-                  ),
+                left: 18,
+                right: 18,
+                bottom: bottomPadding > 0 ? bottomPadding + 76 : 84,
+                child: SquircleButton(
+                  label: 'Concluir Treino (${_completedExerciseIndices.length}/${_exercises.length})',
+                  icon: Icons.check_circle_rounded,
+                  isPrimary: true,
+                  backgroundColor: MetaColors.emerald,
+                  foregroundColor: Colors.black,
+                  height: 56.0,
+                  borderRadius: 18.0,
+                  onPressed: _finishWorkout,
                 ),
               ),
 
@@ -2415,7 +2289,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                         ),
                         SizedBox(height: 18),
                         Text(
-                          'Adaptando exercício com IA...',
+                          'Adaptando exercÃ­cio com IA...',
                           style: TextStyle(
                             fontWeight: FontWeight.w900,
                             fontSize: 15,
@@ -2424,7 +2298,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                         ),
                         SizedBox(height: 6),
                         Text(
-                          'Buscando vetor biomecânico equivalente',
+                          'Buscando vetor biomecÃ¢nico equivalente',
                           style: TextStyle(
                             fontSize: 12,
                             color: MetaColors.textSecondary,
@@ -2514,7 +2388,7 @@ class _HudStatTile extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Card Anatômico 3D com Músculo Alvo em Ação & Eletromiografia (Fallback)
+// Card AnatÃ´mico 3D com MÃºsculo Alvo em AÃ§Ã£o & Eletromiografia (Fallback)
 // ---------------------------------------------------------------------------
 class _AnatomicalMuscleCard extends StatelessWidget {
   final String exerciseName;
@@ -2529,7 +2403,7 @@ class _AnatomicalMuscleCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final lower = exerciseName.toLowerCase();
     int emg = 94;
-    String secondary = 'Deltoide Anterior & Tríceps';
+    String secondary = 'Deltoide Anterior & TrÃ­ceps';
     String stabilizers = 'Manguito Rotador & Core';
     Color glowColor = MetaColors.emerald;
 
@@ -2537,36 +2411,36 @@ class _AnatomicalMuscleCard extends StatelessWidget {
         lower.contains('peito') ||
         lower.contains('crucifixo')) {
       emg = 94;
-      secondary = 'Deltoide Anterior, Tríceps Braquial';
-      stabilizers = 'Manguito Rotador, Serrátil Anterior';
+      secondary = 'Deltoide Anterior, TrÃ­ceps Braquial';
+      stabilizers = 'Manguito Rotador, SerrÃ¡til Anterior';
       glowColor = MetaColors.emerald;
     } else if (lower.contains('desenvolvimento') ||
         lower.contains('elevacao') ||
         lower.contains('ombro')) {
       emg = 92;
-      secondary = 'Tríceps Braquial, Trapézio Superior';
+      secondary = 'TrÃ­ceps Braquial, TrapÃ©zio Superior';
       stabilizers = 'Manguito Rotador, Core Abdominal';
       glowColor = const Color(0xFFF59E0B);
     } else if (lower.contains('triceps') ||
         lower.contains('polia') ||
         lower.contains('testa')) {
       emg = 96;
-      secondary = 'Ancôneo, Extensores do Punho';
-      stabilizers = 'Deltóide Posterior, Core';
+      secondary = 'AncÃ´neo, Extensores do Punho';
+      stabilizers = 'DeltÃ³ide Posterior, Core';
       glowColor = MetaColors.accentBlue;
     } else if (lower.contains('agachamento') ||
         lower.contains('leg press') ||
         lower.contains('extensora')) {
       emg = 95;
-      secondary = 'Glúteo Máximo, Isquiotibiais';
+      secondary = 'GlÃºteo MÃ¡ximo, Isquiotibiais';
       stabilizers = 'Core Abdominal, Eretores da Espinha';
       glowColor = MetaColors.emerald;
     } else if (lower.contains('puxada') ||
         lower.contains('remada') ||
         lower.contains('costas')) {
       emg = 93;
-      secondary = 'Bíceps Braquial, Braquiorradial';
-      stabilizers = 'Trapézio Médio/Inferior, Romboides';
+      secondary = 'BÃ­ceps Braquial, Braquiorradial';
+      stabilizers = 'TrapÃ©zio MÃ©dio/Inferior, Romboides';
       glowColor = MetaColors.accentBlue;
     }
 
@@ -2607,7 +2481,7 @@ class _AnatomicalMuscleCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'BIOMECÂNICA & ATIVAÇÃO 3D',
+                        'BIOMECÃ‚NICA & ATIVAÃ‡ÃƒO 3D',
                         style: TextStyle(
                           color: glowColor,
                           fontSize: 9,
