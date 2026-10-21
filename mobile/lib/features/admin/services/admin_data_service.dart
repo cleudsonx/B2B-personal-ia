@@ -3400,6 +3400,166 @@ class AdminDataService {
     ];
   }
 
+
+  // ============================================================================
+  // MÓDULO 3.1: LTV/CAC & RUNWAY CASHFLOW FORECAST SIMULATOR
+  // ============================================================================
+
+  /// Obtém a projeção baseline de fluxo de caixa e runway de 12 meses
+  static Future<AdminRunwayForecastResult> getRunwayOverview() async {
+    try {
+      final url = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/runway-overview');
+      final resp = await http.get(url, headers: {'Content-Type': 'application/json'});
+      if (resp.statusCode == 200) {
+        final decoded = jsonDecode(resp.body) as Map<String, dynamic>;
+        return AdminRunwayForecastResult.fromJson(decoded);
+      }
+    } catch (_) {}
+
+    return _fallbackRunwayForecast(
+      initialCash: 85000.0,
+      opex: 4500.0,
+      cacSpend: 1800.0,
+      growthPct: 12.0,
+      churnPct: 2.5,
+      cac: 120.0,
+    );
+  }
+
+  /// Simula dinamicamente a projeção de fluxo de caixa e runway
+  static Future<AdminRunwayForecastResult> simulateRunwayForecast({
+    required double initialCashBalance,
+    required double monthlyFixedOpex,
+    required double monthlyCacSpend,
+    required double monthlyTrainerGrowthPct,
+    required double monthlyChurnPct,
+    double cacPerTrainer = 120.0,
+    int monthsCount = 12,
+  }) async {
+    try {
+      final url = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/simulate-runway-forecast');
+      final resp = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'initial_cash_balance': initialCashBalance,
+          'monthly_fixed_opex': monthlyFixedOpex,
+          'monthly_cac_spend': monthlyCacSpend,
+          'monthly_trainer_growth_pct': monthlyTrainerGrowthPct,
+          'monthly_churn_pct': monthlyChurnPct,
+          'cac_per_acquired_trainer': cacPerTrainer,
+          'months_to_forecast': monthsCount,
+        }),
+      );
+      if (resp.statusCode == 200) {
+        final decoded = jsonDecode(resp.body) as Map<String, dynamic>;
+        return AdminRunwayForecastResult.fromJson(decoded);
+      }
+    } catch (_) {}
+
+    return _fallbackRunwayForecast(
+      initialCash: initialCashBalance,
+      opex: monthlyFixedOpex,
+      cacSpend: monthlyCacSpend,
+      growthPct: monthlyTrainerGrowthPct,
+      churnPct: monthlyChurnPct,
+      cac: cacPerTrainer,
+      monthsCount: monthsCount,
+    );
+  }
+
+  static AdminRunwayForecastResult _fallbackRunwayForecast({
+    required double initialCash,
+    required double opex,
+    required double cacSpend,
+    required double growthPct,
+    required double churnPct,
+    required double cac,
+    int monthsCount = 12,
+  }) {
+    int trainers = 28;
+    double cash = initialCash;
+    final forecastMonths = <AdminRunwayMonthForecast>[];
+    int? breakevenMonth;
+    double firstMonthBurn = 0.0;
+
+    final avgArpu = 313.0;
+    final lifetimeMonths = churnPct > 0 ? (100.0 / churnPct) : 36.0;
+    final ltv = avgArpu * 0.95 * lifetimeMonths;
+    final ltvToCac = cac > 0 ? (ltv / cac) : 0.0;
+
+    const monthNames = [
+      'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+      'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
+    ];
+    final now = DateTime.now();
+
+    for (int i = 1; i <= monthsCount; i++) {
+      final futureDate = now.add(Duration(days: 30 * i));
+      final mLabel = 'M$i (${monthNames[(futureDate.month - 1) % 12]}/${futureDate.year.toString().substring(2)})';
+
+      final organic = (trainers * (growthPct / 100.0)).toInt();
+      final paid = cac > 0 ? (cacSpend / cac).toInt() : 0;
+      final churned = (trainers * (churnPct / 100.0)).toInt();
+      trainers = (trainers + organic + paid - churned).clamp(1, 9999);
+
+      final students = trainers * 22;
+      final mrrSubs = trainers * 115.0;
+      final mrrSplit = students * 180.0 * 0.05;
+      final revenue = mrrSubs + mrrSplit;
+
+      final cogs = (students * (0.018 + 0.052)) + (revenue * 0.025);
+      final expenses = opex + cacSpend + cogs;
+      final netCashflow = revenue - expenses;
+      cash += netCashflow;
+
+      if (i == 1) {
+        firstMonthBurn = netCashflow < 0 ? (-netCashflow) : 0.0;
+      }
+
+      if (netCashflow >= 0 && breakevenMonth == null) {
+        breakevenMonth = i;
+      }
+
+      forecastMonths.add(AdminRunwayMonthForecast(
+        monthIndex: i,
+        monthLabel: mLabel,
+        trainersCount: trainers,
+        studentsCount: students,
+        mrrSaas: mrrSubs,
+        mrrSplitGmv: mrrSplit,
+        totalRevenue: revenue,
+        totalCogs: cogs,
+        cacSpend: cacSpend,
+        fixedOpex: opex,
+        totalExpenses: expenses,
+        netCashflow: netCashflow,
+        endCashBalance: cash,
+        isProfitable: netCashflow >= 0,
+      ));
+    }
+
+    final isDefaultAlive = firstMonthBurn == 0.0 || (cash > initialCash);
+    final runwayMonths = firstMonthBurn > 0 ? (initialCash / firstMonthBurn) : 999.0;
+
+    return AdminRunwayForecastResult(
+      summary: AdminRunwaySummary(
+        initialCashBalance: initialCash,
+        finalCashBalance: cash,
+        netCashDelta: cash - initialCash,
+        runwayMonths: runwayMonths,
+        isDefaultAlive: isDefaultAlive,
+        breakevenMonth: breakevenMonth ?? 1,
+        currentNetBurnRate: firstMonthBurn,
+        ltv: ltv,
+        cac: cac,
+        ltvToCacRatio: ltvToCac,
+        status: isDefaultAlive ? 'DEFAULT_ALIVE' : (runwayMonths < 6 ? 'DEFAULT_DEAD' : 'RUNWAY_STABLE'),
+      ),
+      forecastMonths: forecastMonths,
+    );
+  }
+
 }
 
 // ============================================================================
@@ -3906,6 +4066,127 @@ class AdminBroadcastDispatchResult {
       channels: (summary['channels'] as List<dynamic>? ?? []).map((e) => e.toString()).toList(),
       targetAudience: (summary['target_audience'] ?? campaign['target_audience_label'] ?? 'all') as String,
       status: (campaign['status'] ?? 'DELIVERED') as String,
+    );
+  }
+}
+
+
+// ============================================================================
+// LTV/CAC & RUNWAY CASHFLOW FORECAST MODELS
+// ============================================================================
+
+class AdminRunwayMonthForecast {
+  final int monthIndex;
+  final String monthLabel;
+  final int trainersCount;
+  final int studentsCount;
+  final double mrrSaas;
+  final double mrrSplitGmv;
+  final double totalRevenue;
+  final double totalCogs;
+  final double cacSpend;
+  final double fixedOpex;
+  final double totalExpenses;
+  final double netCashflow;
+  final double endCashBalance;
+  final bool isProfitable;
+
+  const AdminRunwayMonthForecast({
+    required this.monthIndex,
+    required this.monthLabel,
+    required this.trainersCount,
+    required this.studentsCount,
+    required this.mrrSaas,
+    required this.mrrSplitGmv,
+    required this.totalRevenue,
+    required this.totalCogs,
+    required this.cacSpend,
+    required this.fixedOpex,
+    required this.totalExpenses,
+    required this.netCashflow,
+    required this.endCashBalance,
+    required this.isProfitable,
+  });
+
+  factory AdminRunwayMonthForecast.fromJson(Map<String, dynamic> json) {
+    return AdminRunwayMonthForecast(
+      monthIndex: (json['month_index'] as num?)?.toInt() ?? 1,
+      monthLabel: json['month_label'] as String? ?? 'M1',
+      trainersCount: (json['trainers_count'] as num?)?.toInt() ?? 0,
+      studentsCount: (json['students_count'] as num?)?.toInt() ?? 0,
+      mrrSaas: (json['mrr_saas'] as num?)?.toDouble() ?? 0.0,
+      mrrSplitGmv: (json['mrr_split_gmv'] as num?)?.toDouble() ?? 0.0,
+      totalRevenue: (json['total_revenue'] as num?)?.toDouble() ?? 0.0,
+      totalCogs: (json['total_cogs'] as num?)?.toDouble() ?? 0.0,
+      cacSpend: (json['cac_spend'] as num?)?.toDouble() ?? 0.0,
+      fixedOpex: (json['fixed_opex'] as num?)?.toDouble() ?? 0.0,
+      totalExpenses: (json['total_expenses'] as num?)?.toDouble() ?? 0.0,
+      netCashflow: (json['net_cashflow'] as num?)?.toDouble() ?? 0.0,
+      endCashBalance: (json['end_cash_balance'] as num?)?.toDouble() ?? 0.0,
+      isProfitable: json['is_profitable'] as bool? ?? true,
+    );
+  }
+}
+
+class AdminRunwaySummary {
+  final double initialCashBalance;
+  final double finalCashBalance;
+  final double netCashDelta;
+  final double runwayMonths;
+  final bool isDefaultAlive;
+  final int breakevenMonth;
+  final double currentNetBurnRate;
+  final double ltv;
+  final double cac;
+  final double ltvToCacRatio;
+  final String status;
+
+  const AdminRunwaySummary({
+    required this.initialCashBalance,
+    required this.finalCashBalance,
+    required this.netCashDelta,
+    required this.runwayMonths,
+    required this.isDefaultAlive,
+    required this.breakevenMonth,
+    required this.currentNetBurnRate,
+    required this.ltv,
+    required this.cac,
+    required this.ltvToCacRatio,
+    required this.status,
+  });
+
+  factory AdminRunwaySummary.fromJson(Map<String, dynamic> json) {
+    return AdminRunwaySummary(
+      initialCashBalance: (json['initial_cash_balance'] as num?)?.toDouble() ?? 85000.0,
+      finalCashBalance: (json['final_cash_balance'] as num?)?.toDouble() ?? 0.0,
+      netCashDelta: (json['net_cash_delta'] as num?)?.toDouble() ?? 0.0,
+      runwayMonths: (json['runway_months'] as num?)?.toDouble() ?? 999.0,
+      isDefaultAlive: json['is_default_alive'] as bool? ?? true,
+      breakevenMonth: (json['breakeven_month'] as num?)?.toInt() ?? 1,
+      currentNetBurnRate: (json['current_net_burn_rate'] as num?)?.toDouble() ?? 0.0,
+      ltv: (json['ltv'] as num?)?.toDouble() ?? 0.0,
+      cac: (json['cac'] as num?)?.toDouble() ?? 120.0,
+      ltvToCacRatio: (json['ltv_to_cac_ratio'] as num?)?.toDouble() ?? 5.4,
+      status: json['status'] as String? ?? 'DEFAULT_ALIVE',
+    );
+  }
+}
+
+class AdminRunwayForecastResult {
+  final AdminRunwaySummary summary;
+  final List<AdminRunwayMonthForecast> forecastMonths;
+
+  const AdminRunwayForecastResult({
+    required this.summary,
+    required this.forecastMonths,
+  });
+
+  factory AdminRunwayForecastResult.fromJson(Map<String, dynamic> json) {
+    return AdminRunwayForecastResult(
+      summary: AdminRunwaySummary.fromJson(json['summary'] as Map<String, dynamic>? ?? {}),
+      forecastMonths: (json['forecast_months'] as List<dynamic>? ?? [])
+          .map((e) => AdminRunwayMonthForecast.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 }

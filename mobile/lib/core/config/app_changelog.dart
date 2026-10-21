@@ -41,7 +41,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103018,
+      buildNumber: 2026103020,
       date: '20 de Outubro, 2026',
       summary:
           'Versão 1.9.0: Fechamento do Ciclo Financeiro com Webhook Asaas, Indução ao PWA (iOS/Android), Gestão Estrita de Vagas e Automação de Boas-Vindas no WhatsApp.',
@@ -115,6 +115,14 @@ class AppChangelog {
         ),
 
         // --- PARA ADMIN ---
+        ChangelogItem(
+          icon: Icons.trending_up_rounded,
+          title: 'Modelagem LTV/CAC & Forecast de Runway (12 Meses)',
+          description:
+              'Simulador dinâmico de fluxo de caixa preditivo mês a mês (M1 a M12), projeção de burn rate, saldo final, horizonte de sobrevivência Default Alive e análise de breakeven.',
+          badge: 'MISSION CONTROL',
+          targetRoles: ['admin'],
+        ),
         ChangelogItem(
           icon: Icons.campaign_rounded,
           title: 'Central de Notificações Push & WhatsApp em Massa',

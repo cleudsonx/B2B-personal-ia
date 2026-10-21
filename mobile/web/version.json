@@ -1,7 +1,7 @@
 {
   "version": "1.9.0",
-  "build": 2026103018,
-  "updated_at": "2026-10-21T20:14:20.798209Z",
+  "build": 2026103020,
+  "updated_at": "2026-10-21T21:17:00.889937Z",
   "notes": "Versão 1.9.0: Fechamento do Ciclo Financeiro com Webhook Asaas, Indução ao PWA (iOS/Android), Gestão Estrita de Vagas e Automação de Boas-Vindas no WhatsApp.",
   "changelog": {
     "student": [
@@ -49,6 +49,11 @@
       }
     ],
     "admin": [
+      {
+        "title": "Modelagem LTV/CAC & Forecast de Runway (12 Meses)",
+        "description": "Simulador dinâmico de fluxo de caixa preditivo mês a mês (M1 a M12), projeção de burn rate, saldo final, horizonte de sobrevivência Default Alive e análise de breakeven.",
+        "badge": "MISSION CONTROL"
+      },
       {
         "title": "Central de Notificações Push & WhatsApp em Massa",
         "description": "Disparo multicanal (Push, WhatsApp e In-App) com segmentação inteligente por plano, alunos inativos ou turmas lotadas, radar de alcance e telemetria de entrega.",

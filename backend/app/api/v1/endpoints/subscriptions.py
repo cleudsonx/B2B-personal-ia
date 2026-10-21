@@ -1553,3 +1553,150 @@ async def send_broadcast_campaign(req: SendBroadcastRequest):
             "target_audience": label,
         }
     }
+
+
+# ============================================================================
+# ADMIN - LTV/CAC & RUNWAY CASHFLOW FORECAST SIMULATOR
+# ============================================================================
+
+class RunwayForecastRequest(BaseModel):
+    initial_cash_balance: float = Field(default=85000.0)
+    monthly_fixed_opex: float = Field(default=4500.0)
+    monthly_cac_spend: float = Field(default=1800.0)
+    monthly_trainer_growth_pct: float = Field(default=12.0)
+    monthly_churn_pct: float = Field(default=2.5)
+    cac_per_acquired_trainer: float = Field(default=120.0)
+    months_to_forecast: int = Field(default=12)
+
+
+def _compute_runway_forecast(
+    initial_cash: float,
+    opex: float,
+    cac_spend: float,
+    growth_pct: float,
+    churn_pct: float,
+    cac: float,
+    months_count: int = 12,
+) -> Dict[str, Any]:
+    now = datetime.utcnow()
+    month_names = [
+        "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    ]
+    
+    trainers = 28
+    cash = initial_cash
+    forecast_months = []
+    breakeven_month = None
+    first_month_burn = 0.0
+
+    # LTV / CAC calculation
+    # ARPU blended: R$ 115 subs + R$ 198 GMV take-rate = R$ 313 / trainer / mo
+    avg_arpu = 313.0
+    lifetime_months = 1.0 / (churn_pct / 100.0) if churn_pct > 0 else 36.0
+    ltv = avg_arpu * 0.95 * lifetime_months  # ~95% contribution margin
+    ltv_to_cac = round(ltv / cac, 1) if cac > 0 else 0.0
+
+    for i in range(1, months_count + 1):
+        # Month name label
+        future_date = now + timedelta(days=30 * i)
+        m_label = f"M{i} ({month_names[future_date.month - 1][:3]}/{str(future_date.year)[2:]})"
+
+        # Trainers growth
+        organic_growth = int(trainers * (growth_pct / 100.0))
+        paid_acquisitions = int(cac_spend / cac) if cac > 0 else 0
+        new_trainers = max(organic_growth + paid_acquisitions, 0)
+        churned = int(trainers * (churn_pct / 100.0))
+        trainers = max(trainers + new_trainers - churned, 1)
+
+        students = trainers * 22
+        mrr_subs = trainers * 115.0
+        mrr_split = students * 180.0 * 0.05
+        revenue = mrr_subs + mrr_split
+
+        cogs_ai_wa = students * (0.018 + 0.052)
+        cogs_gateway = revenue * 0.025
+        total_cogs = cogs_ai_wa + cogs_gateway
+        expenses = opex + cac_spend + total_cogs
+        net_cashflow = revenue - expenses
+        cash += net_cashflow
+
+        if i == 1:
+            first_month_burn = abs(min(net_cashflow, 0.0))
+
+        if net_cashflow >= 0 and breakeven_month is None:
+            breakeven_month = i
+
+        forecast_months.append({
+            "month_index": i,
+            "month_label": m_label,
+            "trainers_count": trainers,
+            "students_count": students,
+            "mrr_saas": round(mrr_subs, 2),
+            "mrr_split_gmv": round(mrr_split, 2),
+            "total_revenue": round(revenue, 2),
+            "total_cogs": round(total_cogs, 2),
+            "cac_spend": round(cac_spend, 2),
+            "fixed_opex": round(opex, 2),
+            "total_expenses": round(expenses, 2),
+            "net_cashflow": round(net_cashflow, 2),
+            "end_cash_balance": round(cash, 2),
+            "is_profitable": net_cashflow >= 0,
+        })
+
+    # Runway calculation
+    if first_month_burn > 0:
+        runway_months = round(initial_cash / first_month_burn, 1)
+        status = "DEFAULT_DEAD" if runway_months < 6 else "RUNWAY_STABLE"
+    else:
+        runway_months = 999.0  # Infinite runway / Default Alive
+        status = "DEFAULT_ALIVE"
+
+    return {
+        "summary": {
+            "initial_cash_balance": round(initial_cash, 2),
+            "final_cash_balance": round(cash, 2),
+            "net_cash_delta": round(cash - initial_cash, 2),
+            "runway_months": runway_months,
+            "is_default_alive": status == "DEFAULT_ALIVE",
+            "breakeven_month": breakeven_month or 1,
+            "current_net_burn_rate": round(first_month_burn, 2),
+            "ltv": round(ltv, 2),
+            "cac": round(cac, 2),
+            "ltv_to_cac_ratio": ltv_to_cac,
+            "status": status,
+        },
+        "forecast_months": forecast_months,
+    }
+
+
+@router.get("/admin/runway-overview")
+async def get_runway_overview():
+    """
+    Retorna o cenário baseline de fluxo de caixa e runway de 12 meses.
+    """
+    return _compute_runway_forecast(
+        initial_cash=85000.0,
+        opex=4500.0,
+        cac_spend=1800.0,
+        growth_pct=12.0,
+        churn_pct=2.5,
+        cac=120.0,
+        months_count=12,
+    )
+
+
+@router.post("/admin/simulate-runway-forecast")
+async def simulate_runway_forecast(req: RunwayForecastRequest):
+    """
+    Simula dinamicamente a projeção de fluxo de caixa e runway variando OPEX, CAC, crescimento e churn.
+    """
+    return _compute_runway_forecast(
+        initial_cash=req.initial_cash_balance,
+        opex=req.monthly_fixed_opex,
+        cac_spend=req.monthly_cac_spend,
+        growth_pct=req.monthly_trainer_growth_pct,
+        churn_pct=req.monthly_churn_pct,
+        cac=req.cac_per_acquired_trainer,
+        months_count=req.months_to_forecast,
+    )
