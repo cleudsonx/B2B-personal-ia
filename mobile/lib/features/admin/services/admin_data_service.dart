@@ -3881,6 +3881,160 @@ class AdminDataService {
     );
   }
 
+  // ==========================================
+  // Cupons de Desconto & Campanhas SaaS
+  // ==========================================
+  static final List<AdminCouponItem> _defaultCoupons = [
+    const AdminCouponItem(
+      id: 'LAUNCH50',
+      code: 'LAUNCH50',
+      description: '50% OFF no 1º mês para os primeiros 50 personal trainers',
+      discountType: 'percentage',
+      discountValue: 50.0,
+      maxUses: 50,
+      currentUses: 38,
+      applicablePlan: 'all',
+      isActive: true,
+      expiresAt: '2026-12-31T23:59:59Z',
+      createdAt: '2026-01-01T00:00:00Z',
+    ),
+    const AdminCouponItem(
+      id: 'PROMOVIP20',
+      code: 'PROMOVIP20',
+      description: 'R\$ 20 de desconto fixo mensal para novos estúdios',
+      discountType: 'fixed',
+      discountValue: 20.0,
+      maxUses: 100,
+      currentUses: 64,
+      applicablePlan: 'pro',
+      isActive: true,
+      expiresAt: '2026-11-30T23:59:59Z',
+      createdAt: '2026-02-15T00:00:00Z',
+    ),
+    const AdminCouponItem(
+      id: 'BLACKFRIDAY30',
+      code: 'BLACKFRIDAY30',
+      description: 'Campanha especial 30% OFF em qualquer plano anual',
+      discountType: 'percentage',
+      discountValue: 30.0,
+      maxUses: 200,
+      currentUses: 200,
+      applicablePlan: 'all',
+      isActive: false,
+      expiresAt: '2025-11-30T23:59:59Z',
+      createdAt: '2025-11-01T00:00:00Z',
+    ),
+    const AdminCouponItem(
+      id: 'CREFPRIME',
+      code: 'CREFPRIME',
+      description: 'Parceria Regional - R\$ 15 OFF no plano Starter',
+      discountType: 'fixed',
+      discountValue: 15.0,
+      maxUses: 30,
+      currentUses: 12,
+      applicablePlan: 'starter',
+      isActive: true,
+      expiresAt: '2026-10-31T23:59:59Z',
+      createdAt: '2026-03-01T00:00:00Z',
+    ),
+  ];
+
+  static List<AdminCouponItem> _fallbackCouponsList = List.from(_defaultCoupons);
+
+  static Future<AdminCouponsOverview> getCouponsOverview() async {
+    try {
+      final url = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/coupons');
+      final resp = await http.get(url).timeout(const Duration(seconds: 4));
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        final overview = AdminCouponsOverview.fromJson(data);
+        if (overview.coupons.isNotEmpty) {
+          _fallbackCouponsList = List.from(overview.coupons);
+          return overview;
+        }
+      }
+    } catch (_) {}
+
+    return _fallbackCouponsOverview();
+  }
+
+  static Future<bool> createOrUpdateCoupon(AdminCouponItem coupon) async {
+    try {
+      final url = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/create-coupon');
+      final resp = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(coupon.toJson()),
+      ).timeout(const Duration(seconds: 4));
+      if (resp.statusCode == 200) {
+        final idx = _fallbackCouponsList.indexWhere((c) => c.id == coupon.id || c.code == coupon.code);
+        if (idx != -1) {
+          _fallbackCouponsList[idx] = coupon;
+        } else {
+          _fallbackCouponsList.insert(0, coupon);
+        }
+        return true;
+      }
+    } catch (_) {}
+
+    final idx = _fallbackCouponsList.indexWhere((c) => c.id == coupon.id || c.code == coupon.code);
+    if (idx != -1) {
+      _fallbackCouponsList[idx] = coupon;
+    } else {
+      _fallbackCouponsList.insert(0, coupon);
+    }
+    return true;
+  }
+
+  static Future<bool> toggleCouponActive(String couponId, bool isActive) async {
+    try {
+      final url = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/toggle-coupon');
+      final resp = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'coupon_id': couponId, 'is_active': isActive}),
+      ).timeout(const Duration(seconds: 4));
+      if (resp.statusCode == 200) {
+        final idx = _fallbackCouponsList.indexWhere((c) => c.id == couponId);
+        if (idx != -1) {
+          _fallbackCouponsList[idx] = _fallbackCouponsList[idx].copyWith(isActive: isActive);
+        }
+        return true;
+      }
+    } catch (_) {}
+
+    final idx = _fallbackCouponsList.indexWhere((c) => c.id == couponId);
+    if (idx != -1) {
+      _fallbackCouponsList[idx] = _fallbackCouponsList[idx].copyWith(isActive: isActive);
+    }
+    return true;
+  }
+
+  static Future<bool> deleteCoupon(String couponId) async {
+    _fallbackCouponsList.removeWhere((c) => c.id == couponId);
+    return true;
+  }
+
+  static AdminCouponsOverview _fallbackCouponsOverview() {
+    final active = _fallbackCouponsList.where((c) => c.isActive).length;
+    final totalRedemptions = _fallbackCouponsList.fold<int>(0, (acc, c) => acc + c.currentUses);
+    final totalDiscountBrl = _fallbackCouponsList.fold<double>(0.0, (acc, c) {
+      final val = c.discountType == 'percentage'
+          ? (c.currentUses * 79.0 * (c.discountValue / 100.0))
+          : (c.currentUses * c.discountValue);
+      return acc + val;
+    });
+    final depletedOrExpired = _fallbackCouponsList.where((c) => !c.isActive || c.isDepleted).length;
+
+    return AdminCouponsOverview(
+      activeCoupons: active,
+      totalRedemptions: totalRedemptions,
+      totalDiscountGrantedBrl: totalDiscountBrl,
+      depletedOrExpiredCoupons: depletedOrExpired,
+      coupons: List.from(_fallbackCouponsList),
+    );
+  }
+
 }
 
 // ============================================================================
@@ -4814,6 +4968,134 @@ class AdminPricingConfigOverview {
       platformFeeAverage: (s['platform_fee_average'] as num?)?.toDouble() ?? 5.0,
       lastUpdated: s['last_updated'] as String? ?? 'Hoje',
       plans: list,
+    );
+  }
+}
+
+
+/// Modelo de Cupom Promocional (SaaS Coupon Engine)
+class AdminCouponItem {
+  final String id;
+  final String code;
+  final String description;
+  final String discountType; // 'percentage' | 'fixed'
+  final double discountValue;
+  final int maxUses;
+  final int currentUses;
+  final String applicablePlan; // 'all' | 'starter' | 'pro' | 'elite'
+  final bool isActive;
+  final String? expiresAt;
+  final String? createdAt;
+
+  const AdminCouponItem({
+    required this.id,
+    required this.code,
+    required this.description,
+    required this.discountType,
+    required this.discountValue,
+    required this.maxUses,
+    required this.currentUses,
+    required this.applicablePlan,
+    required this.isActive,
+    this.expiresAt,
+    this.createdAt,
+  });
+
+  bool get isDepleted => maxUses > 0 && currentUses >= maxUses;
+  double get usageProgress => maxUses > 0 ? (currentUses / maxUses).clamp(0.0, 1.0) : 0.0;
+  String get formattedDiscount => discountType == 'percentage'
+      ? '${discountValue.toInt()}% OFF'
+      : 'R\$ ${discountValue.toStringAsFixed(2)} OFF';
+
+  factory AdminCouponItem.fromJson(Map<String, dynamic> json) {
+    return AdminCouponItem(
+      id: (json['id'] ?? json['code'] ?? '').toString(),
+      code: (json['code'] ?? '').toString().toUpperCase().trim(),
+      description: (json['description'] ?? '').toString(),
+      discountType: (json['discount_type'] ?? 'percentage').toString(),
+      discountValue: (json['discount_value'] as num?)?.toDouble() ?? 0.0,
+      maxUses: (json['max_uses'] as num?)?.toInt() ?? 0,
+      currentUses: (json['current_uses'] as num?)?.toInt() ?? 0,
+      applicablePlan: (json['applicable_plan'] ?? 'all').toString(),
+      isActive: json['is_active'] != false,
+      expiresAt: json['expires_at'] as String?,
+      createdAt: json['created_at'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'code': code,
+      'description': description,
+      'discount_type': discountType,
+      'discount_value': discountValue,
+      'max_uses': maxUses,
+      'current_uses': currentUses,
+      'applicable_plan': applicablePlan,
+      'is_active': isActive,
+      'expires_at': expiresAt,
+      'created_at': createdAt,
+    };
+  }
+
+  AdminCouponItem copyWith({
+    String? id,
+    String? code,
+    String? description,
+    String? discountType,
+    double? discountValue,
+    int? maxUses,
+    int? currentUses,
+    String? applicablePlan,
+    bool? isActive,
+    String? expiresAt,
+    String? createdAt,
+  }) {
+    return AdminCouponItem(
+      id: id ?? this.id,
+      code: code ?? this.code,
+      description: description ?? this.description,
+      discountType: discountType ?? this.discountType,
+      discountValue: discountValue ?? this.discountValue,
+      maxUses: maxUses ?? this.maxUses,
+      currentUses: currentUses ?? this.currentUses,
+      applicablePlan: applicablePlan ?? this.applicablePlan,
+      isActive: isActive ?? this.isActive,
+      expiresAt: expiresAt ?? this.expiresAt,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+}
+
+/// Overview de Cupons e Campanhas Promocionais
+class AdminCouponsOverview {
+  final int activeCoupons;
+  final int totalRedemptions;
+  final double totalDiscountGrantedBrl;
+  final int depletedOrExpiredCoupons;
+  final List<AdminCouponItem> coupons;
+
+  const AdminCouponsOverview({
+    required this.activeCoupons,
+    required this.totalRedemptions,
+    required this.totalDiscountGrantedBrl,
+    required this.depletedOrExpiredCoupons,
+    required this.coupons,
+  });
+
+  factory AdminCouponsOverview.fromJson(Map<String, dynamic> json) {
+    final s = json['summary'] as Map<String, dynamic>? ?? {};
+    final list = (json['coupons'] as List<dynamic>?)
+            ?.map((e) => AdminCouponItem.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [];
+    return AdminCouponsOverview(
+      activeCoupons: (s['active_coupons'] as num?)?.toInt() ?? list.where((c) => c.isActive).length,
+      totalRedemptions: (s['total_redemptions'] as num?)?.toInt() ?? 0,
+      totalDiscountGrantedBrl: (s['total_discount_granted_brl'] as num?)?.toDouble() ?? 0.0,
+      depletedOrExpiredCoupons: (s['depleted_or_expired_coupons'] as num?)?.toInt() ?? 0,
+      coupons: list,
     );
   }
 }

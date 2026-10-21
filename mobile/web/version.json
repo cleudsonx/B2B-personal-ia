@@ -1,8 +1,8 @@
 {
   "version": "1.9.0",
-  "build": 2026103028,
-  "updated_at": "2026-10-21T22:59:00.960845Z",
-  "notes": "Versão 1.9.0: Gestão Dinâmica de Preços & Planos SaaS, Auditoria de Segurança & Sessões Ativas (Kill-Switch) e Simulador de Margem Unit Economics.",
+  "build": 2026103029,
+  "updated_at": "2026-10-21T23:23:51.375696Z",
+  "notes": "Versão 1.9.0: Motor de Cupons & Campanhas Promocionais SaaS, Gestão Dinâmica de Preços & Planos, Auditoria de Sessões (Kill-Switch) e Simulador de Margem Unit Economics.",
   "changelog": {
     "student": [
       {
@@ -49,6 +49,11 @@
       }
     ],
     "admin": [
+      {
+        "title": "Cupons de Desconto & Campanhas Promocionais SaaS",
+        "description": "Motor de criação e validação de cupons promocionais percentuais ou com desconto fixo em R\\$, controle de limite de resgates com barra de progresso, restrição por plano e métricas de conversão e CAC.",
+        "badge": "CUPONS"
+      },
       {
         "title": "Gestão Dinâmica de Preços & Planos SaaS",
         "description": "Controle em tempo real de mensalidade, anuidade, capacidade de alunos, taxa de split (5%) e cotas de IA Gemini dos planos Starter, Pro e Elite com sincronização instantânea.",

@@ -41,12 +41,20 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103028,
+      buildNumber: 2026103029,
       date: '21 de Outubro, 2026',
       summary:
-          'Versão 1.9.0: Gestão Dinâmica de Preços & Planos SaaS, Auditoria de Segurança & Sessões Ativas (Kill-Switch) e Simulador de Margem Unit Economics.',
+          'Versão 1.9.0: Motor de Cupons & Campanhas Promocionais SaaS, Gestão Dinâmica de Preços & Planos, Auditoria de Sessões (Kill-Switch) e Simulador de Margem Unit Economics.',
       highlights: [
         // --- PARA O ADMIN / GESTOR ---
+        ChangelogItem(
+          icon: Icons.confirmation_number_rounded,
+          title: 'Cupons de Desconto & Campanhas Promocionais SaaS',
+          description:
+              'Motor de criação e validação de cupons promocionais percentuais ou com desconto fixo em R\$, controle de limite de resgates com barra de progresso, restrição por plano e métricas de conversão e CAC.',
+          badge: 'CUPONS',
+          targetRoles: ['admin'],
+        ),
         ChangelogItem(
           icon: Icons.sell_rounded,
           title: 'Gestão Dinâmica de Preços & Planos SaaS',

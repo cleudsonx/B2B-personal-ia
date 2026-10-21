@@ -2038,3 +2038,193 @@ async def reset_default_pricing_endpoint():
         "plans": ADMIN_PRICING_PLANS,
         "message": "Planos e preços restaurados para os valores padrão.",
     }
+
+
+# ==========================================
+# MOTOR DE CUPONS & CAMPANHAS PROMOCIONAIS
+# ==========================================
+
+class CreateCouponRequest(BaseModel):
+    id: Optional[str] = None
+    code: str
+    discount_type: str = "percent"  # "percent" or "fixed"
+    discount_value: float
+    applicable_tiers: List[str] = ["starter", "pro", "elite"]
+    max_uses: int = 100
+    valid_until: Optional[str] = None
+    is_active: bool = True
+    first_month_only: bool = True
+
+
+class ToggleCouponRequest(BaseModel):
+    coupon_id: str
+    is_active: bool
+
+
+class ValidateCouponRequest(BaseModel):
+    code: str
+    plan_id: str
+    base_price: float
+
+
+ADMIN_COUPONS = [
+    {
+        "id": "cpn-bemvindo50",
+        "code": "BEMVINDO50",
+        "discount_type": "percent",
+        "discount_value": 50.0,
+        "applicable_tiers": ["starter", "pro", "elite"],
+        "max_uses": 100,
+        "times_used": 28,
+        "valid_until": "2026-12-31",
+        "is_active": True,
+        "first_month_only": True,
+        "created_at": "2026-10-01",
+    },
+    {
+        "id": "cpn-start2026",
+        "code": "START2026",
+        "discount_type": "fixed",
+        "discount_value": 30.0,
+        "applicable_tiers": ["pro", "elite"],
+        "max_uses": 50,
+        "times_used": 19,
+        "valid_until": "2026-11-30",
+        "is_active": True,
+        "first_month_only": True,
+        "created_at": "2026-10-10",
+    },
+    {
+        "id": "cpn-vipblack",
+        "code": "VIPBLACK",
+        "discount_type": "percent",
+        "discount_value": 35.0,
+        "applicable_tiers": ["elite"],
+        "max_uses": 20,
+        "times_used": 20,
+        "valid_until": "2026-10-15",
+        "is_active": False,
+        "first_month_only": False,
+        "created_at": "2026-09-15",
+    },
+]
+
+
+@router.get("/admin/coupons")
+async def get_admin_coupons():
+    """
+    Retorna panorama de cupons de desconto, campanhas ativas e total de resgates.
+    """
+    active = [c for c in ADMIN_COUPONS if c.get("is_active")]
+    total_redemptions = sum(c.get("times_used", 0) for c in ADMIN_COUPONS)
+    total_discount = sum(
+        (c.get("times_used", 0) * (c.get("discount_value", 0) if c.get("discount_type") == "fixed" else (89.0 * c.get("discount_value", 0) / 100.0)))
+        for c in ADMIN_COUPONS
+    )
+
+    return {
+        "summary": {
+            "active_coupons_count": len(active),
+            "total_redemptions": total_redemptions,
+            "total_discount_amount": round(total_discount, 2),
+            "last_updated": datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC"),
+        },
+        "coupons": ADMIN_COUPONS,
+    }
+
+
+@router.post("/admin/create-coupon")
+async def create_coupon_endpoint(req: CreateCouponRequest):
+    """
+    Cria ou atualiza um cupom de desconto promocional.
+    """
+    code_norm = req.code.strip().upper()
+    existing = next((c for c in ADMIN_COUPONS if c["code"] == code_norm or (req.id and c["id"] == req.id)), None)
+
+    if existing:
+        existing.update({
+            "code": code_norm,
+            "discount_type": req.discount_type,
+            "discount_value": req.discount_value,
+            "applicable_tiers": req.applicable_tiers,
+            "max_uses": req.max_uses,
+            "valid_until": req.valid_until,
+            "is_active": req.is_active,
+            "first_month_only": req.first_month_only,
+        })
+        target_coupon = existing
+    else:
+        new_id = f"cpn-{code_norm.lower()}-{int(time.time())}"
+        target_coupon = {
+            "id": req.id or new_id,
+            "code": code_norm,
+            "discount_type": req.discount_type,
+            "discount_value": req.discount_value,
+            "applicable_tiers": req.applicable_tiers,
+            "max_uses": req.max_uses,
+            "times_used": 0,
+            "valid_until": req.valid_until,
+            "is_active": req.is_active,
+            "first_month_only": req.first_month_only,
+            "created_at": datetime.utcnow().strftime("%Y-%m-%d"),
+        }
+        ADMIN_COUPONS.append(target_coupon)
+
+    logger.info(f"[CouponEngine] Cupom '{code_norm}' salvo ({req.discount_type}: {req.discount_value}).")
+    return {
+        "success": True,
+        "coupon": target_coupon,
+        "message": f"Cupom '{code_norm}' configurado com sucesso!",
+    }
+
+
+@router.post("/admin/toggle-coupon")
+async def toggle_coupon_endpoint(req: ToggleCouponRequest):
+    """
+    Ativa ou desativa um cupom promocional.
+    """
+    c = next((item for item in ADMIN_COUPONS if item["id"] == req.coupon_id), None)
+    if not c:
+        raise HTTPException(status_code=404, detail="Cupom não encontrado.")
+    c["is_active"] = req.is_active
+    return {
+        "success": True,
+        "coupon_id": req.coupon_id,
+        "is_active": req.is_active,
+        "message": f"Cupom '{c['code']}' {'ativado' if req.is_active else 'desativado'}.",
+    }
+
+
+@router.post("/validate-coupon")
+async def validate_coupon_endpoint(req: ValidateCouponRequest):
+    """
+    Valida um cupom durante o checkout e calcula o valor do desconto.
+    """
+    code_norm = req.code.strip().upper()
+    c = next((item for item in ADMIN_COUPONS if item["code"] == code_norm), None)
+    if not c or not c.get("is_active"):
+        raise HTTPException(status_code=400, detail="Cupom inválido ou expirado.")
+
+    if c.get("times_used", 0) >= c.get("max_uses", 999999):
+        raise HTTPException(status_code=400, detail="Este cupom atingiu o limite máximo de utilizações.")
+
+    if req.plan_id.lower() not in [t.lower() for t in c.get("applicable_tiers", [])]:
+        raise HTTPException(status_code=400, detail=f"Este cupom não é aplicável ao plano selecionado.")
+
+    base = req.base_price
+    if c.get("discount_type") == "percent":
+        discount = base * (c.get("discount_value", 0) / 100.0)
+    else:
+        discount = min(base, c.get("discount_value", 0))
+
+    final_price = max(0.0, base - discount)
+    return {
+        "valid": True,
+        "code": code_norm,
+        "discount_type": c.get("discount_type"),
+        "discount_value": c.get("discount_value"),
+        "discount_amount": round(discount, 2),
+        "final_price": round(final_price, 2),
+        "first_month_only": c.get("first_month_only", True),
+        "message": f"Desconto de R$ {discount:.2f} aplicado!",
+    }
