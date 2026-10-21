@@ -14,6 +14,8 @@ import '../../core/widgets/rest_timer_sheet.dart';
 import '../../core/widgets/biomechanical_analysis_sheet.dart';
 import '../../core/widgets/exercise_media_sheet.dart';
 import '../../core/widgets/broadcast_banner.dart';
+import '../../core/widgets/offline_sync_banner.dart';
+import '../../services/offline_sync_service.dart';
 import '../../core/widgets/student_notification_sheet.dart';
 import '../../core/widgets/student_trigger_banner.dart';
 import '../../services/student_notification_service.dart';
@@ -77,12 +79,14 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     _loadActiveWorkout();
     _initRealtimeWorkoutListener();
     StudentNotificationService.instance.refreshNotifications();
+    OfflineSyncService.instance.initAutoSync();
   }
 
   @override
   void dispose() {
     _workoutRealtimeChannel?.unsubscribe();
     _ticker?.cancel();
+    OfflineSyncService.instance.dispose();
     super.dispose();
   }
 
@@ -1663,6 +1667,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               children: [
                 const BroadcastBanner(
                   audience: 'students',
+                  padding: EdgeInsets.only(bottom: 12),
+                ),
+                const OfflineSyncBanner(
                   padding: EdgeInsets.only(bottom: 12),
                 ),
                 StudentTriggerBanner(

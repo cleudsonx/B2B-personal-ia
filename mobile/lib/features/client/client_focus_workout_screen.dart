@@ -14,6 +14,8 @@ import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
 import '../../services/workout_session_service.dart';
+import '../../services/offline_sync_service.dart';
+import '../../core/widgets/offline_sync_banner.dart';
 
 /// Modo de Treino Focado no SalÃ£o (Focus Mode)
 ///
@@ -263,6 +265,33 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
     } else {
       HapticFeedback.lightImpact();
     }
+
+    final uid = AuthService.currentUser?.id;
+    if (uid != null) {
+      _saveDraftDebounced(uid);
+    }
+  }
+
+  void _saveDraftDebounced(String uid) {
+    try {
+      final draftSets = <String, dynamic>{};
+      _exerciseSets.forEach((k, v) {
+        draftSets[k.toString()] = v
+            .map((s) => {
+                  'weightKg': s.weightKg,
+                  'reps': s.reps,
+                  'isCompleted': s.isCompleted,
+                })
+            .toList();
+      });
+      OfflineSyncService.instance.saveWorkoutDraft(uid, {
+        'splitIdentifier': widget.splitIdentifier,
+        'splitName': widget.splitName,
+        'startedAt': _startedAt.toIso8601String(),
+        'currentPage': _currentPage,
+        'exerciseSets': draftSets,
+      });
+    } catch (_) {}
   }
 
   void _startRestTimer(int durationSeconds) {
@@ -694,9 +723,13 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
           startedAt: _startedAt,
           completedAt: DateTime.now(),
         );
-        await _sessionService.complete(record);
+        final status = await _sessionService.complete(record);
+        await OfflineSyncService.instance.clearWorkoutDraft(uid);
+        if (status == SessionSaveStatus.pendingSync) {
+          await OfflineSyncService.instance.refreshPendingCount(uid);
+        }
       } catch (e) {
-        debugPrint('Aviso ao salvar sessÃ£o: $e');
+        debugPrint('Aviso ao salvar sessão: $e');
       }
     }
 
@@ -888,12 +921,22 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
 
     if (action == 'save_exit' && mounted) {
       await _saveWeights();
+      final uid = AuthService.currentUser?.id;
+      if (uid != null) {
+        await OfflineSyncService.instance.clearWorkoutDraft(uid);
+      }
       final completedIndices = _getCompletedExerciseIndices();
       if (mounted) {
         Navigator.pop(context, completedIndices);
       }
     } else if (action == 'discard' && mounted) {
-      Navigator.pop(context, null);
+      final uid = AuthService.currentUser?.id;
+      if (uid != null) {
+        await OfflineSyncService.instance.clearWorkoutDraft(uid);
+      }
+      if (mounted) {
+        Navigator.pop(context, null);
+      }
     }
   }
 
@@ -1099,6 +1142,9 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                             ),
                           );
                         }),
+                      ),
+                      const OfflineSyncBanner(
+                        padding: EdgeInsets.only(top: 10),
                       ),
                     ],
                   ),
