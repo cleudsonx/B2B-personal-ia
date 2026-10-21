@@ -6,12 +6,14 @@ class AdminDashboardScreen extends StatefulWidget {
   final VoidCallback onNavigateToUsers;
   final VoidCallback? onNavigateToFinance;
   final VoidCallback? onNavigateToExercises;
+  final VoidCallback? onNavigateToRetention;
 
   const AdminDashboardScreen({
     super.key,
     required this.onNavigateToUsers,
     this.onNavigateToFinance,
     this.onNavigateToExercises,
+    this.onNavigateToRetention,
   });
 
   @override
@@ -355,6 +357,63 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap: widget.onNavigateToRetention,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: cardBg,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: borderColor),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: MetaColors.emerald.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.radar_rounded,
+                                color: MetaColors.emerald,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Radar de Retenção & Alunos 360°',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Score de Churn, assiduidade de check-ins e alunos parados.',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.chevron_right_rounded,
+                              color: MetaColors.emerald,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
