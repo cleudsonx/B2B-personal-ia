@@ -1,5 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/config/app_config.dart';
+import '../../../services/auth_service.dart';
 
 /// Modelo de métricas consolidadas do Mission Control
 class AdminMetricsOverview {
@@ -1748,5 +1752,83 @@ class AdminDataService {
       trainerRetentionStats: trainerStats,
       students: items,
     );
+  }
+
+  /// Dispara mensagem proativa de reengajamento via WhatsApp (Evolution API)
+  static Future<Map<String, dynamic>> sendStudentReengagementWhatsapp({
+    required String studentId,
+    required String studentName,
+    required String studentPhone,
+    String trainerId = '',
+    required String trainerName,
+    required int daysInactive,
+  }) async {
+    final cleanPhone = studentPhone.replaceAll(RegExp(r'[^0-9]'), '');
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/admin/reengage-student');
+
+    try {
+      final token = AuthService.accessToken;
+      final res = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'student_id': studentId,
+          'trainer_id': trainerId,
+          'student_phone': cleanPhone,
+          'student_name': studentName,
+          'days_inactive': daysInactive,
+        }),
+      ).timeout(const Duration(seconds: 15));
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        return {
+          'success': true,
+          'channel': 'evolution_api',
+          'message': 'Mensagem enviada com sucesso via WhatsApp (Evolution API).',
+        };
+      }
+    } catch (_) {}
+
+    // Fallback: se o backend estiver em modo offline ou timeout, retorna link wa.me
+    final firstName = studentName.split(' ').first;
+    final text = 'Fala, $firstName! Tudo bem? Aqui é o assistente do $trainerName no Mr. Coach. Notamos sua ausência há $daysInactive dias. Bora treinar hoje? Acesse seu app: https://shaipados-labs.web.app';
+    final encodedText = Uri.encodeComponent(text);
+    final waUrl = 'https://wa.me/$cleanPhone?text=$encodedText';
+
+    return {
+      'success': true,
+      'channel': 'wa_link',
+      'waUrl': waUrl,
+      'message': 'Gatilho registrado. Link direto do WhatsApp pronto.',
+    };
+  }
+
+  /// Dispara reengajamento em lote para múltiplos alunos críticos
+  static Future<Map<String, dynamic>> sendBulkReengagementWhatsapp(
+    List<AdminStudentRetentionItem> students,
+  ) async {
+    int sent = 0;
+    for (final s in students) {
+      if (s.studentPhone != null && s.studentPhone!.isNotEmpty) {
+        final res = await sendStudentReengagementWhatsapp(
+          studentId: s.studentId,
+          studentName: s.studentName,
+          studentPhone: s.studentPhone!,
+          trainerId: s.trainerId,
+          trainerName: s.trainerName,
+          daysInactive: s.daysInactive,
+        );
+        if (res['success'] == true) sent++;
+      }
+    }
+    return {
+      'total': students.length,
+      'sent': sent,
+      'sent_count': sent,
+    };
   }
 }

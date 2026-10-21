@@ -5,7 +5,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.api.deps import get_current_trainer
+from app.api.deps import get_current_trainer, get_current_user
 from app.services.whatsapp_service import instance_name_for, whatsapp_service
 from app.services.supabase_service import supabase_service
 
@@ -485,4 +485,89 @@ async def send_weekly_digest(
         "sent_via_evolution": res.get("status") == "sent",
         "trainer_phone": res.get("phone") or target_phone,
         "digest_message": digest_message,
+    }
+
+
+class AdminReengageStudentRequest(BaseModel):
+    student_id: str
+    trainer_id: Optional[str] = None
+    student_phone: Optional[str] = None
+    student_name: Optional[str] = None
+    days_inactive: Optional[int] = 4
+    custom_message: Optional[str] = None
+
+
+@router.post("/admin/reengage-student")
+async def admin_reengage_student(
+    req: AdminReengageStudentRequest,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Disparo de reengajamento via WhatsApp (Evolution API) pelo Mission Control Admin.
+    Envia notificação personalizada ao aluno inativo através da instância do treinador ou da plataforma.
+    """
+    profile = user.get("profile") or {}
+    roles = profile.get("roles") or [profile.get("role")]
+    if not (profile.get("is_admin") is True or "admin" in roles or "trainer" in roles):
+        raise HTTPException(status_code=403, detail="Acesso restrito ao Painel Administrativo.")
+
+    client = await supabase_service.get_client()
+    student_name = req.student_name
+    student_phone = req.student_phone
+    trainer_id = req.trainer_id
+    trainer_name = "Seu Treinador"
+
+    if client and (not student_name or not student_phone or not trainer_id):
+        try:
+            st = await client.table("profiles").select("full_name, name, phone, whatsapp, trainer_id").eq("id", req.student_id).maybe_single().execute()
+            if st and st.data:
+                student_name = student_name or st.data.get("full_name") or st.data.get("name") or "Aluno"
+                student_phone = student_phone or st.data.get("phone") or st.data.get("whatsapp")
+                trainer_id = trainer_id or st.data.get("trainer_id")
+        except Exception as e:
+            logger.warning("[WhatsApp Admin] Erro ao buscar dados do aluno: %s", e)
+
+    if client and trainer_id:
+        try:
+            tr = await client.table("profiles").select("full_name, name").eq("id", trainer_id).maybe_single().execute()
+            if tr and tr.data:
+                trainer_name = tr.data.get("full_name") or tr.data.get("name") or "Seu Treinador"
+        except Exception:
+            pass
+
+    if not student_phone:
+        raise HTTPException(status_code=400, detail="Aluno sem número de telefone cadastrado para disparo de WhatsApp.")
+
+    days_inactive = req.days_inactive or 4
+    res = await whatsapp_service.notify_inactivity_checkin(
+        trainer_id=trainer_id or "admin",
+        student_name=student_name or "Aluno",
+        student_phone=student_phone,
+        days_inactive=days_inactive,
+        trainer_name=trainer_name,
+    )
+
+    if client:
+        try:
+            await supabase_service.log_whatsapp_interaction(
+                trainer_id=trainer_id or "platform",
+                student_id=req.student_id,
+                student_name=student_name or "Aluno",
+                student_phone=student_phone,
+                channel="whatsapp_admin_radar",
+                message_in=f"[Disparo Admin Reengajamento >{days_inactive}d ausente]",
+                message_out=res.get("message_text") or "Mensagem de reengajamento enviada",
+                cost_type="free",
+                tokens_used=0,
+            )
+            await supabase_service.mark_student_contacted(req.student_id)
+        except Exception:
+            pass
+
+    return {
+        "status": "success",
+        "student_id": req.student_id,
+        "student_name": student_name,
+        "phone": student_phone,
+        "provider_result": res,
     }

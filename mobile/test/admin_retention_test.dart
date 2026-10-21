@@ -35,6 +35,29 @@ void main() {
       expect(criticalStudent.churnScore, greaterThanOrEqualTo(0));
       expect(criticalStudent.riskReason, isNotEmpty);
     });
+
+    test('sendStudentReengagementWhatsapp returns success status or fallback', () async {
+      final res = await AdminDataService.sendStudentReengagementWhatsapp(
+        studentId: 'student_1',
+        studentName: 'Lucas Albuquerque',
+        studentPhone: '+55 11 98765-4321',
+        trainerName: 'Rodrigo Faro',
+        daysInactive: 14,
+      );
+
+      expect(res, isA<Map<String, dynamic>>());
+      expect(res.containsKey('success'), isTrue);
+      expect(res.containsKey('message'), isTrue);
+    });
+
+    test('sendBulkReengagementWhatsapp processes list of students', () async {
+      final overview = await AdminDataService.getRetentionOverview();
+      final sample = overview.students.take(2).toList();
+      final res = await AdminDataService.sendBulkReengagementWhatsapp(sample);
+
+      expect(res['total'], sample.length);
+      expect(res['sent_count'], greaterThanOrEqualTo(0));
+    });
   });
 
   group('AdminRetentionScreen Widget Tests', () {
@@ -108,6 +131,62 @@ void main() {
         await tester.tap(find.text('Enviar Alerta ao Treinador Responsável'));
         await tester.pumpAndSettle();
       }
+    });
+
+    testWidgets('triggers single student whatsapp reengagement from details modal', (tester) async {
+      tester.view.physicalSize = const Size(1200, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AdminRetentionScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final studentCard = find.text('Lucas Albuquerque');
+      if (studentCard.evaluate().isNotEmpty) {
+        await tester.tap(studentCard);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Disparar WhatsApp de Reengajamento'), findsOneWidget);
+        await tester.tap(find.text('Disparar WhatsApp de Reengajamento'));
+        await tester.pumpAndSettle();
+      }
+    });
+
+    testWidgets('bulk reengagement button appears when critical students exist and can trigger confirm dialog', (tester) async {
+      tester.view.physicalSize = const Size(1200, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AdminRetentionScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final bulkBtn = find.byKey(const Key('admin_retention_bulk_reengage_btn'));
+      expect(bulkBtn, findsOneWidget);
+
+      await tester.tap(bulkBtn);
+      await tester.pumpAndSettle();
+
+      // Confirma que abriu o AlertDialog
+      expect(find.text('Disparo em Massa (WhatsApp)'), findsOneWidget);
+      expect(find.text('Disparar Agora'), findsOneWidget);
+
+      // Toca em cancelar para fechar
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
     });
   });
 }

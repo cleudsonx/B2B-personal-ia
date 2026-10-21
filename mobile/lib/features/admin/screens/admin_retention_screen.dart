@@ -259,14 +259,33 @@ class _AdminRetentionScreenState extends State<AdminRetentionScreen> {
                       backgroundColor: const Color(0xFF1F2937),
                       foregroundColor: Colors.white,
                       isPrimary: false,
-                      onPressed: () {
+                      onPressed: () async {
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            backgroundColor: MetaColors.emerald,
-                            content: Text(
-                              '✓ Gatilho de mensagem enviado para a fila do WhatsApp (Evolution API).',
+                        if (student.studentPhone == null || student.studentPhone!.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              backgroundColor: Colors.redAccent,
+                              content: Text('Aluno sem telefone cadastrado.'),
                             ),
+                          );
+                          return;
+                        }
+
+                        final res = await AdminDataService.sendStudentReengagementWhatsapp(
+                          studentId: student.studentId,
+                          studentName: student.studentName,
+                          studentPhone: student.studentPhone!,
+                          trainerId: student.trainerId,
+                          trainerName: student.trainerName,
+                          daysInactive: student.daysInactive,
+                        );
+
+                        if (!mounted) return;
+                        final msg = res['message']?.toString() ?? 'Mensagem enviada com sucesso.';
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: MetaColors.emerald,
+                            content: Text('✓ $msg'),
                           ),
                         );
                       },
@@ -278,6 +297,96 @@ class _AdminRetentionScreenState extends State<AdminRetentionScreen> {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _handleBulkReengagement() async {
+    final criticalStudents = _overview.students
+        .where((s) => s.churnRisk == StudentChurnRisk.critical)
+        .toList();
+
+    if (criticalStudents.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Color(0xFFEF4444),
+          content: Text('Nenhum aluno em risco crítico encontrado para reengajar.'),
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0F172A),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF334155)),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.bolt_rounded, color: Color(0xFFEF4444)),
+            SizedBox(width: 8),
+            Text(
+              'Disparo em Massa (WhatsApp)',
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Text(
+          'Deseja disparar mensagens automáticas de reengajamento via WhatsApp (Evolution API) para os ${criticalStudents.length} alunos em risco crítico de evasão?',
+          style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Disparar Agora', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: const Color(0xFF1E293B),
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            Text('Disparando reengajamento para ${criticalStudents.length} alunos...'),
+          ],
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    final result = await AdminDataService.sendBulkReengagementWhatsapp(criticalStudents);
+
+    if (!mounted) return;
+
+    final sent = result['sent_count'] ?? 0;
+    final total = result['total'] ?? criticalStudents.length;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: MetaColors.emerald,
+        content: Text('✓ Reengajamento concluído: $sent de $total disparos realizados com sucesso.'),
+      ),
     );
   }
 
@@ -698,15 +807,33 @@ class _AdminRetentionScreenState extends State<AdminRetentionScreen> {
                             children: [
                               const Icon(Icons.radar_rounded, color: Color(0xFF818CF8), size: 20),
                               const SizedBox(width: 8),
-                              Text(
-                                'RADAR 360° DE ALUNOS & PREDIÇÃO DE EVASÃO',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.8,
-                                  color: textSecondary,
+                              Expanded(
+                                child: Text(
+                                  'RADAR 360° DE ALUNOS & PREDIÇÃO DE EVASÃO',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.8,
+                                    color: textSecondary,
+                                  ),
                                 ),
                               ),
+                              if (_overview.criticalRiskCount > 0)
+                                TextButton.icon(
+                                  key: const Key('admin_retention_bulk_reengage_btn'),
+                                  onPressed: _handleBulkReengagement,
+                                  style: TextButton.styleFrom(
+                                    backgroundColor: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                                    foregroundColor: const Color(0xFFEF4444),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                  icon: const Icon(Icons.bolt_rounded, size: 16),
+                                  label: Text(
+                                    'Reengajar Críticos (${_overview.criticalRiskCount})',
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
                             ],
                           ),
                           const SizedBox(height: 16),
