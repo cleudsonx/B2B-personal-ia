@@ -305,6 +305,15 @@ class AuthService {
     return rolesSet.toList();
   }
 
+  static bool isCurrentUserAdminSync() {
+    final user = currentUser;
+    if (user == null) return false;
+    if (user.userMetadata?['is_admin'] == true || user.userMetadata?['role'] == 'admin') return true;
+    if (_cachedProfile?['is_admin'] == true) return true;
+    final roles = availableRoles(_cachedProfile);
+    return roles.contains('admin');
+  }
+
   static Future<bool> isCurrentUserAdmin() async {
     try {
       final profile = await getCurrentProfile();

@@ -11,6 +11,7 @@ import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
 import '../../services/subscription_service.dart';
 import '../subscription/subscription_screen.dart';
+import '../auth/auth_gate.dart';
 import 'anamnesis_screen.dart';
 import 'presentation/screens/trainer_profile_setup_screen.dart';
 
@@ -1481,6 +1482,48 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                   ),
                                 )
                               else
+                                if (AuthService.isCurrentUserAdminSync()) ...[
+                                  InkWell(
+                                    onTap: () async {
+                                      await AuthService.setActiveRole('admin');
+                                      if (!context.mounted) return;
+                                      Navigator.pushAndRemoveUntil(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => const AuthGate(skipBiometric: true),
+                                        ),
+                                        (_) => false,
+                                      );
+                                    },
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: const Color(0xFF6366F1).withValues(alpha: 0.4),
+                                        ),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.shield_rounded, size: 14, color: Color(0xFF818CF8)),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            'Admin',
+                                            style: TextStyle(
+                                              color: Color(0xFF818CF8),
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                ],
                                 IconButton(
                                   icon: const Icon(
                                     Icons.refresh_rounded,
@@ -1494,6 +1537,22 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                               OneUiPopoverMenuButton(
                                 showBadgeDot: true,
                                 items: [
+                                  if (AuthService.isCurrentUserAdminSync())
+                                    OneUiPopoverItem(
+                                      label: 'Painel Admin (Mission Control)',
+                                      icon: Icons.shield_rounded,
+                                      onTap: () async {
+                                        await AuthService.setActiveRole('admin');
+                                        if (!context.mounted) return;
+                                        Navigator.pushAndRemoveUntil(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const AuthGate(skipBiometric: true),
+                                          ),
+                                          (_) => false,
+                                        );
+                                      },
+                                    ),
                                   OneUiPopoverItem(
                                     label: 'Novidades da versão',
                                     icon: Icons.new_releases_outlined,

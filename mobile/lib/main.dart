@@ -663,6 +663,46 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     ),
                   ),
 
+                  // Quick Admin Pill in Desktop Sidebar for SuperAdmins
+                  if (AuthService.isCurrentUserAdminSync())
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      child: InkWell(
+                        onTap: () => _switchRole('admin'),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFF6366F1).withValues(alpha: 0.4),
+                            ),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.shield_rounded, size: 18, color: Color(0xFF818CF8)),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Painel Admin (God Mode)',
+                                  style: TextStyle(
+                                    color: Color(0xFF818CF8),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              Icon(Icons.arrow_forward_rounded, size: 14, color: Color(0xFF818CF8)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
                   // Bottom User Profile & Logout
                   Container(
                     padding: const EdgeInsets.all(12),
