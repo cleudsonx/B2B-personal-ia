@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/widgets/meta_components.dart';
 import '../services/admin_data_service.dart';
+import '../widgets/admin_finance_export_modal.dart';
 
 /// Módulo 3: Faturamento, Split & GMV (Take-rate 5% da Plataforma)
 class AdminFinanceScreen extends StatefulWidget {
@@ -232,16 +233,33 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
                       ),
                     ],
                   ),
-                  OutlinedButton.icon(
-                    onPressed: _loadTransactions,
-                    icon: const Icon(Icons.refresh_rounded, size: 16, color: Color(0xFF818CF8)),
-                    label: const Text('Atualizar', style: TextStyle(color: Color(0xFF818CF8), fontSize: 13)),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF1F2937)),
-                      backgroundColor: const Color(0xFF111827),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
+                  Row(
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () => AdminFinanceExportModal.show(context, _transactions),
+                        icon: const Icon(Icons.download_rounded, size: 16),
+                        label: const Text('Exportar Relatório', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: MetaColors.emerald,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          elevation: 0,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      OutlinedButton.icon(
+                        onPressed: _loadTransactions,
+                        icon: const Icon(Icons.refresh_rounded, size: 16, color: Color(0xFF818CF8)),
+                        label: const Text('Atualizar', style: TextStyle(color: Color(0xFF818CF8), fontSize: 13)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF1F2937)),
+                          backgroundColor: const Color(0xFF111827),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

@@ -519,7 +519,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
       {'name': 'Lombar / Coluna', 'icon': Icons.airline_seat_recline_normal_rounded},
       {'name': 'Joelho', 'icon': Icons.directions_walk_rounded},
       {'name': 'Cotovelo', 'icon': Icons.front_hand_rounded},
-      {'name': 'Punho / MÃ£o', 'icon': Icons.pan_tool_rounded},
+      {'name': 'Punho / Mão', 'icon': Icons.pan_tool_rounded},
       {'name': 'Quadril', 'icon': Icons.accessibility_rounded},
     ];
 
@@ -543,7 +543,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Onde vocÃª estÃ¡ sentindo dor?',
+                        'Onde você está sentindo dor?',
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
@@ -555,7 +555,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'A IA do Mr. Coach substituirÃ¡ "${currentEx.name}" por uma alternativa que alivia a articulaÃ§Ã£o afetada e alertarÃ¡ ${widget.trainerName}.',
+                  'A IA do Mr. Coach substituirá "${currentEx.name}" por uma alternativa que alivia a articulação afetada e alertará ${widget.trainerName}.',
                   style: const TextStyle(
                     color: MetaColors.textSecondary,
                     fontSize: 12.5,
@@ -965,7 +965,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                           Column(
                             children: [
                               Text(
-                                '${widget.splitIdentifier} Â· EXERCÃCIO ${_currentPage + 1}/$totalEx',
+                                '${widget.splitIdentifier} · EXERCÍCIO ${_currentPage + 1}/$totalEx',
                                 style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w900,
@@ -1573,7 +1573,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                   size: 18,
                 ),
                 label: const Text(
-                  'Aparelho Ocupado? Sugerir VariaÃ§Ã£o com IA',
+                  'Aparelho Ocupado? Sugerir Variação com IA',
                   style: TextStyle(
                     color: Color(0xFFF59E0B),
                     fontWeight: FontWeight.w900,
@@ -1642,7 +1642,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
               SizedBox(
                 width: 36,
                 child: Text(
-                  'SÃ‰RIE',
+                  'SÉRIE',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
@@ -1896,7 +1896,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                   color: MetaColors.emerald,
                 ),
                 label: const Text(
-                  'Adicionar SÃ©rie',
+                  'Adicionar Série',
                   style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w800,
@@ -1924,7 +1924,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                     color: MetaColors.textSecondary,
                   ),
                   label: const Text(
-                    'Remover Ãšltima',
+                    'Remover Última',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
@@ -1948,4 +1948,3 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
     );
   }
 }
-
