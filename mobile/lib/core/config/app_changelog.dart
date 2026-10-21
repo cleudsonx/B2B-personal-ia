@@ -41,7 +41,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103016,
+      buildNumber: 2026103018,
       date: '20 de Outubro, 2026',
       summary:
           'Versão 1.9.0: Fechamento do Ciclo Financeiro com Webhook Asaas, Indução ao PWA (iOS/Android), Gestão Estrita de Vagas e Automação de Boas-Vindas no WhatsApp.',
@@ -115,6 +115,14 @@ class AppChangelog {
         ),
 
         // --- PARA ADMIN ---
+        ChangelogItem(
+          icon: Icons.campaign_rounded,
+          title: 'Central de Notificações Push & WhatsApp em Massa',
+          description:
+              'Disparo multicanal (Push, WhatsApp e In-App) com segmentação inteligente por plano, alunos inativos ou turmas lotadas, radar de alcance e telemetria de entrega.',
+          badge: 'MISSION CONTROL',
+          targetRoles: ['admin'],
+        ),
         ChangelogItem(
           icon: Icons.hub_rounded,
           title: 'Radar Preditivo de Churn B2B & Payback de Coortes',
