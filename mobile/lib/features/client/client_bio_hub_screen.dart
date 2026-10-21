@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/split_photo_slider.dart';
+import '../../core/widgets/student_weekly_checkin_sheet.dart';
 import '../../services/auth_service.dart';
 import '../../services/body_metrics_service.dart';
 import '../../services/evolution_photo_service.dart';
@@ -1539,6 +1540,10 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
         _buildAnamnesisEvolutionSection(),
         const SizedBox(height: 24),
 
+        // Bloco 1.2: Check-in Semanal com Foto & Peso
+        _buildWeeklyCheckinCard(),
+        const SizedBox(height: 24),
+
         // Bloco 1.5: Medidas Corporais & Antropometria (Bio-Hub 2.0)
         _buildBodyMetricsSection(),
         const SizedBox(height: 24),
@@ -2221,6 +2226,148 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
           _buildAnamnesisTimelineList(),
         ],
       ],
+    );
+  }
+
+  Widget _buildWeeklyCheckinCard() {
+    final latest = _metricsHistory.isNotEmpty ? _metricsHistory.first : null;
+    final daysSince = latest != null ? DateTime.now().difference(latest.measuredAt).inDays : null;
+    final isPending = daysSince == null || daysSince >= 7;
+
+    return MetaCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: (isPending ? Colors.amber : MetaColors.emerald).withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        isPending ? Icons.scale_rounded : Icons.verified_rounded,
+                        color: isPending ? Colors.amber : MetaColors.emerald,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Check-in Semanal',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            isPending ? 'Pesagem & Foto Pendente' : 'Check-in Realizado',
+                            style: TextStyle(
+                              color: isPending ? Colors.amber : MetaColors.emerald,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: (isPending ? Colors.amber : MetaColors.emerald).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: (isPending ? Colors.amber : MetaColors.emerald).withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Text(
+                  isPending ? 'PENDENTE' : 'EM DIA',
+                  style: TextStyle(
+                    color: isPending ? Colors.amber : MetaColors.emerald,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            isPending
+                ? (daysSince != null
+                    ? 'Faz $daysSince dias desde sua última pesagem. Faça seu check-in semanal para atualizar seu peso e fotos para o treinador.'
+                    : 'Registre sua primeira pesagem e foto confidencial de evolução para calibrar as metas com seu personal.')
+                : 'Seu check-in foi realizado há $daysSince ${daysSince == 1 ? "dia" : "dias"}. Próximo check-in recomendado em ${7 - daysSince} dias.',
+            style: const TextStyle(
+              color: MetaColors.textSecondary,
+              fontSize: 12.5,
+              height: 1.4,
+            ),
+          ),
+          if (latest != null && latest.weightKg != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: MetaColors.surfaceHighlight,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.monitor_weight_outlined, size: 16, color: MetaColors.emerald),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Último peso: ${latest.weightKg!.toStringAsFixed(1)} kg',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '(${latest.measuredAt.day.toString().padLeft(2, '0')}/${latest.measuredAt.month.toString().padLeft(2, '0')})',
+                    style: const TextStyle(
+                      color: MetaColors.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          SquircleButton(
+            label: isPending ? 'Fazer Check-in Semanal (Peso & Foto)' : 'Atualizar Check-in Semanal',
+            icon: Icons.assignment_turned_in_rounded,
+            isPrimary: isPending,
+            onPressed: () {
+              StudentWeeklyCheckinSheet.show(
+                context,
+                previousWeightKg: latest?.weightKg,
+                onCheckinCompleted: () {
+                  _loadBodyMetrics();
+                  _loadEvolutionPhotos();
+                },
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 

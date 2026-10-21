@@ -52,6 +52,12 @@ class StudentTriggerBanner extends StatelessWidget {
             tintColor = const Color(0xFF10B981);
             icon = Icons.chat_bubble_outline_rounded;
             break;
+          case NotificationType.weeklyCheckin:
+            tintColor = active.severity == NotificationSeverity.urgent
+                ? const Color(0xFFEF4444)
+                : const Color(0xFFF59E0B);
+            icon = Icons.scale_rounded;
+            break;
           case NotificationType.system:
             tintColor = const Color(0xFF64748B);
             icon = Icons.info_outline_rounded;

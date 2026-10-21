@@ -9,6 +9,7 @@ enum NotificationType {
   hydration,
   workoutPlan,
   trainerMessage,
+  weeklyCheckin,
   system,
 }
 
@@ -145,7 +146,11 @@ class StudentNotificationService {
       final workoutItem = await _checkWorkoutRoutineTrigger(studentId);
       if (workoutItem != null) items.add(workoutItem);
 
-      // D. Notificações do sistema salvas localmente
+      // D. Gatilho de Check-in Semanal (>7 dias sem pesagem)
+      final checkinItem = await _checkWeeklyCheckinTrigger(studentId);
+      if (checkinItem != null) items.add(checkinItem);
+
+      // E. Notificações do sistema salvas localmente
       final localItems = await _loadSavedNotifications(studentId);
       for (final loc in localItems) {
         if (!items.any((e) => e.id == loc.id)) {
@@ -433,6 +438,77 @@ class StudentNotificationService {
   // ===========================================================================
   // GERENCIAMENTO DE ESTADO E PERSISTÊNCIA
   // ===========================================================================
+
+  /// Avalia lembrete de check-in semanal (>7 dias sem pesagem ou sem histórico).
+  Future<StudentNotificationItem?> _checkWeeklyCheckinTrigger(String studentId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final todayStr = _dateKey(DateTime.now());
+    final notifId = 'weekly_checkin_${studentId}_$todayStr';
+
+    if (prefs.getBool('$_dismissedPrefix$notifId') == true) return null;
+    final isRead = prefs.getBool('$_readPrefix$notifId') ?? false;
+
+    DateTime? lastCheckinTime;
+    try {
+      final res = await Supabase.instance.client
+          .from('body_metrics')
+          .select('measured_at, created_at')
+          .eq('client_id', studentId)
+          .order('measured_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (res != null) {
+        final dateStr = (res['measured_at'] ?? res['created_at']) as String?;
+        if (dateStr != null) {
+          lastCheckinTime = DateTime.tryParse(dateStr);
+        }
+      }
+    } catch (_) {}
+
+    // Fallback para cache local se offline
+    if (lastCheckinTime == null) {
+      final cachedStr = prefs.getString('b2b_last_body_metric_date_$studentId');
+      if (cachedStr != null) {
+        lastCheckinTime = DateTime.tryParse(cachedStr);
+      }
+    }
+
+    final now = DateTime.now();
+    if (lastCheckinTime != null) {
+      final diffDays = now.difference(lastCheckinTime).inDays;
+      if (diffDays >= 7) {
+        return StudentNotificationItem(
+          id: notifId,
+          title: '⚖️ Check-in Semanal Pendente ($diffDays dias)',
+          message:
+              'Faz $diffDays dias desde sua última pesagem. Faça seu check-in semanal no Bio Hub para registrar seu peso e foto!',
+          type: NotificationType.weeklyCheckin,
+          severity: diffDays >= 10 ? NotificationSeverity.urgent : NotificationSeverity.warning,
+          timestamp: lastCheckinTime,
+          isRead: isRead,
+          actionLabel: 'Fazer Check-in',
+          actionRoute: '/bio-hub',
+        );
+      }
+    } else {
+      // Aluno sem pesagem registrada
+      return StudentNotificationItem(
+        id: notifId,
+        title: '⚖️ Faça seu primeiro Check-in Semanal',
+        message:
+            'Registre seu peso inicial e foto de evolução no Bio Hub para calibrar suas metas com o treinador.',
+        type: NotificationType.weeklyCheckin,
+        severity: NotificationSeverity.info,
+        timestamp: now,
+        isRead: isRead,
+        actionLabel: 'Iniciar Check-in',
+        actionRoute: '/bio-hub',
+      );
+    }
+
+    return null;
+  }
 
   /// Marca uma notificação como lida.
   Future<void> markAsRead(String id) async {
