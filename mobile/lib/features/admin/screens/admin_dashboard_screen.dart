@@ -4,10 +4,14 @@ import '../services/admin_data_service.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   final VoidCallback onNavigateToUsers;
+  final VoidCallback? onNavigateToFinance;
+  final VoidCallback? onNavigateToExercises;
 
   const AdminDashboardScreen({
     super.key,
     required this.onNavigateToUsers,
+    this.onNavigateToFinance,
+    this.onNavigateToExercises,
   });
 
   @override
@@ -152,6 +156,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               borderColor: borderColor,
                               textPrimary: textPrimary,
                               textSecondary: textSecondary,
+                              onTap: widget.onNavigateToFinance,
                             ),
                             _buildKpiCard(
                               title: 'TAKE-RATE PLATAFORMA',
@@ -164,6 +169,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               borderColor: borderColor,
                               textPrimary: textPrimary,
                               textSecondary: textSecondary,
+                              onTap: widget.onNavigateToFinance,
                             ),
                             _buildKpiCard(
                               title: 'BASE DE PERSONALS',

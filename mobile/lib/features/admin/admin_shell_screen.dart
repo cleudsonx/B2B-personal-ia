@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../core/widgets/meta_components.dart';
 import 'screens/admin_dashboard_screen.dart';
 import 'screens/admin_users_screen.dart';
+import 'screens/admin_finance_screen.dart';
+import 'screens/admin_exercises_screen.dart';
 
 class AdminShellScreen extends StatefulWidget {
   final VoidCallback onExitAdmin;
@@ -84,6 +86,16 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                   selectedIcon: Icon(Icons.people_alt_rounded, color: Color(0xFF818CF8)),
                   label: 'Usuários',
                 ),
+                NavigationDestination(
+                  icon: Icon(Icons.account_balance_wallet_outlined, color: Colors.grey),
+                  selectedIcon: Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF818CF8)),
+                  label: 'Financeiro',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.fitness_center_outlined, color: Colors.grey),
+                  selectedIcon: Icon(Icons.fitness_center_rounded, color: Color(0xFF818CF8)),
+                  label: 'Exercícios',
+                ),
               ],
             ),
     );
@@ -94,12 +106,20 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
       case 0:
         return AdminDashboardScreen(
           onNavigateToUsers: () => setState(() => _currentSectionIndex = 1),
+          onNavigateToFinance: () => setState(() => _currentSectionIndex = 2),
+          onNavigateToExercises: () => setState(() => _currentSectionIndex = 3),
         );
       case 1:
         return const AdminUsersScreen();
+      case 2:
+        return const AdminFinanceScreen();
+      case 3:
+        return const AdminExercisesScreen();
       default:
         return AdminDashboardScreen(
           onNavigateToUsers: () => setState(() => _currentSectionIndex = 1),
+          onNavigateToFinance: () => setState(() => _currentSectionIndex = 2),
+          onNavigateToExercises: () => setState(() => _currentSectionIndex = 3),
         );
     }
   }
@@ -181,6 +201,20 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                   index: 1,
                   icon: Icons.people_alt_rounded,
                   label: 'Usuários & Personals',
+                ),
+                const SizedBox(height: 4),
+                _buildSidebarItem(
+                  index: 2,
+                  icon: Icons.account_balance_wallet_rounded,
+                  label: 'Financeiro & Splits',
+                  badge: '5% TAKE',
+                ),
+                const SizedBox(height: 4),
+                _buildSidebarItem(
+                  index: 3,
+                  icon: Icons.fitness_center_rounded,
+                  label: 'Catálogo de Exercícios',
+                  badge: 'GLOBAL',
                 ),
               ],
             ),
@@ -337,6 +371,24 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
               selected: _currentSectionIndex == 1,
               onTap: () {
                 setState(() => _currentSectionIndex = 1);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF818CF8)),
+              title: const Text('Financeiro & Splits', style: TextStyle(color: Colors.white)),
+              selected: _currentSectionIndex == 2,
+              onTap: () {
+                setState(() => _currentSectionIndex = 2);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.fitness_center_rounded, color: Color(0xFF818CF8)),
+              title: const Text('Catálogo de Exercícios', style: TextStyle(color: Colors.white)),
+              selected: _currentSectionIndex == 3,
+              onTap: () {
+                setState(() => _currentSectionIndex = 3);
                 Navigator.pop(context);
               },
             ),
