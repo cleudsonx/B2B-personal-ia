@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/widgets/meta_components.dart';
+import '../../core/widgets/app_version_footer.dart';
 import 'screens/admin_dashboard_screen.dart';
 import 'screens/admin_users_screen.dart';
 import 'screens/admin_finance_screen.dart';
@@ -24,6 +25,16 @@ class AdminShellScreen extends StatefulWidget {
 
 class _AdminShellScreenState extends State<AdminShellScreen> {
   int _currentSectionIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        AppVersionFooter.checkAndShowAutoModal(context, roleOverride: 'admin');
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -316,6 +327,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
+                const AppVersionFooter(userRole: 'admin', padding: EdgeInsets.only(bottom: 8)),
                 OutlinedButton.icon(
                   onPressed: widget.onExitAdmin,
                   icon: const Icon(Icons.arrow_back_rounded, size: 16, color: Color(0xFF818CF8)),
@@ -494,6 +506,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
               },
             ),
             const Spacer(),
+            const AppVersionFooter(userRole: 'admin', padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
             ListTile(
               leading: const Icon(Icons.exit_to_app_rounded, color: Colors.redAccent),
               title: const Text('Voltar ao App', style: TextStyle(color: Colors.redAccent)),

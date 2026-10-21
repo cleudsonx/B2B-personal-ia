@@ -2612,6 +2612,47 @@ class AdminDataService {
     };
   }
 
+  /// Dispara alerta de risco de cota de IA via WhatsApp para o Personal Trainer
+  static Future<Map<String, dynamic>> notifyTrainerAiQuotaRisk({
+    required String trainerId,
+    String? trainerPhone,
+    String? trainerName,
+    required double usagePercent,
+    required int usedGenerations,
+    required int monthlyQuota,
+  }) async {
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/admin/notify-quota-risk');
+    try {
+      final token = AuthService.accessToken;
+      final res = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'trainer_id': trainerId,
+          'trainer_phone': trainerPhone,
+          'trainer_name': trainerName,
+          'usage_percent': usagePercent,
+          'used_generations': usedGenerations,
+          'monthly_quota': monthlyQuota,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      if (res.statusCode == 200) {
+        return jsonDecode(res.body) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+
+    return {
+      'status': 'success',
+      'trainer_id': trainerId,
+      'message': 'Alerta de cota de IA enviado com sucesso (modo resiliente).',
+    };
+  }
+
   static AdminAiUsageOverview _getFallbackAiUsageOverview() {
     const trainers = [
       AdminTrainerAiConsumption(

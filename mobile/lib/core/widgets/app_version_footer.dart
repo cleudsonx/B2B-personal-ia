@@ -31,7 +31,10 @@ class AppVersionFooter extends StatelessWidget {
 
   /// Verifica se o usuário já viu as novidades desta versão. Se for a primeira vez
   /// de uma nova versão semântica, exibe o modal automaticamente após o carregamento da tela.
-  static Future<void> checkAndShowAutoModal(BuildContext context) async {
+  static Future<void> checkAndShowAutoModal(
+    BuildContext context, {
+    String? roleOverride,
+  }) async {
     if (!enableAutoModal || _isCheckingOrShowing || _hasAutoShown) return;
     _isCheckingOrShowing = true;
     try {
@@ -50,7 +53,7 @@ class AppVersionFooter extends StatelessWidget {
         if (context.mounted) {
           Future.delayed(const Duration(milliseconds: 1000), () {
             if (context.mounted) {
-              showReleaseNotesModal(context);
+              showReleaseNotesModal(context, roleOverride: roleOverride);
             }
           });
         }
@@ -188,6 +191,7 @@ class _ReleaseNotesModalContent extends StatefulWidget {
 
 class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
   bool _showPreviousReleases = false;
+  String _selectedFilter = 'all';
   late String _currentRole;
 
   static String _normalizeRole(String? role) {
@@ -590,6 +594,73 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
                 ],
               ),
               const SizedBox(height: 14),
+              // Chips interativos de filtragem por perfil
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  ChoiceChip(
+                    label: const Text('Visão Completa'),
+                    selected: _selectedFilter == 'all',
+                    onSelected: (_) => setState(() => _selectedFilter = 'all'),
+                    selectedColor: MetaColors.emerald,
+                    labelStyle: TextStyle(
+                      color: _selectedFilter == 'all' ? Colors.white : subtextColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    backgroundColor: MetaColors.surfaceHighlight,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    side: BorderSide.none,
+                  ),
+                  if (studentItems.isNotEmpty)
+                    ChoiceChip(
+                      label: const Text('Para Alunos'),
+                      selected: _selectedFilter == 'student',
+                      onSelected: (_) => setState(() => _selectedFilter == 'student'),
+                      selectedColor: const Color(0xFFF59E0B),
+                      labelStyle: TextStyle(
+                        color: _selectedFilter == 'student' ? Colors.white : subtextColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      backgroundColor: MetaColors.surfaceHighlight,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      side: BorderSide.none,
+                    ),
+                  if (trainerItems.isNotEmpty && (isTrainer || isAdmin))
+                    ChoiceChip(
+                      label: const Text('Para Personal'),
+                      selected: _selectedFilter == 'trainer',
+                      onSelected: (_) => setState(() => _selectedFilter == 'trainer'),
+                      selectedColor: MetaColors.emerald,
+                      labelStyle: TextStyle(
+                        color: _selectedFilter == 'trainer' ? Colors.white : subtextColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      backgroundColor: MetaColors.surfaceHighlight,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      side: BorderSide.none,
+                    ),
+                  if (adminItems.isNotEmpty && isAdmin)
+                    ChoiceChip(
+                      label: const Text('Para Admin'),
+                      selected: _selectedFilter == 'admin',
+                      onSelected: (_) => setState(() => _selectedFilter == 'admin'),
+                      selectedColor: MetaColors.accentBlue,
+                      labelStyle: TextStyle(
+                        color: _selectedFilter == 'admin' ? Colors.white : subtextColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      backgroundColor: MetaColors.surfaceHighlight,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      side: BorderSide.none,
+                    ),
+                ],
+              ),
+              const SizedBox(height: 14),
               // Renderização segmentada e inteligente por perfil
               Builder(
                 builder: (context) {
@@ -597,7 +668,7 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // 1. ADMIN: Vê Sistema & Infraestrutura
-                      if (isAdmin && adminItems.isNotEmpty) ...[
+                      if (isAdmin && adminItems.isNotEmpty && (_selectedFilter == 'all' || _selectedFilter == 'admin')) ...[
                         _buildRoleSectionHeader('SISTEMA & INFRAESTRUTURA', Icons.admin_panel_settings_rounded, MetaColors.accentBlue),
                         ...adminItems.map(
                           (item) => _buildChangelogItem(
@@ -613,7 +684,7 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
                       ],
 
                       // 2. PROFESSOR e ADMIN: Vêem melhorias de Negócio / Consultoria
-                      if ((isTrainer || isAdmin) && trainerItems.isNotEmpty) ...[
+                      if ((isTrainer || isAdmin) && trainerItems.isNotEmpty && (_selectedFilter == 'all' || _selectedFilter == 'trainer')) ...[
                         _buildRoleSectionHeader('PARA SUA CONSULTORIA & NEGÓCIO', Icons.business_center_rounded, MetaColors.emerald),
                         ...trainerItems.map(
                           (item) => _buildChangelogItem(
@@ -630,7 +701,7 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
 
                       // 3. ALUNO, PROFESSOR e ADMIN: Vêem melhorias de Treino do Aluno
                       // (Professor vê para saber o que mudou na experiência do seu aluno)
-                      if (studentItems.isNotEmpty) ...[
+                      if (studentItems.isNotEmpty && (_selectedFilter == 'all' || _selectedFilter == 'student')) ...[
                         _buildRoleSectionHeader(
                           isClient ? 'NOVIDADES NO SEU TREINO' : 'MELHORIAS PARA OS SEUS ALUNOS',
                           Icons.fitness_center_rounded,

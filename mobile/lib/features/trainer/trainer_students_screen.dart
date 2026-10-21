@@ -11,6 +11,7 @@ import '../../core/theme/theme_controller.dart';
 import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
 import '../../services/subscription_service.dart';
+import '../../models/subscription_model.dart';
 import '../subscription/subscription_screen.dart';
 import '../auth/auth_gate.dart';
 import 'anamnesis_screen.dart';
@@ -1560,8 +1561,9 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                     showOrangeDot: true,
                                     onTap: () =>
                                         AppVersionFooter.showReleaseNotesModal(
-                                          context,
-                                        ),
+                                           context,
+                                           roleOverride: 'trainer',
+                                         ),
                                   ),
                                   OneUiPopoverItem(
                                     label: 'Alternar modo visual',
@@ -1593,6 +1595,69 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                       const BroadcastBanner(
                         audience: 'trainers',
                         padding: EdgeInsets.only(top: 8, bottom: 4),
+                      ),
+                      ValueListenableBuilder<MySubscriptionModel?>(
+                        valueListenable: SubscriptionService.activeSubscriptionNotifier,
+                        builder: (context, sub, _) {
+                          if (sub == null || (!sub.isAiNearLimit && !sub.isAiExceeded)) {
+                            return const SizedBox.shrink();
+                          }
+                          final isExceeded = sub.isAiExceeded;
+                          return Container(
+                            margin: const EdgeInsets.only(top: 6, bottom: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: (isExceeded ? Colors.redAccent : const Color(0xFFF59E0B)).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: (isExceeded ? Colors.redAccent : const Color(0xFFF59E0B)).withValues(alpha: 0.35),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  isExceeded ? Icons.error_outline_rounded : Icons.warning_amber_rounded,
+                                  color: isExceeded ? Colors.redAccent : const Color(0xFFF59E0B),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    isExceeded
+                                        ? 'Limite mensal de IA atingido (${sub.aiGenerationsUsed}/${sub.maxAiGenerations} fichas). Faça o upgrade para prescrever ilimitado.'
+                                        : 'Aviso de Cota: Você consumiu ${sub.aiUsagePercent.toStringAsFixed(0)}% da sua cota de IA (${sub.aiGenerationsUsed}/${sub.maxAiGenerations} fichas).',
+                                    style: TextStyle(
+                                      color: isExceeded ? Colors.redAccent : const Color(0xFFF59E0B),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+                                    );
+                                  },
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: const Text(
+                                    'UPGRADE',
+                                    style: TextStyle(
+                                      color: Color(0xFF6366F1),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
                       const SizedBox(height: 8),
                       // Barra de Pesquisa: Formato de Pílula One UI 7, sem sombras

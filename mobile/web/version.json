@@ -1,7 +1,7 @@
 {
   "version": "1.9.0",
-  "build": 2026103011,
-  "updated_at": "2026-10-21T14:48:44.298281Z",
+  "build": 2026103012,
+  "updated_at": "2026-10-21T15:50:38.918820Z",
   "notes": "Versão 1.9.0: Fechamento do Ciclo Financeiro com Webhook Asaas, Indução ao PWA (iOS/Android), Gestão Estrita de Vagas e Automação de Boas-Vindas no WhatsApp.",
   "changelog": {
     "student": [

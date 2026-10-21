@@ -121,6 +121,13 @@ class MySubscriptionModel {
     );
   }
 
+  bool get isAiUnlimited => maxAiGenerations < 0;
+  double get aiUsagePercent => (isAiUnlimited || maxAiGenerations == 0)
+      ? 0.0
+      : (aiGenerationsUsed / maxAiGenerations) * 100.0;
+  bool get isAiNearLimit => !isAiUnlimited && aiUsagePercent >= 80.0;
+  bool get isAiExceeded => !isAiUnlimited && aiGenerationsUsed >= maxAiGenerations;
+
   Map<String, dynamic> toJson() {
     return {
       'plan_id': planId,

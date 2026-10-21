@@ -924,3 +924,68 @@ async def admin_adjust_ai_quota(
         "message": "Cota mensal de IA atualizada com sucesso.",
     }
 
+
+class AdminNotifyQuotaRiskRequest(BaseModel):
+    trainer_id: str
+    trainer_phone: Optional[str] = None
+    trainer_name: Optional[str] = None
+    usage_percent: float
+    used_generations: int
+    monthly_quota: int
+
+
+@router.post("/admin/notify-quota-risk")
+async def admin_notify_quota_risk(
+    req: AdminNotifyQuotaRiskRequest,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Dispara notificação proativa via WhatsApp para o Personal Trainer avisando sobre cota de IA
+    próxima do limite (>=80%) ou esgotada (100%), sugerindo upgrade do plano.
+    """
+    profile = user.get("profile") or {}
+    roles = profile.get("roles") or [profile.get("role")]
+    if not (profile.get("is_admin") is True or "admin" in roles):
+        raise HTTPException(status_code=403, detail="Acesso restrito ao Painel Administrativo.")
+
+    client = await supabase_service.get_client()
+    phone = req.trainer_phone
+    name = req.trainer_name or "Personal"
+
+    if client and not phone:
+        try:
+            res = await client.table("profiles").select("whatsapp, phone, full_name, name").eq("id", req.trainer_id).maybe_single().execute()
+            if res and res.data:
+                phone = res.data.get("whatsapp") or res.data.get("phone")
+                name = res.data.get("full_name") or res.data.get("name") or name
+        except Exception as e:
+            logger.warning("[Quota Risk Alert] Erro ao buscar telefone: %s", e)
+
+    if not phone:
+        raise HTTPException(status_code=400, detail="Personal Trainer sem telefone/WhatsApp cadastrado.")
+
+    quota_text = f"{req.used_generations}/{req.monthly_quota}"
+    message = (
+        f"⚡ *Mr. Coach • Alerta de Cota de IA*\n\n"
+        f"Olá, {name}! Você já utilizou *{req.usage_percent:.0f}%* ({quota_text}) da sua cota mensal "
+        f"de prescrições com IA.\n\n"
+        f"💡 Para continuar prescrevendo fichas e respondendo seus alunos sem qualquer pausa, "
+        f"acesse a aba Assinatura no seu app e faça o upgrade para o plano com fichas ilimitadas!\n\n"
+        f"Bons treinos!"
+    )
+
+    send_res = await whatsapp_service.send_text_message(
+        instance_name=instance_name_for(req.trainer_id),
+        number=phone,
+        text=message,
+    )
+
+    return {
+        "status": "success",
+        "trainer_id": req.trainer_id,
+        "phone": phone,
+        "message": "Alerta de cota enviado via WhatsApp com sucesso.",
+        "provider_result": send_res,
+    }
+
+

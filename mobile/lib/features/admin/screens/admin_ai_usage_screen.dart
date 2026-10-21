@@ -175,6 +175,76 @@ class _AdminAiUsageScreenState extends State<AdminAiUsageScreen> {
     }
   }
 
+  Future<void> _notifyQuotaRisk(AdminTrainerAiConsumption trainer) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF111827),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF1F2937)),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.mark_chat_unread_rounded, color: Color(0xFF10B981), size: 22),
+            SizedBox(width: 10),
+            Text(
+              'Alerta de Cota via WhatsApp',
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Text(
+          'Deseja enviar um alerta proativo no WhatsApp de ${trainer.trainerName} informando que '
+          'ele consumiu ${trainer.usagePercent.toStringAsFixed(0)}% da cota mensal (${trainer.usedGenerations}/${trainer.monthlyQuota} fichas) '
+          'e orientando o upgrade de plano?',
+          style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Enviar WhatsApp'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Enviando alerta para ${trainer.trainerName}...'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+
+      final res = await AdminDataService.notifyTrainerAiQuotaRisk(
+        trainerId: trainer.trainerId,
+        trainerName: trainer.trainerName,
+        usagePercent: trainer.usagePercent,
+        usedGenerations: trainer.usedGenerations,
+        monthlyQuota: trainer.monthlyQuota,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(res['message']?.toString() ?? 'Alerta enviado!'),
+            backgroundColor: const Color(0xFF10B981),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = MetaColors.isDark(context);
@@ -648,6 +718,35 @@ class _AdminAiUsageScreenState extends State<AdminAiUsageScreen> {
           ),
           const SizedBox(height: 16),
 
+          Builder(
+            builder: (context) {
+              final atRiskTrainers = _overview.trainers.where((t) => t.isNearLimit || t.isOverLimit).toList();
+              if (atRiskTrainers.isEmpty) return const SizedBox.shrink();
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Color(0xFFF59E0B), size: 22),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        '${atRiskTrainers.length} personal(s) atingiram >=80% da cota mensal de IA. Toque no ícone do WhatsApp para disparar o aviso de upgrade.',
+                        style: const TextStyle(color: Color(0xFFF59E0B), fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+
           // Filtros e Busca
           Row(
             children: [
@@ -858,6 +957,14 @@ class _AdminAiUsageScreenState extends State<AdminAiUsageScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
         ),
+        if (trainer.isNearLimit || trainer.isOverLimit) ...[
+          const SizedBox(width: 6),
+          IconButton(
+            onPressed: () => _notifyQuotaRisk(trainer),
+            icon: const Icon(Icons.mark_chat_unread_rounded, size: 18, color: Color(0xFF10B981)),
+            tooltip: 'Alertar Cota via WhatsApp',
+          ),
+        ],
       ],
     );
   }

@@ -212,16 +212,17 @@ class _MainShellScreenState extends State<MainShellScreen> {
     super.initState();
     _currentIndex = widget.initialIndex;
     _activeRole = widget.activeRole;
-    if (!_isTrainer) {
-      if (widget.initialIndex == 0) {
-        _restoreStudentTab();
-      }
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          AppVersionFooter.checkAndShowAutoModal(context);
-        }
-      });
+    if (!_isTrainer && widget.initialIndex == 0) {
+      _restoreStudentTab();
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        AppVersionFooter.checkAndShowAutoModal(
+          context,
+          roleOverride: _activeRole,
+        );
+      }
+    });
   }
 
   Future<void> _restoreStudentTab() async {

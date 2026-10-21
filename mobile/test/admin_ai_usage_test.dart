@@ -45,6 +45,20 @@ void main() {
       expect(res['trainer_id'], 'usr_camilo_2');
       expect(res['custom_monthly_quota'], 200);
     });
+
+    test('notifyTrainerAiQuotaRisk triggers WhatsApp quota alert', () async {
+      final res = await AdminDataService.notifyTrainerAiQuotaRisk(
+        trainerId: 'usr_juliana_4',
+        trainerName: 'Juliana Salimeni',
+        usagePercent: 90.0,
+        usedGenerations: 9,
+        monthlyQuota: 10,
+      );
+
+      expect(res['status'], 'success');
+      expect(res['trainer_id'], 'usr_juliana_4');
+      expect(res['message'], contains('sucesso'));
+    });
   });
 
   group('AdminAiUsageScreen Widget Tests', () {
@@ -129,6 +143,20 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Salvar Cota'), findsNothing);
+    });
+
+    test('notifyTrainerAiQuotaRisk triggers WhatsApp quota alert', () async {
+      final res = await AdminDataService.notifyTrainerAiQuotaRisk(
+        trainerId: 'usr_juliana_4',
+        trainerName: 'Juliana Salimeni',
+        usagePercent: 90.0,
+        usedGenerations: 9,
+        monthlyQuota: 10,
+      );
+
+      expect(res['status'], 'success');
+      expect(res['trainer_id'], 'usr_juliana_4');
+      expect(res['message'], contains('sucesso'));
     });
   });
 }
