@@ -1,7 +1,7 @@
 {
   "version": "1.9.0",
-  "build": 2026103029,
-  "updated_at": "2026-10-21T23:23:51.375696Z",
+  "build": 2026103030,
+  "updated_at": "2026-10-21T23:40:55.642497Z",
   "notes": "Versão 1.9.0: Motor de Cupons & Campanhas Promocionais SaaS, Gestão Dinâmica de Preços & Planos, Auditoria de Sessões (Kill-Switch) e Simulador de Margem Unit Economics.",
   "changelog": {
     "student": [
@@ -27,6 +27,11 @@
       }
     ],
     "trainer": [
+      {
+        "title": "Aplicação Dinâmica de Cupom no Checkout",
+        "description": "Campo nativo para resgate de cupons promocionais (ex: LAUNCH50, PROMOVIP20) na contratação de planos com validação instantânea, cálculo de economia e suporte a Pix e Cartão de Crédito.",
+        "badge": "CHECKOUT"
+      },
       {
         "title": "Baixa e Crédito Automático via Asaas",
         "description": "Ao pagar a consultoria por Pix ou Cartão na sua vitrine, o valor líquido (95%) é creditado automaticamente na sua carteira em tempo real.",

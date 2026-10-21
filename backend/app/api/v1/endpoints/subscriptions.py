@@ -166,6 +166,20 @@ async def create_checkout_session(
         else selected_plan.price_monthly_cents
     )
 
+    if request.coupon_code:
+        code_norm = request.coupon_code.strip().upper()
+        c = next((item for item in ADMIN_COUPONS if item["code"] == code_norm and item.get("is_active")), None)
+        if c:
+            app_tiers = [t.lower() for t in c.get("applicable_tiers", [])]
+            if "all" in app_tiers or selected_plan.id.lower() in app_tiers:
+                if c.get("discount_type") in ("percent", "percentage"):
+                    disc = amount * (c.get("discount_value", 0) / 100.0)
+                else:
+                    disc = c.get("discount_value", 0) * 100.0
+                amount = max(0, int(amount - disc))
+                c["times_used"] = c.get("times_used", 0) + 1
+                logger.info(f"[Checkout] Cupom '{code_norm}' aplicado. Novo valor: {amount} centavos.")
+
     try:
         checkout_data = PaymentProviderService.create_checkout(
             provider=request.provider or "asaas",
@@ -2069,6 +2083,45 @@ class ValidateCouponRequest(BaseModel):
 
 ADMIN_COUPONS = [
     {
+        "id": "cpn-launch50",
+        "code": "LAUNCH50",
+        "discount_type": "percent",
+        "discount_value": 50.0,
+        "applicable_tiers": ["all", "starter", "pro", "elite"],
+        "max_uses": 50,
+        "times_used": 38,
+        "valid_until": "2026-12-31",
+        "is_active": True,
+        "first_month_only": True,
+        "created_at": "2026-01-01",
+    },
+    {
+        "id": "cpn-promovip20",
+        "code": "PROMOVIP20",
+        "discount_type": "fixed",
+        "discount_value": 20.0,
+        "applicable_tiers": ["all", "pro", "elite"],
+        "max_uses": 100,
+        "times_used": 64,
+        "valid_until": "2026-11-30",
+        "is_active": True,
+        "first_month_only": True,
+        "created_at": "2026-02-15",
+    },
+    {
+        "id": "cpn-crefprime",
+        "code": "CREFPRIME",
+        "discount_type": "fixed",
+        "discount_value": 15.0,
+        "applicable_tiers": ["all", "starter", "pro"],
+        "max_uses": 30,
+        "times_used": 12,
+        "valid_until": "2026-10-31",
+        "is_active": True,
+        "first_month_only": True,
+        "created_at": "2026-03-01",
+    },
+    {
         "id": "cpn-bemvindo50",
         "code": "BEMVINDO50",
         "discount_type": "percent",
@@ -2208,7 +2261,8 @@ async def validate_coupon_endpoint(req: ValidateCouponRequest):
     if c.get("times_used", 0) >= c.get("max_uses", 999999):
         raise HTTPException(status_code=400, detail="Este cupom atingiu o limite máximo de utilizações.")
 
-    if req.plan_id.lower() not in [t.lower() for t in c.get("applicable_tiers", [])]:
+    app_tiers = [t.lower() for t in c.get("applicable_tiers", [])]
+    if "all" not in app_tiers and req.plan_id.lower() not in app_tiers:
         raise HTTPException(status_code=400, detail=f"Este cupom não é aplicável ao plano selecionado.")
 
     base = req.base_price

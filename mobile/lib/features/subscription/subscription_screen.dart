@@ -957,6 +957,12 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
   final TextEditingController _postalCodeController = TextEditingController();
   final TextEditingController _addressNumberController = TextEditingController();
 
+  // Cupom Promocional
+  final TextEditingController _couponController = TextEditingController();
+  bool _isValidatingCoupon = false;
+  CouponValidationResult? _appliedCoupon;
+  String? _couponError;
+
   @override
   void initState() {
     super.initState();
@@ -1022,6 +1028,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
     _phoneController.dispose();
     _postalCodeController.dispose();
     _addressNumberController.dispose();
+    _couponController.dispose();
     super.dispose();
   }
 
@@ -1164,6 +1171,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
         paymentMethod: _paymentMethod,
         provider: 'asaas',
         cpfCnpj: cleanCpf,
+        couponCode: _appliedCoupon?.code,
       );
       if (session.sessionId.isEmpty ||
           (_paymentMethod == 'pix' &&
@@ -1252,6 +1260,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
         holderPhone: cleanPhone.isNotEmpty ? cleanPhone : null,
         holderPostalCode: cleanCep,
         holderAddressNumber: addrNumber.isNotEmpty ? addrNumber : 'S/N',
+        couponCode: _appliedCoupon?.code,
       );
 
       if (mounted) {
@@ -1522,12 +1531,257 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
     );
   }
 
+  Future<void> _applyCoupon() async {
+    final code = _couponController.text.trim().toUpperCase();
+    if (code.isEmpty) {
+      setState(() => _couponError = 'Digite o código do cupom.');
+      return;
+    }
+
+    final baseAmount = widget.isYearly
+        ? widget.plan.priceYearlyTotal
+        : widget.plan.priceMonthly;
+
+    setState(() {
+      _isValidatingCoupon = true;
+      _couponError = null;
+    });
+
+    final result = await SubscriptionService.validateCoupon(
+      code: code,
+      planId: widget.plan.id,
+      basePrice: baseAmount,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _isValidatingCoupon = false;
+      if (result.valid) {
+        _appliedCoupon = result;
+        _couponError = null;
+      } else {
+        _appliedCoupon = null;
+        _couponError = result.message;
+      }
+    });
+
+    if (result.valid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Cupom ${result.code} aplicado! ${result.formattedSavings}'),
+              ),
+            ],
+          ),
+          backgroundColor: MetaColors.emerald,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+
+      if (_paymentMethod == 'pix') {
+        _createSession();
+      }
+    }
+  }
+
+  void _removeCoupon() {
+    setState(() {
+      _appliedCoupon = null;
+      _couponController.clear();
+      _couponError = null;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Cupom promocional removido.'),
+        backgroundColor: Colors.white24,
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    if (_paymentMethod == 'pix') {
+      _createSession();
+    }
+  }
+
+  Widget _buildCouponSection(double originalAmount) {
+    if (_appliedCoupon != null) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: MetaColors.emerald.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: MetaColors.emerald.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.confirmation_number_rounded, color: MetaColors.emerald, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        _appliedCoupon!.code,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 14,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: MetaColors.emerald,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          _appliedCoupon!.formattedSavings,
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _appliedCoupon!.firstMonthOnly
+                        ? 'Desconto aplicado no 1º mês de assinatura.'
+                        : 'Desconto promocional aplicado.',
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close_rounded, size: 18, color: Colors.white70),
+              tooltip: 'Remover cupom',
+              onPressed: _removeCoupon,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: MetaColors.surfaceHighlight,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: MetaColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.confirmation_number_outlined, color: MetaColors.accentBlue, size: 18),
+              SizedBox(width: 8),
+              Text(
+                'Possui cupom de desconto?',
+                style: TextStyle(
+                  color: MetaColors.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 42,
+                  child: TextField(
+                    controller: _couponController,
+                    textCapitalization: TextCapitalization.characters,
+                    style: const TextStyle(color: MetaColors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+                    decoration: InputDecoration(
+                      hintText: 'EX: LAUNCH50',
+                      hintStyle: const TextStyle(color: MetaColors.textSecondary, fontSize: 12),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                      filled: true,
+                      fillColor: MetaColors.surface,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: MetaColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: MetaColors.border),
+                      ),
+                    ),
+                    onSubmitted: (_) => _applyCoupon(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 42,
+                child: ElevatedButton(
+                  onPressed: _isValidatingCoupon ? null : _applyCoupon,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: MetaColors.accentBlue,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                  ),
+                  child: _isValidatingCoupon
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text(
+                          'Aplicar',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                ),
+              ),
+            ],
+          ),
+          if (_couponError != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              _couponError!,
+              style: const TextStyle(color: Colors.redAccent, fontSize: 11),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
   @override
   Widget build(BuildContext context) {
-    final amount =
+    final originalAmount =
         widget.isYearly
             ? widget.plan.priceYearlyTotal
             : widget.plan.priceMonthly;
+    final effectiveAmount = _appliedCoupon != null
+        ? _appliedCoupon!.finalPrice
+        : originalAmount;
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
 
     return Container(
@@ -1571,14 +1825,41 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      '${widget.plan.name} • R\$ ${amount.toStringAsFixed(2)}${widget.isYearly ? "/ano (20% OFF)" : "/mês"}',
-                      style: const TextStyle(
-                        color: MetaColors.emerald,
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
+                    if (_appliedCoupon != null)
+                      Row(
+                        children: [
+                          Text(
+                            '${widget.plan.name} • ',
+                            style: const TextStyle(color: MetaColors.textSecondary, fontSize: 13),
+                          ),
+                          Text(
+                            'R\$ ${originalAmount.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              color: MetaColors.textSecondary,
+                              fontSize: 12,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'R\$ ${effectiveAmount.toStringAsFixed(2)}${widget.isYearly ? "/ano" : "/mês"}',
+                            style: const TextStyle(
+                              color: MetaColors.emerald,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      Text(
+                        '${widget.plan.name} • R\$ ${originalAmount.toStringAsFixed(2)}${widget.isYearly ? "/ano (20% OFF)" : "/mês"}',
+                        style: const TextStyle(
+                          color: MetaColors.emerald,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
                   ],
                 ),
                 IconButton(
@@ -1674,9 +1955,10 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                           ),
                           const SizedBox(height: 14),
                         ],
+                        _buildCouponSection(originalAmount),
                         _paymentMethod == 'pix'
                             ? _buildPixContent()
-                            : _buildCreditCardContent(amount),
+                            : _buildCreditCardContent(effectiveAmount),
                       ],
                     ),
                   ),

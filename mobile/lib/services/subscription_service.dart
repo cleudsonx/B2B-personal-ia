@@ -219,6 +219,7 @@ class SubscriptionService {
     required String paymentMethod,
     String provider = 'asaas',
     String? cpfCnpj,
+    String? couponCode,
   }) async {
     try {
       final user = AuthService.currentUser;
@@ -234,6 +235,7 @@ class SubscriptionService {
         'trainer_name': user?.userMetadata?['full_name'] ?? 'Personal Trainer',
         'trainer_email': user?.email ?? 'personal@sheipados.com',
         if (cpfCnpj != null && cpfCnpj.trim().isNotEmpty) 'cpf_cnpj': cpfCnpj.trim(),
+        if (couponCode != null && couponCode.trim().isNotEmpty) 'coupon_code': couponCode.trim(),
       });
 
       final res = await _client
@@ -289,6 +291,7 @@ class SubscriptionService {
     String? holderPostalCode,
     String? holderAddressNumber,
     String provider = 'asaas',
+    String? couponCode,
   }) async {
     try {
       final uri = Uri.parse(
@@ -307,6 +310,7 @@ class SubscriptionService {
         if (holderPostalCode != null && holderPostalCode.trim().isNotEmpty) 'holder_postal_code': holderPostalCode.trim(),
         if (holderAddressNumber != null && holderAddressNumber.trim().isNotEmpty) 'holder_address_number': holderAddressNumber.trim(),
         'provider': provider,
+        if (couponCode != null && couponCode.trim().isNotEmpty) 'coupon_code': couponCode.trim(),
       });
 
       final res = await _client
@@ -608,5 +612,133 @@ class SubscriptionService {
       ],
     ),
   ];
+
+  /// Valida cupom promocional no checkout com fallback offline inteligente
+  static Future<CouponValidationResult> validateCoupon({
+    required String code,
+    required String planId,
+    required double basePrice,
+  }) async {
+    final cleanCode = code.trim().toUpperCase();
+    if (cleanCode.isEmpty) {
+      return const CouponValidationResult(
+        valid: false,
+        code: '',
+        discountType: 'percent',
+        discountValue: 0.0,
+        discountAmount: 0.0,
+        finalPrice: 0.0,
+        firstMonthOnly: true,
+        message: 'Por favor, informe o código do cupom.',
+      );
+    }
+
+    try {
+      final uri = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/validate-coupon');
+      final body = jsonEncode({
+        'code': cleanCode,
+        'plan_id': planId,
+        'base_price': basePrice,
+      });
+
+      final res = await _client
+          .post(uri, headers: _headers, body: body)
+          .timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        return CouponValidationResult.fromJson(data);
+      } else {
+        try {
+          if (res.bodyBytes.isNotEmpty) {
+            final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+            if (data.containsKey('detail') || data.containsKey('message')) {
+              return CouponValidationResult(
+                valid: false,
+                code: cleanCode,
+                discountType: 'percent',
+                discountValue: 0.0,
+                discountAmount: 0.0,
+                finalPrice: basePrice,
+                firstMonthOnly: true,
+                message: (data['detail'] ?? data['message']).toString(),
+              );
+            }
+          }
+        } catch (_) {}
+        return _fallbackValidateCoupon(
+          code: cleanCode,
+          planId: planId,
+          basePrice: basePrice,
+        );
+      }
+    } catch (_) {
+      return _fallbackValidateCoupon(
+        code: cleanCode,
+        planId: planId,
+        basePrice: basePrice,
+      );
+    }
+  }
+
+  static CouponValidationResult _fallbackValidateCoupon({
+    required String code,
+    required String planId,
+    required double basePrice,
+  }) {
+    final knownCoupons = {
+      'LAUNCH50': {'type': 'percent', 'val': 50.0, 'plans': ['all', 'starter', 'pro', 'elite']},
+      'BEMVINDO50': {'type': 'percent', 'val': 50.0, 'plans': ['all', 'starter', 'pro', 'elite']},
+      'PROMOVIP20': {'type': 'fixed', 'val': 20.0, 'plans': ['all', 'pro', 'elite']},
+      'CREFPRIME': {'type': 'fixed', 'val': 15.0, 'plans': ['starter', 'pro']},
+      'START2026': {'type': 'fixed', 'val': 30.0, 'plans': ['all', 'pro', 'elite']},
+    };
+
+    final info = knownCoupons[code];
+    if (info == null) {
+      return CouponValidationResult(
+        valid: false,
+        code: code,
+        discountType: 'percent',
+        discountValue: 0.0,
+        discountAmount: 0.0,
+        finalPrice: basePrice,
+        firstMonthOnly: true,
+        message: 'Cupom "$code" não encontrado ou expirado.',
+      );
+    }
+
+    final allowedPlans = (info['plans'] as List<String>);
+    if (!allowedPlans.contains('all') && !allowedPlans.contains(planId.toLowerCase())) {
+      return CouponValidationResult(
+        valid: false,
+        code: code,
+        discountType: info['type'] as String,
+        discountValue: info['val'] as double,
+        discountAmount: 0.0,
+        finalPrice: basePrice,
+        firstMonthOnly: true,
+        message: 'Este cupom não é aplicável ao plano selecionado.',
+      );
+    }
+
+    final type = info['type'] as String;
+    final val = info['val'] as double;
+    final discount = type == 'percent'
+        ? (basePrice * (val / 100.0))
+        : (val > basePrice ? basePrice : val);
+    final finalPrice = (basePrice - discount).clamp(0.0, double.infinity);
+
+    return CouponValidationResult(
+      valid: true,
+      code: code,
+      discountType: type,
+      discountValue: val,
+      discountAmount: discount,
+      finalPrice: finalPrice,
+      firstMonthOnly: true,
+      message: 'Desconto de R\$ ${discount.toStringAsFixed(2)} aplicado!',
+    );
+  }
 }
 

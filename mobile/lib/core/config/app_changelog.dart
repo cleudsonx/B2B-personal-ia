@@ -41,7 +41,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103029,
+      buildNumber: 2026103030,
       date: '21 de Outubro, 2026',
       summary:
           'Versão 1.9.0: Motor de Cupons & Campanhas Promocionais SaaS, Gestão Dinâmica de Preços & Planos, Auditoria de Sessões (Kill-Switch) e Simulador de Margem Unit Economics.',
@@ -80,6 +80,14 @@ class AppChangelog {
           targetRoles: ['admin'],
         ),
         // --- PARA O PROFESSOR ---
+        ChangelogItem(
+          icon: Icons.confirmation_number_rounded,
+          title: 'Aplicação Dinâmica de Cupom no Checkout',
+          description:
+              'Campo nativo para resgate de cupons promocionais (ex: LAUNCH50, PROMOVIP20) na contratação de planos com validação instantânea, cálculo de economia e suporte a Pix e Cartão de Crédito.',
+          badge: 'CHECKOUT',
+          targetRoles: ['trainer'],
+        ),
         ChangelogItem(
           icon: Icons.account_balance_wallet_rounded,
           title: 'Baixa e Crédito Automático via Asaas',

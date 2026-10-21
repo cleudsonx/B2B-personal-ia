@@ -56,6 +56,7 @@ class CheckoutSessionRequest(BaseModel):
     trainer_email: Optional[str] = "treinador@demo.com"
     trainer_id: Optional[str] = "current-trainer"
     cpf_cnpj: Optional[str] = Field(None, description="CPF ou CNPJ do pagador (obrigatório para Pix no Asaas)")
+    coupon_code: Optional[str] = Field(None, description="Código do cupom de desconto promocional aplicado")
 
 
 class CheckoutSessionResponse(BaseModel):
@@ -149,6 +150,7 @@ class InAppCardPaymentRequest(BaseModel):
     holder_postal_code: Optional[str] = Field(None, description="CEP do titular")
     holder_address_number: Optional[str] = Field(None, description="Número do endereço")
     provider: Optional[str] = Field("asaas", description="Gateway de tokenização (padrão: asaas)")
+    coupon_code: Optional[str] = Field(None, description="Código do cupom promocional aplicado")
 
 
 class InAppCardPaymentResponse(BaseModel):

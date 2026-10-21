@@ -245,3 +245,57 @@ class PlanChangeSimulationModel {
     );
   }
 }
+
+
+/// Resultado da Validação de Cupom Promocional no Checkout
+class CouponValidationResult {
+  final bool valid;
+  final String code;
+  final String discountType; // 'percent' | 'percentage' | 'fixed'
+  final double discountValue;
+  final double discountAmount;
+  final double finalPrice;
+  final bool firstMonthOnly;
+  final String message;
+
+  const CouponValidationResult({
+    required this.valid,
+    required this.code,
+    required this.discountType,
+    required this.discountValue,
+    required this.discountAmount,
+    required this.finalPrice,
+    required this.firstMonthOnly,
+    required this.message,
+  });
+
+  String get formattedSavings => discountType == 'percent' || discountType == 'percentage'
+      ? '${discountValue.toInt()}% OFF (-R\$ ${discountAmount.toStringAsFixed(2)})'
+      : 'R\$ ${discountAmount.toStringAsFixed(2)} OFF';
+
+  factory CouponValidationResult.fromJson(Map<String, dynamic> json) {
+    return CouponValidationResult(
+      valid: json['valid'] == true,
+      code: (json['code'] ?? '').toString().toUpperCase(),
+      discountType: (json['discount_type'] ?? 'percent').toString(),
+      discountValue: (json['discount_value'] as num?)?.toDouble() ?? 0.0,
+      discountAmount: (json['discount_amount'] as num?)?.toDouble() ?? 0.0,
+      finalPrice: (json['final_price'] as num?)?.toDouble() ?? 0.0,
+      firstMonthOnly: json['first_month_only'] != false,
+      message: (json['message'] ?? '').toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'valid': valid,
+      'code': code,
+      'discount_type': discountType,
+      'discount_value': discountValue,
+      'discount_amount': discountAmount,
+      'final_price': finalPrice,
+      'first_month_only': firstMonthOnly,
+      'message': message,
+    };
+  }
+}
