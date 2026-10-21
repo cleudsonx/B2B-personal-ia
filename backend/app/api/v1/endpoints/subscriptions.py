@@ -2282,3 +2282,201 @@ async def validate_coupon_endpoint(req: ValidateCouponRequest):
         "first_month_only": c.get("first_month_only", True),
         "message": f"Desconto de R$ {discount:.2f} aplicado!",
     }
+
+
+# ==========================================
+# MOTOR DE AFILIADOS & PARCERIAS (AFFILIATE ENGINE)
+# ==========================================
+
+class CreateAffiliatePartnerRequest(BaseModel):
+    id: Optional[str] = None
+    partner_name: str
+    slug: str
+    partner_type: str = "entity"  # "entity", "influencer", "gym_chain", "coach"
+    commission_percent: float = 10.0
+    associated_coupon_code: Optional[str] = None
+    contact_email: Optional[str] = None
+    pix_key: Optional[str] = None
+    is_active: bool = True
+
+
+class ToggleAffiliatePartnerRequest(BaseModel):
+    affiliate_id: str
+    is_active: bool
+
+
+class RecordReferralClickRequest(BaseModel):
+    slug: str
+
+
+ADMIN_AFFILIATE_PARTNERS = [
+    {
+        "id": "aff-crefsp",
+        "partner_name": "CREF4/SP - Conselho Regional",
+        "slug": "CREFSP",
+        "partner_type": "entity",
+        "commission_percent": 10.0,
+        "associated_coupon_code": "CREFPRIME",
+        "clicks_count": 184,
+        "conversions_count": 42,
+        "total_revenue_generated_brl": 4890.0,
+        "total_commission_due_brl": 489.0,
+        "contact_email": "parcerias@crefsp.gov.br",
+        "pix_key": "financeiro@crefsp.gov.br",
+        "is_active": True,
+        "created_at": "2026-01-10",
+    },
+    {
+        "id": "aff-ironrunner",
+        "partner_name": "Assessoria Iron Runner",
+        "slug": "IRONRUNNER",
+        "partner_type": "coach",
+        "commission_percent": 15.0,
+        "associated_coupon_code": "LAUNCH50",
+        "clicks_count": 95,
+        "conversions_count": 28,
+        "total_revenue_generated_brl": 2492.0,
+        "total_commission_due_brl": 373.80,
+        "contact_email": "contato@ironrunner.com.br",
+        "pix_key": "11988887777",
+        "is_active": True,
+        "created_at": "2026-02-01",
+    },
+    {
+        "id": "aff-rodrigo",
+        "partner_name": "Prof. Rodrigo Personal VIP",
+        "slug": "RODRIGO-VIP",
+        "partner_type": "influencer",
+        "commission_percent": 20.0,
+        "associated_coupon_code": "PROMOVIP20",
+        "clicks_count": 62,
+        "conversions_count": 16,
+        "total_revenue_generated_brl": 1424.0,
+        "total_commission_due_brl": 284.80,
+        "contact_email": "rodrigo.coach@gmail.com",
+        "pix_key": "rodrigo.coach@gmail.com",
+        "is_active": True,
+        "created_at": "2026-02-20",
+    },
+    {
+        "id": "aff-fitstudio",
+        "partner_name": "Rede FitStudio Sul",
+        "slug": "FITSTUDIO",
+        "partner_type": "gym_chain",
+        "commission_percent": 12.0,
+        "associated_coupon_code": "START2026",
+        "clicks_count": 120,
+        "conversions_count": 31,
+        "total_revenue_generated_brl": 3255.0,
+        "total_commission_due_brl": 390.60,
+        "contact_email": "adm@fitstudiosul.com.br",
+        "pix_key": "12.345.678/0001-99",
+        "is_active": True,
+        "created_at": "2026-03-05",
+    },
+]
+
+
+@router.get("/admin/affiliates")
+async def get_admin_affiliates():
+    """
+    Retorna panorama de afiliados, parcerias, links de indicação e comissionamento.
+    """
+    active = [p for p in ADMIN_AFFILIATE_PARTNERS if p.get("is_active")]
+    total_clicks = sum(p.get("clicks_count", 0) for p in ADMIN_AFFILIATE_PARTNERS)
+    total_conversions = sum(p.get("conversions_count", 0) for p in ADMIN_AFFILIATE_PARTNERS)
+    total_revenue = sum(p.get("total_revenue_generated_brl", 0.0) for p in ADMIN_AFFILIATE_PARTNERS)
+    total_commission = sum(p.get("total_commission_due_brl", 0.0) for p in ADMIN_AFFILIATE_PARTNERS)
+    avg_conversion_rate = (total_conversions / total_clicks * 100.0) if total_clicks > 0 else 0.0
+
+    return {
+        "summary": {
+            "total_partners_count": len(ADMIN_AFFILIATE_PARTNERS),
+            "active_partners_count": len(active),
+            "total_clicks": total_clicks,
+            "total_conversions": total_conversions,
+            "average_conversion_rate_percent": round(avg_conversion_rate, 1),
+            "total_revenue_generated_brl": round(total_revenue, 2),
+            "total_commission_due_brl": round(total_commission, 2),
+            "last_updated": datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC"),
+        },
+        "affiliates": ADMIN_AFFILIATE_PARTNERS,
+    }
+
+
+@router.post("/admin/create-affiliate")
+async def create_affiliate_endpoint(req: CreateAffiliatePartnerRequest):
+    """
+    Cria ou atualiza um parceiro afiliado com link de indicação.
+    """
+    slug_norm = req.slug.strip().upper().replace(" ", "-")
+    existing = next((p for p in ADMIN_AFFILIATE_PARTNERS if p["slug"] == slug_norm or (req.id and p["id"] == req.id)), None)
+
+    if existing:
+        existing.update({
+            "partner_name": req.partner_name.strip(),
+            "slug": slug_norm,
+            "partner_type": req.partner_type,
+            "commission_percent": req.commission_percent,
+            "associated_coupon_code": req.associated_coupon_code.strip().upper() if req.associated_coupon_code else None,
+            "contact_email": req.contact_email.strip() if req.contact_email else None,
+            "pix_key": req.pix_key.strip() if req.pix_key else None,
+            "is_active": req.is_active,
+        })
+        target_partner = existing
+    else:
+        new_id = f"aff-{slug_norm.lower()}-{int(time.time())}"
+        target_partner = {
+            "id": req.id or new_id,
+            "partner_name": req.partner_name.strip(),
+            "slug": slug_norm,
+            "partner_type": req.partner_type,
+            "commission_percent": req.commission_percent,
+            "associated_coupon_code": req.associated_coupon_code.strip().upper() if req.associated_coupon_code else None,
+            "clicks_count": 0,
+            "conversions_count": 0,
+            "total_revenue_generated_brl": 0.0,
+            "total_commission_due_brl": 0.0,
+            "contact_email": req.contact_email.strip() if req.contact_email else None,
+            "pix_key": req.pix_key.strip() if req.pix_key else None,
+            "is_active": req.is_active,
+            "created_at": datetime.utcnow().strftime("%Y-%m-%d"),
+        }
+        ADMIN_AFFILIATE_PARTNERS.insert(0, target_partner)
+
+    logger.info(f"[AffiliateEngine] Parceiro '{target_partner['partner_name']}' ({slug_norm}) salvo.")
+    return {
+        "success": True,
+        "affiliate": target_partner,
+        "message": f"Parceiro '{target_partner['partner_name']}' configurado com sucesso!",
+    }
+
+
+@router.post("/admin/toggle-affiliate")
+async def toggle_affiliate_endpoint(req: ToggleAffiliatePartnerRequest):
+    """
+    Ativa ou pausa um parceiro afiliado.
+    """
+    p = next((item for item in ADMIN_AFFILIATE_PARTNERS if item["id"] == req.affiliate_id), None)
+    if not p:
+        raise HTTPException(status_code=404, detail="Parceiro afiliado não encontrado.")
+    p["is_active"] = req.is_active
+    return {
+        "success": True,
+        "affiliate_id": req.affiliate_id,
+        "is_active": req.is_active,
+        "message": f"Parceiro '{p['partner_name']}' {'ativado' if req.is_active else 'pausado'}.",
+    }
+
+
+@router.post("/admin/record-referral-click")
+async def record_referral_click_endpoint(req: RecordReferralClickRequest):
+    """
+    Registra um clique ou acesso vindo de link de indicação de parceiro.
+    """
+    slug_norm = req.slug.strip().upper()
+    p = next((item for item in ADMIN_AFFILIATE_PARTNERS if item["slug"] == slug_norm and item.get("is_active")), None)
+    if p:
+        p["clicks_count"] = p.get("clicks_count", 0) + 1
+        return {"success": True, "slug": slug_norm, "partner_name": p["partner_name"], "coupon": p.get("associated_coupon_code")}
+    return {"success": False, "message": "Slug de parceiro não encontrado."}

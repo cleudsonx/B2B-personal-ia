@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/widgets/meta_components.dart';
 import '../services/admin_data_service.dart';
 
@@ -20,13 +21,15 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
   late TabController _tabController;
   bool _isLoading = true;
   bool _isLoadingCoupons = true;
+  bool _isLoadingAffiliates = true;
   AdminPricingConfigOverview? _overview;
   AdminCouponsOverview? _couponsOverview;
+  AdminAffiliatesOverview? _affiliatesOverview;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _loadAll();
   }
 
@@ -40,7 +43,19 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
     await Future.wait([
       _loadPricing(),
       _loadCoupons(),
+      _loadAffiliates(),
     ]);
+  }
+
+  Future<void> _loadAffiliates() async {
+    setState(() => _isLoadingAffiliates = true);
+    final data = await AdminDataService.getAffiliatesOverview();
+    if (mounted) {
+      setState(() {
+        _affiliatesOverview = data;
+        _isLoadingAffiliates = false;
+      });
+    }
   }
 
   Future<void> _loadPricing() async {
@@ -1012,6 +1027,10 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
                             icon: Icon(Icons.confirmation_number_rounded, size: 18),
                             text: 'Cupons Promocionais',
                           ),
+                          Tab(
+                            icon: Icon(Icons.handshake_rounded, size: 18),
+                            text: 'Afiliados & Parcerias',
+                          ),
                         ],
                       ),
                     ),
@@ -1030,6 +1049,9 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
 
             // Aba 2: Cupons
             _buildCouponsTab(),
+
+            // Aba 3: Afiliados & Parcerias
+            _buildAffiliatesTab(),
           ],
         ),
       ),
@@ -1654,6 +1676,797 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
   // ==========================================
   // Componentes de Visualização Compartilhados
   // ==========================================
+
+  // ==========================================
+  // Lógica de Afiliados & Parcerias
+  // ==========================================
+  Future<void> _toggleAffiliateActive(AdminAffiliatePartnerItem affiliate, bool newValue) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final success = await AdminDataService.toggleAffiliateActive(affiliate.id, newValue);
+    if (mounted) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? (newValue
+                    ? 'Parceiro ${affiliate.partnerName} ativado para rastreamento!'
+                    : 'Parceiro ${affiliate.partnerName} pausado temporariamente.')
+                : 'Falha ao atualizar status do parceiro.',
+          ),
+          backgroundColor: newValue ? MetaColors.emerald : Colors.amber,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      _loadAffiliates();
+    }
+  }
+
+  Future<void> _deleteAffiliate(AdminAffiliatePartnerItem affiliate) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF111827),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.delete_forever_rounded, color: Colors.redAccent),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Excluir Parceiro ${affiliate.partnerName}?',
+                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Deseja remover a parceria com "${affiliate.partnerName}" (Slug: ${affiliate.slug})?\nO link de indicação deixará de ser contabilizado.',
+          style: const TextStyle(color: Colors.white70, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Excluir Parceiro', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final success = await AdminDataService.deleteAffiliate(affiliate.id);
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              success ? 'Parceiro ${affiliate.partnerName} removido com sucesso!' : 'Falha ao remover parceiro.',
+            ),
+            backgroundColor: success ? MetaColors.emerald : Colors.redAccent,
+          ),
+        );
+        _loadAffiliates();
+      }
+    }
+  }
+
+  void _copyReferralLink(String url) {
+    Clipboard.setData(ClipboardData(text: url));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text('Link copiado: $url'),
+            ),
+          ],
+        ),
+        backgroundColor: MetaColors.emerald,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<void> _openCreateOrEditAffiliateDialog([AdminAffiliatePartnerItem? existing]) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final isEditing = existing != null;
+
+    final nameCtrl = TextEditingController(text: existing?.partnerName ?? '');
+    final slugCtrl = TextEditingController(text: existing?.slug ?? '');
+    final commCtrl = TextEditingController(text: existing != null ? existing.commissionPercent.toStringAsFixed(1) : '10.0');
+    final couponCtrl = TextEditingController(text: existing?.associatedCouponCode ?? '');
+    final emailCtrl = TextEditingController(text: existing?.contactEmail ?? '');
+    final pixCtrl = TextEditingController(text: existing?.pixKey ?? '');
+
+    String partnerType = existing?.partnerType ?? 'entity';
+    bool isActive = existing?.isActive ?? true;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF111827),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      isEditing ? Icons.edit_note_rounded : Icons.handshake_rounded,
+                      color: const Color(0xFF818CF8),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      isEditing ? 'Editar Parceiro: ${existing.partnerName}' : 'Novo Parceiro Afiliado',
+                      style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 500),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Nome do Parceiro
+                      _buildModalTextField(
+                        label: 'Nome do Parceiro / Entidade (ex: CREF4/SP, Assessoria Iron)',
+                        controller: nameCtrl,
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Slug e Tipo
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: _buildModalTextField(
+                              label: 'Slug do Link (ex: CREFSP)',
+                              controller: slugCtrl,
+                              textCapitalization: TextCapitalization.characters,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 3,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Categoria',
+                                  style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                                ),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF090D16),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFF1F2937)),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: partnerType,
+                                      dropdownColor: const Color(0xFF111827),
+                                      isExpanded: true,
+                                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                                      items: const [
+                                        DropdownMenuItem(
+                                          value: 'entity',
+                                          child: Text('Conselho / Entidade'),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 'coach',
+                                          child: Text('Assessoria / Treinador'),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 'influencer',
+                                          child: Text('Influenciador / Creator'),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 'gym_chain',
+                                          child: Text('Rede de Academias'),
+                                        ),
+                                      ],
+                                      onChanged: (val) {
+                                        if (val != null) {
+                                          setModalState(() => partnerType = val);
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Comissão (%) e Cupom Vinculado
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildModalTextField(
+                              label: 'Comissão do Parceiro (%)',
+                              controller: commCtrl,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildModalTextField(
+                              label: 'Cupom Vinculado (Opcional)',
+                              controller: couponCtrl,
+                              textCapitalization: TextCapitalization.characters,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Contato & Chave Pix
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildModalTextField(
+                              label: 'E-mail de Contato',
+                              controller: emailCtrl,
+                              keyboardType: TextInputType.emailAddress,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildModalTextField(
+                              label: 'Chave Pix para Repasse',
+                              controller: pixCtrl,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Status Ativo
+                      _buildFeatureSwitchRow(
+                        title: 'Parceria Ativa',
+                        subtitle: 'Links e conversões ativas para este parceiro',
+                        value: isActive,
+                        onChanged: (val) => setModalState(() => isActive = val),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancelar', style: TextStyle(color: Colors.white60)),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final name = nameCtrl.text.trim();
+                    final slug = slugCtrl.text.trim().toUpperCase().replaceAll(' ', '-');
+                    if (name.isEmpty || slug.isEmpty) {
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('Por favor, informe o nome e o slug do parceiro.'),
+                          backgroundColor: Colors.amber,
+                        ),
+                      );
+                      return;
+                    }
+
+                    final comm = double.tryParse(commCtrl.text.replaceAll(',', '.')) ?? 10.0;
+
+                    final partner = AdminAffiliatePartnerItem(
+                      id: existing?.id ?? 'aff-${slug.toLowerCase()}-${DateTime.now().millisecondsSinceEpoch}',
+                      partnerName: name,
+                      slug: slug,
+                      partnerType: partnerType,
+                      commissionPercent: comm,
+                      associatedCouponCode: couponCtrl.text.trim().isNotEmpty ? couponCtrl.text.trim().toUpperCase() : null,
+                      clicksCount: existing?.clicksCount ?? 0,
+                      conversionsCount: existing?.conversionsCount ?? 0,
+                      totalRevenueGeneratedBrl: existing?.totalRevenueGeneratedBrl ?? 0.0,
+                      totalCommissionDueBrl: existing?.totalCommissionDueBrl ?? 0.0,
+                      contactEmail: emailCtrl.text.trim().isNotEmpty ? emailCtrl.text.trim() : null,
+                      pixKey: pixCtrl.text.trim().isNotEmpty ? pixCtrl.text.trim() : null,
+                      isActive: isActive,
+                      createdAt: existing?.createdAt ?? DateTime.now().toIso8601String(),
+                    );
+
+                    final ok = await AdminDataService.createOrUpdateAffiliate(partner);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    if (mounted) {
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            ok
+                                ? (isEditing ? 'Parceiro ${partner.partnerName} atualizado!' : 'Parceiro ${partner.partnerName} cadastrado com sucesso!')
+                                : 'Erro ao salvar parceiro afiliado.',
+                          ),
+                          backgroundColor: ok ? MetaColors.emerald : Colors.redAccent,
+                        ),
+                      );
+                      _loadAffiliates();
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6366F1),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: Text(isEditing ? 'Salvar Parceiro' : 'Cadastrar Parceiro', style: const TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ==========================================
+  // Renderização da Aba de Afiliados
+  // ==========================================
+  Widget _buildAffiliatesTab() {
+    return RefreshIndicator(
+      onRefresh: _loadAffiliates,
+      color: const Color(0xFF6366F1),
+      backgroundColor: const Color(0xFF111827),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_isLoadingAffiliates)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(48),
+                  child: CircularProgressIndicator(color: Color(0xFF6366F1)),
+                ),
+              )
+            else ...[
+              // KPI Cards de Afiliados
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isDesktop = constraints.maxWidth > 900;
+                  final isTablet = constraints.maxWidth > 550 && !isDesktop;
+
+                  final kpi1 = _buildKpiCard(
+                    title: 'Parceiros Ativos',
+                    value: '${_affiliatesOverview?.activePartnersCount ?? 0}',
+                    subtitle: 'Divulgando links de indicação',
+                    icon: Icons.check_circle_rounded,
+                    accentColor: MetaColors.emerald,
+                  );
+                  final kpi2 = _buildKpiCard(
+                    title: 'Total de Cliques',
+                    value: '${_affiliatesOverview?.totalClicks ?? 0}',
+                    subtitle: 'Acessos únicos aos links',
+                    icon: Icons.ads_click_rounded,
+                    accentColor: const Color(0xFF818CF8),
+                  );
+                  final kpi3 = _buildKpiCard(
+                    title: 'Total de Conversões',
+                    value: '${_affiliatesOverview?.totalConversions ?? 0}',
+                    subtitle: 'Taxa média de ${_affiliatesOverview?.averageConversionRatePercent.toStringAsFixed(1) ?? "0.0"}%',
+                    icon: Icons.people_alt_rounded,
+                    accentColor: Colors.cyanAccent,
+                  );
+                  final kpi4 = _buildKpiCard(
+                    title: 'Comissões a Repassar',
+                    value: 'R\$ ${(_affiliatesOverview?.totalCommissionDueBrl ?? 0).toStringAsFixed(2)}',
+                    subtitle: 'Base em R\$ ${(_affiliatesOverview?.totalRevenueGeneratedBrl ?? 0).toStringAsFixed(0)} gerados',
+                    icon: Icons.payments_rounded,
+                    accentColor: Colors.amber,
+                  );
+
+                  if (isDesktop) {
+                    return Row(
+                      children: [
+                        Expanded(child: kpi1),
+                        const SizedBox(width: 14),
+                        Expanded(child: kpi2),
+                        const SizedBox(width: 14),
+                        Expanded(child: kpi3),
+                        const SizedBox(width: 14),
+                        Expanded(child: kpi4),
+                      ],
+                    );
+                  } else if (isTablet) {
+                    return Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(child: kpi1),
+                            const SizedBox(width: 14),
+                            Expanded(child: kpi2),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(child: kpi3),
+                            const SizedBox(width: 14),
+                            Expanded(child: kpi4),
+                          ],
+                        ),
+                      ],
+                    );
+                  } else {
+                    return Column(
+                      children: [
+                        kpi1,
+                        const SizedBox(height: 12),
+                        kpi2,
+                        const SizedBox(height: 12),
+                        kpi3,
+                        const SizedBox(height: 12),
+                        kpi4,
+                      ],
+                    );
+                  }
+                },
+              ),
+              const SizedBox(height: 24),
+
+              // Banner de Ações de Afiliados
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF111827),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF1F2937)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.handshake_rounded, color: Color(0xFF818CF8), size: 22),
+                    ),
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Rede de Parcerias, Entidades & Afiliados',
+                            style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Gere links rastreáveis comissionados (ex: CREF, assessorias, influencers) com atribuição direta ao cupom promocional e repasse por Pix.',
+                            style: TextStyle(color: Colors.white60, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: () => _openCreateOrEditAffiliateDialog(),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text('Novo Parceiro', style: TextStyle(fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6366F1),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Lista de Afiliados
+              Text(
+                'Parceiros Cadastrados (${_affiliatesOverview?.affiliates.length ?? 0})',
+                style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 14),
+
+              if (_affiliatesOverview?.affiliates.isEmpty ?? true)
+                Container(
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF111827),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFF1F2937)),
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.handshake_outlined, size: 48, color: Colors.white38),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Nenhum parceiro afiliado cadastrado ainda',
+                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Cadastre conselhos regionais, assessorias e parceiros para expandir a base de personals.',
+                        style: TextStyle(color: Colors.white54, fontSize: 13),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () => _openCreateOrEditAffiliateDialog(),
+                        icon: const Icon(Icons.add_rounded, size: 16),
+                        label: const Text('Cadastrar Primeiro Parceiro'),
+                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1)),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _affiliatesOverview!.affiliates.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 14),
+                  itemBuilder: (context, index) {
+                    final affiliate = _affiliatesOverview!.affiliates[index];
+                    return _buildAffiliateCard(affiliate);
+                  },
+                ),
+              const SizedBox(height: 32),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ==========================================
+  // Card de Parceiro Afiliado
+  // ==========================================
+  Widget _buildAffiliateCard(AdminAffiliatePartnerItem affiliate) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111827),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: affiliate.isActive ? const Color(0xFF1F2937) : Colors.amber.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header do Card
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      affiliate.partnerName,
+                      style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.4)),
+                      ),
+                      child: Text(
+                        affiliate.partnerTypeLabel.toUpperCase(),
+                        style: const TextStyle(color: Color(0xFF818CF8), fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: affiliate.isActive
+                            ? MetaColors.emerald.withValues(alpha: 0.12)
+                            : Colors.amber.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: affiliate.isActive
+                              ? MetaColors.emerald.withValues(alpha: 0.4)
+                              : Colors.amber.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Text(
+                        affiliate.isActive ? 'ATIVO' : 'PAUSADO',
+                        style: TextStyle(
+                          color: affiliate.isActive ? MetaColors.emerald : Colors.amber,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Switch(
+                    value: affiliate.isActive,
+                    onChanged: (val) => _toggleAffiliateActive(affiliate, val),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Link de Indicação com Botão de Copiar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF090D16),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFF1F2937)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.link_rounded, color: Color(0xFF818CF8), size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    affiliate.referralUrl,
+                    style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (affiliate.associatedCouponCode != null) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: MetaColors.emerald.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
+                    ),
+                    child: Text(
+                      '🏷️ ${affiliate.associatedCouponCode}',
+                      style: const TextStyle(color: MetaColors.emerald, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.copy_rounded, size: 18, color: Color(0xFF818CF8)),
+                  tooltip: 'Copiar link de indicação',
+                  onPressed: () => _copyReferralLink(affiliate.referralUrl),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Métricas de Performance em Grid
+          Wrap(
+            spacing: 16,
+            runSpacing: 10,
+            children: [
+              _buildMetricChip(
+                label: 'Comissão',
+                value: '${affiliate.commissionPercent.toStringAsFixed(1)}%',
+                subtitle: 'por conversão',
+                color: Colors.cyanAccent,
+              ),
+              _buildMetricChip(
+                label: 'Cliques Recebidos',
+                value: '${affiliate.clicksCount}',
+                subtitle: 'acessos únicos',
+                color: const Color(0xFF818CF8),
+              ),
+              _buildMetricChip(
+                label: 'Conversões',
+                value: '${affiliate.conversionsCount}',
+                subtitle: 'personals ativos',
+                color: MetaColors.emerald,
+              ),
+              _buildMetricChip(
+                label: 'Taxa de Conversão',
+                value: '${affiliate.conversionRate.toStringAsFixed(1)}%',
+                subtitle: 'cliques em vendas',
+                color: Colors.amber,
+              ),
+              _buildMetricChip(
+                label: 'Receita Gerada',
+                value: affiliate.formattedRevenue,
+                subtitle: 'GMV total',
+                color: Colors.white,
+              ),
+              _buildMetricChip(
+                label: 'Comissão Devida',
+                value: affiliate.formattedCommission,
+                subtitle: 'saldo a pagar',
+                color: const Color(0xFFF43F5E),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(color: Color(0xFF1F2937), height: 1),
+          const SizedBox(height: 12),
+
+          // Rodapé do Card
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  children: [
+                    if (affiliate.contactEmail != null)
+                      Text(
+                        '✉️ ${affiliate.contactEmail}',
+                        style: const TextStyle(color: Colors.white38, fontSize: 11),
+                      ),
+                    if (affiliate.pixKey != null)
+                      Text(
+                        '🔑 Pix: ${affiliate.pixKey}',
+                        style: const TextStyle(color: Colors.white38, fontSize: 11),
+                      ),
+                  ],
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    onPressed: () => _deleteAffiliate(affiliate),
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent),
+                    tooltip: 'Excluir Parceiro',
+                  ),
+                  const SizedBox(width: 6),
+                  ElevatedButton.icon(
+                    onPressed: () => _openCreateOrEditAffiliateDialog(affiliate),
+                    icon: const Icon(Icons.edit_rounded, size: 14),
+                    label: const Text('Editar', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6366F1),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildKpiCard({
     required String title,
     required String value,

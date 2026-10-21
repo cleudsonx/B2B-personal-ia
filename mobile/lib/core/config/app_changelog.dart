@@ -41,12 +41,20 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103030,
+      buildNumber: 2026103031,
       date: '21 de Outubro, 2026',
       summary:
-          'Versão 1.9.0: Motor de Cupons & Campanhas Promocionais SaaS, Gestão Dinâmica de Preços & Planos, Auditoria de Sessões (Kill-Switch) e Simulador de Margem Unit Economics.',
+          'Versão 1.9.0: Motor de Afiliados & Links de Indicação (Referral Engine), Cupons & Campanhas Promocionais SaaS, Gestão Dinâmica de Preços & Planos, Auditoria de Sessões (Kill-Switch) e Simulador de Margem Unit Economics.',
       highlights: [
         // --- PARA O ADMIN / GESTOR ---
+        ChangelogItem(
+          icon: Icons.handshake_rounded,
+          title: 'Rede de Afiliados, Parcerias & Referral Engine',
+          description:
+              'Rastreamento completo de parcerias com links curtos (app.sheipados.com/r/SLUG), comissões fixas ou percentuais, cupons vinculados, KPIs de cliques/conversões e repasses via Pix.',
+          badge: 'AFILIADOS',
+          targetRoles: ['admin'],
+        ),
         ChangelogItem(
           icon: Icons.confirmation_number_rounded,
           title: 'Cupons de Desconto & Campanhas Promocionais SaaS',

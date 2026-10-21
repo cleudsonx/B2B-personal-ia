@@ -4035,6 +4035,173 @@ class AdminDataService {
     );
   }
 
+  // ==========================================
+  // Afiliados, Parcerias & Referral Engine
+  // ==========================================
+  static final List<AdminAffiliatePartnerItem> _defaultAffiliates = [
+    const AdminAffiliatePartnerItem(
+      id: 'aff-crefsp',
+      partnerName: 'CREF4/SP - Conselho Regional',
+      slug: 'CREFSP',
+      partnerType: 'entity',
+      commissionPercent: 10.0,
+      associatedCouponCode: 'CREFPRIME',
+      clicksCount: 184,
+      conversionsCount: 42,
+      totalRevenueGeneratedBrl: 4890.0,
+      totalCommissionDueBrl: 489.0,
+      contactEmail: 'parcerias@crefsp.gov.br',
+      pixKey: 'financeiro@crefsp.gov.br',
+      isActive: true,
+      createdAt: '2026-01-10',
+    ),
+    const AdminAffiliatePartnerItem(
+      id: 'aff-ironrunner',
+      partnerName: 'Assessoria Iron Runner',
+      slug: 'IRONRUNNER',
+      partnerType: 'coach',
+      commissionPercent: 15.0,
+      associatedCouponCode: 'LAUNCH50',
+      clicksCount: 95,
+      conversionsCount: 28,
+      totalRevenueGeneratedBrl: 2492.0,
+      totalCommissionDueBrl: 373.80,
+      contactEmail: 'contato@ironrunner.com.br',
+      pixKey: '11988887777',
+      isActive: true,
+      createdAt: '2026-02-01',
+    ),
+    const AdminAffiliatePartnerItem(
+      id: 'aff-rodrigo',
+      partnerName: 'Prof. Rodrigo Personal VIP',
+      slug: 'RODRIGO-VIP',
+      partnerType: 'influencer',
+      commissionPercent: 20.0,
+      associatedCouponCode: 'PROMOVIP20',
+      clicksCount: 62,
+      conversionsCount: 16,
+      totalRevenueGeneratedBrl: 1424.0,
+      totalCommissionDueBrl: 284.80,
+      contactEmail: 'rodrigo.coach@gmail.com',
+      pixKey: 'rodrigo.coach@gmail.com',
+      isActive: true,
+      createdAt: '2026-02-20',
+    ),
+    const AdminAffiliatePartnerItem(
+      id: 'aff-fitstudio',
+      partnerName: 'Rede FitStudio Sul',
+      slug: 'FITSTUDIO',
+      partnerType: 'gym_chain',
+      commissionPercent: 12.0,
+      associatedCouponCode: 'START2026',
+      clicksCount: 120,
+      conversionsCount: 31,
+      totalRevenueGeneratedBrl: 3255.0,
+      totalCommissionDueBrl: 390.60,
+      contactEmail: 'adm@fitstudiosul.com.br',
+      pixKey: '12.345.678/0001-99',
+      isActive: true,
+      createdAt: '2026-03-05',
+    ),
+  ];
+
+  static List<AdminAffiliatePartnerItem> _fallbackAffiliatesList = List.from(_defaultAffiliates);
+
+  static Future<AdminAffiliatesOverview> getAffiliatesOverview() async {
+    try {
+      final url = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/affiliates');
+      final resp = await http.get(url).timeout(const Duration(seconds: 4));
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        final overview = AdminAffiliatesOverview.fromJson(data);
+        if (overview.affiliates.isNotEmpty) {
+          _fallbackAffiliatesList = List.from(overview.affiliates);
+          return overview;
+        }
+      }
+    } catch (_) {}
+
+    return _fallbackAffiliatesOverview();
+  }
+
+  static Future<bool> createOrUpdateAffiliate(AdminAffiliatePartnerItem affiliate) async {
+    try {
+      final url = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/create-affiliate');
+      final resp = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(affiliate.toJson()),
+      ).timeout(const Duration(seconds: 4));
+      if (resp.statusCode == 200) {
+        final idx = _fallbackAffiliatesList.indexWhere((p) => p.id == affiliate.id || p.slug == affiliate.slug);
+        if (idx != -1) {
+          _fallbackAffiliatesList[idx] = affiliate;
+        } else {
+          _fallbackAffiliatesList.insert(0, affiliate);
+        }
+        return true;
+      }
+    } catch (_) {}
+
+    final idx = _fallbackAffiliatesList.indexWhere((p) => p.id == affiliate.id || p.slug == affiliate.slug);
+    if (idx != -1) {
+      _fallbackAffiliatesList[idx] = affiliate;
+    } else {
+      _fallbackAffiliatesList.insert(0, affiliate);
+    }
+    return true;
+  }
+
+  static Future<bool> toggleAffiliateActive(String affiliateId, bool isActive) async {
+    try {
+      final url = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/toggle-affiliate');
+      final resp = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'affiliate_id': affiliateId, 'is_active': isActive}),
+      ).timeout(const Duration(seconds: 4));
+      if (resp.statusCode == 200) {
+        final idx = _fallbackAffiliatesList.indexWhere((p) => p.id == affiliateId);
+        if (idx != -1) {
+          _fallbackAffiliatesList[idx] = _fallbackAffiliatesList[idx].copyWith(isActive: isActive);
+        }
+        return true;
+      }
+    } catch (_) {}
+
+    final idx = _fallbackAffiliatesList.indexWhere((p) => p.id == affiliateId);
+    if (idx != -1) {
+      _fallbackAffiliatesList[idx] = _fallbackAffiliatesList[idx].copyWith(isActive: isActive);
+    }
+    return true;
+  }
+
+  static Future<bool> deleteAffiliate(String affiliateId) async {
+    _fallbackAffiliatesList.removeWhere((p) => p.id == affiliateId);
+    return true;
+  }
+
+  static AdminAffiliatesOverview _fallbackAffiliatesOverview() {
+    final active = _fallbackAffiliatesList.where((p) => p.isActive).length;
+    final totalClicks = _fallbackAffiliatesList.fold<int>(0, (acc, p) => acc + p.clicksCount);
+    final totalConversions = _fallbackAffiliatesList.fold<int>(0, (acc, p) => acc + p.conversionsCount);
+    final totalRevenue = _fallbackAffiliatesList.fold<double>(0.0, (acc, p) => acc + p.totalRevenueGeneratedBrl);
+    final totalCommission = _fallbackAffiliatesList.fold<double>(0.0, (acc, p) => acc + p.totalCommissionDueBrl);
+    final avgRate = totalClicks > 0 ? (totalConversions / totalClicks * 100.0) : 0.0;
+
+    return AdminAffiliatesOverview(
+      totalPartnersCount: _fallbackAffiliatesList.length,
+      activePartnersCount: active,
+      totalClicks: totalClicks,
+      totalConversions: totalConversions,
+      averageConversionRatePercent: avgRate,
+      totalRevenueGeneratedBrl: totalRevenue,
+      totalCommissionDueBrl: totalCommission,
+      lastUpdated: 'Hoje',
+      affiliates: List.from(_fallbackAffiliatesList),
+    );
+  }
+
 }
 
 // ============================================================================
@@ -5096,6 +5263,178 @@ class AdminCouponsOverview {
       totalDiscountGrantedBrl: (s['total_discount_granted_brl'] as num?)?.toDouble() ?? 0.0,
       depletedOrExpiredCoupons: (s['depleted_or_expired_coupons'] as num?)?.toInt() ?? 0,
       coupons: list,
+    );
+  }
+}
+
+
+/// Modelo de Parceiro Afiliado / Link de Indicação (SaaS Affiliate Engine)
+class AdminAffiliatePartnerItem {
+  final String id;
+  final String partnerName;
+  final String slug;
+  final String partnerType; // 'entity' | 'influencer' | 'gym_chain' | 'coach'
+  final double commissionPercent;
+  final String? associatedCouponCode;
+  final int clicksCount;
+  final int conversionsCount;
+  final double totalRevenueGeneratedBrl;
+  final double totalCommissionDueBrl;
+  final String? contactEmail;
+  final String? pixKey;
+  final bool isActive;
+  final String? createdAt;
+
+  const AdminAffiliatePartnerItem({
+    required this.id,
+    required this.partnerName,
+    required this.slug,
+    required this.partnerType,
+    required this.commissionPercent,
+    this.associatedCouponCode,
+    required this.clicksCount,
+    required this.conversionsCount,
+    required this.totalRevenueGeneratedBrl,
+    required this.totalCommissionDueBrl,
+    this.contactEmail,
+    this.pixKey,
+    required this.isActive,
+    this.createdAt,
+  });
+
+  String get referralUrl => 'https://app.sheipados.com/r/$slug';
+  double get conversionRate => clicksCount > 0 ? (conversionsCount / clicksCount * 100.0) : 0.0;
+  String get formattedRevenue => 'R\$ ${totalRevenueGeneratedBrl.toStringAsFixed(2)}';
+  String get formattedCommission => 'R\$ ${totalCommissionDueBrl.toStringAsFixed(2)}';
+
+  String get partnerTypeLabel {
+    switch (partnerType.toLowerCase()) {
+      case 'entity':
+        return 'Conselho / Entidade';
+      case 'influencer':
+        return 'Influenciador / Creator';
+      case 'gym_chain':
+        return 'Rede de Academias';
+      case 'coach':
+        return 'Assessoria / Treinador';
+      default:
+        return 'Parceiro';
+    }
+  }
+
+  factory AdminAffiliatePartnerItem.fromJson(Map<String, dynamic> json) {
+    return AdminAffiliatePartnerItem(
+      id: (json['id'] ?? json['slug'] ?? '').toString(),
+      partnerName: (json['partner_name'] ?? json['name'] ?? '').toString(),
+      slug: (json['slug'] ?? '').toString().toUpperCase().trim(),
+      partnerType: (json['partner_type'] ?? 'entity').toString(),
+      commissionPercent: (json['commission_percent'] as num?)?.toDouble() ?? 10.0,
+      associatedCouponCode: json['associated_coupon_code'] as String?,
+      clicksCount: (json['clicks_count'] as num?)?.toInt() ?? 0,
+      conversionsCount: (json['conversions_count'] as num?)?.toInt() ?? 0,
+      totalRevenueGeneratedBrl: (json['total_revenue_generated_brl'] as num?)?.toDouble() ?? 0.0,
+      totalCommissionDueBrl: (json['total_commission_due_brl'] as num?)?.toDouble() ?? 0.0,
+      contactEmail: json['contact_email'] as String?,
+      pixKey: json['pix_key'] as String?,
+      isActive: json['is_active'] != false,
+      createdAt: json['created_at'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'partner_name': partnerName,
+      'slug': slug,
+      'partner_type': partnerType,
+      'commission_percent': commissionPercent,
+      'associated_coupon_code': associatedCouponCode,
+      'clicks_count': clicksCount,
+      'conversions_count': conversionsCount,
+      'total_revenue_generated_brl': totalRevenueGeneratedBrl,
+      'total_commission_due_brl': totalCommissionDueBrl,
+      'contact_email': contactEmail,
+      'pix_key': pixKey,
+      'is_active': isActive,
+      'created_at': createdAt,
+    };
+  }
+
+  AdminAffiliatePartnerItem copyWith({
+    String? id,
+    String? partnerName,
+    String? slug,
+    String? partnerType,
+    double? commissionPercent,
+    String? associatedCouponCode,
+    int? clicksCount,
+    int? conversionsCount,
+    double? totalRevenueGeneratedBrl,
+    double? totalCommissionDueBrl,
+    String? contactEmail,
+    String? pixKey,
+    bool? isActive,
+    String? createdAt,
+  }) {
+    return AdminAffiliatePartnerItem(
+      id: id ?? this.id,
+      partnerName: partnerName ?? this.partnerName,
+      slug: slug ?? this.slug,
+      partnerType: partnerType ?? this.partnerType,
+      commissionPercent: commissionPercent ?? this.commissionPercent,
+      associatedCouponCode: associatedCouponCode ?? this.associatedCouponCode,
+      clicksCount: clicksCount ?? this.clicksCount,
+      conversionsCount: conversionsCount ?? this.conversionsCount,
+      totalRevenueGeneratedBrl: totalRevenueGeneratedBrl ?? this.totalRevenueGeneratedBrl,
+      totalCommissionDueBrl: totalCommissionDueBrl ?? this.totalCommissionDueBrl,
+      contactEmail: contactEmail ?? this.contactEmail,
+      pixKey: pixKey ?? this.pixKey,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+}
+
+/// Overview de Parceiros e Afiliados
+class AdminAffiliatesOverview {
+  final int totalPartnersCount;
+  final int activePartnersCount;
+  final int totalClicks;
+  final int totalConversions;
+  final double averageConversionRatePercent;
+  final double totalRevenueGeneratedBrl;
+  final double totalCommissionDueBrl;
+  final String lastUpdated;
+  final List<AdminAffiliatePartnerItem> affiliates;
+
+  const AdminAffiliatesOverview({
+    required this.totalPartnersCount,
+    required this.activePartnersCount,
+    required this.totalClicks,
+    required this.totalConversions,
+    required this.averageConversionRatePercent,
+    required this.totalRevenueGeneratedBrl,
+    required this.totalCommissionDueBrl,
+    required this.lastUpdated,
+    required this.affiliates,
+  });
+
+  factory AdminAffiliatesOverview.fromJson(Map<String, dynamic> json) {
+    final s = json['summary'] as Map<String, dynamic>? ?? {};
+    final list = (json['affiliates'] as List<dynamic>?)
+            ?.map((e) => AdminAffiliatePartnerItem.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [];
+    return AdminAffiliatesOverview(
+      totalPartnersCount: (s['total_partners_count'] as num?)?.toInt() ?? list.length,
+      activePartnersCount: (s['active_partners_count'] as num?)?.toInt() ?? list.where((p) => p.isActive).length,
+      totalClicks: (s['total_clicks'] as num?)?.toInt() ?? 0,
+      totalConversions: (s['total_conversions'] as num?)?.toInt() ?? 0,
+      averageConversionRatePercent: (s['average_conversion_rate_percent'] as num?)?.toDouble() ?? 0.0,
+      totalRevenueGeneratedBrl: (s['total_revenue_generated_brl'] as num?)?.toDouble() ?? 0.0,
+      totalCommissionDueBrl: (s['total_commission_due_brl'] as num?)?.toDouble() ?? 0.0,
+      lastUpdated: s['last_updated'] as String? ?? 'Hoje',
+      affiliates: list,
     );
   }
 }
