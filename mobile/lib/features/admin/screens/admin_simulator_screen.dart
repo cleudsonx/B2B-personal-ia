@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/widgets/meta_components.dart';
 import '../services/admin_data_service.dart';
+import '../widgets/admin_simulator_export_modal.dart';
 
 class AdminSimulatorScreen extends StatefulWidget {
   const AdminSimulatorScreen({super.key});
@@ -128,66 +129,109 @@ class _AdminSimulatorScreenState extends State<AdminSimulatorScreen> {
   }
 
   Widget _buildHeader(Color textPrimary, Color textSecondary) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 650;
+        final actions = Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_overview != null) ...[
+              ElevatedButton.icon(
+                onPressed: () => AdminSimulatorExportModal.show(
+                  context,
+                  overview: _overview!,
+                  simulation: _simResult,
                 ),
-                child: const Icon(
-                  Icons.calculate_rounded,
-                  color: Color(0xFF10B981),
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Simulador de Precificação & Margem Líquida',
-                      style: TextStyle(
-                        color: textPrimary,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'SaaS Pricing, Split GMV (5%) e Unit Economics vs COGS de IA Gemini & WhatsApp',
-                      style: TextStyle(
-                        color: textSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
+                icon: const Icon(Icons.file_download_rounded, size: 16),
+                label: const Text('Exportar Relatório', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 0,
                 ),
               ),
+              const SizedBox(width: 8),
             ],
-          ),
-        ),
-        IconButton(
-          onPressed: _loadData,
-          tooltip: 'Recarregar Unit Economics',
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: textSecondary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+            IconButton(
+              onPressed: _loadData,
+              tooltip: 'Recarregar Unit Economics',
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: textSecondary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.refresh_rounded, color: textPrimary, size: 20),
+              ),
             ),
-            child: Icon(Icons.refresh_rounded, color: textPrimary, size: 20),
-          ),
-        ),
-      ],
+          ],
+        );
+
+        final titleWidget = Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+              ),
+              child: const Icon(
+                Icons.calculate_rounded,
+                color: Color(0xFF10B981),
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Simulador de Precificação & Margem Líquida',
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'SaaS Pricing, Split GMV (5%) e Unit Economics vs COGS de IA Gemini & WhatsApp',
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+
+        if (isMobile) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              titleWidget,
+              const SizedBox(height: 12),
+              actions,
+            ],
+          );
+        }
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(child: titleWidget),
+            const SizedBox(width: 12),
+            actions,
+          ],
+        );
+      },
     );
   }
 

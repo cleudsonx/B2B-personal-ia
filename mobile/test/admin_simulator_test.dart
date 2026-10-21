@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_ia/features/admin/screens/admin_simulator_screen.dart';
 import 'package:personal_ia/features/admin/services/admin_data_service.dart';
+import 'package:personal_ia/features/admin/widgets/admin_simulator_export_modal.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -113,6 +114,7 @@ void main() {
 
       // Verifica cabeçalho
       expect(find.text('Simulador de Precificação & Margem Líquida'), findsOneWidget);
+      expect(find.text('Exportar Relatório'), findsOneWidget);
 
       // Verifica KPIs do Unit Economics
       expect(find.text('MRR CONSOLIDADO'), findsOneWidget);
@@ -135,6 +137,39 @@ void main() {
       expect(find.text('Top Personals por Margem Líquida Contribuída'), findsOneWidget);
       expect(find.text('Studio Fit Performance'), findsOneWidget);
     });
+
+    testWidgets('opens AdminSimulatorExportModal and displays export options', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1200, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AdminSimulatorScreen(),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Clica no botão de exportação
+      final exportBtn = find.text('Exportar Relatório');
+      expect(exportBtn, findsOneWidget);
+      await tester.tap(exportBtn);
+      await tester.pumpAndSettle();
+
+      // Verifica elementos do modal de exportação
+      expect(find.text('Exportação Executiva & Pitch Deck'), findsOneWidget);
+      expect(find.text('Baixar CSV (Excel)'), findsOneWidget);
+      expect(find.text('Copiar Pitch Deck'), findsOneWidget);
+      expect(find.text('Copiar CSV em Texto Bruto'), findsOneWidget);
+
+      // Fecha o modal de forma segura
+      Navigator.of(tester.element(find.text('Exportação Executiva & Pitch Deck'))).pop();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Exportação Executiva & Pitch Deck'), findsNothing);
+    });
   });
 }
-

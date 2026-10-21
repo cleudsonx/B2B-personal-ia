@@ -41,7 +41,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103013,
+      buildNumber: 2026103014,
       date: '20 de Outubro, 2026',
       summary:
           'Versão 1.9.0: Fechamento do Ciclo Financeiro com Webhook Asaas, Indução ao PWA (iOS/Android), Gestão Estrita de Vagas e Automação de Boas-Vindas no WhatsApp.',
@@ -115,6 +115,14 @@ class AppChangelog {
         ),
 
         // --- PARA ADMIN ---
+        ChangelogItem(
+          icon: Icons.file_download_rounded,
+          title: 'Exportação Executiva em CSV & Pitch Deck',
+          description:
+              'Geração instantânea de relatórios financeiros em CSV (padrão Excel Brasil) e resumo executivo em Markdown para investidores e reuniões de diretoria.',
+          badge: 'MISSION CONTROL',
+          targetRoles: ['admin'],
+        ),
         ChangelogItem(
           icon: Icons.calculate_rounded,
           title: 'Simulador de Margem SaaS & Unit Economics',

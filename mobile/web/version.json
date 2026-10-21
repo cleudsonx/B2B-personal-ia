@@ -1,7 +1,7 @@
 {
   "version": "1.9.0",
-  "build": 2026103013,
-  "updated_at": "2026-10-21T18:12:07.112447Z",
+  "build": 2026103014,
+  "updated_at": "2026-10-21T18:49:11.991467Z",
   "notes": "Versão 1.9.0: Fechamento do Ciclo Financeiro com Webhook Asaas, Indução ao PWA (iOS/Android), Gestão Estrita de Vagas e Automação de Boas-Vindas no WhatsApp.",
   "changelog": {
     "student": [
@@ -49,6 +49,11 @@
       }
     ],
     "admin": [
+      {
+        "title": "Exportação Executiva em CSV & Pitch Deck",
+        "description": "Geração instantânea de relatórios financeiros em CSV (padrão Excel Brasil) e resumo executivo em Markdown para investidores e reuniões de diretoria.",
+        "badge": "MISSION CONTROL"
+      },
       {
         "title": "Simulador de Margem SaaS & Unit Economics",
         "description": "Simulador financeiro dinâmico com projeção de MRR, Split GMV de 5%, COGS de IA Gemini Flash Lite e Meta WhatsApp, LTV/CAC e margens líquidas reais.",

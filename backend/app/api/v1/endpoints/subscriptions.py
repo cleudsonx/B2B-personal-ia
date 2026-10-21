@@ -1049,3 +1049,88 @@ async def simulate_saas_pricing(req: PricingSimulationRequest):
             {"tier": "Studio", "price": req.studio_price, "trainers": p_trainers_studio, "revenue": round(p_trainers_studio * req.studio_price, 2)},
         ]
     }
+
+
+@router.post("/admin/export-unit-economics-csv")
+async def export_unit_economics_csv(req: PricingSimulationRequest):
+    """
+    Gera relatorio executivo em CSV estruturado com delimitador ponto-e-virgula e UTF-8 BOM
+    compativel com Excel/Google Sheets, contendo KPIs, simulacao e matriz de tiers.
+    """
+    ov = await get_admin_unit_economics()
+    sim = await simulate_saas_pricing(req)
+    
+    now_str = datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S UTC")
+    lines = [
+        "\ufeff# ============================================================================",
+        "# MR. COACH / SHAIPADOS - RELATORIO EXECUTIVO DE UNIT ECONOMICS & SIMULACAO SAAS",
+        f"# Extracao: {now_str} | Versao do Sistema: 1.9.0",
+        "# ============================================================================",
+        "",
+        "# SECAO 1: PANORAMA GLOBAL ATUAL (UNIT ECONOMICS)",
+        "Metrica;Valor",
+        f"Treinadores Totais;{ov['total_trainers']}",
+        f"Treinadores Pagantes;{ov['paying_trainers']}",
+        f"Alunos Ativos Conectados;{ov['total_students_active']}",
+        f"MRR Assinaturas SaaS (R$);{str(ov['mrr_subscriptions']).replace('.', ',')}",
+        f"MRR Split GMV 5% (R$);{str(ov['mrr_split_gmv']).replace('.', ',')}",
+        f"MRR Total Consolidado (R$);{str(ov['total_mrr']).replace('.', ',')}",
+        f"ARR Projetado Anualizado (R$);{str(ov['arr']).replace('.', ',')}",
+        f"COGS Gemini 2.5 Flash Lite (R$);{str(ov['cogs_gemini_ai']).replace('.', ',')}",
+        f"COGS WhatsApp Cloud API (R$);{str(ov['cogs_whatsapp']).replace('.', ',')}",
+        f"COGS Gateway Asaas/Stripe (R$);{str(ov['cogs_gateway_fees']).replace('.', ',')}",
+        f"COGS Diretos Totais (R$);{str(ov['total_cogs']).replace('.', ',')}",
+        f"Lucro Liquido Mensal (R$);{str(ov['net_margin_monthly']).replace('.', ',')}",
+        f"Margem Liquida SaaS (%);{str(ov['net_margin_pct']).replace('.', ',')}%",
+        f"LTV Estimado (R$);{str(ov['ltv_estimated']).replace('.', ',')}",
+        f"CAC Estimado (R$);{str(ov['cac_estimated']).replace('.', ',')}",
+        f"LTV / CAC Ratio;{str(ov['ltv_to_cac_ratio']).replace('.', ',')}x",
+        f"Payback Medio (Meses);{str(ov['payback_months']).replace('.', ',')}",
+        "",
+        "# SECAO 2: PROJECAO DO CENARIO SIMULADO",
+        "Parametro / Resultado;Valor Simulado",
+        f"Preco Plano Pro (R$);{str(req.pro_price).replace('.', ',')}",
+        f"Preco Plano Elite (R$);{str(req.elite_price).replace('.', ',')}",
+        f"Preco Plano Studio (R$);{str(req.studio_price).replace('.', ',')}",
+        f"Take-Rate Split Consultoria (%);{str(req.take_rate_pct).replace('.', ',')}%",
+        f"Otimizacao Gemini Ativa;{'SIM (-30% Token COGS)' if req.gemini_opt_factor < 1.0 else 'NAO (Padrao)'}",
+        f"Taxa de Expansao Projetada (%);{str(req.projected_growth_pct).replace('.', ',')}%",
+        f"MRR Projetado Simulado (R$);{str(sim['projected_mrr']).replace('.', ',')}",
+        f"Delta MRR Mensal (R$);{str(sim['delta_mrr']).replace('.', ',')}",
+        f"Variacao MRR (%);{str(sim['delta_mrr_pct']).replace('.', ',')}%",
+        f"Nova Margem Liquida (%);{str(sim['projected_net_margin_pct']).replace('.', ',')}%",
+        f"Impacto Lucro Liquido Anual (R$);{str(sim['delta_annual_net_profit']).replace('.', ',')}",
+        f"Base Projetada Simulada;{sim['projected_trainers']} Personals / {sim['projected_students']} Alunos",
+        "",
+        "# SECAO 3: MATRIZ DE TIERS DE ASSINATURA",
+        "Tier;Personals;Alunos;Preco Base (R$);MRR Assinaturas (R$);MRR Split (R$);COGS IA (R$);Margem Liquida (R$);Margem %",
+    ]
+    
+    for t in ov["tier_economics"]:
+        lines.append(
+            f"{t['tier']};{t['trainers']};{t['students_total']};"
+            f"{str(t['price']).replace('.', ',')};{str(t['mrr_subs']).replace('.', ',')};"
+            f"{str(t['mrr_split']).replace('.', ',')};{str(t['cogs_ai']).replace('.', ',')};"
+            f"{str(t['net_margin']).replace('.', ',')};{str(t['margin_pct']).replace('.', ',')}%"
+        )
+        
+    lines.extend([
+        "",
+        "# SECAO 4: TOP HIGH-VALUE ACCOUNTS (RANKING DE PERSONALS)",
+        "ID;Personal / Assessoria;Plano;Alunos;GMV Alunos (R$);Receita Plataforma (R$);Custos IA + WA (R$);Margem Contribuida (R$);Margem %",
+    ])
+    
+    for trn in ov["top_trainer_economics"]:
+        lines.append(
+            f"{trn['trainer_id']};{trn['trainer_name']};{trn['plan_id'].upper()};{trn['students_count']};"
+            f"{str(trn['gmv']).replace('.', ',')};{str(trn['platform_revenue']).replace('.', ',')};"
+            f"{str(trn['cogs_total']).replace('.', ',')};{str(trn['net_margin']).replace('.', ',')};"
+            f"{str(trn['net_margin_pct']).replace('.', ',')}%"
+        )
+        
+    csv_content = "\r\n".join(lines)
+    return {
+        "csv": csv_content,
+        "filename": f"unit_economics_simulacao_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv",
+        "generated_at": now_str,
+    }
