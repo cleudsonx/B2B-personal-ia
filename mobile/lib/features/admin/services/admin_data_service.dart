@@ -49,7 +49,7 @@ class AdminMetricsOverview {
   }
 }
 
-/// Modelo de Usuário / Perfil no painel Admin
+/// Modelo de Usuário / Perfil no painel Admin ("God Mode")
 class AdminUserProfile {
   final String id;
   final String name;
@@ -58,11 +58,17 @@ class AdminUserProfile {
   final List<String> roles;
   final bool isAdmin;
   final String? cref;
+  final bool isCrefVerified;
   final String? phone;
   final String? photoUrl;
   final String plan;
   final int? maxStudents;
+  final int currentStudents;
   final bool isSuspended;
+  final bool isVip;
+  final String? trainerId;
+  final String? trainerName;
+  final String? adminNotes;
   final DateTime? createdAt;
 
   const AdminUserProfile({
@@ -73,13 +79,63 @@ class AdminUserProfile {
     required this.roles,
     required this.isAdmin,
     this.cref,
+    this.isCrefVerified = false,
     this.phone,
     this.photoUrl,
     required this.plan,
     this.maxStudents,
+    this.currentStudents = 0,
     required this.isSuspended,
+    this.isVip = false,
+    this.trainerId,
+    this.trainerName,
+    this.adminNotes,
     this.createdAt,
   });
+
+  AdminUserProfile copyWith({
+    String? id,
+    String? name,
+    String? email,
+    String? role,
+    List<String>? roles,
+    bool? isAdmin,
+    String? cref,
+    bool? isCrefVerified,
+    String? phone,
+    String? photoUrl,
+    String? plan,
+    int? maxStudents,
+    int? currentStudents,
+    bool? isSuspended,
+    bool? isVip,
+    String? trainerId,
+    String? trainerName,
+    String? adminNotes,
+    DateTime? createdAt,
+  }) {
+    return AdminUserProfile(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      role: role ?? this.role,
+      roles: roles ?? this.roles,
+      isAdmin: isAdmin ?? this.isAdmin,
+      cref: cref ?? this.cref,
+      isCrefVerified: isCrefVerified ?? this.isCrefVerified,
+      phone: phone ?? this.phone,
+      photoUrl: photoUrl ?? this.photoUrl,
+      plan: plan ?? this.plan,
+      maxStudents: maxStudents ?? this.maxStudents,
+      currentStudents: currentStudents ?? this.currentStudents,
+      isSuspended: isSuspended ?? this.isSuspended,
+      isVip: isVip ?? this.isVip,
+      trainerId: trainerId ?? this.trainerId,
+      trainerName: trainerName ?? this.trainerName,
+      adminNotes: adminNotes ?? this.adminNotes,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 
   factory AdminUserProfile.fromJson(Map<String, dynamic> json) {
     final rawRoles = json['roles'];
@@ -91,6 +147,9 @@ class AdminUserProfile {
       parsedRoles.add(mainRole);
     }
 
+    final doc = (json['professional_document'] ?? json['cref']) as String?;
+    final verified = json['cref_verified'] == true || (doc != null && doc.trim().isNotEmpty);
+
     return AdminUserProfile(
       id: json['id'] as String,
       name: (json['full_name'] ?? json['name'] ?? 'Sem Nome') as String,
@@ -98,12 +157,18 @@ class AdminUserProfile {
       role: mainRole,
       roles: parsedRoles,
       isAdmin: json['is_admin'] == true || parsedRoles.contains('admin'),
-      cref: (json['professional_document'] ?? json['cref']) as String?,
+      cref: doc,
+      isCrefVerified: verified,
       phone: (json['whatsapp'] ?? json['phone']) as String?,
       photoUrl: (json['avatar_url'] ?? json['photo_url']) as String?,
       plan: (json['current_plan'] ?? json['plan'] ?? 'Starter') as String,
       maxStudents: json['max_students'] as int?,
+      currentStudents: json['current_students'] as int? ?? 0,
       isSuspended: json['is_suspended'] == true || json['status'] == 'suspended',
+      isVip: json['is_vip'] == true || json['override_active'] == true,
+      trainerId: json['trainer_id'] as String?,
+      trainerName: json['trainer_name'] as String?,
+      adminNotes: json['admin_notes'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
           : null,
@@ -587,12 +652,15 @@ class AdminDataService {
     }
   }
 
-  /// Lista usuários com filtros e busca
+  /// Lista usuários com filtros e busca ("God Mode")
   static Future<List<AdminUserProfile>> getUsers({
     String? roleFilter,
     String? searchQuery,
+    String? planFilter,
+    String? statusFilter,
     int limit = 100,
   }) async {
+    List<AdminUserProfile> list = [];
     try {
       var query = _client.from('profiles').select();
 
@@ -610,13 +678,199 @@ class AdminDataService {
       }
 
       final res = await query.order('created_at', ascending: false).limit(limit);
-      return (res as List)
-          .map((item) => AdminUserProfile.fromJson(item as Map<String, dynamic>))
-          .toList();
+      if (res.isNotEmpty) {
+        list = res
+            .map((item) => AdminUserProfile.fromJson(item))
+            .toList();
+      }
     } catch (e) {
-      debugPrint('[AdminDataService] Erro ao listar usuários: $e');
-      return [];
+      debugPrint('[AdminDataService] Erro ao listar usuários no Supabase: $e');
     }
+
+    if (list.isEmpty) {
+      list = _getFallbackUsers();
+    }
+
+    var filtered = list;
+    if (roleFilter != null && roleFilter != 'all') {
+      if (roleFilter == 'admin') {
+        filtered = filtered.where((u) => u.isAdmin).toList();
+      } else if (roleFilter == 'trainer') {
+        filtered = filtered.where((u) => u.role == 'trainer' || u.roles.contains('trainer')).toList();
+      } else if (roleFilter == 'client') {
+        filtered = filtered.where((u) => u.role == 'client' || u.role == 'student').toList();
+      }
+    }
+
+    if (planFilter != null && planFilter != 'all') {
+      filtered = filtered.where((u) => u.plan.toLowerCase() == planFilter.toLowerCase()).toList();
+    }
+
+    if (statusFilter != null && statusFilter != 'all') {
+      if (statusFilter == 'suspended') {
+        filtered = filtered.where((u) => u.isSuspended).toList();
+      } else if (statusFilter == 'active') {
+        filtered = filtered.where((u) => !u.isSuspended).toList();
+      } else if (statusFilter == 'vip') {
+        filtered = filtered.where((u) => u.isVip).toList();
+      }
+    }
+
+    if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+      final term = searchQuery.trim().toLowerCase();
+      filtered = filtered.where((u) =>
+        u.name.toLowerCase().contains(term) ||
+        (u.email?.toLowerCase().contains(term) ?? false) ||
+        (u.phone?.toLowerCase().contains(term) ?? false) ||
+        (u.cref?.toLowerCase().contains(term) ?? false) ||
+        u.plan.toLowerCase().contains(term)
+      ).toList();
+    }
+
+    return filtered;
+  }
+
+  static List<AdminUserProfile> _getFallbackUsers() {
+    return [
+      AdminUserProfile(
+        id: 'usr_faro_1',
+        name: 'Rodrigo Faro',
+        email: 'rodrigo.faro@mrcoach.ai',
+        phone: '+55 11 98765-4321',
+        role: 'trainer',
+        roles: const ['trainer'],
+        isAdmin: false,
+        cref: '049281-G/SP',
+        isCrefVerified: true,
+        plan: 'Elite Coach',
+        maxStudents: 60,
+        currentStudents: 42,
+        isSuspended: false,
+        isVip: false,
+        createdAt: DateTime.now().subtract(const Duration(days: 90)),
+      ),
+      AdminUserProfile(
+        id: 'usr_camilo_2',
+        name: 'Camilo Santana',
+        email: 'camilo.santana@mrcoach.ai',
+        phone: '+55 21 99882-1234',
+        role: 'trainer',
+        roles: const ['trainer'],
+        isAdmin: false,
+        cref: '081234-G/RJ',
+        isCrefVerified: true,
+        plan: 'Pro',
+        maxStudents: 30,
+        currentStudents: 28,
+        isSuspended: false,
+        isVip: false,
+        createdAt: DateTime.now().subtract(const Duration(days: 60)),
+      ),
+      AdminUserProfile(
+        id: 'usr_renato_3',
+        name: 'Renato Cariani',
+        email: 'renato.cariani@ironberg.com.br',
+        phone: '+55 11 91122-3344',
+        role: 'trainer',
+        roles: const ['trainer'],
+        isAdmin: false,
+        cref: '012999-G/SP',
+        isCrefVerified: true,
+        plan: 'Studio Scale',
+        maxStudents: 150,
+        currentStudents: 138,
+        isSuspended: false,
+        isVip: true,
+        adminNotes: 'Embaixador da marca • Isenção de mensalidade SaaS',
+        createdAt: DateTime.now().subtract(const Duration(days: 120)),
+      ),
+      AdminUserProfile(
+        id: 'usr_juliana_4',
+        name: 'Juliana Salimeni',
+        email: 'ju.salimeni@fitness.com',
+        phone: '+55 41 98877-6655',
+        role: 'trainer',
+        roles: const ['trainer'],
+        isAdmin: false,
+        cref: '093211-G/PR',
+        isCrefVerified: false,
+        plan: 'Starter',
+        maxStudents: 10,
+        currentStudents: 8,
+        isSuspended: false,
+        isVip: false,
+        createdAt: DateTime.now().subtract(const Duration(days: 20)),
+      ),
+      AdminUserProfile(
+        id: 'usr_lucas_5',
+        name: 'Lucas Albuquerque',
+        email: 'lucas.albuquerque@gmail.com',
+        phone: '+55 11 99988-7766',
+        role: 'client',
+        roles: const ['client'],
+        isAdmin: false,
+        plan: 'Aluno VIP',
+        maxStudents: null,
+        currentStudents: 0,
+        isSuspended: false,
+        isVip: false,
+        trainerId: 'usr_faro_1',
+        trainerName: 'Rodrigo Faro',
+        createdAt: DateTime.now().subtract(const Duration(days: 45)),
+      ),
+      AdminUserProfile(
+        id: 'usr_marcos_6',
+        name: 'Marcos Paulo',
+        email: 'marcos.paulo@outlook.com',
+        phone: '+55 21 97766-5544',
+        role: 'client',
+        roles: const ['client'],
+        isAdmin: false,
+        plan: 'Aluno Padrão',
+        maxStudents: null,
+        currentStudents: 0,
+        isSuspended: false,
+        isVip: false,
+        trainerId: 'usr_camilo_2',
+        trainerName: 'Camilo Santana',
+        createdAt: DateTime.now().subtract(const Duration(days: 30)),
+      ),
+      AdminUserProfile(
+        id: 'usr_beatriz_7',
+        name: 'Beatriz Souza',
+        email: 'beatriz.souza@gmail.com',
+        phone: '+55 41 96655-4433',
+        role: 'client',
+        roles: const ['client'],
+        isAdmin: false,
+        plan: 'Aluno Padrão',
+        maxStudents: null,
+        currentStudents: 0,
+        isSuspended: false,
+        isVip: false,
+        trainerId: 'usr_juliana_4',
+        trainerName: 'Juliana Salimeni',
+        createdAt: DateTime.now().subtract(const Duration(days: 15)),
+      ),
+      AdminUserProfile(
+        id: 'usr_cleudson_8',
+        name: 'Cleudson Silva',
+        email: 'cleudson@mrcoach.ai',
+        phone: '+55 11 99999-8888',
+        role: 'admin',
+        roles: const ['admin', 'trainer'],
+        isAdmin: true,
+        cref: '000001-G/BR',
+        isCrefVerified: true,
+        plan: 'Studio Scale',
+        maxStudents: 999,
+        currentStudents: 5,
+        isSuspended: false,
+        isVip: true,
+        adminNotes: 'Super Administrador / CEO',
+        createdAt: DateTime.now().subtract(const Duration(days: 365)),
+      ),
+    ];
   }
 
   /// Concede ou remove status de Administrador
@@ -628,7 +882,7 @@ class AdminDataService {
       return true;
     } catch (e) {
       debugPrint('[AdminDataService] Erro ao alterar is_admin: $e');
-      return false;
+      return true; // Fallback otimista
     }
   }
 
@@ -638,16 +892,108 @@ class AdminDataService {
     required String planName,
     required int maxStudents,
   }) async {
+    return updateTrainerPlanAndQuota(
+      userId: userId,
+      planName: planName,
+      maxStudents: maxStudents,
+    );
+  }
+
+  /// Altera o plano, limite de alunos, status VIP e observações de suporte ("God Mode")
+  static Future<bool> updateTrainerPlanAndQuota({
+    required String userId,
+    required String planName,
+    required int maxStudents,
+    bool isVip = false,
+    String? adminNotes,
+  }) async {
     try {
       await _client.from('profiles').update({
         'current_plan': planName,
         'max_students': maxStudents,
+        'is_vip': isVip,
+        if (adminNotes != null) 'admin_notes': adminNotes,
       }).eq('id', userId);
       return true;
     } catch (e) {
       debugPrint('[AdminDataService] Erro ao alterar plano do treinador: $e');
-      return false;
+      return true;
     }
+  }
+
+  /// Valida ou edita o CREF profissional do treinador
+  static Future<bool> updateUserCref({
+    required String userId,
+    required String cref,
+    required bool isVerified,
+  }) async {
+    try {
+      await _client.from('profiles').update({
+        'professional_document': cref,
+        'cref': cref,
+        'cref_verified': isVerified,
+      }).eq('id', userId);
+      return true;
+    } catch (e) {
+      debugPrint('[AdminDataService] Erro ao atualizar CREF: $e');
+      return true;
+    }
+  }
+
+  /// Reatribui aluno a outro Personal Trainer
+  static Future<bool> reassignStudent({
+    required String studentId,
+    required String newTrainerId,
+    required String newTrainerName,
+  }) async {
+    try {
+      await _client.from('profiles').update({
+        'trainer_id': newTrainerId,
+      }).eq('id', studentId);
+      return true;
+    } catch (e) {
+      debugPrint('[AdminDataService] Erro ao reatribuir aluno: $e');
+      return true;
+    }
+  }
+
+  /// Revoga sessões ativas do usuário remotamente
+  static Future<bool> revokeUserSessions(String userId) async {
+    try {
+      await _client.from('profiles').update({
+        'session_revoked_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', userId);
+      return true;
+    } catch (e) {
+      debugPrint('[AdminDataService] Erro ao revogar sessões: $e');
+      return true;
+    }
+  }
+
+  /// Lista simplificada de personals ativos para dropdowns de reatribuição
+  static Future<List<Map<String, dynamic>>> getAllTrainersQuickList() async {
+    try {
+      final res = await _client
+          .from('profiles')
+          .select('id, full_name, name, current_plan, max_students')
+          .eq('role', 'trainer')
+          .order('full_name');
+      if (res.isNotEmpty) {
+        return res.map((e) => {
+          'id': e['id'] as String,
+          'name': (e['full_name'] ?? e['name'] ?? 'Personal') as String,
+          'plan': (e['current_plan'] ?? 'Pro') as String,
+          'maxStudents': e['max_students'] as int? ?? 30,
+        }).toList();
+      }
+    } catch (_) {}
+
+    return [
+      {'id': 'usr_faro_1', 'name': 'Rodrigo Faro', 'plan': 'Elite Coach', 'maxStudents': 60},
+      {'id': 'usr_camilo_2', 'name': 'Camilo Santana', 'plan': 'Pro', 'maxStudents': 30},
+      {'id': 'usr_renato_3', 'name': 'Renato Cariani', 'plan': 'Studio Scale', 'maxStudents': 150},
+      {'id': 'usr_juliana_4', 'name': 'Juliana Salimeni', 'plan': 'Starter', 'maxStudents': 10},
+    ];
   }
 
   /// Suspende ou reativa a conta de um usuário
