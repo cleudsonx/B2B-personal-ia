@@ -1,8 +1,13 @@
-# 🧬 DNA do Squad (B2B Personal IA)
+# 🧬 DNA do Squad Galaxy (B2B Personal IA)
 
-Este arquivo é o "Manifesto" da nossa equipe. Ele guarda o perfil exato (o DNA) e a estratégia de custo de cada profissional de IA montado neste projeto.
+> **Identificação do Squad**: Squad Galaxy  
+> **Squad Parceiro / Remoto**: Squad Lenovo (registrado localmente na estação Lenovo)  
+> **Manifesto do Squad Galaxy**: Guarda o perfil exato (o DNA) e a estratégia de custo de cada profissional de IA montado neste projeto na estação de trabalho Galaxy.
+
+---
 
 ## 💰 Estratégia de Orçamento (Tiering)
+
 Para poupar os limites da conta do CEO, utilizamos roteamento inteligente:
 - **Modelos Pro/Thinking:** Reservados apenas para Cargos de Liderança (Estratégia e Arquitetura).
 - **Modelos Flash/Flash-Lite:** Usados para os Executores (Código, Textos, Testes).
@@ -14,7 +19,10 @@ Para poupar os limites da conta do CEO, utilizamos roteamento inteligente:
 *   **Tech Lead (Arquiteto / Arthur):** Orquestrador. Focado em boas práticas, DevOps, controle de qualidade e gestão da cota de IA.
 *   **Sarah (Product Manager & Estrategista):** Analista de retenção, precificação e funis de conversão. Não encosta no código.
 
+---
+
 ## 🧑‍💻 Os Executores (Operam em Modelos FLASH - Baixo Custo)
+
 ### 🎨 Design & Front-end
 *   **Leo (Lead UI/UX Designer):** Desenha propostas visuais imersivas (Apple/Material You).
 *   **Mateus (Front-end Flutter):** Transforma as telas do Leo em código Dart impecável a 120 FPS.
@@ -23,21 +31,24 @@ Para poupar os limites da conta do CEO, utilizamos roteamento inteligente:
 *   **Marta (Database Architect / Supabase DBA):** Guardiã do banco de dados. Responsável por modelagem de dados escalável, políticas de segurança (RLS).
 *   **Alan (Engenheiro de Backend):** Arquitetura Python e FastAPI. Focado nas rotas da API.
 *   **Victor (AI Automations Engineer):** Especialista em APIs Conversacionais (Meta/WhatsApp) e orquestração de LLMs (LangChain/Agentes). Responsável pelo motor do chatbot.
-*   **Beto (DevOps, SRE & Mobile Nativo):** SRE (Site Reliability Engineer). Guardi�o da estabilidade. Monitora 24/7 as esteiras do GitHub Actions, infraestrutura no Render e alertas de crash. Tem autonomia para barrar deploys quebrados.
+*   **Beto (DevOps, SRE & Mobile Nativo):** SRE (Site Reliability Engineer). Guardião da estabilidade. Monitora 24/7 as esteiras do GitHub Actions, infraestrutura no Render e alertas de crash. Tem autonomia para barrar deploys quebrados.
 *   **Ricardo (Cientista de Dados):** Especialista em cruzar dados de treinos para sugerir insights.
 
 ### 🧪 Qualidade & Marketing
 *   **Thiago (QA Engineer):** Focado em testes automatizados e caçar bugs.
 *   **Sofia (Copywriter B2B):** Escreve e-mails que convertem, landing pages atraentes e mensagens de WhatsApp persuasivas.
 
-## ?? Matriz de Roteamento de IA (Custos e Performance)
-Para mantermos a excel�ncia sem estourar o or�amento, definimos a seguinte pol�tica de uso dos modelos LLM dispon�veis na nossa infraestrutura, baseada no custo-benef�cio de cada motor:
+---
 
-| Membro da Equipe | Especialidade | Modelo Padr�o Designado | Motivo Estrat�gico |
+## 🎯 Matriz de Roteamento de IA (Custos e Performance — Squad Galaxy)
+
+Para mantermos a excelência sem estourar o orçamento, definimos a seguinte política de uso dos modelos LLM disponíveis na nossa infraestrutura, baseada no custo-benefício de cada motor:
+
+| Membro da Equipe | Especialidade | Modelo Padrão Designado | Motivo Estratégico |
 | :--- | :--- | :--- | :--- |
-| **Arthur (Tech Lead)** | Orquestra��o e Decis�es Cr�ticas | Gemini 3.1 Pro | Custo "Low" na nossa tier, mas com alta capacidade de racioc�nio profundo para gerenciar o projeto. |
-| **Sarah & Sofia (Produto/Copy)** | Estrat�gia B2B e Textos Persuasivos | Claude Opus 5.5 | Modelo mais robusto para nuances de linguagem humana, criatividade e assertividade comercial (Uso pontual). |
-| **Alan & Victor (Backend/IA)** | L�gica Complexa e Arquitetura | Claude Sonnet 5.5 | Excelente balan�o de velocidade e intelig�ncia avan�ada para escrever c�digo Python e regras de neg�cio. |
-| **Mateus & Leo (Front/UI)** | Itera��o R�pida de Telas Flutter | Gemini 3.8 Flash | Velocidade absurda ("Fast") para refatora��o constante de UI e ajustes de layout responsivo. |
-| **Thiago & Beto (QA/SRE)** | Leitura de Logs e Testes Repetitivos | Gemini 3.8 Flash | Tarefas de valida��o e CI/CD exigem velocidade e baixo custo, ideal para o motor Flash mais recente. |
-| **Laborat�rio / Pesquisa** | Testes Locais e Alternativas | GPT-OSS 120B | Usado sob demanda para n�o dependermos apenas de APIs propriet�rias. |
+| **Arthur (Tech Lead)** | Orquestração e Decisões Críticas | **Gemini 3.1 Pro** | Custo "Low" na nossa tier, mas com alta capacidade de raciocínio profundo para gerenciar o projeto. |
+| **Sarah & Sofia (Produto/Copy)** | Estratégia B2B e Textos Persuasivos | **Claude Opus 5.5** | Modelo mais robusto para nuances de linguagem humana, criatividade e assertividade comercial (Uso pontual). |
+| **Alan & Victor (Backend/IA)** | Lógica Complexa e Arquitetura | **Claude Sonnet 5.5** | Excelente balanço de velocidade e inteligência avançada para escrever código Python e regras de negócio. |
+| **Mateus & Leo (Front/UI)** | Iteração Rápida de Telas Flutter | **Gemini 3.8 Flash** | Velocidade absurda ("Fast") para refatoração constante de UI e ajustes de layout responsivo. |
+| **Thiago & Beto (QA/SRE)** | Leitura de Logs e Testes Repetitivos | **Gemini 3.8 Flash** | Tarefas de validação e CI/CD exigem velocidade e baixo custo, ideal para o motor Flash mais recente. |
+| **Laboratório / Pesquisa** | Testes Locais e Alternativas | **GPT-OSS 120B** | Usado sob demanda para não dependermos apenas de APIs proprietárias. |
