@@ -39,6 +39,14 @@ jobs:
           cd mobile
           flutter build web --release
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar Firebase Tools
+        run: npm install -g firebase-tools
+
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:

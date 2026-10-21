@@ -41,7 +41,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103025,
+      buildNumber: 2026103026,
       date: '21 de Outubro, 2026',
       summary:
           'Versão 1.9.0: Gestão Dinâmica de Preços & Planos SaaS, Auditoria de Segurança & Sessões Ativas (Kill-Switch) e Simulador de Margem Unit Economics.',

@@ -1,7 +1,7 @@
 {
   "version": "1.9.0",
-  "build": 2026103025,
-  "updated_at": "2026-10-21T22:42:49.320535Z",
+  "build": 2026103026,
+  "updated_at": "2026-10-21T22:47:30.216857Z",
   "notes": "Versão 1.9.0: Gestão Dinâmica de Preços & Planos SaaS, Auditoria de Segurança & Sessões Ativas (Kill-Switch) e Simulador de Margem Unit Economics.",
   "changelog": {
     "student": [
