@@ -7,6 +7,7 @@ class AdminDashboardScreen extends StatefulWidget {
   final VoidCallback? onNavigateToFinance;
   final VoidCallback? onNavigateToExercises;
   final VoidCallback? onNavigateToRetention;
+  final VoidCallback? onNavigateToWhatsApp;
 
   const AdminDashboardScreen({
     super.key,
@@ -14,6 +15,7 @@ class AdminDashboardScreen extends StatefulWidget {
     this.onNavigateToFinance,
     this.onNavigateToExercises,
     this.onNavigateToRetention,
+    this.onNavigateToWhatsApp,
   });
 
   @override
@@ -415,6 +417,65 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                       ),
                     ),
+                    if (widget.onNavigateToWhatsApp != null) ...[
+                      const SizedBox(height: 12),
+                      InkWell(
+                        onTap: widget.onNavigateToWhatsApp,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: cardBg,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: borderColor),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.chat_rounded,
+                                  color: Color(0xFF818CF8),
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Monitor Global de WhatsApp (Evolution API)',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        color: textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Status de instâncias, reinicialização de sockets e telemetria de disparos.',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                Icons.chevron_right_rounded,
+                                color: Color(0xFF818CF8),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

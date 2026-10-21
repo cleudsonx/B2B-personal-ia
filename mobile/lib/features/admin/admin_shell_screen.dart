@@ -7,6 +7,7 @@ import 'screens/admin_exercises_screen.dart';
 import 'screens/admin_audit_screen.dart';
 import 'screens/admin_broadcast_screen.dart';
 import 'screens/admin_retention_screen.dart';
+import 'screens/admin_whatsapp_screen.dart';
 
 class AdminShellScreen extends StatefulWidget {
   final VoidCallback onExitAdmin;
@@ -112,6 +113,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
           onNavigateToFinance: () => setState(() => _currentSectionIndex = 2),
           onNavigateToExercises: () => setState(() => _currentSectionIndex = 3),
           onNavigateToRetention: () => setState(() => _currentSectionIndex = 6),
+          onNavigateToWhatsApp: () => setState(() => _currentSectionIndex = 7),
         );
       case 1:
         return const AdminUsersScreen();
@@ -125,12 +127,15 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
         return const AdminBroadcastScreen();
       case 6:
         return const AdminRetentionScreen();
+      case 7:
+        return const AdminWhatsAppScreen();
       default:
         return AdminDashboardScreen(
           onNavigateToUsers: () => setState(() => _currentSectionIndex = 1),
           onNavigateToFinance: () => setState(() => _currentSectionIndex = 2),
           onNavigateToExercises: () => setState(() => _currentSectionIndex = 3),
           onNavigateToRetention: () => setState(() => _currentSectionIndex = 6),
+          onNavigateToWhatsApp: () => setState(() => _currentSectionIndex = 7),
         );
     }
   }
@@ -247,6 +252,13 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                   icon: Icons.radar_rounded,
                   label: 'Retenção & Alunos 360°',
                   badge: 'CHURN RADAR',
+                ),
+                const SizedBox(height: 4),
+                _buildSidebarItem(
+                  index: 7,
+                  icon: Icons.chat_rounded,
+                  label: 'WhatsApp & Evolution',
+                  badge: 'HEALTH',
                 ),
               ],
             ),
@@ -448,6 +460,15 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
               selected: _currentSectionIndex == 6,
               onTap: () {
                 setState(() => _currentSectionIndex = 6);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.chat_rounded, color: Color(0xFF818CF8)),
+              title: const Text('WhatsApp & Evolution', style: TextStyle(color: Colors.white)),
+              selected: _currentSectionIndex == 7,
+              onTap: () {
+                setState(() => _currentSectionIndex = 7);
                 Navigator.pop(context);
               },
             ),
