@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/widgets/meta_components.dart';
@@ -48,6 +49,7 @@ class _StudentSuspendedScreenState extends State<StudentSuspendedScreen> {
   Future<void> _contactTrainerWhatsapp() async {
     final rawNumber = _trainerProfile?['public_whatsapp']?.toString() ??
         _trainerProfile?['phone']?.toString() ??
+        _trainerProfile?['whatsapp']?.toString() ??
         '';
     var number = rawNumber.replaceAll(RegExp(r'\D'), '');
     if (number.length == 10 || number.length == 11) {
@@ -55,9 +57,10 @@ class _StudentSuspendedScreenState extends State<StudentSuspendedScreen> {
     }
 
     if (number.length != 12 && number.length != 13) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('O treinador não possui WhatsApp cadastrado para contato.'),
+          content: Text('Seu treinador ainda não cadastrou o WhatsApp profissional.'),
         ),
       );
       return;
@@ -65,7 +68,7 @@ class _StudentSuspendedScreenState extends State<StudentSuspendedScreen> {
 
     final trainerName = _trainerProfile?['full_name'] as String? ?? 'Professor';
     final uri = Uri.https('wa.me', '/$number', {
-      'text': 'Olá, $trainerName! Gostaria de regularizar minha consultoria na Shaipados.',
+      'text': 'Olá, $trainerName! Sou ${widget.studentName} e gostaria de regularizar o acesso aos meus treinos.',
     });
 
     try {
@@ -76,7 +79,7 @@ class _StudentSuspendedScreenState extends State<StudentSuspendedScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Não foi possível abrir o WhatsApp.')),
+          const SnackBar(content: Text('Não foi possível abrir o WhatsApp automaticamente.')),
         );
       }
     }
@@ -94,16 +97,24 @@ class _StudentSuspendedScreenState extends State<StudentSuspendedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final trainerName = _trainerProfile?['full_name'] as String? ?? 'seu treinador';
+    final isDark = MetaColors.isDark(context);
+    final bg = isDark ? MetaColors.background : MetaColors.lightBackground;
+    final cardBg = isDark ? MetaColors.surface : MetaColors.lightSurface;
+    final border = isDark ? MetaColors.border : MetaColors.lightBorder;
+    final textPrimary = isDark ? MetaColors.textPrimary : MetaColors.lightTextPrimary;
+    final textSecondary = isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary;
+
+    final trainerName = _trainerProfile?['full_name'] as String? ?? 'Seu Personal Trainer';
+    final photoUrl = (_trainerProfile?['photo_url'] ?? _trainerProfile?['avatar_url']) as String?;
 
     return Scaffold(
-      backgroundColor: MetaColors.background,
+      backgroundColor: bg,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout_rounded, color: MetaColors.textSecondary),
+            icon: Icon(Icons.logout_rounded, color: textSecondary),
             tooltip: 'Sair da conta',
             onPressed: _handleSignOut,
           ),
@@ -118,72 +129,91 @@ class _StudentSuspendedScreenState extends State<StudentSuspendedScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Ícone de suspensão
+                // Ícone de suspensão animado
                 Center(
                   child: Container(
-                    width: 80,
-                    height: 80,
+                    width: 88,
+                    height: 88,
                     decoration: BoxDecoration(
                       color: Colors.amber.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: Colors.amber.withValues(alpha: 0.3),
+                        color: Colors.amber.withValues(alpha: 0.35),
                         width: 1.5,
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.amber.withValues(alpha: 0.2),
+                          blurRadius: 24,
+                          spreadRadius: 2,
+                        ),
+                      ],
                     ),
                     child: const Icon(
                       Icons.pause_circle_outline_rounded,
                       color: Colors.amber,
-                      size: 44,
+                      size: 46,
                     ),
-                  ),
+                  )
+                      .animate(onPlay: (c) => c.repeat(reverse: true))
+                      .scale(
+                        begin: const Offset(1, 1),
+                        end: const Offset(1.06, 1.06),
+                        duration: 1200.ms,
+                        curve: Curves.easeInOut,
+                      ),
                 ),
                 const SizedBox(height: 28),
 
                 // Título
-                const Text(
+                Text(
                   'Acesso Temporariamente Suspenso',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: MetaColors.textPrimary,
+                    fontWeight: FontWeight.w900,
+                    color: textPrimary,
                     letterSpacing: -0.5,
                   ),
-                ),
+                )
+                    .animate()
+                    .fadeIn(duration: 350.ms)
+                    .slideY(begin: 0.1, end: 0),
                 const SizedBox(height: 12),
 
                 // Mensagem explicativa
                 Text(
-                  'Olá, ${widget.studentName}! O acesso aos seus treinos e registros de evolução está suspenso. Converse diretamente com $trainerName para regularizar sua consultoria.',
+                  'Olá, ${widget.studentName}! O acesso aos seus treinos e registros de evolução está temporariamente pausado. Converse com seu treinador para regularizar e retomar a periodização.',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
-                    color: MetaColors.textSecondary,
+                    color: textSecondary,
                     height: 1.5,
                   ),
-                ),
-                const SizedBox(height: 32),
+                )
+                    .animate()
+                    .fadeIn(delay: 150.ms, duration: 350.ms),
+                const SizedBox(height: 28),
 
                 // Card do Treinador
-                if (!_isLoadingTrainer && _trainerProfile != null) ...[
+                if (!_isLoadingTrainer) ...[
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: MetaColors.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: MetaColors.border),
+                      color: cardBg,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: border),
                     ),
                     child: Row(
                       children: [
                         CircleAvatar(
                           radius: 24,
-                          backgroundColor: MetaColors.surfaceHighlight,
-                          backgroundImage: (_trainerProfile!['photo_url'] as String?)?.isNotEmpty == true
-                              ? NetworkImage(_trainerProfile!['photo_url'] as String)
+                          backgroundColor: MetaColors.emerald.withValues(alpha: 0.15),
+                          backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                              ? NetworkImage(photoUrl)
                               : null,
-                          child: (_trainerProfile!['photo_url'] as String?)?.isNotEmpty != true
-                              ? const Icon(Icons.person, color: MetaColors.textSecondary)
+                          child: (photoUrl == null || photoUrl.isEmpty)
+                              ? const Icon(Icons.person, color: MetaColors.emerald)
                               : null,
                         ),
                         const SizedBox(width: 14),
@@ -193,18 +223,19 @@ class _StudentSuspendedScreenState extends State<StudentSuspendedScreen> {
                             children: [
                               Text(
                                 trainerName,
-                                style: const TextStyle(
-                                  color: MetaColors.textPrimary,
-                                  fontWeight: FontWeight.w700,
+                                style: TextStyle(
+                                  color: textPrimary,
+                                  fontWeight: FontWeight.w800,
                                   fontSize: 15,
                                 ),
                               ),
                               const SizedBox(height: 2),
-                              const Text(
+                              Text(
                                 'Seu Personal Trainer',
                                 style: TextStyle(
-                                  color: MetaColors.textSecondary,
+                                  color: textSecondary,
                                   fontSize: 12,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ],
@@ -212,46 +243,82 @@ class _StudentSuspendedScreenState extends State<StudentSuspendedScreen> {
                         ),
                       ],
                     ),
-                  ),
+                  )
+                      .animate()
+                      .fadeIn(delay: 250.ms, duration: 350.ms)
+                      .slideY(begin: 0.1, end: 0),
                   const SizedBox(height: 24),
                 ],
 
-                // Botão de Contato com o Professor
-                ElevatedButton.icon(
-                  onPressed: _contactTrainerWhatsapp,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: MetaColors.emerald,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                // Botão de Contato com o Professor no WhatsApp com Gradiente Oficial
+                Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                  child: InkWell(
+                    onTap: _contactTrainerWhatsapp,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Ink(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF25D366), Color(0xFF1EBE5D)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF25D366).withValues(alpha: 0.28),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.chat_bubble_rounded, size: 20, color: Colors.white),
+                          SizedBox(width: 10),
+                          Text(
+                            'FALAR COM MEU TREINADOR',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 14.5,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  icon: const Icon(Icons.chat_bubble_rounded, size: 20),
-                  label: const Text(
-                    'FALAR COM MEU TREINADOR',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
+                )
+                    .animate()
+                    .fadeIn(delay: 350.ms, duration: 350.ms)
+                    .slideY(begin: 0.1, end: 0),
                 const SizedBox(height: 12),
 
                 // Botão de Logout
                 OutlinedButton(
                   onPressed: _handleSignOut,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: MetaColors.textSecondary,
-                    side: const BorderSide(color: MetaColors.surfaceHighlight),
+                    foregroundColor: textSecondary,
+                    side: BorderSide(color: border),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: const Text('SAIR DA CONTA'),
-                ),
+                  child: const Text(
+                    'SAIR DA CONTA',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                )
+                    .animate()
+                    .fadeIn(delay: 450.ms, duration: 350.ms),
               ],
             ),
           ),
@@ -260,4 +327,3 @@ class _StudentSuspendedScreenState extends State<StudentSuspendedScreen> {
     );
   }
 }
-

@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/biomechanical_analysis_sheet.dart';
+import '../../core/widgets/exercise_media_sheet.dart';
 import '../../core/widgets/server_config_dialog.dart';
 import '../../core/constants/ai_prompts.dart';
 import '../../services/gemini_service.dart';
+import '../../services/workout_service.dart';
 
 class B2BAssistantScreen extends StatefulWidget {
   final bool isStudentView;
@@ -23,16 +25,55 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
   String _selectedModelId = 'gemini-3.1-pro-preview';
 
   String _selectedPillar = 'Todos';
+  List<String> _studentExercises = [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isStudentView) {
+      _loadStudentExercises();
+    }
+  }
+
+  Future<void> _loadStudentExercises() async {
+    try {
+      final activePlan = await WorkoutService.getActiveWorkoutForClient();
+      if (activePlan != null && mounted) {
+        final exercises = <String>{};
+        for (final split in activePlan.splits) {
+          for (final ex in split.exercises) {
+            final name = ex.name.trim();
+            if (name.isNotEmpty) {
+              exercises.add(name);
+            }
+          }
+        }
+        if (exercises.isNotEmpty && mounted) {
+          setState(() {
+            _studentExercises = exercises.take(6).toList();
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Aviso ao carregar exercícios do aluno: $e');
+    }
+  }
 
   List<String> get _quickPrompts {
     if (widget.isStudentView) {
-      return [
+      final prompts = <String>[];
+      for (final ex in _studentExercises.take(3)) {
+        prompts.add('Como executar $ex com postura perfeita?');
+        prompts.add('Substituir $ex se aparelho estiver ocupado');
+      }
+      prompts.addAll([
         'Como substituir o Supino se o banco estiver ocupado?',
         'Qual ângulo do banco protege melhor os ombros?',
         'Sinto a lombar no agachamento: o que corrigir?',
         'Quantas repetições aguentar antes de aumentar a carga?',
         'Como evitar que os joelhos entrem no Leg Press?',
-      ];
+      ]);
+      return prompts;
     }
 
     switch (_selectedPillar) {
@@ -88,6 +129,11 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
 
   String? _detectExerciseInText(String text) {
     final lower = text.toLowerCase();
+    for (final ex in _studentExercises) {
+      if (lower.contains(ex.toLowerCase())) {
+        return ex;
+      }
+    }
     if (lower.contains('supino') &&
         (lower.contains('inclinado') || lower.contains('halteres') || lower.contains('halter'))) {
       return 'Supino Inclinado com Halteres';
@@ -535,89 +581,98 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Mini Banner com animação de loop
-                                  Container(
-                                    height: 100,
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.4),
-                                      borderRadius: const BorderRadius.vertical(top: Radius.circular(13)),
-                                    ),
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        // Efeito visual de gradiente e pulso biomecânico
-                                        Container(
-                                          decoration: BoxDecoration(
-                                            gradient: RadialGradient(
-                                              colors: [
-                                                MetaColors.emerald.withValues(alpha: 0.25),
-                                                Colors.transparent,
-                                              ],
-                                              radius: 0.8,
-                                            ),
-                                          ),
-                                        ),
-                                        Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.all(8),
-                                              decoration: BoxDecoration(
-                                                color: MetaColors.emerald.withValues(alpha: 0.2),
-                                                shape: BoxShape.circle,
-                                                border: Border.all(color: MetaColors.emerald),
-                                              ),
-                                              child: const Icon(
-                                                Icons.play_arrow_rounded,
-                                                color: Colors.white,
-                                                size: 28,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 6),
-                                            Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                const Icon(Icons.repeat_rounded, size: 12, color: Colors.white70),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  'Demonstração Biomecânica em Loop',
-                                                  style: TextStyle(
-                                                    color: MetaColors.emerald,
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                        Positioned(
-                                          top: 8,
-                                          right: 8,
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  // Mini Banner com animação de loop interativo
+                                  InkWell(
+                                    onTap: () {
+                                      ExerciseMediaSheet.show(
+                                        context,
+                                        exerciseName: msg.detectedExercise!,
+                                      );
+                                    },
+                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(13)),
+                                    child: Container(
+                                      height: 105,
+                                      width: double.infinity,
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.4),
+                                        borderRadius: const BorderRadius.vertical(top: Radius.circular(13)),
+                                      ),
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          // Efeito visual de gradiente e pulso biomecânico
+                                          Container(
                                             decoration: BoxDecoration(
-                                              color: Colors.black.withValues(alpha: 0.6),
-                                              borderRadius: BorderRadius.circular(8),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: const [
-                                                Icon(Icons.fiber_manual_record, color: Colors.redAccent, size: 8),
-                                                SizedBox(width: 4),
-                                                Text(
-                                                  '3D LOOP',
-                                                  style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
-                                                ),
-                                              ],
+                                              gradient: RadialGradient(
+                                                colors: [
+                                                  MetaColors.emerald.withValues(alpha: 0.25),
+                                                  Colors.transparent,
+                                                ],
+                                                radius: 0.8,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      ],
+                                          Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.all(8),
+                                                decoration: BoxDecoration(
+                                                  color: MetaColors.emerald.withValues(alpha: 0.2),
+                                                  shape: BoxShape.circle,
+                                                  border: Border.all(color: MetaColors.emerald),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.play_arrow_rounded,
+                                                  color: Colors.white,
+                                                  size: 28,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(Icons.touch_app_rounded, size: 12, color: Colors.white70),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    'Toque para Ver Execução / GIF',
+                                                    style: TextStyle(
+                                                      color: MetaColors.emerald,
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                          Positioned(
+                                            top: 8,
+                                            right: 8,
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: Colors.black.withValues(alpha: 0.6),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: const [
+                                                  Icon(Icons.fiber_manual_record, color: Colors.redAccent, size: 8),
+                                                  SizedBox(width: 4),
+                                                  Text(
+                                                    '3D LOOP',
+                                                    style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                  // Informações de Músculo Alvo & Execução
+                                  // Informações de Músculo Alvo & Ações
                                   Padding(
                                     padding: const EdgeInsets.all(12),
                                     child: Column(
@@ -659,40 +714,81 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                                             ),
                                           ],
                                         ),
-                                        const SizedBox(height: 10),
-                                        InkWell(
-                                          onTap: () {
-                                            BiomechanicalAnalysisSheet.show(
-                                              context,
-                                              exerciseName: msg.detectedExercise!,
-                                              onAskAI: () => _sendPrompt(
-                                                'Explique a biomecânica detalhada do ${msg.detectedExercise}',
-                                              ),
-                                            );
-                                          },
-                                          borderRadius: BorderRadius.circular(10),
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                            decoration: BoxDecoration(
-                                              color: MetaColors.emerald,
-                                              borderRadius: BorderRadius.circular(10),
-                                            ),
-                                            child: Row(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: const [
-                                                Icon(Icons.biotech_rounded, size: 16, color: Colors.white),
-                                                SizedBox(width: 6),
-                                                Text(
-                                                  'Abrir Raio-X & Análise de Ângulos',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 12,
+                                        const SizedBox(height: 12),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: InkWell(
+                                                onTap: () {
+                                                  ExerciseMediaSheet.show(
+                                                    context,
+                                                    exerciseName: msg.detectedExercise!,
+                                                  );
+                                                },
+                                                borderRadius: BorderRadius.circular(10),
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                                  decoration: BoxDecoration(
+                                                    color: MetaColors.surfaceHighlight,
+                                                    borderRadius: BorderRadius.circular(10),
+                                                    border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.5)),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    children: [
+                                                      Icon(Icons.ondemand_video_rounded, size: 15, color: MetaColors.emerald),
+                                                      const SizedBox(width: 6),
+                                                      Text(
+                                                        'Execução',
+                                                        style: TextStyle(
+                                                          color: MetaColors.emerald,
+                                                          fontWeight: FontWeight.bold,
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
                                                 ),
-                                              ],
+                                              ),
                                             ),
-                                          ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: InkWell(
+                                                onTap: () {
+                                                  BiomechanicalAnalysisSheet.show(
+                                                    context,
+                                                    exerciseName: msg.detectedExercise!,
+                                                    onAskAI: () => _sendPrompt(
+                                                      'Explique a biomecânica detalhada do ${msg.detectedExercise}',
+                                                    ),
+                                                  );
+                                                },
+                                                borderRadius: BorderRadius.circular(10),
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                                  decoration: BoxDecoration(
+                                                    color: MetaColors.emerald,
+                                                    borderRadius: BorderRadius.circular(10),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    children: const [
+                                                      Icon(Icons.biotech_rounded, size: 15, color: Colors.white),
+                                                      SizedBox(width: 6),
+                                                      Text(
+                                                        'Raio-X Bio',
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontWeight: FontWeight.bold,
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
