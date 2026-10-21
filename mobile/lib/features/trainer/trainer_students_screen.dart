@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/app_version_footer.dart';
+import '../../core/widgets/broadcast_banner.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
@@ -1589,7 +1590,11 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const BroadcastBanner(
+                        audience: 'trainers',
+                        padding: EdgeInsets.only(top: 8, bottom: 4),
+                      ),
+                      const SizedBox(height: 8),
                       // Barra de Pesquisa: Formato de Pílula One UI 7, sem sombras
                       Container(
                         height: 46,

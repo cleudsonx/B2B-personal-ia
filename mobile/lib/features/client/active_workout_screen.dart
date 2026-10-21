@@ -13,6 +13,7 @@ import '../../core/widgets/workout_triumph_modal.dart';
 import '../../core/widgets/rest_timer_sheet.dart';
 import '../../core/widgets/biomechanical_analysis_sheet.dart';
 import '../../core/widgets/exercise_media_sheet.dart';
+import '../../core/widgets/broadcast_banner.dart';
 import '../../core/widgets/server_config_dialog.dart';
 import '../../core/widgets/workout_guide_modal.dart';
 import '../../services/exercise_media_service.dart';
@@ -1655,7 +1656,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 right: 18,
               ),
               children: [
-                // 1. Topo: Treinador & AÃ§Ãµes
+                const BroadcastBanner(
+                  audience: 'students',
+                  padding: EdgeInsets.only(bottom: 12),
+                ),
+                // 1. Topo: Treinador & Ações
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
