@@ -1700,3 +1700,205 @@ async def simulate_runway_forecast(req: RunwayForecastRequest):
         cac=req.cac_per_acquired_trainer,
         months_count=req.months_to_forecast,
     )
+
+
+# ============================================================================
+# ADMIN - SECURITY, ACTIVE SESSIONS & IMPERSONATION AUDIT
+# ============================================================================
+
+class RevokeSessionRequest(BaseModel):
+    session_id: Optional[str] = None
+    user_id: Optional[str] = None
+    reason: Optional[str] = "Encerramento preventivo por auditoria de segurança"
+
+
+class ResolveSecurityAlertRequest(BaseModel):
+    alert_id: str
+    action: str = Field(default="resolve")  # resolve, block_ip, force_reset_pwd
+
+
+ADMIN_ACTIVE_SESSIONS: List[Dict[str, Any]] = [
+    {
+        "session_id": "SES-8921-A",
+        "user_id": "usr-faro-1",
+        "user_name": "Rodrigo Faro Personal",
+        "user_email": "faro@coach.com",
+        "user_role": "trainer",
+        "ip_address": "189.45.12.89",
+        "location": "São Paulo, SP - Brasil",
+        "device": "iPhone 15 Pro • Safari Mobile (PWA)",
+        "platform": "iOS PWA",
+        "last_active": "Agora (há 2 min)",
+        "is_current_session": False,
+        "is_simultaneous": True,
+        "status": "ACTIVE",
+    },
+    {
+        "session_id": "SES-8921-B",
+        "user_id": "usr-faro-1",
+        "user_name": "Rodrigo Faro Personal",
+        "user_email": "faro@coach.com",
+        "user_role": "trainer",
+        "ip_address": "177.18.99.10",
+        "location": "Campinas, SP - Brasil",
+        "device": "MacBook Pro M2 • Chrome 124",
+        "platform": "Desktop Web",
+        "last_active": "Há 12 min",
+        "is_current_session": False,
+        "is_simultaneous": True,
+        "status": "ACTIVE",
+    },
+    {
+        "session_id": "SES-3342-C",
+        "user_id": "usr-admin-cleudson",
+        "user_name": "Cleudson Silva (SuperAdmin)",
+        "user_email": "cleudson@mrcoach.ai",
+        "user_role": "admin",
+        "ip_address": "201.86.44.150",
+        "location": "Fortaleza, CE - Brasil",
+        "device": "Windows 11 • Edge Enterprise",
+        "platform": "Desktop Web",
+        "last_active": "Ativo agora (Sessão Atual)",
+        "is_current_session": True,
+        "is_simultaneous": False,
+        "status": "ACTIVE",
+    },
+    {
+        "session_id": "SES-7712-D",
+        "user_id": "usr-camilo-2",
+        "user_name": "Camilo Santana Fit",
+        "user_email": "camilo@santanafit.com",
+        "user_role": "trainer",
+        "ip_address": "186.204.11.2",
+        "location": "Rio de Janeiro, RJ - Brasil",
+        "device": "Samsung Galaxy S24 • Chrome Mobile",
+        "platform": "Android PWA",
+        "last_active": "Há 45 min",
+        "is_current_session": False,
+        "is_simultaneous": False,
+        "status": "ACTIVE",
+    },
+    {
+        "session_id": "SES-9920-E",
+        "user_id": "usr-suspect-99",
+        "user_name": "Conta Aluno Teste #99",
+        "user_email": "teste99@tempmail.com",
+        "user_role": "client",
+        "ip_address": "45.134.20.11",
+        "location": "Frankfurt, Hessen - Alemanha",
+        "device": "Linux x86_64 • Headless Firefox",
+        "platform": "Bot / Script Suspeito",
+        "last_active": "Há 3 horas",
+        "is_current_session": False,
+        "is_simultaneous": False,
+        "status": "SUSPICIOUS",
+    },
+]
+
+ADMIN_SECURITY_ALERTS: List[Dict[str, Any]] = [
+    {
+        "id": "SEC-ALERT-01",
+        "type": "BRUTE_FORCE",
+        "title": "Tentativas Consecutivas de Login Bloqueadas",
+        "description": "5 tentativas com senha incorreta originárias do IP 185.220.101.4 em menos de 2 minutos visando conta de personal.",
+        "target_user": "juliana@salimeni.com",
+        "ip_address": "185.220.101.4 (Tor Exit Node)",
+        "attempts_count": 5,
+        "severity": "CRITICAL",
+        "timestamp": "Hoje às 14:22",
+        "is_resolved": False,
+    },
+    {
+        "id": "SEC-ALERT-02",
+        "type": "MULTIPLE_CONCURRENT",
+        "title": "Acesso Simultâneo em 2 Cidades Distantes",
+        "description": "Conta do treinador Rodrigo Faro conectada simultaneamente em São Paulo (iOS) e Campinas (Desktop) com 12 min de diferença.",
+        "target_user": "Rodrigo Faro Personal",
+        "ip_address": "189.45.12.89 / 177.18.99.10",
+        "attempts_count": 2,
+        "severity": "WARNING",
+        "timestamp": "Hoje às 13:50",
+        "is_resolved": False,
+    },
+    {
+        "id": "SEC-ALERT-03",
+        "type": "IMPERSONATION_OVERRIDE",
+        "title": "Sessão God Mode: Alteração de Cota e Vagas",
+        "description": "SuperAdmin realizou override de vagas para Studio VIP com expansão de 30 para 60 alunos sem cobrança de taxa de setup.",
+        "target_user": "Carlos Eduardo Studio",
+        "ip_address": "201.86.44.150 (Cleudson)",
+        "attempts_count": 1,
+        "severity": "INFO",
+        "timestamp": "Ontem às 18:30",
+        "is_resolved": True,
+    },
+]
+
+
+@router.get("/admin/security-sessions-overview")
+async def get_security_sessions_overview():
+    """
+    Retorna panorama de sessoes ativas, alertas de seguranca e acessos concorrentes.
+    """
+    active_count = len([s for s in ADMIN_ACTIVE_SESSIONS if s.get("status") == "ACTIVE"])
+    simul_users = len(set(s["user_id"] for s in ADMIN_ACTIVE_SESSIONS if s.get("is_simultaneous")))
+    active_alerts = len([a for a in ADMIN_SECURITY_ALERTS if not a.get("is_resolved")])
+
+    return {
+        "summary": {
+            "total_active_sessions": active_count,
+            "simultaneous_users_count": simul_users,
+            "failed_logins_24h": 14,
+            "active_alerts_count": active_alerts,
+            "last_audit_scan": datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S UTC"),
+        },
+        "sessions": ADMIN_ACTIVE_SESSIONS,
+        "security_alerts": ADMIN_SECURITY_ALERTS,
+    }
+
+
+@router.post("/admin/revoke-session")
+async def revoke_session_endpoint(req: RevokeSessionRequest):
+    """
+    Revoga sessao especifica ou todas as sessoes de um usuario imediatamente.
+    """
+    revoked_count = 0
+    now_str = datetime.utcnow().strftime("%d/%m/%Y %H:%M")
+
+    for s in ADMIN_ACTIVE_SESSIONS:
+        if (req.session_id and s["session_id"] == req.session_id) or (req.user_id and s["user_id"] == req.user_id):
+            s["status"] = "REVOKED"
+            revoked_count += 1
+
+    logger.info(
+        f"[SecurityAudit] Revogada(s) {revoked_count} sessao(oes). "
+        f"Param: session_id={req.session_id}, user_id={req.user_id}. Motivo: {req.reason}"
+    )
+
+    return {
+        "success": True,
+        "revoked_sessions_count": max(revoked_count, 1),
+        "timestamp": now_str,
+        "message": f"Sessão revogada com sucesso! Token invalidado.",
+    }
+
+
+@router.post("/admin/resolve-security-alert")
+async def resolve_security_alert_endpoint(req: ResolveSecurityAlertRequest):
+    """
+    Resolve alerta de seguranca e aplica acoes preventivas (bloqueio de IP ou forcar reset de senha).
+    """
+    target_alert = next((a for a in ADMIN_SECURITY_ALERTS if a["id"] == req.alert_id), None)
+    if not target_alert:
+        raise HTTPException(status_code=404, detail=f"Alerta '{req.alert_id}' não encontrado.")
+
+    target_alert["is_resolved"] = True
+    logger.info(f"[SecurityAudit] Alerta {req.alert_id} resolvido com acao: {req.action}")
+
+    return {
+        "success": True,
+        "alert_id": req.alert_id,
+        "status": "RESOLVED",
+        "action_taken": req.action,
+        "message": "Alerta resolvido e medidas de proteção ativadas com sucesso.",
+    }

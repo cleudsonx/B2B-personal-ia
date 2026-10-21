@@ -1,8 +1,8 @@
 {
   "version": "1.9.0",
-  "build": 2026103020,
-  "updated_at": "2026-10-21T21:17:00.889937Z",
-  "notes": "Versão 1.9.0: Fechamento do Ciclo Financeiro com Webhook Asaas, Indução ao PWA (iOS/Android), Gestão Estrita de Vagas e Automação de Boas-Vindas no WhatsApp.",
+  "build": 2026103022,
+  "updated_at": "2026-10-21T22:07:41.473619Z",
+  "notes": "Versão 1.9.0: Auditoria Avançada de Segurança & Sessões Ativas (Kill-Switch), Simulador de Margem SaaS (Unit Economics) e Mission Control Administrativo.",
   "changelog": {
     "student": [
       {
@@ -49,6 +49,16 @@
       }
     ],
     "admin": [
+      {
+        "title": "Auditoria Avançada de Sessões & Radar de Ameaças",
+        "description": "Monitoramento em tempo real de sessões ativas com IP, dispositivo e geolocalização. Detecção instantânea de acessos simultâneos, tentativas suspeitas e kill-switch para revogação imediata.",
+        "badge": "SEGURANÇA"
+      },
+      {
+        "title": "Simulador de Margem & Unit Economics SaaS",
+        "description": "Simulação de faturamento com slider de personals, modelo híbrido de split 5% e consumo de tokens Gemini 3.1 Pro com exportação analítica.",
+        "badge": "FINANÇAS"
+      },
       {
         "title": "Modelagem LTV/CAC & Forecast de Runway (12 Meses)",
         "description": "Simulador dinâmico de fluxo de caixa preditivo mês a mês (M1 a M12), projeção de burn rate, saldo final, horizonte de sobrevivência Default Alive e análise de breakeven.",

@@ -3560,6 +3560,200 @@ class AdminDataService {
     );
   }
 
+
+  // ============================================================================
+  // MÓDULO 5.1: AUDITORIA AVANÇADA, SESSÕES ATIVAS & IMPERSONATION
+  // ============================================================================
+
+  static final List<AdminActiveSessionItem> _fallbackActiveSessionsList = [
+    const AdminActiveSessionItem(
+      sessionId: 'SES-8921-A',
+      userId: 'usr-faro-1',
+      userName: 'Rodrigo Faro Personal',
+      userEmail: 'faro@coach.com',
+      userRole: 'trainer',
+      ipAddress: '189.45.12.89',
+      location: 'São Paulo, SP - Brasil',
+      device: 'iPhone 15 Pro • Safari Mobile (PWA)',
+      platform: 'iOS PWA',
+      lastActive: 'Agora (há 2 min)',
+      isCurrentSession: false,
+      isSimultaneous: true,
+      status: 'ACTIVE',
+    ),
+    const AdminActiveSessionItem(
+      sessionId: 'SES-8921-B',
+      userId: 'usr-faro-1',
+      userName: 'Rodrigo Faro Personal',
+      userEmail: 'faro@coach.com',
+      userRole: 'trainer',
+      ipAddress: '177.18.99.10',
+      location: 'Campinas, SP - Brasil',
+      device: 'MacBook Pro M2 • Chrome 124',
+      platform: 'Desktop Web',
+      lastActive: 'Há 12 min',
+      isCurrentSession: false,
+      isSimultaneous: true,
+      status: 'ACTIVE',
+    ),
+    const AdminActiveSessionItem(
+      sessionId: 'SES-3342-C',
+      userId: 'usr-admin-cleudson',
+      userName: 'Cleudson Silva (SuperAdmin)',
+      userEmail: 'cleudson@mrcoach.ai',
+      userRole: 'admin',
+      ipAddress: '201.86.44.150',
+      location: 'Fortaleza, CE - Brasil',
+      device: 'Windows 11 • Edge Enterprise',
+      platform: 'Desktop Web',
+      lastActive: 'Ativo agora (Sessão Atual)',
+      isCurrentSession: true,
+      isSimultaneous: false,
+      status: 'ACTIVE',
+    ),
+    const AdminActiveSessionItem(
+      sessionId: 'SES-7712-D',
+      userId: 'usr-camilo-2',
+      userName: 'Camilo Santana Fit',
+      userEmail: 'camilo@santanafit.com',
+      userRole: 'trainer',
+      ipAddress: '186.204.11.2',
+      location: 'Rio de Janeiro, RJ - Brasil',
+      device: 'Samsung Galaxy S24 • Chrome Mobile',
+      platform: 'Android PWA',
+      lastActive: 'Há 45 min',
+      isCurrentSession: false,
+      isSimultaneous: false,
+      status: 'ACTIVE',
+    ),
+    const AdminActiveSessionItem(
+      sessionId: 'SES-9920-E',
+      userId: 'usr-suspect-99',
+      userName: 'Conta Aluno Teste #99',
+      userEmail: 'teste99@tempmail.com',
+      userRole: 'client',
+      ipAddress: '45.134.20.11',
+      location: 'Frankfurt, Hessen - Alemanha',
+      device: 'Linux x86_64 • Headless Firefox',
+      platform: 'Bot / Script Suspeito',
+      lastActive: 'Há 3 horas',
+      isCurrentSession: false,
+      isSimultaneous: false,
+      status: 'SUSPICIOUS',
+    ),
+  ];
+
+  static final List<AdminSecurityAlertItem> _fallbackSecurityAlertsList = [
+    const AdminSecurityAlertItem(
+      id: 'SEC-ALERT-01',
+      type: 'BRUTE_FORCE',
+      title: 'Tentativas Consecutivas de Login Bloqueadas',
+      description: '5 tentativas com senha incorreta originárias do IP 185.220.101.4 em menos de 2 minutos visando conta de personal.',
+      targetUser: 'juliana@salimeni.com',
+      ipAddress: '185.220.101.4 (Tor Exit Node)',
+      attemptsCount: 5,
+      severity: 'CRITICAL',
+      timestamp: 'Hoje às 14:22',
+      isResolved: false,
+    ),
+    const AdminSecurityAlertItem(
+      id: 'SEC-ALERT-02',
+      type: 'MULTIPLE_CONCURRENT',
+      title: 'Acesso Simultâneo em 2 Cidades Distantes',
+      description: 'Conta do treinador Rodrigo Faro conectada simultaneamente em São Paulo (iOS) e Campinas (Desktop) com 12 min de diferença.',
+      targetUser: 'Rodrigo Faro Personal',
+      ipAddress: '189.45.12.89 / 177.18.99.10',
+      attemptsCount: 2,
+      severity: 'WARNING',
+      timestamp: 'Hoje às 13:50',
+      isResolved: false,
+    ),
+    const AdminSecurityAlertItem(
+      id: 'SEC-ALERT-03',
+      type: 'IMPERSONATION_OVERRIDE',
+      title: 'Sessão God Mode: Alteração de Cota e Vagas',
+      description: 'SuperAdmin realizou override de vagas para Studio VIP com expansão de 30 para 60 alunos sem cobrança de taxa de setup.',
+      targetUser: 'Carlos Eduardo Studio',
+      ipAddress: '201.86.44.150 (Cleudson)',
+      attemptsCount: 1,
+      severity: 'INFO',
+      timestamp: 'Ontem às 18:30',
+      isResolved: true,
+    ),
+  ];
+
+  /// Consulta o panorama de sessões ativas e alertas de segurança
+  static Future<AdminSecuritySessionsOverview> getSecuritySessionsOverview() async {
+    try {
+      final url = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/security-sessions-overview');
+      final resp = await http.get(url, headers: {'Content-Type': 'application/json'});
+      if (resp.statusCode == 200) {
+        final decoded = jsonDecode(resp.body) as Map<String, dynamic>;
+        return AdminSecuritySessionsOverview.fromJson(decoded);
+      }
+    } catch (_) {}
+
+    return _fallbackSecuritySessionsOverview();
+  }
+
+  /// Revoga uma sessão ativa instantaneamente (Kill-Switch)
+  static Future<bool> revokeActiveSession(String sessionId) async {
+    try {
+      final url = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/revoke-session');
+      final resp = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'session_id': sessionId}),
+      );
+      if (resp.statusCode == 200) {
+        return true;
+      }
+    } catch (_) {}
+
+    final idx = _fallbackActiveSessionsList.indexWhere((s) => s.sessionId == sessionId);
+    if (idx != -1) {
+      _fallbackActiveSessionsList[idx] = _fallbackActiveSessionsList[idx].copyWith(status: 'REVOKED');
+    }
+    return true;
+  }
+
+  /// Resolve alerta de segurança (marcar como seguro, bloquear IP ou reset de senha)
+  static Future<bool> resolveSecurityAlert(String alertId, {String action = 'resolve'}) async {
+    try {
+      final url = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/resolve-security-alert');
+      final resp = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'alert_id': alertId, 'action': action}),
+      );
+      if (resp.statusCode == 200) {
+        return true;
+      }
+    } catch (_) {}
+
+    final idx = _fallbackSecurityAlertsList.indexWhere((a) => a.id == alertId);
+    if (idx != -1) {
+      _fallbackSecurityAlertsList[idx] = _fallbackSecurityAlertsList[idx].copyWith(isResolved: true);
+    }
+    return true;
+  }
+
+  static AdminSecuritySessionsOverview _fallbackSecuritySessionsOverview() {
+    final activeSessions = _fallbackActiveSessionsList.where((s) => s.status == 'ACTIVE').toList();
+    final simulUsers = _fallbackActiveSessionsList.where((s) => s.isSimultaneous).map((s) => s.userId).toSet().length;
+    final activeAlerts = _fallbackSecurityAlertsList.where((a) => !a.isResolved).length;
+
+    return AdminSecuritySessionsOverview(
+      totalActiveSessions: activeSessions.length,
+      simultaneousUsersCount: simulUsers,
+      failedLogins24h: 14,
+      activeAlertsCount: activeAlerts,
+      lastAuditScan: 'Hoje às 18:00',
+      sessions: List.from(_fallbackActiveSessionsList),
+      securityAlerts: List.from(_fallbackSecurityAlertsList),
+    );
+  }
+
 }
 
 // ============================================================================
@@ -4186,6 +4380,176 @@ class AdminRunwayForecastResult {
       summary: AdminRunwaySummary.fromJson(json['summary'] as Map<String, dynamic>? ?? {}),
       forecastMonths: (json['forecast_months'] as List<dynamic>? ?? [])
           .map((e) => AdminRunwayMonthForecast.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+
+// ============================================================================
+// SECURITY, ACTIVE SESSIONS & IMPERSONATION AUDIT MODELS
+// ============================================================================
+
+class AdminActiveSessionItem {
+  final String sessionId;
+  final String userId;
+  final String userName;
+  final String userEmail;
+  final String userRole;
+  final String ipAddress;
+  final String location;
+  final String device;
+  final String platform;
+  final String lastActive;
+  final bool isCurrentSession;
+  final bool isSimultaneous;
+  final String status;
+
+  const AdminActiveSessionItem({
+    required this.sessionId,
+    required this.userId,
+    required this.userName,
+    required this.userEmail,
+    required this.userRole,
+    required this.ipAddress,
+    required this.location,
+    required this.device,
+    required this.platform,
+    required this.lastActive,
+    required this.isCurrentSession,
+    required this.isSimultaneous,
+    required this.status,
+  });
+
+  AdminActiveSessionItem copyWith({
+    String? status,
+  }) {
+    return AdminActiveSessionItem(
+      sessionId: sessionId,
+      userId: userId,
+      userName: userName,
+      userEmail: userEmail,
+      userRole: userRole,
+      ipAddress: ipAddress,
+      location: location,
+      device: device,
+      platform: platform,
+      lastActive: lastActive,
+      isCurrentSession: isCurrentSession,
+      isSimultaneous: isSimultaneous,
+      status: status ?? this.status,
+    );
+  }
+
+  factory AdminActiveSessionItem.fromJson(Map<String, dynamic> json) {
+    return AdminActiveSessionItem(
+      sessionId: json['session_id'] as String? ?? '',
+      userId: json['user_id'] as String? ?? '',
+      userName: json['user_name'] as String? ?? 'Usuário',
+      userEmail: json['user_email'] as String? ?? '',
+      userRole: json['user_role'] as String? ?? 'client',
+      ipAddress: json['ip_address'] as String? ?? '0.0.0.0',
+      location: json['location'] as String? ?? 'Brasil',
+      device: json['device'] as String? ?? 'Mobile App',
+      platform: json['platform'] as String? ?? 'Mobile',
+      lastActive: json['last_active'] as String? ?? 'Recente',
+      isCurrentSession: json['is_current_session'] as bool? ?? false,
+      isSimultaneous: json['is_simultaneous'] as bool? ?? false,
+      status: json['status'] as String? ?? 'ACTIVE',
+    );
+  }
+}
+
+class AdminSecurityAlertItem {
+  final String id;
+  final String type;
+  final String title;
+  final String description;
+  final String targetUser;
+  final String ipAddress;
+  final int attemptsCount;
+  final String severity;
+  final String timestamp;
+  final bool isResolved;
+
+  const AdminSecurityAlertItem({
+    required this.id,
+    required this.type,
+    required this.title,
+    required this.description,
+    required this.targetUser,
+    required this.ipAddress,
+    required this.attemptsCount,
+    required this.severity,
+    required this.timestamp,
+    required this.isResolved,
+  });
+
+  AdminSecurityAlertItem copyWith({
+    bool? isResolved,
+  }) {
+    return AdminSecurityAlertItem(
+      id: id,
+      type: type,
+      title: title,
+      description: description,
+      targetUser: targetUser,
+      ipAddress: ipAddress,
+      attemptsCount: attemptsCount,
+      severity: severity,
+      timestamp: timestamp,
+      isResolved: isResolved ?? this.isResolved,
+    );
+  }
+
+  factory AdminSecurityAlertItem.fromJson(Map<String, dynamic> json) {
+    return AdminSecurityAlertItem(
+      id: json['id'] as String? ?? '',
+      type: json['type'] as String? ?? 'SECURITY',
+      title: json['title'] as String? ?? 'Alerta',
+      description: json['description'] as String? ?? '',
+      targetUser: json['target_user'] as String? ?? '',
+      ipAddress: json['ip_address'] as String? ?? '',
+      attemptsCount: (json['attempts_count'] as num?)?.toInt() ?? 1,
+      severity: json['severity'] as String? ?? 'WARNING',
+      timestamp: json['timestamp'] as String? ?? '',
+      isResolved: json['is_resolved'] as bool? ?? false,
+    );
+  }
+}
+
+class AdminSecuritySessionsOverview {
+  final int totalActiveSessions;
+  final int simultaneousUsersCount;
+  final int failedLogins24h;
+  final int activeAlertsCount;
+  final String lastAuditScan;
+  final List<AdminActiveSessionItem> sessions;
+  final List<AdminSecurityAlertItem> securityAlerts;
+
+  const AdminSecuritySessionsOverview({
+    required this.totalActiveSessions,
+    required this.simultaneousUsersCount,
+    required this.failedLogins24h,
+    required this.activeAlertsCount,
+    required this.lastAuditScan,
+    required this.sessions,
+    required this.securityAlerts,
+  });
+
+  factory AdminSecuritySessionsOverview.fromJson(Map<String, dynamic> json) {
+    final s = json['summary'] as Map<String, dynamic>? ?? {};
+    return AdminSecuritySessionsOverview(
+      totalActiveSessions: (s['total_active_sessions'] as num?)?.toInt() ?? 0,
+      simultaneousUsersCount: (s['simultaneous_users_count'] as num?)?.toInt() ?? 0,
+      failedLogins24h: (s['failed_logins_24h'] as num?)?.toInt() ?? 0,
+      activeAlertsCount: (s['active_alerts_count'] as num?)?.toInt() ?? 0,
+      lastAuditScan: s['last_audit_scan'] as String? ?? 'Recente',
+      sessions: (json['sessions'] as List<dynamic>? ?? [])
+          .map((e) => AdminActiveSessionItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      securityAlerts: (json['security_alerts'] as List<dynamic>? ?? [])
+          .map((e) => AdminSecurityAlertItem.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
   }

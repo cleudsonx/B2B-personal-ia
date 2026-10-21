@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_ia/features/admin/screens/admin_simulator_screen.dart';
 import 'package:personal_ia/features/admin/services/admin_data_service.dart';
-import 'package:personal_ia/features/admin/widgets/admin_simulator_export_modal.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

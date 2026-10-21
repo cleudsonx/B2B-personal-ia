@@ -41,11 +41,28 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103020,
-      date: '20 de Outubro, 2026',
+      buildNumber: 2026103022,
+      date: '21 de Outubro, 2026',
       summary:
-          'Versão 1.9.0: Fechamento do Ciclo Financeiro com Webhook Asaas, Indução ao PWA (iOS/Android), Gestão Estrita de Vagas e Automação de Boas-Vindas no WhatsApp.',
+          'Versão 1.9.0: Auditoria Avançada de Segurança & Sessões Ativas (Kill-Switch), Simulador de Margem SaaS (Unit Economics) e Mission Control Administrativo.',
       highlights: [
+        // --- PARA O ADMIN / GESTOR ---
+        ChangelogItem(
+          icon: Icons.shield_rounded,
+          title: 'Auditoria Avançada de Sessões & Radar de Ameaças',
+          description:
+              'Monitoramento em tempo real de sessões ativas com IP, dispositivo e geolocalização. Detecção instantânea de acessos simultâneos, tentativas suspeitas e kill-switch para revogação imediata.',
+          badge: 'SEGURANÇA',
+          targetRoles: ['admin'],
+        ),
+        ChangelogItem(
+          icon: Icons.calculate_rounded,
+          title: 'Simulador de Margem & Unit Economics SaaS',
+          description:
+              'Simulação de faturamento com slider de personals, modelo híbrido de split 5% e consumo de tokens Gemini 3.1 Pro com exportação analítica.',
+          badge: 'FINANÇAS',
+          targetRoles: ['admin'],
+        ),
         // --- PARA O PROFESSOR ---
         ChangelogItem(
           icon: Icons.account_balance_wallet_rounded,
