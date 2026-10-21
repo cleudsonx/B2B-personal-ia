@@ -263,7 +263,7 @@ Map<String, dynamic> _extractChangelogData(String content) {
   // Extrai summary
   final summaryMatch = RegExp(r"summary:\s*'([^']*(?:\\.[^']*)*)'").firstMatch(releaseBlock);
   if (summaryMatch != null) {
-    summary = summaryMatch.group(1)?.replaceAll(r"\'", "'")?.replaceAll('\n', ' ')?.replaceAll(RegExp(r'\s+'), ' ')?.trim();
+    final rawSummary = summaryMatch.group(1); if (rawSummary != null) { summary = rawSummary.replaceAll(r"\'", "'").replaceAll('\n', ' ').replaceAll(RegExp(r'\s+'), ' ').trim(); }
   }
 
   // Extrai cada ChangelogItem(...) individualmente respeitando parênteses internos

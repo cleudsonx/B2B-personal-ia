@@ -41,7 +41,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103009,
+      buildNumber: 2026103011,
       date: '20 de Outubro, 2026',
       summary:
           'Versão 1.9.0: Fechamento do Ciclo Financeiro com Webhook Asaas, Indução ao PWA (iOS/Android), Gestão Estrita de Vagas e Automação de Boas-Vindas no WhatsApp.',
@@ -121,6 +121,14 @@ class AppChangelog {
           description:
               'Processamento atômico de eventos PAYMENT_RECEIVED e PAYMENT_CONFIRMED, com suporte a leases duráveis e proteção contra duplicidade.',
           badge: 'INFRAESTRUTURA',
+          targetRoles: ['admin'],
+        ),
+        ChangelogItem(
+          icon: Icons.psychology_rounded,
+          title: 'Monitor de Custos de IA & Tokens Gemini 2.5',
+          description:
+              'Painel executivo com telemetria de tokens, custo em R\$/US\$, barômetro de eficiência Zero-Cost e ajuste dinâmico de cotas por treinador.',
+          badge: 'MISSION CONTROL',
           targetRoles: ['admin'],
         ),
         ChangelogItem(
@@ -475,6 +483,14 @@ class AppChangelog {
           description:
               'Card One UI 7 / Meta no topo da prescrição do professor que auto-hidrata todos os campos, exibe badges clínicas táteis e modal com dados biomédicos completos.',
           badge: 'ONE UI 7',
+        ),
+        ChangelogItem(
+          icon: Icons.psychology_rounded,
+          title: 'Monitor de Custos de IA & Tokens Gemini 2.5',
+          description:
+              'Painel executivo com telemetria de tokens, custo em R\$/US\$, barômetro de eficiência Zero-Cost e ajuste dinâmico de cotas por treinador.',
+          badge: 'MISSION CONTROL',
+          targetRoles: ['admin'],
         ),
         ChangelogItem(
           icon: Icons.alt_route_rounded,

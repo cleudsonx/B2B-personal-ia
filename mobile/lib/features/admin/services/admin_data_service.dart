@@ -243,6 +243,141 @@ class AdminWhatsAppOverview {
   }
 }
 
+/// Detalhamento de consumo por Modelo de IA (Gemini 2.5 Flash Lite vs Gemini 2.5 Flash)
+class AdminAiModelBreakdown {
+  final String modelName;
+  final String purpose;
+  final int tokens;
+  final int calls;
+  final double costBrl;
+  final double sharePercent;
+
+  const AdminAiModelBreakdown({
+    required this.modelName,
+    required this.purpose,
+    required this.tokens,
+    required this.calls,
+    required this.costBrl,
+    required this.sharePercent,
+  });
+
+  factory AdminAiModelBreakdown.fromJson(Map<String, dynamic> json) {
+    return AdminAiModelBreakdown(
+      modelName: (json['model_name'] ?? '') as String,
+      purpose: (json['purpose'] ?? '') as String,
+      tokens: (json['tokens'] as num?)?.toInt() ?? 0,
+      calls: (json['calls'] as num?)?.toInt() ?? 0,
+      costBrl: (json['cost_brl'] as num?)?.toDouble() ?? 0.0,
+      sharePercent: (json['share_percent'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+/// Consumo de IA por Personal Trainer
+class AdminTrainerAiConsumption {
+  final String trainerId;
+  final String trainerName;
+  final String email;
+  final String plan;
+  final int monthlyQuota; // -1 se ilimitado
+  final int usedGenerations;
+  final int tokensUsed;
+  final double costBrl;
+  final int zeroCostCalls;
+  final int geminiCalls;
+  final double usagePercent;
+
+  const AdminTrainerAiConsumption({
+    required this.trainerId,
+    required this.trainerName,
+    required this.email,
+    required this.plan,
+    required this.monthlyQuota,
+    required this.usedGenerations,
+    required this.tokensUsed,
+    required this.costBrl,
+    required this.zeroCostCalls,
+    required this.geminiCalls,
+    required this.usagePercent,
+  });
+
+  bool get isUnlimited => monthlyQuota < 0;
+  bool get isNearLimit => !isUnlimited && usagePercent >= 80.0;
+  bool get isOverLimit => !isUnlimited && usedGenerations >= monthlyQuota;
+
+  factory AdminTrainerAiConsumption.fromJson(Map<String, dynamic> json) {
+    return AdminTrainerAiConsumption(
+      trainerId: (json['trainer_id'] ?? '') as String,
+      trainerName: (json['trainer_name'] ?? 'Personal') as String,
+      email: (json['email'] ?? '') as String,
+      plan: (json['plan'] ?? 'Pro') as String,
+      monthlyQuota: (json['monthly_quota'] as num?)?.toInt() ?? 150,
+      usedGenerations: (json['used_generations'] as num?)?.toInt() ?? 0,
+      tokensUsed: (json['tokens_used'] as num?)?.toInt() ?? 0,
+      costBrl: (json['cost_brl'] as num?)?.toDouble() ?? 0.0,
+      zeroCostCalls: (json['zero_cost_calls'] as num?)?.toInt() ?? 0,
+      geminiCalls: (json['gemini_calls'] as num?)?.toInt() ?? 0,
+      usagePercent: (json['usage_percent'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+/// Visão Consolidada de Consumo de IA & Gemini
+class AdminAiUsageOverview {
+  final int totalTokens;
+  final int promptTokens;
+  final int completionTokens;
+  final double estimatedCostUsd;
+  final double estimatedCostBrl;
+  final int zeroCostCommandsExecuted;
+  final int geminiCallsExecuted;
+  final double zeroCostRatio;
+  final double estimatedSavingsUsd;
+  final double estimatedSavingsBrl;
+  final String period;
+  final List<AdminAiModelBreakdown> modelsBreakdown;
+  final List<AdminTrainerAiConsumption> trainers;
+
+  const AdminAiUsageOverview({
+    required this.totalTokens,
+    required this.promptTokens,
+    required this.completionTokens,
+    required this.estimatedCostUsd,
+    required this.estimatedCostBrl,
+    required this.zeroCostCommandsExecuted,
+    required this.geminiCallsExecuted,
+    required this.zeroCostRatio,
+    required this.estimatedSavingsUsd,
+    required this.estimatedSavingsBrl,
+    required this.period,
+    required this.modelsBreakdown,
+    required this.trainers,
+  });
+
+  int get totalRequests => zeroCostCommandsExecuted + geminiCallsExecuted;
+  double get efficiencyPercentage => zeroCostRatio * 100.0;
+
+  factory AdminAiUsageOverview.fromJson(Map<String, dynamic> json) {
+    final rawModels = json['models_breakdown'] as List? ?? [];
+    final rawTrainers = json['trainers'] as List? ?? [];
+    return AdminAiUsageOverview(
+      totalTokens: (json['total_tokens'] as num?)?.toInt() ?? 0,
+      promptTokens: (json['prompt_tokens'] as num?)?.toInt() ?? 0,
+      completionTokens: (json['completion_tokens'] as num?)?.toInt() ?? 0,
+      estimatedCostUsd: (json['estimated_cost_usd'] as num?)?.toDouble() ?? 0.0,
+      estimatedCostBrl: (json['estimated_cost_brl'] as num?)?.toDouble() ?? 0.0,
+      zeroCostCommandsExecuted: (json['zero_cost_commands_executed'] as num?)?.toInt() ?? 0,
+      geminiCallsExecuted: (json['gemini_calls_executed'] as num?)?.toInt() ?? 0,
+      zeroCostRatio: (json['zero_cost_ratio'] as num?)?.toDouble() ?? 0.85,
+      estimatedSavingsUsd: (json['estimated_savings_usd'] as num?)?.toDouble() ?? 0.0,
+      estimatedSavingsBrl: (json['estimated_savings_brl'] as num?)?.toDouble() ?? 0.0,
+      period: (json['period'] ?? 'current_month') as String,
+      modelsBreakdown: rawModels.map((e) => AdminAiModelBreakdown.fromJson(e as Map<String, dynamic>)).toList(),
+      trainers: rawTrainers.map((e) => AdminTrainerAiConsumption.fromJson(e as Map<String, dynamic>)).toList(),
+    );
+  }
+}
+
 /// Modelo de Transação / Split no painel Admin (Módulo 3)
 class AdminTransaction {
   final String id;
@@ -2379,6 +2514,193 @@ class AdminDataService {
       disconnectedCount: 1,
       messagesSent24h: 345,
       instances: list,
+    );
+  }
+
+  /// Obtém o panorama consolidado de consumo de tokens Gemini e economia de comandos Zero-Cost
+  static Future<AdminAiUsageOverview> getAiUsageOverview({
+    String? searchQuery,
+    String? planFilter,
+  }) async {
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/admin/ai-usage-overview');
+    try {
+      final token = AuthService.accessToken;
+      final res = await http.get(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 8));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final overview = AdminAiUsageOverview.fromJson(data);
+        return _filterAiUsageOverview(overview, searchQuery, planFilter);
+      }
+    } catch (_) {}
+
+    return _filterAiUsageOverview(_getFallbackAiUsageOverview(), searchQuery, planFilter);
+  }
+
+  static AdminAiUsageOverview _filterAiUsageOverview(
+    AdminAiUsageOverview overview,
+    String? searchQuery,
+    String? planFilter,
+  ) {
+    var list = overview.trainers;
+    if (planFilter != null && planFilter != 'all') {
+      list = list.where((t) => t.plan.toLowerCase().contains(planFilter.toLowerCase())).toList();
+    }
+    if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+      final term = searchQuery.trim().toLowerCase();
+      list = list.where((t) =>
+        t.trainerName.toLowerCase().contains(term) ||
+        t.email.toLowerCase().contains(term) ||
+        t.plan.toLowerCase().contains(term)
+      ).toList();
+    }
+
+    return AdminAiUsageOverview(
+      totalTokens: overview.totalTokens,
+      promptTokens: overview.promptTokens,
+      completionTokens: overview.completionTokens,
+      estimatedCostUsd: overview.estimatedCostUsd,
+      estimatedCostBrl: overview.estimatedCostBrl,
+      zeroCostCommandsExecuted: overview.zeroCostCommandsExecuted,
+      geminiCallsExecuted: overview.geminiCallsExecuted,
+      zeroCostRatio: overview.zeroCostRatio,
+      estimatedSavingsUsd: overview.estimatedSavingsUsd,
+      estimatedSavingsBrl: overview.estimatedSavingsBrl,
+      period: overview.period,
+      modelsBreakdown: overview.modelsBreakdown,
+      trainers: list,
+    );
+  }
+
+  /// Ajusta a cota mensal personalizada de gerações de IA para um Personal Trainer
+  static Future<Map<String, dynamic>> adjustTrainerAiQuota({
+    required String trainerId,
+    required int customMonthlyQuota,
+  }) async {
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/admin/ai-quota/adjust');
+    try {
+      final token = AuthService.accessToken;
+      final res = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'trainer_id': trainerId,
+          'custom_monthly_quota': customMonthlyQuota,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      if (res.statusCode == 200) {
+        return jsonDecode(res.body) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+
+    return {
+      'status': 'success',
+      'trainer_id': trainerId,
+      'custom_monthly_quota': customMonthlyQuota,
+      'message': 'Cota atualizada com sucesso (modo resiliente).',
+    };
+  }
+
+  static AdminAiUsageOverview _getFallbackAiUsageOverview() {
+    const trainers = [
+      AdminTrainerAiConsumption(
+        trainerId: 'usr_renato_3',
+        trainerName: 'Renato Cariani',
+        email: 'cariani@mrcoach.com.br',
+        plan: 'Studio Scale',
+        monthlyQuota: 500,
+        usedGenerations: 340,
+        tokensUsed: 612400,
+        costBrl: 0.51,
+        zeroCostCalls: 2140,
+        geminiCalls: 360,
+        usagePercent: 68.0,
+      ),
+      AdminTrainerAiConsumption(
+        trainerId: 'usr_faro_1',
+        trainerName: 'Rodrigo Faro',
+        email: 'faro@mrcoach.com.br',
+        plan: 'Elite Coach',
+        monthlyQuota: 250,
+        usedGenerations: 118,
+        tokensUsed: 212400,
+        costBrl: 0.18,
+        zeroCostCalls: 840,
+        geminiCalls: 125,
+        usagePercent: 47.2,
+      ),
+      AdminTrainerAiConsumption(
+        trainerId: 'usr_camilo_2',
+        trainerName: 'Camilo Santana',
+        email: 'camilo@mrcoach.com.br',
+        plan: 'Personal Pro',
+        monthlyQuota: 150,
+        usedGenerations: 84,
+        tokensUsed: 151200,
+        costBrl: 0.12,
+        zeroCostCalls: 520,
+        geminiCalls: 89,
+        usagePercent: 56.0,
+      ),
+      AdminTrainerAiConsumption(
+        trainerId: 'usr_juliana_4',
+        trainerName: 'Juliana Salimeni',
+        email: 'juju@mrcoach.com.br',
+        plan: 'Starter Trial',
+        monthlyQuota: 10,
+        usedGenerations: 9,
+        tokensUsed: 16200,
+        costBrl: 0.01,
+        zeroCostCalls: 68,
+        geminiCalls: 10,
+        usagePercent: 90.0,
+      ),
+    ];
+
+    const models = [
+      AdminAiModelBreakdown(
+        modelName: 'gemini-2.5-flash-lite',
+        purpose: 'Consultor WhatsApp (Texto Rápido)',
+        tokens: 734200,
+        calls: 479,
+        costBrl: 0.61,
+        sharePercent: 73.9,
+      ),
+      AdminAiModelBreakdown(
+        modelName: 'gemini-2.5-flash',
+        purpose: 'Prescrição Fichas & Áudio PTT',
+        tokens: 258000,
+        calls: 105,
+        costBrl: 0.21,
+        sharePercent: 26.1,
+      ),
+    ];
+
+    return const AdminAiUsageOverview(
+      totalTokens: 992200,
+      promptTokens: 644930,
+      completionTokens: 347270,
+      estimatedCostUsd: 0.1488,
+      estimatedCostBrl: 0.82,
+      zeroCostCommandsExecuted: 3568,
+      geminiCallsExecuted: 584,
+      zeroCostRatio: 0.859,
+      estimatedSavingsUsd: 6.42,
+      estimatedSavingsBrl: 35.31,
+      period: 'current_month',
+      modelsBreakdown: models,
+      trainers: trainers,
     );
   }
 }

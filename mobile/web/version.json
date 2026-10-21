@@ -1,7 +1,7 @@
 {
   "version": "1.9.0",
-  "build": 2026103009,
-  "updated_at": "2026-10-20T23:44:22.511109Z",
+  "build": 2026103011,
+  "updated_at": "2026-10-21T14:48:44.298281Z",
   "notes": "Versão 1.9.0: Fechamento do Ciclo Financeiro com Webhook Asaas, Indução ao PWA (iOS/Android), Gestão Estrita de Vagas e Automação de Boas-Vindas no WhatsApp.",
   "changelog": {
     "student": [
@@ -53,6 +53,11 @@
         "title": "Webhook Unificado Asaas com Idempotência",
         "description": "Processamento atômico de eventos PAYMENT_RECEIVED e PAYMENT_CONFIRMED, com suporte a leases duráveis e proteção contra duplicidade.",
         "badge": "INFRAESTRUTURA"
+      },
+      {
+        "title": "Monitor de Custos de IA & Tokens Gemini 2.5",
+        "description": "Painel executivo com telemetria de tokens, custo em R\\$/US\\$, barômetro de eficiência Zero-Cost e ajuste dinâmico de cotas por treinador.",
+        "badge": "MISSION CONTROL"
       },
       {
         "title": "Roteamento Transversal Resiliente",

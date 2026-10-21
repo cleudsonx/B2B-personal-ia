@@ -8,6 +8,7 @@ import 'screens/admin_audit_screen.dart';
 import 'screens/admin_broadcast_screen.dart';
 import 'screens/admin_retention_screen.dart';
 import 'screens/admin_whatsapp_screen.dart';
+import 'screens/admin_ai_usage_screen.dart';
 
 class AdminShellScreen extends StatefulWidget {
   final VoidCallback onExitAdmin;
@@ -114,6 +115,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
           onNavigateToExercises: () => setState(() => _currentSectionIndex = 3),
           onNavigateToRetention: () => setState(() => _currentSectionIndex = 6),
           onNavigateToWhatsApp: () => setState(() => _currentSectionIndex = 7),
+          onNavigateToAiUsage: () => setState(() => _currentSectionIndex = 8),
         );
       case 1:
         return const AdminUsersScreen();
@@ -129,6 +131,8 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
         return const AdminRetentionScreen();
       case 7:
         return const AdminWhatsAppScreen();
+      case 8:
+        return const AdminAiUsageScreen();
       default:
         return AdminDashboardScreen(
           onNavigateToUsers: () => setState(() => _currentSectionIndex = 1),
@@ -136,6 +140,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
           onNavigateToExercises: () => setState(() => _currentSectionIndex = 3),
           onNavigateToRetention: () => setState(() => _currentSectionIndex = 6),
           onNavigateToWhatsApp: () => setState(() => _currentSectionIndex = 7),
+          onNavigateToAiUsage: () => setState(() => _currentSectionIndex = 8),
         );
     }
   }
@@ -259,6 +264,13 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                   icon: Icons.chat_rounded,
                   label: 'WhatsApp & Evolution',
                   badge: 'HEALTH',
+                ),
+                const SizedBox(height: 4),
+                _buildSidebarItem(
+                  index: 8,
+                  icon: Icons.psychology_rounded,
+                  label: 'Custos IA & Gemini',
+                  badge: 'TOKENS',
                 ),
               ],
             ),
@@ -469,6 +481,15 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
               selected: _currentSectionIndex == 7,
               onTap: () {
                 setState(() => _currentSectionIndex = 7);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.psychology_rounded, color: Color(0xFF818CF8)),
+              title: const Text('Custos IA & Gemini', style: TextStyle(color: Colors.white)),
+              selected: _currentSectionIndex == 8,
+              onTap: () {
+                setState(() => _currentSectionIndex = 8);
                 Navigator.pop(context);
               },
             ),

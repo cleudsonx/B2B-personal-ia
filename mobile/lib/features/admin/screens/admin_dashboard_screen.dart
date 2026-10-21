@@ -8,6 +8,7 @@ class AdminDashboardScreen extends StatefulWidget {
   final VoidCallback? onNavigateToExercises;
   final VoidCallback? onNavigateToRetention;
   final VoidCallback? onNavigateToWhatsApp;
+  final VoidCallback? onNavigateToAiUsage;
 
   const AdminDashboardScreen({
     super.key,
@@ -16,6 +17,7 @@ class AdminDashboardScreen extends StatefulWidget {
     this.onNavigateToExercises,
     this.onNavigateToRetention,
     this.onNavigateToWhatsApp,
+    this.onNavigateToAiUsage,
   });
 
   @override
@@ -475,6 +477,65 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           ),
                         ),
                       ),
+                      if (widget.onNavigateToAiUsage != null) ...[
+                        const SizedBox(height: 12),
+                        InkWell(
+                          onTap: widget.onNavigateToAiUsage,
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: cardBg,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: borderColor),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF6366F1).withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.psychology_rounded,
+                                    color: Color(0xFF818CF8),
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Monitor de Custos de IA & Tokens Gemini 2.5',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800,
+                                          color: textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Telemetria de tokens, economia com comandos Zero-Cost e cotas por personal.',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: Color(0xFF818CF8),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ],
                 ),
