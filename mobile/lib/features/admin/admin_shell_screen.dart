@@ -10,6 +10,7 @@ import 'screens/admin_broadcast_screen.dart';
 import 'screens/admin_retention_screen.dart';
 import 'screens/admin_whatsapp_screen.dart';
 import 'screens/admin_ai_usage_screen.dart';
+import 'screens/admin_simulator_screen.dart';
 
 class AdminShellScreen extends StatefulWidget {
   final VoidCallback onExitAdmin;
@@ -127,11 +128,14 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
           onNavigateToRetention: () => setState(() => _currentSectionIndex = 6),
           onNavigateToWhatsApp: () => setState(() => _currentSectionIndex = 7),
           onNavigateToAiUsage: () => setState(() => _currentSectionIndex = 8),
+          onNavigateToSimulator: () => setState(() => _currentSectionIndex = 9),
         );
       case 1:
         return const AdminUsersScreen();
       case 2:
-        return const AdminFinanceScreen();
+        return AdminFinanceScreen(
+          onNavigateToSimulator: () => setState(() => _currentSectionIndex = 9),
+        );
       case 3:
         return const AdminExercisesScreen();
       case 4:
@@ -144,6 +148,8 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
         return const AdminWhatsAppScreen();
       case 8:
         return const AdminAiUsageScreen();
+      case 9:
+        return const AdminSimulatorScreen();
       default:
         return AdminDashboardScreen(
           onNavigateToUsers: () => setState(() => _currentSectionIndex = 1),
@@ -152,6 +158,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
           onNavigateToRetention: () => setState(() => _currentSectionIndex = 6),
           onNavigateToWhatsApp: () => setState(() => _currentSectionIndex = 7),
           onNavigateToAiUsage: () => setState(() => _currentSectionIndex = 8),
+          onNavigateToSimulator: () => setState(() => _currentSectionIndex = 9),
         );
     }
   }
@@ -282,6 +289,13 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                   icon: Icons.psychology_rounded,
                   label: 'Custos IA & Gemini',
                   badge: 'TOKENS',
+                ),
+                const SizedBox(height: 4),
+                _buildSidebarItem(
+                  index: 9,
+                  icon: Icons.calculate_rounded,
+                  label: 'Simulador & Margem',
+                  badge: 'UNIT ECON',
                 ),
               ],
             ),
@@ -502,6 +516,15 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
               selected: _currentSectionIndex == 8,
               onTap: () {
                 setState(() => _currentSectionIndex = 8);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.calculate_rounded, color: Color(0xFF10B981)),
+              title: const Text('Simulador & Margem', style: TextStyle(color: Colors.white)),
+              selected: _currentSectionIndex == 9,
+              onTap: () {
+                setState(() => _currentSectionIndex = 9);
                 Navigator.pop(context);
               },
             ),

@@ -5,7 +5,12 @@ import '../widgets/admin_finance_export_modal.dart';
 
 /// Módulo 3: Faturamento, Split & GMV (Take-rate 5% da Plataforma)
 class AdminFinanceScreen extends StatefulWidget {
-  const AdminFinanceScreen({super.key});
+  final VoidCallback? onNavigateToSimulator;
+
+  const AdminFinanceScreen({
+    super.key,
+    this.onNavigateToSimulator,
+  });
 
   @override
   State<AdminFinanceScreen> createState() => _AdminFinanceScreenState();
@@ -235,6 +240,20 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
                   ),
                   Row(
                     children: [
+                      if (widget.onNavigateToSimulator != null) ...[
+                        OutlinedButton.icon(
+                          onPressed: widget.onNavigateToSimulator,
+                          icon: const Icon(Icons.calculate_rounded, size: 16, color: Color(0xFF10B981)),
+                          label: const Text('Simulador de Margem', style: TextStyle(color: Color(0xFF10B981), fontSize: 13, fontWeight: FontWeight.bold)),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+                            backgroundColor: const Color(0xFF10B981).withValues(alpha: 0.1),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
                       ElevatedButton.icon(
                         onPressed: () => AdminFinanceExportModal.show(context, _transactions),
                         icon: const Icon(Icons.download_rounded, size: 16),

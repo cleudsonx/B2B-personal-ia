@@ -9,6 +9,7 @@ class AdminDashboardScreen extends StatefulWidget {
   final VoidCallback? onNavigateToRetention;
   final VoidCallback? onNavigateToWhatsApp;
   final VoidCallback? onNavigateToAiUsage;
+  final VoidCallback? onNavigateToSimulator;
 
   const AdminDashboardScreen({
     super.key,
@@ -18,6 +19,7 @@ class AdminDashboardScreen extends StatefulWidget {
     this.onNavigateToRetention,
     this.onNavigateToWhatsApp,
     this.onNavigateToAiUsage,
+    this.onNavigateToSimulator,
   });
 
   @override
@@ -530,6 +532,66 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 const Icon(
                                   Icons.chevron_right_rounded,
                                   color: Color(0xFF818CF8),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (widget.onNavigateToSimulator != null) ...[
+                        const SizedBox(height: 12),
+                        InkWell(
+                          onTap: widget.onNavigateToSimulator,
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: cardBg,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.calculate_rounded,
+                                    color: Color(0xFF10B981),
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Simulador de Precificação & Margem Líquida SaaS',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800,
+                                          color: textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Simule preços dos planos Pro/Elite/Studio, take-rate de 5% GMV e margem líquida real.',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: Color(0xFF10B981),
+                                  size: 22,
                                 ),
                               ],
                             ),

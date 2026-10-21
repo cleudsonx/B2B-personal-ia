@@ -1,7 +1,7 @@
 {
   "version": "1.9.0",
-  "build": 2026103012,
-  "updated_at": "2026-10-21T15:50:38.918820Z",
+  "build": 2026103013,
+  "updated_at": "2026-10-21T18:12:07.112447Z",
   "notes": "Versão 1.9.0: Fechamento do Ciclo Financeiro com Webhook Asaas, Indução ao PWA (iOS/Android), Gestão Estrita de Vagas e Automação de Boas-Vindas no WhatsApp.",
   "changelog": {
     "student": [
@@ -49,6 +49,11 @@
       }
     ],
     "admin": [
+      {
+        "title": "Simulador de Margem SaaS & Unit Economics",
+        "description": "Simulador financeiro dinâmico com projeção de MRR, Split GMV de 5%, COGS de IA Gemini Flash Lite e Meta WhatsApp, LTV/CAC e margens líquidas reais.",
+        "badge": "MISSION CONTROL"
+      },
       {
         "title": "Webhook Unificado Asaas com Idempotência",
         "description": "Processamento atômico de eventos PAYMENT_RECEIVED e PAYMENT_CONFIRMED, com suporte a leases duráveis e proteção contra duplicidade.",

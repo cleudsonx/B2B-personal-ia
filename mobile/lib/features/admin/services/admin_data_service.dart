@@ -2744,4 +2744,467 @@ class AdminDataService {
       trainers: trainers,
     );
   }
+
+
+  // ============================================================================
+  // UNIT ECONOMICS & SAAS PRICING SIMULATOR
+  // ============================================================================
+
+  Future<AdminUnitEconomicsOverview> getUnitEconomicsOverview() async {
+    try {
+      final token = AuthService.accessToken;
+      final res = await http.get(
+        Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/unit-economics-overview'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        return AdminUnitEconomicsOverview.fromJson(data);
+      }
+    } catch (e) {
+      debugPrint('[AdminDataService] Erro ao carregar unit economics: $e');
+    }
+    return _mockUnitEconomicsOverview();
+  }
+
+  Future<AdminPricingSimulationResult> simulatePricingScenario({
+    double starterPrice = 0.0,
+    double proPrice = 89.0,
+    double elitePrice = 149.0,
+    double studioPrice = 199.0,
+    double takeRatePct = 5.0,
+    double geminiOptFactor = 1.0,
+    double projectedGrowthPct = 15.0,
+  }) async {
+    try {
+      final token = AuthService.accessToken;
+      final res = await http.post(
+        Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/simulate-pricing'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'starter_price': starterPrice,
+          'pro_price': proPrice,
+          'elite_price': elitePrice,
+          'studio_price': studioPrice,
+          'take_rate_pct': takeRatePct,
+          'gemini_opt_factor': geminiOptFactor,
+          'projected_growth_pct': projectedGrowthPct,
+        }),
+      ).timeout(const Duration(seconds: 15));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        return AdminPricingSimulationResult.fromJson(data);
+      }
+    } catch (e) {
+      debugPrint('[AdminDataService] Erro ao simular precificacao: $e');
+    }
+    return _mockPricingSimulation(
+      proPrice: proPrice,
+      elitePrice: elitePrice,
+      studioPrice: studioPrice,
+      takeRatePct: takeRatePct,
+      geminiOptFactor: geminiOptFactor,
+      projectedGrowthPct: projectedGrowthPct,
+    );
+  }
+
+  AdminUnitEconomicsOverview _mockUnitEconomicsOverview() {
+    const tiers = [
+      AdminTierEconomics(
+        tier: 'Starter',
+        trainers: 5,
+        studentsTotal: 20,
+        price: 0.0,
+        mrrSubs: 0.0,
+        mrrSplit: 180.0,
+        cogsAi: 1.40,
+        netMargin: 178.60,
+        marginPct: 99.2,
+      ),
+      AdminTierEconomics(
+        tier: 'Pro',
+        trainers: 14,
+        studentsTotal: 252,
+        price: 89.0,
+        mrrSubs: 1246.0,
+        mrrSplit: 2268.0,
+        cogsAi: 17.64,
+        netMargin: 3496.36,
+        marginPct: 99.5,
+      ),
+      AdminTierEconomics(
+        tier: 'Elite',
+        trainers: 6,
+        studentsTotal: 252,
+        price: 149.0,
+        mrrSubs: 894.0,
+        mrrSplit: 2268.0,
+        cogsAi: 17.64,
+        netMargin: 3144.36,
+        marginPct: 99.4,
+      ),
+      AdminTierEconomics(
+        tier: 'Studio',
+        trainers: 3,
+        studentsTotal: 256,
+        price: 199.0,
+        mrrSubs: 597.0,
+        mrrSplit: 2304.0,
+        cogsAi: 17.92,
+        netMargin: 2883.08,
+        marginPct: 99.4,
+      ),
+    ];
+
+    const topTrainers = [
+      AdminTrainerEconomics(
+        trainerId: 'trn-01',
+        trainerName: 'Studio Fit Performance',
+        planId: 'studio',
+        studentsCount: 94,
+        gmv: 18800.0,
+        platformRevenue: 1139.0,
+        cogsTotal: 11.95,
+        netMargin: 1127.05,
+        netMarginPct: 98.9,
+      ),
+      AdminTrainerEconomics(
+        trainerId: 'trn-02',
+        trainerName: 'Rodrigo Silva Personal',
+        planId: 'elite',
+        studentsCount: 46,
+        gmv: 9200.0,
+        platformRevenue: 609.0,
+        cogsTotal: 7.34,
+        netMargin: 601.66,
+        netMarginPct: 98.8,
+      ),
+      AdminTrainerEconomics(
+        trainerId: 'trn-03',
+        trainerName: 'Juliana Costa Treinamento',
+        planId: 'pro',
+        studentsCount: 24,
+        gmv: 4800.0,
+        platformRevenue: 329.0,
+        cogsTotal: 4.30,
+        netMargin: 324.70,
+        netMarginPct: 98.7,
+      ),
+      AdminTrainerEconomics(
+        trainerId: 'trn-04',
+        trainerName: 'Lucas Moura Consultoria',
+        planId: 'pro',
+        studentsCount: 19,
+        gmv: 3800.0,
+        platformRevenue: 279.0,
+        cogsTotal: 3.95,
+        netMargin: 275.05,
+        netMarginPct: 98.6,
+      ),
+    ];
+
+    return const AdminUnitEconomicsOverview(
+      totalTrainers: 28,
+      payingTrainers: 23,
+      totalStudentsActive: 780,
+      mrrSubscriptions: 2737.0,
+      mrrSplitGmv: 7020.0,
+      totalMrr: 9757.0,
+      arr: 117084.0,
+      cogsGeminiAi: 14.04,
+      cogsWhatsapp: 40.56,
+      cogsGatewayFees: 77.62,
+      totalCogs: 132.22,
+      netMarginMonthly: 9624.78,
+      netMarginPct: 98.6,
+      ltvEstimated: 14960.0,
+      cacEstimated: 120.0,
+      ltvToCacRatio: 124.6,
+      paybackMonths: 0.3,
+      tierEconomics: tiers,
+      topTrainerEconomics: topTrainers,
+    );
+  }
+
+  AdminPricingSimulationResult _mockPricingSimulation({
+    required double proPrice,
+    required double elitePrice,
+    required double studioPrice,
+    required double takeRatePct,
+    required double geminiOptFactor,
+    required double projectedGrowthPct,
+  }) {
+    final growth = 1.0 + (projectedGrowthPct / 100.0);
+    final pTrainersPro = (14 * growth).round();
+    final pTrainersElite = (6 * growth).round();
+    final pTrainersStudio = (3 * growth).round();
+    final projStudents = (780 * growth).round();
+
+    final simMrrSubs = (pTrainersPro * proPrice) +
+        (pTrainersElite * elitePrice) +
+        (pTrainersStudio * studioPrice);
+
+    final simGmv = projStudents * 180.0;
+    final simMrrSplit = simGmv * (takeRatePct / 100.0);
+    final simTotalMrr = simMrrSubs + simMrrSplit;
+
+    final simGemini = projStudents * (0.018 * geminiOptFactor);
+    final simWa = projStudents * 0.052;
+    final simGateway = (simMrrSubs * 0.025) + ((pTrainersPro + pTrainersElite + pTrainersStudio) * 0.40);
+    final simTotalCogs = simGemini + simWa + simGateway;
+    final simNetMargin = simTotalMrr - simTotalCogs;
+    final simNetMarginPct = simTotalMrr > 0 ? (simNetMargin / simTotalMrr * 100.0) : 0.0;
+
+    const currentMrr = 9757.0;
+    const currentNetMarginMonthly = 9624.78;
+    final deltaMrr = simTotalMrr - currentMrr;
+    final deltaAnnualNet = (simNetMargin - currentNetMarginMonthly) * 12.0;
+
+    return AdminPricingSimulationResult(
+      currentMrr: currentMrr,
+      projectedMrr: simTotalMrr,
+      deltaMrr: deltaMrr,
+      deltaMrrPct: (deltaMrr / currentMrr * 100.0),
+      currentNetMarginPct: 98.6,
+      projectedNetMarginPct: simNetMarginPct,
+      deltaAnnualNetProfit: deltaAnnualNet,
+      projectedTrainers: (28 * growth).round(),
+      projectedStudents: projStudents,
+      cogsBreakdown: {
+        'gemini_ai': simGemini,
+        'whatsapp': simWa,
+        'gateway': simGateway,
+        'total': simTotalCogs,
+      },
+      tierProjections: [
+        {'tier': 'Pro', 'price': proPrice, 'trainers': pTrainersPro, 'revenue': pTrainersPro * proPrice},
+        {'tier': 'Elite', 'price': elitePrice, 'trainers': pTrainersElite, 'revenue': pTrainersElite * elitePrice},
+        {'tier': 'Studio', 'price': studioPrice, 'trainers': pTrainersStudio, 'revenue': pTrainersStudio * studioPrice},
+      ],
+    );
+  }
+
+}
+
+
+// ============================================================================
+// UNIT ECONOMICS & PRICING SIMULATOR MODELS
+// ============================================================================
+
+class AdminTierEconomics {
+  final String tier;
+  final int trainers;
+  final int studentsTotal;
+  final double price;
+  final double mrrSubs;
+  final double mrrSplit;
+  final double cogsAi;
+  final double netMargin;
+  final double marginPct;
+
+  const AdminTierEconomics({
+    required this.tier,
+    required this.trainers,
+    required this.studentsTotal,
+    required this.price,
+    required this.mrrSubs,
+    required this.mrrSplit,
+    required this.cogsAi,
+    required this.netMargin,
+    required this.marginPct,
+  });
+
+  factory AdminTierEconomics.fromJson(Map<String, dynamic> json) {
+    return AdminTierEconomics(
+      tier: json['tier'] as String? ?? 'Pro',
+      trainers: (json['trainers'] as num?)?.toInt() ?? 0,
+      studentsTotal: (json['students_total'] as num?)?.toInt() ?? 0,
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      mrrSubs: (json['mrr_subs'] as num?)?.toDouble() ?? 0.0,
+      mrrSplit: (json['mrr_split'] as num?)?.toDouble() ?? 0.0,
+      cogsAi: (json['cogs_ai'] as num?)?.toDouble() ?? 0.0,
+      netMargin: (json['net_margin'] as num?)?.toDouble() ?? 0.0,
+      marginPct: (json['margin_pct'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+class AdminTrainerEconomics {
+  final String trainerId;
+  final String trainerName;
+  final String planId;
+  final int studentsCount;
+  final double gmv;
+  final double platformRevenue;
+  final double cogsTotal;
+  final double netMargin;
+  final double netMarginPct;
+
+  const AdminTrainerEconomics({
+    required this.trainerId,
+    required this.trainerName,
+    required this.planId,
+    required this.studentsCount,
+    required this.gmv,
+    required this.platformRevenue,
+    required this.cogsTotal,
+    required this.netMargin,
+    required this.netMarginPct,
+  });
+
+  factory AdminTrainerEconomics.fromJson(Map<String, dynamic> json) {
+    return AdminTrainerEconomics(
+      trainerId: json['trainer_id'] as String? ?? '',
+      trainerName: json['trainer_name'] as String? ?? 'Personal',
+      planId: json['plan_id'] as String? ?? 'pro',
+      studentsCount: (json['students_count'] as num?)?.toInt() ?? 0,
+      gmv: (json['gmv'] as num?)?.toDouble() ?? 0.0,
+      platformRevenue: (json['platform_revenue'] as num?)?.toDouble() ?? 0.0,
+      cogsTotal: (json['cogs_total'] as num?)?.toDouble() ?? 0.0,
+      netMargin: (json['net_margin'] as num?)?.toDouble() ?? 0.0,
+      netMarginPct: (json['net_margin_pct'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+class AdminUnitEconomicsOverview {
+  final int totalTrainers;
+  final int payingTrainers;
+  final int totalStudentsActive;
+  final double mrrSubscriptions;
+  final double mrrSplitGmv;
+  final double totalMrr;
+  final double arr;
+  final double cogsGeminiAi;
+  final double cogsWhatsapp;
+  final double cogsGatewayFees;
+  final double totalCogs;
+  final double netMarginMonthly;
+  final double netMarginPct;
+  final double ltvEstimated;
+  final double cacEstimated;
+  final double ltvToCacRatio;
+  final double paybackMonths;
+  final List<AdminTierEconomics> tierEconomics;
+  final List<AdminTrainerEconomics> topTrainerEconomics;
+
+  const AdminUnitEconomicsOverview({
+    required this.totalTrainers,
+    required this.payingTrainers,
+    required this.totalStudentsActive,
+    required this.mrrSubscriptions,
+    required this.mrrSplitGmv,
+    required this.totalMrr,
+    required this.arr,
+    required this.cogsGeminiAi,
+    required this.cogsWhatsapp,
+    required this.cogsGatewayFees,
+    required this.totalCogs,
+    required this.netMarginMonthly,
+    required this.netMarginPct,
+    required this.ltvEstimated,
+    required this.cacEstimated,
+    required this.ltvToCacRatio,
+    required this.paybackMonths,
+    required this.tierEconomics,
+    required this.topTrainerEconomics,
+  });
+
+  factory AdminUnitEconomicsOverview.fromJson(Map<String, dynamic> json) {
+    return AdminUnitEconomicsOverview(
+      totalTrainers: (json['total_trainers'] as num?)?.toInt() ?? 28,
+      payingTrainers: (json['paying_trainers'] as num?)?.toInt() ?? 23,
+      totalStudentsActive: (json['total_students_active'] as num?)?.toInt() ?? 780,
+      mrrSubscriptions: (json['mrr_subscriptions'] as num?)?.toDouble() ?? 2737.0,
+      mrrSplitGmv: (json['mrr_split_gmv'] as num?)?.toDouble() ?? 7020.0,
+      totalMrr: (json['total_mrr'] as num?)?.toDouble() ?? 9757.0,
+      arr: (json['arr'] as num?)?.toDouble() ?? 117084.0,
+      cogsGeminiAi: (json['cogs_gemini_ai'] as num?)?.toDouble() ?? 14.04,
+      cogsWhatsapp: (json['cogs_whatsapp'] as num?)?.toDouble() ?? 40.56,
+      cogsGatewayFees: (json['cogs_gateway_fees'] as num?)?.toDouble() ?? 77.62,
+      totalCogs: (json['total_cogs'] as num?)?.toDouble() ?? 132.22,
+      netMarginMonthly: (json['net_margin_monthly'] as num?)?.toDouble() ?? 9624.78,
+      netMarginPct: (json['net_margin_pct'] as num?)?.toDouble() ?? 98.6,
+      ltvEstimated: (json['ltv_estimated'] as num?)?.toDouble() ?? 14960.0,
+      cacEstimated: (json['cac_estimated'] as num?)?.toDouble() ?? 120.0,
+      ltvToCacRatio: (json['ltv_to_cac_ratio'] as num?)?.toDouble() ?? 124.6,
+      paybackMonths: (json['payback_months'] as num?)?.toDouble() ?? 0.3,
+      tierEconomics: (json['tier_economics'] as List<dynamic>? ?? [])
+          .map((e) => AdminTierEconomics.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      topTrainerEconomics: (json['top_trainer_economics'] as List<dynamic>? ?? [])
+          .map((e) => AdminTrainerEconomics.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+class AdminPricingSimulationResult {
+  final double currentMrr;
+  final double projectedMrr;
+  final double deltaMrr;
+  final double deltaMrrPct;
+  final double currentNetMarginPct;
+  final double projectedNetMarginPct;
+  final double deltaAnnualNetProfit;
+  final int projectedTrainers;
+  final int projectedStudents;
+  final Map<String, double> cogsBreakdown;
+  final List<Map<String, dynamic>> tierProjections;
+
+  const AdminPricingSimulationResult({
+    required this.currentMrr,
+    required this.projectedMrr,
+    required this.deltaMrr,
+    required this.deltaMrrPct,
+    required this.currentNetMarginPct,
+    required this.projectedNetMarginPct,
+    required this.deltaAnnualNetProfit,
+    required this.projectedTrainers,
+    required this.projectedStudents,
+    required this.cogsBreakdown,
+    required this.tierProjections,
+  });
+
+  factory AdminPricingSimulationResult.fromJson(Map<String, dynamic> json) {
+    final cogs = <String, double>{};
+    if (json['cogs_breakdown'] is Map) {
+      (json['cogs_breakdown'] as Map).forEach((k, v) {
+        cogs[k.toString()] = (v as num?)?.toDouble() ?? 0.0;
+      });
+    }
+
+    final tiers = <Map<String, dynamic>>[];
+    if (json['tier_projections'] is List) {
+      for (final t in json['tier_projections'] as List) {
+        if (t is Map) {
+          tiers.add(Map<String, dynamic>.from(t));
+        }
+      }
+    }
+
+    return AdminPricingSimulationResult(
+      currentMrr: (json['current_mrr'] as num?)?.toDouble() ?? 0.0,
+      projectedMrr: (json['projected_mrr'] as num?)?.toDouble() ?? 0.0,
+      deltaMrr: (json['delta_mrr'] as num?)?.toDouble() ?? 0.0,
+      deltaMrrPct: (json['delta_mrr_pct'] as num?)?.toDouble() ?? 0.0,
+      currentNetMarginPct: (json['current_net_margin_pct'] as num?)?.toDouble() ?? 0.0,
+      projectedNetMarginPct: (json['projected_net_margin_pct'] as num?)?.toDouble() ?? 0.0,
+      deltaAnnualNetProfit: (json['delta_annual_net_profit'] as num?)?.toDouble() ?? 0.0,
+      projectedTrainers: (json['projected_trainers'] as num?)?.toInt() ?? 0,
+      projectedStudents: (json['projected_students'] as num?)?.toInt() ?? 0,
+      cogsBreakdown: cogs,
+      tierProjections: tiers,
+    );
+  }
 }

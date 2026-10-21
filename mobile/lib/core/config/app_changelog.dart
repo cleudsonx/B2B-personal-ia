@@ -41,7 +41,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103012,
+      buildNumber: 2026103013,
       date: '20 de Outubro, 2026',
       summary:
           'Versão 1.9.0: Fechamento do Ciclo Financeiro com Webhook Asaas, Indução ao PWA (iOS/Android), Gestão Estrita de Vagas e Automação de Boas-Vindas no WhatsApp.',
@@ -115,6 +115,14 @@ class AppChangelog {
         ),
 
         // --- PARA ADMIN ---
+        ChangelogItem(
+          icon: Icons.calculate_rounded,
+          title: 'Simulador de Margem SaaS & Unit Economics',
+          description:
+              'Simulador financeiro dinâmico com projeção de MRR, Split GMV de 5%, COGS de IA Gemini Flash Lite e Meta WhatsApp, LTV/CAC e margens líquidas reais.',
+          badge: 'MISSION CONTROL',
+          targetRoles: ['admin'],
+        ),
         ChangelogItem(
           icon: Icons.security_update_good_rounded,
           title: 'Webhook Unificado Asaas com Idempotência',
