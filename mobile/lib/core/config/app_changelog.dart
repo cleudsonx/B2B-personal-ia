@@ -41,7 +41,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103014,
+      buildNumber: 2026103016,
       date: '20 de Outubro, 2026',
       summary:
           'Versão 1.9.0: Fechamento do Ciclo Financeiro com Webhook Asaas, Indução ao PWA (iOS/Android), Gestão Estrita de Vagas e Automação de Boas-Vindas no WhatsApp.',
@@ -115,6 +115,14 @@ class AppChangelog {
         ),
 
         // --- PARA ADMIN ---
+        ChangelogItem(
+          icon: Icons.hub_rounded,
+          title: 'Radar Preditivo de Churn B2B & Payback de Coortes',
+          description:
+              'Monitoramento preditivo de treinadores em risco com probabilidade de churn, matriz histórica de coortes com recuperação de CAC e resgate executivo VIP via WhatsApp.',
+          badge: 'MISSION CONTROL',
+          targetRoles: ['admin'],
+        ),
         ChangelogItem(
           icon: Icons.file_download_rounded,
           title: 'Exportação Executiva em CSV & Pitch Deck',

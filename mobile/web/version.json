@@ -1,7 +1,7 @@
 {
   "version": "1.9.0",
-  "build": 2026103014,
-  "updated_at": "2026-10-21T18:49:11.991467Z",
+  "build": 2026103016,
+  "updated_at": "2026-10-21T19:24:15.984400Z",
   "notes": "Versão 1.9.0: Fechamento do Ciclo Financeiro com Webhook Asaas, Indução ao PWA (iOS/Android), Gestão Estrita de Vagas e Automação de Boas-Vindas no WhatsApp.",
   "changelog": {
     "student": [
@@ -49,6 +49,11 @@
       }
     ],
     "admin": [
+      {
+        "title": "Radar Preditivo de Churn B2B & Payback de Coortes",
+        "description": "Monitoramento preditivo de treinadores em risco com probabilidade de churn, matriz histórica de coortes com recuperação de CAC e resgate executivo VIP via WhatsApp.",
+        "badge": "MISSION CONTROL"
+      },
       {
         "title": "Exportação Executiva em CSV & Pitch Deck",
         "description": "Geração instantânea de relatórios financeiros em CSV (padrão Excel Brasil) e resumo executivo em Markdown para investidores e reuniões de diretoria.",

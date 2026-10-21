@@ -14,7 +14,9 @@ class AdminRetentionScreen extends StatefulWidget {
 
 class _AdminRetentionScreenState extends State<AdminRetentionScreen> {
   bool _isLoading = true;
+  int _selectedSegment = 0; // 0: Alunos 360° (B2C), 1: Treinadores B2B (CAC Payback & Cohorts)
   AdminRetentionOverview _overview = AdminRetentionOverview.empty();
+  AdminTrainerRetentionCohortsOverview? _trainerOverview;
   String _searchQuery = '';
   StudentChurnRisk? _selectedRiskFilter;
 
@@ -27,9 +29,11 @@ class _AdminRetentionScreenState extends State<AdminRetentionScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     final data = await AdminDataService.getRetentionOverview();
+    final trainerData = await AdminDataService().getTrainerRetentionCohortsOverview();
     if (!mounted) return;
     setState(() {
       _overview = data;
+      _trainerOverview = trainerData;
       _isLoading = false;
     });
   }
@@ -538,8 +542,15 @@ class _AdminRetentionScreenState extends State<AdminRetentionScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
 
+                    // Segment Switcher: Alunos 360° vs Treinadores B2B (CAC Payback & Cohorts)
+                    _buildSegmentSwitcher(cardBg, borderColor, textPrimary, textSecondary),
+                    const SizedBox(height: 20),
+
+                    if (_selectedSegment == 1) ...[
+                      _buildTrainerCohortsView(cardBg, borderColor, textPrimary, textSecondary),
+                    ] else ...[
                     // Grid de KPIs Primários de Retenção
                     LayoutBuilder(
                       builder: (ctx, constraints) {
@@ -928,6 +939,7 @@ class _AdminRetentionScreenState extends State<AdminRetentionScreen> {
                         ],
                       ),
                     ),
+                    ],
                   ],
                 ),
               ),
@@ -1232,4 +1244,681 @@ class _AdminRetentionScreenState extends State<AdminRetentionScreen> {
       ),
     );
   }
+
+  // ============================================================================
+  // TRAINER B2B RETENTION & CAC PAYBACK COHORTS WIDGETS
+  // ============================================================================
+
+  Widget _buildSegmentSwitcher(
+    Color cardBg,
+    Color borderColor,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: borderColor.withValues(alpha: 0.25),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildSegmentButton(
+              index: 0,
+              label: 'Alunos 360° (B2C)',
+              icon: Icons.people_alt_rounded,
+              badge: '${_overview.totalStudents}',
+              isSelected: _selectedSegment == 0,
+              badgeColor: const Color(0xFF6366F1),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: _buildSegmentButton(
+              index: 1,
+              label: 'Treinadores B2B & Cohorts',
+              icon: Icons.business_center_rounded,
+              badge: _trainerOverview != null ? '${_trainerOverview!.trainersAtRisk} em Risco' : 'COHORTS',
+              isSelected: _selectedSegment == 1,
+              badgeColor: const Color(0xFFEF4444),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSegmentButton({
+    required int index,
+    required String label,
+    required IconData icon,
+    required String badge,
+    required bool isSelected,
+    required Color badgeColor,
+  }) {
+    return InkWell(
+      onTap: () => setState(() => _selectedSegment = index),
+      borderRadius: BorderRadius.circular(10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF6366F1).withValues(alpha: 0.15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: isSelected
+              ? Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.4))
+              : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected ? const Color(0xFF818CF8) : const Color(0xFF9CA3AF),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected ? Colors.white : const Color(0xFF9CA3AF),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: badgeColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                badge,
+                style: TextStyle(
+                  color: badgeColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTrainerCohortsView(
+    Color cardBg,
+    Color borderColor,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
+    final tOv = _trainerOverview;
+    if (tOv == null) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. KPIs B2B
+        LayoutBuilder(
+          builder: (ctx, constraints) {
+            final isDesktop = constraints.maxWidth > 900;
+            final count = isDesktop ? 4 : (constraints.maxWidth > 600 ? 2 : 1);
+
+            return GridView.count(
+              crossAxisCount: count,
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 14,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              childAspectRatio: isDesktop ? 1.6 : 2.2,
+              children: [
+                _buildKpiCard(
+                  title: 'TREINADORES EM RISCO PREDITIVO',
+                  value: '${tOv.trainersAtRisk} de ${tOv.totalTrainers}',
+                  subtext: '${tOv.criticalRiskCount} crítico · ${tOv.highRiskCount} alto risco',
+                  icon: Icons.warning_amber_rounded,
+                  iconColor: const Color(0xFFEF4444),
+                  cardBg: cardBg,
+                  borderColor: borderColor,
+                  textPrimary: textPrimary,
+                  textSecondary: textSecondary,
+                ),
+                _buildKpiCard(
+                  title: 'RETENÇÃO MÉDIA DE COORTE',
+                  value: '${tOv.avgCohortRetentionPct.toStringAsFixed(1)}%',
+                  subtext: 'Benchmark saudável SaaS B2B (> 85%)',
+                  icon: Icons.shield_rounded,
+                  iconColor: MetaColors.emerald,
+                  cardBg: cardBg,
+                  borderColor: borderColor,
+                  textPrimary: textPrimary,
+                  textSecondary: textSecondary,
+                ),
+                _buildKpiCard(
+                  title: 'PAYBACK MÉDIO DO CAC',
+                  value: '${tOv.avgCacPaybackMonths.toStringAsFixed(1)} meses',
+                  subtext: 'CAC R\$ 120 / ARPU R\$ 180+ (Retorno Imediato)',
+                  icon: Icons.speed_rounded,
+                  iconColor: const Color(0xFF6366F1),
+                  cardBg: cardBg,
+                  borderColor: borderColor,
+                  textPrimary: textPrimary,
+                  textSecondary: textSecondary,
+                ),
+                _buildKpiCard(
+                  title: 'ARR PROTEGIDO EM RISCO',
+                  value: 'R\$ ${tOv.arrAtRisk.toStringAsFixed(0)}',
+                  subtext: 'MRR sob vigilância R\$ ${tOv.mrrAtRisk.toStringAsFixed(0)}/mês',
+                  icon: Icons.savings_rounded,
+                  iconColor: const Color(0xFFF59E0B),
+                  cardBg: cardBg,
+                  borderColor: borderColor,
+                  textPrimary: textPrimary,
+                  textSecondary: textSecondary,
+                ),
+              ],
+            );
+          },
+        ),
+
+        const SizedBox(height: 24),
+
+        // 2. Matriz de Coortes & CAC Payback
+        _buildCacCohortsTable(tOv, cardBg, borderColor, textPrimary, textSecondary),
+
+        const SizedBox(height: 24),
+
+        // 3. Radar Preditivo de Churn de Treinadores
+        _buildTrainerRiskRadar(tOv, cardBg, borderColor, textPrimary, textSecondary),
+      ],
+    );
+  }
+
+  Widget _buildCacCohortsTable(
+    AdminTrainerRetentionCohortsOverview tOv,
+    Color cardBg,
+    Color borderColor,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.table_view_rounded, color: Color(0xFF818CF8), size: 20),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Matriz de Coortes & Velocidade de Payback do CAC',
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Retenção mês a mês e recuperação do Custo de Aquisição (CAC ~R\$ 120/treinador)',
+                            style: TextStyle(color: textSecondary, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: MetaColors.emerald.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'HEALTHY COHORTS',
+                  style: TextStyle(
+                    color: MetaColors.emerald,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              headingRowColor: WidgetStateProperty.all(borderColor.withValues(alpha: 0.2)),
+              columns: const [
+                DataColumn(label: Text('COORTE (MÊS)', style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(label: Text('INICIAIS', style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(label: Text('ATIVOS', style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(label: Text('RETENÇÃO %', style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(label: Text('CAC INVESTIDO', style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(label: Text('RECEITA GERADA', style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(label: Text('PROGRESSO PAYBACK', style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(label: Text('STATUS', style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(label: Text('LUCRO LÍQUIDO', style: TextStyle(fontWeight: FontWeight.bold))),
+              ],
+              rows: tOv.cohorts.map((c) {
+                final isPaid = c.paybackStatus == 'PAGO';
+                return DataRow(
+                  cells: [
+                    DataCell(Text(c.cohortMonth, style: const TextStyle(fontWeight: FontWeight.bold))),
+                    DataCell(Text('${c.initialTrainers}')),
+                    DataCell(Text('${c.activeTrainers}')),
+                    DataCell(
+                      Text(
+                        '${c.retentionRatePct.toStringAsFixed(1)}%',
+                        style: TextStyle(
+                          color: c.retentionRatePct >= 90.0 ? MetaColors.emerald : Colors.amber,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    DataCell(Text('R\$ ${c.cacInvestedTotal.toStringAsFixed(0)}')),
+                    DataCell(Text('R\$ ${c.recoveredRevenueTotal.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold))),
+                    DataCell(
+                      SizedBox(
+                        width: 110,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: (c.paybackProgressPct / 100.0).clamp(0.0, 1.0),
+                                backgroundColor: borderColor,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  isPaid ? MetaColors.emerald : const Color(0xFFF59E0B),
+                                ),
+                                minHeight: 6,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${c.paybackProgressPct.toStringAsFixed(0)}%',
+                              style: TextStyle(color: textSecondary, fontSize: 10, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: (isPaid ? MetaColors.emerald : const Color(0xFFF59E0B)).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          c.paybackStatus,
+                          style: TextStyle(
+                            color: isPaid ? MetaColors.emerald : const Color(0xFFF59E0B),
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      Text(
+                        '${c.netProfitGenerated >= 0 ? '+' : ''}R\$ ${c.netProfitGenerated.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          color: c.netProfitGenerated >= 0 ? MetaColors.emerald : const Color(0xFFEF4444),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrainerRiskRadar(
+    AdminTrainerRetentionCohortsOverview tOv,
+    Color cardBg,
+    Color borderColor,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.radar_rounded, color: Color(0xFFEF4444), size: 20),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Radar Preditivo de Churn de Treinadores (B2B)',
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Intervenção recomendada para treinadores com inatividade e evasão de alunos',
+                            style: TextStyle(color: textSecondary, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                '${tOv.riskTrainers.length} Treinadores em Alerta',
+                style: TextStyle(color: textSecondary, fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          ...tOv.riskTrainers.map((trn) {
+            final isCritical = trn.riskLevel == 'CRITICAL';
+            final isHigh = trn.riskLevel == 'HIGH';
+            final badgeColor = isCritical
+                ? const Color(0xFFEF4444)
+                : (isHigh ? const Color(0xFFF97316) : const Color(0xFFF59E0B));
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: borderColor.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: badgeColor.withValues(alpha: isCritical ? 0.4 : 0.2),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: badgeColor.withValues(alpha: 0.15),
+                              child: Text(
+                                trn.trainerName.isNotEmpty ? trn.trainerName[0] : 'P',
+                                style: TextStyle(color: badgeColor, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        trn.trainerName,
+                                        style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: badgeColor.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          'RISCO ${trn.riskLevel}',
+                                          style: TextStyle(color: badgeColor, fontSize: 10, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Plano ${trn.planId.toUpperCase()} · Tel: ${trn.phone}',
+                                    style: TextStyle(color: textSecondary, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            'Probabilidade ${trn.churnProbabilityPct.toStringAsFixed(0)}%',
+                            style: TextStyle(color: badgeColor, fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                          Text(
+                            '${trn.daysInactive} dias inativo',
+                            style: TextStyle(color: textSecondary, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(height: 1),
+                  const SizedBox(height: 10),
+
+                  // Fatores de Risco
+                  Text(
+                    'FATORES DE RISCO IDENTIFICADOS:',
+                    style: TextStyle(color: textSecondary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                  ),
+                  const SizedBox(height: 4),
+                  ...trn.riskFactors.map((f) => Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('• ', style: TextStyle(color: badgeColor, fontWeight: FontWeight.bold)),
+                            Expanded(
+                              child: Text(f, style: TextStyle(color: textPrimary, fontSize: 12)),
+                            ),
+                          ],
+                        ),
+                      )),
+                  const SizedBox(height: 10),
+
+                  // Ação Sugerida & Botão de Resgate VIP
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.lightbulb_rounded, color: Color(0xFF818CF8), size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            trn.suggestedAction,
+                            style: TextStyle(color: textPrimary, fontSize: 12),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: () => _showTrainerRescueModal(context, trn),
+                          icon: const Icon(Icons.chat_rounded, size: 14),
+                          label: const Text('Resgate VIP', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF10B981),
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            elevation: 0,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  void _showTrainerRescueModal(BuildContext context, AdminTrainerChurnRiskItem trn) {
+    final msgCtrl = TextEditingController(
+      text: 'Olá ${trn.trainerName.split(" ").first}! Notamos que faz ${trn.daysInactive} dias que você não cadastra novas fichas no Mr. Coach. Preparamos uma condição VIP para turbinar a rotina da sua assessoria esta semana. Podemos bater um papo rápido de 10 minutos?',
+    );
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF111827),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0xFF1F2937)),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.support_agent_rounded, color: Color(0xFF10B981), size: 20),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Intervenção VIP de Retenção',
+                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Personal: ${trn.trainerName} · Plano ${trn.planId.toUpperCase()}',
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Mensagem de Abordagem WhatsApp:',
+                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: msgCtrl,
+                maxLines: 4,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: const Color(0xFF1F2937),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await AdminDataService().triggerTrainerRescue(
+                  trainerId: trn.trainerId,
+                  channel: 'whatsapp',
+                  customNote: msgCtrl.text,
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Intervenção VIP disparada com sucesso para ${trn.trainerName}!'),
+                      backgroundColor: const Color(0xFF10B981),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.send_rounded, size: 16),
+              label: const Text('Disparar via WhatsApp', style: TextStyle(fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.black,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
 }

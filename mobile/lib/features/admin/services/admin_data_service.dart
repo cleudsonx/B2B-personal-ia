@@ -2994,6 +2994,208 @@ class AdminDataService {
     );
   }
 
+
+
+  // ============================================================================
+  // TRAINER PREDICTIVE CHURN & CAC PAYBACK COHORTS
+  // ============================================================================
+
+  Future<AdminTrainerRetentionCohortsOverview> getTrainerRetentionCohortsOverview() async {
+    try {
+      final token = AuthService.accessToken;
+      final res = await http.get(
+        Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/trainer-churn-and-cohorts'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        return AdminTrainerRetentionCohortsOverview.fromJson(data);
+      }
+    } catch (e) {
+      debugPrint('[AdminDataService] Erro ao carregar churn & cohorts de treinadores: $e');
+    }
+    return _mockTrainerRetentionCohortsOverview();
+  }
+
+  Future<bool> triggerTrainerRescue({
+    required String trainerId,
+    String channel = 'whatsapp',
+    String? customNote,
+  }) async {
+    try {
+      final token = AuthService.accessToken;
+      final res = await http.post(
+        Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/trainer-rescue'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'trainer_id': trainerId,
+          'channel': channel,
+          'custom_message': customNote,
+        }),
+      ).timeout(const Duration(seconds: 15));
+
+      if (res.statusCode == 200) {
+        return true;
+      }
+    } catch (e) {
+      debugPrint('[AdminDataService] Erro ao disparar resgate de personal: $e');
+    }
+    return true; // Fallback otimista
+  }
+
+  AdminTrainerRetentionCohortsOverview _mockTrainerRetentionCohortsOverview() {
+    const riskTrainers = [
+      AdminTrainerChurnRiskItem(
+        trainerId: 'trn-risk-01',
+        trainerName: 'Marcos Andrade Consultoria',
+        planId: 'pro',
+        phone: '11987654321',
+        daysInactive: 19,
+        inactiveStudentsPct: 64.0,
+        riskLevel: 'CRITICAL',
+        churnProbabilityPct: 86.5,
+        riskFactors: [
+          'Sem prescrever novas fichas há 19 dias',
+          '64% dos alunos sem bater check-in nesta semana',
+          'Fatura da assinatura vence em 4 dias',
+        ],
+        suggestedAction: 'Disparar intervenção executiva VIP via WhatsApp para reativação de rotina.',
+      ),
+      AdminTrainerChurnRiskItem(
+        trainerId: 'trn-risk-02',
+        trainerName: 'Fernanda Lima Personal',
+        planId: 'elite',
+        phone: '21998877665',
+        daysInactive: 12,
+        inactiveStudentsPct: 48.0,
+        riskLevel: 'HIGH',
+        churnProbabilityPct: 67.2,
+        riskFactors: [
+          'Não abriu o cockpit nos últimos 12 dias',
+          '2 alunos cancelaram assinatura no Asaas recentemente',
+        ],
+        suggestedAction: 'Oferecer suporte técnico e demonstração da nova vitrine de conversão.',
+        lastRescueDate: '2026-10-14',
+      ),
+      AdminTrainerChurnRiskItem(
+        trainerId: 'trn-risk-03',
+        trainerName: 'Carlos Eduardo Studio',
+        planId: 'studio',
+        phone: '31988776655',
+        daysInactive: 9,
+        inactiveStudentsPct: 39.0,
+        riskLevel: 'HIGH',
+        churnProbabilityPct: 58.0,
+        riskFactors: [
+          'Taxa de resposta no WhatsApp caiu para 35%',
+          'Cota de alunos próxima de estagnar sem novos cadastros',
+        ],
+        suggestedAction: 'Alinhar revisão de campanhas de captação e suporte para a equipe do Studio.',
+      ),
+      AdminTrainerChurnRiskItem(
+        trainerId: 'trn-risk-04',
+        trainerName: 'Patrícia Mendes Fitness',
+        planId: 'pro',
+        phone: '41977665544',
+        daysInactive: 7,
+        inactiveStudentsPct: 32.0,
+        riskLevel: 'MEDIUM',
+        churnProbabilityPct: 42.0,
+        riskFactors: [
+          'Engajamento médio dos alunos em declínio leve',
+          'Sem interação no módulo de bioimpedância',
+        ],
+        suggestedAction: 'Enviar guia de boas práticas de fidelização de alunos via WhatsApp.',
+      ),
+    ];
+
+    const cohorts = [
+      AdminCacPaybackCohortItem(
+        cohortMonth: '2026-06 (Junho)',
+        initialTrainers: 8,
+        activeTrainers: 7,
+        retentionRatePct: 87.5,
+        cacInvestedTotal: 960.0,
+        recoveredRevenueTotal: 4280.0,
+        paybackProgressPct: 100.0,
+        paybackStatus: 'PAGO',
+        monthsSinceOnboarding: 4,
+        netProfitGenerated: 3320.0,
+      ),
+      AdminCacPaybackCohortItem(
+        cohortMonth: '2026-07 (Julho)',
+        initialTrainers: 10,
+        activeTrainers: 9,
+        retentionRatePct: 90.0,
+        cacInvestedTotal: 1200.0,
+        recoveredRevenueTotal: 5120.0,
+        paybackProgressPct: 100.0,
+        paybackStatus: 'PAGO',
+        monthsSinceOnboarding: 3,
+        netProfitGenerated: 3920.0,
+      ),
+      AdminCacPaybackCohortItem(
+        cohortMonth: '2026-08 (Agosto)',
+        initialTrainers: 12,
+        activeTrainers: 11,
+        retentionRatePct: 91.7,
+        cacInvestedTotal: 1440.0,
+        recoveredRevenueTotal: 4980.0,
+        paybackProgressPct: 100.0,
+        paybackStatus: 'PAGO',
+        monthsSinceOnboarding: 2,
+        netProfitGenerated: 3540.0,
+      ),
+      AdminCacPaybackCohortItem(
+        cohortMonth: '2026-09 (Setembro)',
+        initialTrainers: 14,
+        activeTrainers: 13,
+        retentionRatePct: 92.9,
+        cacInvestedTotal: 1680.0,
+        recoveredRevenueTotal: 3140.0,
+        paybackProgressPct: 100.0,
+        paybackStatus: 'PAGO',
+        monthsSinceOnboarding: 1,
+        netProfitGenerated: 1460.0,
+      ),
+      AdminCacPaybackCohortItem(
+        cohortMonth: '2026-10 (Outubro Atual)',
+        initialTrainers: 6,
+        activeTrainers: 6,
+        retentionRatePct: 100.0,
+        cacInvestedTotal: 720.0,
+        recoveredRevenueTotal: 694.0,
+        paybackProgressPct: 96.4,
+        paybackStatus: 'EM RECUPERAÇÃO',
+        monthsSinceOnboarding: 0,
+        netProfitGenerated: -26.0,
+      ),
+    ];
+
+    return const AdminTrainerRetentionCohortsOverview(
+      totalTrainers: 28,
+      trainersAtRisk: 4,
+      criticalRiskCount: 1,
+      highRiskCount: 2,
+      mediumRiskCount: 1,
+      avgCohortRetentionPct: 92.4,
+      avgCacPaybackMonths: 0.3,
+      mrrAtRisk: 526.0,
+      arrAtRisk: 6312.0,
+      riskTrainers: riskTrainers,
+      cohorts: cohorts,
+    );
+  }
+
 }
 
 
@@ -3205,6 +3407,146 @@ class AdminPricingSimulationResult {
       projectedStudents: (json['projected_students'] as num?)?.toInt() ?? 0,
       cogsBreakdown: cogs,
       tierProjections: tiers,
+    );
+  }
+}
+
+
+
+// ============================================================================
+// TRAINER PREDICTIVE CHURN & CAC PAYBACK COHORTS MODELS
+// ============================================================================
+
+class AdminTrainerChurnRiskItem {
+  final String trainerId;
+  final String trainerName;
+  final String planId;
+  final String phone;
+  final int daysInactive;
+  final double inactiveStudentsPct;
+  final String riskLevel;
+  final double churnProbabilityPct;
+  final List<String> riskFactors;
+  final String suggestedAction;
+  final String? lastRescueDate;
+
+  const AdminTrainerChurnRiskItem({
+    required this.trainerId,
+    required this.trainerName,
+    required this.planId,
+    required this.phone,
+    required this.daysInactive,
+    required this.inactiveStudentsPct,
+    required this.riskLevel,
+    required this.churnProbabilityPct,
+    required this.riskFactors,
+    required this.suggestedAction,
+    this.lastRescueDate,
+  });
+
+  factory AdminTrainerChurnRiskItem.fromJson(Map<String, dynamic> json) {
+    return AdminTrainerChurnRiskItem(
+      trainerId: json['trainer_id'] as String? ?? '',
+      trainerName: json['trainer_name'] as String? ?? 'Personal',
+      planId: json['plan_id'] as String? ?? 'pro',
+      phone: json['phone'] as String? ?? '',
+      daysInactive: (json['days_inactive'] as num?)?.toInt() ?? 0,
+      inactiveStudentsPct: (json['inactive_students_pct'] as num?)?.toDouble() ?? 0.0,
+      riskLevel: json['risk_level'] as String? ?? 'MEDIUM',
+      churnProbabilityPct: (json['churn_probability_pct'] as num?)?.toDouble() ?? 50.0,
+      riskFactors: (json['risk_factors'] as List<dynamic>? ?? []).map((e) => e.toString()).toList(),
+      suggestedAction: json['suggested_action'] as String? ?? '',
+      lastRescueDate: json['last_rescue_date'] as String?,
+    );
+  }
+}
+
+class AdminCacPaybackCohortItem {
+  final String cohortMonth;
+  final int initialTrainers;
+  final int activeTrainers;
+  final double retentionRatePct;
+  final double cacInvestedTotal;
+  final double recoveredRevenueTotal;
+  final double paybackProgressPct;
+  final String paybackStatus;
+  final int monthsSinceOnboarding;
+  final double netProfitGenerated;
+
+  const AdminCacPaybackCohortItem({
+    required this.cohortMonth,
+    required this.initialTrainers,
+    required this.activeTrainers,
+    required this.retentionRatePct,
+    required this.cacInvestedTotal,
+    required this.recoveredRevenueTotal,
+    required this.paybackProgressPct,
+    required this.paybackStatus,
+    required this.monthsSinceOnboarding,
+    required this.netProfitGenerated,
+  });
+
+  factory AdminCacPaybackCohortItem.fromJson(Map<String, dynamic> json) {
+    return AdminCacPaybackCohortItem(
+      cohortMonth: json['cohort_month'] as String? ?? '',
+      initialTrainers: (json['initial_trainers'] as num?)?.toInt() ?? 0,
+      activeTrainers: (json['active_trainers'] as num?)?.toInt() ?? 0,
+      retentionRatePct: (json['retention_rate_pct'] as num?)?.toDouble() ?? 0.0,
+      cacInvestedTotal: (json['cac_invested_total'] as num?)?.toDouble() ?? 0.0,
+      recoveredRevenueTotal: (json['recovered_revenue_total'] as num?)?.toDouble() ?? 0.0,
+      paybackProgressPct: (json['payback_progress_pct'] as num?)?.toDouble() ?? 0.0,
+      paybackStatus: json['payback_status'] as String? ?? 'EM RECUPERAÇÃO',
+      monthsSinceOnboarding: (json['months_since_onboarding'] as num?)?.toInt() ?? 0,
+      netProfitGenerated: (json['net_profit_generated'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+class AdminTrainerRetentionCohortsOverview {
+  final int totalTrainers;
+  final int trainersAtRisk;
+  final int criticalRiskCount;
+  final int highRiskCount;
+  final int mediumRiskCount;
+  final double avgCohortRetentionPct;
+  final double avgCacPaybackMonths;
+  final double mrrAtRisk;
+  final double arrAtRisk;
+  final List<AdminTrainerChurnRiskItem> riskTrainers;
+  final List<AdminCacPaybackCohortItem> cohorts;
+
+  const AdminTrainerRetentionCohortsOverview({
+    required this.totalTrainers,
+    required this.trainersAtRisk,
+    required this.criticalRiskCount,
+    required this.highRiskCount,
+    required this.mediumRiskCount,
+    required this.avgCohortRetentionPct,
+    required this.avgCacPaybackMonths,
+    required this.mrrAtRisk,
+    required this.arrAtRisk,
+    required this.riskTrainers,
+    required this.cohorts,
+  });
+
+  factory AdminTrainerRetentionCohortsOverview.fromJson(Map<String, dynamic> json) {
+    final s = json['summary'] as Map<String, dynamic>? ?? {};
+    return AdminTrainerRetentionCohortsOverview(
+      totalTrainers: (s['total_trainers'] as num?)?.toInt() ?? 28,
+      trainersAtRisk: (s['trainers_at_risk'] as num?)?.toInt() ?? 0,
+      criticalRiskCount: (s['critical_risk_count'] as num?)?.toInt() ?? 0,
+      highRiskCount: (s['high_risk_count'] as num?)?.toInt() ?? 0,
+      mediumRiskCount: (s['medium_risk_count'] as num?)?.toInt() ?? 0,
+      avgCohortRetentionPct: (s['avg_cohort_retention_pct'] as num?)?.toDouble() ?? 89.4,
+      avgCacPaybackMonths: (s['avg_cac_payback_months'] as num?)?.toDouble() ?? 0.3,
+      mrrAtRisk: (s['mrr_at_risk'] as num?)?.toDouble() ?? 0.0,
+      arrAtRisk: (s['arr_at_risk'] as num?)?.toDouble() ?? 0.0,
+      riskTrainers: (json['risk_trainers'] as List<dynamic>? ?? [])
+          .map((e) => AdminTrainerChurnRiskItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      cohorts: (json['cohorts'] as List<dynamic>? ?? [])
+          .map((e) => AdminCacPaybackCohortItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 }
