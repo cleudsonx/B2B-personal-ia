@@ -14,6 +14,9 @@ import '../../core/widgets/rest_timer_sheet.dart';
 import '../../core/widgets/biomechanical_analysis_sheet.dart';
 import '../../core/widgets/exercise_media_sheet.dart';
 import '../../core/widgets/broadcast_banner.dart';
+import '../../core/widgets/student_notification_sheet.dart';
+import '../../core/widgets/student_trigger_banner.dart';
+import '../../services/student_notification_service.dart';
 import '../../core/widgets/server_config_dialog.dart';
 import '../../core/widgets/workout_guide_modal.dart';
 import '../../services/exercise_media_service.dart';
@@ -73,6 +76,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     });
     _loadActiveWorkout();
     _initRealtimeWorkoutListener();
+    StudentNotificationService.instance.refreshNotifications();
   }
 
   @override
@@ -919,6 +923,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             _completedExerciseIndices.clear();
             _startedAt = DateTime.now();
           });
+          StudentNotificationService.instance.refreshNotifications();
         }
       },
     );
@@ -1660,6 +1665,14 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   audience: 'students',
                   padding: EdgeInsets.only(bottom: 12),
                 ),
+                StudentTriggerBanner(
+                  onOpenWorkout: () {
+                    if (_exercises.isNotEmpty) {
+                      _startFocusMode();
+                    }
+                  },
+                  padding: const EdgeInsets.only(bottom: 12),
+                ),
                 // 1. Topo: Treinador & Ações
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1779,6 +1792,61 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                             tooltip: 'Configurar IP do Servidor (Dev)',
                             onPressed: () => ServerConfigDialog.show(context),
                           ),
+                        InkWell(
+                          onTap: () => StudentNotificationSheet.show(
+                            context,
+                            onOpenWorkout: () {
+                              if (_exercises.isNotEmpty) {
+                                _startFocusMode();
+                              }
+                            },
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: MetaColors.highlight(context),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: MetaColors.cardBorder(context),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: ValueListenableBuilder<int>(
+                              valueListenable: StudentNotificationService.unreadCountNotifier,
+                              builder: (context, unreadCount, child) {
+                                return Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Icon(
+                                      unreadCount > 0
+                                          ? Icons.notifications_active_rounded
+                                          : Icons.notifications_outlined,
+                                      size: 16,
+                                      color: unreadCount > 0
+                                          ? const Color(0xFFF59E0B)
+                                          : MetaColors.subtext(context),
+                                    ),
+                                    if (unreadCount > 0)
+                                      Positioned(
+                                        top: -3,
+                                        right: -3,
+                                        child: Container(
+                                          width: 7,
+                                          height: 7,
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFFEF4444),
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         InkWell(
                           onTap: _contactTrainerWhatsApp,
                           borderRadius: BorderRadius.circular(10),
