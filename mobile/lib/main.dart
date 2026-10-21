@@ -22,6 +22,7 @@ import 'features/trainer/presentation/screens/trainer_profile_setup_screen.dart'
 import 'features/trainer/presentation/screens/trainer_main_layout.dart';
 import 'features/assistant/b2b_assistant_screen.dart';
 import 'features/subscription/subscription_screen.dart';
+import 'features/admin/admin_shell_screen.dart';
 import 'models/subscription_model.dart';
 import 'services/auth_service.dart';
 import 'services/subscription_service.dart';
@@ -144,6 +145,10 @@ class B2BPersonalIaApp extends StatelessWidget {
           builder = (_) => const RegisterScreen(initialRole: 'trainer');
         case '/subscription':
           builder = (_) => const SubscriptionScreen();
+        case '/admin':
+          builder = (adminCtx) => AdminShellScreen(
+                onExitAdmin: () => Navigator.pushReplacementNamed(adminCtx, '/'),
+              );
         default:
           builder = (_) => _homeScreen();
       }
@@ -357,6 +362,11 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_activeRole == 'admin') {
+      return AdminShellScreen(
+        onExitAdmin: () => _switchRole('trainer'),
+      );
+    }
     if (_isTrainer) return const TrainerMainLayout();
 
     final screens = _buildScreens();

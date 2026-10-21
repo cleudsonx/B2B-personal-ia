@@ -287,13 +287,33 @@ class AuthService {
   }
 
   static List<String> availableRoles(Map<String, dynamic>? profile) {
+    final Set<String> rolesSet = {};
     final roles = profile?['roles'];
     if (roles is List) {
-      final normalized = roles.whereType<String>().toSet().toList();
-      if (normalized.isNotEmpty) return normalized;
+      rolesSet.addAll(roles.whereType<String>());
     }
     final role = profile?['role'];
-    return role is String && role.isNotEmpty ? [role] : ['client'];
+    if (role is String && role.isNotEmpty) {
+      rolesSet.add(role);
+    }
+    if (profile?['is_admin'] == true) {
+      rolesSet.add('admin');
+    }
+    if (rolesSet.isEmpty) {
+      rolesSet.add('client');
+    }
+    return rolesSet.toList();
+  }
+
+  static Future<bool> isCurrentUserAdmin() async {
+    try {
+      final profile = await getCurrentProfile();
+      if (profile?['is_admin'] == true) return true;
+      final roles = availableRoles(profile);
+      return roles.contains('admin');
+    } catch (_) {
+      return false;
+    }
   }
 
   static Future<String> getActiveRole(Map<String, dynamic>? profile) async {

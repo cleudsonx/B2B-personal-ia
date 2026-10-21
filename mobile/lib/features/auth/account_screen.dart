@@ -283,7 +283,6 @@ class _AccountScreenState extends State<AccountScreen> {
     final hasActiveCref = _cref != null && _cref!.toUpperCase().startsWith('CREF');
 
     return ListView(
-      cacheExtent: 1200,
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
       children: [
         // Topo: Título da tela
@@ -665,9 +664,15 @@ class _AccountScreenState extends State<AccountScreen> {
               for (final role in roles)
                 ButtonSegment<String>(
                   value: role,
-                  label: Text(role == 'trainer' ? 'Treinador' : 'Aluno'),
+                  label: Text(
+                    role == 'admin'
+                        ? 'Admin ⚡'
+                        : (role == 'trainer' ? 'Treinador' : 'Aluno'),
+                  ),
                   icon: Icon(
-                    role == 'trainer' ? Icons.fitness_center : Icons.person_outline,
+                    role == 'admin'
+                        ? Icons.admin_panel_settings_rounded
+                        : (role == 'trainer' ? Icons.fitness_center : Icons.person_outline),
                   ),
                 ),
             ],
@@ -676,12 +681,13 @@ class _AccountScreenState extends State<AccountScreen> {
             },
             onSelectionChanged: (selection) async {
               if (_isSwitchingRole) return;
+              final messenger = ScaffoldMessenger.of(context);
               setState(() => _isSwitchingRole = true);
               try {
                 await widget.onRoleSelected(selection.first);
               } catch (error) {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     SnackBar(
                       content: Text(
                         error.toString().replaceFirst('Exception: ', ''),

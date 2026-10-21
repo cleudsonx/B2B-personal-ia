@@ -965,9 +965,15 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                   for (final role in _roles)
                     ButtonSegment<String>(
                       value: role,
-                      label: Text(role == 'trainer' ? 'Treinador' : 'Aluno'),
+                      label: Text(
+                        role == 'admin'
+                            ? 'Admin ⚡'
+                            : (role == 'trainer' ? 'Treinador' : 'Aluno'),
+                      ),
                       icon: Icon(
-                        role == 'trainer' ? Icons.fitness_center : Icons.person_outline,
+                        role == 'admin'
+                            ? Icons.admin_panel_settings_rounded
+                            : (role == 'trainer' ? Icons.fitness_center : Icons.person_outline),
                       ),
                     ),
                 ],
