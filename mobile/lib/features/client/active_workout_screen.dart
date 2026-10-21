@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'student_profile_screen.dart';
 import 'client_focus_workout_screen.dart';
+import 'widgets/warmup_sheet.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/workout_triumph_modal.dart';
@@ -2119,7 +2120,50 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
+                      InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          WarmupSheet.show(
+                            context,
+                            initialFocus: _splitName ?? 'Geral',
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: Colors.amber.withValues(alpha: 0.35),
+                              width: 1,
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('🔥', style: TextStyle(fontSize: 16)),
+                              SizedBox(width: 8),
+                              Text(
+                                'Aquecimento Articular Guiado (3 min)',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.amber,
+                                ),
+                              ),
+                              SizedBox(width: 6),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                color: Colors.amber,
+                                size: 18,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       SquircleButton(
                         label: _completedExerciseIndices.isEmpty
                             ? 'Iniciar Treino de Hoje'

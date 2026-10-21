@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../core/widgets/avatar_selector_sheet.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/app_version_footer.dart';
+import '../../core/widgets/pwa_install_prompt_card.dart';
 import '../../services/auth_service.dart';
 import '../../services/body_metrics_service.dart';
 import '../../services/student_profile_service.dart';
@@ -49,6 +51,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
   String? _trainerName;
   String? _trainerCref;
   String? _trainerPhotoUrl;
+  String? _trainerPhone;
   bool _isLoadingTrainer = true;
 
   final _formKey = GlobalKey<FormState>();
@@ -184,10 +187,14 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       if (!mounted) return;
       if (trainer != null) {
         setState(() {
-          _trainerName = trainer['full_name'] as String?;
-          _trainerCref = trainer['professional_document'] as String?;
+          _trainerName =
+              (trainer['trainer_name'] ?? trainer['full_name']) as String?;
+          _trainerCref =
+              (trainer['cref'] ?? trainer['professional_document']) as String?;
           _trainerPhotoUrl =
-              (trainer['photo_url'] ?? trainer['avatar_url']) as String?;
+              (trainer['trainer_photo_url'] ?? trainer['photo_url'] ?? trainer['avatar_url']) as String?;
+          _trainerPhone =
+              (trainer['phone'] ?? trainer['whatsapp']) as String?;
           _isLoadingTrainer = false;
         });
       } else {
@@ -195,6 +202,31 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       }
     } catch (_) {
       if (mounted) setState(() => _isLoadingTrainer = false);
+    }
+  }
+
+  Future<void> _contactTrainerWhatsApp() async {
+    final rawPhone = _trainerPhone;
+    if (rawPhone == null || rawPhone.trim().isEmpty) {
+      _snack(
+        'Seu treinador ainda não cadastrou o WhatsApp profissional.',
+        color: Colors.orange.shade800,
+      );
+      return;
+    }
+    final digits = rawPhone.replaceAll(RegExp(r'\D'), '');
+    final phone = digits.startsWith('55') ? digits : '55$digits';
+    final msg = Uri.encodeComponent(
+      'Olá professor(a) ${_trainerName ?? ""}! Sou aluno no Mr. Coach e gostaria de tirar uma dúvida.',
+    );
+    final uri = Uri.parse('https://api.whatsapp.com/send?phone=$phone&text=$msg');
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      }
+    } catch (_) {
+      _snack('Não foi possível abrir o WhatsApp.', color: Colors.redAccent);
     }
   }
 
@@ -451,97 +483,133 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               : AppColors.cardBorder(context),
         ),
       ),
-      child: Row(
+      child: Column(
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.emerald(context).withValues(alpha: 0.15),
-              border: Border.all(
-                color: AppColors.emerald(context).withValues(alpha: 0.5),
-                width: 1.5,
-              ),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: (_trainerPhotoUrl != null && _trainerPhotoUrl!.isNotEmpty)
-                ? (_trainerPhotoUrl!.startsWith('assets/')
-                    ? Image.asset(_trainerPhotoUrl!, fit: BoxFit.cover)
-                    : Image.network(
-                        _trainerPhotoUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Icon(
-                          Icons.person_rounded,
-                          color: AppColors.emerald(context),
-                        ),
-                      ))
-                : Icon(
-                    Icons.fitness_center_rounded,
-                    color: AppColors.emerald(context),
-                    size: 24,
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.emerald(context).withValues(alpha: 0.15),
+                  border: Border.all(
+                    color: AppColors.emerald(context).withValues(alpha: 0.5),
+                    width: 1.5,
                   ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      'TREINADOR RESPONSÁVEL',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.1,
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: (_trainerPhotoUrl != null && _trainerPhotoUrl!.isNotEmpty)
+                    ? (_trainerPhotoUrl!.startsWith('assets/')
+                        ? Image.asset(_trainerPhotoUrl!, fit: BoxFit.cover)
+                        : Image.network(
+                            _trainerPhotoUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => Icon(
+                              Icons.person_rounded,
+                              color: AppColors.emerald(context),
+                            ),
+                          ))
+                    : Icon(
+                        Icons.fitness_center_rounded,
                         color: AppColors.emerald(context),
+                        size: 24,
+                      ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'TREINADOR RESPONSÁVEL',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.1,
+                            color: AppColors.emerald(context),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: hasTrainer
+                                ? AppColors.emerald(context).withValues(alpha: 0.2)
+                                : Colors.orange.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            hasTrainer ? 'Ativo' : 'Pendente',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: hasTrainer
+                                  ? AppColors.emerald(context)
+                                  : Colors.orangeAccent,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      hasTrainer ? _trainerName! : 'Nenhum treinador vinculado',
+                      style: TextStyle(
+                        color: AppColors.text(context),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: hasTrainer
-                            ? AppColors.emerald(context).withValues(alpha: 0.2)
-                            : Colors.orange.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        hasTrainer ? 'Ativo' : 'Pendente',
+                    if (_trainerCref != null && _trainerCref!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'CREF: $_trainerCref',
                         style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          color: hasTrainer
-                              ? AppColors.emerald(context)
-                              : Colors.orangeAccent,
+                          color: AppColors.subtext(context),
+                          fontSize: 12,
                         ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (hasTrainer && _trainerPhone != null && _trainerPhone!.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            InkWell(
+              onTap: _contactTrainerWhatsApp,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF25D366).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF25D366).withValues(alpha: 0.4),
+                  ),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.chat_bubble_rounded, size: 16, color: Color(0xFF25D366)),
+                    SizedBox(width: 8),
+                    Text(
+                      'Falar com Treinador no WhatsApp',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF25D366),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  hasTrainer ? _trainerName! : 'Nenhum treinador vinculado',
-                  style: TextStyle(
-                    color: AppColors.text(context),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (_trainerCref != null && _trainerCref!.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    'CREF: $_trainerCref',
-                    style: TextStyle(
-                      color: AppColors.subtext(context),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -870,7 +938,11 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
 
             // Card do Treinador Vinculado
             _buildTrainerCard(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+
+            // Card Indutor PWA (Exibido para usuários acessando pelo navegador)
+            const PwaInstallPromptCard(),
+            const SizedBox(height: 16),
 
             // Card Hero de Anamnese & Periodização
             _buildAnamnesisHeroCard(),
@@ -1289,7 +1361,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                 ),
               ),
             ),
-            const AppVersionFooter(),
+            const AppVersionFooter(userRole: 'student'),
           ],
         ),
       ),

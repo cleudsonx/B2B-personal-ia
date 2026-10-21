@@ -7,6 +7,7 @@ import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/exercise_media_sheet.dart';
 import '../../core/widgets/biomechanical_analysis_sheet.dart';
 import '../../core/widgets/workout_triumph_modal.dart';
+import 'widgets/warmup_sheet.dart';
 import '../../models/exercise_model.dart';
 import '../../models/adaptation_model.dart';
 import '../../services/api_service.dart';
@@ -983,34 +984,76 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                               ),
                             ],
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: MetaColors.surface,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: MetaColors.border),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.timer_outlined,
-                                  size: 14,
-                                  color: MetaColors.emerald,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  _formatTimer(_elapsedSeconds),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w900,
-                                    color: MetaColors.textPrimary,
+                          Row(
+                            children: [
+                              InkWell(
+                                onTap: () {
+                                  HapticFeedback.lightImpact();
+                                  WarmupSheet.show(
+                                    context,
+                                    initialFocus: widget.splitName,
+                                  );
+                                },
+                                borderRadius: BorderRadius.circular(16),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: Colors.amber.withValues(alpha: 0.35),
+                                    ),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Text('🔥', style: TextStyle(fontSize: 12)),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        '3 min',
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.amber,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: MetaColors.surface,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: MetaColors.border),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.timer_outlined,
+                                      size: 14,
+                                      color: MetaColors.emerald,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      _formatTimer(_elapsedSeconds),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w900,
+                                        color: MetaColors.textPrimary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

@@ -270,6 +270,7 @@ class AppChangelog {
           description:
               'Ajuste definitivo do plano Personal Pro para até 30 alunos com sincronização ativa de cotas e tolerância a períodos de transição.',
           badge: 'COTA',
+          targetRoles: ['trainer'],
         ),
         ChangelogItem(
           icon: Icons.play_circle_filled_rounded,
@@ -328,6 +329,7 @@ class AppChangelog {
           description:
               'Identifica alunos sem treinar há mais de 4 dias e dispara check-in acolhedor via Robô WhatsApp (em lote ou 1 toque) com trava anti-spam de 48h.',
           badge: 'FASE 7',
+          targetRoles: ['trainer'],
         ),
         ChangelogItem(
           icon: Icons.assessment_rounded,
@@ -335,6 +337,7 @@ class AppChangelog {
           description:
               'Painel executivo da semana (Treinos concluídos, Taxa de Presença, Top Streaks e Alertas de Dor) com envio em 1 toque para o WhatsApp do Personal.',
           badge: 'COACH 2.0',
+          targetRoles: ['trainer'],
         ),
         ChangelogItem(
           icon: Icons.flash_on_rounded,
@@ -342,6 +345,7 @@ class AppChangelog {
           description:
               'Alunos agora podem consultar o Bio-Hub (Peso, IMC e Meta) digitando 5 e enviar recados prioritários ao painel do professor digitando 4 — 0 tokens gastos.',
           badge: '0 TOKENS',
+          targetRoles: ['student', 'trainer'],
         ),
       ],
     ),
@@ -358,6 +362,7 @@ class AppChangelog {
           description:
               'Professores agora podem substituir permanentemente o exercício adaptado na ficha ativa do aluno e resolver o alerta simultaneamente.',
           badge: 'SUPERPODER',
+          targetRoles: ['trainer'],
         ),
         ChangelogItem(
           icon: Icons.edit_note_rounded,
@@ -365,6 +370,7 @@ class AppChangelog {
           description:
               'Edite nome, séries, repetições, descanso e observações de qualquer exercício, ou adicione/remova exercícios diretamente nos detalhes da ficha.',
           badge: 'GESTÃO',
+          targetRoles: ['trainer'],
         ),
         ChangelogItem(
           icon: Icons.trending_up_rounded,
@@ -994,4 +1000,34 @@ class AppChangelog {
 
   /// Retorna as versões anteriores
   static List<VersionRelease> get previousReleases => history.sublist(1);
+
+  /// Retorna as versões filtradas pelo papel do usuário ('student', 'trainer', 'admin')
+  static List<VersionRelease> getReleasesForRole(String role) {
+    final targetRole = role.toLowerCase().trim();
+    final isStudent = targetRole == 'student' || targetRole == 'client';
+
+    return history
+        .map((release) {
+          final filtered = release.highlights.where((item) {
+            if (isStudent) {
+              return item.targetRoles.contains('student') ||
+                  item.targetRoles.contains('client');
+            }
+            return item.targetRoles.contains(targetRole);
+          }).toList();
+
+          return VersionRelease(
+            version: release.version,
+            buildNumber: release.buildNumber,
+            date: release.date,
+            summary: release.summary,
+            highlights: filtered,
+          );
+        })
+        .where((release) => release.highlights.isNotEmpty)
+        .toList();
+  }
+
+  /// Retorna histórico exclusivo e filtrado para o perfil Aluno
+  static List<VersionRelease> get studentHistory => getReleasesForRole('student');
 }
