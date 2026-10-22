@@ -309,7 +309,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
       }
       if (_restSecondsRemaining <= 1) {
         t.cancel();
-        HapticFeedback.mediumImpact();
+        RestTimerSheet.triggerCadencedFeedback(0);
         setState(() {
           _restSecondsRemaining = 0;
           _isRestTimerActive = false;
@@ -318,6 +318,9 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
         setState(() {
           _restSecondsRemaining--;
         });
+        if (_restSecondsRemaining <= 3) {
+          RestTimerSheet.triggerCadencedFeedback(_restSecondsRemaining);
+        }
       }
     });
   }
@@ -1239,116 +1242,150 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                 left: 18,
                 right: 18,
                 bottom: bottomPadding + 80,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 14,
-                  ),
-                  decoration: BoxDecoration(
-                    color: MetaColors.surface,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: MetaColors.emerald.withValues(alpha: 0.5),
-                      width: 1.2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.6),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 38,
-                        height: 38,
+                child: Builder(
+                  builder: (context) {
+                    final isUrgent = _restSecondsRemaining <= 3 && _restSecondsRemaining > 0;
+                    final timerColor = isUrgent
+                        ? Colors.redAccent
+                        : (_restSecondsRemaining < 15 ? Colors.amber : MetaColors.emerald);
+
+                    return InkWell(
+                      onTap: () {
+                        if (_currentPage < _currentExercises.length) {
+                          RestTimerSheet.show(
+                            context,
+                            seconds: _restSecondsRemaining,
+                            exerciseName: _currentExercises[_currentPage].name,
+                            onFinished: _skipRestTimer,
+                          );
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 14,
+                        ),
                         decoration: BoxDecoration(
-                          color: MetaColors.emerald.withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            '$_restSecondsRemaining',
-                            style: const TextStyle(
-                              color: MetaColors.emerald,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 15,
-                            ),
+                          color: MetaColors.surface,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: timerColor.withValues(alpha: isUrgent ? 0.8 : 0.5),
+                            width: isUrgent ? 1.8 : 1.2,
                           ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: isUrgent
+                                  ? Colors.redAccent.withValues(alpha: 0.3)
+                                  : Colors.black.withValues(alpha: 0.6),
+                              blurRadius: isUrgent ? 22 : 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
+                        child: Row(
                           children: [
-                            const Text(
-                              'DESCANSO EM ANDAMENTO',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w900,
-                                color: MetaColors.textSecondary,
-                                letterSpacing: 0.3,
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: timerColor.withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '$_restSecondsRemaining',
+                                  style: TextStyle(
+                                    color: timerColor,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 15,
+                                  ),
+                                ),
                               ),
                             ),
-                            Text(
-                              '${_formatTimer(_restSecondsRemaining)} restantes',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w900,
-                                color: MetaColors.textPrimary,
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'DESCANSO EM ANDAMENTO',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w900,
+                                          color: isUrgent ? Colors.redAccent : MetaColors.textSecondary,
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
+                                      if (isUrgent) ...[
+                                        const SizedBox(width: 4),
+                                        const Text('🔥', style: TextStyle(fontSize: 11)),
+                                      ],
+                                    ],
+                                  ),
+                                  Text(
+                                    isUrgent
+                                        ? '$_restSecondsRemaining s • Prepare-se para a série!'
+                                        : '${_formatTimer(_restSecondsRemaining)} restantes',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w900,
+                                      color: isUrgent ? Colors.redAccent : MetaColors.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(2),
+                                    child: LinearProgressIndicator(
+                                      value: _restInitialDuration > 0
+                                          ? (_restSecondsRemaining / _restInitialDuration).clamp(0.0, 1.0)
+                                          : 0.0,
+                                      backgroundColor: MetaColors.background,
+                                      color: timerColor,
+                                      minHeight: 3,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(2),
-                              child: LinearProgressIndicator(
-                                value: _restInitialDuration > 0
-                                    ? (_restSecondsRemaining / _restInitialDuration).clamp(0.0, 1.0)
-                                    : 0.0,
+                            TextButton(
+                              onPressed: () => _addRestSeconds(30),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
                                 backgroundColor: MetaColors.background,
-                                color: MetaColors.emerald,
-                                minHeight: 3,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
                               ),
+                              child: const Text(
+                                '+30s',
+                                style: TextStyle(
+                                  color: MetaColors.textPrimary,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.skip_next_rounded,
+                                color: MetaColors.textSecondary,
+                              ),
+                              tooltip: 'Pular Descanso',
+                              onPressed: _skipRestTimer,
                             ),
                           ],
                         ),
                       ),
-                      TextButton(
-                        onPressed: () => _addRestSeconds(30),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          backgroundColor: MetaColors.background,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: const Text(
-                          '+30s',
-                          style: TextStyle(
-                            color: MetaColors.textPrimary,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.skip_next_rounded,
-                          color: MetaColors.textSecondary,
-                        ),
-                        tooltip: 'Pular Descanso',
-                        onPressed: _skipRestTimer,
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ),
 

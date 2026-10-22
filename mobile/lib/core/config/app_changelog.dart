@@ -42,7 +42,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103038,
+      buildNumber: 2026103039,
       date: '21 de Outubro, 2026',
       summary:
           'Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas e Gestão Dinâmica de Preços & Planos.',
@@ -170,6 +170,15 @@ class AppChangelog {
           targetRoles: ['admin'],
         ),
 
+        ChangelogItem(
+          icon: Icons.timer_rounded,
+          title: 'Módulo RestTimerSheet na Biblioteca Meta Components',
+          description:
+              'Cronômetro de descanso imersivo e desacoplado, com cadência háptica 3-2-1, suporte a Audio Ducking e persistência local de preferências.',
+          badge: 'SISTEMA',
+          targetRoles: ['admin'],
+        ),
+
         // --- PARA O PROFESSOR / TREINADOR ---
         ChangelogItem(
           icon: Icons.fullscreen_rounded,
@@ -253,6 +262,15 @@ class AppChangelog {
           targetRoles: ['trainer'],
         ),
 
+        ChangelogItem(
+          icon: Icons.timer_rounded,
+          title: 'Densidade de Treino & Cadência Rígida de Descanso',
+          description:
+              'Alunos agora contam com cronômetro inteligente com alertas táteis cadenciados para respeitarem estritamente os intervalos prescritos.',
+          badge: 'TREINAMENTO',
+          targetRoles: ['trainer'],
+        ),
+
         // --- PARA O ALUNO ---
         ChangelogItem(
           icon: Icons.fullscreen_rounded,
@@ -324,6 +342,15 @@ class AppChangelog {
           description:
               'Efeito translúcido ultra-fluido com desfoque de vidro inteligente no topo enquanto você rola seus treinos e fichas de exercícios.',
           badge: 'VISUAL',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.timer_rounded,
+          title:
+              'Cronômetro de Descanso Háptico & Alerta 3-2-1 (Audio Ducking)',
+          description:
+              'Contagem regressiva circular com feedback tátil e sonoro cadenciado nos últimos 3 segundos (3, 2, 1, GO!), presets rápidos (30s, 60s, 90s, 120s), ajuste fino e modo silencioso/vibração.',
+          badge: 'FOCO',
           targetRoles: ['student'],
         ),
       ],

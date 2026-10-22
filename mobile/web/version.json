@@ -1,7 +1,7 @@
 {
   "version": "1.9.0",
-  "build": 2026103038,
-  "updated_at": "2026-10-22T03:16:47.282912Z",
+  "build": 2026103039,
+  "updated_at": "2026-10-22T03:32:25.268524Z",
   "notes": "Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas e Gestão Dinâmica de Preços & Planos.",
   "changelog": {
     "student": [
@@ -49,6 +49,11 @@
         "title": "Cabeçalho de Vidro Dinâmico (Scroll-Aware Glass Header)",
         "description": "Efeito translúcido ultra-fluido com desfoque de vidro inteligente no topo enquanto você rola seus treinos e fichas de exercícios.",
         "badge": "VISUAL"
+      },
+      {
+        "title": "Cronômetro de Descanso Háptico & Alerta 3-2-1 (Audio Ducking)",
+        "description": "Contagem regressiva circular com feedback tátil e sonoro cadenciado nos últimos 3 segundos (3, 2, 1, GO!), presets rápidos (30s, 60s, 90s, 120s), ajuste fino e modo silencioso/vibração.",
+        "badge": "FOCO"
       }
     ],
     "trainer": [
@@ -101,6 +106,11 @@
         "title": "Viral Loop & Prova Social dos Alunos",
         "description": "Alunos agora geram cards comemorativos estilizados com o nome do seu treinador oficial e link direto para sua consultoria ao baterem metas.",
         "badge": "MARKETING"
+      },
+      {
+        "title": "Densidade de Treino & Cadência Rígida de Descanso",
+        "description": "Alunos agora contam com cronômetro inteligente com alertas táteis cadenciados para respeitarem estritamente os intervalos prescritos.",
+        "badge": "TREINAMENTO"
       }
     ],
     "admin": [
@@ -177,6 +187,11 @@
       {
         "title": "Componente ScrollAwareGlassHeader na Suíte Meta Design",
         "description": "Componente desacoplado e reutilizável com interpolação de blur de 0 a 18px, borda dinâmica e zero jitter em taxas de atualização de 120Hz.",
+        "badge": "SISTEMA"
+      },
+      {
+        "title": "Módulo RestTimerSheet na Biblioteca Meta Components",
+        "description": "Cronômetro de descanso imersivo e desacoplado, com cadência háptica 3-2-1, suporte a Audio Ducking e persistência local de preferências.",
         "badge": "SISTEMA"
       }
     ]
