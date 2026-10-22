@@ -243,12 +243,12 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
 
   String _getRoleSummary(String role) {
     if (role == 'admin') {
-      return 'Visão Estratégica: Central de Liquidação Pix (Payout Engine) com quitação em 1 clique de afiliados, motor de cupons e campanhas SaaS, precificação dinâmica e auditoria de sessões.';
+      return 'Visão Estratégica: Arquitetura offline-first com persistência local de mídias, Central de Liquidação Pix (Payout Engine) com 1 clique, motor de cupons SaaS e auditoria de sessões.';
     }
     if (role == 'trainer') {
-      return 'Para sua Consultoria: Sua vitrine pública (/r/{slug}) agora suporta cupons de desconto, checkout transparente Asaas/Pix com recebimento direto, repasse de afiliados e cadência de descanso 3-2-1 e sobrecarga inteligente para seus alunos.';
+      return 'Para sua Consultoria: Suas fichas agora carregam demonstrações e biomecânica 100% offline para os alunos, com vitrine pública (/r/{slug}) integrada a cupons e repasse Pix de afiliados.';
     }
-    return 'Para seus Treinos: Treine em tela cheia real (Edge-to-Edge) sem tarjas, com cronômetro de descanso háptico cadenciado 3-2-1, motor de sobrecarga por IA (+kg ou +reps) e cards comemorativos de triunfo 9:16 para os seus Stories!';
+    return 'Para seus Treinos: Treine 100% offline em tela cheia real (Edge-to-Edge), com vídeos anatômicos e execução pré-carregados, cronômetro de descanso háptico 3-2-1 e cards de triunfo 9:16 para Stories!';
   }
 
   Widget _buildRoleSectionHeader(String title, IconData icon, Color color) {

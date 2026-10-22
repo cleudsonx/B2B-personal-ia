@@ -14,6 +14,7 @@ import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
 import '../../services/workout_session_service.dart';
 import '../../services/offline_sync_service.dart';
+import '../../services/exercise_media_service.dart';
 import '../../core/widgets/offline_sync_banner.dart';
 
 /// Modo de Treino Focado no SalÃ£o (Focus Mode)
@@ -100,6 +101,9 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
     _currentExercises = List.from(widget.exercises);
     _initSets();
     _loadPreviousWeights();
+    ExerciseMediaService.preloadExerciseNames(
+      _currentExercises.map((e) => e.name).toList(),
+    );
 
     _startedAt = DateTime.now();
     _sessionTimer = Timer.periodic(const Duration(seconds: 1), (_) {

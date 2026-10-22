@@ -1,7 +1,7 @@
 {
   "version": "1.9.0",
-  "build": 2026103041,
-  "updated_at": "2026-10-22T04:22:23.321169Z",
+  "build": 2026103042,
+  "updated_at": "2026-10-22T09:51:03.768600Z",
   "notes": "Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas e Gestão Dinâmica de Preços & Planos.",
   "changelog": {
     "student": [
@@ -64,6 +64,11 @@
         "title": "Tour Guiado do Aluno em 3 Passos",
         "description": "Guia interativo ensinando como registrar cargas no salão em tela cheia, usar o cronômetro com alertas 3-2-1 e compartilhar seus recordes em Stories de triunfo.",
         "badge": "TOUR GUIADO"
+      },
+      {
+        "title": "Demonstrações em Vídeo e Raio-X Anatômico 100% Offline",
+        "description": "Pré-carregamento automático dos exercícios do seu treino no celular. Visualize execução, músculos trabalhados e ângulos articulares sem gastar dados móveis.",
+        "badge": "OFFLINE"
       }
     ],
     "trainer": [
@@ -131,6 +136,11 @@
         "title": "Tour Guiado do Personal em 3 Passos",
         "description": "Apresentação dinâmica das ferramentas essenciais: gestão de fichas com IA, vitrine pública de vendas com cupons e atendimento 24h integrado ao WhatsApp.",
         "badge": "TOUR GUIADO"
+      },
+      {
+        "title": "Fichas e Mídias com Acesso Offline Instantâneo",
+        "description": "Seus alunos agora acessam a demonstração e orientações biomecânicas de todos os exercícios da ficha mesmo em academias subterrâneas ou com sinal oscilante.",
+        "badge": "CONECTIVIDADE"
       }
     ],
     "admin": [
@@ -223,6 +233,11 @@
         "title": "Onboarding Interativo & Tour Guiado em 3 Passos",
         "description": "Módulo desacoplado de introdução interativa (InteractiveTourGuideModal) com persistência local de conclusão e segmentação personalizada para treinadores e alunos.",
         "badge": "SISTEMA"
+      },
+      {
+        "title": "Arquitetura de Pré-carregamento & Modo Offline de Mídias",
+        "description": "Motor de persistência resiliente em ExerciseMediaService com cache local em SharedPreferences, catálogo canônico offline de exercícios e pré-carregamento assíncrono de fichas.",
+        "badge": "OFFLINE FIRST"
       }
     ]
   }

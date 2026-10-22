@@ -406,12 +406,37 @@ class _InteractiveTourGuideModalState extends State<InteractiveTourGuideModal> {
                                 letterSpacing: 0.2,
                               ),
                             ),
-                            Text(
-                              'Apresentação rápida em 3 passos',
-                              style: TextStyle(
-                                color: textSecondary,
-                                fontSize: 11,
-                              ),
+                            Row(
+                              children: [
+                                Text(
+                                  'Apresentação rápida em 3 passos',
+                                  style: TextStyle(
+                                    color: textSecondary,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                  decoration: BoxDecoration(
+                                    color: MetaColors.emerald.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: MetaColors.emerald.withValues(alpha: 0.3),
+                                      width: 0.7,
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    '100% OFFLINE',
+                                    style: TextStyle(
+                                      color: MetaColors.emerald,
+                                      fontSize: 8.5,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),

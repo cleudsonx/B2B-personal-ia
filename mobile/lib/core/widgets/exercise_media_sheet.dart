@@ -232,6 +232,32 @@ class _ExerciseMediaSheetState extends State<ExerciseMediaSheet> {
                                 ),
                               ),
                             ),
+                            if (widget.media?.isOfflineCached == true)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: const Color(0xFF38BDF8).withValues(alpha: 0.4),
+                                  ),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.offline_pin_rounded, size: 12, color: Color(0xFF38BDF8)),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Offline',
+                                      style: TextStyle(
+                                        color: Color(0xFF38BDF8),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
                       ],
@@ -475,33 +501,36 @@ class _ExerciseMediaSheetState extends State<ExerciseMediaSheet> {
   }
 
   Widget _buildFallbackCard(bool isDark, Color textColor, Color subtextColor) {
+    final title = widget.media?.name ?? widget.exerciseName;
+    final muscle = widget.media?.muscleGroup ?? 'Músculo Alvo';
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0C1322) : const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: MetaColors.emerald.withValues(alpha: 0.25),
+          color: const Color(0xFF38BDF8).withValues(alpha: 0.35),
         ),
       ),
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: MetaColors.emerald.withValues(alpha: 0.15),
+              color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: const Icon(
-              Icons.hourglass_top_rounded,
-              size: 28,
-              color: MetaColors.emerald,
+              Icons.offline_bolt_rounded,
+              size: 26,
+              color: Color(0xFF38BDF8),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
-            'Demonstração em Processamento',
+            'Modo Offline no Salão',
             style: TextStyle(
               color: textColor,
               fontSize: 14,
@@ -510,12 +539,41 @@ class _ExerciseMediaSheetState extends State<ExerciseMediaSheet> {
           ),
           const SizedBox(height: 4),
           Text(
-            'A animação biomecânica deste movimento estará disponível em instantes.',
+            'Instruções biomecânicas salvas no seu aparelho para você treinar mesmo sem internet na academia.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: subtextColor,
-              fontSize: 12,
+              fontSize: 11.5,
+              height: 1.35,
             ),
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: MetaColors.emerald,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            icon: const Icon(Icons.view_in_ar_rounded, size: 16),
+            label: const Text(
+              'Abrir Loop Biomecânico & Ângulos',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+              BiomechanicalAnalysisSheet.show(
+                context,
+                exerciseName: title,
+                primaryMuscle: muscle,
+              );
+            },
           ),
         ],
       ),

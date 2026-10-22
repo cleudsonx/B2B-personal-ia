@@ -42,7 +42,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103041,
+      buildNumber: 2026103042,
       date: '21 de Outubro, 2026',
       summary:
           'Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas e Gestão Dinâmica de Preços & Planos.',
@@ -197,6 +197,15 @@ class AppChangelog {
           targetRoles: ['admin'],
         ),
 
+        ChangelogItem(
+          icon: Icons.offline_pin_rounded,
+          title: 'Arquitetura de Pré-carregamento & Modo Offline de Mídias',
+          description:
+              'Motor de persistência resiliente em ExerciseMediaService com cache local em SharedPreferences, catálogo canônico offline de exercícios e pré-carregamento assíncrono de fichas.',
+          badge: 'OFFLINE FIRST',
+          targetRoles: ['admin'],
+        ),
+
         // --- PARA O PROFESSOR / TREINADOR ---
         ChangelogItem(
           icon: Icons.fullscreen_rounded,
@@ -307,6 +316,15 @@ class AppChangelog {
           targetRoles: ['trainer'],
         ),
 
+        ChangelogItem(
+          icon: Icons.wifi_off_rounded,
+          title: 'Fichas e Mídias com Acesso Offline Instantâneo',
+          description:
+              'Seus alunos agora acessam a demonstração e orientações biomecânicas de todos os exercícios da ficha mesmo em academias subterrâneas ou com sinal oscilante.',
+          badge: 'CONECTIVIDADE',
+          targetRoles: ['trainer'],
+        ),
+
         // --- PARA O ALUNO ---
         ChangelogItem(
           icon: Icons.fullscreen_rounded,
@@ -404,6 +422,15 @@ class AppChangelog {
           description:
               'Guia interativo ensinando como registrar cargas no salão em tela cheia, usar o cronômetro com alertas 3-2-1 e compartilhar seus recordes em Stories de triunfo.',
           badge: 'TOUR GUIADO',
+          targetRoles: ['student'],
+        ),
+
+        ChangelogItem(
+          icon: Icons.offline_bolt_rounded,
+          title: 'Demonstrações em Vídeo e Raio-X Anatômico 100% Offline',
+          description:
+              'Pré-carregamento automático dos exercícios do seu treino no celular. Visualize execução, músculos trabalhados e ângulos articulares sem gastar dados móveis.',
+          badge: 'OFFLINE',
           targetRoles: ['student'],
         ),
       ],

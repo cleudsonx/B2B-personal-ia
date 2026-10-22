@@ -8,6 +8,7 @@ import '../core/config/app_config.dart';
 import '../models/workout_plan_model.dart';
 import 'auth_service.dart';
 import 'subscription_service.dart';
+import 'exercise_media_service.dart';
 
 class WorkoutService {
   static SupabaseClient? get _clientOrNull {
@@ -831,6 +832,7 @@ class WorkoutService {
 
           final plan = WorkoutPlanModel.fromJson(planMap);
           await _saveWorkoutToOfflineCache(targetId, plan);
+          ExerciseMediaService.preloadWorkoutPlan(plan);
           return plan;
         }
         // Consulta bem-sucedida e sem ficha ativa: o cache está obsoleto.
@@ -849,6 +851,7 @@ class WorkoutService {
       debugPrint(
         '[WorkoutService] Treino carregado com sucesso do cache offline persistente.',
       );
+      ExerciseMediaService.preloadWorkoutPlan(cached);
       return cached;
     }
 
