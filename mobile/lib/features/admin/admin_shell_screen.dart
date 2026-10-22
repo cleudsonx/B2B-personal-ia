@@ -14,6 +14,11 @@ import 'screens/admin_whatsapp_screen.dart';
 import 'screens/admin_ai_usage_screen.dart';
 import 'screens/admin_simulator_screen.dart';
 import 'screens/admin_pricing_manager_screen.dart';
+import 'widgets/admin_omni_search_modal.dart';
+import 'widgets/admin_database_explorer_modal.dart';
+import 'widgets/admin_webhook_reprocess_modal.dart';
+import '../trainer/presentation/screens/trainer_main_layout.dart';
+import '../../main.dart';
 
 class AdminShellScreen extends StatefulWidget {
   final VoidCallback onExitAdmin;
@@ -29,6 +34,32 @@ class AdminShellScreen extends StatefulWidget {
 
 class _AdminShellScreenState extends State<AdminShellScreen> {
   int _currentSectionIndex = 0;
+  String? _mirrorRole; // 'client' ou 'trainer'
+
+  void _openOmniSearch() {
+    AdminOmniSearchModal.show(
+      context,
+      onNavigateToSection: (idx) {
+        setState(() {
+          _mirrorRole = null;
+          _currentSectionIndex = idx;
+        });
+      },
+      onOpenDatabaseExplorer: () => AdminDatabaseExplorerModal.show(context),
+      onOpenWebhookReprocess: () => AdminWebhookReprocessModal.show(context),
+      onViewAsRole: (role) {
+        setState(() => _mirrorRole = role);
+      },
+    );
+  }
+
+  void _openDatabaseExplorer() {
+    AdminDatabaseExplorerModal.show(context);
+  }
+
+  void _openWebhookReprocess() {
+    AdminWebhookReprocessModal.show(context);
+  }
 
   @override
   void initState() {
@@ -44,10 +75,76 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final isDesktop = width > 900;
+    if (_mirrorRole != null) {
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: AppTheme.systemUiOverlayFor(isDark: true),
+        child: Scaffold(
+          backgroundColor: const Color(0xFF090D16),
+          body: Column(
+            children: [
+              Container(
+                color: const Color(0xFFD97706),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: SafeArea(
+                  bottom: false,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.visibility_rounded, color: Colors.black, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'MODO ESPELHO ATIVO — Visualizando como ${_mirrorRole == "trainer" ? "Treinador / Personal" : "Aluno / Cliente"}',
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13.5,
+                          ),
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () => setState(() => _mirrorRole = null),
+                        icon: const Icon(Icons.close_rounded, size: 16, color: Colors.white),
+                        label: const Text(
+                          'Voltar ao Admin',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF111827),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Expanded(
+                child: _mirrorRole == 'trainer'
+                    ? const TrainerMainLayout()
+                    : const MainShellScreen(
+                        initialIndex: 0,
+                        activeRole: 'client',
+                        userName: 'Aluno (Modo Espelho)',
+                      ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: AppTheme.systemUiOverlayFor(isDark: true),
-      child: Scaffold(
+
+    return CallbackShortcuts(
+      bindings: <ShortcutActivator, VoidCallback>{
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): _openOmniSearch,
+        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): _openOmniSearch,
+      },
+      child: Focus(
+        autofocus: true,
+        child: AnnotatedRegion<SystemUiOverlayStyle>(
+          value: AppTheme.systemUiOverlayFor(isDark: true),
+          child: Scaffold(
       backgroundColor: const Color(0xFF090D16),
       appBar: isDesktop
           ? null
@@ -69,6 +166,11 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                 ],
               ),
               actions: [
+                IconButton(
+                  tooltip: 'Buscar comando (Ctrl+K)',
+                  icon: const Icon(Icons.search_rounded, color: Color(0xFF818CF8)),
+                  onPressed: _openOmniSearch,
+                ),
                 TextButton.icon(
                   onPressed: widget.onExitAdmin,
                   icon: const Icon(Icons.exit_to_app_rounded, size: 16, color: Color(0xFF818CF8)),
@@ -120,9 +222,11 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                 ),
               ],
             ),
+        ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildCurrentSection() {
     switch (_currentSectionIndex) {
@@ -234,7 +338,46 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             ),
           ),
           const Divider(color: Color(0xFF1F2937), height: 1),
-          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+            child: InkWell(
+              onTap: _openOmniSearch,
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF090D16),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF1F2937)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.search_rounded, size: 16, color: Color(0xFF818CF8)),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Comandos... (Ctrl+K)',
+                        style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1F2937),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: const Color(0xFF374151)),
+                      ),
+                      child: const Text(
+                        '⌘K',
+                        style: TextStyle(color: Color(0xFF818CF8), fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
 
           // Menu de Navegação
           Padding(
@@ -316,6 +459,43 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                   label: 'Preços & Planos SaaS',
                   badge: 'PRICING',
                 ),
+                const SizedBox(height: 12),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Row(
+                    children: [
+                      Text(
+                        'FERRAMENTAS GOD MODE',
+                        style: TextStyle(
+                          color: Color(0xFF6B7280),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _buildActionSidebarItem(
+                  icon: Icons.table_chart_rounded,
+                  label: 'Explorador de Banco',
+                  badge: 'SQL/VIEW',
+                  onTap: _openDatabaseExplorer,
+                ),
+                const SizedBox(height: 4),
+                _buildActionSidebarItem(
+                  icon: Icons.sync_problem_rounded,
+                  label: 'Reprocessar Webhook',
+                  badge: 'IDEMPOTENTE',
+                  onTap: _openWebhookReprocess,
+                ),
+                const SizedBox(height: 4),
+                _buildActionSidebarItem(
+                  icon: Icons.visibility_rounded,
+                  label: 'Modo Espelho (View As)',
+                  badge: 'ALUNO/COACH',
+                  onTap: _openOmniSearch,
+                ),
               ],
             ),
           ),
@@ -382,6 +562,60 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildActionSidebarItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    String? badge,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: const Color(0xFFF59E0B),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFE5E7EB),
+                ),
+              ),
+            ),
+            if (badge != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  badge,
+                  style: const TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFFF59E0B),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -554,6 +788,31 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
               onTap: () {
                 setState(() => _currentSectionIndex = 10);
                 Navigator.pop(context);
+              },
+            ),
+            const Divider(color: Color(0xFF1F2937)),
+            ListTile(
+              leading: const Icon(Icons.table_chart_rounded, color: Color(0xFFF59E0B)),
+              title: const Text('Explorador de Banco', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _openDatabaseExplorer();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.sync_problem_rounded, color: Color(0xFFF59E0B)),
+              title: const Text('Reprocessar Webhook', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _openWebhookReprocess();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.visibility_rounded, color: Color(0xFFF59E0B)),
+              title: const Text('Modo Espelho / Omni-Search', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _openOmniSearch();
               },
             ),
             const Spacer(),

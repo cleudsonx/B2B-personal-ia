@@ -124,8 +124,10 @@ void main() {
 
       // Clica em Sincronizar Agora
       await tester.tap(find.text('Sincronizar Agora'));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
       expect(find.textContaining('Sincronizado com'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 5));
 
       // Clica no botão de Configurar Metas
       await tester.tap(find.byIcon(Icons.tune_rounded));
