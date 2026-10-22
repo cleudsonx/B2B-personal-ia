@@ -2654,7 +2654,19 @@ async def record_referral_conversion_endpoint(payload: dict):
 # SUPERADMIN MISSION CONTROL — SUPABASE SERVICE-ROLE INTEGRATION
 # ============================================================================
 
+CANONICAL_SUPERADMIN_IDS = {
+    "6f645308-f1b2-4d73-ac45-9890c27e20d4",  # Prof. Cleudson Cavalcante (@mrcoach)
+    "50c26610-8054-4b05-9274-7f414f91f52f",  # Prof. Cleudson Cavalcante (@cleudson-antigo)
+}
+
+
 def _is_profile_admin(profile: Optional[Dict[str, Any]]) -> bool:
+    if not profile:
+        return False
+    if str(profile.get("id") or "") in CANONICAL_SUPERADMIN_IDS:
+        return True
+    if str(profile.get("username") or "").lower() in ("mrcoach", "cleudson-antigo"):
+        return True
     if not profile:
         return False
     if profile.get("is_admin") is True:
@@ -2952,3 +2964,50 @@ async def admin_inspect_database_table(
             "rows": [],
             "error": str(exc),
         }
+
+
+@router.post("/admin/sync-canonical-superadmins")
+async def sync_canonical_superadmins_endpoint():
+    """
+    Garante via Service Role que os perfis canônicos do proprietário
+    (Prof. Cleudson Cavalcante: @mrcoach e @cleudson-antigo) possuam
+    a role 'admin' persistida em public.profiles no Supabase.
+    """
+    client = await supabase_service.get_client()
+    if not client:
+        raise HTTPException(status_code=503, detail="Cliente Supabase indisponível.")
+
+    promoted_ids = []
+    for target_id in CANONICAL_SUPERADMIN_IDS:
+        try:
+            res = await client.table("profiles").select("*").eq("id", target_id).maybe_single().execute()
+            prof = res.data if res else None
+            if not prof:
+                continue
+            current_roles = list(prof.get("roles") or [prof.get("role") or "trainer"])
+            if "admin" not in current_roles:
+                current_roles.append("admin")
+            try:
+                await client.table("profiles").update({
+                    "roles": current_roles,
+                    "is_admin": True,
+                    "updated_at": datetime.utcnow().isoformat(),
+                }).eq("id", target_id).execute()
+            except Exception:
+                await client.table("profiles").update({
+                    "roles": current_roles,
+                    "updated_at": datetime.utcnow().isoformat(),
+                }).eq("id", target_id).execute()
+            promoted_ids.append({
+                "id": target_id,
+                "full_name": prof.get("full_name"),
+                "username": prof.get("username"),
+                "roles": current_roles,
+            })
+        except Exception as exc:
+            logger.warning("[sync-canonical-superadmins] Erro ao sincronizar %s: %s", target_id, exc)
+
+    return {
+        "ok": True,
+        "canonical_superadmins": promoted_ids,
+    }

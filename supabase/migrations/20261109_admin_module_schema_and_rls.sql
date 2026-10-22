@@ -457,3 +457,23 @@ CREATE POLICY "SuperAdmins manage security alerts"
     USING (public.current_user_is_admin())
     WITH CHECK (public.current_user_is_admin());
 
+
+
+-- 8. Grant SuperAdmin permission to Professor Cleudson Cavalcante (@mrcoach / @cleudson-antigo)
+UPDATE public.profiles
+SET
+    is_admin = TRUE,
+    is_vip = TRUE,
+    current_plan = 'elite',
+    max_students = 9999,
+    roles = CASE
+        WHEN 'admin' = ANY(COALESCE(roles, ARRAY[]::TEXT[])) THEN roles
+        ELSE array_append(COALESCE(roles, ARRAY['trainer']::TEXT[]), 'admin')
+    END,
+    updated_at = now()
+WHERE id IN (
+    '6f645308-f1b2-4d73-ac45-9890c27e20d4',
+    '50c26610-8054-4b05-9274-7f414f91f52f'
+)
+   OR username IN ('mrcoach', 'cleudson-antigo')
+   OR full_name ILIKE '%Cleudson%';

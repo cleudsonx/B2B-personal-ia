@@ -83,3 +83,6 @@ supabase/.branches/
 
 # Firebase CLI Local Cache
 .firebase/
+
+# Local CLI tools
+.tools/
