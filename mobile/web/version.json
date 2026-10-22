@@ -1,10 +1,15 @@
 {
   "version": "1.9.0",
-  "build": 2026103047,
-  "updated_at": "2026-10-22T10:41:03.448252Z",
-  "notes": "Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas, Central de 1RM & Metas de Sobrecarga, Conquistas & Badges, Telemetria Apple Health & Health Connect e Gestão Dinâmica de Preços & Planos.",
+  "build": 2026103048,
+  "updated_at": "2026-10-22T10:55:43.392651Z",
+  "notes": "Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas, Central de 1RM & Metas de Sobrecarga, Conquistas & Badges, Telemetria Apple Health, Prescrição em Bloco e Gestão Dinâmica de Preços & Planos.",
   "changelog": {
     "student": [
+      {
+        "title": "Continuidade de Periodização com Sobrecarga Gradual",
+        "description": "Fichas renovadas e novos mesociclos atualizados pelo seu treinador entram diretamente no aplicativo sem atritos, já incorporando suas novas metas calibradas de repetições e carga.",
+        "badge": "TREINOS"
+      },
       {
         "title": "Conector de Saúde Apple Health & Google Health Connect",
         "description": "Sincronize seus passos, calorias ativas gastas, sono e batimentos em repouso diretamente do seu relógio ou celular, com registro rápido de copos d\\",
@@ -87,6 +92,11 @@
       }
     ],
     "trainer": [
+      {
+        "title": "Clonagem Rápida de Mesociclos & Prescrição em Bloco",
+        "description": "Duplique fichas e periodizações vigentes para novos ciclos com acréscimo automático de carga linear (+2.5kg ou +reps) e aplicação instantânea para 1 ou múltiplos alunos da consultoria.",
+        "badge": "AGILIDADE"
+      },
       {
         "title": "Painel de Telemetria e Recuperação dos Alunos no BioHub",
         "description": "Acompanhe o gasto calórico ativo, passos diários, frequência cardíaca de repouso e qualidade do sono dos seus alunos na aba de evolução para periodizar treinos e descanso.",
@@ -174,6 +184,11 @@
       }
     ],
     "admin": [
+      {
+        "title": "Motor de Prescrição em Lote & Clonagem de Mesociclos (Suíte Meta Ops)",
+        "description": "Algoritmo de duplicação em lote com regras dinâmicas de progressão linear (+kg e +reps), escalonamento para múltiplos alunos e notificação transversal de sincronização.",
+        "badge": "AUTOMAÇÃO"
+      },
       {
         "title": "Módulo de Telemetria Vital & Saúde Integrada (Suíte Meta Health)",
         "description": "Conector unificado com suporte a Apple Health, Google Health Connect e registro manual, cache local resiliente e telemetria de passos, calorias, sono e hidratação.",

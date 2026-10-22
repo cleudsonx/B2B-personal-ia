@@ -466,6 +466,33 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 10),
+              SquircleButton(
+                icon: Icons.content_copy_rounded,
+                label: 'Clonar Mesociclo & Progressão',
+                isPrimary: false,
+                onPressed: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  Navigator.pop(ctx);
+                  final res = await BatchPrescriptionModalSheet.show(
+                    context,
+                    initialWorkoutId: workout.id,
+                    initialWorkoutTitle: workout.workoutTitle,
+                    initialStudentId: workout.studentId,
+                    initialStudentName: workout.studentName,
+                    availableStudents: _pendingStudents,
+                  );
+                  if (!mounted || res == null) return;
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(res.message),
+                      backgroundColor: MetaColors.emerald,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  _loadWorkouts();
+                },
+              ),
             ],
           ),
         );
@@ -817,6 +844,58 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                                 letterSpacing: -0.5,
                               ),
                             ),
+                            InkWell(
+                              onTap: () async {
+                                final messenger = ScaffoldMessenger.of(context);
+                                final res = await BatchPrescriptionModalSheet.show(
+                                  context,
+                                  availableStudents: _pendingStudents,
+                                );
+                                if (!mounted || res == null) return;
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text(res.message),
+                                    backgroundColor: MetaColors.emerald,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                                _loadWorkouts();
+                              },
+                              borderRadius: BorderRadius.circular(20),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 7,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: MetaColors.highlight(context),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: MetaColors.cardBorder(context),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.content_copy_rounded,
+                                      size: 15,
+                                      color: MetaColors.emerald,
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      'Clonar em Bloco',
+                                      style: TextStyle(
+                                        color: MetaColors.text(context),
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
                             InkWell(
                               onTap: _showAssessmentDialog,
                               borderRadius: BorderRadius.circular(20),

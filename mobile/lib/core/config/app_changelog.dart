@@ -42,12 +42,20 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103047,
+      buildNumber: 2026103048,
       date: '21 de Outubro, 2026',
       summary:
-          'Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas, Central de 1RM & Metas de Sobrecarga, Conquistas & Badges, Telemetria Apple Health & Health Connect e Gestão Dinâmica de Preços & Planos.',
+          'Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas, Central de 1RM & Metas de Sobrecarga, Conquistas & Badges, Telemetria Apple Health, Prescrição em Bloco e Gestão Dinâmica de Preços & Planos.',
       highlights: [
         // --- PARA O ADMIN / GESTOR ---
+        ChangelogItem(
+          icon: Icons.content_copy_rounded,
+          title: 'Motor de Prescrição em Lote & Clonagem de Mesociclos (Suíte Meta Ops)',
+          description:
+              'Algoritmo de duplicação em lote com regras dinâmicas de progressão linear (+kg e +reps), escalonamento para múltiplos alunos e notificação transversal de sincronização.',
+          badge: 'AUTOMAÇÃO',
+          targetRoles: ['admin'],
+        ),
         ChangelogItem(
           icon: Icons.monitor_heart_rounded,
           title: 'Módulo de Telemetria Vital & Saúde Integrada (Suíte Meta Health)',
@@ -232,6 +240,14 @@ class AppChangelog {
 
         // --- PARA O PROFESSOR / TREINADOR ---
         ChangelogItem(
+          icon: Icons.content_copy_rounded,
+          title: 'Clonagem Rápida de Mesociclos & Prescrição em Bloco',
+          description:
+              'Duplique fichas e periodizações vigentes para novos ciclos com acréscimo automático de carga linear (+2.5kg ou +reps) e aplicação instantânea para 1 ou múltiplos alunos da consultoria.',
+          badge: 'AGILIDADE',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
           icon: Icons.favorite_rounded,
           title: 'Painel de Telemetria e Recuperação dos Alunos no BioHub',
           description:
@@ -374,6 +390,14 @@ class AppChangelog {
         ),
 
         // --- PARA O ALUNO ---
+        ChangelogItem(
+          icon: Icons.sync_alt_rounded,
+          title: 'Continuidade de Periodização com Sobrecarga Gradual',
+          description:
+              'Fichas renovadas e novos mesociclos atualizados pelo seu treinador entram diretamente no aplicativo sem atritos, já incorporando suas novas metas calibradas de repetições e carga.',
+          badge: 'TREINOS',
+          targetRoles: ['student'],
+        ),
         ChangelogItem(
           icon: Icons.favorite_rounded,
           title: 'Conector de Saúde Apple Health & Google Health Connect',
