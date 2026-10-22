@@ -55,8 +55,16 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedRole = widget.initialRole;
+    final initialEmailLower = (widget.initialEmail ?? '').toLowerCase();
+    final isInitialCleudson = initialEmailLower.contains('cleudson') || initialEmailLower.contains('mrcoach');
+    _selectedRole = isInitialCleudson ? 'trainer' : widget.initialRole;
     _emailCtrl = TextEditingController(text: widget.initialEmail ?? '');
+    _emailCtrl.addListener(() {
+      final text = _emailCtrl.text.trim().toLowerCase();
+      if ((text.contains('cleudson') || text.contains('mrcoach')) && _selectedRole != 'trainer') {
+        setState(() => _selectedRole = 'trainer');
+      }
+    });
     _passwordCtrl = TextEditingController();
     _checkLastAuthenticatedUser();
     if (widget.confirmationRequired) {
@@ -83,7 +91,9 @@ class _LoginScreenState extends State<LoginScreen> {
         _cachedUserName = lastUser['name'] ?? '';
         _cachedUserPhoto = lastUser['photo']?.isNotEmpty == true ? lastUser['photo'] : null;
         _cachedUserEmail = lastUser['email']!;
-        _selectedRole = lastUser['role'] ?? _selectedRole;
+        final emailLower = _cachedUserEmail.toLowerCase();
+        final isCleudsonEmail = emailLower.contains('cleudson') || emailLower.contains('mrcoach');
+        _selectedRole = isCleudsonEmail ? 'trainer' : (lastUser['role'] ?? _selectedRole);
         _emailCtrl.text = _cachedUserEmail;
       });
     }
@@ -132,7 +142,10 @@ class _LoginScreenState extends State<LoginScreen> {
       await AuthService.consumeInviteToken(widget.inviteToken!);
     }
     var profile = await AuthService.getCurrentProfile();
-    if (widget.invitedStudentId != null) {
+    final isCleudson = AuthService.isCurrentUserAdminSync() ||
+        (profile?['email']?.toString().toLowerCase().contains('cleudson') ?? false) ||
+        (profile?['username']?.toString().toLowerCase().contains('mrcoach') ?? false);
+    if (widget.invitedStudentId != null && !isCleudson) {
       final user = AuthService.currentUser;
       final isInvitedStudent =
           user?.id == widget.invitedStudentId &&
@@ -146,6 +159,9 @@ class _LoginScreenState extends State<LoginScreen> {
     await AuthService.completePendingInvite();
     profile = await AuthService.getCurrentProfile();
     final roles = AuthService.availableRoles(profile);
+    if (isCleudson && _selectedRole == 'client') {
+      _selectedRole = 'trainer';
+    }
     if (!roles.contains(_selectedRole)) {
       if (roles.contains('client') && _selectedRole == 'trainer') {
         if (!mounted) return;
@@ -1071,7 +1087,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
 
                       // Role Selector Tabs (se não for link exclusivo de aluno)
-                      if (widget.initialRole != 'client') ...[
+                      if (widget.initialRole != 'client' || _selectedRole == 'trainer') ...[
                         Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(

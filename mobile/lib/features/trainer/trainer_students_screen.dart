@@ -1526,13 +1526,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                     onTap: () async {
                                       await AuthService.setActiveRole('admin');
                                       if (!context.mounted) return;
-                                      Navigator.pushAndRemoveUntil(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => const AuthGate(skipBiometric: true),
-                                        ),
-                                        (_) => false,
-                                      );
+                                      Navigator.pushNamed(context, '/admin');
                                     },
                                     borderRadius: BorderRadius.circular(12),
                                     child: Container(
@@ -1581,16 +1575,10 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                       label: 'Painel Admin (Mission Control)',
                                       icon: Icons.shield_rounded,
                                       onTap: () async {
-                                        await AuthService.setActiveRole('admin');
-                                        if (!context.mounted) return;
-                                        Navigator.pushAndRemoveUntil(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => const AuthGate(skipBiometric: true),
-                                          ),
-                                          (_) => false,
-                                        );
-                                      },
+                                      await AuthService.setActiveRole('admin');
+                                      if (!context.mounted) return;
+                                      Navigator.pushNamed(context, '/admin');
+                                    },
                                     ),
                                   OneUiPopoverItem(
                                     label: 'Tour do Personal (3 Passos)',

@@ -2657,6 +2657,7 @@ async def record_referral_conversion_endpoint(payload: dict):
 CANONICAL_SUPERADMIN_IDS = {
     "6f645308-f1b2-4d73-ac45-9890c27e20d4",  # Prof. Cleudson Cavalcante (@mrcoach)
     "50c26610-8054-4b05-9274-7f414f91f52f",  # Prof. Cleudson Cavalcante (@cleudson-antigo)
+    "92dfd58c-845f-473e-b846-a2b8fdd3e508",  # Prof. Cleudson Cavalcante (cleudsonx@hotmail.com)
 }
 
 
@@ -2666,6 +2667,9 @@ def _is_profile_admin(profile: Optional[Dict[str, Any]]) -> bool:
     if str(profile.get("id") or "") in CANONICAL_SUPERADMIN_IDS:
         return True
     if str(profile.get("username") or "").lower() in ("mrcoach", "cleudson-antigo"):
+        return True
+    email = str(profile.get("email") or "").lower()
+    if "cleudson" in email or "mrcoach" in email:
         return True
     if not profile:
         return False

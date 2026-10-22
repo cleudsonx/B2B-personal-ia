@@ -1,7 +1,7 @@
 {
   "version": "1.9.0",
-  "build": 2026103056,
-  "updated_at": "2026-10-22T16:15:25.921891Z",
+  "build": 2026103059,
+  "updated_at": "2026-10-22T18:00:22.953719Z",
   "notes": "Versão 1.10.0: Redesign Completo da Experiência do Aluno (Treino, Mr. Coach AI, Bio-Hub e Perfil) no padrão Apple Fitness+ / Samsung One UI 7 / Material 3 Expressive, Anéis de Atividade no Bio-Hub, Biometria & IMC em Tempo Real, Cards de Adaptação no Copiloto IA e Pílula Compacta do Coach.",
   "changelog": {
     "student": [
@@ -194,6 +194,11 @@
       }
     ],
     "admin": [
+      {
+        "title": "Blindagem de Acesso SuperAdmin & Treinador para Prof. Cleudson",
+        "description": "Garantia irrestrita de permissão de Treinador Pro e SuperAdmin em todas as contas canônicas do Prof. Cleudson (@mrcoach, @cleudson-antigo, cleudsonx@hotmail.com, cleudsonx@gmail.com, cleudsonx2021@gmail.com), eliminação de barreira de convites de aluno e roteamento inteligente.",
+        "badge": "SEGURANÇA & ACESSO"
+      },
       {
         "title": "Motor de Prescrição em Lote & Clonagem de Mesociclos (Suíte Meta Ops)",
         "description": "Algoritmo de duplicação em lote com regras dinâmicas de progressão linear (+kg e +reps), escalonamento para múltiplos alunos e notificação transversal de sincronização.",

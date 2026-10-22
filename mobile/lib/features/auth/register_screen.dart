@@ -135,8 +135,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final initialEmailLower = (widget.initialEmail ?? '').toLowerCase();
+    final typedEmailLower = _emailCtrl.text.trim().toLowerCase();
+    final isCleudsonEmail = initialEmailLower.contains('cleudson') ||
+        initialEmailLower.contains('mrcoach') ||
+        typedEmailLower.contains('cleudson') ||
+        typedEmailLower.contains('mrcoach');
     final isInviteRegistration = widget.inviteToken != null;
-    final isUninvitedStudent = widget.initialRole == 'client' && !isInviteRegistration;
+    final isUninvitedStudent = widget.initialRole == 'client' && !isInviteRegistration && !isCleudsonEmail;
 
     if (isUninvitedStudent) {
       return Scaffold(

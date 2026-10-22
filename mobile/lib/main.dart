@@ -159,7 +159,12 @@ class B2BPersonalIaApp extends StatelessWidget {
           builder = (_) => const SubscriptionScreen();
         case '/admin':
           builder = (adminCtx) => AdminShellScreen(
-                onExitAdmin: () => Navigator.pushReplacementNamed(adminCtx, '/'),
+                onExitAdmin: () async {
+                  await AuthService.setActiveRole('trainer');
+                  if (adminCtx.mounted) {
+                    Navigator.pushReplacementNamed(adminCtx, '/');
+                  }
+                },
               );
         default:
           builder = (_) => _homeScreen();

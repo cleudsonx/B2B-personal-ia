@@ -835,6 +835,23 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                             color: Colors.redAccent,
                           ),
                         ),
+                        if (AuthService.isCurrentUserAdminSync()) ...[
+                          const SizedBox(height: 10),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              await AuthService.setActiveRole('trainer');
+                              if (context.mounted) {
+                                Navigator.pushReplacementNamed(context, '/trainer');
+                              }
+                            },
+                            icon: const Icon(Icons.sports_gymnastics, size: 16),
+                            label: const Text('Entrar como Treinador / Admin'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: MetaColors.emerald,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ],
                       ],
                     ],
                   ),

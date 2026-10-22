@@ -8,6 +8,7 @@ import '../../core/widgets/meta_components.dart';
 import '../../services/auth_service.dart';
 import '../trainer/presentation/screens/trainer_onboarding_screen.dart';
 import '../trainer/presentation/screens/trainer_main_layout.dart';
+import '../admin/admin_shell_screen.dart';
 import '../client/welcome_onboarding_screen.dart';
 import '../client/student_suspended_screen.dart';
 import 'login_screen.dart';
@@ -120,9 +121,29 @@ class _AuthGateState extends State<AuthGate> {
 
       if (mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (role == 'trainer') {
+          if (role == 'admin') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (adminCtx) => AdminShellScreen(
+                  onExitAdmin: () async {
+                    await AuthService.setActiveRole('trainer');
+                    if (adminCtx.mounted) {
+                      Navigator.pushReplacementNamed(adminCtx, '/');
+                    }
+                  },
+                ),
+              ),
+            );
+          } else if (role == 'trainer') {
             _openTrainerDestination();
           } else {
+            if ((roles.contains('trainer') || roles.contains('admin')) &&
+                (profile?['trainer_id'] == null ||
+                    (profile?['trainer_id'] as String).isEmpty)) {
+              _openTrainerDestination();
+              return;
+            }
             final subscriptionStatus =
                 (profile?['subscription_status'] as String?)?.toLowerCase();
             if (subscriptionStatus == 'suspended') {

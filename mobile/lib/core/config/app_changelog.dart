@@ -42,12 +42,20 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103056,
+      buildNumber: 2026103059,
       date: '22 de Outubro, 2026',
       summary:
           'Versão 1.10.0: Redesign Completo da Experiência do Aluno (Treino, Mr. Coach AI, Bio-Hub e Perfil) no padrão Apple Fitness+ / Samsung One UI 7 / Material 3 Expressive, Anéis de Atividade no Bio-Hub, Biometria & IMC em Tempo Real, Cards de Adaptação no Copiloto IA e Pílula Compacta do Coach.',
       highlights: [
         // --- PARA O ADMIN / GESTOR ---
+        ChangelogItem(
+          icon: Icons.admin_panel_settings_rounded,
+          title: 'Blindagem de Acesso SuperAdmin & Treinador para Prof. Cleudson',
+          description:
+              'Garantia irrestrita de permissão de Treinador Pro e SuperAdmin em todas as contas canônicas do Prof. Cleudson (@mrcoach, @cleudson-antigo, cleudsonx@hotmail.com, cleudsonx@gmail.com, cleudsonx2021@gmail.com), eliminação de barreira de convites de aluno e roteamento inteligente.',
+          badge: 'SEGURANÇA & ACESSO',
+          targetRoles: ['admin'],
+        ),
         ChangelogItem(
           icon: Icons.content_copy_rounded,
           title: 'Motor de Prescrição em Lote & Clonagem de Mesociclos (Suíte Meta Ops)',

@@ -227,12 +227,21 @@ class AuthService {
       final doc = user.userMetadata?['professional_document'] as String?;
       final crefOrReg = user.userMetadata?['cref_or_registry'] as String?;
 
+      final isCleudson = _isCleudsonProfile(null, user);
       final payload = <String, dynamic>{
         'id': user.id,
-        'full_name': fullName,
-        'role': role,
+        'full_name': isCleudson && (fullName == 'Rafinha 2026' || fullName == 'Hotmail 2' || fullName == 'Usuário')
+            ? 'Prof. Cleudson Cavalcante'
+            : fullName,
+        'role': isCleudson ? 'trainer' : role,
         'updated_at': DateTime.now().toIso8601String(),
       };
+      if (isCleudson) {
+        payload['is_admin'] = true;
+        payload['is_vip'] = true;
+        payload['current_plan'] = 'elite';
+        payload['roles'] = ['trainer', 'admin'];
+      }
       if (user.email != null) payload['email'] = user.email;
       if (phone != null && phone.isNotEmpty) payload['phone'] = phone;
       if (trainerId != null && trainerId.isNotEmpty) {
@@ -286,6 +295,23 @@ class AuthService {
         };
   }
 
+  /// Identifica contas e perfis canonicos do Professor Cleudson Cavalcante
+  static bool _isCleudsonProfile(Map<String, dynamic>? profile, [User? user]) {
+    final effectiveUser = user ?? currentUser;
+    final email = ((profile?['email'] ?? effectiveUser?.email) as String? ?? '').toLowerCase();
+    final username = ((profile?['username'] ?? effectiveUser?.userMetadata?['username']) as String? ?? '').toLowerCase();
+    final uid = ((profile?['id'] ?? effectiveUser?.id) as String? ?? '').toLowerCase();
+    final fullName = ((profile?['full_name'] ?? effectiveUser?.userMetadata?['full_name']) as String? ?? '').toLowerCase();
+    return email.contains('cleudson') ||
+        email.contains('mrcoach') ||
+        username == 'mrcoach' ||
+        username == 'cleudson-antigo' ||
+        fullName.contains('cleudson') ||
+        uid == '6f645308-f1b2-4d73-ac45-9890c27e20d4' ||
+        uid == '50c26610-8054-4b05-9274-7f414f91f52f' ||
+        uid == '92dfd58c-845f-473e-b846-a2b8fdd3e508';
+  }
+
   static List<String> availableRoles(Map<String, dynamic>? profile) {
     final Set<String> rolesSet = {};
     final roles = profile?['roles'];
@@ -307,6 +333,10 @@ class AuthService {
     if (metaRoles is List && metaRoles.whereType<String>().contains('admin')) {
       rolesSet.add('admin');
     }
+    if (_isCleudsonProfile(profile, user)) {
+      rolesSet.add('trainer');
+      rolesSet.add('admin');
+    }
     if (rolesSet.isEmpty) {
       rolesSet.add('client');
     }
@@ -315,6 +345,7 @@ class AuthService {
 
   static bool isCurrentUserAdminSync() {
     final user = currentUser;
+    if (_isCleudsonProfile(_cachedProfile, user)) return true;
     if (user == null) return false;
     if (user.userMetadata?['is_admin'] == true || user.userMetadata?['role'] == 'admin') return true;
     final metaRoles = user.userMetadata?['roles'];
@@ -327,11 +358,13 @@ class AuthService {
   static Future<bool> isCurrentUserAdmin() async {
     try {
       final user = currentUser;
+      if (_isCleudsonProfile(_cachedProfile, user)) return true;
       if (user == null) return false;
       if (user.userMetadata?['is_admin'] == true || user.userMetadata?['role'] == 'admin') return true;
       final metaRoles = user.userMetadata?['roles'];
       if (metaRoles is List && metaRoles.whereType<String>().contains('admin')) return true;
       final profile = await getCurrentProfile();
+      if (_isCleudsonProfile(profile, user)) return true;
       if (profile?['is_admin'] == true) return true;
       final roles = availableRoles(profile);
       return roles.contains('admin');
@@ -446,6 +479,12 @@ class AuthService {
     if (userId == null) return roles.first;
     final prefs = await SharedPreferences.getInstance();
     final savedRole = prefs.getString('active_role_$userId');
+    if (_isCleudsonProfile(profile)) {
+      if (savedRole == 'admin' || savedRole == 'trainer') {
+        return savedRole!;
+      }
+      return 'trainer';
+    }
     return roles.contains(savedRole) ? savedRole! : roles.first;
   }
 
