@@ -1593,6 +1593,15 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                       },
                                     ),
                                   OneUiPopoverItem(
+                                    label: 'Tour do Personal (3 Passos)',
+                                    icon: Icons.explore_outlined,
+                                    onTap: () =>
+                                        InteractiveTourGuideModal.show(
+                                          context,
+                                          role: 'trainer',
+                                        ),
+                                  ),
+                                  OneUiPopoverItem(
                                     label: 'Novidades da versão',
                                     icon: Icons.new_releases_outlined,
                                     showOrangeDot: true,

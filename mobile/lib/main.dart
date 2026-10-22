@@ -962,13 +962,85 @@ class _MainShellScreenState extends State<MainShellScreen> {
                               size: 19,
                               color: AppColors.subtext(context),
                             ),
-                            tooltip: 'Como treinar',
+                            tooltip: 'Tour & Ajuda do Aluno',
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(
                               minWidth: 32,
                               minHeight: 32,
                             ),
-                            onPressed: () => WorkoutGuideModal.show(context),
+                            onPressed: () {
+                              showModalBottomSheet<void>(
+                                context: context,
+                                backgroundColor: Colors.transparent,
+                                builder: (ctx) => SafeArea(
+                                  child: Container(
+                                    margin: const EdgeInsets.all(16),
+                                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                                    decoration: BoxDecoration(
+                                      color: MetaColors.bg(ctx),
+                                      borderRadius: BorderRadius.circular(24),
+                                      border: Border.all(color: MetaColors.cardBorder(ctx)),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.5),
+                                          blurRadius: 28,
+                                          offset: const Offset(0, 10),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Center(
+                                          child: Container(
+                                            width: 36,
+                                            height: 4,
+                                            decoration: BoxDecoration(
+                                              color: MetaColors.subtext(ctx).withValues(alpha: 0.3),
+                                              borderRadius: BorderRadius.circular(2),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 14),
+                                        ListTile(
+                                          leading: Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: MetaColors.emerald.withValues(alpha: 0.15),
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                            child: const Icon(Icons.explore_rounded, color: MetaColors.emerald, size: 22),
+                                          ),
+                                          title: Text('Tour do Aluno (3 Passos)', style: TextStyle(color: MetaColors.text(ctx), fontWeight: FontWeight.bold, fontSize: 14.5)),
+                                          subtitle: Text('Apresentação rápida das funções principais', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 12)),
+                                          onTap: () {
+                                            Navigator.pop(ctx);
+                                            InteractiveTourGuideModal.show(context, role: 'student');
+                                          },
+                                        ),
+                                        const SizedBox(height: 4),
+                                        ListTile(
+                                          leading: Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                            child: const Icon(Icons.fitness_center_rounded, color: Color(0xFFF59E0B), size: 22),
+                                          ),
+                                          title: Text('Guia de Treino no Salão', style: TextStyle(color: MetaColors.text(ctx), fontWeight: FontWeight.bold, fontSize: 14.5)),
+                                          subtitle: Text('Instruções de execução, cargas e trocas', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 12)),
+                                          onTap: () {
+                                            Navigator.pop(ctx);
+                                            WorkoutGuideModal.show(context);
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           )
                         else
                           TextButton.icon(

@@ -42,7 +42,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103040,
+      buildNumber: 2026103041,
       date: '21 de Outubro, 2026',
       summary:
           'Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas e Gestão Dinâmica de Preços & Planos.',
@@ -188,6 +188,15 @@ class AppChangelog {
           targetRoles: ['admin'],
         ),
 
+        ChangelogItem(
+          icon: Icons.explore_rounded,
+          title: 'Onboarding Interativo & Tour Guiado em 3 Passos',
+          description:
+              'Módulo desacoplado de introdução interativa (InteractiveTourGuideModal) com persistência local de conclusão e segmentação personalizada para treinadores e alunos.',
+          badge: 'SISTEMA',
+          targetRoles: ['admin'],
+        ),
+
         // --- PARA O PROFESSOR / TREINADOR ---
         ChangelogItem(
           icon: Icons.fullscreen_rounded,
@@ -289,6 +298,15 @@ class AppChangelog {
           targetRoles: ['trainer'],
         ),
 
+        ChangelogItem(
+          icon: Icons.explore_rounded,
+          title: 'Tour Guiado do Personal em 3 Passos',
+          description:
+              'Apresentação dinâmica das ferramentas essenciais: gestão de fichas com IA, vitrine pública de vendas com cupons e atendimento 24h integrado ao WhatsApp.',
+          badge: 'TOUR GUIADO',
+          targetRoles: ['trainer'],
+        ),
+
         // --- PARA O ALUNO ---
         ChangelogItem(
           icon: Icons.fullscreen_rounded,
@@ -377,6 +395,15 @@ class AppChangelog {
           description:
               'O app analisa o RPE e sugere automaticamente a progressão ideal para o exercício (+2.5 kg, +1 rep ou consolidação técnica), com aplicação direta na ficha em 1 toque.',
           badge: 'EVOLUÇÃO',
+          targetRoles: ['student'],
+        ),
+
+        ChangelogItem(
+          icon: Icons.explore_rounded,
+          title: 'Tour Guiado do Aluno em 3 Passos',
+          description:
+              'Guia interativo ensinando como registrar cargas no salão em tela cheia, usar o cronômetro com alertas 3-2-1 e compartilhar seus recordes em Stories de triunfo.',
+          badge: 'TOUR GUIADO',
           targetRoles: ['student'],
         ),
       ],

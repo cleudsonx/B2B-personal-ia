@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_ia/core/widgets/workout_triumph_modal.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -70,6 +69,7 @@ void main() {
 
     // Verify Share Button
     expect(find.text('Ver Card de Conquista (Stories / Redes)'), findsOneWidget);
+    expect(dismissed, isFalse);
   });
 
   testWidgets('WorkoutTriumphModal allows selecting RPE and updates label tactilely',

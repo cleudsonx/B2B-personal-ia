@@ -241,6 +241,16 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
     }).toList();
   }
 
+  String _getRoleSummary(String role) {
+    if (role == 'admin') {
+      return 'Visão Estratégica: Central de Liquidação Pix (Payout Engine) com quitação em 1 clique de afiliados, motor de cupons e campanhas SaaS, precificação dinâmica e auditoria de sessões.';
+    }
+    if (role == 'trainer') {
+      return 'Para sua Consultoria: Sua vitrine pública (/r/{slug}) agora suporta cupons de desconto, checkout transparente Asaas/Pix com recebimento direto, repasse de afiliados e cadência de descanso 3-2-1 e sobrecarga inteligente para seus alunos.';
+    }
+    return 'Para seus Treinos: Treine em tela cheia real (Edge-to-Edge) sem tarjas, com cronômetro de descanso háptico cadenciado 3-2-1, motor de sobrecarga por IA (+kg ou +reps) e cards comemorativos de triunfo 9:16 para os seus Stories!';
+  }
+
   Widget _buildRoleSectionHeader(String title, IconData icon, Color color) {
     return Padding(
       padding: const EdgeInsets.only(top: 10, bottom: 8),
@@ -644,7 +654,44 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
                   ],
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
+              // Resumo Textual Segmentado por Perfil
+              Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? MetaColors.surfaceHighlight.withValues(alpha: 0.6)
+                      : MetaColors.lightSurfaceHighlight,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: border),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 16,
+                      color: isAdmin
+                          ? MetaColors.accentBlue
+                          : (isTrainer ? MetaColors.emerald : const Color(0xFFF59E0B)),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _getRoleSummary(_currentRole),
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 12,
+                          height: 1.4,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
               // Chips interativos de filtragem por perfil
               Wrap(
                 spacing: 8,

@@ -848,7 +848,6 @@ class WorkoutShareCardDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = MetaColors.isDark(context);
     final screenW = MediaQuery.sizeOf(context).width;
     final cardWidth = screenW > 440 ? 380.0 : (screenW - 32).clamp(300.0, 380.0);
 

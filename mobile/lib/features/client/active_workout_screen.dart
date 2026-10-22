@@ -9,8 +9,6 @@ import 'client_focus_workout_screen.dart';
 import 'widgets/warmup_sheet.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/meta_components.dart';
-import '../../core/widgets/workout_triumph_modal.dart';
-import '../../core/widgets/rest_timer_sheet.dart';
 import '../../core/widgets/biomechanical_analysis_sheet.dart';
 import '../../core/widgets/exercise_media_sheet.dart';
 import '../../core/widgets/broadcast_banner.dart';

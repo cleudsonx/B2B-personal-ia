@@ -160,7 +160,6 @@ class _AiOverloadCardState extends State<AiOverloadCard> {
     final bg = isDark ? const Color(0xFF111827) : MetaColors.lightSurface;
     final textPrimary = isDark ? MetaColors.textPrimary : MetaColors.lightTextPrimary;
     final textSecondary = isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary;
-    final border = isDark ? MetaColors.border : MetaColors.lightBorder;
     final badgeColor = _getBadgeColor();
 
     return Container(

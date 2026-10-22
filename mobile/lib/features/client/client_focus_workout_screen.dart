@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/exercise_media_sheet.dart';
 import '../../core/widgets/biomechanical_analysis_sheet.dart';
-import '../../core/widgets/workout_triumph_modal.dart';
 import 'widgets/warmup_sheet.dart';
 import '../../models/exercise_model.dart';
 import '../../models/adaptation_model.dart';

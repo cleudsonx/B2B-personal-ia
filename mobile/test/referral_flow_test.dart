@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:personal_ia/services/referral_service.dart';
 import 'package:personal_ia/features/referral/screens/referral_landing_screen.dart';
 import 'package:personal_ia/features/auth/register_screen.dart';
-import 'package:personal_ia/main.dart';
 
 void main() {
   setUp(() async {
