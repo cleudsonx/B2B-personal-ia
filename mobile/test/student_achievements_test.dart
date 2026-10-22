@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_ia/core/widgets/student_achievements_sheet.dart';
+import 'package:personal_ia/services/workout_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -47,6 +48,22 @@ void main() {
       final reloadedStreak = reloaded.firstWhere((b) => b.id == 'streak_10');
       expect(reloadedStreak.isUnlocked, isTrue);
       expect(reloadedStreak.currentProgress, 10.0);
+    });
+
+    test('dynamically evaluates real exercise loads for squat badge', () async {
+      const studentId = 'test_heavy_lifter';
+      // Registra carga pesada de agachamento: 120kg para 10 reps -> 1RM ~160kg
+      await WorkoutService.recordExerciseLoad(
+        exerciseName: 'Agachamento Livre',
+        loadKg: 120.0,
+        reps: 10,
+        targetStudentId: studentId,
+      );
+
+      final badges = await StudentAchievementsService.loadBadges(userId: studentId);
+      final squatBadge = badges.firstWhere((b) => b.id == 'club_140_squat');
+      expect(squatBadge.isUnlocked, isTrue);
+      expect(squatBadge.currentProgress, greaterThanOrEqualTo(140.0));
     });
   });
 
@@ -121,4 +138,3 @@ void main() {
     });
   });
 }
-

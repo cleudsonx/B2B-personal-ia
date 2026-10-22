@@ -1,7 +1,7 @@
 {
   "version": "1.9.0",
-  "build": 2026103049,
-  "updated_at": "2026-10-22T11:02:55.690841Z",
+  "build": 2026103050,
+  "updated_at": "2026-10-22T12:49:19.222672Z",
   "notes": "Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas, Central de 1RM & Metas de Sobrecarga, Conquistas & Badges, Telemetria Apple Health, Prescrição em Bloco e Gestão Dinâmica de Preços & Planos.",
   "changelog": {
     "student": [
@@ -98,8 +98,8 @@
         "badge": "AGILIDADE"
       },
       {
-        "title": "Painel de Telemetria e Recuperação dos Alunos no BioHub",
-        "description": "Acompanhe o gasto calórico ativo, passos diários, frequência cardíaca de repouso e qualidade do sono dos seus alunos na aba de evolução para periodizar treinos e descanso.",
+        "title": "Painel de Telemetria e Recuperação dos Alunos no Cockpit",
+        "description": "Acompanhe o gasto calórico ativo, passos diários, frequência cardíaca de repouso, sono e DOMS dos seus alunos direto nos detalhes de cada aluno para periodizar treinos e descanso.",
         "badge": "RECUPERAÇÃO"
       },
       {
@@ -109,8 +109,13 @@
       },
       {
         "title": "Visualizador Analítico de 1RM & Curva de Tonelagem",
-        "description": "Acompanhe a curva de sobrecarga dos alunos em 4 semanas, volume acumulado por exercício e evolução de força máxima estimada automaticamente com base no RPE.",
+        "description": "Inspecione a evolução de cargas, histórico de progressão e 1RM teórico estimado (fórmulas de Epley e Brzycki) direto na ficha do aluno, acompanhando zonas de força e hipertrofia.",
         "badge": "SOBRECARGA"
+      },
+      {
+        "title": "Galeria de Conquistas & Selos de Força dos Alunos",
+        "description": "Visualize marcos desbloqueados pelos alunos da sua consultoria (1RM 100kg, 140kg, consistência de treinos) com stories de prova social gerados creditando você como personal.",
+        "badge": "CONQUISTAS"
       },
       {
         "title": "Cockpit Edge-to-Edge com Doca Flutuante Translúcida",

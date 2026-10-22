@@ -1,3 +1,7 @@
+import 'dart:math';
+import '../../services/workout_service.dart';
+import '../../services/workout_session_service.dart';
+import '../../services/auth_service.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -210,41 +214,168 @@ class StudentAchievementsService {
         ),
       ];
 
-  static Future<List<StudentBadge>> loadBadges({String? userId}) async {
+  static Future<List<StudentBadge>> evaluateBadgesFromRealData({
+    required List<StudentBadge> currentBadges,
+    String? userId,
+  }) async {
+    final effectiveId = userId ?? AuthService.currentUser?.id;
+    if (effectiveId == null) return currentBadges;
+
+    try {
+      final overloads = await WorkoutService.getStudentProgressiveOverload(effectiveId);
+
+      int completedWorkouts = 0;
+      try {
+        final sessionService = WorkoutSessionService();
+        final pendingSessions = await sessionService.pending(effectiveId);
+        completedWorkouts += pendingSessions.length;
+      } catch (_) {}
+
+      try {
+        final feedback = await WorkoutService.getStudentWorkoutFeedback(effectiveId);
+        if (feedback != null && feedback.isNotEmpty) {
+          completedWorkouts = max(completedWorkouts, 1);
+        }
+      } catch (_) {}
+
+      double maxBench1Rm = 0.0;
+      double maxSquat1Rm = 0.0;
+      double totalWeeklyVolumeKg = 0.0;
+
+      for (final item in overloads) {
+        final name = (item['exercise'] as String?)?.toLowerCase() ?? '';
+        final currentLoadStr = (item['current_load'] as String?)?.replaceAll('kg', '').trim() ?? '0';
+        final load = double.tryParse(currentLoadStr) ?? 0.0;
+        final estimated1Rm = (load > 0) ? (load * (1.0 + 10.0 / 30.0)) : 0.0;
+
+        if (name.contains('supino') || name.contains('bench')) {
+          if (estimated1Rm > maxBench1Rm) maxBench1Rm = estimated1Rm;
+        }
+        if (name.contains('agachamento') || name.contains('squat') || name.contains('leg press')) {
+          if (estimated1Rm > maxSquat1Rm) maxSquat1Rm = estimated1Rm;
+        }
+
+        final history = (item['history'] as List<dynamic>?) ?? [];
+        if (history.isNotEmpty) {
+          completedWorkouts = max(completedWorkouts, history.length);
+          totalWeeklyVolumeKg += load * 10 * 3;
+        }
+      }
+
+      final tonnageTons = (totalWeeklyVolumeKg / 1000.0);
+
+      if (overloads.isEmpty && completedWorkouts == 0) {
+        return currentBadges;
+      }
+
+      final evaluated = currentBadges.map((badge) {
+        switch (badge.id) {
+          case 'first_triumph':
+            final unlocked = badge.isUnlocked || completedWorkouts >= 1;
+            return badge.copyWith(
+              isUnlocked: unlocked,
+              currentProgress: (unlocked || completedWorkouts >= 1) ? 1.0 : 0.0,
+              progressLabel: (unlocked || completedWorkouts >= 1) ? '1 / 1 concluído' : '0 / 1 concluído',
+            );
+          case 'streak_10':
+            final progress = (completedWorkouts).toDouble();
+            final unlocked = badge.isUnlocked || progress >= 10.0;
+            return badge.copyWith(
+              isUnlocked: unlocked,
+              currentProgress: unlocked ? 10.0 : progress,
+              progressLabel: '${unlocked ? 10 : progress.toInt()} / 10 treinos',
+            );
+          case 'club_100_bench':
+            if (maxBench1Rm > 0) {
+              final rounded = (maxBench1Rm * 10).round() / 10.0;
+              final unlocked = badge.isUnlocked || rounded >= 100.0;
+              return badge.copyWith(
+                isUnlocked: unlocked,
+                currentProgress: rounded,
+                progressLabel: '$rounded / 100 kg',
+              );
+            }
+            return badge;
+          case 'club_140_squat':
+            if (maxSquat1Rm > 0) {
+              final rounded = (maxSquat1Rm * 10).round() / 10.0;
+              final unlocked = badge.isUnlocked || rounded >= 140.0;
+              return badge.copyWith(
+                isUnlocked: unlocked,
+                currentProgress: rounded,
+                progressLabel: '$rounded / 140 kg',
+              );
+            }
+            return badge;
+          case 'volume_titan':
+            if (tonnageTons > 0) {
+              final rounded = (tonnageTons * 10).round() / 10.0;
+              final unlocked = badge.isUnlocked || rounded >= 5.0;
+              return badge.copyWith(
+                isUnlocked: unlocked,
+                currentProgress: rounded,
+                progressLabel: '$rounded / 5.0 toneladas',
+              );
+            }
+            return badge;
+          default:
+            return badge;
+        }
+      }).toList();
+
+      return evaluated;
+    } catch (_) {
+      return currentBadges;
+    }
+  }
+
+  static Future<List<StudentBadge>> loadBadges({
+    String? userId,
+    bool evaluateDynamic = true,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     final key = '$_prefPrefix${userId ?? "default"}';
     final raw = prefs.getString(key);
     final defaults = canonicalBadges;
 
-    if (raw == null || raw.isEmpty) {
-      return defaults;
+    List<StudentBadge> badges = defaults;
+
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        final List<dynamic> decoded = jsonDecode(raw);
+        final Map<String, dynamic> storedMap = {
+          for (var item in decoded) item['id'] as String: item
+        };
+
+        badges = defaults.map((badge) {
+          final saved = storedMap[badge.id];
+          if (saved != null) {
+            final isUnlocked = (saved['isUnlocked'] as bool?) ?? badge.isUnlocked;
+            final unlockedStr = saved['unlockedAt'] as String?;
+            final currentProg = (saved['currentProgress'] as num?)?.toDouble() ?? badge.currentProgress;
+            final progLabel = (saved['progressLabel'] as String?) ?? badge.progressLabel;
+            return badge.copyWith(
+              isUnlocked: isUnlocked,
+              unlockedAt: unlockedStr != null ? DateTime.tryParse(unlockedStr) : badge.unlockedAt,
+              currentProgress: currentProg,
+              progressLabel: progLabel,
+            );
+          }
+          return badge;
+        }).toList();
+      } catch (_) {
+        badges = defaults;
+      }
     }
 
-    try {
-      final List<dynamic> decoded = jsonDecode(raw);
-      final Map<String, dynamic> storedMap = {
-        for (var item in decoded) item['id'] as String: item
-      };
-
-      return defaults.map((badge) {
-        final saved = storedMap[badge.id];
-        if (saved != null) {
-          final isUnlocked = (saved['isUnlocked'] as bool?) ?? badge.isUnlocked;
-          final unlockedStr = saved['unlockedAt'] as String?;
-          final currentProg = (saved['currentProgress'] as num?)?.toDouble() ?? badge.currentProgress;
-          final progLabel = (saved['progressLabel'] as String?) ?? badge.progressLabel;
-          return badge.copyWith(
-            isUnlocked: isUnlocked,
-            unlockedAt: unlockedStr != null ? DateTime.tryParse(unlockedStr) : badge.unlockedAt,
-            currentProgress: currentProg,
-            progressLabel: progLabel,
-          );
-        }
-        return badge;
-      }).toList();
-    } catch (_) {
-      return defaults;
+    if (evaluateDynamic) {
+      badges = await evaluateBadgesFromRealData(
+        currentBadges: badges,
+        userId: userId,
+      );
     }
+
+    return badges;
   }
 
   static Future<void> saveBadges(List<StudentBadge> badges, {String? userId}) async {

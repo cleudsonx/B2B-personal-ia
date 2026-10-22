@@ -109,6 +109,52 @@ void main() {
 
       expect(find.text('Central de Sobrecarga & 1RM'), findsNothing);
     });
+
+    testWidgets('renders with custom exercises and studentId parameter',
+        (tester) async {
+      tester.view.physicalSize = const Size(1080, 1920);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final custom = [
+        const ExerciseOverloadData(
+          exerciseName: 'Remada Curvada',
+          muscleGroup: 'Dorsais',
+          currentWeightKg: 85.0,
+          currentReps: 8,
+          initialWeightKg: 70.0,
+          lastRpe: 8,
+          weeklyVolumesKg: [2040, 2200, 2400, 2720],
+        ),
+      ];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => Center(
+                child: ElevatedButton(
+                  onPressed: () => StudentOverloadCenterSheet.show(
+                    context,
+                    studentId: 'student_123',
+                    customExercises: custom,
+                  ),
+                  child: const Text('Abrir Remada 1RM'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Abrir Remada 1RM'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Remada Curvada'), findsWidgets);
+      expect(find.text('Dorsais'), findsWidgets);
+    });
   });
 }
-

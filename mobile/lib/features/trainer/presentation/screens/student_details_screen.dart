@@ -4578,20 +4578,28 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                         // Card 1: Prontidão
                         // Card 1: Prontidão & Recovery Real
                         Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.battery_charging_full_rounded,
-                                      size: 16,
+                          child: InkWell(
+                            onTap: () {
+                              HealthMetricsCard.showSheet(
+                                context,
+                                userId: student['id']?.toString(),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.battery_charging_full_rounded,
+                                        size: 16,
                                       color: _studentRecovery != null
                                           ? (((_studentRecovery!['readiness_score'] as num?)?.toDouble() ?? 80) >= 80
                                               ? MetaColors.emerald
@@ -4637,6 +4645,7 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                             ),
                           ),
                         ),
+                      ),
                         const SizedBox(width: 10),
                         // Card 2: RPE Real
                         Expanded(
@@ -4707,33 +4716,113 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                           const Icon(Icons.trending_up_rounded, color: MetaColors.emerald, size: 20),
                           const SizedBox(width: 10),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _studentOverloads.isNotEmpty
-                                      ? (_studentOverloads.first['is_baseline'] == true
-                                          ? 'Marco Inicial Ativo (${_studentOverloads.first['exercise']})'
-                                          : 'Sobrecarga: ${_studentOverloads.first['gain_percent']} (${_studentOverloads.first['exercise']})')
-                                      : 'Curva de Sobrecarga em Calibração',
-                                  style: TextStyle(
-                                    color: MetaColors.text(context),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
+                            child: InkWell(
+                              onTap: () {
+                                StudentOverloadCenterSheet.show(
+                                  context,
+                                  studentId: student['id']?.toString(),
+                                  exerciseName: _studentOverloads.isNotEmpty
+                                      ? _studentOverloads.first['exercise'] as String?
+                                      : null,
+                                );
+                              },
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _studentOverloads.isNotEmpty
+                                        ? (_studentOverloads.first['is_baseline'] == true
+                                            ? 'Marco Inicial Ativo (${_studentOverloads.first['exercise']})'
+                                            : 'Sobrecarga: ${_studentOverloads.first['gain_percent']} (${_studentOverloads.first['exercise']})')
+                                        : 'Curva de Sobrecarga em Calibração',
+                                    style: TextStyle(
+                                      color: MetaColors.text(context),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  _studentOverloads.isNotEmpty
-                                      ? _studentOverloads.map((e) => '${e['exercise']}: ${e['start_load']} ➔ ${e['current_load']}').take(2).join(' • ')
-                                      : 'Nenhuma carga registrada. Toque em "+ Calibrar" para iniciar o histórico.',
-                                  style: TextStyle(
-                                    color: MetaColors.subtext(context),
-                                    fontSize: 11,
+                                  Text(
+                                    _studentOverloads.isNotEmpty
+                                        ? _studentOverloads.map((e) => '${e['exercise']}: ${e['start_load']} ➔ ${e['current_load']}').take(2).join(' • ')
+                                        : 'Nenhuma carga registrada. Toque para ver ou calibrar.',
+                                    style: TextStyle(
+                                      color: MetaColors.subtext(context),
+                                      fontSize: 11,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          InkWell(
+                            onTap: () {
+                              StudentOverloadCenterSheet.show(
+                                context,
+                                studentId: student['id']?.toString(),
+                                exerciseName: _studentOverloads.isNotEmpty
+                                    ? _studentOverloads.first['exercise'] as String?
+                                    : null,
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF06B6D4).withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFF06B6D4).withValues(alpha: 0.35)),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.insights_rounded, size: 13, color: Color(0xFF06B6D4)),
+                                  SizedBox(width: 3),
+                                  Text(
+                                    '1RM',
+                                    style: TextStyle(
+                                      color: Color(0xFF06B6D4),
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          InkWell(
+                            onTap: () {
+                              StudentAchievementsModalSheet.show(
+                                context,
+                                userId: student['id']?.toString(),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF59E0B).withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.35)),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.military_tech_rounded, size: 13, color: Color(0xFFF59E0B)),
+                                  SizedBox(width: 3),
+                                  Text(
+                                    'Selos',
+                                    style: TextStyle(
+                                      color: Color(0xFFF59E0B),
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                           const SizedBox(width: 6),

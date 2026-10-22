@@ -1,3 +1,5 @@
+import '../../services/workout_service.dart';
+import '../../services/auth_service.dart';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -51,22 +53,28 @@ class ExerciseOverloadData {
 
 /// Central de Metas de Sobrecarga, Visualizador de 1RM e Curva de Volume Semanal
 class StudentOverloadCenterSheet extends StatefulWidget {
+  final String? studentId;
   final String? initialExerciseName;
   final double? initialWeight;
   final int? initialReps;
+  final List<ExerciseOverloadData>? customExercises;
 
   const StudentOverloadCenterSheet({
     super.key,
+    this.studentId,
     this.initialExerciseName,
     this.initialWeight,
     this.initialReps,
+    this.customExercises,
   });
 
   static Future<void> show(
     BuildContext context, {
+    String? studentId,
     String? exerciseName,
     double? currentWeight,
     int? currentReps,
+    List<ExerciseOverloadData>? customExercises,
   }) {
     HapticFeedback.lightImpact();
     return showModalBottomSheet<void>(
@@ -75,9 +83,11 @@ class StudentOverloadCenterSheet extends StatefulWidget {
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withValues(alpha: 0.75),
       builder: (_) => StudentOverloadCenterSheet(
+        studentId: studentId,
         initialExerciseName: exerciseName,
         initialWeight: currentWeight,
         initialReps: currentReps,
+        customExercises: customExercises,
       ),
     );
   }
@@ -94,8 +104,8 @@ class _StudentOverloadCenterSheetState extends State<StudentOverloadCenterSheet>
   late double _calcWeight;
   late int _calcReps;
 
-  final List<ExerciseOverloadData> _catalog = [
-    const ExerciseOverloadData(
+  static const List<ExerciseOverloadData> defaultCatalog = [
+    ExerciseOverloadData(
       exerciseName: 'Supino Reto com Barra',
       muscleGroup: 'Peitoral Maior',
       currentWeightKg: 70.0,
@@ -104,7 +114,7 @@ class _StudentOverloadCenterSheetState extends State<StudentOverloadCenterSheet>
       lastRpe: 8,
       weeklyVolumesKg: [2640, 2800, 3080, 3360],
     ),
-    const ExerciseOverloadData(
+    ExerciseOverloadData(
       exerciseName: 'Agachamento Livre',
       muscleGroup: 'Quadríceps & Glúteos',
       currentWeightKg: 90.0,
@@ -113,7 +123,7 @@ class _StudentOverloadCenterSheetState extends State<StudentOverloadCenterSheet>
       lastRpe: 8,
       weeklyVolumesKg: [3360, 3600, 3960, 4320],
     ),
-    const ExerciseOverloadData(
+    ExerciseOverloadData(
       exerciseName: 'Puxada Alta Aberta',
       muscleGroup: 'Latíssimo do Dorso',
       currentWeightKg: 65.0,
@@ -122,7 +132,7 @@ class _StudentOverloadCenterSheetState extends State<StudentOverloadCenterSheet>
       lastRpe: 9,
       weeklyVolumesKg: [2500, 2600, 2850, 3120],
     ),
-    const ExerciseOverloadData(
+    ExerciseOverloadData(
       exerciseName: 'Leg Press 45°',
       muscleGroup: 'Quadríceps',
       currentWeightKg: 180.0,
@@ -131,7 +141,7 @@ class _StudentOverloadCenterSheetState extends State<StudentOverloadCenterSheet>
       lastRpe: 7,
       weeklyVolumesKg: [6720, 7200, 7920, 8640],
     ),
-    const ExerciseOverloadData(
+    ExerciseOverloadData(
       exerciseName: 'Desenvolvimento com Halteres',
       muscleGroup: 'Deltoides',
       currentWeightKg: 24.0,
@@ -142,9 +152,15 @@ class _StudentOverloadCenterSheetState extends State<StudentOverloadCenterSheet>
     ),
   ];
 
+  late List<ExerciseOverloadData> _catalog;
+
   @override
   void initState() {
     super.initState();
+    _catalog = widget.customExercises != null && widget.customExercises!.isNotEmpty
+        ? List.from(widget.customExercises!)
+        : List.from(defaultCatalog);
+
     if (widget.initialExerciseName != null) {
       final idx = _catalog.indexWhere((e) => e.exerciseName
           .toLowerCase()
@@ -160,14 +176,120 @@ class _StudentOverloadCenterSheetState extends State<StudentOverloadCenterSheet>
         widget.initialReps ?? _catalog[_selectedExerciseIndex].currentReps;
 
     _loadUserSavedLoads();
+    if (widget.customExercises == null || widget.customExercises!.isEmpty) {
+      _fetchRealExercises();
+    }
+  }
+
+  Future<void> _fetchRealExercises() async {
+    final effectiveStudentId = widget.studentId ?? AuthService.currentUser?.id;
+    if (effectiveStudentId == null) return;
+
+    try {
+      final overloads = await WorkoutService.getStudentProgressiveOverload(effectiveStudentId);
+      final activePlan = await WorkoutService.getActiveWorkoutForClient(clientId: effectiveStudentId);
+
+      final Map<String, ExerciseOverloadData> exerciseMap = {};
+
+      for (final item in overloads) {
+        final name = (item['exercise'] as String?)?.trim() ?? '';
+        if (name.isEmpty) continue;
+        final historyList = (item['history'] as List<dynamic>?)
+            ?.map((h) => double.tryParse(h.toString().replaceAll('kg', '').trim()) ?? 0.0)
+            .where((w) => w > 0)
+            .toList() ?? [];
+
+        final currentWeight = historyList.isNotEmpty ? historyList.last : 50.0;
+        final initialWeight = historyList.isNotEmpty ? historyList.first : currentWeight;
+        final volumes = <double>[];
+        if (historyList.isNotEmpty) {
+          for (final w in historyList.take(4)) {
+            volumes.add((w * 10 * 3).roundToDouble());
+          }
+        }
+        while (volumes.length < 4) {
+          volumes.insert(0, (initialWeight * 8 * 3).roundToDouble());
+        }
+
+        exerciseMap[name.toLowerCase()] = ExerciseOverloadData(
+          exerciseName: name,
+          muscleGroup: 'Geral',
+          currentWeightKg: currentWeight,
+          currentReps: 10,
+          initialWeightKg: initialWeight,
+          lastRpe: 8,
+          weeklyVolumesKg: volumes,
+        );
+      }
+
+      if (activePlan != null) {
+        for (final split in activePlan.splits) {
+          for (final ex in split.exercises) {
+            final key = ex.name.toLowerCase().trim();
+            if (!exerciseMap.containsKey(key)) {
+              final prefs = await SharedPreferences.getInstance();
+              final savedWeight = prefs.getDouble('pwa_last_weight_${effectiveStudentId}_$key') ??
+                  prefs.getDouble('pwa_last_weight_default_$key') ?? 40.0;
+              final reps = int.tryParse(ex.reps.split('-').first.replaceAll(RegExp(r'\D'), '')) ?? 10;
+              exerciseMap[key] = ExerciseOverloadData(
+                exerciseName: ex.name,
+                muscleGroup: ex.targetMuscleGroup.isNotEmpty ? ex.targetMuscleGroup : split.splitName,
+                currentWeightKg: savedWeight,
+                currentReps: reps,
+                initialWeightKg: (savedWeight * 0.85).roundToDouble(),
+                lastRpe: 8,
+                weeklyVolumesKg: [
+                  (savedWeight * 0.85 * reps * ex.sets).roundToDouble(),
+                  (savedWeight * 0.90 * reps * ex.sets).roundToDouble(),
+                  (savedWeight * 0.95 * reps * ex.sets).roundToDouble(),
+                  (savedWeight * reps * ex.sets).roundToDouble(),
+                ],
+              );
+            } else {
+              final existing = exerciseMap[key]!;
+              if (ex.targetMuscleGroup.isNotEmpty) {
+                exerciseMap[key] = ExerciseOverloadData(
+                  exerciseName: existing.exerciseName,
+                  muscleGroup: ex.targetMuscleGroup,
+                  currentWeightKg: existing.currentWeightKg,
+                  currentReps: existing.currentReps,
+                  initialWeightKg: existing.initialWeightKg,
+                  lastRpe: existing.lastRpe,
+                  weeklyVolumesKg: existing.weeklyVolumesKg,
+                );
+              }
+            }
+          }
+        }
+      }
+
+      if (exerciseMap.isNotEmpty && mounted) {
+        setState(() {
+          _catalog = exerciseMap.values.toList();
+          if (widget.initialExerciseName != null) {
+            final idx = _catalog.indexWhere((e) => e.exerciseName
+                .toLowerCase()
+                .contains(widget.initialExerciseName!.toLowerCase().trim()));
+            _selectedExerciseIndex = idx >= 0 ? idx : 0;
+          } else {
+            _selectedExerciseIndex = 0;
+          }
+          _calcWeight = widget.initialWeight ?? _catalog[_selectedExerciseIndex].currentWeightKg;
+          _calcReps = widget.initialReps ?? _catalog[_selectedExerciseIndex].currentReps;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadUserSavedLoads() async {
     try {
+      final effectiveStudentId = widget.studentId ?? AuthService.currentUser?.id;
       final prefs = await SharedPreferences.getInstance();
-      final savedWeight = prefs.getDouble(
-        'pwa_last_weight_default_${_catalog[_selectedExerciseIndex].exerciseName.toLowerCase().trim()}',
-      );
+      final key = effectiveStudentId != null
+          ? 'pwa_last_weight_${effectiveStudentId}_${_catalog[_selectedExerciseIndex].exerciseName.toLowerCase().trim()}'
+          : 'pwa_last_weight_default_${_catalog[_selectedExerciseIndex].exerciseName.toLowerCase().trim()}';
+      final savedWeight = prefs.getDouble(key) ??
+          prefs.getDouble('pwa_last_weight_default_${_catalog[_selectedExerciseIndex].exerciseName.toLowerCase().trim()}');
       if (savedWeight != null && savedWeight > 0 && mounted) {
         setState(() {
           _calcWeight = savedWeight;
@@ -356,28 +478,58 @@ class _StudentOverloadCenterSheetState extends State<StudentOverloadCenterSheet>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      alignment: WrapAlignment.spaceBetween,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: MetaColors.emerald.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            '1RM TEÓRICO (EPLEY)',
-                            style: TextStyle(
-                              color: MetaColors.emerald,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.5,
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: MetaColors.emerald.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                '1RM TEÓRICO (EPLEY)',
+                                style: TextStyle(
+                                  color: MetaColors.emerald,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
                             ),
-                          ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: MetaColors.emerald.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  selected.muscleGroup,
+                                  style: const TextStyle(
+                                    color: MetaColors.emerald,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const Spacer(),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,

@@ -14,6 +14,51 @@ class HealthMetricsCard extends StatefulWidget {
     this.onMetricsUpdated,
   });
 
+  static Future<void> showSheet(BuildContext context, {String? userId}) {
+    HapticFeedback.lightImpact();
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.75),
+      builder: (_) => SafeArea(
+        child: Container(
+          margin: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: MetaColors.isDark(context) ? const Color(0xFF090D16) : Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: MetaColors.cardBorder(context), width: 0.8),
+          ),
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 14,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: MetaColors.subtext(context).withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                HealthMetricsCard(userId: userId),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   State<HealthMetricsCard> createState() => _HealthMetricsCardState();
 }

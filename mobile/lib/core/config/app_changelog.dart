@@ -42,7 +42,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103049,
+      buildNumber: 2026103050,
       date: '21 de Outubro, 2026',
       summary:
           'Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas, Central de 1RM & Metas de Sobrecarga, Conquistas & Badges, Telemetria Apple Health, Prescrição em Bloco e Gestão Dinâmica de Preços & Planos.',
@@ -249,9 +249,9 @@ class AppChangelog {
         ),
         ChangelogItem(
           icon: Icons.favorite_rounded,
-          title: 'Painel de Telemetria e Recuperação dos Alunos no BioHub',
+          title: 'Painel de Telemetria e Recuperação dos Alunos no Cockpit',
           description:
-              'Acompanhe o gasto calórico ativo, passos diários, frequência cardíaca de repouso e qualidade do sono dos seus alunos na aba de evolução para periodizar treinos e descanso.',
+              'Acompanhe o gasto calórico ativo, passos diários, frequência cardíaca de repouso, sono e DOMS dos seus alunos direto nos detalhes de cada aluno para periodizar treinos e descanso.',
           badge: 'RECUPERAÇÃO',
           targetRoles: ['trainer'],
         ),
@@ -267,8 +267,16 @@ class AppChangelog {
           icon: Icons.insights_rounded,
           title: 'Visualizador Analítico de 1RM & Curva de Tonelagem',
           description:
-              'Acompanhe a curva de sobrecarga dos alunos em 4 semanas, volume acumulado por exercício e evolução de força máxima estimada automaticamente com base no RPE.',
+              'Inspecione a evolução de cargas, histórico de progressão e 1RM teórico estimado (fórmulas de Epley e Brzycki) direto na ficha do aluno, acompanhando zonas de força e hipertrofia.',
           badge: 'SOBRECARGA',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.military_tech_rounded,
+          title: 'Galeria de Conquistas & Selos de Força dos Alunos',
+          description:
+              'Visualize marcos desbloqueados pelos alunos da sua consultoria (1RM 100kg, 140kg, consistência de treinos) com stories de prova social gerados creditando você como personal.',
+          badge: 'CONQUISTAS',
           targetRoles: ['trainer'],
         ),
         ChangelogItem(
