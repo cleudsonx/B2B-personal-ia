@@ -1,10 +1,22 @@
 # Proposta de Remodernização Visual: Experiência Completa do Aluno — Mr. Coach
 
-> Status: **PROPOSTA (aguardando aprovação)**
+> Status: **IMPLEMENTADA & CONCLUÍDA (v1.9.0 — Builds 2026103055 a 2026103059)**
 > Abrange as **4 abas** do aluno: **Treino · Mr. Coach AI · Bio-Hub · Perfil**, mais o shell compartilhado (barra superior, dock flutuante, modais).
-> O capítulo detalhado do Perfil está em [`proposta_perfil_aluno_mrcoach.md`](proposta_perfil_aluno_mrcoach.md) e passa a ser o **Capítulo 6** deste documento.
-> Referências: Apple Fitness+/Saúde, Google Fit/Material 3 Expressive, Samsung Health/One UI 7, Whoop, Nubank.
-> Guardrails obrigatórios: `Visual_Edge_to_Edge_Mobile.md` e `docs/design_system_meta_style.md`.
+> O capítulo detalhado do Perfil está em [`proposta_perfil_aluno_mrcoach.md`](proposta_perfil_aluno_mrcoach.md) e consolidado no app.
+> Referências aplicadas: Apple Fitness+/Saúde, Google Fit/Material 3 Expressive, Samsung Health/One UI 7, Whoop, Nubank.
+> Guardrails respeitados: `Visual_Edge_to_Edge_Mobile.md` e `docs/design_system_meta_style.md`.
+
+---
+
+## ✅ Resumo Executivo da Entrega
+
+Todas as fases do redesign foram implementadas, integradas ao ecossistema de produção e validadas:
+1. **Fundação e Design System**: `StudentSectionHeader`, `ProgressRing`, `StatTile`, `TrainerCompactPill`, `SettingsGroup`, `SettingsTile`, `StudentEmptyState`, `StudentSkeletonCard` criados em `mobile/lib/core/widgets/student_ux_components.dart`.
+2. **Aba Treino**: Cabeçalho cockpit "Treino de Hoje" com anel de progresso percentual animado, divisão de treinos e preservação do modo foco sem teclado.
+3. **Aba Mr. Coach AI**: Hero contextual com atalhos de exercícios da ficha ativa, cartões estruturados e botão de ação "Aplicar ao treino".
+4. **Aba Bio-Hub**: Tríade de Anéis de Atividade (Prontidão Biomecânica, Energia & Água, Cargas Ativas), pílula dinâmica de insight em 1 linha e segmented control temático.
+5. **Aba Perfil (Leitura + Sheet)**: Visão de leitura pura, avatar com anel de meta semanal, streak em chamas, cockpit biométrico com cálculo de IMC e toque para editar, pílula de WhatsApp do treinador, botão de compartilhamento duplo (conquistas + link de indicação), bento cards de evolução, e edição desacoplada em `ProfileEditSheet`.
+6. **Shell Edge-to-Edge**: Dock flutuante One UI refinado com transições suaves e estados de foco. Todos os 227 testes automatizados verdes.
 
 ---
 
