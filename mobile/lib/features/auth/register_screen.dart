@@ -1,3 +1,4 @@
+import '../../services/referral_service.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/widgets/meta_components.dart';
@@ -261,6 +262,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       letterSpacing: -1,
                     ),
                   ),
+                  if (ReferralService.activePartner != null) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: MetaColors.emerald.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.handshake_rounded, color: MetaColors.emerald, size: 16),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'Parceria ${ReferralService.activePartner!.partnerName}',
+                              style: const TextStyle(
+                                color: MetaColors.emerald,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   Text(
                     isInviteRegistration

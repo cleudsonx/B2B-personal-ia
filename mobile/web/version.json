@@ -1,15 +1,10 @@
 {
   "version": "1.9.0",
-  "build": 2026103032,
-  "updated_at": "2026-10-22T00:13:41.687873Z",
+  "build": 2026103033,
+  "updated_at": "2026-10-22T00:49:58.947276Z",
   "notes": "Versão 1.9.0: Motor de Afiliados & Links de Indicação (Referral Engine), Cupons & Campanhas Promocionais SaaS, Gestão Dinâmica de Preços & Planos, Auditoria de Sessões (Kill-Switch) e Simulador de Margem Unit Economics.",
   "changelog": {
     "student": [
-      {
-        "title": "Arquitetura Visual Edge-to-Edge Global (Mobile, Web & PWA)",
-        "description": "Imersão contínua por trás da Status Bar, Dynamic Island e Home Indicator em 100% das telas (Aluno, Treinador e Admin), com eliminação de scrims no Android Dark Mode e dock translúcido calibrado.",
-        "badge": "DESIGN"
-      },
       {
         "title": "Instalação do Aplicativo (PWA)",
         "description": "Guia interativo ensinando a instalar o app na tela inicial do celular com 1 toque no iPhone (Safari) e Android (Chrome).",
@@ -32,11 +27,6 @@
       }
     ],
     "trainer": [
-      {
-        "title": "Arquitetura Visual Edge-to-Edge Global (Mobile, Web & PWA)",
-        "description": "Imersão contínua por trás da Status Bar, Dynamic Island e Home Indicator em 100% das telas (Aluno, Treinador e Admin), com eliminação de scrims no Android Dark Mode e dock translúcido calibrado.",
-        "badge": "DESIGN"
-      },
       {
         "title": "Aplicação Dinâmica de Cupom no Checkout",
         "description": "Campo nativo para resgate de cupons promocionais (ex: LAUNCH50, PROMOVIP20) na contratação de planos com validação instantânea, cálculo de economia e suporte a Pix e Cartão de Crédito.",

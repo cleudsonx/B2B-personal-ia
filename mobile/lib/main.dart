@@ -1,3 +1,5 @@
+import 'services/referral_service.dart';
+import 'features/referral/screens/referral_landing_screen.dart';
 import 'features/landing/shaipados_studio_screen.dart';
 import 'features/landing/b2b_landing_screen.dart';
 import 'features/landing/ai_news_screen.dart';
@@ -48,6 +50,10 @@ Future<void> main() async {
   );
 
   try {
+    await ReferralService.restorePersistedReferral();
+  } catch (_) {}
+
+  try {
     await Supabase.initialize(
       url: AppConfig.supabaseUrl,
       // ignore: deprecated_member_use
@@ -66,6 +72,7 @@ class B2BPersonalIaApp extends StatelessWidget {
   Widget _homeScreen() {
     if (kIsWeb) {
       final uri = Uri.base;
+      ReferralService.initFromUri(uri);
       final isPwa = uri.queryParameters['pwa'] == '1' || uri.queryParameters['mode'] == 'standalone';
       final hasActiveSession = AuthService.currentSession != null;
 
@@ -90,7 +97,9 @@ class B2BPersonalIaApp extends StatelessWidget {
     final segments = uri.pathSegments;
     final WidgetBuilder builder;
 
-    if (segments.length >= 3 && segments[0] == 'convite') {
+    if (segments.length >= 2 && (segments[0] == 'r' || segments[0] == 'ref')) {
+      builder = (_) => ReferralLandingScreen(slug: segments[1]);
+    } else if (segments.length >= 3 && segments[0] == 'convite') {
       builder = (_) => InviteLandingScreen(
             trainerSlug: segments[1],
             token: segments[2],

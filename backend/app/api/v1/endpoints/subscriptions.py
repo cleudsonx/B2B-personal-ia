@@ -2480,3 +2480,59 @@ async def record_referral_click_endpoint(req: RecordReferralClickRequest):
         p["clicks_count"] = p.get("clicks_count", 0) + 1
         return {"success": True, "slug": slug_norm, "partner_name": p["partner_name"], "coupon": p.get("associated_coupon_code")}
     return {"success": False, "message": "Slug de parceiro não encontrado."}
+
+
+@router.get("/referral-partner/{slug}")
+async def get_referral_partner_public(slug: str, record_click: bool = True):
+    """
+    Endpoint público para landing page e onboarding (/r/{slug}).
+    Retorna os detalhes públicos da parceria, cupom vinculado e registra o clique.
+    """
+    slug_norm = slug.strip().upper()
+    partner = next((p for p in ADMIN_AFFILIATE_PARTNERS if p["slug"] == slug_norm and p.get("is_active")), None)
+
+    if not partner:
+        raise HTTPException(status_code=404, detail="Parceria de indicação não encontrada ou inativa.")
+
+    if record_click:
+        partner["clicks_count"] = partner.get("clicks_count", 0) + 1
+        logger.info(f"[ReferralEngine] Clique registrado para {slug_norm} (total: {partner['clicks_count']})")
+
+    return {
+        "found": True,
+        "slug": slug_norm,
+        "partner_name": partner["partner_name"],
+        "partner_type": partner.get("partner_type", "influencer"),
+        "associated_coupon_code": partner.get("associated_coupon_code"),
+        "commission_percent": partner.get("commission_percent", 15.0),
+        "is_active": partner.get("is_active", True),
+        "headline": f"Parceria Oficial {partner['partner_name']} e Mr. Coach",
+        "badge": "PARCERIA EXCLUSIVA",
+    }
+
+
+@router.post("/record-referral-conversion")
+async def record_referral_conversion_endpoint(payload: dict):
+    """
+    Registra a conversão de um personal trainer vindo de link de afiliado.
+    """
+    slug = (payload.get("slug") or "").strip().upper()
+    amount = float(payload.get("amount_brl") or 0.0)
+    partner = next((p for p in ADMIN_AFFILIATE_PARTNERS if p["slug"] == slug and p.get("is_active")), None)
+
+    if partner:
+        partner["conversions_count"] = partner.get("conversions_count", 0) + 1
+        partner["total_revenue_generated_brl"] = round(partner.get("total_revenue_generated_brl", 0.0) + amount, 2)
+        comm_pct = partner.get("commission_percent", 15.0) / 100.0
+        comm_due = round(amount * comm_pct, 2)
+        partner["total_commission_due_brl"] = round(partner.get("total_commission_due_brl", 0.0) + comm_due, 2)
+        logger.info(f"[ReferralEngine] Conversão registrada para {slug}: +R$ {amount} (comissão: +R$ {comm_due})")
+        return {
+            "success": True,
+            "slug": slug,
+            "partner_name": partner["partner_name"],
+            "conversions_count": partner["conversions_count"],
+            "commission_due_brl": partner["total_commission_due_brl"],
+        }
+
+    return {"success": False, "message": "Slug de parceria não encontrado."}

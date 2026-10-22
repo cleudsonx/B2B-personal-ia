@@ -1,3 +1,4 @@
+import '../../services/referral_service.dart';
 // ignore_for_file: unused_element, unused_local_variable, unused_field, override_on_non_overriding_member, use_build_context_synchronously
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -210,6 +211,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 }
                 if (!mounted) return;
                 setState(() => _mySubscription = updated);
+                try {
+                  ReferralService.recordReferralConversion(
+                    planId: plan.id,
+                    amountBrl: _isYearly ? plan.priceYearlyTotal : plan.priceMonthly,
+                  );
+                } catch (_) {}
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     backgroundColor: MetaColors.surfaceHighlight,
@@ -967,6 +974,15 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
   void initState() {
     super.initState();
     _prefillUserData();
+    final refCoupon = ReferralService.getActiveReferralCoupon();
+    if (refCoupon != null && refCoupon.isNotEmpty) {
+      _couponController.text = refCoupon;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _applyCoupon();
+        }
+      });
+    }
     final cleanCpf = _cpfCnpjController.text.replaceAll(RegExp(r'\D'), '');
     if (_paymentMethod == 'pix' && (cleanCpf.length == 11 || cleanCpf.length == 14)) {
       _createSession();
