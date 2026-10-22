@@ -43,6 +43,9 @@ import 'features/invite/invite_landing_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(
+    AppTheme.systemUiOverlayFor(isDark: true),
+  );
 
   try {
     await Supabase.initialize(
@@ -180,7 +183,13 @@ class B2BPersonalIaApp extends StatelessWidget {
           onGenerateInitialRoutes: (initialRouteName) => [
             _routeFor(RouteSettings(name: initialRouteName)),
           ],
-          builder: (context, child) => PwaUpdateWrapper(child: child ?? const SizedBox()),
+          builder: (context, child) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            return AnnotatedRegion<SystemUiOverlayStyle>(
+              value: AppTheme.systemUiOverlayFor(isDark: isDark),
+              child: PwaUpdateWrapper(child: child ?? const SizedBox()),
+            );
+          },
         );
       },
     );
@@ -778,214 +787,222 @@ class _MainShellScreenState extends State<MainShellScreen> {
         ),
       );
     } else {
-      // Mobile Layout with Top Header Pill & Bottom Navigation
-      return Scaffold(
-        extendBody: true,
-        body: Column(
-          children: [
-            // Top Compact Role & User Banner
-            Container(
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 6,
-                bottom: 8,
-                left: 14,
-                right: 14,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.card(context),
-                border: Border(
-                  bottom: BorderSide(color: AppColors.cardBorder(context)),
+      // Mobile Layout with Top Header Pill & Bottom Navigation (Edge-to-Edge)
+      final isDark = MetaColors.isDark(context);
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: AppTheme.systemUiOverlayFor(isDark: isDark),
+        child: Scaffold(
+          extendBody: true,
+          body: Column(
+            children: [
+              // Top Compact Role & User Banner
+              Container(
+                padding: EdgeInsets.only(
+                  top: MediaQuery.paddingOf(context).top + 6,
+                  bottom: 8,
+                  left: 14,
+                  right: 14,
                 ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: roleColor.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: roleColor.withValues(alpha: 0.3),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 6,
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  color: roleColor,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                _isTrainer ? 'Treinador' : 'Aluno',
-                                style: TextStyle(
-                                  color: roleColor,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            widget.userName,
-                            style: TextStyle(
-                              color: AppColors.text(context),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (_isTrainer) ...[
-                          const SizedBox(width: 8),
-                          ValueListenableBuilder<MySubscriptionModel?>(
-                            valueListenable:
-                                SubscriptionService.activeSubscriptionNotifier,
-                            builder: (context, sub, _) {
-                              final planName = sub?.planName ?? 'Personal Pro';
-                              final planId = sub?.planId ?? 'pro';
-                              final Color planColor;
-                              final IconData planIcon;
-                              if (planId == 'starter') {
-                                planColor = Colors.orange;
-                                planIcon = Icons.rocket_launch_rounded;
-                              } else if (planId == 'elite') {
-                                planColor = const Color(0xFFF59E0B);
-                                planIcon = Icons.workspace_premium_rounded;
-                              } else if (planId == 'studio') {
-                                planColor = const Color(0xFF8B5CF6);
-                                planIcon = Icons.stars_rounded;
-                              } else {
-                                planColor = AppColors.trainerEmerald;
-                                planIcon = Icons.workspace_premium_rounded;
-                              }
-                              return InkWell(
-                                onTap: () => setState(() => _currentIndex = 3),
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 7,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: planColor.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: planColor.withValues(alpha: 0.4),
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        planIcon,
-                                        size: 13,
-                                        color: planColor,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        planName,
-                                        style: TextStyle(
-                                          color: planColor,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ],
-                    ),
+                decoration: BoxDecoration(
+                  color: AppColors.card(context),
+                  border: Border(
+                    bottom: BorderSide(color: AppColors.cardBorder(context)),
                   ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const ThemeToggleButton(compact: true),
-                      const SizedBox(width: 4),
-                      if (!_isTrainer)
-                        IconButton(
-                          icon: Icon(
-                            Icons.help_outline_rounded,
-                            size: 19,
-                            color: AppColors.subtext(context),
-                          ),
-                          tooltip: 'Como treinar',
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
-                          ),
-                          onPressed: () => WorkoutGuideModal.show(context),
-                        )
-                      else
-                        TextButton.icon(
-                          style: TextButton.styleFrom(
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 4,
                             ),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          icon: Icon(
-                            Icons.person_outline_rounded,
-                            size: 14,
-                            color: AppColors.subtext(context),
-                          ),
-                          label: Text(
-                            'Conta',
-                            style: TextStyle(
-                              color: AppColors.subtext(context),
-                              fontSize: 11,
+                            decoration: BoxDecoration(
+                              color: roleColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: roleColor.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: roleColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _isTrainer ? 'Treinador' : 'Aluno',
+                                  style: TextStyle(
+                                    color: roleColor,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          onPressed: _openAccount,
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            // Screen Content
-            Expanded(
-              child: IndexedStack(index: _currentIndex, children: screens),
-            ),
-          ],
-        ),
-        bottomNavigationBar: OneUiFloatingNavBar(
-          selectedIndex: _currentIndex,
-          onDestinationSelected: (idx) {
-            setState(() => _currentIndex = idx);
-            if (!_isTrainer) PwaNavigationState.saveStudentTab(idx);
-          },
-          items: navItems
-              .map(
-                (item) => OneUiNavItem(
-                  icon: item.icon,
-                  selectedIcon: item.activeIcon,
-                  label: item.label,
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              widget.userName,
+                              style: TextStyle(
+                                color: AppColors.text(context),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (_isTrainer) ...[
+                            const SizedBox(width: 8),
+                            ValueListenableBuilder<MySubscriptionModel?>(
+                              valueListenable:
+                                  SubscriptionService.activeSubscriptionNotifier,
+                              builder: (context, sub, _) {
+                                final planName = sub?.planName ?? 'Personal Pro';
+                                final planId = sub?.planId ?? 'pro';
+                                final Color planColor;
+                                final IconData planIcon;
+                                if (planId == 'starter') {
+                                  planColor = Colors.orange;
+                                  planIcon = Icons.rocket_launch_rounded;
+                                } else if (planId == 'elite') {
+                                  planColor = const Color(0xFFF59E0B);
+                                  planIcon = Icons.workspace_premium_rounded;
+                                } else if (planId == 'studio') {
+                                  planColor = const Color(0xFF8B5CF6);
+                                  planIcon = Icons.stars_rounded;
+                                } else {
+                                  planColor = AppColors.trainerEmerald;
+                                  planIcon = Icons.workspace_premium_rounded;
+                                }
+                                return InkWell(
+                                  onTap: () => setState(() => _currentIndex = 3),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 7,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: planColor.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: planColor.withValues(alpha: 0.4),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          planIcon,
+                                          size: 13,
+                                          color: planColor,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          planName,
+                                          style: TextStyle(
+                                            color: planColor,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const ThemeToggleButton(compact: true),
+                        const SizedBox(width: 4),
+                        if (!_isTrainer)
+                          IconButton(
+                            icon: Icon(
+                              Icons.help_outline_rounded,
+                              size: 19,
+                              color: AppColors.subtext(context),
+                            ),
+                            tooltip: 'Como treinar',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 32,
+                              minHeight: 32,
+                            ),
+                            onPressed: () => WorkoutGuideModal.show(context),
+                          )
+                        else
+                          TextButton.icon(
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                            icon: Icon(
+                              Icons.person_outline_rounded,
+                              size: 14,
+                              color: AppColors.subtext(context),
+                            ),
+                            label: Text(
+                              'Conta',
+                              style: TextStyle(
+                                color: AppColors.subtext(context),
+                                fontSize: 11,
+                              ),
+                            ),
+                            onPressed: _openAccount,
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
-              )
-              .toList(),
+              ),
+              // Screen Content (removeTop evita duplicação do padding da Status Bar que já foi absorvido pelo banner superior)
+              Expanded(
+                child: MediaQuery.removePadding(
+                  context: context,
+                  removeTop: true,
+                  child: IndexedStack(index: _currentIndex, children: screens),
+                ),
+              ),
+            ],
+          ),
+          bottomNavigationBar: OneUiFloatingNavBar(
+            selectedIndex: _currentIndex,
+            onDestinationSelected: (idx) {
+              setState(() => _currentIndex = idx);
+              if (!_isTrainer) PwaNavigationState.saveStudentTab(idx);
+            },
+            items: navItems
+                .map(
+                  (item) => OneUiNavItem(
+                    icon: item.icon,
+                    selectedIcon: item.activeIcon,
+                    label: item.label,
+                  ),
+                )
+                .toList(),
+          ),
         ),
       );
     }

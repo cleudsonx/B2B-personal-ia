@@ -282,8 +282,10 @@ class _AccountScreenState extends State<AccountScreen> {
     final isTrainer = widget.currentRole == 'trainer';
     final hasActiveCref = _cref != null && _cref!.toUpperCase().startsWith('CREF');
 
+    final topInset = MediaQuery.paddingOf(context).top;
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+      padding: EdgeInsets.fromLTRB(20, topInset + 16, 20, bottomInset + 110),
       children: [
         // Topo: Título da tela
         Text(

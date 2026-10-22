@@ -142,6 +142,7 @@ class _TrainerPlanSelectionScreenState
                 ),
               )
               : SafeArea(
+                bottom: false,
                 child: ListView(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 20,

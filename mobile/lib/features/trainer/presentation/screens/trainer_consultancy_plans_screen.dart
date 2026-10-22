@@ -127,6 +127,7 @@ class _TrainerConsultancyPlansScreenState extends State<TrainerConsultancyPlansS
     return Scaffold(
       backgroundColor: MetaColors.bg(context),
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             // Top Bar
@@ -162,7 +163,7 @@ class _TrainerConsultancyPlansScreenState extends State<TrainerConsultancyPlansS
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator(color: MetaColors.emerald))
                   : ListView(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.paddingOf(context).bottom + 24),
                       children: [
                         // Banner informativo de Split & Carteira
                         MetaCard(

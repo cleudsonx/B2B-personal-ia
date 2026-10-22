@@ -39,6 +39,7 @@ class _StudentDemoScreenState extends State<StudentDemoScreen> {
         ],
       ),
       body: SafeArea(
+        bottom: false,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 760),

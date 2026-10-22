@@ -16,6 +16,7 @@ class B2BLandingScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFF0B100D),
       body: SafeArea(
+        bottom: false,
         child: CustomScrollView(
           slivers: [
             SliverToBoxAdapter(child: _buildHeader(context, wide)),

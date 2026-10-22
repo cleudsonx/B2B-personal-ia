@@ -41,12 +41,20 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103031,
+      buildNumber: 2026103032,
       date: '21 de Outubro, 2026',
       summary:
           'Versão 1.9.0: Motor de Afiliados & Links de Indicação (Referral Engine), Cupons & Campanhas Promocionais SaaS, Gestão Dinâmica de Preços & Planos, Auditoria de Sessões (Kill-Switch) e Simulador de Margem Unit Economics.',
       highlights: [
         // --- PARA O ADMIN / GESTOR ---
+        ChangelogItem(
+          icon: Icons.fullscreen_rounded,
+          title: 'Arquitetura Visual Edge-to-Edge Global (Mobile, Web & PWA)',
+          description:
+              'Imersão contínua por trás da Status Bar, Dynamic Island e Home Indicator em 100% das telas (Aluno, Treinador e Admin), com eliminação de scrims no Android Dark Mode e dock translúcido calibrado.',
+          badge: 'DESIGN',
+          targetRoles: ['student', 'trainer', 'admin'],
+        ),
         ChangelogItem(
           icon: Icons.handshake_rounded,
           title: 'Rede de Afiliados, Parcerias & Referral Engine',

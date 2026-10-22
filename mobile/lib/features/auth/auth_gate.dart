@@ -262,9 +262,9 @@ class _AuthGateState extends State<AuthGate> {
             ),
           ),
           
-          // Branding: Mr. Coach
+          // Branding: Mr. Coach (respeita Home Indicator / Barra de Gestos)
           Positioned(
-            bottom: 30,
+            bottom: MediaQuery.paddingOf(context).bottom + 24,
             left: 0,
             right: 0,
             child: Column(

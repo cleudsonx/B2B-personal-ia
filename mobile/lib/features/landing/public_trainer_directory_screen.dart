@@ -83,6 +83,7 @@ class _PublicTrainerDirectoryScreenState
         backgroundColor: MetaColors.background,
       ),
       body: SafeArea(
+        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

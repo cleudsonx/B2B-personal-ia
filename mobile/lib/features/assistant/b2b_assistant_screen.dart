@@ -1314,16 +1314,18 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
 
   /// Barra Flutuante de Envio de Mensagem no padrão ergonômico Meta
   Widget _buildFloatingPromptBar(BuildContext context, Color accentColor) {
-    return SafeArea(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: MetaColors.bg(context),
-          border: Border(
-            top: BorderSide(color: MetaColors.cardBorder(context), width: 1),
-          ),
+    return Container(
+      decoration: BoxDecoration(
+        color: MetaColors.bg(context),
+        border: Border(
+          top: BorderSide(color: MetaColors.cardBorder(context), width: 1),
         ),
-        child: Column(
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (widget.isStudentView) ...[
@@ -1429,6 +1431,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
           ],
         ),
           ],
+          ),
         ),
       ),
     );

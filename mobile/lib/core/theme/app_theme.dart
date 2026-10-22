@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 import '../widgets/meta_components.dart';
@@ -6,6 +7,22 @@ import '../widgets/meta_components.dart';
 /// Temas do Design System:
 /// "Meta Dark Mode / Apple Fitness & Whoop Style"
 class AppTheme {
+  /// Estilo global unificado para barras de sistema (Status Bar & Navigation Bar) Edge-to-Edge.
+  /// Garante transparência total sem scrims forçados pelo SO (Android 10-15+ / iOS).
+  static SystemUiOverlayStyle systemUiOverlayFor({required bool isDark}) {
+    return SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+      systemNavigationBarIconBrightness:
+          isDark ? Brightness.light : Brightness.dark,
+      systemStatusBarContrastEnforced: false,
+      systemNavigationBarContrastEnforced: false,
+    );
+  }
+
   // ==========================================
   // TEMA GLOBAL ESCURO FORÇADO (Meta Dark Mode)
   // ==========================================
@@ -75,6 +92,7 @@ class AppTheme {
         elevation: 0,
         centerTitle: false,
         scrolledUnderElevation: 0,
+        systemOverlayStyle: systemUiOverlayFor(isDark: true),
         titleTextStyle: GoogleFonts.inter(
           fontSize: 18,
           fontWeight: FontWeight.w700,
@@ -213,6 +231,7 @@ class AppTheme {
         elevation: 0,
         centerTitle: false,
         scrolledUnderElevation: 0,
+        systemOverlayStyle: systemUiOverlayFor(isDark: false),
         titleTextStyle: GoogleFonts.inter(
           fontSize: 18,
           fontWeight: FontWeight.w700,

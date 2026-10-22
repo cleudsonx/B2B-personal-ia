@@ -812,8 +812,9 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         ),
       );
     }
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 48),
+      padding: EdgeInsets.fromLTRB(20, 16, 20, bottomInset + (widget.isTab ? 110 : 48)),
       child: Form(
         key: _formKey,
         child: Column(

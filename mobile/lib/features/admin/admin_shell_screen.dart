@@ -1,3 +1,5 @@
+import 'package:flutter/services.dart';
+import '../../core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/app_version_footer.dart';
@@ -43,7 +45,9 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
     final width = MediaQuery.sizeOf(context).width;
     final isDesktop = width > 900;
 
-    return Scaffold(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: AppTheme.systemUiOverlayFor(isDark: true),
+      child: Scaffold(
       backgroundColor: const Color(0xFF090D16),
       appBar: isDesktop
           ? null
@@ -116,6 +120,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                 ),
               ],
             ),
+      ),
     );
   }
 
