@@ -47,14 +47,6 @@ class AppChangelog {
       summary:
           'Versão 1.10.0: Redesign Completo da Experiência do Aluno (Treino, Mr. Coach AI, Bio-Hub e Perfil) no padrão Apple Fitness+ / Samsung One UI 7 / Material 3 Expressive, Anéis de Atividade no Bio-Hub, Biometria & IMC em Tempo Real, Cards de Adaptação no Copiloto IA e Pílula Compacta do Coach.',
       highlights: [
-        ChangelogItem(
-          icon: Icons.auto_awesome_mosaic_rounded,
-          title: 'Nova Experiência Visual do Aluno (4 Abas + Shell Edge-to-Edge)',
-          description:
-              'Redesign integral das abas Treino, Mr. Coach AI, Bio-Hub e Perfil com anéis de progresso animados (ProgressRing), tríade de prontidão no Bio-Hub, cálculo de IMC ao vivo com dígitos tabulares, botão de aplicar adaptação no Copiloto IA e grupos de preferências estilo iOS/One UI.',
-          badge: 'UX/UI 2.0',
-          targetRoles: ['student', 'trainer', 'admin'],
-        ),
         // --- PARA O ADMIN / GESTOR ---
         ChangelogItem(
           icon: Icons.content_copy_rounded,
@@ -407,6 +399,14 @@ class AppChangelog {
 
         // --- PARA O ALUNO ---
         ChangelogItem(
+          icon: Icons.auto_awesome_mosaic_rounded,
+          title: 'Nova Experiência Visual do Aluno (4 Abas + Shell Edge-to-Edge)',
+          description:
+              'Redesign integral das abas Treino, Mr. Coach AI, Bio-Hub e Perfil com anéis de progresso animados (ProgressRing), tríade de prontidão no Bio-Hub, cálculo de IMC ao vivo com dígitos tabulares, botão de aplicar adaptação no Copiloto IA e grupos de preferências estilo iOS/One UI.',
+          badge: 'UX/UI 2.0',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
           icon: Icons.sync_alt_rounded,
           title: 'Continuidade de Periodização com Sobrecarga Gradual',
           description:
@@ -589,6 +589,14 @@ class AppChangelog {
         ),
 
         // --- PARA O ALUNO ---
+        ChangelogItem(
+          icon: Icons.auto_awesome_mosaic_rounded,
+          title: 'Nova Experiência Visual do Aluno (4 Abas + Shell Edge-to-Edge)',
+          description:
+              'Redesign integral das abas Treino, Mr. Coach AI, Bio-Hub e Perfil com anéis de progresso animados (ProgressRing), tríade de prontidão no Bio-Hub, cálculo de IMC ao vivo com dígitos tabulares, botão de aplicar adaptação no Copiloto IA e grupos de preferências estilo iOS/One UI.',
+          badge: 'UX/UI 2.0',
+          targetRoles: ['student'],
+        ),
         ChangelogItem(
           icon: Icons.fitness_center_rounded,
           title: 'Central de 1RM & Metas de Sobrecarga com Gráfico de Volume',

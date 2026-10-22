@@ -768,7 +768,21 @@ class AdminRetentionOverview {
 
 /// Camada de Serviço de Dados do Modo Administrador
 class AdminDataService {
-  static SupabaseClient get _client => Supabase.instance.client;
+  static SupabaseClient? get _clientOrNull {
+    try {
+      return Supabase.instance.client;
+    } on Object {
+      return null;
+    }
+  }
+
+  static SupabaseClient get _client {
+    final c = _clientOrNull;
+    if (c == null) {
+      throw StateError('Supabase uninitialized');
+    }
+    return c;
+  }
 
   static Map<String, dynamic>? _cachedLiveSnapshot;
   static DateTime? _lastSnapshotFetch;

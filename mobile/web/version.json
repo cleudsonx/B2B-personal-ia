@@ -1,7 +1,7 @@
 {
   "version": "1.9.0",
   "build": 2026103056,
-  "updated_at": "2026-10-22T15:51:55.623728Z",
+  "updated_at": "2026-10-22T16:15:25.921891Z",
   "notes": "Versão 1.10.0: Redesign Completo da Experiência do Aluno (Treino, Mr. Coach AI, Bio-Hub e Perfil) no padrão Apple Fitness+ / Samsung One UI 7 / Material 3 Expressive, Anéis de Atividade no Bio-Hub, Biometria & IMC em Tempo Real, Cards de Adaptação no Copiloto IA e Pílula Compacta do Coach.",
   "changelog": {
     "student": [
@@ -97,11 +97,6 @@
       }
     ],
     "trainer": [
-      {
-        "title": "Nova Experiência Visual do Aluno (4 Abas + Shell Edge-to-Edge)",
-        "description": "Redesign integral das abas Treino, Mr. Coach AI, Bio-Hub e Perfil com anéis de progresso animados (ProgressRing), tríade de prontidão no Bio-Hub, cálculo de IMC ao vivo com dígitos tabulares, botão de aplicar adaptação no Copiloto IA e grupos de preferências estilo iOS/One UI.",
-        "badge": "UX/UI 2.0"
-      },
       {
         "title": "Clonagem Rápida de Mesociclos & Prescrição em Bloco",
         "description": "Duplique fichas e periodizações vigentes para novos ciclos com acréscimo automático de carga linear (+2.5kg ou +reps) e aplicação instantânea para 1 ou múltiplos alunos da consultoria.",
@@ -199,11 +194,6 @@
       }
     ],
     "admin": [
-      {
-        "title": "Nova Experiência Visual do Aluno (4 Abas + Shell Edge-to-Edge)",
-        "description": "Redesign integral das abas Treino, Mr. Coach AI, Bio-Hub e Perfil com anéis de progresso animados (ProgressRing), tríade de prontidão no Bio-Hub, cálculo de IMC ao vivo com dígitos tabulares, botão de aplicar adaptação no Copiloto IA e grupos de preferências estilo iOS/One UI.",
-        "badge": "UX/UI 2.0"
-      },
       {
         "title": "Motor de Prescrição em Lote & Clonagem de Mesociclos (Suíte Meta Ops)",
         "description": "Algoritmo de duplicação em lote com regras dinâmicas de progressão linear (+kg e +reps), escalonamento para múltiplos alunos e notificação transversal de sincronização.",
