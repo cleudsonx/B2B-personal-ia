@@ -136,6 +136,7 @@ Future<void> main() async {
 |----------|--------------------------|------------------|
 | **Android (Light & Dark)** | `styles.xml` e `values-night/styles.xml` sincronizados com `shortEdges` e `enforceNavigationBarContrast=false` | Elimina barras pretas no modo escuro do Android e na transição da Splash Screen. |
 | **iOS & Dynamic Island** | `UIViewControllerBasedStatusBarAppearance=true` + `MediaQuery.paddingOf` | Respeito cirúrgico à Dynamic Island e ao Home Indicator em toda a navegação. |
+
 | **Scroll-Aware Glass Header** | `ScrollAwareGlassHeader` com `BackdropFilter` (0 a 18px de blur dinâmico) | Transição translúcida premium nos feeds de alunos e treinos sem cortes secos. |
 | **Prevenção de Duplo Padding** | `MediaQuery.removePadding(removeTop: true)` no `MainShellScreen` | Elimina espaço morto extra no topo das abas do aluno abaixo do cabeçalho. |
 | **Consistência de Temas** | `AppTheme.systemUiOverlayFor(isDark: ...)` global no `MaterialApp.builder` e `AppBarTheme` | Qualquer nova tela criada já nasce 100% Edge-to-Edge no modo claro e escuro. |
