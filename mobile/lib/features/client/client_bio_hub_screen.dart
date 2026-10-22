@@ -1674,6 +1674,60 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
 
         const SizedBox(height: 24),
 
+        // Bloco 2.5: Conquistas & Selos de Força (Gamificação)
+        MetaCard(
+          onTap: () => StudentAchievementsModalSheet.show(context),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.military_tech_rounded,
+                  color: Color(0xFFF59E0B),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Galeria de Conquistas & Selos de Força',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Desbloqueie marcos de 1RM, tonelagem e hábitos',
+                      style: TextStyle(
+                        color: MetaColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: Color(0xFFF59E0B),
+                size: 22,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+
         _buildSectionHeader(
           icon: Icons.photo_library_rounded,
           title: 'Galeria Sigilosa Antes & Depois',
@@ -3307,4 +3361,3 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
     );
   }
 }
-

@@ -1137,6 +1137,71 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
             ),
             const SizedBox(height: 28),
 
+            // Seção: Conquistas & Badges de Força
+            Text(
+              'CONQUISTAS & BADGES DE FORÇA',
+              style: TextStyle(
+                color: AppColors.emerald(context),
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 10),
+            MetaCard(
+              onTap: () => StudentAchievementsModalSheet.show(
+                context,
+                userId: _userId,
+                trainerName: _trainerName,
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.military_tech_rounded,
+                      color: Color(0xFFF59E0B),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Galeria de Conquistas & Selos',
+                          style: TextStyle(
+                            color: AppColors.text(context),
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Desbloqueie marcos de força, consistência e volume',
+                          style: TextStyle(
+                            color: AppColors.subtext(context),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Color(0xFFF59E0B),
+                    size: 22,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+
             // Fuso Horário
             Text(
               'FUSO HORÁRIO DO ALUNO',

@@ -1,10 +1,15 @@
 {
   "version": "1.9.0",
-  "build": 2026103045,
-  "updated_at": "2026-10-22T10:13:34.651771Z",
-  "notes": "Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas, Central de 1RM & Metas de Sobrecarga e Gestão Dinâmica de Preços & Planos.",
+  "build": 2026103046,
+  "updated_at": "2026-10-22T10:31:31.414491Z",
+  "notes": "Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas, Central de 1RM & Metas de Sobrecarga, Conquistas & Badges de Força e Gestão Dinâmica de Preços & Planos.",
   "changelog": {
     "student": [
+      {
+        "title": "Galeria de Conquistas & Selos de Força (Gamificação)",
+        "description": "Desbloqueie badges comemorativos ao atingir marcos reais de força (1RM de 100kg, 140kg), consistência de treinos e metas da IA, com visualização de tiers, progresso detalhado e compartilhamento direto nos Stories.",
+        "badge": "CONQUISTAS"
+      },
       {
         "title": "Central de 1RM & Metas de Sobrecarga com Gráfico de Volume",
         "description": "Descubra sua força máxima teórica calculada cientificamente (Epley e Brzycki), visualize zonas de hipertrofia e força, acompanhe seu volume em toneladas e simule novas marcas.",
@@ -77,6 +82,11 @@
       }
     ],
     "trainer": [
+      {
+        "title": "Selo e Prova Social com Menção ao Personal nos Stories",
+        "description": "Quando seus alunos desbloqueiam marcas de força (ex: Clube dos 100kg no Supino) ou consistência, geram Stories estilizados que creditam você como o treinador oficial, acelerando sua captação orgânica.",
+        "badge": "AUTORIDADE"
+      },
       {
         "title": "Visualizador Analítico de 1RM & Curva de Tonelagem",
         "description": "Acompanhe a curva de sobrecarga dos alunos em 4 semanas, volume acumulado por exercício e evolução de força máxima estimada automaticamente com base no RPE.",
@@ -154,6 +164,11 @@
       }
     ],
     "admin": [
+      {
+        "title": "Módulo de Conquistas & Gamificação (Suíte Meta Growth)",
+        "description": "Sistema desacoplado de selos de retenção com tiers (Bronze a Diamante), persistência local, métricas de conclusão de metas e geração de prova social orgânica com menção ao personal.",
+        "badge": "GROWTH"
+      },
       {
         "title": "Central de Sobrecarga & 1RM Teórico (Suíte Meta Science)",
         "description": "Métricas fisiológicas desacopladas no app com fórmulas de Epley e Brzycki, zonas de intensidade (90%, 75%, 60%), monitoramento de tonelagem semanal e simulador interativo.",

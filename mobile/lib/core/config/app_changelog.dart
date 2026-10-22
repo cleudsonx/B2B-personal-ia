@@ -42,12 +42,20 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103045,
+      buildNumber: 2026103046,
       date: '21 de Outubro, 2026',
       summary:
-          'Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas, Central de 1RM & Metas de Sobrecarga e Gestão Dinâmica de Preços & Planos.',
+          'Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas, Central de 1RM & Metas de Sobrecarga, Conquistas & Badges de Força e Gestão Dinâmica de Preços & Planos.',
       highlights: [
         // --- PARA O ADMIN / GESTOR ---
+        ChangelogItem(
+          icon: Icons.military_tech_rounded,
+          title: 'Módulo de Conquistas & Gamificação (Suíte Meta Growth)',
+          description:
+              'Sistema desacoplado de selos de retenção com tiers (Bronze a Diamante), persistência local, métricas de conclusão de metas e geração de prova social orgânica com menção ao personal.',
+          badge: 'GROWTH',
+          targetRoles: ['admin'],
+        ),
         ChangelogItem(
           icon: Icons.stacked_bar_chart_rounded,
           title: 'Central de Sobrecarga & 1RM Teórico (Suíte Meta Science)',
@@ -216,6 +224,14 @@ class AppChangelog {
 
         // --- PARA O PROFESSOR / TREINADOR ---
         ChangelogItem(
+          icon: Icons.share_rounded,
+          title: 'Selo e Prova Social com Menção ao Personal nos Stories',
+          description:
+              'Quando seus alunos desbloqueiam marcas de força (ex: Clube dos 100kg no Supino) ou consistência, geram Stories estilizados que creditam você como o treinador oficial, acelerando sua captação orgânica.',
+          badge: 'AUTORIDADE',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
           icon: Icons.insights_rounded,
           title: 'Visualizador Analítico de 1RM & Curva de Tonelagem',
           description:
@@ -342,6 +358,14 @@ class AppChangelog {
         ),
 
         // --- PARA O ALUNO ---
+        ChangelogItem(
+          icon: Icons.military_tech_rounded,
+          title: 'Galeria de Conquistas & Selos de Força (Gamificação)',
+          description:
+              'Desbloqueie badges comemorativos ao atingir marcos reais de força (1RM de 100kg, 140kg), consistência de treinos e metas da IA, com visualização de tiers, progresso detalhado e compartilhamento direto nos Stories.',
+          badge: 'CONQUISTAS',
+          targetRoles: ['student'],
+        ),
         ChangelogItem(
           icon: Icons.fitness_center_rounded,
           title: 'Central de 1RM & Metas de Sobrecarga com Gráfico de Volume',
@@ -501,6 +525,14 @@ class AppChangelog {
         ),
 
         // --- PARA O ALUNO ---
+        ChangelogItem(
+          icon: Icons.fitness_center_rounded,
+          title: 'Central de 1RM & Metas de Sobrecarga com Gráfico de Volume',
+          description:
+              'Descubra sua força máxima teórica calculada cientificamente (Epley e Brzycki), visualize zonas de hipertrofia e força, acompanhe seu volume em toneladas e simule novas marcas.',
+          badge: 'FORÇA & 1RM',
+          targetRoles: ['student'],
+        ),
         ChangelogItem(
           icon: Icons.chat_bubble_outline_rounded,
           title: 'Avisos de Treino no WhatsApp',
