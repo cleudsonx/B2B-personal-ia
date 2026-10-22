@@ -2648,3 +2648,307 @@ async def record_referral_conversion_endpoint(payload: dict):
         }
 
     return {"success": False, "message": "Slug de parceria não encontrado."}
+
+
+# ============================================================================
+# SUPERADMIN MISSION CONTROL — SUPABASE SERVICE-ROLE INTEGRATION
+# ============================================================================
+
+def _is_profile_admin(profile: Optional[Dict[str, Any]]) -> bool:
+    if not profile:
+        return False
+    if profile.get("is_admin") is True:
+        return True
+    if str(profile.get("role") or "").lower() == "admin":
+        return True
+    roles = profile.get("roles")
+    if isinstance(roles, list) and any(str(r).lower() == "admin" for r in roles):
+        return True
+    return False
+
+
+async def _require_superadmin_user(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+    user_id = current_user.get("sub") or current_user.get("id")
+    if settings.ENVIRONMENT.lower() != "production" and user_id == "dev-user-0000-0000-000000000001":
+        return current_user
+    profile = current_user.get("profile") or {}
+    if _is_profile_admin(profile):
+        return current_user
+
+    client = await supabase_service.get_client()
+    if client and is_valid_uuid(user_id):
+        try:
+            res = await client.table("profiles").select("*").eq("id", user_id).maybe_single().execute()
+            if res and res.data and _is_profile_admin(res.data):
+                current_user["profile"] = res.data
+                return current_user
+        except Exception:
+            pass
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Acesso restrito a SuperAdmins do Mission Control.",
+    )
+
+
+@router.post("/admin/claim-superadmin")
+async def claim_initial_superadmin_endpoint(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Promove o primeiro treinador/proprietário autenticado a SuperAdmin via Service Role,
+    mesmo antes da aplicação da migration de colunas extras, adicionando 'admin' em roles.
+    Bloqueia caso já exista outro SuperAdmin ativo no banco.
+    """
+    user_id = current_user.get("sub") or current_user.get("id")
+    if not user_id or not is_valid_uuid(user_id):
+        raise HTTPException(status_code=401, detail="Sessão inválida para ativar SuperAdmin.")
+
+    client = await supabase_service.get_client()
+    if not client:
+        raise HTTPException(status_code=503, detail="Cliente Supabase indisponível no backend.")
+
+    try:
+        all_profiles_res = await client.table("profiles").select("*").execute()
+        all_profiles = all_profiles_res.data or []
+    except Exception as exc:
+        logger.error("[admin/claim-superadmin] Erro ao consultar profiles: %s", exc)
+        raise HTTPException(status_code=503, detail="Não foi possível consultar perfis no Supabase.") from exc
+
+    caller_profile = next((p for p in all_profiles if str(p.get("id")) == str(user_id)), None)
+    if _is_profile_admin(caller_profile):
+        return {
+            "ok": True,
+            "status": "already_admin",
+            "user_id": user_id,
+            "roles": caller_profile.get("roles") or ["trainer", "admin"],
+        }
+
+    existing_admins = [p for p in all_profiles if _is_profile_admin(p)]
+    if len(existing_admins) > 0:
+        return {
+            "ok": False,
+            "error": "admin_already_exists",
+            "admin_count": len(existing_admins),
+            "message": "Já existe um SuperAdmin configurado neste ambiente. Solicite a promoção a um administrador existente.",
+        }
+
+    current_roles = list((caller_profile or {}).get("roles") or [(caller_profile or {}).get("role") or "trainer"])
+    if "admin" not in current_roles:
+        current_roles.append("admin")
+
+    # Tenta atualizar roles + is_admin; se a coluna is_admin ainda não existir, atualiza roles
+    try:
+        await client.table("profiles").update({
+            "roles": current_roles,
+            "is_admin": True,
+            "updated_at": datetime.utcnow().isoformat(),
+        }).eq("id", user_id).execute()
+    except Exception:
+        await client.table("profiles").update({
+            "roles": current_roles,
+            "updated_at": datetime.utcnow().isoformat(),
+        }).eq("id", user_id).execute()
+
+    try:
+        await client.table("audit_log").insert({
+            "user_id": user_id,
+            "action": "admin.claim_initial_superadmin",
+            "metadata": {"roles": current_roles, "via": "backend_service_role"},
+        }).execute()
+    except Exception:
+        pass
+
+    return {
+        "ok": True,
+        "status": "promoted",
+        "user_id": user_id,
+        "roles": current_roles,
+    }
+
+
+@router.get("/admin/live-snapshot")
+async def get_admin_live_snapshot(
+    current_user: Dict[str, Any] = Depends(_require_superadmin_user),
+):
+    """
+    Retorna o snapshot completo e real do banco Supabase via Service Role (bypassing RLS),
+    alimentando o painel /admin com dados 100% reais de usuários, treinos, sessões,
+    assinaturas, checkouts, uso de IA e auditoria.
+    """
+    client = await supabase_service.get_client()
+    if not client:
+        raise HTTPException(status_code=503, detail="Cliente Supabase indisponível.")
+
+    async def _safe_select(table_name: str, columns: str = "*", limit: int = 500, order_col: Optional[str] = None):
+        try:
+            q = client.table(table_name).select(columns)
+            if order_col:
+                q = q.order(order_col, desc=True)
+            if limit:
+                q = q.limit(limit)
+            res = await q.execute()
+            return res.data or []
+        except Exception as e:
+            logger.warning("[admin/live-snapshot] Aviso ao ler tabela %s: %s", table_name, e)
+            return []
+
+    profiles = await _safe_select("profiles", "*", limit=1000, order_col="created_at")
+    workouts = await _safe_select("workouts", "id, trainer_id, student_id, title, is_active, created_at", limit=2000)
+    workout_sessions = await _safe_select(
+        "workout_sessions",
+        "id, student_id, workout_id, status, started_at, completed_at",
+        limit=2000,
+        order_col="started_at",
+    )
+    subscriptions = await _safe_select("subscriptions", "*", limit=500)
+    checkout_sessions = await _safe_select("checkout_sessions", "*", limit=300, order_col="created_at")
+    trainer_ai_usage = await _safe_select("trainer_ai_usage", "*", limit=500)
+    audit_logs = await _safe_select("audit_log", "*", limit=150, order_col="created_at")
+    exercises = await _safe_select("exercise_library", "id, name, muscle_group, equipment", limit=1000)
+
+    return {
+        "ok": True,
+        "fetched_at": datetime.utcnow().isoformat(),
+        "profiles": profiles,
+        "workouts": workouts,
+        "workout_sessions": workout_sessions,
+        "subscriptions": subscriptions,
+        "checkout_sessions": checkout_sessions,
+        "trainer_ai_usage": trainer_ai_usage,
+        "audit_log": audit_logs,
+        "exercise_library": exercises,
+    }
+
+
+@router.post("/admin/users/{target_user_id}/update")
+async def admin_update_user_profile(
+    target_user_id: str,
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(_require_superadmin_user),
+):
+    """
+    Atualiza atributos administrativos de um usuário na tabela public.profiles via Service Role,
+    contornando restrições de trigger de usuário comum e registrando trilha de auditoria.
+    """
+    if not is_valid_uuid(target_user_id):
+        raise HTTPException(status_code=400, detail="UUID de usuário inválido.")
+
+    client = await supabase_service.get_client()
+    if not client:
+        raise HTTPException(status_code=503, detail="Cliente Supabase indisponível.")
+
+    allowed_fields = {
+        "full_name",
+        "role",
+        "roles",
+        "is_admin",
+        "is_vip",
+        "is_suspended",
+        "status",
+        "admin_notes",
+        "current_plan",
+        "max_students",
+        "subscription_tier",
+        "subscription_status",
+        "session_revoked_at",
+        "phone",
+        "cref",
+        "cref_verified",
+        "trainer_id",
+    }
+    update_data = {k: v for k, v in payload.items() if k in allowed_fields}
+    update_data["updated_at"] = datetime.utcnow().isoformat()
+
+    try:
+        res = await client.table("profiles").update(update_data).eq("id", target_user_id).execute()
+    except Exception:
+        core_fields = {
+            "full_name",
+            "role",
+            "roles",
+            "subscription_tier",
+            "subscription_status",
+            "session_revoked_at",
+            "phone",
+            "cref",
+            "trainer_id",
+            "updated_at",
+        }
+        fallback_data = {k: v for k, v in update_data.items() if k in core_fields}
+        res = await client.table("profiles").update(fallback_data).eq("id", target_user_id).execute()
+
+    admin_id = current_user.get("sub") or current_user.get("id")
+    try:
+        if is_valid_uuid(admin_id):
+            await client.table("audit_log").insert({
+                "user_id": admin_id,
+                "action": "admin.update_user_profile",
+                "metadata": {"target_user_id": target_user_id, "updated_fields": list(update_data.keys())},
+            }).execute()
+    except Exception:
+        pass
+
+    return {
+        "ok": True,
+        "user_id": target_user_id,
+        "updated": res.data[0] if (res and res.data) else update_data,
+    }
+
+
+@router.get("/admin/inspect-table/{table_name}")
+async def admin_inspect_database_table(
+    table_name: str,
+    limit: int = 50,
+    current_user: Dict[str, Any] = Depends(_require_superadmin_user),
+):
+    """
+    Inspeciona linhas reais de uma tabela do Supabase para o Database Explorer do Admin.
+    """
+    allowed_tables = {
+        "profiles",
+        "workouts",
+        "workout_sessions",
+        "student_exercise_loads",
+        "body_metrics",
+        "subscriptions",
+        "checkout_sessions",
+        "audit_log",
+        "exercise_library",
+        "trainer_ai_usage",
+        "anamnesis",
+        "adaptation_logs",
+        "gamification_stats",
+        "invite_tokens",
+        "admin_pricing_plans",
+        "admin_coupons",
+        "admin_affiliates",
+        "admin_broadcasts",
+        "admin_security_alerts",
+    }
+    clean_table = table_name.strip().lower()
+    if clean_table not in allowed_tables:
+        raise HTTPException(status_code=400, detail=f"Tabela '{clean_table}' não habilitada para inspeção.")
+
+    client = await supabase_service.get_client()
+    if not client:
+        raise HTTPException(status_code=503, detail="Cliente Supabase indisponível.")
+
+    safe_limit = max(1, min(limit, 200))
+    try:
+        res = await client.table(clean_table).select("*").limit(safe_limit).execute()
+        return {
+            "ok": True,
+            "table": clean_table,
+            "count": len(res.data or []),
+            "rows": res.data or [],
+        }
+    except Exception as exc:
+        logger.warning("[admin/inspect-table] Erro ao consultar %s: %s", clean_table, exc)
+        return {
+            "ok": False,
+            "table": clean_table,
+            "count": 0,
+            "rows": [],
+            "error": str(exc),
+        }

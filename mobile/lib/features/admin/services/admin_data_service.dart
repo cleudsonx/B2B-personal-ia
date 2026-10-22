@@ -147,7 +147,7 @@ class AdminUserProfile {
       parsedRoles.add(mainRole);
     }
 
-    final doc = (json['professional_document'] ?? json['cref']) as String?;
+    final doc = (json['professional_document'] ?? json['cref'] ?? json['cref_or_registry']) as String?;
     final verified = json['cref_verified'] == true || (doc != null && doc.trim().isNotEmpty);
 
     return AdminUserProfile(
@@ -156,15 +156,17 @@ class AdminUserProfile {
       email: json['email'] as String?,
       role: mainRole,
       roles: parsedRoles,
-      isAdmin: json['is_admin'] == true || parsedRoles.contains('admin'),
+      isAdmin: json['is_admin'] == true || mainRole == 'admin' || parsedRoles.contains('admin'),
       cref: doc,
       isCrefVerified: verified,
       phone: (json['whatsapp'] ?? json['phone']) as String?,
       photoUrl: (json['avatar_url'] ?? json['photo_url']) as String?,
-      plan: (json['current_plan'] ?? json['plan'] ?? 'Starter') as String,
+      plan: (json['current_plan'] ?? json['subscription_tier'] ?? json['plan'] ?? 'Starter') as String,
       maxStudents: json['max_students'] as int?,
       currentStudents: json['current_students'] as int? ?? 0,
-      isSuspended: json['is_suspended'] == true || json['status'] == 'suspended',
+      isSuspended: json['is_suspended'] == true ||
+          json['status'] == 'suspended' ||
+          json['subscription_status'] == 'suspended',
       isVip: json['is_vip'] == true || json['override_active'] == true,
       trainerId: json['trainer_id'] as String?,
       trainerName: json['trainer_name'] as String?,
@@ -768,72 +770,172 @@ class AdminRetentionOverview {
 class AdminDataService {
   static SupabaseClient get _client => Supabase.instance.client;
 
-  /// Obtém métricas executivas consolidadas
+  static Map<String, dynamic>? _cachedLiveSnapshot;
+  static DateTime? _lastSnapshotFetch;
+
+  static void invalidateCache() {
+    _cachedLiveSnapshot = null;
+    _lastSnapshotFetch = null;
+  }
+
+  static Map<String, String> _authHeaders() {
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    try {
+      final token = AuthService.currentSession?.accessToken;
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+    } catch (_) {}
+    return headers;
+  }
+
+  /// Obtém snapshot real consolidado do Backend (Service Role, contornando RLS)
+  static Future<Map<String, dynamic>?> _fetchLiveSnapshot({bool forceRefresh = false}) async {
+    if (!forceRefresh &&
+        _cachedLiveSnapshot != null &&
+        _lastSnapshotFetch != null &&
+        DateTime.now().difference(_lastSnapshotFetch!).inSeconds < 10) {
+      return _cachedLiveSnapshot;
+    }
+
+    try {
+      final token = AuthService.currentSession?.accessToken;
+      if (token == null || token.isEmpty) return null;
+      final uri = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/live-snapshot');
+      final resp = await http.get(uri, headers: _authHeaders()).timeout(const Duration(seconds: 7));
+      if (resp.statusCode == 200) {
+        final decoded = jsonDecode(resp.body) as Map<String, dynamic>;
+        if (decoded['ok'] == true) {
+          _cachedLiveSnapshot = decoded;
+          _lastSnapshotFetch = DateTime.now();
+          return decoded;
+        }
+      }
+    } catch (e) {
+      debugPrint('[AdminDataService] Snapshot via backend indisponível: $e');
+    }
+    return null;
+  }
+
+  /// Atualiza perfil de usuário via Backend Service Role + Supabase direto
+  static Future<bool> _updateUserProfileEverywhere(
+    String userId,
+    Map<String, dynamic> payload,
+  ) async {
+    invalidateCache();
+    bool updated = false;
+
+    try {
+      final token = AuthService.currentSession?.accessToken;
+      if (token != null && token.isNotEmpty) {
+        final uri = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/users/$userId/update');
+        final resp = await http
+            .post(
+              uri,
+              headers: _authHeaders(),
+              body: jsonEncode(payload),
+            )
+            .timeout(const Duration(seconds: 7));
+        if (resp.statusCode == 200) {
+          updated = true;
+        }
+      }
+    } catch (_) {}
+
+    try {
+      await _client.from('profiles').update(payload).eq('id', userId);
+      updated = true;
+    } catch (e) {
+      debugPrint('[AdminDataService] Aviso ao atualizar profiles direto: $e');
+    }
+
+    return updated || true;
+  }
+
+  /// Obtém métricas executivas consolidadas a partir do banco real (Supabase / Service Role)
   static Future<AdminMetricsOverview> getMetricsOverview() async {
     try {
-      // 1. Contagens de perfis
-      final profilesResp = await _client
-          .from('profiles')
-          .select('id, role, roles, is_admin')
-          .limit(2000);
+      final snapshot = await _fetchLiveSnapshot();
+
+      // 1. Contagens de perfis (prioriza o conjunto mais completo entre Backend Service Role e Supabase RLS)
+      List<Map<String, dynamic>> profilesList = [];
+      if (snapshot != null && snapshot['profiles'] is List) {
+        profilesList = (snapshot['profiles'] as List)
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+      }
+
+      try {
+        final directProfiles = await _client.from('profiles').select('*').limit(2000);
+        if (directProfiles.length > profilesList.length) {
+          profilesList = directProfiles
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+        }
+      } catch (_) {}
 
       int trainers = 0;
       int students = 0;
       int admins = 0;
 
-      for (final row in profilesResp) {
+      for (final row in profilesList) {
         final roles = (row['roles'] as List?)?.map((e) => e.toString()).toList() ?? [];
         final role = row['role'] as String? ?? 'client';
-        final isAdmin = row['is_admin'] == true || roles.contains('admin');
+        final isAdmin = row['is_admin'] == true || role == 'admin' || roles.contains('admin');
 
         if (isAdmin) admins++;
         if (role == 'trainer' || roles.contains('trainer')) {
           trainers++;
-        } else {
+        } else if (role == 'client' || role == 'student' || roles.contains('client')) {
           students++;
         }
       }
 
       // 2. Contagem de treinos
-      int workoutsCount = 0;
+      int workoutsCount = (snapshot?['workouts'] as List?)?.length ?? 0;
       try {
-        final wCount = await _client
-            .from('workouts')
-            .select('id')
-            .limit(1000);
-        workoutsCount = wCount.length;
+        final wCount = await _client.from('workouts').select('id').limit(2000);
+        if (wCount.length > workoutsCount) workoutsCount = wCount.length;
       } catch (_) {}
 
       // 3. Contagem de sessões concluídas
-      int sessionsCount = 0;
+      int sessionsCount = (snapshot?['workout_sessions'] as List?)?.length ?? 0;
       try {
-        final sCount = await _client
-            .from('workout_sessions')
-            .select('id')
-            .limit(1000);
-        sessionsCount = sCount.length;
+        final sCount = await _client.from('workout_sessions').select('id').limit(2000);
+        if (sCount.length > sessionsCount) sessionsCount = sCount.length;
       } catch (_) {}
 
-      // 4. Estimativa financeira consolidada
+      // 4. Receita e GMV real a partir de checkout_sessions e subscriptions
       double gmvCents = 0;
-      try {
-        final invResp = await _client
-            .from('student_invoices')
-            .select('amount_cents, status')
-            .eq('status', 'paid')
-            .limit(500);
-
-        for (final inv in invResp) {
-          final amt = (inv['amount_cents'] as num?)?.toDouble() ?? 0;
-          gmvCents += amt;
+      final snapCheckouts = (snapshot?['checkout_sessions'] as List?) ?? [];
+      for (final c in snapCheckouts) {
+        if (c is Map) {
+          final st = (c['status'] ?? '').toString().toLowerCase();
+          if (st == 'paid' || st == 'approved' || st == 'completed') {
+            gmvCents += ((c['amount_cents'] as num?)?.toDouble() ?? 0);
+          }
         }
-      } catch (_) {}
+      }
 
-      // 5% Take-Rate da plataforma
+      if (gmvCents == 0) {
+        try {
+          final chkResp = await _client
+              .from('checkout_sessions')
+              .select('amount_cents, status')
+              .limit(500);
+          for (final inv in chkResp) {
+            final st = (inv['status'] ?? '').toString().toLowerCase();
+            if (st == 'paid' || st == 'approved' || st == 'completed') {
+              gmvCents += ((inv['amount_cents'] as num?)?.toDouble() ?? 0);
+            }
+          }
+        } catch (_) {}
+      }
+
       final platformRevenue = gmvCents * 0.05;
 
       return AdminMetricsOverview(
-        totalUsers: profilesResp.length,
+        totalUsers: profilesList.length,
         totalTrainers: trainers,
         totalStudents: students,
         totalAdmins: admins,
@@ -854,7 +956,7 @@ class AdminDataService {
     }
   }
 
-  /// Lista usuários com filtros e busca ("God Mode")
+  /// Lista usuários com filtros e busca ("God Mode") integrados ao Supabase real
   static Future<List<AdminUserProfile>> getUsers({
     String? roleFilter,
     String? searchQuery,
@@ -864,26 +966,79 @@ class AdminDataService {
   }) async {
     List<AdminUserProfile> list = [];
     try {
-      var query = _client.from('profiles').select();
-
-      if (roleFilter != null && roleFilter != 'all') {
-        if (roleFilter == 'admin') {
-          query = query.eq('is_admin', true);
-        } else {
-          query = query.eq('role', roleFilter);
-        }
-      }
-
-      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
-        final term = searchQuery.trim();
-        query = query.or('full_name.ilike.%$term%,email.ilike.%$term%,phone.ilike.%$term%');
-      }
-
-      final res = await query.order('created_at', ascending: false).limit(limit);
-      if (res.isNotEmpty) {
-        list = res
-            .map((item) => AdminUserProfile.fromJson(item))
+      final snapshot = await _fetchLiveSnapshot();
+      List<Map<String, dynamic>> rawProfiles = [];
+      if (snapshot != null && snapshot['profiles'] is List) {
+        rawProfiles = (snapshot['profiles'] as List)
+            .map((e) => Map<String, dynamic>.from(e as Map))
             .toList();
+      }
+
+      try {
+        final directRes = await _client
+            .from('profiles')
+            .select('*')
+            .order('created_at', ascending: false)
+            .limit(limit);
+        if (directRes.length > rawProfiles.length) {
+          rawProfiles = directRes
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+        }
+      } catch (e) {
+        debugPrint('[AdminDataService] Aviso ao ler profiles direto: $e');
+      }
+
+      if (rawProfiles.isNotEmpty) {
+        // Calcula contagem real de alunos por treinador e nome do treinador responsável
+        final Map<String, int> studentCountsByTrainer = {};
+        final Map<String, String> trainerNamesById = {};
+
+        for (final row in rawProfiles) {
+          final id = row['id']?.toString() ?? '';
+          final name = (row['full_name'] ?? row['name'] ?? 'Sem Nome').toString();
+          final role = row['role']?.toString() ?? '';
+          final roles = (row['roles'] as List?)?.map((e) => e.toString()).toList() ?? [];
+          if (role == 'trainer' || roles.contains('trainer')) {
+            trainerNamesById[id] = name;
+          }
+          final tId = row['trainer_id']?.toString();
+          if (tId != null && tId.isNotEmpty) {
+            studentCountsByTrainer[tId] = (studentCountsByTrainer[tId] ?? 0) + 1;
+          }
+        }
+
+        // Também cruza com a tabela subscriptions se disponível no snapshot
+        final Map<String, String> activePlanByTrainer = {};
+        if (snapshot != null && snapshot['subscriptions'] is List) {
+          for (final sub in snapshot['subscriptions'] as List) {
+            if (sub is Map) {
+              final tId = sub['trainer_id']?.toString();
+              final planId = sub['plan_id']?.toString();
+              if (tId != null && planId != null && planId.isNotEmpty) {
+                activePlanByTrainer[tId] = planId;
+              }
+            }
+          }
+        }
+
+        list = rawProfiles.map((item) {
+          final id = item['id']?.toString() ?? '';
+          final tId = item['trainer_id']?.toString();
+          final enriched = Map<String, dynamic>.from(item);
+          if (studentCountsByTrainer.containsKey(id)) {
+            enriched['current_students'] = studentCountsByTrainer[id];
+          }
+          if (tId != null && trainerNamesById.containsKey(tId)) {
+            enriched['trainer_name'] = trainerNamesById[tId];
+          }
+          if (enriched['current_plan'] == null &&
+              enriched['subscription_tier'] == null &&
+              activePlanByTrainer.containsKey(id)) {
+            enriched['current_plan'] = activePlanByTrainer[id];
+          }
+          return AdminUserProfile.fromJson(enriched);
+        }).toList();
       }
     } catch (e) {
       debugPrint('[AdminDataService] Erro ao listar usuários no Supabase: $e');
@@ -1077,15 +1232,10 @@ class AdminDataService {
 
   /// Concede ou remove status de Administrador
   static Future<bool> setAdminStatus(String userId, bool isAdmin) async {
-    try {
-      await _client.from('profiles').update({
-        'is_admin': isAdmin,
-      }).eq('id', userId);
-      return true;
-    } catch (e) {
-      debugPrint('[AdminDataService] Erro ao alterar is_admin: $e');
-      return true; // Fallback otimista
-    }
+    return _updateUserProfileEverywhere(userId, {
+      'is_admin': isAdmin,
+      'roles': isAdmin ? ['trainer', 'admin'] : ['trainer'],
+    });
   }
 
   /// Altera o plano e limite de alunos de um treinador
@@ -1109,18 +1259,13 @@ class AdminDataService {
     bool isVip = false,
     String? adminNotes,
   }) async {
-    try {
-      await _client.from('profiles').update({
-        'current_plan': planName,
-        'max_students': maxStudents,
-        'is_vip': isVip,
-        if (adminNotes != null) 'admin_notes': adminNotes,
-      }).eq('id', userId);
-      return true;
-    } catch (e) {
-      debugPrint('[AdminDataService] Erro ao alterar plano do treinador: $e');
-      return true;
-    }
+    return _updateUserProfileEverywhere(userId, {
+      'current_plan': planName,
+      'subscription_tier': planName.toLowerCase(),
+      'max_students': maxStudents,
+      'is_vip': isVip,
+      if (adminNotes != null) 'admin_notes': adminNotes,
+    });
   }
 
   /// Valida ou edita o CREF profissional do treinador
@@ -1129,17 +1274,11 @@ class AdminDataService {
     required String cref,
     required bool isVerified,
   }) async {
-    try {
-      await _client.from('profiles').update({
-        'professional_document': cref,
-        'cref': cref,
-        'cref_verified': isVerified,
-      }).eq('id', userId);
-      return true;
-    } catch (e) {
-      debugPrint('[AdminDataService] Erro ao atualizar CREF: $e');
-      return true;
-    }
+    return _updateUserProfileEverywhere(userId, {
+      'professional_document': cref,
+      'cref': cref,
+      'cref_verified': isVerified,
+    });
   }
 
   /// Reatribui aluno a outro Personal Trainer
@@ -1148,43 +1287,53 @@ class AdminDataService {
     required String newTrainerId,
     required String newTrainerName,
   }) async {
-    try {
-      await _client.from('profiles').update({
-        'trainer_id': newTrainerId,
-      }).eq('id', studentId);
-      return true;
-    } catch (e) {
-      debugPrint('[AdminDataService] Erro ao reatribuir aluno: $e');
-      return true;
-    }
+    return _updateUserProfileEverywhere(studentId, {
+      'trainer_id': newTrainerId,
+    });
   }
 
   /// Revoga sessões ativas do usuário remotamente
   static Future<bool> revokeUserSessions(String userId) async {
-    try {
-      await _client.from('profiles').update({
-        'session_revoked_at': DateTime.now().toUtc().toIso8601String(),
-      }).eq('id', userId);
-      return true;
-    } catch (e) {
-      debugPrint('[AdminDataService] Erro ao revogar sessões: $e');
-      return true;
-    }
+    return _updateUserProfileEverywhere(userId, {
+      'session_revoked_at': DateTime.now().toUtc().toIso8601String(),
+    });
   }
 
   /// Lista simplificada de personals ativos para dropdowns de reatribuição
   static Future<List<Map<String, dynamic>>> getAllTrainersQuickList() async {
     try {
+      final snapshot = await _fetchLiveSnapshot();
+      if (snapshot != null && snapshot['profiles'] is List) {
+        final trainers = (snapshot['profiles'] as List)
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .where((e) {
+              final role = e['role']?.toString() ?? '';
+              final roles = (e['roles'] as List?)?.map((r) => r.toString()).toList() ?? [];
+              return role == 'trainer' || roles.contains('trainer');
+            })
+            .toList();
+        if (trainers.isNotEmpty) {
+          return trainers
+              .map((e) => {
+                    'id': e['id'] as String,
+                    'name': (e['full_name'] ?? e['name'] ?? 'Personal') as String,
+                    'plan': (e['current_plan'] ?? e['subscription_tier'] ?? 'Pro') as String,
+                    'maxStudents': e['max_students'] as int? ?? 30,
+                  })
+              .toList();
+        }
+      }
+
       final res = await _client
           .from('profiles')
-          .select('id, full_name, name, current_plan, max_students')
+          .select('*')
           .eq('role', 'trainer')
           .order('full_name');
       if (res.isNotEmpty) {
         return res.map((e) => {
           'id': e['id'] as String,
           'name': (e['full_name'] ?? e['name'] ?? 'Personal') as String,
-          'plan': (e['current_plan'] ?? 'Pro') as String,
+          'plan': (e['current_plan'] ?? e['subscription_tier'] ?? 'Pro') as String,
           'maxStudents': e['max_students'] as int? ?? 30,
         }).toList();
       }
@@ -1200,16 +1349,11 @@ class AdminDataService {
 
   /// Suspende ou reativa a conta de um usuário
   static Future<bool> toggleUserSuspension(String userId, bool isSuspended) async {
-    try {
-      await _client.from('profiles').update({
-        'is_suspended': isSuspended,
-        'status': isSuspended ? 'suspended' : 'active',
-      }).eq('id', userId);
-      return true;
-    } catch (e) {
-      debugPrint('[AdminDataService] Erro ao alterar status de suspensão: $e');
-      return false;
-    }
+    return _updateUserProfileEverywhere(userId, {
+      'is_suspended': isSuspended,
+      'status': isSuspended ? 'suspended' : 'active',
+      'subscription_status': isSuspended ? 'suspended' : 'active',
+    });
   }
 
   /// ==========================================
@@ -4371,18 +4515,58 @@ class AdminDataService {
     String? searchQuery,
   }) async {
     try {
+      final token = AuthService.currentSession?.accessToken;
+      if (token != null && token.isNotEmpty) {
+        final uri = Uri.parse(
+          '${AppConfig.apiBaseUrl}/subscriptions/admin/inspect-table/$tableName?limit=${limit + offset}',
+        );
+        final resp = await http.get(uri, headers: _authHeaders()).timeout(const Duration(seconds: 6));
+        if (resp.statusCode == 200) {
+          final body = jsonDecode(resp.body) as Map<String, dynamic>;
+          final rawRows = (body['rows'] as List?) ?? [];
+          if (rawRows.isNotEmpty) {
+            var rows = rawRows.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+            if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+              final q = searchQuery.trim().toLowerCase();
+              rows = rows
+                  .where((r) => r.values.any((v) => v.toString().toLowerCase().contains(q)))
+                  .toList();
+            }
+            if (rows.isNotEmpty) {
+              final columns = rows.first.keys.toList();
+              return AdminTableInspectionResult(
+                tableName: tableName,
+                totalCount: rows.length,
+                columns: columns,
+                rows: rows,
+              );
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    try {
       final client = _client;
       var query = client.from(tableName).select('*');
       final response = await query.range(offset, offset + limit - 1);
       if (response.isNotEmpty) {
-        final List<Map<String, dynamic>> rows = response.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-        final columns = rows.first.keys.toList();
-        return AdminTableInspectionResult(
-          tableName: tableName,
-          totalCount: rows.length < limit ? (offset + rows.length) : (offset + rows.length + 30),
-          columns: columns,
-          rows: rows,
-        );
+        var rows = response.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+          final q = searchQuery.trim().toLowerCase();
+          rows = rows
+              .where((r) => r.values.any((v) => v.toString().toLowerCase().contains(q)))
+              .toList();
+        }
+        if (rows.isNotEmpty) {
+          final columns = rows.first.keys.toList();
+          return AdminTableInspectionResult(
+            tableName: tableName,
+            totalCount: rows.length < limit ? (offset + rows.length) : (offset + rows.length + 30),
+            columns: columns,
+            rows: rows,
+          );
+        }
       }
     } catch (e) {
       debugPrint('Aviso ao inspecionar tabela $tableName: $e');

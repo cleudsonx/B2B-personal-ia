@@ -17,6 +17,7 @@ import 'screens/admin_pricing_manager_screen.dart';
 import 'widgets/admin_omni_search_modal.dart';
 import 'widgets/admin_database_explorer_modal.dart';
 import 'widgets/admin_webhook_reprocess_modal.dart';
+import 'widgets/admin_access_guard.dart';
 import '../trainer/presentation/screens/trainer_main_layout.dart';
 import '../../main.dart';
 
@@ -73,6 +74,13 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return AdminAccessGuard(
+      onExitAdmin: widget.onExitAdmin,
+      child: _buildProtectedShell(context),
+    );
+  }
+
+  Widget _buildProtectedShell(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final isDesktop = width > 900;
     if (_mirrorRole != null) {

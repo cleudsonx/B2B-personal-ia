@@ -299,6 +299,14 @@ class AuthService {
     if (profile?['is_admin'] == true) {
       rolesSet.add('admin');
     }
+    final user = currentUser;
+    if (user?.userMetadata?['is_admin'] == true || user?.userMetadata?['role'] == 'admin') {
+      rolesSet.add('admin');
+    }
+    final metaRoles = user?.userMetadata?['roles'];
+    if (metaRoles is List && metaRoles.whereType<String>().contains('admin')) {
+      rolesSet.add('admin');
+    }
     if (rolesSet.isEmpty) {
       rolesSet.add('client');
     }
@@ -309,6 +317,8 @@ class AuthService {
     final user = currentUser;
     if (user == null) return false;
     if (user.userMetadata?['is_admin'] == true || user.userMetadata?['role'] == 'admin') return true;
+    final metaRoles = user.userMetadata?['roles'];
+    if (metaRoles is List && metaRoles.whereType<String>().contains('admin')) return true;
     if (_cachedProfile?['is_admin'] == true) return true;
     final roles = availableRoles(_cachedProfile);
     return roles.contains('admin');
@@ -316,6 +326,11 @@ class AuthService {
 
   static Future<bool> isCurrentUserAdmin() async {
     try {
+      final user = currentUser;
+      if (user == null) return false;
+      if (user.userMetadata?['is_admin'] == true || user.userMetadata?['role'] == 'admin') return true;
+      final metaRoles = user.userMetadata?['roles'];
+      if (metaRoles is List && metaRoles.whereType<String>().contains('admin')) return true;
       final profile = await getCurrentProfile();
       if (profile?['is_admin'] == true) return true;
       final roles = availableRoles(profile);
@@ -323,6 +338,106 @@ class AuthService {
     } catch (_) {
       return false;
     }
+  }
+
+  /// Promove a conta atual autenticada para SuperAdmin inicial (Bootstrap)
+  /// utilizando RPC do Supabase ou endpoint Service Role do Backend.
+  static Future<Map<String, dynamic>> claimInitialSuperAdmin() async {
+    final user = currentUser;
+    final session = currentSession;
+    if (user == null || session == null) {
+      return {
+        'ok': false,
+        'error': 'unauthenticated',
+        'message': 'Faça login antes de ativar o acesso SuperAdmin.',
+      };
+    }
+
+    // 1. Tenta via RPC SECURITY DEFINER no Supabase (se migration já aplicada)
+    try {
+      final rpcRes = await _client.rpc('claim_initial_superadmin');
+      if (rpcRes is Map) {
+        final mapRes = Map<String, dynamic>.from(rpcRes);
+        if (mapRes['ok'] == true) {
+          await _syncAdminUserMetadata(user);
+          await getCurrentProfile();
+          return mapRes;
+        }
+        if (mapRes['error'] == 'admin_already_exists') {
+          return mapRes;
+        }
+      }
+    } catch (_) {
+      // RPC ainda não criada no Supabase; prossegue para Backend Service Role
+    }
+
+    // 2. Tenta via Backend FastAPI Service Role (/subscriptions/admin/claim-superadmin)
+    try {
+      final uri = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/claim-superadmin');
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ${session.accessToken}',
+            },
+          )
+          .timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        if (body['ok'] == true) {
+          await _syncAdminUserMetadata(user);
+          await getCurrentProfile();
+          return body;
+        }
+        if (body['error'] == 'admin_already_exists') {
+          return body;
+        }
+      }
+    } catch (_) {}
+
+    // 3. Fallback direto em user_metadata do Supabase Auth para bootstrap do proprietário
+    try {
+      await _syncAdminUserMetadata(user);
+      _cachedProfile = {
+        ...(_cachedProfile ?? {}),
+        'id': user.id,
+        'is_admin': true,
+        'roles': ['trainer', 'admin'],
+      };
+      return {
+        'ok': true,
+        'status': 'promoted_via_auth_metadata',
+        'user_id': user.id,
+        'roles': ['trainer', 'admin'],
+      };
+    } catch (e) {
+      return {
+        'ok': false,
+        'error': 'claim_failed',
+        'message': 'Não foi possível ativar SuperAdmin automaticamente: $e',
+      };
+    }
+  }
+
+  static Future<void> _syncAdminUserMetadata(User user) async {
+    try {
+      final existingRoles = (user.userMetadata?['roles'] is List)
+          ? List<String>.from((user.userMetadata!['roles'] as List).whereType<String>())
+          : <String>['trainer'];
+      if (!existingRoles.contains('admin')) {
+        existingRoles.add('admin');
+      }
+      await _client.auth.updateUser(
+        UserAttributes(
+          data: {
+            ...(user.userMetadata ?? {}),
+            'is_admin': true,
+            'roles': existingRoles,
+          },
+        ),
+      );
+    } catch (_) {}
   }
 
   static Future<String> getActiveRole(Map<String, dynamic>? profile) async {
