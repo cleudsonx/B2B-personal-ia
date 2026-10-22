@@ -2309,6 +2309,42 @@ class RecordReferralClickRequest(BaseModel):
     slug: str
 
 
+class PayoutAffiliateRequest(BaseModel):
+    affiliate_id: str
+    amount_brl: Optional[float] = None
+    pix_key: Optional[str] = None
+    pix_transaction_id: Optional[str] = None
+    notes: Optional[str] = None
+
+
+ADMIN_AFFILIATE_PAYOUTS = [
+    {
+        "id": "pay-crefsp-01",
+        "affiliate_id": "aff-crefsp",
+        "partner_name": "CREF4/SP - Conselho Regional",
+        "amount_brl": 350.00,
+        "paid_at": "2026-03-15 14:30:00",
+        "pix_key": "financeiro@crefsp.gov.br",
+        "pix_transaction_id": "E2E-CREFSP-20260315-0982",
+        "notes": "Liquidação de repasse referente a Fevereiro/2026",
+        "status": "PAID",
+        "receipt_number": "REC-2026-0041",
+    },
+    {
+        "id": "pay-ironrunner-01",
+        "affiliate_id": "aff-ironrunner",
+        "partner_name": "Assessoria Iron Runner",
+        "amount_brl": 200.00,
+        "paid_at": "2026-03-20 16:45:00",
+        "pix_key": "11988887777",
+        "pix_transaction_id": "E2E-IRON-20260320-1123",
+        "notes": "Adiantamento comissões de corrida",
+        "status": "PAID",
+        "receipt_number": "REC-2026-0042",
+    },
+]
+
+
 ADMIN_AFFILIATE_PARTNERS = [
     {
         "id": "aff-crefsp",
@@ -2321,6 +2357,7 @@ ADMIN_AFFILIATE_PARTNERS = [
         "conversions_count": 42,
         "total_revenue_generated_brl": 4890.0,
         "total_commission_due_brl": 489.0,
+        "total_commission_paid_brl": 350.0,
         "contact_email": "parcerias@crefsp.gov.br",
         "pix_key": "financeiro@crefsp.gov.br",
         "is_active": True,
@@ -2337,6 +2374,7 @@ ADMIN_AFFILIATE_PARTNERS = [
         "conversions_count": 28,
         "total_revenue_generated_brl": 2492.0,
         "total_commission_due_brl": 373.80,
+        "total_commission_paid_brl": 200.0,
         "contact_email": "contato@ironrunner.com.br",
         "pix_key": "11988887777",
         "is_active": True,
@@ -2353,6 +2391,7 @@ ADMIN_AFFILIATE_PARTNERS = [
         "conversions_count": 16,
         "total_revenue_generated_brl": 1424.0,
         "total_commission_due_brl": 284.80,
+        "total_commission_paid_brl": 0.0,
         "contact_email": "rodrigo.coach@gmail.com",
         "pix_key": "rodrigo.coach@gmail.com",
         "is_active": True,
@@ -2369,6 +2408,7 @@ ADMIN_AFFILIATE_PARTNERS = [
         "conversions_count": 31,
         "total_revenue_generated_brl": 3255.0,
         "total_commission_due_brl": 390.60,
+        "total_commission_paid_brl": 0.0,
         "contact_email": "adm@fitstudiosul.com.br",
         "pix_key": "12.345.678/0001-99",
         "is_active": True,
@@ -2387,6 +2427,7 @@ async def get_admin_affiliates():
     total_conversions = sum(p.get("conversions_count", 0) for p in ADMIN_AFFILIATE_PARTNERS)
     total_revenue = sum(p.get("total_revenue_generated_brl", 0.0) for p in ADMIN_AFFILIATE_PARTNERS)
     total_commission = sum(p.get("total_commission_due_brl", 0.0) for p in ADMIN_AFFILIATE_PARTNERS)
+    total_paid = sum(p.get("total_commission_paid_brl", 0.0) for p in ADMIN_AFFILIATE_PARTNERS)
     avg_conversion_rate = (total_conversions / total_clicks * 100.0) if total_clicks > 0 else 0.0
 
     return {
@@ -2398,9 +2439,12 @@ async def get_admin_affiliates():
             "average_conversion_rate_percent": round(avg_conversion_rate, 1),
             "total_revenue_generated_brl": round(total_revenue, 2),
             "total_commission_due_brl": round(total_commission, 2),
+            "total_commission_paid_brl": round(total_paid, 2),
+            "total_payouts_count": len(ADMIN_AFFILIATE_PAYOUTS),
             "last_updated": datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC"),
         },
         "affiliates": ADMIN_AFFILIATE_PARTNERS,
+        "recent_payouts": ADMIN_AFFILIATE_PAYOUTS,
     }
 
 
@@ -2467,6 +2511,74 @@ async def toggle_affiliate_endpoint(req: ToggleAffiliatePartnerRequest):
         "is_active": req.is_active,
         "message": f"Parceiro '{p['partner_name']}' {'ativado' if req.is_active else 'pausado'}.",
     }
+
+
+@router.post("/admin/payout-affiliate")
+async def payout_affiliate_endpoint(req: PayoutAffiliateRequest):
+    """
+    Liquida comissões de afiliados via Pix (Payout Engine).
+    Deduz do saldo pendente, incrementa o total pago e gera recibo auditável.
+    """
+    p = next((item for item in ADMIN_AFFILIATE_PARTNERS if item["id"] == req.affiliate_id or item.get("slug") == req.affiliate_id), None)
+    if not p:
+        raise HTTPException(status_code=404, detail="Parceiro afiliado não encontrado.")
+
+    due = float(p.get("total_commission_due_brl", 0.0))
+    amount_to_pay = float(req.amount_brl) if req.amount_brl and req.amount_brl > 0 else due
+
+    if amount_to_pay <= 0:
+        raise HTTPException(status_code=400, detail="Valor de liquidação inválido ou saldo zerado.")
+
+    pix_key = req.pix_key.strip() if req.pix_key else p.get("pix_key")
+    if not pix_key:
+        raise HTTPException(status_code=400, detail="Chave Pix de destino não informada.")
+
+    receipt_seq = len(ADMIN_AFFILIATE_PAYOUTS) + 43
+    receipt_num = f"REC-{datetime.utcnow().year}-{receipt_seq:04d}"
+    tx_id = req.pix_transaction_id.strip() if req.pix_transaction_id else f"E2E-{p['slug']}-{int(time.time())}"
+
+    payout_record = {
+        "id": f"pay-{p['slug'].lower()}-{int(time.time())}",
+        "affiliate_id": p["id"],
+        "partner_name": p["partner_name"],
+        "amount_brl": round(amount_to_pay, 2),
+        "paid_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        "pix_key": pix_key,
+        "pix_transaction_id": tx_id,
+        "notes": req.notes.strip() if req.notes else "Liquidação de comissões via Pix",
+        "status": "PAID",
+        "receipt_number": receipt_num,
+    }
+
+    # Deduz do saldo devido e incrementa saldo pago atomicamente
+    new_due = max(0.0, round(due - amount_to_pay, 2))
+    new_paid = round(float(p.get("total_commission_paid_brl", 0.0)) + amount_to_pay, 2)
+    p["total_commission_due_brl"] = new_due
+    p["total_commission_paid_brl"] = new_paid
+    if "payouts" not in p:
+        p["payouts"] = []
+    p["payouts"].insert(0, payout_record)
+
+    ADMIN_AFFILIATE_PAYOUTS.insert(0, payout_record)
+    logger.info(f"[PayoutEngine] Repasse de R$ {amount_to_pay} liquidado para '{p['partner_name']}'. Recibo: {receipt_num}")
+
+    return {
+        "success": True,
+        "payout": payout_record,
+        "affiliate": p,
+        "message": f"Repasse de R$ {amount_to_pay:.2f} liquidado com sucesso para {p['partner_name']} via Pix!",
+    }
+
+
+@router.get("/admin/affiliate-payouts")
+async def get_affiliate_payouts_endpoint(affiliate_id: Optional[str] = None):
+    """
+    Retorna histórico auditável de liquidações Pix de comissões.
+    """
+    if affiliate_id:
+        filtered = [item for item in ADMIN_AFFILIATE_PAYOUTS if item.get("affiliate_id") == affiliate_id]
+        return {"payouts": filtered, "count": len(filtered)}
+    return {"payouts": ADMIN_AFFILIATE_PAYOUTS, "count": len(ADMIN_AFFILIATE_PAYOUTS)}
 
 
 @router.post("/admin/record-referral-click")

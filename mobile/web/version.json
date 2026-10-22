@@ -1,7 +1,7 @@
 {
   "version": "1.9.0",
-  "build": 2026103033,
-  "updated_at": "2026-10-22T00:49:58.947276Z",
+  "build": 2026103034,
+  "updated_at": "2026-10-22T02:07:18.138699Z",
   "notes": "Versão 1.9.0: Motor de Afiliados & Links de Indicação (Referral Engine), Cupons & Campanhas Promocionais SaaS, Gestão Dinâmica de Preços & Planos, Auditoria de Sessões (Kill-Switch) e Simulador de Margem Unit Economics.",
   "changelog": {
     "student": [

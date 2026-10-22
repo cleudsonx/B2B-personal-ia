@@ -881,6 +881,8 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
     required TextEditingController controller,
     TextInputType keyboardType = TextInputType.text,
     TextCapitalization textCapitalization = TextCapitalization.none,
+    String? hintText,
+    int maxLines = 1,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -891,10 +893,13 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
           controller: controller,
           keyboardType: keyboardType,
           textCapitalization: textCapitalization,
+          maxLines: maxLines,
           style: const TextStyle(color: Colors.white, fontSize: 13),
           decoration: InputDecoration(
             filled: true,
             fillColor: const Color(0xFF090D16),
+            hintText: hintText,
+            hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
@@ -1778,6 +1783,428 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
     );
   }
 
+  /// Modal de Liquidação de Comissões via Pix (Payout Engine)
+  Future<void> _openPayoutDialog(AdminAffiliatePartnerItem affiliate) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final amountCtrl = TextEditingController(
+      text: affiliate.totalCommissionDueBrl > 0 ? affiliate.totalCommissionDueBrl.toStringAsFixed(2) : '100.00',
+    );
+    final pixCtrl = TextEditingController(text: affiliate.pixKey ?? '');
+    final txCtrl = TextEditingController();
+    final notesCtrl = TextEditingController(text: 'Liquidação de comissões via Pix');
+    bool isSubmitting = false;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF111827),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: MetaColors.emerald.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.payments_rounded, color: MetaColors.emerald, size: 22),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Liquidar Comissão via Pix',
+                          style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          affiliate.partnerName,
+                          style: const TextStyle(color: Colors.white60, fontSize: 12),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Card de Saldo Devido vs Liquidado
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF090D16),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF1F2937)),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Saldo Pendente', style: TextStyle(color: Colors.white54, fontSize: 11)),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    affiliate.formattedCommission,
+                                    style: TextStyle(
+                                      color: affiliate.hasPendingCommission ? const Color(0xFFF43F5E) : Colors.white38,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(width: 1, height: 32, color: const Color(0xFF1F2937)),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Total Já Pago', style: TextStyle(color: Colors.white54, fontSize: 11)),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    affiliate.formattedPaidCommission,
+                                    style: const TextStyle(
+                                      color: MetaColors.emerald,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Valor do Repasse
+                      _buildModalTextField(
+                        label: 'Valor a Liquidar (R\$)',
+                        controller: amountCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Chave Pix com Botão de Copiar
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildModalTextField(
+                              label: 'Chave Pix de Destino',
+                              controller: pixCtrl,
+                            ),
+                          ),
+                          if (pixCtrl.text.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            IconButton(
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: pixCtrl.text));
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Chave Pix copiada para a área de transferência!'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.copy_rounded, color: Color(0xFF818CF8)),
+                              tooltip: 'Copiar Chave Pix',
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      // ID da Transação / E2E
+                      _buildModalTextField(
+                        label: 'Código da Transação Pix / E2E (opcional)',
+                        controller: txCtrl,
+                        hintText: 'ex: E2E98472938472983749823',
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Observação
+                      _buildModalTextField(
+                        label: 'Observações do Repasse (opcional)',
+                        controller: notesCtrl,
+                        maxLines: 2,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancelar', style: TextStyle(color: Colors.white60)),
+                ),
+                ElevatedButton.icon(
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          final valStr = amountCtrl.text.replaceAll(',', '.').trim();
+                          final val = double.tryParse(valStr);
+                          if (val == null || val <= 0) {
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('Informe um valor de liquidação válido.'),
+                                backgroundColor: Colors.amber,
+                              ),
+                            );
+                            return;
+                          }
+                          final pix = pixCtrl.text.trim();
+                          if (pix.isEmpty) {
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('Informe a chave Pix para realização do repasse.'),
+                                backgroundColor: Colors.amber,
+                              ),
+                            );
+                            return;
+                          }
+
+                          setModalState(() => isSubmitting = true);
+                          final res = await AdminDataService.payoutAffiliate(
+                            affiliateId: affiliate.id,
+                            amountBrl: val,
+                            pixKey: pix,
+                            pixTransactionId: txCtrl.text.trim().isNotEmpty ? txCtrl.text.trim() : null,
+                            notes: notesCtrl.text.trim().isNotEmpty ? notesCtrl.text.trim() : null,
+                          );
+
+                          if (mounted && ctx.mounted) {
+                            Navigator.pop(ctx);
+                            _loadAffiliates();
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        res['message']?.toString() ?? 'Repasse liquidado com sucesso!',
+                                        style: const TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                backgroundColor: MetaColors.emerald,
+                                duration: const Duration(seconds: 4),
+                              ),
+                            );
+                          }
+                        },
+                  icon: isSubmitting
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.check_rounded, size: 16),
+                  label: Text(
+                    isSubmitting ? 'Processando...' : 'Confirmar Liquidação Pix',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: MetaColors.emerald,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Modal de Extrato Geral / Recibos de Liquidação Pix
+  Future<void> _openPayoutHistoryDialog([AdminAffiliatePartnerItem? affiliate]) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final payouts = await AdminDataService.getAffiliatePayouts(affiliateId: affiliate?.id);
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF111827),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: MetaColors.emerald.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.receipt_long_rounded, color: MetaColors.emerald, size: 22),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      affiliate != null ? 'Recibos: ${affiliate.partnerName}' : 'Extrato Geral de Repasses Pix',
+                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      '${payouts.length} liquidações registradas',
+                      style: const TextStyle(color: Colors.white60, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 550,
+            height: 420,
+            child: payouts.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.receipt_long_outlined, size: 40, color: Colors.white38),
+                          SizedBox(height: 12),
+                          Text(
+                            'Nenhum repasse liquidado ainda.',
+                            style: TextStyle(color: Colors.white70, fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: payouts.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final p = payouts[index];
+                      return Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF090D16),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF1F2937)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: MetaColors.emerald.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
+                                  ),
+                                  child: Text(
+                                    p.receiptNumber,
+                                    style: const TextStyle(
+                                      color: MetaColors.emerald,
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  p.formattedAmount,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              p.partnerName,
+                              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '📅 ${p.paidAt} • Pix: ${p.pixKey}',
+                              style: const TextStyle(color: Colors.white60, fontSize: 11),
+                            ),
+                            if (p.notes != null && p.notes!.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                '📝 ${p.notes}',
+                                style: const TextStyle(color: Colors.white38, fontSize: 11, fontStyle: FontStyle.italic),
+                              ),
+                            ],
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'ID: ${p.pixTransactionId}',
+                                    style: const TextStyle(
+                                      color: Color(0xFF818CF8),
+                                      fontSize: 10.5,
+                                      fontFamily: 'monospace',
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                InkWell(
+                                  onTap: () {
+                                    Clipboard.setData(ClipboardData(text: p.pixTransactionId));
+                                    messenger.showSnackBar(
+                                      const SnackBar(
+                                        content: Text('ID de transação copiado!'),
+                                        duration: Duration(seconds: 1),
+                                      ),
+                                    );
+                                  },
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                    child: Icon(Icons.copy_rounded, size: 14, color: Color(0xFF818CF8)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Fechar', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _openCreateOrEditAffiliateDialog([AdminAffiliatePartnerItem? existing]) async {
     final messenger = ScaffoldMessenger.of(context);
     final isEditing = existing != null;
@@ -2085,17 +2512,26 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
                     icon: Icons.payments_rounded,
                     accentColor: Colors.amber,
                   );
+                  final kpi5 = _buildKpiCard(
+                    title: 'Total Liquidado Pix',
+                    value: 'R\$ ${(_affiliatesOverview?.totalCommissionPaidBrl ?? 0).toStringAsFixed(2)}',
+                    subtitle: '${_affiliatesOverview?.totalPayoutsCount ?? 0} repasses efetuados',
+                    icon: Icons.verified_rounded,
+                    accentColor: MetaColors.emerald,
+                  );
 
                   if (isDesktop) {
                     return Row(
                       children: [
                         Expanded(child: kpi1),
-                        const SizedBox(width: 14),
+                        const SizedBox(width: 12),
                         Expanded(child: kpi2),
-                        const SizedBox(width: 14),
+                        const SizedBox(width: 12),
                         Expanded(child: kpi3),
-                        const SizedBox(width: 14),
+                        const SizedBox(width: 12),
                         Expanded(child: kpi4),
+                        const SizedBox(width: 12),
+                        Expanded(child: kpi5),
                       ],
                     );
                   } else if (isTablet) {
@@ -2106,14 +2542,16 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
                             Expanded(child: kpi1),
                             const SizedBox(width: 14),
                             Expanded(child: kpi2),
+                            const SizedBox(width: 14),
+                            Expanded(child: kpi3),
                           ],
                         ),
                         const SizedBox(height: 14),
                         Row(
                           children: [
-                            Expanded(child: kpi3),
-                            const SizedBox(width: 14),
                             Expanded(child: kpi4),
+                            const SizedBox(width: 14),
+                            Expanded(child: kpi5),
                           ],
                         ),
                       ],
@@ -2128,6 +2566,8 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
                         kpi3,
                         const SizedBox(height: 12),
                         kpi4,
+                        const SizedBox(height: 12),
+                        kpi5,
                       ],
                     );
                   }
@@ -2171,6 +2611,17 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
                       ),
                     ),
                     const SizedBox(width: 12),
+                    OutlinedButton.icon(
+                      onPressed: () => _openPayoutHistoryDialog(),
+                      icon: const Icon(Icons.receipt_long_rounded, size: 16, color: MetaColors.emerald),
+                      label: const Text('Extrato de Repasses', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF1F2937)),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     ElevatedButton.icon(
                       onPressed: () => _openCreateOrEditAffiliateDialog(),
                       icon: const Icon(Icons.add_rounded, size: 18),
@@ -2408,7 +2859,13 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
                 label: 'Comissão Devida',
                 value: affiliate.formattedCommission,
                 subtitle: 'saldo a pagar',
-                color: const Color(0xFFF43F5E),
+                color: affiliate.hasPendingCommission ? const Color(0xFFF43F5E) : Colors.white38,
+              ),
+              _buildMetricChip(
+                label: 'Total Liquidado',
+                value: affiliate.formattedPaidCommission,
+                subtitle: 'pago via Pix',
+                color: MetaColors.emerald,
               ),
             ],
           ),
@@ -2441,12 +2898,35 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (affiliate.payouts.isNotEmpty) ...[
+                    IconButton(
+                      onPressed: () => _openPayoutHistoryDialog(affiliate),
+                      icon: const Icon(Icons.receipt_long_rounded, size: 18, color: MetaColors.emerald),
+                      tooltip: 'Ver Recibos de Repasse (${affiliate.payouts.length})',
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                  ElevatedButton.icon(
+                    onPressed: () => _openPayoutDialog(affiliate),
+                    icon: const Icon(Icons.payments_rounded, size: 14),
+                    label: Text(
+                      affiliate.hasPendingCommission ? 'Liquidar Pix' : 'Repassar Pix',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: affiliate.hasPendingCommission ? MetaColors.emerald : const Color(0xFF1F2937),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
                   IconButton(
                     onPressed: () => _deleteAffiliate(affiliate),
                     icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent),
                     tooltip: 'Excluir Parceiro',
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 4),
                   ElevatedButton.icon(
                     onPressed: () => _openCreateOrEditAffiliateDialog(affiliate),
                     icon: const Icon(Icons.edit_rounded, size: 14),
@@ -2454,7 +2934,7 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF6366F1),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
                   ),
