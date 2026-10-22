@@ -1,7 +1,7 @@
 {
   "version": "1.9.0",
-  "build": 2026103039,
-  "updated_at": "2026-10-22T03:32:25.268524Z",
+  "build": 2026103040,
+  "updated_at": "2026-10-22T03:57:10.556233Z",
   "notes": "Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas e Gestão Dinâmica de Preços & Planos.",
   "changelog": {
     "student": [
@@ -54,6 +54,11 @@
         "title": "Cronômetro de Descanso Háptico & Alerta 3-2-1 (Audio Ducking)",
         "description": "Contagem regressiva circular com feedback tátil e sonoro cadenciado nos últimos 3 segundos (3, 2, 1, GO!), presets rápidos (30s, 60s, 90s, 120s), ajuste fino e modo silencioso/vibração.",
         "badge": "FOCO"
+      },
+      {
+        "title": "Motor de Sobrecarga Progressiva Inteligente (AI Overload)",
+        "description": "O app analisa o RPE e sugere automaticamente a progressão ideal para o exercício (+2.5 kg, +1 rep ou consolidação técnica), com aplicação direta na ficha em 1 toque.",
+        "badge": "EVOLUÇÃO"
       }
     ],
     "trainer": [
@@ -111,6 +116,11 @@
         "title": "Densidade de Treino & Cadência Rígida de Descanso",
         "description": "Alunos agora contam com cronômetro inteligente com alertas táteis cadenciados para respeitarem estritamente os intervalos prescritos.",
         "badge": "TREINAMENTO"
+      },
+      {
+        "title": "Prescrição Adaptativa & Sobrecarga Científica",
+        "description": "Seus alunos agora contam com sugestões biomecanicamente dosadas de sobrecarga progressiva (+kg ou +reps) baseadas na intensidade percebida (RPE).",
+        "badge": "SOBRECARGA"
       }
     ],
     "admin": [
@@ -193,6 +203,11 @@
         "title": "Módulo RestTimerSheet na Biblioteca Meta Components",
         "description": "Cronômetro de descanso imersivo e desacoplado, com cadência háptica 3-2-1, suporte a Audio Ducking e persistência local de preferências.",
         "badge": "SISTEMA"
+      },
+      {
+        "title": "Motor ProgressiveOverloadEngine na Suíte de IA",
+        "description": "Algoritmo determinístico de progressão de carga (Double Progression e Step Loading) integrado aos modelos de treino e suíte visual Meta.",
+        "badge": "IA & CIÊNCIA"
       }
     ]
   }

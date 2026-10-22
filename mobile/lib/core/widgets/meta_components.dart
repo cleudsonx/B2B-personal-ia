@@ -1,6 +1,7 @@
 export 'scroll_aware_glass_header.dart';
 export 'workout_triumph_modal.dart';
 export 'rest_timer_sheet.dart';
+export 'ai_overload_card.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 

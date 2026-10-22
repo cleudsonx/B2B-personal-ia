@@ -56,10 +56,8 @@ class _SetProgress {
   int reps;
   bool isCompleted;
 
-  _SetProgress({
-    required this.weightKg,
-    required this.reps,
-  }) : isCompleted = false;
+  _SetProgress({required this.weightKg, required this.reps})
+    : isCompleted = false;
 }
 
 class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
@@ -83,6 +81,8 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
 
   // PersistÃªncia e detecÃ§Ã£o de Recordes Pessoais (PR)
   Map<int, double> _referencePreviousWeights = {};
+  int _lastReportedRpe = 8;
+  final Set<int> _dismissedOverloadIndices = {};
   int _newPrCount = 0;
 
   static String _weightKey(String clientId, String exerciseName) =>
@@ -91,10 +91,11 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
   @override
   void initState() {
     super.initState();
-    final initialPage = (widget.initialExerciseIndex >= 0 &&
-            widget.initialExerciseIndex < widget.exercises.length)
-        ? widget.initialExerciseIndex
-        : 0;
+    final initialPage =
+        (widget.initialExerciseIndex >= 0 &&
+                widget.initialExerciseIndex < widget.exercises.length)
+            ? widget.initialExerciseIndex
+            : 0;
     _currentPage = initialPage;
     _pageController = PageController(initialPage: initialPage);
     _currentExercises = List.from(widget.exercises);
@@ -152,9 +153,29 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
       if (mounted) {
         setState(() {
           _referencePreviousWeights = refs;
+          final savedRpe = prefs.getInt('last_session_rpe');
+          if (savedRpe != null && savedRpe > 0) {
+            _lastReportedRpe = savedRpe;
+          }
         });
       }
     } catch (_) {}
+  }
+
+  void _applyOverloadSuggestion(
+    int exerciseIndex,
+    OverloadSuggestion suggestion,
+  ) {
+    HapticFeedback.heavyImpact();
+    setState(() {
+      final sets = _exerciseSets[exerciseIndex] ?? [];
+      for (final s in sets) {
+        if (!s.isCompleted) {
+          s.weightKg = suggestion.suggestedWeightKg;
+          s.reps = suggestion.suggestedReps;
+        }
+      }
+    });
   }
 
   Future<void> _saveWeights() async {
@@ -221,8 +242,10 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
   }
 
   double _parseDefaultWeight(String notes) {
-    final match = RegExp(r'(\d+(?:\.\d+)?)\s*(?:kg|quilos)', caseSensitive: false)
-        .firstMatch(notes);
+    final match = RegExp(
+      r'(\d+(?:\.\d+)?)\s*(?:kg|quilos)',
+      caseSensitive: false,
+    ).firstMatch(notes);
     if (match != null) {
       return double.tryParse(match.group(1) ?? '') ?? 20.0;
     }
@@ -276,13 +299,16 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
     try {
       final draftSets = <String, dynamic>{};
       _exerciseSets.forEach((k, v) {
-        draftSets[k.toString()] = v
-            .map((s) => {
-                  'weightKg': s.weightKg,
-                  'reps': s.reps,
-                  'isCompleted': s.isCompleted,
-                })
-            .toList();
+        draftSets[k.toString()] =
+            v
+                .map(
+                  (s) => {
+                    'weightKg': s.weightKg,
+                    'reps': s.reps,
+                    'isCompleted': s.isCompleted,
+                  },
+                )
+                .toList();
       });
       OfflineSyncService.instance.saveWorkoutDraft(uid, {
         'splitIdentifier': widget.splitIdentifier,
@@ -524,9 +550,13 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                   ),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: const BorderSide(color: Color(0xFFF59E0B), width: 1.5),
-                    backgroundColor:
-                        const Color(0xFFF59E0B).withValues(alpha: 0.1),
+                    side: const BorderSide(
+                      color: Color(0xFFF59E0B),
+                      width: 1.5,
+                    ),
+                    backgroundColor: const Color(
+                      0xFFF59E0B,
+                    ).withValues(alpha: 0.1),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -548,7 +578,10 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
     final currentEx = _currentExercises[exerciseIndex];
     final joints = [
       {'name': 'Ombro / Manguito', 'icon': Icons.accessibility_new_rounded},
-      {'name': 'Lombar / Coluna', 'icon': Icons.airline_seat_recline_normal_rounded},
+      {
+        'name': 'Lombar / Coluna',
+        'icon': Icons.airline_seat_recline_normal_rounded,
+      },
       {'name': 'Joelho', 'icon': Icons.directions_walk_rounded},
       {'name': 'Cotovelo', 'icon': Icons.front_hand_rounded},
       {'name': 'Punho / Mão', 'icon': Icons.pan_tool_rounded},
@@ -571,7 +604,11 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
               children: [
                 Row(
                   children: const [
-                    Icon(Icons.health_and_safety_rounded, color: Color(0xFFF59E0B), size: 26),
+                    Icon(
+                      Icons.health_and_safety_rounded,
+                      color: Color(0xFFF59E0B),
+                      size: 26,
+                    ),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -597,45 +634,55 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                 Wrap(
                   spacing: 8,
                   runSpacing: 10,
-                  children: joints.map((j) {
-                    final jName = j['name'] as String;
-                    final jIcon = j['icon'] as IconData;
-                    return InkWell(
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        _executeSubstitution(
-                          exerciseIndex,
-                          'Dor Articular ($jName)',
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(14),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: MetaColors.background,
+                  children:
+                      joints.map((j) {
+                        final jName = j['name'] as String;
+                        final jIcon = j['icon'] as IconData;
+                        return InkWell(
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            _executeSubstitution(
+                              exerciseIndex,
+                              'Dor Articular ($jName)',
+                            );
+                          },
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(jIcon, size: 16, color: const Color(0xFFF59E0B)),
-                            const SizedBox(width: 8),
-                            Text(
-                              jName,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: MetaColors.textPrimary,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: MetaColors.background,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: const Color(
+                                  0xFFF59E0B,
+                                ).withValues(alpha: 0.35),
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  jIcon,
+                                  size: 16,
+                                  color: const Color(0xFFF59E0B),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  jName,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: MetaColors.textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
                 ),
                 const SizedBox(height: 16),
               ],
@@ -666,8 +713,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
           sets: result.sets,
           reps: result.reps,
           restSeconds: result.restSeconds,
-          notes:
-              '${result.notes}\n[IA: ${result.biomechanicalRationale}]',
+          notes: '${result.notes}\n[IA: ${result.biomechanicalRationale}]',
         );
       });
 
@@ -698,7 +744,9 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             backgroundColor: Colors.redAccent,
-            content: Text('NÃ£o foi possÃ­vel adaptar o exercÃ­cio no momento.'),
+            content: Text(
+              'NÃ£o foi possÃ­vel adaptar o exercÃ­cio no momento.',
+            ),
           ),
         );
       }
@@ -871,10 +919,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                   ),
                   child: const Text(
                     'Continuar Treinando',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                    ),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -891,7 +936,11 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.bookmark_border_rounded, size: 18, color: MetaColors.emerald),
+                      Icon(
+                        Icons.bookmark_border_rounded,
+                        size: 18,
+                        color: MetaColors.emerald,
+                      ),
                       SizedBox(width: 8),
                       Text(
                         'Salvar Progresso e Sair',
@@ -1008,417 +1057,461 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                               tooltip: 'Fechar Focus Mode',
                               onPressed: _handleExitRequest,
                             ),
-                          Column(
-                            children: [
-                              Text(
-                                '${widget.splitIdentifier} · EXERCÍCIO ${_currentPage + 1}/$totalEx',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.5,
-                                  color: MetaColors.textSecondary,
+                            Column(
+                              children: [
+                                Text(
+                                  '${widget.splitIdentifier} · EXERCÍCIO ${_currentPage + 1}/$totalEx',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.5,
+                                    color: MetaColors.textSecondary,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                widget.splitName,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w900,
-                                  color: MetaColors.textPrimary,
+                                const SizedBox(height: 2),
+                                Text(
+                                  widget.splitName,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w900,
+                                    color: MetaColors.textPrimary,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              InkWell(
-                                onTap: () {
-                                  HapticFeedback.lightImpact();
-                                  WarmupSheet.show(
-                                    context,
-                                    initialFocus: widget.splitName,
-                                  );
-                                },
-                                borderRadius: BorderRadius.circular(16),
-                                child: Container(
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                InkWell(
+                                  onTap: () {
+                                    HapticFeedback.lightImpact();
+                                    WarmupSheet.show(
+                                      context,
+                                      initialFocus: widget.splitName,
+                                    );
+                                  },
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.withValues(
+                                        alpha: 0.12,
+                                      ),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: Colors.amber.withValues(
+                                          alpha: 0.35,
+                                        ),
+                                      ),
+                                    ),
+                                    child: const Row(
+                                      children: [
+                                        Text(
+                                          '🔥',
+                                          style: TextStyle(fontSize: 12),
+                                        ),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          '3 min',
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.amber,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
+                                    horizontal: 10,
                                     vertical: 6,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.amber.withValues(alpha: 0.12),
+                                    color: MetaColors.surface,
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
-                                      color: Colors.amber.withValues(alpha: 0.35),
+                                      color: MetaColors.border,
                                     ),
                                   ),
-                                  child: const Row(
+                                  child: Row(
                                     children: [
-                                      Text('🔥', style: TextStyle(fontSize: 12)),
-                                      SizedBox(width: 4),
+                                      const Icon(
+                                        Icons.timer_outlined,
+                                        size: 14,
+                                        color: MetaColors.emerald,
+                                      ),
+                                      const SizedBox(width: 4),
                                       Text(
-                                        '3 min',
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w800,
-                                          color: Colors.amber,
+                                        _formatTimer(_elapsedSeconds),
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w900,
+                                          color: MetaColors.textPrimary,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        // Segmented Story Pills (Instagram / WhatsApp Status Pattern)
+                        Row(
+                          children: List.generate(totalEx, (barIdx) {
+                            final isDone = _isExerciseFullyCompleted(barIdx);
+                            final isCurrent = barIdx == _currentPage;
+                            return Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  _pageController.animateToPage(
+                                    barIdx,
+                                    duration: const Duration(milliseconds: 280),
+                                    curve: Curves.easeOutCubic,
+                                  );
+                                },
+                                child: Container(
+                                  height: 5,
+                                  margin: EdgeInsets.symmetric(
+                                    horizontal: totalEx > 6 ? 1.5 : 3.0,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        isDone
+                                            ? MetaColors.emerald
+                                            : (isCurrent
+                                                ? MetaColors.emerald.withValues(
+                                                  alpha: 0.7,
+                                                )
+                                                : MetaColors.surfaceHighlight),
+                                    borderRadius: BorderRadius.circular(3),
+                                    boxShadow:
+                                        isCurrent
+                                            ? [
+                                              BoxShadow(
+                                                color: MetaColors.emerald
+                                                    .withValues(alpha: 0.5),
+                                                blurRadius: 6,
+                                                spreadRadius: 1,
+                                              ),
+                                            ]
+                                            : null,
+                                  ),
+                                ),
                               ),
-                              const SizedBox(width: 8),
-                              Container(
+                            );
+                          }),
+                        ),
+                        const OfflineSyncBanner(
+                          padding: EdgeInsets.only(top: 10),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // 2. PageView com Swipe Horizontal
+                  Expanded(
+                    child: PageView.builder(
+                      controller: _pageController,
+                      physics: const BouncingScrollPhysics(),
+                      onPageChanged: (idx) {
+                        setState(() => _currentPage = idx);
+                      },
+                      itemCount: totalEx,
+                      itemBuilder: (ctx, idx) {
+                        return _buildExerciseCard(idx);
+                      },
+                    ),
+                  ),
+
+                  // 3. Bottom Controls (Thumb Zone)
+                  Container(
+                    padding: EdgeInsets.only(
+                      left: 18,
+                      right: 18,
+                      top: 12,
+                      bottom: bottomPadding + 14,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: MetaColors.background,
+                      border: Border(
+                        top: BorderSide(color: MetaColors.border, width: 0.6),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        if (_currentPage > 0) ...[
+                          Expanded(
+                            flex: 1,
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
+                                  vertical: 16,
                                 ),
-                                decoration: BoxDecoration(
-                                  color: MetaColors.surface,
+                                side: const BorderSide(
+                                  color: MetaColors.border,
+                                ),
+                                shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: MetaColors.border),
                                 ),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.timer_outlined,
-                                      size: 14,
-                                      color: MetaColors.emerald,
+                              ),
+                              onPressed: () {
+                                _pageController.previousPage(
+                                  duration: const Duration(milliseconds: 280),
+                                  curve: Curves.easeOutCubic,
+                                );
+                              },
+                              child: const Icon(
+                                Icons.arrow_back_rounded,
+                                color: MetaColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        Expanded(
+                          flex: 3,
+                          child:
+                              _currentPage < totalEx - 1
+                                  ? SquircleButton(
+                                    label: 'PrÃ³ximo ExercÃ­cio',
+                                    icon: Icons.arrow_forward_rounded,
+                                    isPrimary: true,
+                                    onPressed: () {
+                                      _pageController.nextPage(
+                                        duration: const Duration(
+                                          milliseconds: 280,
+                                        ),
+                                        curve: Curves.easeOutCubic,
+                                      );
+                                    },
+                                  )
+                                  : SquircleButton(
+                                    label: 'Finalizar Treino',
+                                    icon: Icons.check_circle_rounded,
+                                    isPrimary: true,
+                                    onPressed: _finishWorkout,
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              // 4. Auto-Rest Timer Floating Sheet
+              if (_isRestTimerActive)
+                Positioned(
+                  left: 18,
+                  right: 18,
+                  bottom: bottomPadding + 80,
+                  child: Builder(
+                    builder: (context) {
+                      final isUrgent =
+                          _restSecondsRemaining <= 3 &&
+                          _restSecondsRemaining > 0;
+                      final timerColor =
+                          isUrgent
+                              ? Colors.redAccent
+                              : (_restSecondsRemaining < 15
+                                  ? Colors.amber
+                                  : MetaColors.emerald);
+
+                      return InkWell(
+                        onTap: () {
+                          if (_currentPage < _currentExercises.length) {
+                            RestTimerSheet.show(
+                              context,
+                              seconds: _restSecondsRemaining,
+                              exerciseName:
+                                  _currentExercises[_currentPage].name,
+                              onFinished: _skipRestTimer,
+                            );
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            color: MetaColors.surface,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: timerColor.withValues(
+                                alpha: isUrgent ? 0.8 : 0.5,
+                              ),
+                              width: isUrgent ? 1.8 : 1.2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color:
+                                    isUrgent
+                                        ? Colors.redAccent.withValues(
+                                          alpha: 0.3,
+                                        )
+                                        : Colors.black.withValues(alpha: 0.6),
+                                blurRadius: isUrgent ? 22 : 16,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: timerColor.withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '$_restSecondsRemaining',
+                                    style: TextStyle(
+                                      color: timerColor,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 15,
                                     ),
-                                    const SizedBox(width: 4),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          'DESCANSO EM ANDAMENTO',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w900,
+                                            color:
+                                                isUrgent
+                                                    ? Colors.redAccent
+                                                    : MetaColors.textSecondary,
+                                            letterSpacing: 0.3,
+                                          ),
+                                        ),
+                                        if (isUrgent) ...[
+                                          const SizedBox(width: 4),
+                                          const Text(
+                                            '🔥',
+                                            style: TextStyle(fontSize: 11),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
                                     Text(
-                                      _formatTimer(_elapsedSeconds),
-                                      style: const TextStyle(
-                                        fontSize: 12,
+                                      isUrgent
+                                          ? '$_restSecondsRemaining s • Prepare-se para a série!'
+                                          : '${_formatTimer(_restSecondsRemaining)} restantes',
+                                      style: TextStyle(
+                                        fontSize: 13,
                                         fontWeight: FontWeight.w900,
-                                        color: MetaColors.textPrimary,
+                                        color:
+                                            isUrgent
+                                                ? Colors.redAccent
+                                                : MetaColors.textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(2),
+                                      child: LinearProgressIndicator(
+                                        value:
+                                            _restInitialDuration > 0
+                                                ? (_restSecondsRemaining /
+                                                        _restInitialDuration)
+                                                    .clamp(0.0, 1.0)
+                                                : 0.0,
+                                        backgroundColor: MetaColors.background,
+                                        color: timerColor,
+                                        minHeight: 3,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
+                              TextButton(
+                                onPressed: () => _addRestSeconds(30),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  backgroundColor: MetaColors.background,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                child: const Text(
+                                  '+30s',
+                                  style: TextStyle(
+                                    color: MetaColors.textPrimary,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.skip_next_rounded,
+                                  color: MetaColors.textSecondary,
+                                ),
+                                tooltip: 'Pular Descanso',
+                                onPressed: _skipRestTimer,
+                              ),
                             ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+              // 5. Overlay de AdaptaÃ§Ã£o de ExercÃ­cio (IA)
+              if (_isAdapting)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.65),
+                    child: const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(color: MetaColors.emerald),
+                          SizedBox(height: 16),
+                          Text(
+                            'Adaptando exercÃ­cio com IA...',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      // Segmented Story Pills (Instagram / WhatsApp Status Pattern)
-                      Row(
-                        children: List.generate(totalEx, (barIdx) {
-                          final isDone = _isExerciseFullyCompleted(barIdx);
-                          final isCurrent = barIdx == _currentPage;
-                          return Expanded(
-                            child: GestureDetector(
-                              onTap: () {
-                                HapticFeedback.selectionClick();
-                                _pageController.animateToPage(
-                                  barIdx,
-                                  duration: const Duration(milliseconds: 280),
-                                  curve: Curves.easeOutCubic,
-                                );
-                              },
-                              child: Container(
-                                height: 5,
-                                margin: EdgeInsets.symmetric(
-                                  horizontal: totalEx > 6 ? 1.5 : 3.0,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isDone
-                                      ? MetaColors.emerald
-                                      : (isCurrent
-                                          ? MetaColors.emerald.withValues(alpha: 0.7)
-                                          : MetaColors.surfaceHighlight),
-                                  borderRadius: BorderRadius.circular(3),
-                                  boxShadow: isCurrent
-                                      ? [
-                                          BoxShadow(
-                                            color: MetaColors.emerald.withValues(alpha: 0.5),
-                                            blurRadius: 6,
-                                            spreadRadius: 1,
-                                          )
-                                        ]
-                                      : null,
-                                ),
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-                      const OfflineSyncBanner(
-                        padding: EdgeInsets.only(top: 10),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // 2. PageView com Swipe Horizontal
-                Expanded(
-                  child: PageView.builder(
-                    controller: _pageController,
-                    physics: const BouncingScrollPhysics(),
-                    onPageChanged: (idx) {
-                      setState(() => _currentPage = idx);
-                    },
-                    itemCount: totalEx,
-                    itemBuilder: (ctx, idx) {
-                      return _buildExerciseCard(idx);
-                    },
-                  ),
-                ),
-
-                // 3. Bottom Controls (Thumb Zone)
-                Container(
-                  padding: EdgeInsets.only(
-                    left: 18,
-                    right: 18,
-                    top: 12,
-                    bottom: bottomPadding + 14,
-                  ),
-                  decoration: const BoxDecoration(
-                    color: MetaColors.background,
-                    border: Border(
-                      top: BorderSide(color: MetaColors.border, width: 0.6),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      if (_currentPage > 0) ...[
-                        Expanded(
-                          flex: 1,
-                          child: OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              side: const BorderSide(color: MetaColors.border),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            onPressed: () {
-                              _pageController.previousPage(
-                                duration: const Duration(milliseconds: 280),
-                                curve: Curves.easeOutCubic,
-                              );
-                            },
-                            child: const Icon(
-                              Icons.arrow_back_rounded,
-                              color: MetaColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                      ],
-                      Expanded(
-                        flex: 3,
-                        child: _currentPage < totalEx - 1
-                            ? SquircleButton(
-                                label: 'PrÃ³ximo ExercÃ­cio',
-                                icon: Icons.arrow_forward_rounded,
-                                isPrimary: true,
-                                onPressed: () {
-                                  _pageController.nextPage(
-                                    duration: const Duration(milliseconds: 280),
-                                    curve: Curves.easeOutCubic,
-                                  );
-                                },
-                              )
-                            : SquircleButton(
-                                label: 'Finalizar Treino',
-                                icon: Icons.check_circle_rounded,
-                                isPrimary: true,
-                                onPressed: _finishWorkout,
-                              ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            // 4. Auto-Rest Timer Floating Sheet
-            if (_isRestTimerActive)
-              Positioned(
-                left: 18,
-                right: 18,
-                bottom: bottomPadding + 80,
-                child: Builder(
-                  builder: (context) {
-                    final isUrgent = _restSecondsRemaining <= 3 && _restSecondsRemaining > 0;
-                    final timerColor = isUrgent
-                        ? Colors.redAccent
-                        : (_restSecondsRemaining < 15 ? Colors.amber : MetaColors.emerald);
-
-                    return InkWell(
-                      onTap: () {
-                        if (_currentPage < _currentExercises.length) {
-                          RestTimerSheet.show(
-                            context,
-                            seconds: _restSecondsRemaining,
-                            exerciseName: _currentExercises[_currentPage].name,
-                            onFinished: _skipRestTimer,
-                          );
-                        }
-                      },
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 18,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          color: MetaColors.surface,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: timerColor.withValues(alpha: isUrgent ? 0.8 : 0.5),
-                            width: isUrgent ? 1.8 : 1.2,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: isUrgent
-                                  ? Colors.redAccent.withValues(alpha: 0.3)
-                                  : Colors.black.withValues(alpha: 0.6),
-                              blurRadius: isUrgent ? 22 : 16,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: timerColor.withValues(alpha: 0.15),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '$_restSecondsRemaining',
-                                  style: TextStyle(
-                                    color: timerColor,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(
-                                        'DESCANSO EM ANDAMENTO',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w900,
-                                          color: isUrgent ? Colors.redAccent : MetaColors.textSecondary,
-                                          letterSpacing: 0.3,
-                                        ),
-                                      ),
-                                      if (isUrgent) ...[
-                                        const SizedBox(width: 4),
-                                        const Text('🔥', style: TextStyle(fontSize: 11)),
-                                      ],
-                                    ],
-                                  ),
-                                  Text(
-                                    isUrgent
-                                        ? '$_restSecondsRemaining s • Prepare-se para a série!'
-                                        : '${_formatTimer(_restSecondsRemaining)} restantes',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w900,
-                                      color: isUrgent ? Colors.redAccent : MetaColors.textPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(2),
-                                    child: LinearProgressIndicator(
-                                      value: _restInitialDuration > 0
-                                          ? (_restSecondsRemaining / _restInitialDuration).clamp(0.0, 1.0)
-                                          : 0.0,
-                                      backgroundColor: MetaColors.background,
-                                      color: timerColor,
-                                      minHeight: 3,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () => _addRestSeconds(30),
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                backgroundColor: MetaColors.background,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              child: const Text(
-                                '+30s',
-                                style: TextStyle(
-                                  color: MetaColors.textPrimary,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.skip_next_rounded,
-                                color: MetaColors.textSecondary,
-                              ),
-                              tooltip: 'Pular Descanso',
-                              onPressed: _skipRestTimer,
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-
-            // 5. Overlay de AdaptaÃ§Ã£o de ExercÃ­cio (IA)
-            if (_isAdapting)
-              Positioned.fill(
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.65),
-                  child: const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircularProgressIndicator(color: MetaColors.emerald),
-                        SizedBox(height: 16),
-                        Text(
-                          'Adaptando exercÃ­cio com IA...',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildExerciseCard(int index) {
     final ex = _currentExercises[index];
@@ -1445,9 +1538,10 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
             color: MetaColors.surface,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: hasNewPr
-                  ? const Color(0xFFF59E0B).withValues(alpha: 0.5)
-                  : MetaColors.border,
+              color:
+                  hasNewPr
+                      ? const Color(0xFFF59E0B).withValues(alpha: 0.5)
+                      : MetaColors.border,
             ),
           ),
           child: Column(
@@ -1468,7 +1562,9 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: MetaColors.emerald.withValues(alpha: 0.15),
+                                color: MetaColors.emerald.withValues(
+                                  alpha: 0.15,
+                                ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
@@ -1513,10 +1609,14 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                               vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                              color: const Color(
+                                0xFFF59E0B,
+                              ).withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(
-                                color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
+                                color: const Color(
+                                  0xFFF59E0B,
+                                ).withValues(alpha: 0.4),
                               ),
                             ),
                             child: Row(
@@ -1570,15 +1670,16 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                             width: 68,
                             height: 68,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => Container(
-                              width: 68,
-                              height: 68,
-                              color: MetaColors.surfaceHighlight,
-                              child: const Icon(
-                                Icons.fitness_center_rounded,
-                                color: MetaColors.textSecondary,
-                              ),
-                            ),
+                            errorBuilder:
+                                (_, _, _) => Container(
+                                  width: 68,
+                                  height: 68,
+                                  color: MetaColors.surfaceHighlight,
+                                  child: const Icon(
+                                    Icons.fitness_center_rounded,
+                                    color: MetaColors.textSecondary,
+                                  ),
+                                ),
                           ),
                         ),
                         Positioned(
@@ -1590,7 +1691,9 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                               color: Colors.black.withValues(alpha: 0.75),
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: MetaColors.emerald.withValues(alpha: 0.8),
+                                color: MetaColors.emerald.withValues(
+                                  alpha: 0.8,
+                                ),
                                 width: 1,
                               ),
                             ),
@@ -1613,13 +1716,33 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      icon: const Icon(Icons.play_circle_fill_rounded, size: 16, color: MetaColors.emerald),
-                      label: const Text('VÃ­deo / GIF', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: MetaColors.emerald)),
+                      icon: const Icon(
+                        Icons.play_circle_fill_rounded,
+                        size: 16,
+                        color: MetaColors.emerald,
+                      ),
+                      label: const Text(
+                        'VÃ­deo / GIF',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: MetaColors.emerald,
+                        ),
+                      ),
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
-                        side: BorderSide(color: MetaColors.emerald.withValues(alpha: 0.35)),
-                        backgroundColor: MetaColors.emerald.withValues(alpha: 0.08),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 9,
+                          horizontal: 8,
+                        ),
+                        side: BorderSide(
+                          color: MetaColors.emerald.withValues(alpha: 0.35),
+                        ),
+                        backgroundColor: MetaColors.emerald.withValues(
+                          alpha: 0.08,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       onPressed: () {
                         HapticFeedback.selectionClick();
@@ -1630,17 +1753,42 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton.icon(
-                      icon: const Icon(Icons.accessibility_new_rounded, size: 16, color: Color(0xFF6366F1)),
-                      label: const Text('Raio-X 3D', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF818CF8))),
+                      icon: const Icon(
+                        Icons.accessibility_new_rounded,
+                        size: 16,
+                        color: Color(0xFF6366F1),
+                      ),
+                      label: const Text(
+                        'Raio-X 3D',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF818CF8),
+                        ),
+                      ),
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
-                        side: BorderSide(color: const Color(0xFF6366F1).withValues(alpha: 0.35)),
-                        backgroundColor: const Color(0xFF6366F1).withValues(alpha: 0.08),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 9,
+                          horizontal: 8,
+                        ),
+                        side: BorderSide(
+                          color: const Color(
+                            0xFF6366F1,
+                          ).withValues(alpha: 0.35),
+                        ),
+                        backgroundColor: const Color(
+                          0xFF6366F1,
+                        ).withValues(alpha: 0.08),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       onPressed: () {
                         HapticFeedback.selectionClick();
-                        BiomechanicalAnalysisSheet.show(context, exerciseName: ex.name);
+                        BiomechanicalAnalysisSheet.show(
+                          context,
+                          exerciseName: ex.name,
+                        );
                       },
                     ),
                   ),
@@ -1671,8 +1819,9 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                   side: BorderSide(
                     color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
                   ),
-                  backgroundColor:
-                      const Color(0xFFF59E0B).withValues(alpha: 0.08),
+                  backgroundColor: const Color(
+                    0xFFF59E0B,
+                  ).withValues(alpha: 0.08),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -1786,14 +1935,16 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              color: isDone
-                  ? MetaColors.emerald.withValues(alpha: 0.08)
-                  : MetaColors.surface,
+              color:
+                  isDone
+                      ? MetaColors.emerald.withValues(alpha: 0.08)
+                      : MetaColors.surface,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isDone
-                    ? MetaColors.emerald.withValues(alpha: 0.4)
-                    : MetaColors.border,
+                color:
+                    isDone
+                        ? MetaColors.emerald.withValues(alpha: 0.4)
+                        : MetaColors.border,
               ),
             ),
             child: Row(
@@ -1809,9 +1960,10 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
-                          color: isDone
-                              ? MetaColors.emerald
-                              : MetaColors.textSecondary,
+                          color:
+                              isDone
+                                  ? MetaColors.emerald
+                                  : MetaColors.textSecondary,
                         ),
                       ),
                       if (isDone && prevWeight > 0 && set.weightKg > prevWeight)
@@ -1941,14 +2093,14 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                         width: 36,
                         height: 36,
                         decoration: BoxDecoration(
-                          color: isDone
-                              ? MetaColors.emerald
-                              : MetaColors.background,
+                          color:
+                              isDone
+                                  ? MetaColors.emerald
+                                  : MetaColors.background,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: isDone
-                                ? MetaColors.emerald
-                                : MetaColors.border,
+                            color:
+                                isDone ? MetaColors.emerald : MetaColors.border,
                             width: 1.5,
                           ),
                         ),
@@ -1988,7 +2140,10 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                 ),
                 style: TextButton.styleFrom(
                   backgroundColor: MetaColors.emerald.withValues(alpha: 0.12),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(
@@ -2016,7 +2171,10 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                   ),
                   style: TextButton.styleFrom(
                     backgroundColor: MetaColors.surfaceHighlight,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -2027,6 +2185,36 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
             ],
           ),
         ),
+
+        // Sugestão de Sobrecarga Progressiva Inteligente (IA Overload)
+        if (!_dismissedOverloadIndices.contains(index)) ...[
+          Builder(
+            builder: (context) {
+              final currentWeight =
+                  sets.isNotEmpty ? sets.first.weightKg : prevWeight;
+              final currentReps =
+                  sets.isNotEmpty
+                      ? sets.first.reps
+                      : _parseDefaultReps(ex.reps);
+
+              final suggestion = ProgressiveOverloadEngine.computeSuggestion(
+                exerciseName: ex.name,
+                targetMuscleGroup: ex.targetMuscleGroup,
+                currentWeight: currentWeight,
+                currentReps: currentReps,
+                previousWeight: prevWeight > 0 ? prevWeight : null,
+                lastRpe: _lastReportedRpe,
+              );
+
+              return AiOverloadCard(
+                suggestion: suggestion,
+                onApply: () => _applyOverloadSuggestion(index, suggestion),
+                onDismiss:
+                    () => setState(() => _dismissedOverloadIndices.add(index)),
+              );
+            },
+          ),
+        ],
       ],
     );
   }

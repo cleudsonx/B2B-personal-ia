@@ -42,7 +42,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103039,
+      buildNumber: 2026103040,
       date: '21 de Outubro, 2026',
       summary:
           'Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas e Gestão Dinâmica de Preços & Planos.',
@@ -179,6 +179,15 @@ class AppChangelog {
           targetRoles: ['admin'],
         ),
 
+        ChangelogItem(
+          icon: Icons.trending_up_rounded,
+          title: 'Motor ProgressiveOverloadEngine na Suíte de IA',
+          description:
+              'Algoritmo determinístico de progressão de carga (Double Progression e Step Loading) integrado aos modelos de treino e suíte visual Meta.',
+          badge: 'IA & CIÊNCIA',
+          targetRoles: ['admin'],
+        ),
+
         // --- PARA O PROFESSOR / TREINADOR ---
         ChangelogItem(
           icon: Icons.fullscreen_rounded,
@@ -271,6 +280,15 @@ class AppChangelog {
           targetRoles: ['trainer'],
         ),
 
+        ChangelogItem(
+          icon: Icons.trending_up_rounded,
+          title: 'Prescrição Adaptativa & Sobrecarga Científica',
+          description:
+              'Seus alunos agora contam com sugestões biomecanicamente dosadas de sobrecarga progressiva (+kg ou +reps) baseadas na intensidade percebida (RPE).',
+          badge: 'SOBRECARGA',
+          targetRoles: ['trainer'],
+        ),
+
         // --- PARA O ALUNO ---
         ChangelogItem(
           icon: Icons.fullscreen_rounded,
@@ -351,6 +369,14 @@ class AppChangelog {
           description:
               'Contagem regressiva circular com feedback tátil e sonoro cadenciado nos últimos 3 segundos (3, 2, 1, GO!), presets rápidos (30s, 60s, 90s, 120s), ajuste fino e modo silencioso/vibração.',
           badge: 'FOCO',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.auto_awesome_rounded,
+          title: 'Motor de Sobrecarga Progressiva Inteligente (AI Overload)',
+          description:
+              'O app analisa o RPE e sugere automaticamente a progressão ideal para o exercício (+2.5 kg, +1 rep ou consolidação técnica), com aplicação direta na ficha em 1 toque.',
+          badge: 'EVOLUÇÃO',
           targetRoles: ['student'],
         ),
       ],
