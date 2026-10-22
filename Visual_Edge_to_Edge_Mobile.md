@@ -113,6 +113,21 @@ Future<void> main() async {
 - **Telas Complementares & Landing Pages (`whatsapp_connection_screen.dart`, `trainer_consultancy_plans_screen.dart`, `trainer_plan_selection_screen.dart`, `ai_news_screen.dart`, `b2b_landing_screen.dart`, `public_trainer_directory_screen.dart`, `student_demo_screen.dart`, `auth_gate.dart`)**:
   - Padronizadas com `SafeArea(bottom: false)` e compensação inferior via `MediaQuery.paddingOf(context).bottom`.
 
+### Camada 6: Scroll-Aware Glass Header / App Bar Dinâmica nos Feeds & Dashboards
+**Arquivos:**
+- `mobile/lib/core/widgets/scroll_aware_glass_header.dart`
+- `mobile/lib/core/widgets/meta_components.dart`
+- `mobile/lib/features/trainer/trainer_students_screen.dart`
+- `mobile/lib/main.dart`
+
+1. **Interpolação Dinâmica de Vidro Fosco (`ScrollAwareGlassHeader` & `SliverScrollAwareGlassHeader`)**:
+   - Transição suave do estado de repouso (`scrollOffset == 0`: 100% cristalino e integrado ao background) para a lâmina de vidro translúcida (`scrollOffset >= 28px`: `BackdropFilter` com `sigmaX: 18, sigmaY: 18`, fundo translúcido `alpha: 0.85/0.90` e borda luminescente de 1px).
+   - Suporte nativo tanto a `CustomScrollView` (via `SliverScrollAwareGlassHeader`) quanto a `Stack` e `ListView` roláveis com escuta reativa de `ScrollController`.
+2. **Feed do Personal Trainer (`TrainerStudentsScreen`)**:
+   - A lista de alunos flui continuamente por trás da barra superior e do campo de busca com desfoque de alta fidelidade visual, eliminando cortes secos.
+3. **Cockpit do Aluno (`MainShellScreen`)**:
+   - Barra superior com `BackdropFilter` em vidro fosco na transição das abas de Treino, Bio-Hub e Perfil.
+
 ---
 
 ## 4. Matriz de Impacto Técnico e Qualidade
@@ -121,9 +136,10 @@ Future<void> main() async {
 |----------|--------------------------|------------------|
 | **Android (Light & Dark)** | `styles.xml` e `values-night/styles.xml` sincronizados com `shortEdges` e `enforceNavigationBarContrast=false` | Elimina barras pretas no modo escuro do Android e na transição da Splash Screen. |
 | **iOS & Dynamic Island** | `UIViewControllerBasedStatusBarAppearance=true` + `MediaQuery.paddingOf` | Respeito cirúrgico à Dynamic Island e ao Home Indicator em toda a navegação. |
+| **Scroll-Aware Glass Header** | `ScrollAwareGlassHeader` com `BackdropFilter` (0 a 18px de blur dinâmico) | Transição translúcida premium nos feeds de alunos e treinos sem cortes secos. |
 | **Prevenção de Duplo Padding** | `MediaQuery.removePadding(removeTop: true)` no `MainShellScreen` | Elimina espaço morto extra no topo das abas do aluno abaixo do cabeçalho. |
 | **Consistência de Temas** | `AppTheme.systemUiOverlayFor(isDark: ...)` global no `MaterialApp.builder` e `AppBarTheme` | Qualquer nova tela criada já nasce 100% Edge-to-Edge no modo claro e escuro. |
-| **Estabilidade & Testes** | `flutter analyze` (0 issues) + 152 testes automatizados passando | Garantia de zero regressão funcional ou visual. |
+| **Estabilidade & Testes** | `flutter analyze` (0 issues) + 166 testes automatizados passando | Garantia de zero regressão funcional ou visual. |
 
 ---
 
@@ -132,7 +148,8 @@ Future<void> main() async {
 - [x] `Info.plist` com `UIViewControllerBasedStatusBarAppearance=true`
 - [x] `web/index.html` com `viewport-fit=cover`, `black-translucent` e `overscroll-behavior: none`
 - [x] `AppTheme.systemUiOverlayFor` criado e aplicado globalmente em `main.dart` e `AppBarTheme`
-- [x] `MainShellScreen`, `TrainerMainLayout` e `AdminShellScreen` operando em modo Edge-to-Edge contínuo
+- [x] `ScrollAwareGlassHeader` e `SliverScrollAwareGlassHeader` implementados e testados
+- [x] `MainShellScreen`, `TrainerMainLayout` e `TrainerStudentsScreen` integrados com cabeçalho de vidro translúcido dinâmico
 - [x] `ActiveWorkoutScreen`, `TrainerAnamnesisScreen`, `B2BAssistantScreen`, `AccountScreen` e `StudentProfileScreen` calibrados com `MediaQuery.paddingOf(context)`
 - [x] `SafeArea(bottom: false)` aplicado nas telas com rolagem vertical para sangria contínua até a base da tela
-- [x] `flutter analyze` limpo (0 warnings/errors) e suíte de testes 100% verde
+- [x] `flutter analyze` limpo (0 warnings/errors) e suíte de testes 100% verde (166 testes)

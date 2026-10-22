@@ -1,7 +1,7 @@
 {
   "version": "1.9.0",
-  "build": 2026103036,
-  "updated_at": "2026-10-22T02:24:53.019266Z",
+  "build": 2026103037,
+  "updated_at": "2026-10-22T02:56:19.993609Z",
   "notes": "Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas e Gestão Dinâmica de Preços & Planos.",
   "changelog": {
     "student": [

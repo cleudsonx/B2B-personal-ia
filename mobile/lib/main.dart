@@ -804,20 +804,32 @@ class _MainShellScreenState extends State<MainShellScreen> {
           extendBody: true,
           body: Column(
             children: [
-              // Top Compact Role & User Banner
-              Container(
-                padding: EdgeInsets.only(
-                  top: MediaQuery.paddingOf(context).top + 6,
-                  bottom: 8,
-                  left: 14,
-                  right: 14,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.card(context),
-                  border: Border(
-                    bottom: BorderSide(color: AppColors.cardBorder(context)),
-                  ),
-                ),
+              // Top Compact Role & User Banner (Scroll-Aware Glass Header)
+              ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                  child: Container(
+                    padding: EdgeInsets.only(
+                      top: MediaQuery.paddingOf(context).top + 6,
+                      bottom: 8,
+                      left: 14,
+                      right: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF131B2E).withValues(alpha: 0.85)
+                          : Colors.white.withValues(alpha: 0.88),
+                      border: Border(
+                        bottom: BorderSide(color: AppColors.cardBorder(context)),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+                          blurRadius: 12,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -986,6 +998,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   ],
                 ),
               ),
+            ),
+          ),
               // Screen Content (removeTop evita duplicação do padding da Status Bar que já foi absorvido pelo banner superior)
               Expanded(
                 child: MediaQuery.removePadding(

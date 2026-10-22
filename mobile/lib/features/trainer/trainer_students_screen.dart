@@ -1,3 +1,4 @@
+import 'dart:ui';
 // ignore_for_file: unused_element, unused_local_variable, unused_field, override_on_non_overriding_member, use_build_context_synchronously
 import 'package:flutter/material.dart';
 import 'presentation/screens/student_details_screen.dart';
@@ -30,6 +31,7 @@ class TrainerStudentsScreen extends StatefulWidget {
 
 class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String _searchQuery = '';
   bool _isLoading = false;
   _StudentRiskFilter _selectedRiskFilter = _StudentRiskFilter.all;
@@ -42,6 +44,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(() { if (mounted) setState(() {}); });
     WorkoutService.studentsRefreshNotifier.addListener(_onStudentsRefreshed);
     _loadStudentsFromDb();
   }
@@ -49,6 +52,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
   @override
   void dispose() {
     WorkoutService.studentsRefreshNotifier.removeListener(_onStudentsRefreshed);
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -1443,14 +1447,47 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
           children: [
             Column(
               children: [
-                // Topo: Cabeçalho & Barra de Pesquisa em Pílula
-                Padding(
-                  padding: EdgeInsets.only(
-                    top: topPadding + 16,
-                    left: 20,
-                    right: 20,
-                    bottom: 12,
-                  ),
+                // Topo: Cabeçalho & Barra de Pesquisa em Pílula (Scroll-Aware Glass Header)
+                Builder(
+                  builder: (context) {
+                    final scrollOffset = _scrollController.hasClients ? _scrollController.offset : 0.0;
+                    final progress = (scrollOffset / 28.0).clamp(0.0, 1.0);
+                    final headerBlur = progress * 18.0;
+                    final glassBg = (isDark ? const Color(0xFF090D16) : const Color(0xFFF0F2F5)).withValues(
+                      alpha: lerpDouble(0.0, isDark ? 0.88 : 0.92, progress)!,
+                    );
+                    final borderColor = progress > 0.3
+                        ? (isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.08))
+                        : Colors.transparent;
+
+                    return ClipRect(
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: headerBlur, sigmaY: headerBlur),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: glassBg,
+                            border: Border(
+                              bottom: BorderSide(
+                                color: borderColor,
+                                width: 1.0,
+                              ),
+                            ),
+                            boxShadow: progress > 0.3
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
+                                      blurRadius: 16,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          padding: EdgeInsets.only(
+                            top: topPadding + 16,
+                            left: 20,
+                            right: 20,
+                            bottom: 12,
+                          ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1763,6 +1800,10 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                     ],
                   ),
                 ),
+              ),
+            );
+          },
+        ),
 
                 // Lista de Alunos (ListView)
                 Expanded(
@@ -1827,6 +1868,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                ),
                              )
                             : ListView.separated(
+                          controller: _scrollController,
                           padding: EdgeInsets.only(
                             top: 8,
                             bottom: bottomPadding + 88,
