@@ -1,5 +1,6 @@
 # Proposta UX/UI: Perfil do Aluno ("Eu") — Mr. Coach
 
+> **Este documento é o capítulo da aba Perfil.** A visão completa das 4 abas (Treino, Mr. Coach AI, Bio-Hub e Perfil) está em [`proposta_redesign_experiencia_aluno_mrcoach.md`](proposta_redesign_experiencia_aluno_mrcoach.md).
 > Status: **PROPOSTA (aguardando aprovação)** · Escopo: `StudentProfileScreen` (`mobile/lib/features/client/student_profile_screen.dart`, ~1.540 linhas)
 > Referências: Apple Fitness+/Saúde, Google Fit/Material 3 Expressive, Samsung Health/One UI 7, Whoop, Nubank.
 > Guardrails obrigatórios: `Visual_Edge_to_Edge_Mobile.md` e `docs/design_system_meta_style.md`.
@@ -159,3 +160,4 @@ Cada fase é publicável sozinha; a Fase 4 só entra após as anteriores estarem
 3. Botão **Compartilhar** no perfil: card de conquistas, convite de indicação, ou ambos?
 4. "Usar aplicativo como" (troca de papel) fica na lista de preferências ou visível só para quem tem mais de um papel?
 5. Começar pela **Fase 1** em uma única entrega ou já agrupar Fases 1–3?
+
