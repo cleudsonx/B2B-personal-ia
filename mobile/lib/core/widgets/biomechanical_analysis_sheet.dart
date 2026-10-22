@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import 'meta_components.dart';
 
 class BiomechanicalAnalysisSheet extends StatefulWidget {
   final String exerciseName;
@@ -41,6 +42,12 @@ class BiomechanicalAnalysisSheet extends StatefulWidget {
 class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+
+    Color get _bg => MetaColors.elevated(context);
+  Color get _cardBg => MetaColors.card(context);
+  Color get _border => MetaColors.cardBorder(context);
+  Color get _textPrimary => MetaColors.text(context);
+  Color get _textSecondary => MetaColors.subtext(context);
   int _selectedPhase =
       0; // 0: Completo, 1: Excêntrica, 2: Isométrica, 3: Concêntrica
   double _animationProgress = 0.0;
@@ -184,13 +191,13 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
   Widget build(BuildContext context) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.88,
-      decoration: const BoxDecoration(
-        color: Color(0xFF090D16),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: _bg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         border: Border(
-          top: BorderSide(color: Color(0xFF1E293B), width: 1.5),
-          left: BorderSide(color: Color(0xFF1E293B), width: 1),
-          right: BorderSide(color: Color(0xFF1E293B), width: 1),
+          top: BorderSide(color: _border, width: 1.5),
+          left: BorderSide(color: _border, width: 1),
+          right: BorderSide(color: _border, width: 1),
         ),
       ),
       child: Column(
@@ -234,8 +241,8 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
                     children: [
                       Text(
                         _data.title,
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
+                        style: TextStyle(
+                          color: _textPrimary,
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
                         ),
@@ -296,9 +303,9 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
             margin: const EdgeInsets.symmetric(horizontal: 20),
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: const Color(0xFF0F172A),
+              color: MetaColors.highlight(context),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFF1E293B)),
+              border: Border.all(color: _border),
             ),
             child: TabBar(
               controller: _tabController,
@@ -657,7 +664,7 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
+        color: MetaColors.highlight(context),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: accent.withValues(alpha: 0.4)),
       ),
@@ -681,8 +688,8 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
                 const SizedBox(height: 4),
                 Text(
                   cue,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
+                  style: TextStyle(
+                    color: _textSecondary,
                     fontSize: 12,
                     height: 1.4,
                   ),
@@ -704,9 +711,9 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF111827),
+        color: _cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF1F2937)),
+        border: Border.all(color: _border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -719,8 +726,8 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
+                  style: TextStyle(
+                    color: _textPrimary,
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
                   ),
@@ -728,8 +735,8 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
                 const SizedBox(height: 2),
                 Text(
                   description,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
+                  style: TextStyle(
+                    color: _textSecondary,
                     fontSize: 11,
                     height: 1.35,
                   ),
@@ -774,10 +781,10 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'MAPA DE ATIVAÇÃO MUSCULAR',
                     style: TextStyle(
-                      color: AppColors.textPrimary,
+                      color: _textPrimary,
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.8,
@@ -846,16 +853,16 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: const Color(0xFF111827),
+            color: _cardBg,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFF1F2937)),
+            border: Border.all(color: _border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.architecture_rounded,
                     color: AppColors.studentCyan,
                     size: 18,
@@ -864,7 +871,7 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
                   Text(
                     'Braço de Momento & Força Articular',
                     style: TextStyle(
-                      color: AppColors.textPrimary,
+                      color: _textPrimary,
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                     ),
@@ -872,10 +879,10 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
                 ],
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'O pico de torque muscular ocorre no terço médio da amplitude de movimento. Mantenha os estabilizadores rígidos para transferir 100% da carga sobre o músculo-alvo sem sobrecarregar as cápsulas articulares.',
                 style: TextStyle(
-                  color: AppColors.textSecondary,
+                  color: _textSecondary,
                   fontSize: 12,
                   height: 1.4,
                 ),
@@ -919,8 +926,8 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
         const SizedBox(width: 5),
         Text(
           label,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
+          style: TextStyle(
+            color: _textSecondary,
             fontSize: 10,
             fontWeight: FontWeight.w500,
           ),
@@ -944,8 +951,8 @@ class _BiomechanicalAnalysisSheetState extends State<BiomechanicalAnalysisSheet>
             Expanded(
               child: Text(
                 muscleName,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
+                style: TextStyle(
+                  color: _textPrimary,
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),

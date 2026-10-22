@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/exercise_media_sheet.dart';
 import '../../core/widgets/biomechanical_analysis_sheet.dart';
+import '../../core/widgets/theme_toggle_button.dart';
 import 'widgets/warmup_sheet.dart';
 import '../../models/exercise_model.dart';
 import '../../models/adaptation_model.dart';
@@ -17,11 +18,11 @@ import '../../services/offline_sync_service.dart';
 import '../../services/exercise_media_service.dart';
 import '../../core/widgets/offline_sync_banner.dart';
 
-/// Modo de Treino Focado no SalÃ£o (Focus Mode)
+/// Modo de Treino Focado no Salão (Focus Mode HUD)
 ///
-/// Desenvolvido para ergonomia One-Hand (Thumb Zone), navegaÃ§Ã£o horizontal
+/// Desenvolvido para ergonomia One-Hand (Thumb Zone), navegação horizontal
 /// por gestos de deslizar (Swipe com PageView), controle de carga sem teclado (+/- 2.5kg),
-/// Auto-Rest Timer com feedback hÃ¡ptico e cÃ¡lculo de tonelagem total (volume load).
+/// Auto-Rest Timer Dynamic Island com feedback háptico e cálculo de volume total.
 class ClientFocusWorkoutScreen extends StatefulWidget {
   final String workoutTitle;
   final String splitIdentifier;
@@ -57,7 +58,7 @@ class _SetProgress {
   bool isCompleted;
 
   _SetProgress({required this.weightKg, required this.reps})
-    : isCompleted = false;
+      : isCompleted = false;
 }
 
 class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
@@ -79,7 +80,10 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
   bool _isRestTimerActive = false;
   bool _isAdapting = false;
 
-  // PersistÃªncia e detecÃ§Ã£o de Recordes Pessoais (PR)
+  // Mapeamento de nomes originais para evitar duplicação recursiva na substituição IA
+  final Map<int, String> _originalExerciseNames = {};
+
+  // Persistência e detecção de Recordes Pessoais (PR)
   Map<int, double> _referencePreviousWeights = {};
   int _lastReportedRpe = 8;
   final Set<int> _dismissedOverloadIndices = {};
@@ -142,7 +146,6 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
         final savedWeight = prefs.getDouble(key);
         if (savedWeight != null && savedWeight > 0) {
           refs[i] = savedWeight;
-          // Hidrata a carga atual com a Ãºltima carga real utilizada
           if (_exerciseSets.containsKey(i)) {
             for (final s in _exerciseSets[i]!) {
               s.weightKg = savedWeight;
@@ -427,14 +430,14 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
       return 'assets/images/biomech_3d_chest.jpg';
     } else if (name.contains('desenvolvimento') ||
         name.contains('elevacao') ||
-        name.contains('elevaÃ§Ã£o') ||
+        name.contains('elevação') ||
         name.contains('ombro') ||
         muscle.contains('deltoid')) {
       return 'assets/images/biomech_3d_shoulders.jpg';
     } else if (name.contains('triceps') ||
-        name.contains('trÃ­ceps') ||
+        name.contains('tríceps') ||
         name.contains('biceps') ||
-        name.contains('bÃ­ceps') ||
+        name.contains('bíceps') ||
         name.contains('rosca') ||
         muscle.contains('braco') ||
         muscle.contains('braquial')) {
@@ -444,7 +447,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
         name.contains('extensora') ||
         name.contains('quadr') ||
         muscle.contains('perna') ||
-        muscle.contains('glÃºteo') ||
+        muscle.contains('glúteo') ||
         muscle.contains('gluteo')) {
       return 'assets/images/biomech_3d_legs.jpg';
     } else if (name.contains('puxada') ||
@@ -459,11 +462,11 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
 
   String _getEmgForExercise(String exerciseName) {
     final lower = exerciseName.toLowerCase();
-    if (lower.contains('triceps') || lower.contains('trÃ­ceps')) {
+    if (lower.contains('triceps') || lower.contains('tríceps')) {
       return '96% EMG';
     }
     if (lower.contains('elevacao') ||
-        lower.contains('elevaÃ§Ã£o') ||
+        lower.contains('elevação') ||
         lower.contains('agachamento')) {
       return '95% EMG';
     }
@@ -474,11 +477,17 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
 
   void _showEquipmentBusyModal(int exerciseIndex) {
     final currentEx = _currentExercises[exerciseIndex];
+    final cardBg = MetaColors.card(context);
+    final border = MetaColors.cardBorder(context);
+    final textPrimary = MetaColors.text(context);
+    final textSecondary = MetaColors.subtext(context);
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: MetaColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      backgroundColor: cardBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        side: BorderSide(color: border),
       ),
       builder: (ctx) {
         return SafeArea(
@@ -494,21 +503,21 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Substituir: ${currentEx.name}',
-                        style: const TextStyle(
+                        'Variação com IA: ${currentEx.name}',
+                        style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
-                          color: MetaColors.textPrimary,
+                          color: textPrimary,
                         ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'O Mr. Coach AI encontra alternativas biomecanicamente equivalentes e notifica seu treinador em tempo real:',
                   style: TextStyle(
-                    color: MetaColors.textSecondary,
+                    color: textSecondary,
                     fontSize: 13,
                   ),
                 ),
@@ -580,22 +589,24 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
   void _showJointPainSelectorModal(int exerciseIndex) {
     final currentEx = _currentExercises[exerciseIndex];
     final joints = [
-      {'name': 'Ombro / Manguito', 'icon': Icons.accessibility_new_rounded},
-      {
-        'name': 'Lombar / Coluna',
-        'icon': Icons.airline_seat_recline_normal_rounded,
-      },
-      {'name': 'Joelho', 'icon': Icons.directions_walk_rounded},
-      {'name': 'Cotovelo', 'icon': Icons.front_hand_rounded},
-      {'name': 'Punho / Mão', 'icon': Icons.pan_tool_rounded},
-      {'name': 'Quadril', 'icon': Icons.accessibility_rounded},
+      {'name': 'Ombro', 'icon': Icons.accessibility_new_rounded},
+      {'name': 'Joelho', 'icon': Icons.airline_seat_legroom_extra_rounded},
+      {'name': 'Lombar', 'icon': Icons.airline_seat_recline_normal_rounded},
+      {'name': 'Punho', 'icon': Icons.pan_tool_rounded},
+      {'name': 'Cotovelo', 'icon': Icons.fitness_center_rounded},
     ];
+
+    final cardBg = MetaColors.card(context);
+    final border = MetaColors.cardBorder(context);
+    final textPrimary = MetaColors.text(context);
+    final textSecondary = MetaColors.subtext(context);
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: MetaColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      backgroundColor: cardBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        side: BorderSide(color: border),
       ),
       builder: (ctx) {
         return SafeArea(
@@ -606,20 +617,20 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
-                  children: const [
-                    Icon(
+                  children: [
+                    const Icon(
                       Icons.health_and_safety_rounded,
                       color: Color(0xFFF59E0B),
                       size: 26,
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Onde você está sentindo dor?',
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
-                          color: MetaColors.textPrimary,
+                          color: textPrimary,
                         ),
                       ),
                     ),
@@ -628,8 +639,8 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                 const SizedBox(height: 6),
                 Text(
                   'A IA do Mr. Coach substituirá "${currentEx.name}" por uma alternativa que alivia a articulação afetada e alertará ${widget.trainerName}.',
-                  style: const TextStyle(
-                    color: MetaColors.textSecondary,
+                  style: TextStyle(
+                    color: textSecondary,
                     fontSize: 12.5,
                   ),
                 ),
@@ -656,7 +667,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                               vertical: 12,
                             ),
                             decoration: BoxDecoration(
-                              color: MetaColors.background,
+                              color: MetaColors.highlight(context),
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
                                 color: const Color(
@@ -675,10 +686,10 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                                 const SizedBox(width: 8),
                                 Text(
                                   jName,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
-                                    color: MetaColors.textPrimary,
+                                    color: textPrimary,
                                   ),
                                 ),
                               ],
@@ -700,12 +711,15 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
     setState(() => _isAdapting = true);
     final target = _currentExercises[exerciseIndex];
 
+    // Guarda nome original para metadados e evita duplicação infinita
+    _originalExerciseNames[exerciseIndex] ??= target.name;
+
     try {
       final AdaptationModel result = await _apiService.adaptExercise(
         currentExercise: target.name,
         reason: reason,
         workoutLocation: widget.workoutLocation,
-        injuriesOrRestrictions: 'AdaptaÃ§Ã£o imediata durante o treino.',
+        injuriesOrRestrictions: 'Adaptação imediata durante o treino.',
       );
 
       if (!mounted) return;
@@ -716,13 +730,15 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
           sets: result.sets,
           reps: result.reps,
           restSeconds: result.restSeconds,
-          notes: '${result.notes}\n[IA: ${result.biomechanicalRationale}]',
+          notes: result.notes.isNotEmpty
+              ? '${result.notes}\n[IA: ${result.biomechanicalRationale}]'
+              : '[IA: ${result.biomechanicalRationale}]',
         );
       });
 
       // Notifica o professor e persiste em adaptation_logs
       await WorkoutService.logAdaptation(
-        originalExercise: target.name,
+        originalExercise: _originalExerciseNames[exerciseIndex]!,
         adaptedExercise: result.adaptedExercise,
         reason: reason,
         details: result.toJson(),
@@ -733,9 +749,9 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
           SnackBar(
             backgroundColor: MetaColors.emerald,
             content: Text(
-              'âœ“ SubstituÃ­do por: ${result.adaptedExercise}',
+              '✓ Substituído por: ${result.adaptedExercise}',
               style: const TextStyle(
-                color: Colors.black,
+                color: Colors.white,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -748,7 +764,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
           const SnackBar(
             backgroundColor: Colors.redAccent,
             content: Text(
-              'NÃ£o foi possÃ­vel adaptar o exercÃ­cio no momento.',
+              'Não foi possível adaptar o exercício no momento.',
             ),
           ),
         );
@@ -825,12 +841,17 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
       return;
     }
 
+    final cardBg = MetaColors.card(context);
+    final border = MetaColors.cardBorder(context);
+    final textPrimary = MetaColors.text(context);
+    final textSecondary = MetaColors.subtext(context);
+
     final action = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: MetaColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        side: BorderSide(color: MetaColors.border),
+      backgroundColor: cardBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        side: BorderSide(color: border),
       ),
       builder: (ctx) {
         return SafeArea(
@@ -845,7 +866,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: MetaColors.border,
+                      color: border,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -866,23 +887,23 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'Pausar ou Sair do Treino?',
                             style: TextStyle(
-                              color: MetaColors.textPrimary,
+                              color: textPrimary,
                               fontSize: 18,
                               fontWeight: FontWeight.w900,
                             ),
                           ),
-                          SizedBox(height: 2),
+                          const SizedBox(height: 2),
                           Text(
                             'Seu progresso atual está ativo.',
                             style: TextStyle(
-                              color: MetaColors.textSecondary,
+                              color: textSecondary,
                               fontSize: 13,
                             ),
                           ),
@@ -895,14 +916,14 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: MetaColors.surfaceHighlight,
+                    color: MetaColors.highlight(context),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: MetaColors.border),
+                    border: Border.all(color: border),
                   ),
                   child: Text(
                     'Você já completou $completedSets série(s). Deseja salvar o progresso dos exercícios concluídos ou descartar este treino?',
-                    style: const TextStyle(
-                      color: MetaColors.textSecondary,
+                    style: TextStyle(
+                      color: textSecondary,
                       fontSize: 13,
                       height: 1.4,
                     ),
@@ -913,7 +934,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                   onPressed: () => Navigator.pop(ctx, 'continue'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: MetaColors.emerald,
-                    foregroundColor: Colors.black,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -929,23 +950,23 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                 OutlinedButton(
                   onPressed: () => Navigator.pop(ctx, 'save_exit'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: MetaColors.textPrimary,
-                    side: const BorderSide(color: MetaColors.border),
+                    foregroundColor: textPrimary,
+                    side: BorderSide(color: border),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
                         Icons.bookmark_border_rounded,
                         size: 18,
-                        color: MetaColors.emerald,
+                        color: MetaColors.emeraldText(context),
                       ),
-                      SizedBox(width: 8),
-                      Text(
+                      const SizedBox(width: 8),
+                      const Text(
                         'Salvar Progresso e Sair',
                         style: TextStyle(
                           fontSize: 14,
@@ -999,20 +1020,30 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.paddingOf(context).top;
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
+    final isDark = MetaColors.isDark(context);
+    final bg = MetaColors.bg(context);
+    final cardBg = MetaColors.card(context);
+    final border = MetaColors.cardBorder(context);
+    final textPrimary = MetaColors.text(context);
+    final textSecondary = MetaColors.subtext(context);
 
     if (_currentExercises.isEmpty) {
       return Scaffold(
-        backgroundColor: MetaColors.background,
-        body: const Center(
+        backgroundColor: bg,
+        body: Center(
           child: Text(
-            'Nenhum exercÃ­cio encontrado neste split.',
-            style: TextStyle(color: MetaColors.textSecondary),
+            'Nenhum exercício encontrado neste split.',
+            style: TextStyle(color: textSecondary),
           ),
         ),
       );
     }
 
     final totalEx = _currentExercises.length;
+    final completedSetsTotal = _countCompletedSets();
+    final allSetsTotal = _countTotalSets();
+    final double completionRatio =
+        allSetsTotal > 0 ? (completedSetsTotal / allSetsTotal).clamp(0.0, 1.0) : 0.0;
 
     return PopScope(
       canPop: false,
@@ -1022,150 +1053,166 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
         }
       },
       child: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: const SystemUiOverlayStyle(
+        value: SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.light,
-          statusBarBrightness: Brightness.dark,
+          statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+          statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
           systemNavigationBarColor: Colors.transparent,
-          systemNavigationBarIconBrightness: Brightness.light,
+          systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         ),
         child: Scaffold(
-          backgroundColor: MetaColors.background,
+          backgroundColor: bg,
           body: Stack(
             children: [
               Column(
                 children: [
-                  // 1. Top Bar Edge-to-Edge
+                  // 1. Top HUD Telemetry Bar (Apple Fitness+ Minimalist Edge-to-Edge)
                   Container(
                     padding: EdgeInsets.only(
-                      top: topPadding + 10,
-                      bottom: 12,
-                      left: 18,
-                      right: 18,
+                      top: topPadding + 8,
+                      bottom: 10,
+                      left: 16,
+                      right: 16,
                     ),
-                    decoration: const BoxDecoration(
-                      color: MetaColors.background,
+                    decoration: BoxDecoration(
+                      color: bg,
+                      border: Border(
+                        bottom: BorderSide(color: border, width: 0.8),
+                      ),
                     ),
                     child: Column(
                       children: [
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             IconButton(
-                              icon: const Icon(
+                              icon: Icon(
                                 Icons.close_rounded,
-                                color: MetaColors.textSecondary,
-                                size: 26,
+                                color: textSecondary,
+                                size: 24,
                               ),
                               tooltip: 'Fechar Focus Mode',
                               onPressed: _handleExitRequest,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
                             ),
-                            Column(
-                              children: [
-                                Text(
-                                  '${widget.splitIdentifier} · EXERCÍCIO ${_currentPage + 1}/$totalEx',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 0.5,
-                                    color: MetaColors.textSecondary,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  widget.splitName,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w900,
-                                    color: MetaColors.textPrimary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                InkWell(
-                                  onTap: () {
-                                    HapticFeedback.lightImpact();
-                                    WarmupSheet.show(
-                                      context,
-                                      initialFocus: widget.splitName,
-                                    );
-                                  },
-                                  borderRadius: BorderRadius.circular(16),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.amber.withValues(
-                                        alpha: 0.12,
-                                      ),
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: Colors.amber.withValues(
-                                          alpha: 0.35,
-                                        ),
-                                      ),
-                                    ),
-                                    child: const Row(
-                                      children: [
-                                        Text(
-                                          '🔥',
-                                          style: TextStyle(fontSize: 12),
-                                        ),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          '3 min',
-                                          style: TextStyle(
-                                            fontSize: 11.5,
-                                            fontWeight: FontWeight.w800,
-                                            color: Colors.amber,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: MetaColors.surface,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: MetaColors.border,
-                                    ),
-                                  ),
-                                  child: Row(
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
                                     children: [
-                                      const Icon(
-                                        Icons.timer_outlined,
-                                        size: 14,
-                                        color: MetaColors.emerald,
-                                      ),
-                                      const SizedBox(width: 4),
                                       Text(
-                                        _formatTimer(_elapsedSeconds),
-                                        style: const TextStyle(
-                                          fontSize: 12,
+                                        '${widget.splitIdentifier} · ${_currentPage + 1}/$totalEx',
+                                        style: TextStyle(
+                                          fontSize: 11,
                                           fontWeight: FontWeight.w900,
-                                          color: MetaColors.textPrimary,
+                                          letterSpacing: 0.5,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                        decoration: BoxDecoration(
+                                          color: MetaColors.emerald.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          '$completedSetsTotal/$allSetsTotal Séries (${(completionRatio * 100).toInt()}%)',
+                                          style: TextStyle(
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.w800,
+                                            color: MetaColors.emeraldText(context),
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    widget.splitName,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w900,
+                                      color: textPrimary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
                             ),
+                            const SizedBox(width: 8),
+                            // Aquecimento 3 min
+                            InkWell(
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                                WarmupSheet.show(
+                                  context,
+                                  initialFocus: widget.splitName,
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Text('🔥', style: TextStyle(fontSize: 11)),
+                                    SizedBox(width: 3),
+                                    Text(
+                                      '3 min',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.amber,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            // Cronômetro da Sessão
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: cardBg,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: border),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.timer_outlined,
+                                    size: 13,
+                                    color: MetaColors.emeraldText(context),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _formatTimer(_elapsedSeconds),
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w900,
+                                      fontFeatures: const [FontFeature.tabularFigures()],
+                                      color: textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            // Toggle Claro / Escuro Rápido
+                            const ThemeToggleButton(compact: true),
                           ],
                         ),
-                        const SizedBox(height: 12),
-                        // Segmented Story Pills (Instagram / WhatsApp Status Pattern)
+                        const SizedBox(height: 10),
+                        // Segmented Stories Pills
                         Row(
                           children: List.generate(totalEx, (barIdx) {
                             final isDone = _isExerciseFullyCompleted(barIdx);
@@ -1181,40 +1228,24 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                                   );
                                 },
                                 child: Container(
-                                  height: 5,
+                                  height: 4.5,
                                   margin: EdgeInsets.symmetric(
-                                    horizontal: totalEx > 6 ? 1.5 : 3.0,
+                                    horizontal: totalEx > 6 ? 1.5 : 2.5,
                                   ),
                                   decoration: BoxDecoration(
-                                    color:
-                                        isDone
-                                            ? MetaColors.emerald
-                                            : (isCurrent
-                                                ? MetaColors.emerald.withValues(
-                                                  alpha: 0.7,
-                                                )
-                                                : MetaColors.surfaceHighlight),
+                                    color: isDone
+                                        ? MetaColors.emerald
+                                        : (isCurrent
+                                            ? MetaColors.emerald.withValues(alpha: 0.75)
+                                            : border),
                                     borderRadius: BorderRadius.circular(3),
-                                    boxShadow:
-                                        isCurrent
-                                            ? [
-                                              BoxShadow(
-                                                color: MetaColors.emerald
-                                                    .withValues(alpha: 0.5),
-                                                blurRadius: 6,
-                                                spreadRadius: 1,
-                                              ),
-                                            ]
-                                            : null,
                                   ),
                                 ),
                               ),
                             );
                           }),
                         ),
-                        const OfflineSyncBanner(
-                          padding: EdgeInsets.only(top: 10),
-                        ),
+                        const OfflineSyncBanner(padding: EdgeInsets.only(top: 8)),
                       ],
                     ),
                   ),
@@ -1239,13 +1270,13 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                     padding: EdgeInsets.only(
                       left: 18,
                       right: 18,
-                      top: 12,
-                      bottom: bottomPadding + 14,
+                      top: 10,
+                      bottom: bottomPadding + 12,
                     ),
-                    decoration: const BoxDecoration(
-                      color: MetaColors.background,
+                    decoration: BoxDecoration(
+                      color: bg,
                       border: Border(
-                        top: BorderSide(color: MetaColors.border, width: 0.6),
+                        top: BorderSide(color: border, width: 0.8),
                       ),
                     ),
                     child: Row(
@@ -1255,12 +1286,8 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                             flex: 1,
                             child: OutlinedButton(
                               style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                side: const BorderSide(
-                                  color: MetaColors.border,
-                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 15),
+                                side: BorderSide(color: border),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
                                 ),
@@ -1271,9 +1298,10 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                                   curve: Curves.easeOutCubic,
                                 );
                               },
-                              child: const Icon(
+                              child: Icon(
                                 Icons.arrow_back_rounded,
-                                color: MetaColors.textPrimary,
+                                color: textPrimary,
+                                size: 20,
                               ),
                             ),
                           ),
@@ -1281,27 +1309,25 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                         ],
                         Expanded(
                           flex: 3,
-                          child:
-                              _currentPage < totalEx - 1
-                                  ? SquircleButton(
-                                    label: 'PrÃ³ximo ExercÃ­cio',
-                                    icon: Icons.arrow_forward_rounded,
-                                    isPrimary: true,
-                                    onPressed: () {
-                                      _pageController.nextPage(
-                                        duration: const Duration(
-                                          milliseconds: 280,
-                                        ),
-                                        curve: Curves.easeOutCubic,
-                                      );
-                                    },
-                                  )
-                                  : SquircleButton(
-                                    label: 'Finalizar Treino',
-                                    icon: Icons.check_circle_rounded,
-                                    isPrimary: true,
-                                    onPressed: _finishWorkout,
-                                  ),
+                          child: _currentPage < totalEx - 1
+                              ? SquircleButton(
+                                  label: 'Próximo Exercício',
+                                  icon: Icons.arrow_forward_rounded,
+                                  isPrimary: true,
+                                  onPressed: () {
+                                    _pageController.nextPage(
+                                      duration: const Duration(milliseconds: 280),
+                                      curve: Curves.easeOutCubic,
+                                    );
+                                  },
+                                )
+                              : SquircleButton(
+                                  label: 'Finalizar Treino',
+                                  icon: Icons.check_circle_rounded,
+                                  isPrimary: true,
+                                  backgroundColor: MetaColors.emerald,
+                                  onPressed: _finishWorkout,
+                                ),
                         ),
                       ],
                     ),
@@ -1309,23 +1335,21 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                 ],
               ),
 
-              // 4. Auto-Rest Timer Floating Sheet
+              // 4. Auto-Rest Timer Floating Sheet (Dynamic Island Style)
               if (_isRestTimerActive)
                 Positioned(
                   left: 18,
                   right: 18,
-                  bottom: bottomPadding + 80,
+                  bottom: bottomPadding + 76,
                   child: Builder(
                     builder: (context) {
                       final isUrgent =
-                          _restSecondsRemaining <= 3 &&
-                          _restSecondsRemaining > 0;
-                      final timerColor =
-                          isUrgent
-                              ? Colors.redAccent
-                              : (_restSecondsRemaining < 15
-                                  ? Colors.amber
-                                  : MetaColors.emerald);
+                          _restSecondsRemaining <= 3 && _restSecondsRemaining > 0;
+                      final timerColor = isUrgent
+                          ? Colors.redAccent
+                          : (_restSecondsRemaining < 15
+                              ? Colors.amber
+                              : MetaColors.emeraldText(context));
 
                       return InkWell(
                         onTap: () {
@@ -1333,45 +1357,41 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                             RestTimerSheet.show(
                               context,
                               seconds: _restSecondsRemaining,
-                              exerciseName:
-                                  _currentExercises[_currentPage].name,
+                              exerciseName: _currentExercises[_currentPage].name,
                               onFinished: _skipRestTimer,
                             );
                           }
                         },
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(22),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 14,
+                            horizontal: 16,
+                            vertical: 12,
                           ),
                           decoration: BoxDecoration(
-                            color: MetaColors.surface,
-                            borderRadius: BorderRadius.circular(20),
+                            color: MetaColors.elevated(context),
+                            borderRadius: BorderRadius.circular(22),
                             border: Border.all(
-                              color: timerColor.withValues(
-                                alpha: isUrgent ? 0.8 : 0.5,
-                              ),
+                              color: timerColor.withValues(alpha: isUrgent ? 0.9 : 0.45),
                               width: isUrgent ? 1.8 : 1.2,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color:
-                                    isUrgent
-                                        ? Colors.redAccent.withValues(
-                                          alpha: 0.3,
-                                        )
-                                        : Colors.black.withValues(alpha: 0.6),
-                                blurRadius: isUrgent ? 22 : 16,
-                                offset: const Offset(0, 6),
+                                color: isUrgent
+                                    ? Colors.redAccent.withValues(alpha: 0.25)
+                                    : (isDark
+                                        ? Colors.black.withValues(alpha: 0.45)
+                                        : Colors.grey.withValues(alpha: 0.2)),
+                                blurRadius: isUrgent ? 20 : 14,
+                                offset: const Offset(0, 4),
                               ),
                             ],
                           ),
                           child: Row(
                             children: [
                               Container(
-                                width: 38,
-                                height: 38,
+                                width: 36,
+                                height: 36,
                                 decoration: BoxDecoration(
                                   color: timerColor.withValues(alpha: 0.15),
                                   shape: BoxShape.circle,
@@ -1382,7 +1402,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                                     style: TextStyle(
                                       color: timerColor,
                                       fontWeight: FontWeight.w900,
-                                      fontSize: 15,
+                                      fontSize: 14,
                                     ),
                                   ),
                                 ),
@@ -1398,21 +1418,15 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                                         Text(
                                           'DESCANSO EM ANDAMENTO',
                                           style: TextStyle(
-                                            fontSize: 10,
+                                            fontSize: 9.5,
                                             fontWeight: FontWeight.w900,
-                                            color:
-                                                isUrgent
-                                                    ? Colors.redAccent
-                                                    : MetaColors.textSecondary,
+                                            color: isUrgent ? Colors.redAccent : textSecondary,
                                             letterSpacing: 0.3,
                                           ),
                                         ),
                                         if (isUrgent) ...[
                                           const SizedBox(width: 4),
-                                          const Text(
-                                            '🔥',
-                                            style: TextStyle(fontSize: 11),
-                                          ),
+                                          const Text('🔥', style: TextStyle(fontSize: 11)),
                                         ],
                                       ],
                                     ),
@@ -1421,27 +1435,21 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                                           ? '$_restSecondsRemaining s • Prepare-se para a série!'
                                           : '${_formatTimer(_restSecondsRemaining)} restantes',
                                       style: TextStyle(
-                                        fontSize: 13,
+                                        fontSize: 12.5,
                                         fontWeight: FontWeight.w900,
-                                        color:
-                                            isUrgent
-                                                ? Colors.redAccent
-                                                : MetaColors.textPrimary,
+                                        color: isUrgent ? Colors.redAccent : textPrimary,
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
+                                    const SizedBox(height: 3),
                                     ClipRRect(
                                       borderRadius: BorderRadius.circular(2),
                                       child: LinearProgressIndicator(
-                                        value:
-                                            _restInitialDuration > 0
-                                                ? (_restSecondsRemaining /
-                                                        _restInitialDuration)
-                                                    .clamp(0.0, 1.0)
-                                                : 0.0,
-                                        backgroundColor: MetaColors.background,
+                                        value: _restInitialDuration > 0
+                                            ? (_restSecondsRemaining / _restInitialDuration).clamp(0.0, 1.0)
+                                            : 0.0,
+                                        backgroundColor: border,
                                         color: timerColor,
-                                        minHeight: 3,
+                                        minHeight: 2.5,
                                       ),
                                     ),
                                   ],
@@ -1450,29 +1458,27 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                               TextButton(
                                 onPressed: () => _addRestSeconds(30),
                                 style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 6,
-                                  ),
-                                  backgroundColor: MetaColors.background,
+                                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                                  backgroundColor: MetaColors.highlight(context),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                 ),
-                                child: const Text(
+                                child: Text(
                                   '+30s',
                                   style: TextStyle(
-                                    color: MetaColors.textPrimary,
+                                    color: textPrimary,
                                     fontWeight: FontWeight.w900,
-                                    fontSize: 12,
+                                    fontSize: 11.5,
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 4),
                               IconButton(
-                                icon: const Icon(
+                                icon: Icon(
                                   Icons.skip_next_rounded,
-                                  color: MetaColors.textSecondary,
+                                  color: textSecondary,
+                                  size: 20,
                                 ),
                                 tooltip: 'Pular Descanso',
                                 onPressed: _skipRestTimer,
@@ -1485,20 +1491,20 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                   ),
                 ),
 
-              // 5. Overlay de AdaptaÃ§Ã£o de ExercÃ­cio (IA)
+              // 5. Overlay de Adaptação de Exercício (IA)
               if (_isAdapting)
                 Positioned.fill(
                   child: Container(
                     color: Colors.black.withValues(alpha: 0.65),
-                    child: const Center(
+                    child: Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          CircularProgressIndicator(color: MetaColors.emerald),
-                          SizedBox(height: 16),
+                          const CircularProgressIndicator(color: MetaColors.emerald),
+                          const SizedBox(height: 16),
                           Text(
-                            'Adaptando exercÃ­cio com IA...',
-                            style: TextStyle(
+                            'Adaptando exercício com IA...',
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
@@ -1520,6 +1526,10 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
     final ex = _currentExercises[index];
     final sets = _exerciseSets[index] ?? [];
     final emg = _getEmgForExercise(ex.name);
+    final cardBg = MetaColors.card(context);
+    final border = MetaColors.cardBorder(context);
+    final textPrimary = MetaColors.text(context);
+    final textSecondary = MetaColors.subtext(context);
 
     final prevWeight = _referencePreviousWeights[index] ?? 0.0;
     double currentMaxWeight = 0.0;
@@ -1530,21 +1540,32 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
     }
     final bool hasNewPr = prevWeight > 0 && currentMaxWeight > prevWeight;
 
+    // A primeira série não concluída é a "série ativa"
+    int activeSetIndex = -1;
+    for (int i = 0; i < sets.length; i++) {
+      if (!sets[i].isCompleted) {
+        activeSetIndex = i;
+        break;
+      }
+    }
+
+    final origName = _originalExerciseNames[index];
+
     return ListView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(18, 10, 18, 100),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
       children: [
-        // Card Principal do ExercÃ­cio
+        // Hero Stage (Card Unificado Raio 24px)
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: MetaColors.surface,
-            borderRadius: BorderRadius.circular(20),
+            color: cardBg,
+            borderRadius: BorderRadius.circular(22),
             border: Border.all(
-              color:
-                  hasNewPr
-                      ? const Color(0xFFF59E0B).withValues(alpha: 0.5)
-                      : MetaColors.border,
+              color: hasNewPr
+                  ? const Color(0xFFF59E0B).withValues(alpha: 0.6)
+                  : border,
+              width: hasNewPr ? 1.5 : 1.0,
             ),
           ),
           child: Column(
@@ -1560,21 +1581,16 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                         Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                               decoration: BoxDecoration(
-                                color: MetaColors.emerald.withValues(
-                                  alpha: 0.15,
-                                ),
+                                color: MetaColors.emerald.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
                                 emg,
-                                style: const TextStyle(
-                                  color: MetaColors.emerald,
-                                  fontSize: 11,
+                                style: TextStyle(
+                                  color: MetaColors.emeraldText(context),
+                                  fontSize: 10.5,
                                   fontWeight: FontWeight.w900,
                                 ),
                               ),
@@ -1583,10 +1599,10 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                             Expanded(
                               child: Text(
                                 ex.targetMuscleGroup.toUpperCase(),
-                                style: const TextStyle(
-                                  fontSize: 11,
+                                style: TextStyle(
+                                  fontSize: 10.5,
                                   fontWeight: FontWeight.w800,
-                                  color: MetaColors.textSecondary,
+                                  color: textSecondary,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -1597,29 +1613,33 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                         const SizedBox(height: 6),
                         Text(
                           ex.name,
-                          style: const TextStyle(
-                            fontSize: 19,
+                          style: TextStyle(
+                            fontSize: 18,
                             fontWeight: FontWeight.w900,
-                            color: MetaColors.textPrimary,
-                            letterSpacing: -0.4,
+                            color: textPrimary,
+                            letterSpacing: -0.3,
                           ),
                         ),
+                        if (origName != null && origName != ex.name) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            'Substituído de: $origName',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFFF59E0B),
+                            ),
+                          ),
+                        ],
                         if (hasNewPr) ...[
                           const SizedBox(height: 6),
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: const Color(
-                                0xFFF59E0B,
-                              ).withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(6),
+                              color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: const Color(
-                                  0xFFF59E0B,
-                                ).withValues(alpha: 0.4),
+                                color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
                               ),
                             ),
                             child: Row(
@@ -1646,9 +1666,9 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                           const SizedBox(height: 4),
                           Text(
                             'Carga anterior: ${prevWeight.toStringAsFixed(1)} kg',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
-                              color: MetaColors.textSecondary,
+                              color: textSecondary,
                             ),
                           ),
                         ],
@@ -1656,33 +1676,32 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  // Imagem anatÃ´mica interativa com badge de play
+                  // Imagem anatômica com badge de reprodução
                   InkWell(
                     onTap: () {
                       HapticFeedback.selectionClick();
                       ExerciseMediaSheet.show(context, exerciseName: ex.name);
                     },
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
                         ClipRRect(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(16),
                           child: Image.asset(
                             _getAnatomicalImage(ex.name, ex.targetMuscleGroup),
-                            width: 68,
-                            height: 68,
+                            width: 66,
+                            height: 66,
                             fit: BoxFit.cover,
-                            errorBuilder:
-                                (_, _, _) => Container(
-                                  width: 68,
-                                  height: 68,
-                                  color: MetaColors.surfaceHighlight,
-                                  child: const Icon(
-                                    Icons.fitness_center_rounded,
-                                    color: MetaColors.textSecondary,
-                                  ),
-                                ),
+                            errorBuilder: (_, _, _) => Container(
+                              width: 66,
+                              height: 66,
+                              color: MetaColors.highlight(context),
+                              child: Icon(
+                                Icons.fitness_center_rounded,
+                                color: textSecondary,
+                              ),
+                            ),
                           ),
                         ),
                         Positioned(
@@ -1694,15 +1713,13 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                               color: Colors.black.withValues(alpha: 0.75),
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: MetaColors.emerald.withValues(
-                                  alpha: 0.8,
-                                ),
+                                color: MetaColors.emerald.withValues(alpha: 0.8),
                                 width: 1,
                               ),
                             ),
                             child: const Icon(
                               Icons.play_arrow_rounded,
-                              size: 13,
+                              size: 12,
                               color: MetaColors.emerald,
                             ),
                           ),
@@ -1714,35 +1731,30 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
               ),
               const SizedBox(height: 12),
 
-              // BotÃµes de AÃ§Ã£o RÃ¡pida de MÃ­dia & BiomecÃ¢nica
+              // Action Dock Unificado (3 Pílulas Ghost Horizontais)
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
                       icon: const Icon(
                         Icons.play_circle_fill_rounded,
-                        size: 16,
+                        size: 15,
                         color: MetaColors.emerald,
                       ),
-                      label: const Text(
-                        'VÃ­deo / GIF',
+                      label: Text(
+                        'Execução',
                         style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: MetaColors.emerald,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: MetaColors.emeraldText(context),
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 9,
-                          horizontal: 8,
-                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
                         side: BorderSide(
                           color: MetaColors.emerald.withValues(alpha: 0.35),
                         ),
-                        backgroundColor: MetaColors.emerald.withValues(
-                          alpha: 0.08,
-                        ),
+                        backgroundColor: MetaColors.emerald.withValues(alpha: 0.08),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -1753,35 +1765,28 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   Expanded(
                     child: OutlinedButton.icon(
                       icon: const Icon(
                         Icons.accessibility_new_rounded,
-                        size: 16,
+                        size: 15,
                         color: Color(0xFF6366F1),
                       ),
-                      label: const Text(
+                      label: Text(
                         'Raio-X 3D',
                         style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF818CF8),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: MetaColors.blueText(context),
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 9,
-                          horizontal: 8,
-                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
                         side: BorderSide(
-                          color: const Color(
-                            0xFF6366F1,
-                          ).withValues(alpha: 0.35),
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.35),
                         ),
-                        backgroundColor: const Color(
-                          0xFF6366F1,
-                        ).withValues(alpha: 0.08),
+                        backgroundColor: const Color(0xFF6366F1).withValues(alpha: 0.08),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -1795,67 +1800,62 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                       },
                     ),
                   ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(
+                        Icons.bolt,
+                        size: 15,
+                        color: Color(0xFFF59E0B),
+                      ),
+                      label: const Text(
+                        'Trocar IA',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFFF59E0B),
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                        side: BorderSide(
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                        ),
+                        backgroundColor: const Color(0xFFF59E0B).withValues(alpha: 0.08),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () => _showEquipmentBusyModal(index),
+                    ),
+                  ),
                 ],
-              ),
-              const SizedBox(height: 8),
-
-              // BotÃ£o de PÃ¢nico "Aparelho Ocupado"
-              OutlinedButton.icon(
-                icon: const Icon(
-                  Icons.bolt,
-                  color: Color(0xFFF59E0B),
-                  size: 18,
-                ),
-                label: const Text(
-                  'Aparelho Ocupado? Sugerir Variação com IA',
-                  style: TextStyle(
-                    color: Color(0xFFF59E0B),
-                    fontWeight: FontWeight.w900,
-                    fontSize: 12.5,
-                  ),
-                ),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  side: BorderSide(
-                    color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
-                  ),
-                  backgroundColor: const Color(
-                    0xFFF59E0B,
-                  ).withValues(alpha: 0.08),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                onPressed: () => _showEquipmentBusyModal(index),
               ),
 
               if (ex.notes.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
-                    color: MetaColors.background,
+                    color: MetaColors.highlight(context),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: MetaColors.border),
+                    border: Border.all(color: border),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.lightbulb_outline_rounded,
-                        size: 16,
-                        color: MetaColors.emerald,
+                        size: 15,
+                        color: MetaColors.emeraldText(context),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           ex.notes,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: MetaColors.textSecondary,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: textSecondary,
                             height: 1.35,
                           ),
                         ),
@@ -1867,21 +1867,21 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
 
-        // CabeÃ§alho da Tabela de SÃ©ries
+        // Cabeçalho da Tabela de Séries
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Row(
-            children: const [
+            children: [
               SizedBox(
-                width: 36,
+                width: 38,
                 child: Text(
                   'SÉRIE',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
-                    color: MetaColors.textSecondary,
+                    color: textSecondary,
                   ),
                 ),
               ),
@@ -1893,7 +1893,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w900,
-                      color: MetaColors.textSecondary,
+                      color: textSecondary,
                     ),
                   ),
                 ),
@@ -1906,7 +1906,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w900,
-                      color: MetaColors.textSecondary,
+                      color: textSecondary,
                     ),
                   ),
                 ),
@@ -1915,11 +1915,11 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                 width: 44,
                 child: Center(
                   child: Text(
-                    'CHECK',
+                    'FEITO',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w900,
-                      color: MetaColors.textSecondary,
+                      color: textSecondary,
                     ),
                   ),
                 ),
@@ -1927,32 +1927,60 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
 
-        // Linhas de SÃ©ries
+        // Matriz Tátil de Séries (Tactile Set Rows)
         ...List.generate(sets.length, (sIdx) {
           final set = sets[sIdx];
           final isDone = set.isCompleted;
+          final isActive = sIdx == activeSetIndex;
 
           return Container(
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              color:
-                  isDone
-                      ? MetaColors.emerald.withValues(alpha: 0.08)
-                      : MetaColors.surface,
+              color: isDone
+                  ? MetaColors.emerald.withValues(alpha: 0.08)
+                  : (isActive
+                      ? cardBg
+                      : cardBg.withValues(alpha: 0.6)),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color:
-                    isDone
-                        ? MetaColors.emerald.withValues(alpha: 0.4)
-                        : MetaColors.border,
+              border: Border(
+                left: BorderSide(
+                  color: isActive
+                      ? MetaColors.emerald
+                      : (isDone ? MetaColors.emerald : border),
+                  width: isActive ? 3.5 : 1.0,
+                ),
+                top: BorderSide(
+                  color: isDone
+                      ? MetaColors.emerald.withValues(alpha: 0.3)
+                      : border,
+                ),
+                right: BorderSide(
+                  color: isDone
+                      ? MetaColors.emerald.withValues(alpha: 0.3)
+                      : border,
+                ),
+                bottom: BorderSide(
+                  color: isDone
+                      ? MetaColors.emerald.withValues(alpha: 0.3)
+                      : border,
+                ),
               ),
+              boxShadow: isActive
+                  ? [
+                      BoxShadow(
+                        color: MetaColors.emerald.withValues(alpha: 0.08),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
             ),
             child: Row(
               children: [
-                // NÃºmero da sÃ©rie
+                // Número da série
                 SizedBox(
                   width: 32,
                   child: Column(
@@ -1961,21 +1989,20 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                       Text(
                         '#${sIdx + 1}',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13.5,
                           fontWeight: FontWeight.w900,
-                          color:
-                              isDone
-                                  ? MetaColors.emerald
-                                  : MetaColors.textSecondary,
+                          color: isDone
+                              ? MetaColors.emeraldText(context)
+                              : (isActive ? textPrimary : textSecondary),
                         ),
                       ),
                       if (isDone && prevWeight > 0 && set.weightKg > prevWeight)
-                        const Text('ðŸ†', style: TextStyle(fontSize: 10)),
+                        const Text('🏆', style: TextStyle(fontSize: 10)),
                     ],
                   ),
                 ),
 
-                // Seletor tÃ¡til de carga (+/- 2.5kg)
+                // Seletor tátil de carga (+/- 2.5kg)
                 Expanded(
                   flex: 5,
                   child: Row(
@@ -1983,46 +2010,49 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                     children: [
                       InkWell(
                         onTap: () => _adjustWeight(index, sIdx, -2.5),
+                        onLongPress: () => _adjustWeight(index, sIdx, -5.0),
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: MetaColors.background,
+                            color: MetaColors.highlight(context),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: MetaColors.border),
+                            border: Border.all(color: border),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.remove,
-                            size: 16,
-                            color: MetaColors.textPrimary,
+                            size: 15,
+                            color: textPrimary,
                           ),
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
                         child: Text(
                           '${set.weightKg} kg',
-                          style: const TextStyle(
-                            fontSize: 15,
+                          style: TextStyle(
+                            fontSize: 14.5,
                             fontWeight: FontWeight.w900,
-                            color: MetaColors.textPrimary,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                            color: textPrimary,
                           ),
                         ),
                       ),
                       InkWell(
                         onTap: () => _adjustWeight(index, sIdx, 2.5),
+                        onLongPress: () => _adjustWeight(index, sIdx, 5.0),
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: MetaColors.background,
+                            color: MetaColors.highlight(context),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: MetaColors.border),
+                            border: Border.all(color: border),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.add,
-                            size: 16,
-                            color: MetaColors.textPrimary,
+                            size: 15,
+                            color: textPrimary,
                           ),
                         ),
                       ),
@@ -2030,7 +2060,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                   ),
                 ),
 
-                // Reps (Ajuste TÃ¡til sem Teclado)
+                // Reps (Ajuste Tátil)
                 Expanded(
                   flex: 3,
                   child: Row(
@@ -2042,25 +2072,26 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            color: MetaColors.background,
+                            color: MetaColors.highlight(context),
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: MetaColors.border),
+                            border: Border.all(color: border),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.remove,
                             size: 12,
-                            color: MetaColors.textSecondary,
+                            color: textSecondary,
                           ),
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
                         child: Text(
                           '${set.reps}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
-                            color: MetaColors.textPrimary,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                            color: textPrimary,
                           ),
                         ),
                       ),
@@ -2070,14 +2101,14 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            color: MetaColors.background,
+                            color: MetaColors.highlight(context),
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: MetaColors.border),
+                            border: Border.all(color: border),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.add,
                             size: 12,
-                            color: MetaColors.textSecondary,
+                            color: textSecondary,
                           ),
                         ),
                       ),
@@ -2085,7 +2116,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                   ),
                 ),
 
-                // BotÃ£o de Check
+                // Botão de Check
                 SizedBox(
                   width: 44,
                   child: Center(
@@ -2096,21 +2127,17 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                         width: 36,
                         height: 36,
                         decoration: BoxDecoration(
-                          color:
-                              isDone
-                                  ? MetaColors.emerald
-                                  : MetaColors.background,
+                          color: isDone ? MetaColors.emerald : MetaColors.highlight(context),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color:
-                                isDone ? MetaColors.emerald : MetaColors.border,
+                            color: isDone ? MetaColors.emerald : border,
                             width: 1.5,
                           ),
                         ),
                         child: Icon(
                           Icons.check_rounded,
                           size: 20,
-                          color: isDone ? Colors.black : Colors.transparent,
+                          color: isDone ? Colors.white : Colors.transparent,
                         ),
                       ),
                     ),
@@ -2121,9 +2148,9 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
           );
         }),
 
-        // AÃ§Ãµes de SÃ©ries (One-Hand Gym UX)
+        // Ações de Séries (Adicionar / Remover)
         Padding(
-          padding: const EdgeInsets.only(top: 8, bottom: 20),
+          padding: const EdgeInsets.only(top: 6, bottom: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -2133,20 +2160,17 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                   size: 16,
                   color: MetaColors.emerald,
                 ),
-                label: const Text(
+                label: Text(
                   'Adicionar Série',
                   style: TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 12,
                     fontWeight: FontWeight.w800,
-                    color: MetaColors.emerald,
+                    color: MetaColors.emeraldText(context),
                   ),
                 ),
                 style: TextButton.styleFrom(
                   backgroundColor: MetaColors.emerald.withValues(alpha: 0.12),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(
@@ -2159,25 +2183,22 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
               if (sets.length > 1) ...[
                 const SizedBox(width: 12),
                 TextButton.icon(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.remove_circle_outline_rounded,
                     size: 16,
-                    color: MetaColors.textSecondary,
+                    color: textSecondary,
                   ),
-                  label: const Text(
+                  label: Text(
                     'Remover Última',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: MetaColors.textSecondary,
+                      color: textSecondary,
                     ),
                   ),
                   style: TextButton.styleFrom(
-                    backgroundColor: MetaColors.surfaceHighlight,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
+                    backgroundColor: MetaColors.highlight(context),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -2196,9 +2217,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
               final currentWeight =
                   sets.isNotEmpty ? sets.first.weightKg : prevWeight;
               final currentReps =
-                  sets.isNotEmpty
-                      ? sets.first.reps
-                      : _parseDefaultReps(ex.reps);
+                  sets.isNotEmpty ? sets.first.reps : _parseDefaultReps(ex.reps);
 
               final suggestion = ProgressiveOverloadEngine.computeSuggestion(
                 exerciseName: ex.name,
@@ -2212,8 +2231,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
               return AiOverloadCard(
                 suggestion: suggestion,
                 onApply: () => _applyOverloadSuggestion(index, suggestion),
-                onDismiss:
-                    () => setState(() => _dismissedOverloadIndices.add(index)),
+                onDismiss: () => setState(() => _dismissedOverloadIndices.add(index)),
               );
             },
           ),

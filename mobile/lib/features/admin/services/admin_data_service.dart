@@ -831,7 +831,7 @@ class AdminDataService {
     return null;
   }
 
-  /// Atualiza perfil de usuário via Backend Service Role + Supabase direto
+  /// Atualiza perfil de usuário via RPC Supabase com SECURITY DEFINER + Backend Service Role + fallback
   static Future<bool> _updateUserProfileEverywhere(
     String userId,
     Map<String, dynamic> payload,
@@ -839,31 +839,56 @@ class AdminDataService {
     invalidateCache();
     bool updated = false;
 
+    // 1. Tenta RPC admin_governance_update_profile no Supabase
     try {
-      final token = AuthService.currentSession?.accessToken;
-      if (token != null && token.isNotEmpty) {
-        final uri = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/users/$userId/update');
-        final resp = await http
-            .post(
-              uri,
-              headers: _authHeaders(),
-              body: jsonEncode(payload),
-            )
-            .timeout(const Duration(seconds: 7));
-        if (resp.statusCode == 200) {
-          updated = true;
-        }
+      final res = await _client.rpc('admin_governance_update_profile', params: {
+        'target_user_id': userId,
+        'updates': payload,
+      });
+      if (res != null) {
+        updated = true;
       }
-    } catch (_) {}
-
-    try {
-      await _client.from('profiles').update(payload).eq('id', userId);
-      updated = true;
     } catch (e) {
-      debugPrint('[AdminDataService] Aviso ao atualizar profiles direto: $e');
+      debugPrint('[AdminDataService] RPC admin_governance_update_profile falhou: $e');
     }
 
-    return updated || true;
+    // 2. Se a RPC não foi executada, tenta via endpoint backend Service Role
+    if (!updated) {
+      try {
+        final token = AuthService.currentSession?.accessToken;
+        if (token != null && token.isNotEmpty) {
+          final uri = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/users/$userId/update');
+          final resp = await http
+              .post(
+                uri,
+                headers: _authHeaders(),
+                body: jsonEncode(payload),
+              )
+              .timeout(const Duration(seconds: 7));
+          if (resp.statusCode == 200) {
+            updated = true;
+          }
+        }
+      } catch (e) {
+        debugPrint('[AdminDataService] Backend update falhou: $e');
+      }
+    }
+
+    // 3. Fallback: update direto na tabela profiles (sanitizando colunas inexistentes)
+    if (!updated) {
+      try {
+        final cleanPayload = Map<String, dynamic>.from(payload);
+        cleanPayload.remove('subscription_tier');
+        cleanPayload.remove('cref');
+        await _client.from('profiles').update(cleanPayload).eq('id', userId);
+        updated = true;
+      } catch (e) {
+        debugPrint('[AdminDataService] Aviso ao atualizar profiles direto: $e');
+      }
+    }
+
+    invalidateCache();
+    return updated;
   }
 
   /// Obtém métricas executivas consolidadas a partir do banco real (Supabase / Service Role)
@@ -1244,6 +1269,111 @@ class AdminDataService {
     ];
   }
 
+  /// Altera o papel principal do usuário (Downgrade para Aluno ou Promoção para Personal)
+  static Future<bool> changeUserRole(String userId, String targetRole) async {
+    final cleanRole = targetRole.toLowerCase().trim();
+    final Map<String, dynamic> payload;
+    if (cleanRole == 'client' || cleanRole == 'student') {
+      payload = {
+        'role': 'client',
+        'roles': ['client'],
+      };
+    } else if (cleanRole == 'trainer') {
+      payload = {
+        'role': 'trainer',
+        'roles': ['trainer'],
+      };
+    } else if (cleanRole == 'admin') {
+      payload = {
+        'role': 'admin',
+        'roles': ['trainer', 'admin'],
+        'is_admin': true,
+      };
+    } else {
+      payload = {
+        'role': cleanRole,
+        'roles': [cleanRole],
+      };
+    }
+    return _updateUserProfileEverywhere(userId, payload);
+  }
+
+  /// Exclui um usuário definitivamente do sistema (SuperAdmin Action)
+  static Future<bool> deleteUser(String userId) async {
+    invalidateCache();
+    bool deleted = false;
+
+    // 1. Tenta RPC admin_governance_delete_user no Supabase
+    try {
+      final res = await _client.rpc('admin_governance_delete_user', params: {
+        'target_user_id': userId,
+      });
+      if (res == true) {
+        deleted = true;
+      }
+    } catch (e) {
+      debugPrint('[AdminDataService] RPC admin_governance_delete_user falhou: $e');
+    }
+
+    // 2. Se a RPC não foi executada, tenta via endpoint backend Service Role
+    if (!deleted) {
+      try {
+        final token = AuthService.currentSession?.accessToken;
+        if (token != null && token.isNotEmpty) {
+          final uri = Uri.parse('${AppConfig.apiBaseUrl}/subscriptions/admin/users/$userId/delete');
+          final resp = await http
+              .post(
+                uri,
+                headers: _authHeaders(),
+                body: jsonEncode({'hard_delete': true}),
+              )
+              .timeout(const Duration(seconds: 8));
+          if (resp.statusCode == 200) {
+            deleted = true;
+          }
+        }
+      } catch (e) {
+        debugPrint('[AdminDataService] Erro ao chamar endpoint backend de exclusão: $e');
+      }
+    }
+
+    // 3. Fallback direto via Supabase se o backend não processar
+    if (!deleted) {
+      try {
+        await _client.from('audit_log').delete().eq('trainer_id', userId);
+        await _client.from('workouts').delete().eq('trainer_id', userId);
+        await _client.from('anamnesis').delete().eq('client_id', userId);
+        await _client.from('student_invoices').delete().eq('student_id', userId);
+        await _client.from('profiles').update({'trainer_id': null}).eq('trainer_id', userId);
+        await _client.from('profiles').delete().eq('id', userId);
+        deleted = true;
+      } catch (e) {
+        debugPrint('[AdminDataService] Erro ao deletar no Supabase direto: $e');
+      }
+    }
+
+    invalidateCache();
+    return deleted;
+  }
+
+  /// Desvincula o aluno de qualquer treinador (torna aluno independente)
+  static Future<bool> unlinkStudentTrainer(String studentId) async {
+    return _updateUserProfileEverywhere(studentId, {
+      'trainer_id': null,
+    });
+  }
+
+  /// Dispara e-mail de redefinição de senha para suporte
+  static Future<bool> sendPasswordResetEmail(String email) async {
+    try {
+      await _client.auth.resetPasswordForEmail(email.trim());
+      return true;
+    } catch (e) {
+      debugPrint('[AdminDataService] Erro ao enviar reset de senha: $e');
+      return false;
+    }
+  }
+
   /// Concede ou remove status de Administrador
   static Future<bool> setAdminStatus(String userId, bool isAdmin) async {
     return _updateUserProfileEverywhere(userId, {
@@ -1275,7 +1405,6 @@ class AdminDataService {
   }) async {
     return _updateUserProfileEverywhere(userId, {
       'current_plan': planName,
-      'subscription_tier': planName.toLowerCase(),
       'max_students': maxStudents,
       'is_vip': isVip,
       if (adminNotes != null) 'admin_notes': adminNotes,
@@ -1290,7 +1419,6 @@ class AdminDataService {
   }) async {
     return _updateUserProfileEverywhere(userId, {
       'professional_document': cref,
-      'cref': cref,
       'cref_verified': isVerified,
     });
   }

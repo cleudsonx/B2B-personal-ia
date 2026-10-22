@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/theme/theme_controller.dart';
 import '../../core/widgets/meta_components.dart';
+import '../../core/widgets/theme_toggle_button.dart';
 import '../../core/widgets/student_ux_components.dart';
 import '../../core/widgets/split_photo_slider.dart';
 import '../../core/widgets/student_weekly_checkin_sheet.dart';
@@ -1001,16 +1003,17 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
     final topPadding = MediaQuery.paddingOf(context).top;
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
 
+    final isDark = ThemeController.instance.isEffectiveDark(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
+      value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
         systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: MetaColors.background,
+        backgroundColor: MetaColors.bg(context),
         body: NestedScrollView(
           headerSliverBuilder: (context, innerBoxIsScrolled) => [
             SliverToBoxAdapter(
@@ -1066,6 +1069,7 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                             ],
                           ),
                         ),
+                        const ThemeToggleButton(compact: true),
                       ],
                     ),
                     const SizedBox(height: 14),
@@ -2849,7 +2853,7 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(
-                    color: MetaColors.surface,
+                    color: MetaColors.card(context),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Center(
@@ -3181,9 +3185,9 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: MetaColors.surface,
+                color: MetaColors.card(context),
                 shape: BoxShape.circle,
-                border: Border.all(color: MetaColors.border),
+                border: Border.all(color: MetaColors.cardBorder(context)),
               ),
               child: const Icon(Icons.add_a_photo_outlined, size: 24, color: MetaColors.emerald),
             ),

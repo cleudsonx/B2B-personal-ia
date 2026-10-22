@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import '../../core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import '../../core/widgets/meta_components.dart';
+import '../../core/widgets/theme_toggle_button.dart';
 import '../../core/widgets/app_version_footer.dart';
 import 'screens/admin_dashboard_screen.dart';
 import 'screens/admin_users_screen.dart';
@@ -143,6 +144,10 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
     }
 
 
+    final isDark = MetaColors.isDark(context);
+    final bg = isDark ? const Color(0xFF090D16) : const Color(0xFFF1F5F9);
+    final barBg = isDark ? const Color(0xFF111827) : Colors.white;
+    final textPrimary = isDark ? Colors.white : const Color(0xFF0F172A);
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
         const SingleActivator(LogicalKeyboardKey.keyK, control: true): _openOmniSearch,
@@ -151,22 +156,22 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
       child: Focus(
         autofocus: true,
         child: AnnotatedRegion<SystemUiOverlayStyle>(
-          value: AppTheme.systemUiOverlayFor(isDark: true),
+          value: AppTheme.systemUiOverlayFor(isDark: isDark),
           child: Scaffold(
-      backgroundColor: const Color(0xFF090D16),
+      backgroundColor: bg,
       appBar: isDesktop
           ? null
           : AppBar(
-              backgroundColor: const Color(0xFF111827),
+              backgroundColor: barBg,
               elevation: 0,
-              title: const Row(
+              title: Row(
                 children: [
-                  Text('⚡', style: TextStyle(fontSize: 18)),
-                  SizedBox(width: 8),
+                  const Text('⚡', style: TextStyle(fontSize: 18)),
+                  const SizedBox(width: 8),
                   Text(
                     'Mr. Coach • Admin',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: textPrimary,
                       fontSize: 17,
                       fontWeight: FontWeight.w900,
                     ),
@@ -174,6 +179,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                 ],
               ),
               actions: [
+                const ThemeToggleButton(compact: true),
                 IconButton(
                   tooltip: 'Buscar comando (Ctrl+K)',
                   icon: const Icon(Icons.search_rounded, color: Color(0xFF818CF8)),
@@ -183,7 +189,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                   onPressed: widget.onExitAdmin,
                   icon: const Icon(Icons.exit_to_app_rounded, size: 16, color: Color(0xFF818CF8)),
                   label: const Text(
-                    'Sair do Admin',
+                    'Sair',
                     style: TextStyle(color: Color(0xFF818CF8), fontSize: 13, fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -201,8 +207,8 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
       bottomNavigationBar: isDesktop
           ? null
           : NavigationBar(
-              backgroundColor: const Color(0xFF111827),
-              indicatorColor: const Color(0xFF6366F1).withValues(alpha: 0.3),
+              backgroundColor: isDark ? const Color(0xFF111827) : Colors.white,
+              indicatorColor: const Color(0xFF6366F1).withValues(alpha: 0.25),
               selectedIndex: _currentSectionIndex.clamp(0, 3),
               onDestinationSelected: (idx) {
                 setState(() => _currentSectionIndex = idx);
@@ -288,12 +294,16 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
   }
 
   Widget _buildDesktopSidebar() {
+    final isDark = MetaColors.isDark(context);
+    final sidebarBg = isDark ? const Color(0xFF111827) : Colors.white;
+    final sidebarBorder = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
+    
     return Container(
       width: 250,
-      decoration: const BoxDecoration(
-        color: Color(0xFF111827),
+      decoration: BoxDecoration(
+        color: sidebarBg,
         border: Border(
-          right: BorderSide(color: Color(0xFF1F2937), width: 1.2),
+          right: BorderSide(color: sidebarBorder, width: 1.2),
         ),
       ),
       child: Column(
@@ -523,26 +533,34 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: const Color(0xFF1F2937)),
                   ),
-                  child: Row(
+                  child: Column(
                     children: [
-                      const CircleAvatar(
-                        radius: 14,
-                        backgroundColor: Color(0xFF6366F1),
-                        child: Text(
-                          '⚡',
-                          style: TextStyle(fontSize: 12),
-                        ),
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 10),
+                        child: ThemeToggleButton(),
                       ),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Text(
-                          'Acesso SuperAdmin',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                      const Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 14,
+                            backgroundColor: Color(0xFF6366F1),
+                            child: Text(
+                              '⚡',
+                              style: TextStyle(fontSize: 12),
+                            ),
                           ),
-                        ),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Acesso SuperAdmin',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

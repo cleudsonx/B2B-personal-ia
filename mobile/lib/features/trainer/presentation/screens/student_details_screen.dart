@@ -1,3 +1,4 @@
+import '../../../../core/widgets/theme_toggle_button.dart';
 import '../../../../services/workout_service.dart';
 import '../../../../services/evolution_photo_service.dart';
 import '../../../../services/body_metrics_service.dart';
@@ -3684,6 +3685,8 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
           ),
           centerTitle: true,
           actions: [
+            const ThemeToggleButton(compact: true),
+            const SizedBox(width: 4),
             IconButton(
               icon: const Icon(Icons.forum_outlined, color: MetaColors.emerald),
               tooltip: 'Incentivo no WhatsApp',
@@ -4646,7 +4649,7 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                                           : MetaColors.emerald,
                                     ),
                                     const SizedBox(width: 6),
-                                    const Text('Recovery', style: TextStyle(fontSize: 11, color: MetaColors.textSecondary)),
+                                    Text('Recovery', style: TextStyle(fontSize: 11, color: MetaColors.subtext(context))),
                                   ],
                                 ),
                                 const SizedBox(height: 6),
@@ -4705,7 +4708,7 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                                           : MetaColors.textSecondary,
                                     ),
                                     const SizedBox(width: 6),
-                                    const Text('Esforço RPE', style: TextStyle(fontSize: 11, color: MetaColors.textSecondary)),
+                                    Text('Esforço RPE', style: TextStyle(fontSize: 11, color: MetaColors.subtext(context))),
                                   ],
                                 ),
                                 const SizedBox(height: 6),

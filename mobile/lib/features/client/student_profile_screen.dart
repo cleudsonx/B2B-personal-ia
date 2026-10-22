@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/theme_controller.dart';
+import '../../core/widgets/theme_toggle_button.dart';
 import '../../core/widgets/avatar_selector_sheet.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/profile_edit_sheet.dart';
@@ -1344,6 +1345,8 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
           ),
         ),
         actions: [
+          const ThemeToggleButton(compact: true),
+          const SizedBox(width: 4),
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
             tooltip: 'Sair deste aparelho',

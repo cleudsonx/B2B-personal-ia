@@ -14,7 +14,6 @@ import '../../services/workout_service.dart';
 import '../../services/subscription_service.dart';
 import '../../models/subscription_model.dart';
 import '../subscription/subscription_screen.dart';
-import '../auth/auth_gate.dart';
 import 'anamnesis_screen.dart';
 import 'presentation/screens/trainer_profile_setup_screen.dart';
 

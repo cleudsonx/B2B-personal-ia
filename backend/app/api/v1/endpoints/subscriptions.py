@@ -2844,7 +2844,7 @@ async def admin_update_user_profile(
     current_user: Dict[str, Any] = Depends(_require_superadmin_user),
 ):
     """
-    Atualiza atributos administrativos de um usuário na tabela public.profiles via Service Role,
+    Atualiza atributos administrativos de um usuário na tabela public.profiles via Service Role / RPC,
     contornando restrições de trigger de usuário comum e registrando trilha de auditoria.
     """
     if not is_valid_uuid(target_user_id):
@@ -2865,34 +2865,56 @@ async def admin_update_user_profile(
         "admin_notes",
         "current_plan",
         "max_students",
-        "subscription_tier",
         "subscription_status",
+        "subscription_valid_until",
         "session_revoked_at",
         "phone",
+        "professional_document",
         "cref",
         "cref_verified",
         "trainer_id",
     }
     update_data = {k: v for k, v in payload.items() if k in allowed_fields}
+    if "cref" in update_data and "professional_document" not in update_data:
+        update_data["professional_document"] = update_data["cref"]
     update_data["updated_at"] = datetime.utcnow().isoformat()
 
+    res_data = None
     try:
-        res = await client.table("profiles").update(update_data).eq("id", target_user_id).execute()
-    except Exception:
-        core_fields = {
-            "full_name",
-            "role",
-            "roles",
-            "subscription_tier",
-            "subscription_status",
-            "session_revoked_at",
-            "phone",
-            "cref",
-            "trainer_id",
-            "updated_at",
-        }
-        fallback_data = {k: v for k, v in update_data.items() if k in core_fields}
-        res = await client.table("profiles").update(fallback_data).eq("id", target_user_id).execute()
+        rpc_res = await client.rpc("admin_governance_update_profile", {
+            "target_user_id": target_user_id,
+            "updates": update_data,
+        }).execute()
+        res_data = rpc_res.data
+    except Exception as rpc_err:
+        logger.warning("[admin/update_user_profile] Fallback para update direto em profiles: %s", rpc_err)
+        try:
+            direct_fields = {
+                "full_name",
+                "role",
+                "roles",
+                "is_admin",
+                "is_vip",
+                "is_suspended",
+                "status",
+                "admin_notes",
+                "current_plan",
+                "max_students",
+                "subscription_status",
+                "subscription_valid_until",
+                "session_revoked_at",
+                "phone",
+                "professional_document",
+                "cref_verified",
+                "trainer_id",
+                "updated_at",
+            }
+            clean_update = {k: v for k, v in update_data.items() if k in direct_fields}
+            res = await client.table("profiles").update(clean_update).eq("id", target_user_id).execute()
+            res_data = res.data[0] if (res and res.data) else clean_update
+        except Exception as direct_err:
+            logger.error("[admin/update_user_profile] Erro no update direto: %s", direct_err)
+            raise HTTPException(status_code=500, detail=f"Erro ao atualizar perfil: {direct_err}")
 
     admin_id = current_user.get("sub") or current_user.get("id")
     try:
@@ -2908,8 +2930,80 @@ async def admin_update_user_profile(
     return {
         "ok": True,
         "user_id": target_user_id,
-        "updated": res.data[0] if (res and res.data) else update_data,
+        "updated": res_data or update_data,
     }
+
+
+@router.post("/admin/users/{target_user_id}/delete")
+async def admin_delete_user(
+    target_user_id: str,
+    payload: Optional[Dict[str, Any]] = None,
+    current_user: Dict[str, Any] = Depends(_require_superadmin_user),
+):
+    """
+    Exclui um usuário do Supabase (tabela profiles e auth.users) via RPC / Service Role,
+    com trilha de auditoria para o Mission Control.
+    """
+    if not is_valid_uuid(target_user_id):
+        raise HTTPException(status_code=400, detail="UUID de usuário inválido.")
+
+    client = await supabase_service.get_client()
+    if not client:
+        raise HTTPException(status_code=503, detail="Cliente Supabase indisponível.")
+
+    admin_id = current_user.get("sub") or current_user.get("id")
+    if target_user_id == admin_id:
+        raise HTTPException(status_code=400, detail="Você não pode excluir sua própria conta de superadmin.")
+
+    try:
+        try:
+            await client.rpc("admin_governance_delete_user", {"target_user_id": target_user_id}).execute()
+            return {"ok": True, "message": "Usuário excluído com sucesso do sistema.", "user_id": target_user_id}
+        except Exception as rpc_err:
+            logger.warning("[admin/delete_user] RPC falhou, executando deleção direta: %s", rpc_err)
+
+        try:
+            await client.table("workout_sessions").delete().eq("user_id", target_user_id).execute()
+        except Exception:
+            pass
+        try:
+            await client.table("anamnesis").delete().eq("client_id", target_user_id).execute()
+        except Exception:
+            pass
+        try:
+            await client.table("student_invoices").delete().eq("student_id", target_user_id).execute()
+        except Exception:
+            pass
+        try:
+            await client.table("audit_log").delete().eq("trainer_id", target_user_id).execute()
+        except Exception:
+            pass
+        try:
+            await client.table("profiles").update({"trainer_id": None}).eq("trainer_id", target_user_id).execute()
+        except Exception:
+            pass
+
+        try:
+            await client.auth.admin.delete_user(target_user_id)
+        except Exception as auth_err:
+            logger.warning("[admin/delete_user] Aviso ao remover de auth.users: %s", auth_err)
+
+        await client.table("profiles").delete().eq("id", target_user_id).execute()
+
+        if is_valid_uuid(admin_id):
+            try:
+                await client.table("audit_log").insert({
+                    "user_id": admin_id,
+                    "action": "admin.delete_user",
+                    "metadata": {"target_user_id": target_user_id},
+                }).execute()
+            except Exception:
+                pass
+
+        return {"ok": True, "message": "Usuário excluído com sucesso do sistema.", "user_id": target_user_id}
+    except Exception as exc:
+        logger.error("[admin/delete_user] Erro ao excluir usuário %s: %s", target_user_id, exc)
+        raise HTTPException(status_code=500, detail=f"Erro ao excluir usuário: {exc}")
 
 
 @router.get("/admin/inspect-table/{table_name}")

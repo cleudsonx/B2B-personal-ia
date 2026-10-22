@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/theme/theme_controller.dart';
+import '../../core/widgets/theme_toggle_button.dart';
 import '../../core/widgets/app_version_footer.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../services/auth_service.dart';
@@ -288,14 +289,20 @@ class _AccountScreenState extends State<AccountScreen> {
       padding: EdgeInsets.fromLTRB(20, topInset + 16, 20, bottomInset + 110),
       children: [
         // Topo: Título da tela
-        Text(
-          'Conta',
-          style: TextStyle(
-            color: MetaColors.text(context),
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.5,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Conta',
+              style: TextStyle(
+                color: MetaColors.text(context),
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const ThemeToggleButton(compact: true),
+          ],
         ),
         const SizedBox(height: 16),
 

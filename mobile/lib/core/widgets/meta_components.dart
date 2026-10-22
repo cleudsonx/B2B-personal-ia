@@ -43,20 +43,44 @@ class MetaColors {
   static Color card(BuildContext context) =>
       isDark(context) ? surface : lightSurface;
 
+  static Color elevated(BuildContext context) =>
+      isDark(context) ? const Color(0xFF1A243B) : Colors.white;
+
   static Color highlight(BuildContext context) =>
       isDark(context) ? surfaceHighlight : lightSurfaceHighlight;
 
   static Color cardBorder(BuildContext context) =>
-      isDark(context) ? border : lightBorder;
+      isDark(context) ? border : const Color(0xFFE2E8F0);
 
   static Color text(BuildContext context) =>
-      isDark(context) ? textPrimary : lightTextPrimary;
+      isDark(context) ? textPrimary : const Color(0xFF0F172A);
 
   static Color subtext(BuildContext context) =>
-      isDark(context) ? textSecondary : lightTextSecondary;
+      isDark(context) ? textSecondary : const Color(0xFF475569);
+
+  static Color muted(BuildContext context) =>
+      const Color(0xFF64748B);
 
   static Color primaryColor(BuildContext context) =>
       isDark(context) ? emerald : lightEmerald;
+
+  static Color emeraldText(BuildContext context) =>
+      isDark(context) ? const Color(0xFF34D399) : const Color(0xFF047857);
+
+  static Color blueText(BuildContext context) =>
+      isDark(context) ? accentBlue : const Color(0xFF0369A1);
+
+  static Color amber(BuildContext context) =>
+      isDark(context) ? const Color(0xFFFBBF24) : const Color(0xFFD97706);
+
+  static Color amberText(BuildContext context) =>
+      isDark(context) ? const Color(0xFFFBBF24) : const Color(0xFFB45309);
+
+  static Color red(BuildContext context) =>
+      isDark(context) ? const Color(0xFFEF4444) : const Color(0xFFDC2626);
+
+  static Color redText(BuildContext context) =>
+      isDark(context) ? const Color(0xFFF87171) : const Color(0xFFB91C1C);
 }
 
 /// Helper para carregar avatares e imagens tanto de rede (HTTP) quanto locais (assets/)

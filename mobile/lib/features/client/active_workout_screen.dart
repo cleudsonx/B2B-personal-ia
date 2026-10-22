@@ -1,3 +1,5 @@
+import '../../core/theme/theme_controller.dart';
+import '../../core/widgets/theme_toggle_button.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
@@ -38,9 +40,17 @@ class ActiveWorkoutScreen extends StatefulWidget {
 }
 
 class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
+  bool get _isDark => ThemeController.instance.isEffectiveDark(context);
+  Color get _bg => MetaColors.bg(context);
+  Color get _cardBg => MetaColors.card(context);
+  Color get _border => MetaColors.cardBorder(context);
+  Color get _textPrimary => MetaColors.text(context);
+  Color get _textSecondary => MetaColors.subtext(context);
+  Color get _highlight => MetaColors.highlight(context);
+
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
-  String _workoutTitle = '';
+  String _workoutTitle = '•';
   String _workoutLocation = 'Academia completa e espaço de musculação';
   String _trainerName = 'Carregando treinador...';
   String? _trainerPhone;
@@ -123,8 +133,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           isWorkoutInProgress
                               ? 'Nova versão da ficha disponível! Conclua seu treino ou recarregue.'
                               : 'Sua ficha de treino foi atualizada pelo seu treinador!',
-                          style: const TextStyle(
-                            color: MetaColors.textPrimary,
+                          style: TextStyle(
+                            color: _textPrimary,
                             fontWeight: FontWeight.w700,
                             fontSize: 13,
                           ),
@@ -145,7 +155,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       ),
                     ],
                   ),
-                  backgroundColor: MetaColors.surfaceHighlight,
+                  backgroundColor: _highlight,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -167,8 +177,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   String _getTrainerInitials() {
     final clean =
         _trainerName
-            .replaceAll('Prof.', '')
-            .replaceAll('Carregando...', '')
+            .replaceAll('Prof.', '•')
+            .replaceAll('Carregando...', '•')
             .trim();
     if (clean.isEmpty) return 'PT';
     final parts = clean.split(' ').where((p) => p.isNotEmpty).toList();
@@ -261,7 +271,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         _splits = [];
         _selectedSplitIndex = 0;
         _exercises = [];
-        _workoutTitle = '';
+        _workoutTitle = '•';
         _completedExerciseIndices.clear();
         _adaptedIndices.clear();
         _startedAt = null;
@@ -398,7 +408,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            backgroundColor: MetaColors.surfaceHighlight,
+            backgroundColor: _highlight,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -449,7 +459,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       return;
     }
 
-    final digits = rawPhone.replaceAll(RegExp(r'\D'), '');
+    final digits = rawPhone.replaceAll(RegExp(r'\D'), '•');
     final phone = digits.startsWith('55')
         ? digits
         : (digits.length >= 10 && digits.length <= 11 ? '55$digits' : digits);
@@ -484,10 +494,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: MetaColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        side: BorderSide(color: MetaColors.border),
+      backgroundColor: _cardBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        side: BorderSide(color: _border),
       ),
       builder: (ctx) {
         return SafeArea(
@@ -504,19 +514,19 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     Expanded(
                       child: Text(
                         'Substituir: ${currentExercise.name}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
-                          color: MetaColors.textPrimary,
+                          color: _textPrimary,
                         ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'O Mr. Coach AI encontrará uma variação biomecanicamente equivalente e notificará seu professor:',
-                  style: TextStyle(color: MetaColors.textSecondary, fontSize: 13),
+                  style: TextStyle(color: _textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton.icon(
@@ -591,10 +601,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: MetaColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        side: BorderSide(color: MetaColors.border),
+      backgroundColor: _cardBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        side: BorderSide(color: _border),
       ),
       builder: (ctx) {
         return SafeArea(
@@ -604,21 +614,21 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.warning_amber_rounded,
                       color: Color(0xFFF59E0B),
                       size: 26,
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Qual articulação apresenta desconforto?',
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
-                          color: MetaColors.textPrimary,
+                          color: _textPrimary,
                         ),
                       ),
                     ),
@@ -627,8 +637,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 const SizedBox(height: 6),
                 Text(
                   'Exercício: ${currentExercise.name}',
-                  style: const TextStyle(
-                    color: MetaColors.textSecondary,
+                  style: TextStyle(
+                    color: _textSecondary,
                     fontSize: 13,
                   ),
                 ),
@@ -642,8 +652,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           horizontal: 16,
                         ),
                         alignment: Alignment.centerLeft,
-                        side: const BorderSide(color: MetaColors.border),
-                        backgroundColor: MetaColors.surfaceHighlight,
+                        side: BorderSide(color: _border),
+                        backgroundColor: _highlight,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -666,8 +676,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           const SizedBox(width: 12),
                           Text(
                             item['name']!,
-                            style: const TextStyle(
-                              color: MetaColors.textPrimary,
+                            style: TextStyle(
+                              color: _textPrimary,
                               fontWeight: FontWeight.w700,
                               fontSize: 14,
                             ),
@@ -773,16 +783,17 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   }
 
   Widget _buildNoWorkoutScaffold(double topPadding) {
+    final isDark = _isDark;
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
+      value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
         systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: MetaColors.background,
+        backgroundColor: _bg,
         body: Padding(
           padding: EdgeInsets.fromLTRB(24, topPadding + 14, 24, 24),
           child: _isLoadingWorkout
@@ -795,9 +806,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.person_outline_rounded,
-                          color: MetaColors.textSecondary,
+                          color: _textSecondary,
                         ),
                         tooltip: 'Meu Perfil & Anamnese',
                         onPressed: () {
@@ -811,29 +822,29 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       ),
                     ),
                     const Spacer(),
-                    const Icon(
+                    Icon(
                       Icons.fitness_center_rounded,
                       size: 56,
-                      color: MetaColors.textSecondary,
+                      color: _textSecondary,
                     ),
                     const SizedBox(height: 20),
-                    const Text(
+                    Text(
                       'Nenhuma ficha ativa',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: MetaColors.textPrimary,
+                        color: _textPrimary,
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(height: 10),
-                    const Text(
+                    Text(
                       'Quando seu professor liberar sua ficha, ela aparece aqui. '
                       'Enquanto isso, aguarde o contato dele para conversar sobre a consultoria. '
                       'Se você está sem conexão, conecte-se e atualize.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: MetaColors.textSecondary,
+                        color: _textSecondary,
                         fontSize: 14,
                         height: 1.4,
                       ),
@@ -882,7 +893,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           final ex = _exercises[idx];
           final setsCount = ex.sets;
           final repsCount =
-              int.tryParse(ex.reps.replaceAll(RegExp(r'\D'), '')) ?? 10;
+              int.tryParse(ex.reps.replaceAll(RegExp(r'\D'), '•')) ?? 10;
           totalSets += setsCount;
           final weightKey =
               'pwa_last_weight_${uid}_${ex.name.toLowerCase().trim()}';
@@ -934,12 +945,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
   Widget _buildFallbackExerciseIcon(int index, String targetMuscle) {
     return Container(
-      color: MetaColors.surfaceHighlight,
+      color: _highlight,
       child: Center(
         child: Text(
           '${index + 1}',
-          style: const TextStyle(
-            color: MetaColors.textPrimary,
+          style: TextStyle(
+            color: _textPrimary,
             fontSize: 14.5,
             fontWeight: FontWeight.w900,
           ),
@@ -956,10 +967,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     final thumbUrl = _exerciseThumbnails[item.name];
 
     return MetaCard(
-      backgroundColor: MetaColors.surface,
+      backgroundColor: _cardBg,
       borderColor: isCompleted
           ? MetaColors.emerald.withValues(alpha: 0.6)
-          : (isAdapted ? const Color(0xFFF59E0B) : MetaColors.border),
+          : (isAdapted ? const Color(0xFFF59E0B) : _border),
       borderRadius: 18,
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.only(bottom: 10),
@@ -979,12 +990,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: MetaColors.surfaceHighlight,
+                color: _highlight,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: isCompleted
                       ? MetaColors.emerald.withValues(alpha: 0.4)
-                      : MetaColors.border,
+                      : _border,
                   width: 1.0,
                 ),
               ),
@@ -1033,8 +1044,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           fontSize: 14.5,
                           fontWeight: FontWeight.w800,
                           color: isCompleted
-                              ? MetaColors.textSecondary
-                              : MetaColors.textPrimary,
+                              ? _textSecondary
+                              : _textPrimary,
                           decoration: isCompleted
                               ? TextDecoration.lineThrough
                               : TextDecoration.none,
@@ -1069,17 +1080,17 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   children: [
                     Text(
                       item.targetMuscleGroup.isNotEmpty ? item.targetMuscleGroup : 'Geral',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: MetaColors.textSecondary,
+                        color: _textSecondary,
                       ),
                     ),
                     const SizedBox(width: 5),
-                    const Text('•', style: TextStyle(color: MetaColors.textSecondary, fontSize: 11)),
+                    Text('•', style: TextStyle(color: _textSecondary, fontSize: 11)),
                     const SizedBox(width: 5),
                     Text(
-                      '$setsCount séries Ã— ${item.reps}',
+                      '$setsCount séries Á— ${item.reps}',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -1087,14 +1098,14 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       ),
                     ),
                     const SizedBox(width: 5),
-                    const Text('•', style: TextStyle(color: MetaColors.textSecondary, fontSize: 11)),
+                    Text('•', style: TextStyle(color: _textSecondary, fontSize: 11)),
                     const SizedBox(width: 5),
                     Text(
                       '${item.restSeconds}s',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w600,
-                        color: MetaColors.textSecondary,
+                        color: _textSecondary,
                       ),
                     ),
                   ],
@@ -1123,12 +1134,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               decoration: BoxDecoration(
                 color: isCompleted
                     ? MetaColors.emerald
-                    : MetaColors.surfaceHighlight,
+                    : _highlight,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: isCompleted
                       ? MetaColors.emerald
-                      : MetaColors.border,
+                      : _border,
                   width: 1.0,
                 ),
               ),
@@ -1166,11 +1177,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     final isCompleted = _completedExerciseIndices.contains(index);
 
     return MetaCard(
-      backgroundColor: MetaColors.surface,
+      backgroundColor: _cardBg,
       borderColor:
           isCompleted
               ? MetaColors.emerald
-              : (isAdapted ? const Color(0xFFF59E0B) : MetaColors.border),
+              : (isAdapted ? const Color(0xFFF59E0B) : _border),
       borderRadius: 22,
       padding: const EdgeInsets.all(18),
       margin: const EdgeInsets.only(bottom: 16),
@@ -1189,17 +1200,17 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: MetaColors.surfaceHighlight,
+                      color: _highlight,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: MetaColors.border),
+                      border: Border.all(color: _border),
                     ),
                     child: Text(
-                      'EXERCÃCIO ${index + 1} DE ${_exercises.length}',
-                      style: const TextStyle(
+                      'EXERCÁCIO ${index + 1} DE ${_exercises.length}',
+                      style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.5,
-                        color: MetaColors.textSecondary,
+                        color: _textSecondary,
                       ),
                     ),
                   ),
@@ -1250,11 +1261,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     color:
                         isCompleted
                             ? MetaColors.emerald
-                            : MetaColors.surfaceHighlight,
+                            : _highlight,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color:
-                          isCompleted ? MetaColors.emerald : MetaColors.border,
+                          isCompleted ? MetaColors.emerald : _border,
                       width: 1.2,
                     ),
                   ),
@@ -1267,7 +1278,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                             : Icons.radio_button_unchecked_rounded,
                         size: 16,
                         color:
-                            isCompleted ? Colors.black : MetaColors.textSecondary,
+                            isCompleted ? Colors.black : _textSecondary,
                       ),
                       const SizedBox(width: 6),
                       Text(
@@ -1278,7 +1289,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           color:
                               isCompleted
                                   ? Colors.black
-                                  : MetaColors.textSecondary,
+                                  : _textSecondary,
                         ),
                       ),
                     ],
@@ -1292,10 +1303,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           // 2. Nome do Exercício (Texto Grande e Alto Contraste)
           Text(
             item.name,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w900,
-              color: MetaColors.textPrimary,
+              color: _textPrimary,
               letterSpacing: -0.4,
               height: 1.2,
             ),
@@ -1303,10 +1314,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           const SizedBox(height: 4),
           Text(
             item.targetMuscleGroup,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: MetaColors.textSecondary,
+              color: _textSecondary,
             ),
           ),
 
@@ -1354,7 +1365,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               decoration: BoxDecoration(
                 color: Colors.black,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: MetaColors.border, width: 1.0),
+                border: Border.all(color: _border, width: 1.0),
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(15),
@@ -1508,9 +1519,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
-                    color: MetaColors.surfaceHighlight,
+                    color: _highlight,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: MetaColors.border),
+                    border: Border.all(color: _border),
                   ),
                   child: const Row(
                     children: [
@@ -1569,9 +1580,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: MetaColors.surfaceHighlight.withValues(alpha: 0.6),
+                color: _highlight.withValues(alpha: 0.6),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: MetaColors.border),
+                border: Border.all(color: _border),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1585,11 +1596,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   Expanded(
                     child: Text(
                       item.notes,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         height: 1.35,
                         fontWeight: FontWeight.w500,
-                        color: MetaColors.textSecondary,
+                        color: _textSecondary,
                       ),
                     ),
                   ),
@@ -1643,16 +1654,17 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       return _buildNoWorkoutScaffold(topPadding);
     }
 
+    final isDark = _isDark;
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
+      value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
         systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: MetaColors.background,
+        backgroundColor: _bg,
         body: Stack(
           children: [
             ListView(
@@ -1739,7 +1751,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                   color: MetaColors.emerald,
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: MetaColors.background,
+                                    color: _bg,
                                     width: 2.0,
                                   ),
                                 ),
@@ -1756,29 +1768,29 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Seu treino com',
                               style: TextStyle(
                                 fontSize: 11,
-                                color: MetaColors.textSecondary,
+                                color: _textSecondary,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
                             const SizedBox(height: 1),
                             Text(
                               _trainerName,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w900,
-                                color: MetaColors.textPrimary,
+                                color: _textPrimary,
                               ),
                             ),
                             const SizedBox(height: 1),
                             Text(
                               '($_trainerCref)',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
-                                color: MetaColors.textSecondary,
+                                color: _textSecondary,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -1790,14 +1802,16 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       children: [
                         if (kDebugMode)
                           IconButton(
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.settings_ethernet_rounded,
                               size: 20,
-                              color: MetaColors.textSecondary,
+                              color: _textSecondary,
                             ),
                             tooltip: 'Configurar IP do Servidor (Dev)',
                             onPressed: () => ServerConfigDialog.show(context),
                           ),
+                        const ThemeToggleButton(compact: true),
+                        const SizedBox(width: 8),
                         InkWell(
                           onTap: () => StudentNotificationSheet.show(
                             context,
@@ -1903,7 +1917,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                         vertical: 10,
                       ),
                       decoration: BoxDecoration(
-                        color: MetaColors.surface,
+                        color: _cardBg,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
@@ -1920,10 +1934,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                             semanticsLabel: currentStreak == null
                                 ? 'Sequência indisponível'
                                 : '$currentStreak dias',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.w900,
                               fontSize: 13,
-                              color: MetaColors.textPrimary,
+                              color: _textPrimary,
                             ),
                           ),
                         ],
@@ -1939,10 +1953,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           vertical: 9,
                         ),
                         decoration: BoxDecoration(
-                          color: MetaColors.surface,
+                          color: _cardBg,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: MetaColors.border,
+                            color: _border,
                             width: 1.0,
                           ),
                         ),
@@ -1953,12 +1967,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text(
+                                Text(
                                   'Progresso do Treino',
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
-                                    color: MetaColors.textSecondary,
+                                    color: _textSecondary,
                                   ),
                                 ),
                                 Text(
@@ -1981,7 +1995,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                         : (_completedExerciseIndices.length /
                                             _exercises.length),
                                 minHeight: 6,
-                                backgroundColor: MetaColors.surfaceHighlight,
+                                backgroundColor: _highlight,
                                 valueColor: const AlwaysStoppedAnimation<Color>(
                                   MetaColors.emerald,
                                 ),
@@ -2021,12 +2035,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                             decoration: BoxDecoration(
                               color: isSelected
                                   ? MetaColors.emerald
-                                  : MetaColors.surface,
+                                  : _cardBg,
                               borderRadius: BorderRadius.circular(22),
                               border: Border.all(
                                 color: isSelected
                                     ? MetaColors.emerald
-                                    : MetaColors.border,
+                                    : _border,
                                 width: isSelected ? 1.4 : 1.0,
                               ),
                               boxShadow: isSelected
@@ -2045,7 +2059,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                 Text(
                                   'Split ${split.splitIdentifier}',
                                   style: TextStyle(
-                                    color: isSelected ? Colors.black : MetaColors.textPrimary,
+                                    color: isSelected ? Colors.black : _textPrimary,
                                     fontWeight: FontWeight.w900,
                                     fontSize: 12.5,
                                   ),
@@ -2057,7 +2071,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                     decoration: BoxDecoration(
                                       color: isSelected
                                           ? Colors.black.withValues(alpha: 0.15)
-                                          : MetaColors.surfaceHighlight,
+                                          : _highlight,
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
@@ -2084,10 +2098,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       colors: [
-                        MetaColors.surface,
-                        Color(0xFF0F1E19),
+                        _cardBg,
+                        _isDark ? const Color(0xFF0F1E19) : const Color(0xFFE6F4EA),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -2121,7 +2135,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                               ),
                             ),
                             child: Text(
-                              'DIVISÃO ${(_splitIdentifier ?? 'A').toUpperCase()} • PROGRAMADO',
+                              'DIVISÁO ${(_splitIdentifier ?? 'A').toUpperCase()} • PROGRAMADO',
                               style: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w900,
@@ -2133,16 +2147,16 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: MetaColors.surfaceHighlight,
+                              color: _highlight,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: MetaColors.border),
+                              border: Border.all(color: _border),
                             ),
                             child: Text(
                               _elapsedLabel(),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w700,
-                                color: MetaColors.textSecondary,
+                                color: _textSecondary,
                               ),
                             ),
                           ),
@@ -2158,10 +2172,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                               children: [
                                 Text(
                                   _splitName ?? 'Treino de Hoje',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w900,
-                                    color: MetaColors.textPrimary,
+                                    color: _textPrimary,
                                     letterSpacing: -0.4,
                                   ),
                                 ),
@@ -2174,51 +2188,51 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                     Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        const Icon(
+                                        Icon(
                                           Icons.fitness_center_rounded,
                                           size: 14,
-                                          color: MetaColors.textSecondary,
+                                          color: _textSecondary,
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
                                           '${_exercises.length} exercícios',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 12.5,
                                             fontWeight: FontWeight.w600,
-                                            color: MetaColors.textSecondary,
+                                            color: _textSecondary,
                                           ),
                                         ),
                                       ],
                                     ),
-                                    const Text(
+                                    Text(
                                       '•',
                                       style: TextStyle(
-                                        color: MetaColors.textSecondary,
+                                        color: _textSecondary,
                                       ),
                                     ),
                                     Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        const Icon(
+                                        Icon(
                                           Icons.timer_outlined,
                                           size: 14,
-                                          color: MetaColors.textSecondary,
+                                          color: _textSecondary,
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
                                           '~${_exercises.length * 8} min',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 12.5,
                                             fontWeight: FontWeight.w600,
-                                            color: MetaColors.textSecondary,
+                                            color: _textSecondary,
                                           ),
                                         ),
                                       ],
                                     ),
-                                    const Text(
+                                    Text(
                                       '•',
                                       style: TextStyle(
-                                        color: MetaColors.textSecondary,
+                                        color: _textSecondary,
                                       ),
                                     ),
                                     Text(
@@ -2228,7 +2242,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                         fontWeight: FontWeight.w800,
                                         color: _completedExerciseIndices.isNotEmpty
                                             ? MetaColors.emerald
-                                            : MetaColors.textSecondary,
+                                            : _textSecondary,
                                       ),
                                     ),
                                   ],
@@ -2249,8 +2263,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                               _exercises.isEmpty
                                   ? '0%'
                                   : '${((_completedExerciseIndices.length / _exercises.length) * 100).round()}%',
-                              style: const TextStyle(
-                                color: MetaColors.textPrimary,
+                              style: TextStyle(
+                                color: _textPrimary,
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w900,
                                 fontFeatures: [FontFeature.tabularFigures()],
@@ -2332,35 +2346,35 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
                 const SizedBox(height: 18),
 
-                // 5. CABEÃ‡ALHO DA SEÃ‡ÃƒO DE EXERCÃCIOS
+                // 5. CABEÁ‡ALHO DA SEÁ‡ÁƒO DE EXERCÁCIOS
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
                       children: [
-                        const Text(
-                          'EXERCÃCIOS DA SESSÃƒO',
+                        Text(
+                          'EXERCÁCIOS DA SESSÁƒO',
                           style: TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 0.6,
-                            color: MetaColors.textSecondary,
+                            color: _textSecondary,
                           ),
                         ),
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
-                            color: MetaColors.surfaceHighlight,
+                            color: _highlight,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: MetaColors.border),
+                            border: Border.all(color: _border),
                           ),
                           child: Text(
                             '${_exercises.length}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
-                              color: MetaColors.textPrimary,
+                              color: _textPrimary,
                             ),
                           ),
                         ),
@@ -2411,10 +2425,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     isPrimary: _completedExerciseIndices.isNotEmpty,
                     backgroundColor: _completedExerciseIndices.isNotEmpty
                         ? MetaColors.emerald
-                        : MetaColors.surfaceHighlight,
+                        : _highlight,
                     foregroundColor: _completedExerciseIndices.isNotEmpty
                         ? Colors.black
-                        : MetaColors.textSecondary,
+                        : _textSecondary,
                     height: 54.0,
                     borderRadius: 18.0,
                     onPressed: _finishWorkout,
@@ -2449,7 +2463,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(28.0),
                     decoration: BoxDecoration(
-                      color: MetaColors.surface,
+                      color: _cardBg,
                       borderRadius: BorderRadius.circular(22),
                       border: Border.all(
                         color: MetaColors.emerald.withValues(alpha: 0.4),
@@ -2461,30 +2475,30 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                         ),
                       ],
                     ),
-                    child: const Column(
+                    child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircularProgressIndicator(
+                        const CircularProgressIndicator(
                           valueColor: AlwaysStoppedAnimation<Color>(
                             MetaColors.emerald,
                           ),
                           strokeWidth: 3,
                         ),
-                        SizedBox(height: 18),
+                        const SizedBox(height: 18),
                         Text(
                           'Adaptando exercício com IA...',
                           style: TextStyle(
                             fontWeight: FontWeight.w900,
                             fontSize: 15,
-                            color: MetaColors.textPrimary,
+                            color: _textPrimary,
                           ),
                         ),
-                        SizedBox(height: 6),
+                        const SizedBox(height: 6),
                         Text(
                           'Buscando vetor biomecânico equivalente',
                           style: TextStyle(
                             fontSize: 12,
-                            color: MetaColors.textSecondary,
+                            color: _textSecondary,
                           ),
                         ),
                       ],
@@ -2514,12 +2528,17 @@ class _HudStatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final highlight = MetaColors.highlight(context);
+    final border = MetaColors.cardBorder(context);
+    final textSecondary = MetaColors.subtext(context);
+    final textPrimary = MetaColors.text(context);
+
     final content = Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
       decoration: BoxDecoration(
-        color: MetaColors.surfaceHighlight,
+        color: highlight,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: MetaColors.border, width: 1),
+        border: Border.all(color: border, width: 1),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -2534,11 +2553,11 @@ class _HudStatTile extends StatelessWidget {
               ],
               Text(
                 label.toUpperCase(),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 9.5,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.3,
-                  color: MetaColors.textSecondary,
+                  color: textSecondary,
                 ),
               ),
             ],
@@ -2548,10 +2567,10 @@ class _HudStatTile extends StatelessWidget {
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13.5,
               fontWeight: FontWeight.w900,
-              color: MetaColors.textPrimary,
+              color: textPrimary,
               letterSpacing: -0.2,
             ),
           ),
@@ -2664,7 +2683,7 @@ class _AnatomicalMuscleCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'BIOMECÃ‚NICA & ATIVAÃ‡ÃƒO 3D',
+                        'BIOMECÂNICA & ATIVAÇÁO 3D',
                         style: TextStyle(
                           color: glowColor,
                           fontSize: 9,

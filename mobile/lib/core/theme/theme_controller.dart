@@ -14,9 +14,25 @@ class ThemeController extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
 
   ThemeMode get themeMode => _themeMode;
-  bool get isDarkMode => _themeMode == ThemeMode.dark;
   bool get isLightMode => _themeMode == ThemeMode.light;
   bool get isSystemMode => _themeMode == ThemeMode.system;
+
+  /// Retorna se o tema é efetivamente escuro (considerando ThemeMode.system e platform brightness)
+  bool get isDarkMode {
+    if (_themeMode == ThemeMode.dark) return true;
+    if (_themeMode == ThemeMode.light) return false;
+    return WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
+  }
+
+  /// Retorna se o tema é efetivamente escuro no contexto visual atual
+  bool isEffectiveDark([BuildContext? context]) {
+    if (_themeMode == ThemeMode.dark) return true;
+    if (_themeMode == ThemeMode.light) return false;
+    if (context != null) {
+      return Theme.of(context).brightness == Brightness.dark;
+    }
+    return WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
+  }
 
   String get themeModeName {
     switch (_themeMode) {
@@ -30,8 +46,9 @@ class ThemeController extends ChangeNotifier {
   }
 
   /// Alterna diretamente entre Claro e Escuro
-  Future<void> toggleTheme() async {
-    _themeMode = (_themeMode == ThemeMode.dark) ? ThemeMode.light : ThemeMode.dark;
+  Future<void> toggleTheme([BuildContext? context]) async {
+    final effectiveDark = isEffectiveDark(context);
+    _themeMode = effectiveDark ? ThemeMode.light : ThemeMode.dark;
     notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();

@@ -13,25 +13,22 @@ class ThemeToggleButton extends StatelessWidget {
     return ListenableBuilder(
       listenable: ThemeController.instance,
       builder: (context, _) {
-        final isDark = ThemeController.instance.isDarkMode;
+        final isDark = ThemeController.instance.isEffectiveDark(context);
 
         if (compact) {
           return IconButton(
             icon: Icon(
               isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
               size: 20,
-              color:
-                  isDark
-                      ? AppColors.tangerineNeon
-                      : AppColors.lightTextSecondary,
+              color: isDark ? AppColors.tangerineNeon : AppColors.lightTextSecondary,
             ),
             tooltip: isDark ? 'Ativar Modo Claro' : 'Ativar Modo Escuro',
-            onPressed: () => ThemeController.instance.toggleTheme(),
+            onPressed: () => ThemeController.instance.toggleTheme(context),
           );
         }
 
         return InkWell(
-          onTap: () => ThemeController.instance.toggleTheme(),
+          onTap: () => ThemeController.instance.toggleTheme(context),
           borderRadius: BorderRadius.circular(20),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 250),
@@ -41,8 +38,7 @@ class ThemeToggleButton extends StatelessWidget {
               color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color:
-                    isDark ? const Color(0x33FFFFFF) : const Color(0xFFCBD5E1),
+                color: isDark ? const Color(0x33FFFFFF) : const Color(0xFFCBD5E1),
                 width: 1,
               ),
             ),
@@ -52,10 +48,7 @@ class ThemeToggleButton extends StatelessWidget {
                 Icon(
                   Icons.light_mode_rounded,
                   size: 14,
-                  color:
-                      isDark
-                          ? const Color(0xFF64748B)
-                          : const Color(0xFFEA580C),
+                  color: isDark ? const Color(0xFF64748B) : const Color(0xFFEA580C),
                 ),
                 const SizedBox(width: 6),
                 AnimatedContainer(

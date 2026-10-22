@@ -193,7 +193,183 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                   ),
                   const SizedBox(height: 16),
                   Divider(color: border, height: 1),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
+
+                  // AÇÕES RÁPIDAS SUPERADMIN (1-Tap Actions: VIP, Downgrade/Upgrade, Excluir)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: cardBg,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.bolt_rounded, size: 16, color: Color(0xFF818CF8)),
+                            const SizedBox(width: 6),
+                            Text(
+                              'AÇÕES RÁPIDAS SUPERADMIN',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w900,
+                                color: textSecondary,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            if (isTrainer) ...[
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  icon: Icon(
+                                    user.isVip ? Icons.star_border_rounded : Icons.star_rounded,
+                                    size: 15,
+                                    color: Colors.amber,
+                                  ),
+                                  label: Text(
+                                    user.isVip ? 'Desativar VIP' : 'Ativar VIP',
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                                    side: BorderSide(color: Colors.amber.withValues(alpha: 0.5)),
+                                    backgroundColor: Colors.amber.withValues(alpha: 0.08),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  onPressed: () async {
+                                    final newVip = !user.isVip;
+                                    Navigator.pop(ctx);
+                                    final ok = await AdminDataService.updateTrainerPlanAndQuota(
+                                      userId: user.id,
+                                      planName: user.plan,
+                                      maxStudents: user.maxStudents ?? 30,
+                                      isVip: newVip,
+                                    );
+                                    if (ok && mounted) {
+                                      messenger.showSnackBar(
+                                        SnackBar(
+                                          backgroundColor: MetaColors.emerald,
+                                          content: Text(
+                                            newVip ? '✓ VIP Ativado para ${user.name}!' : '✓ VIP Desativado para ${user.name}!',
+                                          ),
+                                        ),
+                                      );
+                                      _loadUsers();
+                                    }
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(Icons.swap_horiz_rounded, size: 15, color: Color(0xFF818CF8)),
+                                  label: const Text(
+                                    'Virar Aluno',
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF818CF8)),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                                    side: BorderSide(color: const Color(0xFF818CF8).withValues(alpha: 0.5)),
+                                    backgroundColor: const Color(0xFF818CF8).withValues(alpha: 0.08),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  onPressed: () async {
+                                    Navigator.pop(ctx);
+                                    final ok = await AdminDataService.changeUserRole(user.id, 'client');
+                                    if (ok && mounted) {
+                                      messenger.showSnackBar(
+                                        SnackBar(
+                                          backgroundColor: MetaColors.emerald,
+                                          content: Text('✓ Downgrade realizado: ${user.name} agora é Aluno.'),
+                                        ),
+                                      );
+                                      _loadUsers();
+                                    }
+                                  },
+                                ),
+                              ),
+                            ] else if (isStudent) ...[
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(Icons.sync_alt_rounded, size: 15, color: MetaColors.emerald),
+                                  label: const Text(
+                                    'Trocar Personal',
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: MetaColors.emerald),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                                    side: BorderSide(color: MetaColors.emerald.withValues(alpha: 0.5)),
+                                    backgroundColor: MetaColors.emerald.withValues(alpha: 0.08),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  onPressed: () {
+                                    Navigator.pop(ctx);
+                                    _showReassignStudentDialog(user);
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(Icons.arrow_upward_rounded, size: 15, color: Colors.amber),
+                                  label: const Text(
+                                    'Virar Personal',
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                                    side: BorderSide(color: Colors.amber.withValues(alpha: 0.5)),
+                                    backgroundColor: Colors.amber.withValues(alpha: 0.08),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  onPressed: () async {
+                                    Navigator.pop(ctx);
+                                    final ok = await AdminDataService.changeUserRole(user.id, 'trainer');
+                                    if (ok && mounted) {
+                                      messenger.showSnackBar(
+                                        SnackBar(
+                                          backgroundColor: MetaColors.emerald,
+                                          content: Text('✓ Promoção realizada: ${user.name} agora é Personal Trainer!'),
+                                        ),
+                                      );
+                                      _loadUsers();
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        // Botão de Exclusão Definitiva (Em destaque no topo do modal)
+                        OutlinedButton.icon(
+                          key: Key('admin_modal_delete_btn_${user.id}'),
+                          icon: const Icon(Icons.delete_forever_rounded, size: 16, color: Colors.redAccent),
+                          label: const Text(
+                            'Excluir Usuário Definitivamente',
+                            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Colors.redAccent),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.5)),
+                            backgroundColor: Colors.redAccent.withValues(alpha: 0.08),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _showDeleteUserConfirmationDialog(user);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
 
                   // Lista de Ações / Superpoderes
                   Expanded(
@@ -482,7 +658,151 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                   }
                                 },
                               ),
+                              Divider(color: border, height: 1),
+                              ListTile(
+                                leading: Icon(
+                                  isTrainer ? Icons.person_pin_circle_rounded : Icons.fitness_center_rounded,
+                                  color: isTrainer ? MetaColors.emerald : Colors.amber,
+                                ),
+                                title: Text(
+                                  isTrainer ? 'Fazer Downgrade para Aluno' : 'Promover a Personal Trainer',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: textPrimary,
+                                    fontSize: 13.5,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  isTrainer
+                                      ? 'Converte o perfil para Aluno cliente (remove ferramentas SaaS)'
+                                      : 'Converte para Personal (habilita prescrições, vitrine e alunos)',
+                                  style: TextStyle(fontSize: 11, color: textSecondary),
+                                ),
+                                onTap: () async {
+                                  Navigator.pop(ctx);
+                                  final targetRole = isTrainer ? 'client' : 'trainer';
+                                  final ok = await AdminDataService.changeUserRole(user.id, targetRole);
+                                  if (ok && mounted) {
+                                    messenger.showSnackBar(
+                                      SnackBar(
+                                        backgroundColor: MetaColors.emerald,
+                                        content: Text(
+                                          isTrainer
+                                              ? '✓ Downgrade realizado: ${user.name} agora é Aluno.'
+                                              : '✓ Promoção realizada: ${user.name} agora é Personal Trainer!',
+                                        ),
+                                      ),
+                                    );
+                                    _loadUsers();
+                                  }
+                                },
+                              ),
+                              if (user.email != null && user.email!.isNotEmpty) ...[
+                                Divider(color: border, height: 1),
+                                ListTile(
+                                  leading: const Icon(
+                                    Icons.lock_reset_rounded,
+                                    color: Color(0xFF38BDF8),
+                                  ),
+                                  title: Text(
+                                    'Enviar Redefinição de Senha',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: textPrimary,
+                                      fontSize: 13.5,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    'Dispara e-mail de recuperação para ${user.email}',
+                                    style: TextStyle(fontSize: 11, color: textSecondary),
+                                  ),
+                                  onTap: () async {
+                                    Navigator.pop(ctx);
+                                    final ok = await AdminDataService.sendPasswordResetEmail(user.email!);
+                                    if (ok && mounted) {
+                                      messenger.showSnackBar(
+                                        SnackBar(
+                                          backgroundColor: MetaColors.emerald,
+                                          content: Text('✓ Link de redefinição enviado para ${user.email}.'),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ],
+                              if (isStudent && user.trainerId != null) ...[
+                                Divider(color: border, height: 1),
+                                ListTile(
+                                  leading: const Icon(
+                                    Icons.link_off_rounded,
+                                    color: Colors.orangeAccent,
+                                  ),
+                                  title: Text(
+                                    'Desvincular de Personal Atual',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: textPrimary,
+                                      fontSize: 13.5,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    'Remove a associação com ${user.trainerName ?? "o treinador"}',
+                                    style: TextStyle(fontSize: 11, color: textSecondary),
+                                  ),
+                                  onTap: () async {
+                                    Navigator.pop(ctx);
+                                    final ok = await AdminDataService.unlinkStudentTrainer(user.id);
+                                    if (ok && mounted) {
+                                      messenger.showSnackBar(
+                                        const SnackBar(
+                                          backgroundColor: MetaColors.emerald,
+                                          content: Text('✓ Aluno desvinculado com sucesso.'),
+                                        ),
+                                      );
+                                      _loadUsers();
+                                    }
+                                  },
+                                ),
+                              ],
                             ],
+                          ),
+                        ),
+                      ),
+
+                      // Seção 5: Zona de Perigo / Exclusão Definitiva
+                      _buildSectionTitle('ZONA DE PERIGO (AÇÃO IRREVERSÍVEL)', Icons.warning_amber_rounded, Colors.redAccent),
+                      Container(
+                        margin: const EdgeInsets.only(top: 8, bottom: 24),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+                        ),
+                        child: Material(
+                          color: cardBg,
+                          borderRadius: BorderRadius.circular(16),
+                          clipBehavior: Clip.antiAlias,
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.delete_forever_rounded,
+                              color: Colors.redAccent,
+                              size: 26,
+                            ),
+                            title: const Text(
+                              'Excluir Usuário Definitivamente',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: Colors.redAccent,
+                                fontSize: 13.5,
+                              ),
+                            ),
+                            subtitle: const Text(
+                              'Apaga o perfil, credenciais do Supabase Auth e histórico associado',
+                              style: TextStyle(fontSize: 11, color: Color(0xFFEF4444)),
+                            ),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              _showDeleteUserConfirmationDialog(user);
+                            },
                           ),
                         ),
                       ),
@@ -885,6 +1205,146 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     );
   }
 
+  void _showDeleteUserConfirmationDialog(AdminUserProfile user) {
+    final messenger = ScaffoldMessenger.of(context);
+    bool isDeleting = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dlgCtx) {
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF0F172A),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+                side: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 26),
+                  SizedBox(width: 10),
+                  Text(
+                    'Excluir Definitivamente',
+                    style: TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundColor: Colors.redAccent.withValues(alpha: 0.2),
+                          child: Text(
+                            user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
+                            style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                user.name,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              Text(
+                                user.email ?? user.phone ?? user.id,
+                                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Esta ação é IRREVERSÍVEL. Todos os dados associados a esta conta serão removidos permanentemente:',
+                    style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 12),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('• Perfil no banco de dados e credenciais de acesso', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                  const Text('• Fichas de treino, sessões gravadas e anamnese', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                  const Text('• Vínculos ativos e faturas pendentes', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Deseja mesmo prosseguir com a exclusão?',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12.5),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isDeleting ? null : () => Navigator.pop(dlgCtx),
+                  child: const Text('Cancelar', style: TextStyle(color: Color(0xFF94A3B8))),
+                ),
+                ElevatedButton.icon(
+                  icon: isDeleting
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Icon(Icons.delete_forever_rounded, size: 16),
+                  label: Text(
+                    isDeleting ? 'Excluindo...' : 'Sim, Excluir Usuário',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: isDeleting
+                      ? null
+                      : () async {
+                          setDlgState(() => isDeleting = true);
+                          final ok = await AdminDataService.deleteUser(user.id);
+                          if (dlgCtx.mounted) Navigator.pop(dlgCtx);
+                          if (mounted) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                backgroundColor: ok ? MetaColors.emerald : Colors.redAccent,
+                                content: Text(
+                                  ok
+                                      ? '✓ Usuário ${user.name} excluído definitivamente com sucesso.'
+                                      : 'Erro ao excluir usuário. Verifique as permissões de Superadmin.',
+                                ),
+                              ),
+                            );
+                            _loadUsers();
+                          }
+                        },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = MetaColors.isDark(context);
@@ -1049,164 +1509,179 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                             final isTrainer = u.role == 'trainer' || u.roles.contains('trainer');
                             final isStudent = u.role == 'client' || u.role == 'student';
 
-                            return Container(
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: cardBg,
+                            return Material(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(16),
+                              child: InkWell(
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: u.isAdmin
-                                      ? const Color(0xFF6366F1).withValues(alpha: 0.5)
-                                      : borderColor,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 20,
-                                    backgroundColor: u.isAdmin
-                                        ? const Color(0xFF6366F1).withValues(alpha: 0.2)
-                                        : (isTrainer
-                                            ? Colors.amber.withValues(alpha: 0.15)
-                                            : MetaColors.emerald.withValues(alpha: 0.15)),
-                                    child: Text(
-                                      u.name.isNotEmpty ? u.name[0].toUpperCase() : 'U',
-                                      style: TextStyle(
-                                        color: u.isAdmin
-                                            ? const Color(0xFF818CF8)
-                                            : (isTrainer ? Colors.amber : MetaColors.emerald),
-                                        fontWeight: FontWeight.bold,
+                                onTap: () => _showGodModeModal(u),
+                                child: Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: cardBg,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: u.isAdmin
+                                          ? const Color(0xFF6366F1).withValues(alpha: 0.5)
+                                          : borderColor,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 20,
+                                        backgroundColor: u.isAdmin
+                                            ? const Color(0xFF6366F1).withValues(alpha: 0.2)
+                                            : (isTrainer
+                                                ? Colors.amber.withValues(alpha: 0.15)
+                                                : MetaColors.emerald.withValues(alpha: 0.15)),
+                                        child: Text(
+                                          u.name.isNotEmpty ? u.name[0].toUpperCase() : 'U',
+                                          style: TextStyle(
+                                            color: u.isAdmin
+                                                ? const Color(0xFF818CF8)
+                                                : (isTrainer ? Colors.amber : MetaColors.emerald),
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Flexible(
-                                              child: Text(
-                                                u.name,
-                                                style: TextStyle(
-                                                  fontSize: 14.5,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: textPrimary,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                            if (u.isAdmin) ...[
-                                              const SizedBox(width: 6),
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                                                decoration: BoxDecoration(
-                                                  color: const Color(0xFF6366F1).withValues(alpha: 0.2),
-                                                  borderRadius: BorderRadius.circular(4),
-                                                ),
-                                                child: const Text(
-                                                  'ADMIN',
-                                                  style: TextStyle(
-                                                    fontSize: 9,
-                                                    fontWeight: FontWeight.w900,
-                                                    color: Color(0xFF818CF8),
+                                            Row(
+                                              children: [
+                                                Flexible(
+                                                  child: Text(
+                                                    u.name,
+                                                    style: TextStyle(
+                                                      fontSize: 14.5,
+                                                      fontWeight: FontWeight.w800,
+                                                      color: textPrimary,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
                                                   ),
                                                 ),
-                                              ),
-                                            ],
-                                            if (u.isVip) ...[
-                                              const SizedBox(width: 6),
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.amber.withValues(alpha: 0.2),
-                                                  borderRadius: BorderRadius.circular(4),
-                                                ),
-                                                child: const Text(
-                                                  '★ VIP',
-                                                  style: TextStyle(
-                                                    fontSize: 9,
-                                                    fontWeight: FontWeight.w900,
-                                                    color: Colors.amber,
+                                                if (u.isAdmin) ...[
+                                                  const SizedBox(width: 6),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(0xFF6366F1).withValues(alpha: 0.2),
+                                                      borderRadius: BorderRadius.circular(4),
+                                                    ),
+                                                    child: const Text(
+                                                      'ADMIN',
+                                                      style: TextStyle(
+                                                        fontSize: 9,
+                                                        fontWeight: FontWeight.w900,
+                                                        color: Color(0xFF818CF8),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                                if (u.isVip) ...[
+                                                  const SizedBox(width: 6),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.amber.withValues(alpha: 0.2),
+                                                      borderRadius: BorderRadius.circular(4),
+                                                    ),
+                                                    child: const Text(
+                                                      '★ VIP',
+                                                      style: TextStyle(
+                                                        fontSize: 9,
+                                                        fontWeight: FontWeight.w900,
+                                                        color: Colors.amber,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              u.email ?? u.phone ?? 'Sem contato',
+                                              style: TextStyle(fontSize: 11.5, color: textSecondary),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Row(
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: borderColor.withValues(alpha: 0.5),
+                                                    borderRadius: BorderRadius.circular(6),
+                                                  ),
+                                                  child: Text(
+                                                    isTrainer ? 'Personal • ${u.plan}' : 'Aluno',
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: textSecondary,
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          u.email ?? u.phone ?? 'Sem contato',
-                                          style: TextStyle(fontSize: 11.5, color: textSecondary),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Row(
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                              decoration: BoxDecoration(
-                                                color: borderColor.withValues(alpha: 0.5),
-                                                borderRadius: BorderRadius.circular(6),
-                                              ),
-                                              child: Text(
-                                                isTrainer ? 'Personal • ${u.plan}' : 'Aluno',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: textSecondary,
-                                                ),
-                                              ),
+                                                if (isTrainer && u.maxStudents != null) ...[
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    '${u.currentStudents}/${u.maxStudents} vagas',
+                                                    style: const TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight: FontWeight.w800,
+                                                      color: Color(0xFF818CF8),
+                                                    ),
+                                                  ),
+                                                ],
+                                                if (isTrainer && u.cref != null && u.cref!.isNotEmpty) ...[
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    'CREF ${u.cref}',
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      color: u.isCrefVerified ? MetaColors.emerald : Colors.amber,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ],
+                                                if (isStudent && u.trainerName != null) ...[
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    'Personal: ${u.trainerName}',
+                                                    style: const TextStyle(
+                                                      fontSize: 10,
+                                                      color: MetaColors.emerald,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
                                             ),
-                                            if (isTrainer && u.maxStudents != null) ...[
-                                              const SizedBox(width: 8),
-                                              Text(
-                                                '${u.currentStudents}/${u.maxStudents} vagas',
-                                                style: const TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: Color(0xFF818CF8),
-                                                ),
-                                              ),
-                                            ],
-                                            if (isTrainer && u.cref != null && u.cref!.isNotEmpty) ...[
-                                              const SizedBox(width: 8),
-                                              Text(
-                                                'CREF ${u.cref}',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  color: u.isCrefVerified ? MetaColors.emerald : Colors.amber,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
-                                            if (isStudent && u.trainerName != null) ...[
-                                              const SizedBox(width: 8),
-                                              Text(
-                                                'Personal: ${u.trainerName}',
-                                                style: const TextStyle(
-                                                  fontSize: 10,
-                                                  color: MetaColors.emerald,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ],
                                           ],
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                      IconButton(
+                                        key: Key('admin_user_action_${u.id}'),
+                                        icon: const Icon(Icons.tune_rounded),
+                                        tooltip: 'Superpoderes (God Mode)',
+                                        color: const Color(0xFF818CF8),
+                                        onPressed: () => _showGodModeModal(u),
+                                      ),
+                                      IconButton(
+                                        key: Key('admin_user_delete_direct_${u.id}'),
+                                        icon: const Icon(Icons.delete_outline_rounded),
+                                        tooltip: 'Excluir definitivamente',
+                                        color: Colors.redAccent,
+                                        onPressed: () => _showDeleteUserConfirmationDialog(u),
+                                      ),
+                                    ],
                                   ),
-                                  IconButton(
-                                    key: Key('admin_user_action_${u.id}'),
-                                    icon: const Icon(Icons.tune_rounded),
-                                    tooltip: 'Superpoderes (God Mode)',
-                                    color: const Color(0xFF818CF8),
-                                    onPressed: () => _showGodModeModal(u),
-                                  ),
-                                ],
+                                ),
                               ),
                             );
                           },
