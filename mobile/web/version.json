@@ -1,7 +1,7 @@
 {
   "version": "1.9.0",
-  "build": 2026103037,
-  "updated_at": "2026-10-22T02:56:19.993609Z",
+  "build": 2026103038,
+  "updated_at": "2026-10-22T03:16:47.282912Z",
   "notes": "Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas e Gestão Dinâmica de Preços & Planos.",
   "changelog": {
     "student": [
@@ -39,6 +39,16 @@
         "title": "Celebração de Treino com Haptic Feedback",
         "description": "Modal de triunfo animado com confetes e feedback tátil ao finalizar a sessão com sucesso.",
         "badge": "CELEBRAÇÃO"
+      },
+      {
+        "title": "Card de Triunfo & Compartilhamento Social (Stories / Redes)",
+        "description": "Gere um card comemorativo em formato Story (9:16) no final de cada treino com seus recordes (PRs), volume em kg, séries e ofensiva para postar no Instagram e compartilhar no WhatsApp.",
+        "badge": "CONQUISTAS"
+      },
+      {
+        "title": "Cabeçalho de Vidro Dinâmico (Scroll-Aware Glass Header)",
+        "description": "Efeito translúcido ultra-fluido com desfoque de vidro inteligente no topo enquanto você rola seus treinos e fichas de exercícios.",
+        "badge": "VISUAL"
       }
     ],
     "trainer": [
@@ -81,6 +91,16 @@
         "title": "Modal de Orientação Premium nas Cotas",
         "description": "Aviso elegante e direto orientando sobre o limite de vagas atingido, com opção de upgrade e desativação de alunos.",
         "badge": "EXPERIÊNCIA"
+      },
+      {
+        "title": "Cabeçalho de Vidro Dinâmico (Scroll-Aware Glass Header)",
+        "description": "Navegação fluida com efeito frosted glass inteligente ao rolar a lista de alunos e painéis de prescrição.",
+        "badge": "INTERFACE"
+      },
+      {
+        "title": "Viral Loop & Prova Social dos Alunos",
+        "description": "Alunos agora geram cards comemorativos estilizados com o nome do seu treinador oficial e link direto para sua consultoria ao baterem metas.",
+        "badge": "MARKETING"
       }
     ],
     "admin": [
@@ -153,6 +173,11 @@
         "title": "Roteamento Transversal Resiliente",
         "description": "Interceptação inteligente de faturas de alunos em /subscriptions/webhook/asaas e /webhooks/asaas para 100% de tolerância a falhas externas.",
         "badge": "BACKEND"
+      },
+      {
+        "title": "Componente ScrollAwareGlassHeader na Suíte Meta Design",
+        "description": "Componente desacoplado e reutilizável com interpolação de blur de 0 a 18px, borda dinâmica e zero jitter em taxas de atualização de 120Hz.",
+        "badge": "SISTEMA"
       }
     ]
   }

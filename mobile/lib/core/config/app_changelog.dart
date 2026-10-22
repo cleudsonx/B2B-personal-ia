@@ -6,7 +6,8 @@ class ChangelogItem {
   final String title;
   final String description;
   final String? badge; // ex: 'NOVO', 'MELHORIA', 'CORREÇÃO', 'SEGURANÇA'
-  final List<String> targetRoles; // ['student'], ['trainer'], ['admin'] ou padrão todos
+  final List<String>
+  targetRoles; // ['student'], ['trainer'], ['admin'] ou padrão todos
 
   const ChangelogItem({
     required this.icon,
@@ -41,7 +42,7 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103037,
+      buildNumber: 2026103038,
       date: '21 de Outubro, 2026',
       summary:
           'Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas e Gestão Dinâmica de Preços & Planos.',
@@ -160,6 +161,15 @@ class AppChangelog {
           targetRoles: ['admin'],
         ),
 
+        ChangelogItem(
+          icon: Icons.blur_on_rounded,
+          title: 'Componente ScrollAwareGlassHeader na Suíte Meta Design',
+          description:
+              'Componente desacoplado e reutilizável com interpolação de blur de 0 a 18px, borda dinâmica e zero jitter em taxas de atualização de 120Hz.',
+          badge: 'SISTEMA',
+          targetRoles: ['admin'],
+        ),
+
         // --- PARA O PROFESSOR / TREINADOR ---
         ChangelogItem(
           icon: Icons.fullscreen_rounded,
@@ -226,6 +236,23 @@ class AppChangelog {
           targetRoles: ['trainer'],
         ),
 
+        ChangelogItem(
+          icon: Icons.blur_on_rounded,
+          title: 'Cabeçalho de Vidro Dinâmico (Scroll-Aware Glass Header)',
+          description:
+              'Navegação fluida com efeito frosted glass inteligente ao rolar a lista de alunos e painéis de prescrição.',
+          badge: 'INTERFACE',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.share_rounded,
+          title: 'Viral Loop & Prova Social dos Alunos',
+          description:
+              'Alunos agora geram cards comemorativos estilizados com o nome do seu treinador oficial e link direto para sua consultoria ao baterem metas.',
+          badge: 'MARKETING',
+          targetRoles: ['trainer'],
+        ),
+
         // --- PARA O ALUNO ---
         ChangelogItem(
           icon: Icons.fullscreen_rounded,
@@ -281,6 +308,22 @@ class AppChangelog {
           description:
               'Modal de triunfo animado com confetes e feedback tátil ao finalizar a sessão com sucesso.',
           badge: 'CELEBRAÇÃO',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.auto_awesome_rounded,
+          title: 'Card de Triunfo & Compartilhamento Social (Stories / Redes)',
+          description:
+              'Gere um card comemorativo em formato Story (9:16) no final de cada treino com seus recordes (PRs), volume em kg, séries e ofensiva para postar no Instagram e compartilhar no WhatsApp.',
+          badge: 'CONQUISTAS',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.blur_on_rounded,
+          title: 'Cabeçalho de Vidro Dinâmico (Scroll-Aware Glass Header)',
+          description:
+              'Efeito translúcido ultra-fluido com desfoque de vidro inteligente no topo enquanto você rola seus treinos e fichas de exercícios.',
+          badge: 'VISUAL',
           targetRoles: ['student'],
         ),
       ],
@@ -1168,13 +1211,14 @@ class AppChangelog {
 
     return history
         .map((release) {
-          final filtered = release.highlights.where((item) {
-            if (isStudent) {
-              return item.targetRoles.contains('student') ||
-                  item.targetRoles.contains('client');
-            }
-            return item.targetRoles.contains(targetRole);
-          }).toList();
+          final filtered =
+              release.highlights.where((item) {
+                if (isStudent) {
+                  return item.targetRoles.contains('student') ||
+                      item.targetRoles.contains('client');
+                }
+                return item.targetRoles.contains(targetRole);
+              }).toList();
 
           return VersionRelease(
             version: release.version,
@@ -1189,5 +1233,6 @@ class AppChangelog {
   }
 
   /// Retorna histórico exclusivo e filtrado para o perfil Aluno
-  static List<VersionRelease> get studentHistory => getReleasesForRole('student');
+  static List<VersionRelease> get studentHistory =>
+      getReleasesForRole('student');
 }

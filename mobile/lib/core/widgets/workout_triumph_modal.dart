@@ -9,10 +9,12 @@ import 'meta_components.dart';
 ///
 /// Apresenta troféu elástico, aura com pulso, cards de métricas em cascata (Tempo, Volume em kg, Séries),
 /// seletor tátil de RPE (Percepção Subjetiva de Esforço 1 a 10), indicador de Ofensiva (Streak),
-/// Recordes Pessoais (PRs batidos) e botão de compartilhamento com o WhatsApp do treinador.
+/// Recordes Pessoais (PRs batidos), botão de Card Comemorativo de Triunfo (Story / Redes)
+/// e compartilhamento via WhatsApp.
 class WorkoutTriumphModal extends StatefulWidget {
   final String workoutTitle;
   final String trainerName;
+  final String? studentName;
   final String? trainerPhone;
   final int durationMin;
   final double totalVolumeKg;
@@ -26,6 +28,7 @@ class WorkoutTriumphModal extends StatefulWidget {
     super.key,
     required this.workoutTitle,
     required this.trainerName,
+    this.studentName,
     this.trainerPhone,
     required this.durationMin,
     required this.totalVolumeKg,
@@ -41,6 +44,7 @@ class WorkoutTriumphModal extends StatefulWidget {
     BuildContext context, {
     required String workoutTitle,
     required String trainerName,
+    String? studentName,
     String? trainerPhone,
     required int durationMin,
     required double totalVolumeKg,
@@ -63,6 +67,7 @@ class WorkoutTriumphModal extends StatefulWidget {
       builder: (ctx) => WorkoutTriumphModal(
         workoutTitle: workoutTitle,
         trainerName: trainerName,
+        studentName: studentName,
         trainerPhone: trainerPhone,
         durationMin: durationMin,
         totalVolumeKg: totalVolumeKg,
@@ -110,6 +115,28 @@ class _WorkoutTriumphModalState extends State<WorkoutTriumphModal> {
     } catch (_) {}
   }
 
+  String _buildFormattedSummary() {
+    final prText = widget.newPrCount > 0
+        ? '\n🏆 ${widget.newPrCount} NOVO(S) RECORDE(S) DE CARGA (PR)!'
+        : '';
+    final streakText = (widget.currentStreak != null && widget.currentStreak! > 0)
+        ? '\n🔥 Ofensiva: ${widget.currentStreak} dias consecutivos!'
+        : '';
+    final volText = widget.totalVolumeKg >= 1000
+        ? '${(widget.totalVolumeKg / 1000).toStringAsFixed(1)} toneladas'
+        : '${widget.totalVolumeKg.toStringAsFixed(0)} kg';
+
+    return '⚡ TREINO CONCLUÍDO NO MR. COACH AI! ⚡\n'
+        '🏋️ ${widget.workoutTitle}\n'
+        '⏱ Duração: ${widget.durationMin} minutos\n'
+        '📊 Volume Total: $volText\n'
+        '🎯 Séries: ${widget.completedSets}/${widget.totalSets}\n'
+        '💥 RPE: $_selectedRpe/10 (${_getRpeLabel(_selectedRpe)})'
+        '$prText$streakText\n'
+        '💪 Personal Trainer: Prof. ${widget.trainerName}\n'
+        '📲 app.sheipados.com';
+  }
+
   void _shareOnWhatsApp(BuildContext context) {
     _saveRpeToPreferences();
     if (widget.trainerPhone == null || widget.trainerPhone!.trim().isEmpty) return;
@@ -133,6 +160,28 @@ class _WorkoutTriumphModalState extends State<WorkoutTriumphModal> {
     launchUrl(
       Uri.parse('https://api.whatsapp.com/send?phone=$phoneWithCountry&text=$msg'),
       mode: LaunchMode.externalApplication,
+    );
+  }
+
+  void _showShareCardDialog(BuildContext context) {
+    HapticFeedback.mediumImpact();
+    showDialog(
+      context: context,
+      builder: (ctx) => WorkoutShareCardDialog(
+        workoutTitle: widget.workoutTitle,
+        trainerName: widget.trainerName,
+        studentName: widget.studentName,
+        durationMin: widget.durationMin,
+        totalVolumeKg: widget.totalVolumeKg,
+        completedSets: widget.completedSets,
+        totalSets: widget.totalSets,
+        currentStreak: widget.currentStreak,
+        newPrCount: widget.newPrCount,
+        rpe: _selectedRpe,
+        rpeLabel: _getRpeLabel(_selectedRpe),
+        rpeColor: _getRpeColor(_selectedRpe),
+        summaryText: _buildFormattedSummary(),
+      ),
     );
   }
 
@@ -264,7 +313,7 @@ class _WorkoutTriumphModalState extends State<WorkoutTriumphModal> {
                       border: Border.all(color: border),
                     ),
                     child: Column(
-                      children: [
+                       children: [
                         const Icon(
                           Icons.timer_rounded,
                           size: 20,
@@ -597,6 +646,63 @@ class _WorkoutTriumphModalState extends State<WorkoutTriumphModal> {
             ],
             const SizedBox(height: 14),
 
+            // NOVO: Botão Card Comemorativo de Triunfo (Story / Redes Sociais)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+                child: InkWell(
+                  onTap: () => _showShareCardDialog(context),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xFF6366F1),
+                          Color(0xFF10B981),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.32),
+                          blurRadius: 18,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 19,
+                          color: Colors.white,
+                        ),
+                        SizedBox(width: 10),
+                        Text(
+                          'Ver Card de Conquista (Stories / Redes)',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            )
+                .animate()
+                .fadeIn(delay: 580.ms, duration: 350.ms)
+                .slideY(begin: 0.1, end: 0),
+
             // Botão Compartilhar WhatsApp com Gradiente Oficial
             if (widget.trainerPhone != null && widget.trainerPhone!.trim().isNotEmpty) ...[
               Material(
@@ -651,7 +757,7 @@ class _WorkoutTriumphModalState extends State<WorkoutTriumphModal> {
                 ),
               )
                   .animate()
-                  .fadeIn(delay: 600.ms, duration: 350.ms)
+                  .fadeIn(delay: 620.ms, duration: 350.ms)
                   .slideY(begin: 0.1, end: 0),
               const SizedBox(height: 12),
             ],
@@ -672,6 +778,476 @@ class _WorkoutTriumphModalState extends State<WorkoutTriumphModal> {
                 .animate()
                 .fadeIn(delay: 660.ms, duration: 350.ms)
                 .slideY(begin: 0.1, end: 0),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Diálogo com Card Comemorativo Visual de Triunfo pronto para Stories e Redes Sociais.
+class WorkoutShareCardDialog extends StatelessWidget {
+  final String workoutTitle;
+  final String trainerName;
+  final String? studentName;
+  final int durationMin;
+  final double totalVolumeKg;
+  final int completedSets;
+  final int totalSets;
+  final int? currentStreak;
+  final int newPrCount;
+  final int rpe;
+  final String rpeLabel;
+  final Color rpeColor;
+  final String summaryText;
+
+  const WorkoutShareCardDialog({
+    super.key,
+    required this.workoutTitle,
+    required this.trainerName,
+    this.studentName,
+    required this.durationMin,
+    required this.totalVolumeKg,
+    required this.completedSets,
+    required this.totalSets,
+    this.currentStreak,
+    required this.newPrCount,
+    required this.rpe,
+    required this.rpeLabel,
+    required this.rpeColor,
+    required this.summaryText,
+  });
+
+  void _copySummary(BuildContext context) {
+    Clipboard.setData(ClipboardData(text: summaryText));
+    HapticFeedback.lightImpact();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+            SizedBox(width: 10),
+            Text('Resumo do treino copiado para colar no Stories ou WhatsApp!'),
+          ],
+        ),
+        backgroundColor: MetaColors.emerald,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _shareViaWhatsApp(BuildContext context) {
+    final msg = Uri.encodeComponent(summaryText);
+    launchUrl(
+      Uri.parse('https://api.whatsapp.com/send?text=$msg'),
+      mode: LaunchMode.externalApplication,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = MetaColors.isDark(context);
+    final screenW = MediaQuery.sizeOf(context).width;
+    final cardWidth = screenW > 440 ? 380.0 : (screenW - 32).clamp(300.0, 380.0);
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      child: Center(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Card Visual Estilo Instagram Story / Whoop
+              Container(
+                width: cardWidth,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF090D16), // Obsidian fosco absoluto
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(
+                    color: MetaColors.emerald.withValues(alpha: 0.45),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: MetaColors.emerald.withValues(alpha: 0.25),
+                      blurRadius: 36,
+                      spreadRadius: 2,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header Branding
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: MetaColors.emerald,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: MetaColors.emerald,
+                                    blurRadius: 6,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'MR. COACH AI',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                          decoration: BoxDecoration(
+                            color: MetaColors.emerald.withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: MetaColors.emerald.withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: const Text(
+                            'SESSÃO CONCLUÍDA',
+                            style: TextStyle(
+                              color: MetaColors.emerald,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Troféu Central
+                    Container(
+                      width: 76,
+                      height: 76,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: MetaColors.emerald.withValues(alpha: 0.14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: MetaColors.emerald.withValues(alpha: 0.4),
+                            blurRadius: 24,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: const Center(
+                        child: Text(
+                          '🏆',
+                          style: TextStyle(fontSize: 40),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Título do Treino
+                    Text(
+                      workoutTitle.toUpperCase(),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+
+                    if (studentName != null && studentName!.isNotEmpty)
+                      Text(
+                        'Atleta: $studentName',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+
+                    const SizedBox(height: 20),
+
+                    // 3 Pilares de Performance
+                    Row(
+                      children: [
+                        _buildMetricBox(
+                          icon: Icons.timer_rounded,
+                          color: MetaColors.emerald,
+                          value: '$durationMin',
+                          unit: 'MIN',
+                        ),
+                        const SizedBox(width: 8),
+                        _buildMetricBox(
+                          icon: Icons.fitness_center_rounded,
+                          color: Colors.amber,
+                          value: totalVolumeKg >= 1000
+                              ? '${(totalVolumeKg / 1000).toStringAsFixed(1)}t'
+                              : totalVolumeKg.toStringAsFixed(0),
+                          unit: 'VOLUME KG',
+                        ),
+                        const SizedBox(width: 8),
+                        _buildMetricBox(
+                          icon: Icons.check_circle_rounded,
+                          color: const Color(0xFF60A5FA),
+                          value: '$completedSets/$totalSets',
+                          unit: 'SÉRIES',
+                        ),
+                      ],
+                    ),
+
+                    if (newPrCount > 0) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text('🏆', style: TextStyle(fontSize: 16)),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                '$newPrCount NOVO(S) RECORDE(S) DE CARGA (PR)!',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.amber,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    if (currentStreak != null && currentStreak! > 0) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.deepOrangeAccent.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.deepOrangeAccent.withValues(alpha: 0.4)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text('🔥', style: TextStyle(fontSize: 16)),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                '$currentStreakº DIA SEGUIDO DE TREINO!',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.deepOrangeAccent,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 18),
+                    Divider(color: Colors.white.withValues(alpha: 0.12), height: 1),
+                    const SizedBox(height: 14),
+
+                    // Rodapé do Card
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Treinador Oficial',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.5),
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                'Prof. $trainerName',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              'app.sheipados.com',
+                              style: TextStyle(
+                                color: MetaColors.emerald.withValues(alpha: 0.9),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            Text(
+                              'Personal Training IA',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.45),
+                                fontSize: 9.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Dica amigável de captura de tela
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.camera_alt_outlined, size: 14, color: Colors.white70),
+                    SizedBox(width: 6),
+                    Text(
+                      'Tire um print para postar no Instagram Stories!',
+                      style: TextStyle(color: Colors.white70, fontSize: 11.5, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Botões de Ação
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: MetaColors.surfaceHighlight,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    onPressed: () => _copySummary(context),
+                    icon: const Icon(Icons.copy_rounded, size: 17),
+                    label: const Text('Copiar Texto', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  ),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF25D366),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    onPressed: () => _shareViaWhatsApp(context),
+                    icon: const Icon(Icons.share_rounded, size: 17),
+                    label: const Text('WhatsApp', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  ),
+                  IconButton(
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white12,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    onPressed: () => Navigator.pop(context),
+                    tooltip: 'Fechar',
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetricBox({
+    required IconData icon,
+    required Color color,
+    required String value,
+    required String unit,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFF131B2E),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.1),
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            Text(
+              unit,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.5),
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.4,
+              ),
+            ),
           ],
         ),
       ),

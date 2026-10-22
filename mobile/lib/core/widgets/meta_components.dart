@@ -1,4 +1,5 @@
 export 'scroll_aware_glass_header.dart';
+export 'workout_triumph_modal.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
