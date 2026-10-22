@@ -1,10 +1,25 @@
 {
   "version": "1.9.0",
-  "build": 2026103034,
-  "updated_at": "2026-10-22T02:07:18.138699Z",
-  "notes": "Versão 1.9.0: Motor de Afiliados & Links de Indicação (Referral Engine), Cupons & Campanhas Promocionais SaaS, Gestão Dinâmica de Preços & Planos, Auditoria de Sessões (Kill-Switch) e Simulador de Margem Unit Economics.",
+  "build": 2026103036,
+  "updated_at": "2026-10-22T02:24:53.019266Z",
+  "notes": "Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas e Gestão Dinâmica de Preços & Planos.",
   "changelog": {
     "student": [
+      {
+        "title": "Imersão Visual Edge-to-Edge sem Tarjas",
+        "description": "Treine em tela cheia real! O app agora preenche 100% da tela do seu celular até as bordas, sem faixas pretas no topo e no rodapé, integrando-se naturalmente à Dynamic Island e barra de gestos.",
+        "badge": "DESIGN"
+      },
+      {
+        "title": "Entrada VIP por Links de Parcerias (/r/{slug})",
+        "description": "Ao abrir um convite de parceiro ou amigo, sua tela de matrícula já carrega com o cupom aplicado e o desconto destacado na hora.",
+        "badge": "ACESSO VIP"
+      },
+      {
+        "title": "Cupons de Desconto Auto-Aplicados no Checkout",
+        "description": "Visualização transparente da economia em R$ e porcentagem ao contratar planos e consultorias com Pix e Cartão.",
+        "badge": "PAGAMENTO"
+      },
       {
         "title": "Instalação do Aplicativo (PWA)",
         "description": "Guia interativo ensinando a instalar o app na tela inicial do celular com 1 toque no iPhone (Safari) e Android (Chrome).",
@@ -27,6 +42,21 @@
       }
     ],
     "trainer": [
+      {
+        "title": "Cockpit Edge-to-Edge com Doca Flutuante Translúcida",
+        "description": "Interface moderna em tela cheia que flui suavemente por trás da barra de navegação de vidro fosco (glassmorphism), garantindo máximo espaço útil para gerenciar alunos e prescrever treinos.",
+        "badge": "DESIGN"
+      },
+      {
+        "title": "Landing Pages Públicas (/r/{slug}) & Auto-Cupom",
+        "description": "Compartilhe links personalizados de captação de alunos e parceiros com desconto já aplicado na vitrine pública da sua consultoria com total transparência.",
+        "badge": "PARCERIAS"
+      },
+      {
+        "title": "Repasse de Comissões e Parcerias via Pix",
+        "description": "Acompanhe o saldo gerado por indicações de novos personals parceiros e receba seus repasses com quitação direta via Pix.",
+        "badge": "FINANÇAS"
+      },
       {
         "title": "Aplicação Dinâmica de Cupom no Checkout",
         "description": "Campo nativo para resgate de cupons promocionais (ex: LAUNCH50, PROMOVIP20) na contratação de planos com validação instantânea, cálculo de economia e suporte a Pix e Cartão de Crédito.",
@@ -55,6 +85,11 @@
     ],
     "admin": [
       {
+        "title": "Central de Liquidação Pix (Payout Engine) & Comprovantes",
+        "description": "Quitação atômica de comissões acumuladas de afiliados e parceiros com um clique, cópia de chave Pix, dedução imediata de saldo e extrato auditável de repasses.",
+        "badge": "PIX PAYOUT"
+      },
+      {
         "title": "Arquitetura Visual Edge-to-Edge Global (Mobile, Web & PWA)",
         "description": "Imersão contínua por trás da Status Bar, Dynamic Island e Home Indicator em 100% das telas (Aluno, Treinador e Admin), com eliminação de scrims no Android Dark Mode e dock translúcido calibrado.",
         "badge": "DESIGN"
@@ -66,7 +101,7 @@
       },
       {
         "title": "Cupons de Desconto & Campanhas Promocionais SaaS",
-        "description": "Motor de criação e validação de cupons promocionais percentuais ou com desconto fixo em R\\$, controle de limite de resgates com barra de progresso, restrição por plano e métricas de conversão e CAC.",
+        "description": "Motor de criação e validação de cupons promocionais percentuais ou com desconto fixo em R$, controle de limite de resgates com barra de progresso, restrição por plano e métricas de conversão e CAC.",
         "badge": "CUPONS"
       },
       {
@@ -105,18 +140,13 @@
         "badge": "MISSION CONTROL"
       },
       {
-        "title": "Simulador de Margem SaaS & Unit Economics",
-        "description": "Simulador financeiro dinâmico com projeção de MRR, Split GMV de 5%, COGS de IA Gemini Flash Lite e Meta WhatsApp, LTV/CAC e margens líquidas reais.",
-        "badge": "MISSION CONTROL"
-      },
-      {
         "title": "Webhook Unificado Asaas com Idempotência",
         "description": "Processamento atômico de eventos PAYMENT_RECEIVED e PAYMENT_CONFIRMED, com suporte a leases duráveis e proteção contra duplicidade.",
         "badge": "INFRAESTRUTURA"
       },
       {
         "title": "Monitor de Custos de IA & Tokens Gemini 2.5",
-        "description": "Painel executivo com telemetria de tokens, custo em R\\$/US\\$, barômetro de eficiência Zero-Cost e ajuste dinâmico de cotas por treinador.",
+        "description": "Painel executivo com telemetria de tokens, custo em R$/US$, barômetro de eficiência Zero-Cost e ajuste dinâmico de cotas por treinador.",
         "badge": "MISSION CONTROL"
       },
       {

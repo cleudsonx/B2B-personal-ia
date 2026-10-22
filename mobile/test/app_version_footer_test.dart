@@ -279,4 +279,71 @@ void main() {
     // Modal não deve ter sido aberto pois a versão já foi vista
     expect(find.text('NOVIDADES DESTA VERSÃO'), findsNothing);
   });
+
+  testWidgets('AppVersionFooter exibe banner de contexto de perfil para aluno, professor e admin',
+      (tester) async {
+    tester.view.physicalSize = const Size(1080, 1920);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    // 1. Aluno
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: AppVersionFooter(userRole: 'client'),
+        ),
+      ),
+    );
+    await tester.tap(find.byType(InkWell));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Perfil Aluno: Novidades para sua Rotina de Treino e Acesso'), findsOneWidget);
+    expect(find.text('Imersão Visual Edge-to-Edge sem Tarjas'), findsOneWidget);
+    expect(find.text('Entrada VIP por Links de Parcerias (/r/{slug})'), findsOneWidget);
+
+    // Fecha modal
+    await tester.ensureVisible(find.text('Entendido'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Entendido'));
+    await tester.pumpAndSettle();
+
+    // 2. Professor
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: AppVersionFooter(userRole: 'trainer'),
+        ),
+      ),
+    );
+    await tester.tap(find.byType(InkWell));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Perfil Personal: Novidades para sua Consultoria e Alunos'), findsOneWidget);
+    expect(find.text('Cockpit Edge-to-Edge com Doca Flutuante Translúcida'), findsOneWidget);
+    expect(find.text('Landing Pages Públicas (/r/{slug}) & Auto-Cupom'), findsOneWidget);
+    expect(find.text('Repasse de Comissões e Parcerias via Pix'), findsOneWidget);
+
+    // Fecha modal
+    await tester.ensureVisible(find.text('Entendido'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Entendido'));
+    await tester.pumpAndSettle();
+
+    // 3. Admin
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: AppVersionFooter(userRole: 'admin'),
+        ),
+      ),
+    );
+    await tester.tap(find.byType(InkWell));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Visão Executiva: Novidades de Infraestrutura, Finanças e Plataforma'), findsOneWidget);
+    expect(find.text('Central de Liquidação Pix (Payout Engine) & Comprovantes'), findsOneWidget);
+  });
 }

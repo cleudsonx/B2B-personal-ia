@@ -593,6 +593,57 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
                   ),
                 ],
               ),
+              // Banner de Segmentação de Perfil Ativo
+              Container(
+                margin: const EdgeInsets.only(top: 10, bottom: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: (isAdmin
+                          ? MetaColors.accentBlue
+                          : (isTrainer ? MetaColors.emerald : const Color(0xFFF59E0B)))
+                      .withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: (isAdmin
+                            ? MetaColors.accentBlue
+                            : (isTrainer ? MetaColors.emerald : const Color(0xFFF59E0B)))
+                        .withValues(alpha: 0.28),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isAdmin
+                          ? Icons.admin_panel_settings_rounded
+                          : (isTrainer
+                              ? Icons.business_center_rounded
+                              : Icons.fitness_center_rounded),
+                      size: 16,
+                      color: isAdmin
+                          ? MetaColors.accentBlue
+                          : (isTrainer ? MetaColors.emerald : const Color(0xFFF59E0B)),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        isAdmin
+                            ? 'Visão Executiva: Novidades de Infraestrutura, Finanças e Plataforma'
+                            : (isTrainer
+                                ? 'Perfil Personal: Novidades para sua Consultoria e Alunos'
+                                : 'Perfil Aluno: Novidades para sua Rotina de Treino e Acesso'),
+                        style: TextStyle(
+                          color: isAdmin
+                              ? MetaColors.accentBlue
+                              : (isTrainer ? MetaColors.emerald : const Color(0xFFF59E0B)),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 14),
               // Chips interativos de filtragem por perfil
               Wrap(

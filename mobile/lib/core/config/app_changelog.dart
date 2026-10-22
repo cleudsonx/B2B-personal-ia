@@ -41,12 +41,20 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103034,
+      buildNumber: 2026103036,
       date: '21 de Outubro, 2026',
       summary:
-          'Versão 1.9.0: Motor de Afiliados & Links de Indicação (Referral Engine), Cupons & Campanhas Promocionais SaaS, Gestão Dinâmica de Preços & Planos, Auditoria de Sessões (Kill-Switch) e Simulador de Margem Unit Economics.',
+          'Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas e Gestão Dinâmica de Preços & Planos.',
       highlights: [
         // --- PARA O ADMIN / GESTOR ---
+        ChangelogItem(
+          icon: Icons.payments_rounded,
+          title: 'Central de Liquidação Pix (Payout Engine) & Comprovantes',
+          description:
+              'Quitação atômica de comissões acumuladas de afiliados e parceiros com um clique, cópia de chave Pix, dedução imediata de saldo e extrato auditável de repasses.',
+          badge: 'PIX PAYOUT',
+          targetRoles: ['admin'],
+        ),
         ChangelogItem(
           icon: Icons.fullscreen_rounded,
           title: 'Arquitetura Visual Edge-to-Edge Global (Mobile, Web & PWA)',
@@ -67,7 +75,7 @@ class AppChangelog {
           icon: Icons.confirmation_number_rounded,
           title: 'Cupons de Desconto & Campanhas Promocionais SaaS',
           description:
-              'Motor de criação e validação de cupons promocionais percentuais ou com desconto fixo em R\$, controle de limite de resgates com barra de progresso, restrição por plano e métricas de conversão e CAC.',
+              'Motor de criação e validação de cupons promocionais percentuais ou com desconto fixo em R\x24, controle de limite de resgates com barra de progresso, restrição por plano e métricas de conversão e CAC.',
           badge: 'CUPONS',
           targetRoles: ['admin'],
         ),
@@ -95,7 +103,88 @@ class AppChangelog {
           badge: 'FINANÇAS',
           targetRoles: ['admin'],
         ),
-        // --- PARA O PROFESSOR ---
+        ChangelogItem(
+          icon: Icons.trending_up_rounded,
+          title: 'Modelagem LTV/CAC & Forecast de Runway (12 Meses)',
+          description:
+              'Simulador dinâmico de fluxo de caixa preditivo mês a mês (M1 a M12), projeção de burn rate, saldo final, horizonte de sobrevivência Default Alive e análise de breakeven.',
+          badge: 'MISSION CONTROL',
+          targetRoles: ['admin'],
+        ),
+        ChangelogItem(
+          icon: Icons.campaign_rounded,
+          title: 'Central de Notificações Push & WhatsApp em Massa',
+          description:
+              'Disparo multicanal (Push, WhatsApp e In-App) com segmentação inteligente por plano, alunos inativos ou turmas lotadas, radar de alcance e telemetria de entrega.',
+          badge: 'MISSION CONTROL',
+          targetRoles: ['admin'],
+        ),
+        ChangelogItem(
+          icon: Icons.hub_rounded,
+          title: 'Radar Preditivo de Churn B2B & Payback de Coortes',
+          description:
+              'Monitoramento preditivo de treinadores em risco com probabilidade de churn, matriz histórica de coortes com recuperação de CAC e resgate executivo VIP via WhatsApp.',
+          badge: 'MISSION CONTROL',
+          targetRoles: ['admin'],
+        ),
+        ChangelogItem(
+          icon: Icons.file_download_rounded,
+          title: 'Exportação Executiva em CSV & Pitch Deck',
+          description:
+              'Geração instantânea de relatórios financeiros em CSV (padrão Excel Brasil) e resumo executivo em Markdown para investidores e reuniões de diretoria.',
+          badge: 'MISSION CONTROL',
+          targetRoles: ['admin'],
+        ),
+        ChangelogItem(
+          icon: Icons.security_update_good_rounded,
+          title: 'Webhook Unificado Asaas com Idempotência',
+          description:
+              'Processamento atômico de eventos PAYMENT_RECEIVED e PAYMENT_CONFIRMED, com suporte a leases duráveis e proteção contra duplicidade.',
+          badge: 'INFRAESTRUTURA',
+          targetRoles: ['admin'],
+        ),
+        ChangelogItem(
+          icon: Icons.psychology_rounded,
+          title: 'Monitor de Custos de IA & Tokens Gemini 2.5',
+          description:
+              'Painel executivo com telemetria de tokens, custo em R\x24/US\x24, barômetro de eficiência Zero-Cost e ajuste dinâmico de cotas por treinador.',
+          badge: 'MISSION CONTROL',
+          targetRoles: ['admin'],
+        ),
+        ChangelogItem(
+          icon: Icons.alt_route_rounded,
+          title: 'Roteamento Transversal Resiliente',
+          description:
+              'Interceptação inteligente de faturas de alunos em /subscriptions/webhook/asaas e /webhooks/asaas para 100% de tolerância a falhas externas.',
+          badge: 'BACKEND',
+          targetRoles: ['admin'],
+        ),
+
+        // --- PARA O PROFESSOR / TREINADOR ---
+        ChangelogItem(
+          icon: Icons.fullscreen_rounded,
+          title: 'Cockpit Edge-to-Edge com Doca Flutuante Translúcida',
+          description:
+              'Interface moderna em tela cheia que flui suavemente por trás da barra de navegação de vidro fosco (glassmorphism), garantindo máximo espaço útil para gerenciar alunos e prescrever treinos.',
+          badge: 'DESIGN',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.link_rounded,
+          title: 'Landing Pages Públicas (/r/{slug}) & Auto-Cupom',
+          description:
+              'Compartilhe links personalizados de captação de alunos e parceiros com desconto já aplicado na vitrine pública da sua consultoria com total transparência.',
+          badge: 'PARCERIAS',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.pix_rounded,
+          title: 'Repasse de Comissões e Parcerias via Pix',
+          description:
+              'Acompanhe o saldo gerado por indicações de novos personals parceiros e receba seus repasses com quitação direta via Pix.',
+          badge: 'FINANÇAS',
+          targetRoles: ['trainer'],
+        ),
         ChangelogItem(
           icon: Icons.confirmation_number_rounded,
           title: 'Aplicação Dinâmica de Cupom no Checkout',
@@ -139,6 +228,30 @@ class AppChangelog {
 
         // --- PARA O ALUNO ---
         ChangelogItem(
+          icon: Icons.fullscreen_rounded,
+          title: 'Imersão Visual Edge-to-Edge sem Tarjas',
+          description:
+              'Treine em tela cheia real! O app agora preenche 100% da tela do seu celular até as bordas, sem faixas pretas no topo e no rodapé, integrando-se naturalmente à Dynamic Island e barra de gestos.',
+          badge: 'DESIGN',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.card_giftcard_rounded,
+          title: 'Entrada VIP por Links de Parcerias (/r/{slug})',
+          description:
+              'Ao abrir um convite de parceiro ou amigo, sua tela de matrícula já carrega com o cupom aplicado e o desconto destacado na hora.',
+          badge: 'ACESSO VIP',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.discount_rounded,
+          title: 'Cupons de Desconto Auto-Aplicados no Checkout',
+          description:
+              'Visualização transparente da economia em R\x24 e porcentagem ao contratar planos e consultorias com Pix e Cartão.',
+          badge: 'PAGAMENTO',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
           icon: Icons.install_mobile_rounded,
           title: 'Instalação do Aplicativo (PWA)',
           description:
@@ -169,72 +282,6 @@ class AppChangelog {
               'Modal de triunfo animado com confetes e feedback tátil ao finalizar a sessão com sucesso.',
           badge: 'CELEBRAÇÃO',
           targetRoles: ['student'],
-        ),
-
-        // --- PARA ADMIN ---
-        ChangelogItem(
-          icon: Icons.trending_up_rounded,
-          title: 'Modelagem LTV/CAC & Forecast de Runway (12 Meses)',
-          description:
-              'Simulador dinâmico de fluxo de caixa preditivo mês a mês (M1 a M12), projeção de burn rate, saldo final, horizonte de sobrevivência Default Alive e análise de breakeven.',
-          badge: 'MISSION CONTROL',
-          targetRoles: ['admin'],
-        ),
-        ChangelogItem(
-          icon: Icons.campaign_rounded,
-          title: 'Central de Notificações Push & WhatsApp em Massa',
-          description:
-              'Disparo multicanal (Push, WhatsApp e In-App) com segmentação inteligente por plano, alunos inativos ou turmas lotadas, radar de alcance e telemetria de entrega.',
-          badge: 'MISSION CONTROL',
-          targetRoles: ['admin'],
-        ),
-        ChangelogItem(
-          icon: Icons.hub_rounded,
-          title: 'Radar Preditivo de Churn B2B & Payback de Coortes',
-          description:
-              'Monitoramento preditivo de treinadores em risco com probabilidade de churn, matriz histórica de coortes com recuperação de CAC e resgate executivo VIP via WhatsApp.',
-          badge: 'MISSION CONTROL',
-          targetRoles: ['admin'],
-        ),
-        ChangelogItem(
-          icon: Icons.file_download_rounded,
-          title: 'Exportação Executiva em CSV & Pitch Deck',
-          description:
-              'Geração instantânea de relatórios financeiros em CSV (padrão Excel Brasil) e resumo executivo em Markdown para investidores e reuniões de diretoria.',
-          badge: 'MISSION CONTROL',
-          targetRoles: ['admin'],
-        ),
-        ChangelogItem(
-          icon: Icons.calculate_rounded,
-          title: 'Simulador de Margem SaaS & Unit Economics',
-          description:
-              'Simulador financeiro dinâmico com projeção de MRR, Split GMV de 5%, COGS de IA Gemini Flash Lite e Meta WhatsApp, LTV/CAC e margens líquidas reais.',
-          badge: 'MISSION CONTROL',
-          targetRoles: ['admin'],
-        ),
-        ChangelogItem(
-          icon: Icons.security_update_good_rounded,
-          title: 'Webhook Unificado Asaas com Idempotência',
-          description:
-              'Processamento atômico de eventos PAYMENT_RECEIVED e PAYMENT_CONFIRMED, com suporte a leases duráveis e proteção contra duplicidade.',
-          badge: 'INFRAESTRUTURA',
-          targetRoles: ['admin'],
-        ),
-        ChangelogItem(
-          icon: Icons.psychology_rounded,
-          title: 'Monitor de Custos de IA & Tokens Gemini 2.5',
-          description:
-              'Painel executivo com telemetria de tokens, custo em R\$/US\$, barômetro de eficiência Zero-Cost e ajuste dinâmico de cotas por treinador.',
-          badge: 'MISSION CONTROL',
-          targetRoles: ['admin'],
-        ),
-        ChangelogItem(
-          icon: Icons.alt_route_rounded,
-          title: 'Roteamento Transversal Resiliente',
-          description:
-              'Interceptação inteligente de faturas de alunos em /subscriptions/webhook/asaas e /webhooks/asaas para 100% de tolerância a falhas externas.',
-          badge: 'BACKEND',
-          targetRoles: ['admin'],
         ),
       ],
     ),

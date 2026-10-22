@@ -278,9 +278,11 @@ Map<String, dynamic> _extractChangelogData(String content) {
 
     if (titleMatch == null || descMatch == null) continue;
 
-    final title = titleMatch.group(1)!.replaceAll(r"\'", "'").trim();
+    final title = titleMatch.group(1)!.replaceAll(r"\'", "'").replaceAll(r'\x24', r'$').replaceAll(r'\$', r'$').trim();
     final description = descMatch.group(1)!
         .replaceAll(r"\'", "'")
+        .replaceAll(r'\x24', r'$')
+        .replaceAll(r'\$', r'$')
         .replaceAll('\n', ' ')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
