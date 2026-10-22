@@ -42,12 +42,20 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103042,
+      buildNumber: 2026103045,
       date: '21 de Outubro, 2026',
       summary:
-          'Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas e Gestão Dinâmica de Preços & Planos.',
+          'Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas, Central de 1RM & Metas de Sobrecarga e Gestão Dinâmica de Preços & Planos.',
       highlights: [
         // --- PARA O ADMIN / GESTOR ---
+        ChangelogItem(
+          icon: Icons.stacked_bar_chart_rounded,
+          title: 'Central de Sobrecarga & 1RM Teórico (Suíte Meta Science)',
+          description:
+              'Métricas fisiológicas desacopladas no app com fórmulas de Epley e Brzycki, zonas de intensidade (90%, 75%, 60%), monitoramento de tonelagem semanal e simulador interativo.',
+          badge: 'CIÊNCIA',
+          targetRoles: ['admin'],
+        ),
         ChangelogItem(
           icon: Icons.payments_rounded,
           title: 'Central de Liquidação Pix (Payout Engine) & Comprovantes',
@@ -208,6 +216,14 @@ class AppChangelog {
 
         // --- PARA O PROFESSOR / TREINADOR ---
         ChangelogItem(
+          icon: Icons.insights_rounded,
+          title: 'Visualizador Analítico de 1RM & Curva de Tonelagem',
+          description:
+              'Acompanhe a curva de sobrecarga dos alunos em 4 semanas, volume acumulado por exercício e evolução de força máxima estimada automaticamente com base no RPE.',
+          badge: 'SOBRECARGA',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
           icon: Icons.fullscreen_rounded,
           title: 'Cockpit Edge-to-Edge com Doca Flutuante Translúcida',
           description:
@@ -326,6 +342,14 @@ class AppChangelog {
         ),
 
         // --- PARA O ALUNO ---
+        ChangelogItem(
+          icon: Icons.fitness_center_rounded,
+          title: 'Central de 1RM & Metas de Sobrecarga com Gráfico de Volume',
+          description:
+              'Descubra sua força máxima teórica calculada cientificamente (Epley e Brzycki), visualize zonas de hipertrofia e força, acompanhe seu volume em toneladas e simule novas marcas.',
+          badge: 'FORÇA & 1RM',
+          targetRoles: ['student'],
+        ),
         ChangelogItem(
           icon: Icons.fullscreen_rounded,
           title: 'Imersão Visual Edge-to-Edge sem Tarjas',

@@ -1076,6 +1076,67 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
             ),
             const SizedBox(height: 28),
 
+            // Seção: Metas de Sobrecarga & 1RM
+            Text(
+              'SOBRECARGA PROGRESSIVA & FORÇA',
+              style: TextStyle(
+                color: AppColors.emerald(context),
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 10),
+            MetaCard(
+              onTap: () => StudentOverloadCenterSheet.show(context),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: MetaColors.emerald.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.insights_rounded,
+                      color: MetaColors.emerald,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Central de Metas & 1RM',
+                          style: TextStyle(
+                            color: AppColors.text(context),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14.5,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Curvas de volume semanal, estimativa de 1RM e metas da IA',
+                          style: TextStyle(
+                            color: AppColors.subtext(context),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: MetaColors.emerald,
+                    size: 22,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+
             // Fuso Horário
             Text(
               'FUSO HORÁRIO DO ALUNO',

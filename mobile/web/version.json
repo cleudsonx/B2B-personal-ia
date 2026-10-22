@@ -1,10 +1,15 @@
 {
   "version": "1.9.0",
-  "build": 2026103042,
-  "updated_at": "2026-10-22T09:51:03.768600Z",
-  "notes": "Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas e Gestão Dinâmica de Preços & Planos.",
+  "build": 2026103045,
+  "updated_at": "2026-10-22T10:13:34.651771Z",
+  "notes": "Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas, Central de 1RM & Metas de Sobrecarga e Gestão Dinâmica de Preços & Planos.",
   "changelog": {
     "student": [
+      {
+        "title": "Central de 1RM & Metas de Sobrecarga com Gráfico de Volume",
+        "description": "Descubra sua força máxima teórica calculada cientificamente (Epley e Brzycki), visualize zonas de hipertrofia e força, acompanhe seu volume em toneladas e simule novas marcas.",
+        "badge": "FORÇA & 1RM"
+      },
       {
         "title": "Imersão Visual Edge-to-Edge sem Tarjas",
         "description": "Treine em tela cheia real! O app agora preenche 100% da tela do seu celular até as bordas, sem faixas pretas no topo e no rodapé, integrando-se naturalmente à Dynamic Island e barra de gestos.",
@@ -72,6 +77,11 @@
       }
     ],
     "trainer": [
+      {
+        "title": "Visualizador Analítico de 1RM & Curva de Tonelagem",
+        "description": "Acompanhe a curva de sobrecarga dos alunos em 4 semanas, volume acumulado por exercício e evolução de força máxima estimada automaticamente com base no RPE.",
+        "badge": "SOBRECARGA"
+      },
       {
         "title": "Cockpit Edge-to-Edge com Doca Flutuante Translúcida",
         "description": "Interface moderna em tela cheia que flui suavemente por trás da barra de navegação de vidro fosco (glassmorphism), garantindo máximo espaço útil para gerenciar alunos e prescrever treinos.",
@@ -144,6 +154,11 @@
       }
     ],
     "admin": [
+      {
+        "title": "Central de Sobrecarga & 1RM Teórico (Suíte Meta Science)",
+        "description": "Métricas fisiológicas desacopladas no app com fórmulas de Epley e Brzycki, zonas de intensidade (90%, 75%, 60%), monitoramento de tonelagem semanal e simulador interativo.",
+        "badge": "CIÊNCIA"
+      },
       {
         "title": "Central de Liquidação Pix (Payout Engine) & Comprovantes",
         "description": "Quitação atômica de comissões acumuladas de afiliados e parceiros com um clique, cópia de chave Pix, dedução imediata de saldo e extrato auditável de repasses.",
