@@ -9,6 +9,7 @@ import 'client_focus_workout_screen.dart';
 import 'widgets/warmup_sheet.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/meta_components.dart';
+import '../../core/widgets/student_ux_components.dart';
 import '../../core/widgets/biomechanical_analysis_sheet.dart';
 import '../../core/widgets/exercise_media_sheet.dart';
 import '../../core/widgets/broadcast_banner.dart';
@@ -40,7 +41,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
   String _workoutTitle = '';
-  String _workoutLocation = 'Academia completa e espaÃ§o de musculaÃ§Ã£o';
+  String _workoutLocation = 'Academia completa e espaço de musculação';
   String _trainerName = 'Carregando treinador...';
   String? _trainerPhone;
   String _trainerCref = 'CREF Ativo';
@@ -57,14 +58,14 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   Timer? _ticker;
   RealtimeChannel? _workoutRealtimeChannel;
 
-  // VariÃ¡veis reais de GamificaÃ§Ã£o (Backend)
+  // Variáveis reais de Gamificação (Backend)
   int? currentStreak;
 
-  // ExercÃ­cios da ficha ativa real do aluno (vazio = sem ficha)
+  // Exercícios da ficha ativa real do aluno (vazio = sem ficha)
   late List<ExerciseModel> _exercises;
   final bool _showExpandedExerciseCards = false;
 
-  // Cache de miniaturas de alta resoluÃ§Ã£o (PadrÃ£o Hevy / Strong)
+  // Cache de miniaturas de alta resolução (Padrão Hevy / Strong)
   final Map<String, String?> _exerciseThumbnails = {};
 
   @override
@@ -106,7 +107,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             ),
             callback: (payload) {
               if (!mounted) return;
-              debugPrint('[Realtime] AtualizaÃ§Ã£o de treino recebida para $uid: ${payload.eventType}');
+              debugPrint('[Realtime] Atualização de treino recebida para $uid: ${payload.eventType}');
               final isWorkoutInProgress = _completedExerciseIndices.isNotEmpty;
               if (!isWorkoutInProgress) {
                 _loadActiveWorkout();
@@ -120,7 +121,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       Expanded(
                         child: Text(
                           isWorkoutInProgress
-                              ? 'Nova versÃ£o da ficha disponÃ­vel! Conclua seu treino ou recarregue.'
+                              ? 'Nova versão da ficha disponível! Conclua seu treino ou recarregue.'
                               : 'Sua ficha de treino foi atualizada pelo seu treinador!',
                           style: const TextStyle(
                             color: MetaColors.textPrimary,
@@ -188,14 +189,14 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       return 'assets/images/biomech_3d_chest.jpg';
     } else if (name.contains('desenvolvimento') ||
         name.contains('elevacao') ||
-        name.contains('elevaÃ§Ã£o') ||
+        name.contains('elevação') ||
         name.contains('ombro') ||
         muscle.contains('deltoid')) {
       return 'assets/images/biomech_3d_shoulders.jpg';
     } else if (name.contains('triceps') ||
-        name.contains('trÃ­ceps') ||
+        name.contains('tríceps') ||
         name.contains('biceps') ||
-        name.contains('bÃ­ceps') ||
+        name.contains('bíceps') ||
         name.contains('rosca') ||
         muscle.contains('braco') ||
         muscle.contains('braquial')) {
@@ -205,7 +206,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         name.contains('extensora') ||
         name.contains('quadr') ||
         muscle.contains('perna') ||
-        muscle.contains('glÃºteo') ||
+        muscle.contains('glúteo') ||
         muscle.contains('gluteo')) {
       return 'assets/images/biomech_3d_legs.jpg';
     } else if (name.contains('puxada') ||
@@ -220,11 +221,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
   String _getEmgForExercise(String exerciseName) {
     final lower = exerciseName.toLowerCase();
-    if (lower.contains('triceps') || lower.contains('trÃ­ceps')) {
+    if (lower.contains('triceps') || lower.contains('tríceps')) {
       return '96% EMG';
     }
     if (lower.contains('elevacao') ||
-        lower.contains('elevaÃ§Ã£o') ||
+        lower.contains('elevação') ||
         lower.contains('agachamento')) {
       return '95% EMG';
     }
@@ -437,7 +438,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Seu treinador ($_trainerName) ainda nÃ£o cadastrou o WhatsApp profissional.',
+            'Seu treinador ($_trainerName) ainda não cadastrou o WhatsApp profissional.',
             style: const TextStyle(color: Colors.white, fontSize: 13),
           ),
           backgroundColor: const Color(0xFF1E293B),
@@ -453,7 +454,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         ? digits
         : (digits.length >= 10 && digits.length <= 11 ? '55$digits' : digits);
     final msg = Uri.encodeComponent(
-      'OlÃ¡ professor(a) $_trainerName! Sou aluno no Mr. Coach e gostaria de tirar uma dÃºvida sobre meu treino.',
+      'Olá professor(a) $_trainerName! Sou aluno no Mr. Coach e gostaria de tirar uma dúvida sobre meu treino.',
     );
     final uri = Uri.parse('https://api.whatsapp.com/send?phone=$phone&text=$msg');
 
@@ -468,7 +469,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text(
-            'NÃ£o foi possÃ­vel abrir o WhatsApp automaticamente.',
+            'Não foi possível abrir o WhatsApp automaticamente.',
             style: TextStyle(color: Colors.white, fontSize: 13),
           ),
           backgroundColor: Colors.redAccent,
@@ -514,7 +515,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'O Mr. Coach AI encontrarÃ¡ uma variaÃ§Ã£o biomecanicamente equivalente e notificarÃ¡ seu professor:',
+                  'O Mr. Coach AI encontrará uma variação biomecanicamente equivalente e notificará seu professor:',
                   style: TextStyle(color: MetaColors.textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 20),
@@ -585,7 +586,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       {'name': 'Dor no Joelho / Patela', 'loc': 'Joelho / Patela'},
       {'name': 'Desconforto na Coluna / Lombar', 'loc': 'Coluna Lombar'},
       {'name': 'Dor no Cotovelo / Punho', 'loc': 'Cotovelo'},
-      {'name': 'Outro Desconforto Articular', 'loc': 'ArticulaÃ§Ã£o Geral'},
+      {'name': 'Outro Desconforto Articular', 'loc': 'Articulação Geral'},
     ];
 
     showModalBottomSheet(
@@ -613,7 +614,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Qual articulaÃ§Ã£o apresenta desconforto?',
+                        'Qual articulação apresenta desconforto?',
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
@@ -625,7 +626,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'ExercÃ­cio: ${currentExercise.name}',
+                  'Exercício: ${currentExercise.name}',
                   style: const TextStyle(
                     color: MetaColors.textSecondary,
                     fontSize: 13,
@@ -693,8 +694,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     final target = _exercises[index];
     final restrictionsDesc =
         painLocation != null
-            ? 'Relato de $painLocation. Eliminar compressÃ£o e estresse nesta articulaÃ§Ã£o mantendo o estÃ­mulo muscular.'
-            : 'Aparelho indisponÃ­vel no espaÃ§o de treino presencial.';
+            ? 'Relato de $painLocation. Eliminar compressão e estresse nesta articulação mantendo o estímulo muscular.'
+            : 'Aparelho indisponível no espaço de treino presencial.';
 
     try {
       final AdaptationModel result = await _apiService.adaptExercise(
@@ -717,7 +718,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         );
       });
 
-      // Dispara persistÃªncia e alerta em tempo real para o professor
+      // Dispara persistência e alerta em tempo real para o professor
       await WorkoutService.logAdaptation(
         originalExercise: target.name,
         adaptedExercise: result.adaptedExercise,
@@ -731,7 +732,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           SnackBar(
             backgroundColor: MetaColors.emerald,
             content: Text(
-              'SubstituÃ­do: ${result.adaptedExercise}',
+              'Substituído: ${result.adaptedExercise}',
               style: const TextStyle(
                 color: Colors.black,
                 fontWeight: FontWeight.bold,
@@ -743,12 +744,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       }
     } catch (e) {
       if (mounted) {
-        debugPrint('Erro ao adaptar exercÃ­cio: $e');
+        debugPrint('Erro ao adaptar exercício: $e');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppColors.danger,
             content: const Text(
-              'NÃ£o foi possÃ­vel adaptar este exercÃ­cio. Tente novamente.',
+              'Não foi possível adaptar este exercício. Tente novamente.',
             ),
             action: kDebugMode
                 ? SnackBarAction(
@@ -829,7 +830,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     const Text(
                       'Quando seu professor liberar sua ficha, ela aparece aqui. '
                       'Enquanto isso, aguarde o contato dele para conversar sobre a consultoria. '
-                      'Se vocÃª estÃ¡ sem conexÃ£o, conecte-se e atualize.',
+                      'Se você está sem conexão, conecte-se e atualize.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: MetaColors.textSecondary,
@@ -901,7 +902,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       try {
         await _sessionService.complete(record);
       } catch (e) {
-        debugPrint('[ActiveWorkout] Erro ao salvar sessÃ£o: $e');
+        debugPrint('[ActiveWorkout] Erro ao salvar sessão: $e');
       }
     }
 
@@ -910,7 +911,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     await WorkoutTriumphModal.show(
       context,
       workoutTitle:
-          _workoutTitle.isNotEmpty ? _workoutTitle : 'Treino ConcluÃ­do',
+          _workoutTitle.isNotEmpty ? _workoutTitle : 'Treino Concluído',
       trainerName: _trainerName,
       trainerPhone: _trainerPhone,
       durationMin: minutes,
@@ -968,7 +969,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       },
       child: Row(
         children: [
-          // 1. Miniatura Visual Interativa (Toque abre o vÃ­deo em tela cheia)
+          // 1. Miniatura Visual Interativa (Toque abre o vídeo em tela cheia)
           GestureDetector(
             onTap: () {
               HapticFeedback.selectionClick();
@@ -1018,7 +1019,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           ),
           const SizedBox(width: 12),
 
-          // 2. InformaÃ§Ãµes CinesiolÃ³gicas (Nome, SÃ©ries x Reps, Descanso)
+          // 2. Informações Cinesiológicas (Nome, Séries x Reps, Descanso)
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1075,10 +1076,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       ),
                     ),
                     const SizedBox(width: 5),
-                    const Text('â€¢', style: TextStyle(color: MetaColors.textSecondary, fontSize: 11)),
+                    const Text('•', style: TextStyle(color: MetaColors.textSecondary, fontSize: 11)),
                     const SizedBox(width: 5),
                     Text(
-                      '$setsCount sÃ©ries Ã— ${item.reps}',
+                      '$setsCount séries Ã— ${item.reps}',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -1086,7 +1087,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       ),
                     ),
                     const SizedBox(width: 5),
-                    const Text('â€¢', style: TextStyle(color: MetaColors.textSecondary, fontSize: 11)),
+                    const Text('•', style: TextStyle(color: MetaColors.textSecondary, fontSize: 11)),
                     const SizedBox(width: 5),
                     Text(
                       '${item.restSeconds}s',
@@ -1103,7 +1104,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           ),
           const SizedBox(width: 10),
 
-          // 3. AÃ§Ã£o RÃ¡pida de ConclusÃ£o / Ir Treinar
+          // 3. Ação Rápida de Conclusão / Ir Treinar
           InkWell(
             onTap: () {
               HapticFeedback.selectionClick();
@@ -1176,7 +1177,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Top Row: Ordem, EMG pill & Checkbox gigante de conclusÃ£o
+          // 1. Top Row: Ordem, EMG pill & Checkbox gigante de conclusão
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1226,7 +1227,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   ),
                 ],
               ),
-              // BotÃ£o circular de marcar exercÃ­cio concluÃ­do
+              // Botão circular de marcar exercício concluído
               InkWell(
                 onTap: () {
                   HapticFeedback.selectionClick();
@@ -1288,7 +1289,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           ),
           const SizedBox(height: 12),
 
-          // 2. Nome do ExercÃ­cio (Texto Grande e Alto Contraste)
+          // 2. Nome do Exercício (Texto Grande e Alto Contraste)
           Text(
             item.name,
             style: const TextStyle(
@@ -1340,7 +1341,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
           const SizedBox(height: 14),
 
-          // 3. Miniatura / Preview BiomecÃ¢nico 3D interativo
+          // 3. Miniatura / Preview Biomecânico 3D interativo
           GestureDetector(
             onTap:
                 () => BiomechanicalAnalysisSheet.show(
@@ -1404,7 +1405,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                             ),
                             SizedBox(width: 6),
                             Text(
-                              '3D BiomecÃ¢nica & EMG',
+                              '3D Biomecânica & EMG',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 11,
@@ -1459,7 +1460,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
           const SizedBox(height: 10),
 
-          // BotÃµes de AÃ§Ã£o Visual (VÃ­deo Demonstrativo + Raio-X 3D)
+          // Botões de Ação Visual (Vídeo Demonstrativo + Raio-X 3D)
           Row(
             children: [
               Expanded(
@@ -1485,7 +1486,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                         ),
                         SizedBox(width: 6),
                         Text(
-                          'VÃ­deo ExecuÃ§Ã£o',
+                          'Vídeo Execução',
                           style: TextStyle(
                             color: MetaColors.emerald,
                             fontSize: 12,
@@ -1532,17 +1533,17 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
           const SizedBox(height: 14),
 
-          // 4. Grade HUD de Telemetria (SÃ©ries, Reps, CadÃªncia, Descanso)
+          // 4. Grade HUD de Telemetria (Séries, Reps, Cadência, Descanso)
           Row(
             children: [
               Expanded(
-                child: _HudStatTile(label: 'SÃ©ries', value: '${item.sets}'),
+                child: _HudStatTile(label: 'Séries', value: '${item.sets}'),
               ),
               const SizedBox(width: 8),
               Expanded(child: _HudStatTile(label: 'Reps', value: item.reps)),
               const SizedBox(width: 8),
               const Expanded(
-                child: _HudStatTile(label: 'CadÃªncia', value: '3-0-1-0'),
+                child: _HudStatTile(label: 'Cadência', value: '3-0-1-0'),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -1561,7 +1562,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             ],
           ),
 
-          // 5. Dica de ExecuÃ§Ã£o (se houver)
+          // 5. Dica de Execução (se houver)
           if (item.notes.isNotEmpty) ...[
             const SizedBox(height: 12),
             Container(
@@ -1599,7 +1600,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
           const SizedBox(height: 14),
 
-          // 6. BotÃ£o de PÃ¢nico (Aparelho Ocupado / Dor)
+          // 6. Botão de Pânico (Aparelho Ocupado / Dor)
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
@@ -1609,7 +1610,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 color: Color(0xFFF59E0B),
               ),
               label: const Text(
-                'Substituir â€¢ Aparelho Ocupado ou Dor',
+                'Substituir • Aparelho Ocupado ou Dor',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
@@ -1658,7 +1659,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.only(
                 top: topPadding + 14,
-                bottom: bottomPadding + 140, // EspaÃ§o seguro para o OneUiFloatingNavBar nunca cobrir os cards
+                bottom: bottomPadding + 140, // Espaço seguro para o OneUiFloatingNavBar nunca cobrir os cards
                 left: 18,
                 right: 18,
               ),
@@ -1892,10 +1893,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // 2. Topo: Barra de Progresso do Treino em PÃ­lula + Indicador de Streak ðŸ”¥
+                // 2. Topo: Barra de Progresso do Treino em Pílula + Indicador de Streak 🔥
                 Row(
                   children: [
-                    // Indicador de "Streak ðŸ”¥" (ofensiva)
+                    // Indicador de "Streak 🔥" (ofensiva)
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 14,
@@ -1912,12 +1913,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text('ðŸ”¥', style: TextStyle(fontSize: 16)),
+                          const Text('🔥', style: TextStyle(fontSize: 16)),
                           const SizedBox(width: 6),
                           Text(
-                            currentStreak == null ? 'â€”' : '$currentStreak dias',
+                            currentStreak == null ? '—' : '$currentStreak dias',
                             semanticsLabel: currentStreak == null
-                                ? 'SequÃªncia indisponÃ­vel'
+                                ? 'Sequência indisponível'
                                 : '$currentStreak dias',
                             style: const TextStyle(
                               fontWeight: FontWeight.w900,
@@ -1930,7 +1931,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     ),
                     const SizedBox(width: 10),
 
-                    // Barra de progresso do treino em formato de pÃ­lula
+                    // Barra de progresso do treino em formato de pílula
                     Expanded(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -1994,7 +1995,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // 3. SELETOR DE DIVISÃ•ES (Carrossel Compacto de PÃ­lulas - Hevy / Strong)
+                // 3. SELETOR DE DIVISÕES (Carrossel Compacto de Pílulas - Hevy / Strong)
                 if (_splits.length > 1) ...[
                   SizedBox(
                     height: 40,
@@ -2079,7 +2080,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   const SizedBox(height: 14),
                 ],
 
-                // 4. CARD HERO: SEU TREINO DE HOJE (PadrÃ£o Ouro das Melhores Academias)
+                // 4. CARD HERO: SEU TREINO DE HOJE (Padrão Ouro das Melhores Academias)
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
@@ -2120,7 +2121,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                               ),
                             ),
                             child: Text(
-                              'DIVISÃƒO ${(_splitIdentifier ?? 'A').toUpperCase()} â€¢ PROGRAMADO',
+                              'DIVISÃO ${(_splitIdentifier ?? 'A').toUpperCase()} • PROGRAMADO',
                               style: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w900,
@@ -2148,52 +2149,112 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                         ],
                       ),
                       const SizedBox(height: 10),
-                      Text(
-                        _splitName ?? 'Treino de Hoje',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          color: MetaColors.textPrimary,
-                          letterSpacing: -0.4,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          const Icon(Icons.fitness_center_rounded, size: 14, color: MetaColors.textSecondary),
-                          const SizedBox(width: 5),
-                          Text(
-                            '${_exercises.length} exercÃ­cios',
-                            style: const TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
-                              color: MetaColors.textSecondary,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _splitName ?? 'Treino de Hoje',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
+                                    color: MetaColors.textPrimary,
+                                    letterSpacing: -0.4,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 6,
+                                  runSpacing: 4,
+                                  children: [
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.fitness_center_rounded,
+                                          size: 14,
+                                          color: MetaColors.textSecondary,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${_exercises.length} exercícios',
+                                          style: const TextStyle(
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: MetaColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const Text(
+                                      '•',
+                                      style: TextStyle(
+                                        color: MetaColors.textSecondary,
+                                      ),
+                                    ),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.timer_outlined,
+                                          size: 14,
+                                          color: MetaColors.textSecondary,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '~${_exercises.length * 8} min',
+                                          style: const TextStyle(
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: MetaColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const Text(
+                                      '•',
+                                      style: TextStyle(
+                                        color: MetaColors.textSecondary,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${_completedExerciseIndices.length}/${_exercises.length} Feitos',
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w800,
+                                        color: _completedExerciseIndices.isNotEmpty
+                                            ? MetaColors.emerald
+                                            : MetaColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          const Text('â€¢', style: TextStyle(color: MetaColors.textSecondary)),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.timer_outlined, size: 14, color: MetaColors.textSecondary),
-                          const SizedBox(width: 5),
-                          Text(
-                            '~${_exercises.length * 8} min',
-                            style: const TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
-                              color: MetaColors.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Text('â€¢', style: TextStyle(color: MetaColors.textSecondary)),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${_completedExerciseIndices.length}/${_exercises.length} Feitos',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w800,
-                              color: _completedExerciseIndices.isNotEmpty
-                                  ? MetaColors.emerald
-                                  : MetaColors.textSecondary,
+                          const SizedBox(width: 12),
+                          ProgressRing(
+                            progress: _exercises.isEmpty
+                                ? 0.0
+                                : (_completedExerciseIndices.length /
+                                    _exercises.length),
+                            size: 52,
+                            strokeWidth: 5,
+                            color: MetaColors.emerald,
+                            center: Text(
+                              _exercises.isEmpty
+                                  ? '0%'
+                                  : '${((_completedExerciseIndices.length / _exercises.length) * 100).round()}%',
+                              style: const TextStyle(
+                                color: MetaColors.textPrimary,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w900,
+                                fontFeatures: [FontFeature.tabularFigures()],
+                              ),
                             ),
                           ),
                         ],
@@ -2331,7 +2392,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Lista de ExercÃ­cios (Compacta por padrÃ£o, ou Expandida se selecionado)
+                // Lista de Exercícios (Compacta por padrão, ou Expandida se selecionado)
                 for (int index = 0; index < _exercises.length; index++)
                   _showExpandedExerciseCards
                       ? _buildExerciseCard(index)
@@ -2339,7 +2400,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
                 const SizedBox(height: 12),
 
-                // BotÃ£o de Concluir no Fim da Lista (Scroll Natural)
+                // Botão de Concluir no Fim da Lista (Scroll Natural)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 24),
                   child: SquircleButton(
@@ -2362,7 +2423,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               ],
             ),
 
-            // BotÃ£o de Finalizar Flutuante (RodapÃ©) - Flutua acima da dock bar flutuante sem colisÃ£o
+            // Botão de Finalizar Flutuante (Rodapé) - Flutua acima da dock bar flutuante sem colisão
             if (_completedExerciseIndices.isNotEmpty)
               Positioned(
                 left: 18,
@@ -2411,7 +2472,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                         ),
                         SizedBox(height: 18),
                         Text(
-                          'Adaptando exercÃ­cio com IA...',
+                          'Adaptando exercício com IA...',
                           style: TextStyle(
                             fontWeight: FontWeight.w900,
                             fontSize: 15,
@@ -2420,7 +2481,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                         ),
                         SizedBox(height: 6),
                         Text(
-                          'Buscando vetor biomecÃ¢nico equivalente',
+                          'Buscando vetor biomecânico equivalente',
                           style: TextStyle(
                             fontSize: 12,
                             color: MetaColors.textSecondary,
@@ -2510,7 +2571,7 @@ class _HudStatTile extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Card AnatÃ´mico 3D com MÃºsculo Alvo em AÃ§Ã£o & Eletromiografia (Fallback)
+// Card Anatômico 3D com Músculo Alvo em Ação & Eletromiografia (Fallback)
 // ---------------------------------------------------------------------------
 class _AnatomicalMuscleCard extends StatelessWidget {
   final String exerciseName;
@@ -2525,7 +2586,7 @@ class _AnatomicalMuscleCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final lower = exerciseName.toLowerCase();
     int emg = 94;
-    String secondary = 'Deltoide Anterior & TrÃ­ceps';
+    String secondary = 'Deltoide Anterior & Tríceps';
     String stabilizers = 'Manguito Rotador & Core';
     Color glowColor = MetaColors.emerald;
 
@@ -2533,36 +2594,36 @@ class _AnatomicalMuscleCard extends StatelessWidget {
         lower.contains('peito') ||
         lower.contains('crucifixo')) {
       emg = 94;
-      secondary = 'Deltoide Anterior, TrÃ­ceps Braquial';
-      stabilizers = 'Manguito Rotador, SerrÃ¡til Anterior';
+      secondary = 'Deltoide Anterior, Tríceps Braquial';
+      stabilizers = 'Manguito Rotador, Serrátil Anterior';
       glowColor = MetaColors.emerald;
     } else if (lower.contains('desenvolvimento') ||
         lower.contains('elevacao') ||
         lower.contains('ombro')) {
       emg = 92;
-      secondary = 'TrÃ­ceps Braquial, TrapÃ©zio Superior';
+      secondary = 'Tríceps Braquial, Trapézio Superior';
       stabilizers = 'Manguito Rotador, Core Abdominal';
       glowColor = const Color(0xFFF59E0B);
     } else if (lower.contains('triceps') ||
         lower.contains('polia') ||
         lower.contains('testa')) {
       emg = 96;
-      secondary = 'AncÃ´neo, Extensores do Punho';
-      stabilizers = 'DeltÃ³ide Posterior, Core';
+      secondary = 'Ancôneo, Extensores do Punho';
+      stabilizers = 'Deltóide Posterior, Core';
       glowColor = MetaColors.accentBlue;
     } else if (lower.contains('agachamento') ||
         lower.contains('leg press') ||
         lower.contains('extensora')) {
       emg = 95;
-      secondary = 'GlÃºteo MÃ¡ximo, Isquiotibiais';
+      secondary = 'Glúteo Máximo, Isquiotibiais';
       stabilizers = 'Core Abdominal, Eretores da Espinha';
       glowColor = MetaColors.emerald;
     } else if (lower.contains('puxada') ||
         lower.contains('remada') ||
         lower.contains('costas')) {
       emg = 93;
-      secondary = 'BÃ­ceps Braquial, Braquiorradial';
-      stabilizers = 'TrapÃ©zio MÃ©dio/Inferior, Romboides';
+      secondary = 'Bíceps Braquial, Braquiorradial';
+      stabilizers = 'Trapézio Médio/Inferior, Romboides';
       glowColor = MetaColors.accentBlue;
     }
 

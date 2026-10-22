@@ -287,12 +287,16 @@ class OneUiNavItem {
   final IconData selectedIcon;
   final String label;
   final bool showDot;
+  final int? badgeCount;
+  final Color? activeColor;
 
   const OneUiNavItem({
     required this.icon,
     required this.selectedIcon,
     required this.label,
     this.showDot = false,
+    this.badgeCount,
+    this.activeColor,
   });
 }
 
@@ -402,12 +406,45 @@ class OneUiFloatingNavBar extends StatelessWidget {
                                       Stack(
                                         clipBehavior: Clip.none,
                                         children: [
-                                          Icon(
-                                            isSelected ? item.selectedIcon : item.icon,
-                                            size: 21,
-                                            color: isSelected ? activeColor : inactiveColor,
+                                          AnimatedSwitcher(
+                                            duration: const Duration(milliseconds: 180),
+                                            switchInCurve: Curves.easeOutCubic,
+                                            switchOutCurve: Curves.easeInCubic,
+                                            child: Icon(
+                                              isSelected ? item.selectedIcon : item.icon,
+                                              key: ValueKey<bool>(isSelected),
+                                              size: 21,
+                                              color: isSelected
+                                                  ? (item.activeColor ?? activeColor)
+                                                  : inactiveColor,
+                                            ),
                                           ),
-                                          if (item.showDot)
+                                          if (item.badgeCount != null && item.badgeCount! > 0)
+                                            Positioned(
+                                              right: -8,
+                                              top: -4,
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 4.5,
+                                                  vertical: 1,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFFF6B00),
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  item.badgeCount! > 9
+                                                      ? '9+'
+                                                      : '${item.badgeCount}',
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 8.5,
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
+                                                ),
+                                              ),
+                                            )
+                                          else if (item.showDot)
                                             Positioned(
                                               right: -3,
                                               top: -2,

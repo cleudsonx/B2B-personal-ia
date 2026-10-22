@@ -42,11 +42,19 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103054,
-      date: '21 de Outubro, 2026',
+      buildNumber: 2026103055,
+      date: '22 de Outubro, 2026',
       summary:
-          'Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas, Central de 1RM & Metas de Sobrecarga, Conquistas & Badges, Telemetria Apple Health, Prescrição em Bloco e Gestão Dinâmica de Preços & Planos.',
+          'Versão 1.10.0: Redesign Completo da Experiência do Aluno (Treino, Mr. Coach AI, Bio-Hub e Perfil) no padrão Apple Fitness+ / Samsung One UI 7 / Material 3 Expressive, Anéis de Atividade no Bio-Hub, Biometria & IMC em Tempo Real, Cards de Adaptação no Copiloto IA e Pílula Compacta do Coach.',
       highlights: [
+        ChangelogItem(
+          icon: Icons.auto_awesome_mosaic_rounded,
+          title: 'Nova Experiência Visual do Aluno (4 Abas + Shell Edge-to-Edge)',
+          description:
+              'Redesign integral das abas Treino, Mr. Coach AI, Bio-Hub e Perfil com anéis de progresso animados (ProgressRing), tríade de prontidão no Bio-Hub, cálculo de IMC ao vivo com dígitos tabulares, botão de aplicar adaptação no Copiloto IA e grupos de preferências estilo iOS/One UI.',
+          badge: 'UX/UI 2.0',
+          targetRoles: ['student', 'trainer', 'admin'],
+        ),
         // --- PARA O ADMIN / GESTOR ---
         ChangelogItem(
           icon: Icons.content_copy_rounded,

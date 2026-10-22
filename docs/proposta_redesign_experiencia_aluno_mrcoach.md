@@ -121,3 +121,4 @@ Cada fase é publicável sozinha. Sugestão de ordem de risco: fundação → Pe
 3. **Cartões estruturados** com "Aplicar ao treino" nas respostas da IA: aprovado (exige integração com o serviço de treinos)?
 4. Barra superior do treinador condensada em pílula: aprovado?
 5. As 5 decisões do capítulo do Perfil (edição em sheet, nível/XP, Compartilhar, "Usar aplicativo como", agrupamento de fases).
+

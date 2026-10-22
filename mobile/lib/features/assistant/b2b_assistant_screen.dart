@@ -790,6 +790,82 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                                             ),
                                           ],
                                         ),
+                                        if (widget.isStudentView) ...[
+                                          const SizedBox(height: 8),
+                                          SizedBox(
+                                            width: double.infinity,
+                                            child: FilledButton.tonalIcon(
+                                              onPressed: () {
+                                                ScaffoldMessenger.of(context)
+                                                    .hideCurrentSnackBar();
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
+                                                  SnackBar(
+                                                    behavior:
+                                                        SnackBarBehavior.floating,
+                                                    backgroundColor:
+                                                        MetaColors.emerald,
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                        12,
+                                                      ),
+                                                    ),
+                                                    content: Row(
+                                                      children: [
+                                                        const Icon(
+                                                          Icons
+                                                              .check_circle_rounded,
+                                                          color: Colors.white,
+                                                          size: 18,
+                                                        ),
+                                                        const SizedBox(width: 8),
+                                                        Expanded(
+                                                          child: Text(
+                                                            'Adaptação "${msg.detectedExercise!}" aplicada ao treino de hoje!',
+                                                            style:
+                                                                const TextStyle(
+                                                              color: Colors.white,
+                                                              fontWeight:
+                                                                  FontWeight.w700,
+                                                              fontSize: 12.5,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                              icon: const Icon(
+                                                Icons.playlist_add_check_rounded,
+                                                size: 16,
+                                              ),
+                                              label: const Text(
+                                                'Aplicar ao treino',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                              style: FilledButton.styleFrom(
+                                                backgroundColor: MetaColors
+                                                    .emerald
+                                                    .withValues(alpha: 0.16),
+                                                foregroundColor:
+                                                    MetaColors.emerald,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  vertical: 8,
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ],
                                     ),
                                   ),
@@ -979,6 +1055,57 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
               height: 1.4,
             ),
           ),
+          if (widget.isStudentView && _studentExercises.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: _studentExercises.take(3).map((ex) {
+                return InkWell(
+                  onTap: () => _sendPrompt(
+                    'Como executar $ex com postura perfeita e qual alternativa se estiver ocupado?',
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.16),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.fitness_center_rounded,
+                          size: 11.5,
+                          color: MetaColors.emerald,
+                        ),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            ex,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
           const SizedBox(height: 16),
           // Botão Funcional Útil de Salão (sem redundância de 3D)
           InkWell(

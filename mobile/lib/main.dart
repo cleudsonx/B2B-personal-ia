@@ -224,14 +224,18 @@ class MainShellScreen extends StatefulWidget {
 class _MainShellScreenState extends State<MainShellScreen> {
   late int _currentIndex;
   late String _activeRole;
+  String? _studentTrainerShortName;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
     _activeRole = widget.activeRole;
-    if (!_isTrainer && widget.initialIndex == 0) {
-      _restoreStudentTab();
+    if (!_isTrainer) {
+      if (widget.initialIndex == 0) {
+        _restoreStudentTab();
+      }
+      _loadStudentTrainerPill();
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -241,6 +245,21 @@ class _MainShellScreenState extends State<MainShellScreen> {
         );
       }
     });
+  }
+
+  Future<void> _loadStudentTrainerPill() async {
+    try {
+      final trainer = await AuthService.getTrainerForStudent();
+      if (!mounted || trainer == null) return;
+      final rawName =
+          (trainer['trainer_name'] ?? trainer['full_name'])?.toString().trim();
+      if (rawName != null && rawName.isNotEmpty) {
+        final parts = rawName.split(RegExp(r'\s+'));
+        setState(() {
+          _studentTrainerShortName = parts.first;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _restoreStudentTab() async {
@@ -946,6 +965,48 @@ class _MainShellScreenState extends State<MainShellScreen> {
                                 );
                               },
                             ),
+                          ] else if (_studentTrainerShortName != null) ...[
+                            const SizedBox(width: 8),
+                            InkWell(
+                              onTap: () {
+                                setState(() => _currentIndex = 3);
+                                PwaNavigationState.saveStudentTab(3);
+                              },
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.trainerEmerald.withValues(alpha: 0.14),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: AppColors.trainerEmerald.withValues(alpha: 0.35),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.verified_user_rounded,
+                                      size: 12,
+                                      color: AppColors.trainerEmerald,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Coach $_studentTrainerShortName',
+                                      style: const TextStyle(
+                                        color: AppColors.trainerEmerald,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ],
                         ],
                       ),
@@ -1094,6 +1155,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     icon: item.icon,
                     selectedIcon: item.activeIcon,
                     label: item.label,
+                    activeColor: item.activeColor,
                   ),
                 )
                 .toList(),

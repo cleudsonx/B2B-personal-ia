@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/widgets/meta_components.dart';
+import '../../core/widgets/student_ux_components.dart';
 import '../../core/widgets/split_photo_slider.dart';
 import '../../core/widgets/student_weekly_checkin_sheet.dart';
 import '../../services/auth_service.dart';
@@ -1037,42 +1038,47 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                           child: const Icon(
                             Icons.biotech_rounded,
                             color: MetaColors.emerald,
-                            size: 24,
+                            size: 22,
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Text(
-                              'Bio-Hub',
-                              style: TextStyle(
-                                color: MetaColors.textPrimary,
-                                fontSize: 24,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.5,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Bio-Hub',
+                                style: TextStyle(
+                                  color: MetaColors.text(context),
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.5,
+                                ),
                               ),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Performance • Cargas • Bio-Recovery',
-                              style: TextStyle(
-                                color: MetaColors.textSecondary,
-                                fontSize: 13,
+                              const SizedBox(height: 2),
+                              Text(
+                                'Performance • Cargas • Bio-Recovery',
+                                style: TextStyle(
+                                  color: MetaColors.subtext(context),
+                                  fontSize: 12.5,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 18),
-                    // Segmented Control (Pílulas no Padrão Meta)
+                    const SizedBox(height: 14),
+                    // Top 3 Activity Rings Summary Card (Apple Fitness+ / Whoop style)
+                    _buildActivityRingsSummaryCard(),
+                    const SizedBox(height: 14),
+                    // Segmented Control (Pílulas no Padrão One UI 7 / Material 3)
                     Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: MetaColors.surfaceHighlight,
+                        color: MetaColors.card(context),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: MetaColors.border),
+                        border: Border.all(color: MetaColors.cardBorder(context)),
                       ),
                       child: Row(
                         children: [
@@ -1112,12 +1118,169 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
     );
   }
 
+  Widget _buildActivityRingsSummaryCard() {
+    final readiness = _calculatedReadinessScore.clamp(0.0, 100.0);
+    final prepProgress = (((_energyLevel / 5.0) * 0.6) +
+            ((_waterIntakeMl.clamp(0, 500) / 500.0) * 0.4))
+        .clamp(0.0, 1.0);
+    final overloadProgress =
+        _progressiveOverloads.isNotEmpty ? 1.0 : (_mobilityCompleted ? 0.7 : 0.35);
+
+    final String insightText;
+    if (readiness >= 80) {
+      insightText =
+          'Prontidão alta (${readiness.toInt()}%) — excelente janela para progredir carga hoje.';
+    } else if (readiness >= 60) {
+      insightText =
+          'Prontidão moderada (${readiness.toInt()}%) — mantenha a cadência e hidratação.';
+    } else {
+      insightText =
+          'Recuperação em atenção (${readiness.toInt()}%) — priorize técnica e mobilidade.';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: MetaColors.card(context),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: MetaColors.cardBorder(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildMiniRingMetric(
+                  progress: readiness / 100.0,
+                  color: MetaColors.emerald,
+                  value: '${readiness.toInt()}%',
+                  label: 'Prontidão',
+                  onTap: () {
+                    _tabController.animateTo(2);
+                    setState(() => _currentSubTab = 2);
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildMiniRingMetric(
+                  progress: prepProgress,
+                  color: MetaColors.accentBlue,
+                  value: '$_energyLevel/5',
+                  label: 'Energia & Água',
+                  onTap: () {
+                    _tabController.animateTo(0);
+                    setState(() => _currentSubTab = 0);
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildMiniRingMetric(
+                  progress: overloadProgress,
+                  color: const Color(0xFFF59E0B),
+                  value: '${_progressiveOverloads.length}',
+                  label: 'Cargas Ativas',
+                  onTap: () {
+                    _tabController.animateTo(1);
+                    setState(() => _currentSubTab = 1);
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: MetaColors.emerald.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.auto_awesome_rounded,
+                  size: 13,
+                  color: MetaColors.emerald,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    insightText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: MetaColors.text(context),
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniRingMetric({
+    required double progress,
+    required Color color,
+    required String value,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+        child: Row(
+          children: [
+            ProgressRing(
+              progress: progress,
+              size: 38,
+              strokeWidth: 4,
+              color: color,
+              center: Text(
+                value,
+                style: TextStyle(
+                  color: MetaColors.text(context),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: MetaColors.subtext(context),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  height: 1.15,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildSubTabButton({
     required int index,
     required IconData icon,
     required String title,
   }) {
     final isSelected = _currentSubTab == index;
+    final inactiveColor = MetaColors.subtext(context);
     return Expanded(
       child: GestureDetector(
         onTap: () {
@@ -1126,6 +1289,7 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
             color: isSelected ? MetaColors.emerald : Colors.transparent,
@@ -1137,15 +1301,19 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
               Icon(
                 icon,
                 size: 16,
-                color: isSelected ? Colors.white : MetaColors.textSecondary,
+                color: isSelected ? Colors.white : inactiveColor,
               ),
               const SizedBox(width: 6),
-              Text(
-                title,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : MetaColors.textSecondary,
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              Flexible(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : inactiveColor,
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -3332,32 +3500,40 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
   }) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: tagColor),
+        Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: tagColor.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 15, color: tagColor),
+        ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
-              color: MetaColors.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.3,
+            style: TextStyle(
+              color: MetaColors.text(context),
+              fontSize: 15.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.2,
             ),
           ),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
-            color: tagColor.withValues(alpha: 0.15),
+            color: tagColor.withValues(alpha: 0.14),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
             tag,
             style: TextStyle(
               color: tagColor,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w700,
               fontSize: 10,
-              letterSpacing: 0.5,
+              letterSpacing: 0.3,
             ),
           ),
         ),

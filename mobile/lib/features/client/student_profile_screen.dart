@@ -5,6 +5,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../core/widgets/avatar_selector_sheet.dart';
 import '../../core/widgets/meta_components.dart';
+import '../../core/widgets/student_ux_components.dart';
 import '../../core/widgets/app_version_footer.dart';
 import '../../core/widgets/pwa_install_prompt_card.dart';
 import '../../services/auth_service.dart';
@@ -148,7 +149,8 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
             if (heightVal != null) {
               final parsedH = double.tryParse(heightVal.toString());
               if (parsedH != null && parsedH > 0) {
-                final cm = parsedH < 3.0 ? (parsedH * 100).round() : parsedH.round();
+                final cm =
+                    parsedH < 3.0 ? (parsedH * 100).round() : parsedH.round();
                 _heightCtrl.text = cm.toString();
               }
             }
@@ -176,7 +178,8 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       if (!mounted) return;
       setState(() {
         _isLoadingData = false;
-        _loadError = 'Não foi possível carregar seu perfil. Verifique a conexão.';
+        _loadError =
+            'Não foi possível carregar seu perfil. Verifique a conexão.';
       });
     }
   }
@@ -191,10 +194,10 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               (trainer['trainer_name'] ?? trainer['full_name']) as String?;
           _trainerCref =
               (trainer['cref'] ?? trainer['professional_document']) as String?;
-          _trainerPhotoUrl =
-              (trainer['trainer_photo_url'] ?? trainer['photo_url'] ?? trainer['avatar_url']) as String?;
-          _trainerPhone =
-              (trainer['phone'] ?? trainer['whatsapp']) as String?;
+          _trainerPhotoUrl = (trainer['trainer_photo_url'] ??
+              trainer['photo_url'] ??
+              trainer['avatar_url']) as String?;
+          _trainerPhone = (trainer['phone'] ?? trainer['whatsapp']) as String?;
           _isLoadingTrainer = false;
         });
       } else {
@@ -219,9 +222,11 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     final msg = Uri.encodeComponent(
       'Olá professor(a) ${_trainerName ?? ""}! Sou aluno no Mr. Coach e gostaria de tirar uma dúvida.',
     );
-    final uri = Uri.parse('https://api.whatsapp.com/send?phone=$phone&text=$msg');
+    final uri =
+        Uri.parse('https://api.whatsapp.com/send?phone=$phone&text=$msg');
     try {
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final launched =
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!launched) {
         await launchUrl(uri, mode: LaunchMode.platformDefault);
       }
@@ -241,7 +246,12 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         photoUrl: _photoUrl,
       );
 
-  void _snack(String msg, {Color? color, SnackBarAction? action, IconData? icon}) {
+  void _snack(
+    String msg, {
+    Color? color,
+    SnackBarAction? action,
+    IconData? icon,
+  }) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -293,8 +303,11 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       final updated = _currentFormData();
       final weightChanged = updated.weightKg != original.weightKg;
       final heightChanged = updated.heightCm != original.heightCm;
-      final result =
-          await _service.save(userId: uid, original: original, updated: updated);
+      final result = await _service.save(
+        userId: uid,
+        original: original,
+        updated: updated,
+      );
       _original = updated;
 
       if ((weightChanged || heightChanged) &&
@@ -371,7 +384,9 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     } catch (e) {
       final cleanMsg = e.toString().replaceFirst('Exception: ', '').trim();
       _snack(
-        cleanMsg.isNotEmpty ? 'Não foi possível salvar: $cleanMsg' : 'Não foi possível salvar. Nada foi alterado.',
+        cleanMsg.isNotEmpty
+            ? 'Não foi possível salvar: $cleanMsg'
+            : 'Não foi possível salvar. Nada foi alterado.',
         color: Colors.red,
         icon: Icons.error_outline_rounded,
       );
@@ -389,8 +404,10 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     final status = await _service.requestReview(userId: uid, data: data);
     if (!mounted) return;
     if (status == ReviewStatus.requested) {
-      _snack('Seu professor foi notificado para revisar a ficha.',
-          color: AppColors.emerald(context));
+      _snack(
+        'Seu professor foi notificado para revisar a ficha.',
+        color: AppColors.emerald(context),
+      );
     } else {
       _snack(
         'Ainda não foi possível avisar seu professor.',
@@ -408,7 +425,11 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(allDevices ? 'Sair de todos os dispositivos?' : 'Sair deste aparelho?'),
+        title: Text(
+          allDevices
+              ? 'Sair de todos os dispositivos?'
+              : 'Sair deste aparelho?',
+        ),
         content: Text(
           allDevices
               ? 'Isso revogará todas as sessões ativas da sua conta em qualquer dispositivo. Você precisará fazer login novamente.'
@@ -432,195 +453,474 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     try {
       await AuthService.signOut(allDevices: allDevices);
       if (mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil('/login', (route) => false);
       }
     } catch (error) {
       if (mounted) {
-        _snack(error.toString().replaceFirst('Exception: ', ''), color: Colors.red);
+        _snack(
+          error.toString().replaceFirst('Exception: ', ''),
+          color: Colors.red,
+        );
       }
     }
+  }
+
+  Future<void> _pickAvatar() async {
+    final uid = _userId;
+    final selected = await AvatarSelectorSheet.show(
+      context: context,
+      isTrainer: false,
+      currentUrl: _photoUrl,
+      userId: uid,
+    );
+    if (selected != null && mounted) {
+      setState(() => _photoUrl = selected.isEmpty ? null : selected);
+    }
+  }
+
+  double _computeProfileCompletion() {
+    var score = 0.2;
+    if (_nameCtrl.text.trim().isNotEmpty) score += 0.2;
+    if (_ageCtrl.text.trim().isNotEmpty) score += 0.2;
+    if (_weightCtrl.text.trim().isNotEmpty) score += 0.2;
+    if (_heightCtrl.text.trim().isNotEmpty) score += 0.2;
+    return score.clamp(0.0, 1.0);
   }
 
   InputDecoration _decoration(String label, String? error) => InputDecoration(
         labelText: label,
         errorText: error,
         filled: true,
-        fillColor: AppColors.card(context),
+        fillColor: MetaColors.highlight(context).withValues(alpha: 0.45),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 13,
+        ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: MetaColors.cardBorder(context)),
         ),
-      );
-
-  Widget _buildTrainerCard() {
-    if (_isLoadingTrainer) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.card(context),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.cardBorder(context)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: MetaColors.cardBorder(context)),
         ),
-        child: const Center(
-          child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(
+            color: AppColors.emerald(context),
+            width: 1.5,
           ),
         ),
       );
-    }
 
-    final hasTrainer = _trainerName != null && _trainerName!.isNotEmpty;
+  Widget _buildIdentityHeroCard() {
+    final completion = _computeProfileCompletion();
+    final emerald = AppColors.emerald(context);
+    final ageText = _ageCtrl.text.trim();
+    final details =
+        (_latestAnamnesis?['details'] as Map<String, dynamic>?) ?? {};
+    final objective =
+        (_latestAnamnesis?['objective'] ?? details['objective'])?.toString();
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.card(context),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: hasTrainer
-              ? AppColors.emerald(context).withValues(alpha: 0.3)
-              : AppColors.cardBorder(context),
-        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.cardBorder(context)),
       ),
       child: Column(
         children: [
           Row(
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.emerald(context).withValues(alpha: 0.15),
-                  border: Border.all(
-                    color: AppColors.emerald(context).withValues(alpha: 0.5),
-                    width: 1.5,
-                  ),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: (_trainerPhotoUrl != null && _trainerPhotoUrl!.isNotEmpty)
-                    ? (_trainerPhotoUrl!.startsWith('assets/')
-                        ? Image.asset(_trainerPhotoUrl!, fit: BoxFit.cover)
-                        : Image.network(
-                            _trainerPhotoUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => Icon(
-                              Icons.person_rounded,
-                              color: AppColors.emerald(context),
-                            ),
-                          ))
-                    : Icon(
-                        Icons.fitness_center_rounded,
-                        color: AppColors.emerald(context),
-                        size: 24,
+              GestureDetector(
+                onTap: _pickAvatar,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    ProgressRing(
+                      progress: completion,
+                      size: 84,
+                      strokeWidth: 4.5,
+                      color: emerald,
+                      center: Container(
+                        width: 70,
+                        height: 70,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: MetaColors.highlight(context),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: (_photoUrl != null && _photoUrl!.isNotEmpty)
+                            ? (_photoUrl!.startsWith('assets/')
+                                ? Image.asset(_photoUrl!, fit: BoxFit.cover)
+                                : Image.network(
+                                    _photoUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => const Icon(
+                                      Icons.person_rounded,
+                                      size: 36,
+                                      color: Colors.grey,
+                                    ),
+                                  ))
+                            : Icon(
+                                Icons.person_rounded,
+                                size: 36,
+                                color: emerald,
+                              ),
                       ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(5.5),
+                        decoration: BoxDecoration(
+                          color: emerald,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.card(context),
+                            width: 2,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_rounded,
+                          size: 13,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          'TREINADOR RESPONSÁVEL',
+                    ValueListenableBuilder<TextEditingValue>(
+                      valueListenable: _nameCtrl,
+                      builder: (context, value, _) {
+                        final displayName = value.text.trim().isNotEmpty
+                            ? value.text.trim()
+                            : 'Atleta Mr. Coach';
+                        return Text(
+                          displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.1,
-                            color: AppColors.emerald(context),
+                            color: AppColors.text(context),
+                            fontSize: 19,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: hasTrainer
-                                ? AppColors.emerald(context).withValues(alpha: 0.2)
-                                : Colors.orange.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            hasTrainer ? 'Ativo' : 'Pendente',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: hasTrainer
-                                  ? AppColors.emerald(context)
-                                  : Colors.orangeAccent,
-                            ),
-                          ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      hasTrainer ? _trainerName! : 'Nenhum treinador vinculado',
-                      style: TextStyle(
-                        color: AppColors.text(context),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (_trainerCref != null && _trainerCref!.isNotEmpty) ...[
+                    if (_email != null && _email!.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(
-                        'CREF: $_trainerCref',
+                        _email!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: AppColors.subtext(context),
-                          fontSize: 12,
+                          fontSize: 12.5,
                         ),
                       ),
                     ],
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        _buildIdentityPill(
+                          icon: Icons.verified_rounded,
+                          label: 'Perfil ${(completion * 100).round()}%',
+                          color: emerald,
+                        ),
+                        if (ageText.isNotEmpty)
+                          _buildIdentityPill(
+                            icon: Icons.cake_outlined,
+                            label: '$ageText anos',
+                            color: MetaColors.accentBlue,
+                          ),
+                        if (objective != null && objective.isNotEmpty)
+                          _buildIdentityPill(
+                            icon: Icons.flag_rounded,
+                            label: objective,
+                            color: const Color(0xFFF59E0B),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),
             ],
           ),
-          if (hasTrainer && _trainerPhone != null && _trainerPhone!.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            InkWell(
-              onTap: _contactTrainerWhatsApp,
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF25D366).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFF25D366).withValues(alpha: 0.4),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _pickAvatar,
+                  icon: Icon(Icons.edit_rounded, size: 15, color: emerald),
+                  label: Text(
+                    'Alterar Foto ou Avatar',
+                    style: TextStyle(
+                      color: emerald,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: emerald.withValues(alpha: 0.35)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.chat_bubble_rounded, size: 16, color: Color(0xFF25D366)),
-                    SizedBox(width: 8),
-                    Text(
-                      'Falar com Treinador no WhatsApp',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF25D366),
-                      ),
-                    ),
-                  ],
-                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ],
       ),
     );
   }
 
+  Widget _buildIdentityPill({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.13),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLiveBiometricStats() {
+    return AnimatedBuilder(
+      animation: Listenable.merge([_weightCtrl, _heightCtrl]),
+      builder: (context, _) {
+        final w = StudentProfileValidator.parseDecimal(_weightCtrl.text);
+        final h = int.tryParse(_heightCtrl.text.trim());
+        double? bmi;
+        String bmiStatus = 'Pendente';
+        Color bmiColor = MetaColors.subtext(context);
+
+        if (w != null && h != null && h >= 100) {
+          final hm = h / 100.0;
+          bmi = w / (hm * hm);
+          if (bmi < 18.5) {
+            bmiStatus = 'Abaixo';
+            bmiColor = MetaColors.accentBlue;
+          } else if (bmi < 25.0) {
+            bmiStatus = 'Ideal';
+            bmiColor = MetaColors.emerald;
+          } else if (bmi < 30.0) {
+            bmiStatus = 'Atenção';
+            bmiColor = const Color(0xFFF59E0B);
+          } else {
+            bmiStatus = 'Elevado';
+            bmiColor = Colors.redAccent;
+          }
+        }
+
+        final weightDisplay =
+            w != null ? w.toStringAsFixed(1).replaceAll('.', ',') : '--';
+        final heightDisplay =
+            h != null ? (h / 100.0).toStringAsFixed(2).replaceAll('.', ',') : '--';
+        final bmiDisplay =
+            bmi != null ? bmi.toStringAsFixed(1).replaceAll('.', ',') : '--';
+
+        return Row(
+          children: [
+            Expanded(
+              child: StatTile(
+                label: 'Peso atual',
+                value: weightDisplay,
+                unit: 'kg',
+                badgeText: w != null ? 'Ativo' : null,
+                icon: Icons.monitor_weight_rounded,
+                accentColor: MetaColors.emerald,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: StatTile(
+                label: 'Estatura',
+                value: heightDisplay,
+                unit: 'm',
+                icon: Icons.straighten_rounded,
+                accentColor: MetaColors.accentBlue,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: StatTile(
+                label: 'IMC estimado',
+                value: bmiDisplay,
+                badgeText: bmi != null ? bmiStatus : null,
+                badgeColor: bmiColor,
+                icon: Icons.speed_rounded,
+                accentColor: bmi != null ? bmiColor : const Color(0xFFF59E0B),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildProgressBentoCards() {
+    return Row(
+      children: [
+        Expanded(
+          child: MetaCard(
+            onTap: () => StudentOverloadCenterSheet.show(context),
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: MetaColors.emerald.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.insights_rounded,
+                        color: MetaColors.emerald,
+                        size: 20,
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: MetaColors.emerald,
+                      size: 18,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Central de Metas & 1RM',
+                  style: TextStyle(
+                    color: AppColors.text(context),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Curvas de volume e 1RM',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppColors.subtext(context),
+                    fontSize: 11.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: MetaCard(
+            onTap: () => StudentAchievementsModalSheet.show(
+              context,
+              userId: _userId,
+              trainerName: _trainerName,
+            ),
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.military_tech_rounded,
+                        color: Color(0xFFF59E0B),
+                        size: 20,
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: Color(0xFFF59E0B),
+                      size: 18,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Galeria de Conquistas & Selos',
+                  style: TextStyle(
+                    color: AppColors.text(context),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Marcos de força e volume',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppColors.subtext(context),
+                    fontSize: 11.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildAnamnesisHeroCard() {
-    final details = (_latestAnamnesis?['details'] as Map<String, dynamic>?) ?? {};
-    final objective = (_latestAnamnesis?['objective'] ?? details['objective'])?.toString();
-    final weeklyDays = (_latestAnamnesis?['weekly_days'] ?? details['weekly_days'])?.toString();
-    final location = (_latestAnamnesis?['workout_location'] ?? details['workout_location'])?.toString();
-    final rawPriorities = _latestAnamnesis?['muscle_priorities'] ?? details['muscle_priorities'];
+    final details =
+        (_latestAnamnesis?['details'] as Map<String, dynamic>?) ?? {};
+    final objective =
+        (_latestAnamnesis?['objective'] ?? details['objective'])?.toString();
+    final weeklyDays =
+        (_latestAnamnesis?['weekly_days'] ?? details['weekly_days'])?.toString();
+    final location = (_latestAnamnesis?['workout_location'] ??
+            details['workout_location'])
+        ?.toString();
+    final rawPriorities =
+        _latestAnamnesis?['muscle_priorities'] ?? details['muscle_priorities'];
     final List<String> priorities = rawPriorities is List
         ? rawPriorities.map((e) => e.toString()).toList()
         : [];
@@ -629,19 +929,19 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppColors.emerald(context).withValues(alpha: 0.18),
+            AppColors.emerald(context).withValues(alpha: 0.16),
             AppColors.card(context),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppColors.emerald(context).withValues(alpha: 0.4),
-          width: 1.5,
+          color: AppColors.emerald(context).withValues(alpha: 0.35),
+          width: 1.2,
         ),
       ),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -650,16 +950,16 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.emerald(context).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(14),
+                  color: AppColors.emerald(context).withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   Icons.assignment_turned_in_rounded,
                   color: AppColors.emerald(context),
-                  size: 26,
+                  size: 22,
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -668,13 +968,13 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                       'Anamnese Completa',
                       style: TextStyle(
                         color: AppColors.text(context),
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Renovação de Periodização & Rotina',
+                      'Renovação de periodização e rotina clínica',
                       style: TextStyle(
                         color: AppColors.subtext(context),
                         fontSize: 12,
@@ -685,8 +985,11 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               ),
             ],
           ),
-          if (objective != null || weeklyDays != null || location != null || priorities.isNotEmpty) ...[
-            const SizedBox(height: 14),
+          if (objective != null ||
+              weeklyDays != null ||
+              location != null ||
+              priorities.isNotEmpty) ...[
+            const SizedBox(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -694,9 +997,15 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                 if (objective != null && objective.isNotEmpty)
                   _buildAnamnesisSummaryChip(Icons.flag_rounded, objective),
                 if (weeklyDays != null && weeklyDays.isNotEmpty)
-                  _buildAnamnesisSummaryChip(Icons.calendar_today_rounded, '${weeklyDays}x / semana'),
+                  _buildAnamnesisSummaryChip(
+                    Icons.calendar_today_rounded,
+                    '${weeklyDays}x / semana',
+                  ),
                 if (location != null && location.isNotEmpty)
-                  _buildAnamnesisSummaryChip(Icons.fitness_center_rounded, location),
+                  _buildAnamnesisSummaryChip(
+                    Icons.fitness_center_rounded,
+                    location,
+                  ),
                 if (priorities.isNotEmpty)
                   _buildAnamnesisSummaryChip(
                     Icons.bolt_rounded,
@@ -705,16 +1014,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               ],
             ),
           ],
-          const SizedBox(height: 12),
-          Text(
-            'Precisa ajustar suas metas, dias disponíveis, equipamentos, foco muscular ou o professor solicitou uma nova periodização? Revise seus 5 passos pré-preenchidos.',
-            style: TextStyle(
-              color: AppColors.subtext(context),
-              fontSize: 13,
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -732,20 +1032,19 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                     ),
                   ),
                 );
-                // Ao retornar da anamnese, recarrega para atualizar peso/idade/restrições
                 if (mounted) _load();
               },
-              icon: const Icon(Icons.refresh_rounded, size: 18),
+              icon: const Icon(Icons.refresh_rounded, size: 17),
               label: const Text(
                 'Revisar / Atualizar Anamnese Completa',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.emerald(context),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 elevation: 0,
               ),
@@ -758,7 +1057,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
 
   Widget _buildAnamnesisSummaryChip(IconData icon, String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: AppColors.emerald(context).withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(10),
@@ -770,8 +1069,8 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: AppColors.emerald(context)),
-          const SizedBox(width: 6),
+          Icon(icon, size: 12.5, color: AppColors.emerald(context)),
+          const SizedBox(width: 5),
           Flexible(
             child: Text(
               label,
@@ -781,6 +1080,215 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                 fontWeight: FontWeight.w600,
               ),
               overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEditableBiometricsCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card(context),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.cardBorder(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormField(
+            key: const Key('field_name'),
+            controller: _nameCtrl,
+            style: TextStyle(color: AppColors.text(context), fontSize: 14),
+            decoration: _decoration('Nome Completo', _fieldErrors['name']),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextFormField(
+                  key: const Key('field_age'),
+                  controller: _ageCtrl,
+                  keyboardType: TextInputType.number,
+                  style: TextStyle(color: AppColors.text(context), fontSize: 14),
+                  decoration: _decoration('Idade', _fieldErrors['age']),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextFormField(
+                  key: const Key('field_weight'),
+                  controller: _weightCtrl,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  style: TextStyle(color: AppColors.text(context), fontSize: 14),
+                  decoration: _decoration('Peso (kg)', _fieldErrors['weight']),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextFormField(
+                  key: const Key('field_height'),
+                  controller: _heightCtrl,
+                  keyboardType: TextInputType.number,
+                  style: TextStyle(color: AppColors.text(context), fontSize: 14),
+                  decoration:
+                      _decoration('Altura (cm)', _fieldErrors['height']),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: _timezoneOptions.containsKey(_selectedTimezone)
+                ? _selectedTimezone
+                : 'UTC',
+            items: _timezoneOptions.entries
+                .map(
+                  (entry) => DropdownMenuItem<String>(
+                    value: entry.key,
+                    child: Text(entry.value),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _selectedTimezone = value);
+              }
+            },
+            decoration: _decoration('Fuso horário', null),
+            style: TextStyle(color: AppColors.text(context), fontSize: 14),
+            dropdownColor: AppColors.card(context),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Restrições ou lesões articulares',
+            style: TextStyle(
+              color: AppColors.text(context),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Alterar restrições avisa automaticamente seu treinador.',
+            style: TextStyle(
+              color: AppColors.subtext(context),
+              fontSize: 11.5,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _availableRestrictions.map((r) {
+              final isSelected = _selectedRestrictions.contains(r);
+              return FilterChip(
+                label: Text(r),
+                selected: isSelected,
+                onSelected: (selected) {
+                  setState(() {
+                    if (r == kNoRestriction) {
+                      _selectedRestrictions
+                        ..clear()
+                        ..add(kNoRestriction);
+                    } else {
+                      _selectedRestrictions.remove(kNoRestriction);
+                      if (selected) {
+                        _selectedRestrictions.add(r);
+                      } else {
+                        _selectedRestrictions.remove(r);
+                        if (_selectedRestrictions.isEmpty) {
+                          _selectedRestrictions.add(kNoRestriction);
+                        }
+                      }
+                    }
+                  });
+                },
+                selectedColor: AppColors.danger.withValues(alpha: 0.18),
+                checkmarkColor: AppColors.danger,
+                labelStyle: TextStyle(
+                  fontSize: 12,
+                  color:
+                      isSelected ? AppColors.danger : AppColors.text(context),
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                ),
+                backgroundColor: MetaColors.highlight(context).withValues(alpha: 0.4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(100),
+                  side: BorderSide(
+                    color: isSelected
+                        ? AppColors.danger
+                        : AppColors.cardBorder(context),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              child: ElevatedButton(
+                key: const Key('btn_save_profile'),
+                onPressed:
+                    (_isSaving || _isSavedSuccess) ? null : _handleSave,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isSavedSuccess
+                      ? MetaColors.emerald
+                      : AppColors.emerald(context),
+                  disabledBackgroundColor: _isSavedSuccess
+                      ? MetaColors.emerald
+                      : AppColors.emerald(context).withValues(alpha: 0.6),
+                  foregroundColor: Colors.white,
+                  disabledForegroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 0,
+                ),
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : _isSavedSuccess
+                        ? const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.check_circle_rounded,
+                                color: Colors.white,
+                                size: 19,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Alterações Salvas!',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          )
+                        : const Text(
+                            'Salvar Alterações',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+              ),
             ),
           ),
         ],
@@ -799,9 +1307,11 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(_loadError!,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.text(context))),
+              Text(
+                _loadError!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.text(context)),
+              ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _load,
@@ -814,686 +1324,235 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     }
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(20, 16, 20, bottomInset + (widget.isTab ? 110 : 48)),
+      padding: EdgeInsets.fromLTRB(
+        18,
+        12,
+        18,
+        bottomInset + (widget.isTab ? 110 : 48),
+      ),
       child: Form(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header do Aluno: Foto, Nome e E-mail
-            Center(
+            // 1. Identity Hero Card com Anel de Progresso
+            _buildIdentityHeroCard(),
+            const SizedBox(height: 14),
+
+            // 2. Pílula Compacta do Treinador Responsável
+            TrainerCompactPill(
+              isLoading: _isLoadingTrainer,
+              trainerName: _trainerName,
+              trainerCref: _trainerCref,
+              trainerPhotoUrl: _trainerPhotoUrl,
+              hasWhatsApp:
+                  _trainerPhone != null && _trainerPhone!.trim().isNotEmpty,
+              onWhatsAppTap: _contactTrainerWhatsApp,
+            ),
+            const SizedBox(height: 14),
+
+            // 3. Card Indutor PWA (Exibido para usuários acessando pelo navegador)
+            const PwaInstallPromptCard(),
+            const SizedBox(height: 18),
+
+            // 4. Métricas Biométricas Ao Vivo (Peso, Estatura, IMC)
+            const StudentSectionHeader(
+              title: 'Biometria e composição',
+              subtitle: 'Indicadores usados para calibrar seu volume semanal',
+              icon: Icons.monitor_weight_rounded,
+            ),
+            _buildLiveBiometricStats(),
+            const SizedBox(height: 22),
+
+            // 5. Progresso & Gamificação (Bento Grid 2 colunas)
+            const StudentSectionHeader(
+              title: 'Performance e evolução',
+              subtitle: 'Metas de sobrecarga, 1RM e marcos conquistados',
+              icon: Icons.emoji_events_rounded,
+              iconColor: Color(0xFFF59E0B),
+            ),
+            _buildProgressBentoCards(),
+            const SizedBox(height: 22),
+
+            // 6. Saúde & Anamnese Completa
+            const StudentSectionHeader(
+              title: 'Saúde e periodização',
+              subtitle: 'Ficha clínica e preferências de rotina',
+              icon: Icons.favorite_rounded,
+            ),
+            _buildAnamnesisHeroCard(),
+            const SizedBox(height: 22),
+
+            // 7. Dados Cadastrais, Biometria Rápida & Restrições
+            const StudentSectionHeader(
+              title: 'Dados pessoais e restrições',
+              subtitle: 'Atualize seus dados biométricos e articulares',
+              icon: Icons.tune_rounded,
+            ),
+            _buildEditableBiometricsCard(),
+            const SizedBox(height: 24),
+
+            // 8. Preferências do App & Conta (Estilo iOS / One UI)
+            const StudentSectionHeader(
+              title: 'Preferências e segurança',
+              icon: Icons.settings_rounded,
+            ),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.card(context),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.cardBorder(context)),
+              ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  GestureDetector(
-                    onTap: () async {
-                      final uid = _userId;
-                      final selected = await AvatarSelectorSheet.show(
-                        context: context,
-                        isTrainer: false,
-                        currentUrl: _photoUrl,
-                        userId: uid,
-                      );
-                      if (selected != null && mounted) {
-                        setState(() => _photoUrl = selected.isEmpty ? null : selected);
-                      }
-                    },
-                    child: Stack(
-                      children: [
-                        Container(
-                          width: 96,
-                          height: 96,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppColors.card(context),
-                            border: Border.all(
-                              color: AppColors.emerald(context),
-                              width: 3,
-                            ),
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: (_photoUrl != null && _photoUrl!.isNotEmpty)
-                              ? (_photoUrl!.startsWith('assets/')
-                                  ? Image.asset(_photoUrl!, fit: BoxFit.cover)
-                                  : Image.network(
-                                      _photoUrl!,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, _, _) => const Icon(
-                                        Icons.person_rounded,
-                                        size: 48,
-                                        color: Colors.grey,
-                                      ),
-                                    ))
-                              : Icon(
-                                  Icons.person_rounded,
-                                  size: 48,
-                                  color: AppColors.emerald(context),
-                                ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            padding: const EdgeInsets.all(7),
-                            decoration: BoxDecoration(
-                              color: AppColors.emerald(context),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Theme.of(context).scaffoldBackgroundColor,
-                                width: 2,
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.camera_alt_rounded,
-                              size: 15,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
+                  Text(
+                    'Aparência do aplicativo',
+                    style: TextStyle(
+                      color: AppColors.text(context),
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 10),
-                  TextButton.icon(
-                    onPressed: () async {
-                      final uid = _userId;
-                      final selected = await AvatarSelectorSheet.show(
-                        context: context,
-                        isTrainer: false,
-                        currentUrl: _photoUrl,
-                        userId: uid,
+                  ListenableBuilder(
+                    listenable: ThemeController.instance,
+                    builder: (context, _) {
+                      final currentMode = ThemeController.instance.themeMode;
+                      return SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<ThemeMode>(
+                          segments: const [
+                            ButtonSegment<ThemeMode>(
+                              value: ThemeMode.dark,
+                              label: Text('Escuro'),
+                              icon: Icon(Icons.dark_mode_rounded),
+                            ),
+                            ButtonSegment<ThemeMode>(
+                              value: ThemeMode.light,
+                              label: Text('Claro'),
+                              icon: Icon(Icons.light_mode_rounded),
+                            ),
+                            ButtonSegment<ThemeMode>(
+                              value: ThemeMode.system,
+                              label: Text('Sistema'),
+                              icon: Icon(Icons.brightness_auto_rounded),
+                            ),
+                          ],
+                          selected: {currentMode},
+                          onSelectionChanged: (selection) {
+                            if (selection.isNotEmpty) {
+                              ThemeController.instance
+                                  .setThemeMode(selection.first);
+                            }
+                          },
+                          emptySelectionAllowed: false,
+                        ),
                       );
-                      if (selected != null && mounted) {
-                        setState(() => _photoUrl = selected.isEmpty ? null : selected);
-                      }
                     },
-                    icon: Icon(Icons.edit_rounded, size: 16, color: AppColors.emerald(context)),
-                    label: Text(
-                      'Alterar Foto ou Avatar',
+                  ),
+                  if (_roles.length > 1) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      'Usar aplicativo como',
                       style: TextStyle(
-                        color: AppColors.emerald(context),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                        color: AppColors.text(context),
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                  ),
-                  if (_email != null && _email!.isNotEmpty) ...[
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.email_outlined, size: 14, color: AppColors.subtext(context)),
-                        const SizedBox(width: 6),
-                        Text(
-                          _email!,
-                          style: TextStyle(
-                            color: AppColors.subtext(context),
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: SegmentedButton<String>(
+                        segments: [
+                          for (final role in _roles)
+                            ButtonSegment<String>(
+                              value: role,
+                              label: Text(
+                                role == 'admin'
+                                    ? 'Admin ⚡'
+                                    : (role == 'trainer'
+                                        ? 'Treinador'
+                                        : 'Aluno'),
+                              ),
+                              icon: Icon(
+                                role == 'admin'
+                                    ? Icons.admin_panel_settings_rounded
+                                    : (role == 'trainer'
+                                        ? Icons.fitness_center
+                                        : Icons.person_outline),
+                              ),
+                            ),
+                        ],
+                        selected: const {'client'},
+                        onSelectionChanged: (selection) async {
+                          if (_isSwitchingRole) return;
+                          final nextRole = selection.first;
+                          if (nextRole == 'client') return;
+                          setState(() => _isSwitchingRole = true);
+                          try {
+                            await AuthService.setActiveRole(nextRole);
+                            if (mounted) {
+                              Navigator.of(context)
+                                  .pushNamedAndRemoveUntil('/', (r) => false);
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              _snack(
+                                e.toString().replaceFirst('Exception: ', ''),
+                              );
+                            }
+                          } finally {
+                            if (mounted) {
+                              setState(() => _isSwitchingRole = false);
+                            }
+                          }
+                        },
+                      ),
                     ),
                   ],
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-
-            // Card do Treinador Vinculado
-            _buildTrainerCard(),
-            const SizedBox(height: 16),
-
-            // Card Indutor PWA (Exibido para usuários acessando pelo navegador)
-            const PwaInstallPromptCard(),
-            const SizedBox(height: 16),
-
-            // Card Hero de Anamnese & Periodização
-            _buildAnamnesisHeroCard(),
-            const SizedBox(height: 28),
-
-            // Seção de Alternância de Papel (se o usuário for trainer e aluno)
-            if (_roles.length > 1) ...[
-              Text(
-                'USAR APLICATIVO COMO',
-                style: TextStyle(
-                  color: AppColors.emerald(context),
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 12),
-              SegmentedButton<String>(
-                segments: [
-                  for (final role in _roles)
-                    ButtonSegment<String>(
-                      value: role,
-                      label: Text(
-                        role == 'admin'
-                            ? 'Admin ⚡'
-                            : (role == 'trainer' ? 'Treinador' : 'Aluno'),
-                      ),
-                      icon: Icon(
-                        role == 'admin'
-                            ? Icons.admin_panel_settings_rounded
-                            : (role == 'trainer' ? Icons.fitness_center : Icons.person_outline),
-                      ),
-                    ),
-                ],
-                selected: {'client'},
-                onSelectionChanged: (selection) async {
-                  if (_isSwitchingRole) return;
-                  final nextRole = selection.first;
-                  if (nextRole == 'client') return;
-                  setState(() => _isSwitchingRole = true);
-                  try {
-                    await AuthService.setActiveRole(nextRole);
-                    if (mounted) {
-                      Navigator.of(context).pushNamedAndRemoveUntil('/', (r) => false);
-                    }
-                  } catch (e) {
-                    if (mounted) _snack(e.toString().replaceFirst('Exception: ', ''));
-                  } finally {
-                    if (mounted) setState(() => _isSwitchingRole = false);
-                  }
-                },
-              ),
-              const SizedBox(height: 28),
-            ],
-
-            // Seção: Dados Pessoais
-            Text(
-              'DADOS PESSOAIS',
-              style: TextStyle(
-                color: AppColors.emerald(context),
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              key: const Key('field_name'),
-              controller: _nameCtrl,
-              style: TextStyle(color: AppColors.text(context)),
-              decoration: _decoration('Nome Completo', _fieldErrors['name']),
-            ),
-            const SizedBox(height: 28),
-
-            // Seção: Biometria Rápida
-            Text(
-              'BIOMETRIA RÁPIDA',
-              style: TextStyle(
-                color: AppColors.emerald(context),
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Mantenha atualizado. Seu professor utiliza esses dados para calibrar o volume e intensidade.',
-              style: TextStyle(
-                color: AppColors.subtext(context),
-                fontSize: 13,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(height: 14),
+            SettingsGroup(
               children: [
-                Expanded(
-                  child: TextFormField(
-                    key: const Key('field_age'),
-                    controller: _ageCtrl,
-                    keyboardType: TextInputType.number,
-                    style: TextStyle(color: AppColors.text(context)),
-                    decoration: _decoration('Idade', _fieldErrors['age']),
+                if (_roles.contains('trainer'))
+                  SettingsTile(
+                    icon: Icons.security_rounded,
+                    title: 'Verificação em duas etapas (2FA)',
+                    subtitle: _totpFactorId == null
+                        ? 'Recomendado para proteger acesso de treinador'
+                        : 'Autenticador ativo e verificado',
+                    onTap: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const TeacherMfaScreen(),
+                        ),
+                      );
+                      _load();
+                    },
                   ),
+                SettingsTile(
+                  icon: Icons.logout_rounded,
+                  title: 'Sair neste aparelho',
+                  subtitle: 'Encerrar sessão atual com segurança',
+                  isDestructive: true,
+                  onTap: () => _signOut(false),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextFormField(
-                    key: const Key('field_weight'),
-                    controller: _weightCtrl,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    style: TextStyle(color: AppColors.text(context)),
-                    decoration:
-                        _decoration('Peso (kg)', _fieldErrors['weight']),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextFormField(
-                    key: const Key('field_height'),
-                    controller: _heightCtrl,
-                    keyboardType: TextInputType.number,
-                    style: TextStyle(color: AppColors.text(context)),
-                    decoration:
-                        _decoration('Altura (cm)', _fieldErrors['height']),
-                  ),
+                SettingsTile(
+                  icon: Icons.phonelink_erase_rounded,
+                  iconColor: MetaColors.subtext(context),
+                  title: 'Sair de todos os dispositivos',
+                  subtitle: 'Revogar acessos ativos em outros aparelhos',
+                  onTap: () => _signOut(true),
                 ),
               ],
             ),
-            const SizedBox(height: 28),
-
-            // Seção: Metas de Sobrecarga & 1RM
-            Text(
-              'SOBRECARGA PROGRESSIVA & FORÇA',
-              style: TextStyle(
-                color: AppColors.emerald(context),
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 10),
-            MetaCard(
-              onTap: () => StudentOverloadCenterSheet.show(context),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: MetaColors.emerald.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.insights_rounded,
-                      color: MetaColors.emerald,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Central de Metas & 1RM',
-                          style: TextStyle(
-                            color: AppColors.text(context),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14.5,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          'Curvas de volume semanal, estimativa de 1RM e metas da IA',
-                          style: TextStyle(
-                            color: AppColors.subtext(context),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: MetaColors.emerald,
-                    size: 22,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 28),
-
-            // Seção: Conquistas & Badges de Força
-            Text(
-              'CONQUISTAS & BADGES DE FORÇA',
-              style: TextStyle(
-                color: AppColors.emerald(context),
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 10),
-            MetaCard(
-              onTap: () => StudentAchievementsModalSheet.show(
-                context,
-                userId: _userId,
-                trainerName: _trainerName,
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.military_tech_rounded,
-                      color: Color(0xFFF59E0B),
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Galeria de Conquistas & Selos',
-                          style: TextStyle(
-                            color: AppColors.text(context),
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Desbloqueie marcos de força, consistência e volume',
-                          style: TextStyle(
-                            color: AppColors.subtext(context),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: Color(0xFFF59E0B),
-                    size: 22,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 28),
-
-            // Fuso Horário
-            Text(
-              'FUSO HORÁRIO DO ALUNO',
-              style: TextStyle(
-                color: AppColors.emerald(context),
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: _timezoneOptions.containsKey(_selectedTimezone)
-                  ? _selectedTimezone
-                  : 'UTC',
-              items: _timezoneOptions.entries
-                  .map(
-                    (entry) => DropdownMenuItem<String>(
-                      value: entry.key,
-                      child: Text(entry.value),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _selectedTimezone = value);
-                }
-              },
-              decoration: _decoration('Fuso horário', null),
-              style: TextStyle(color: AppColors.text(context)),
-              dropdownColor: AppColors.card(context),
-            ),
-            const SizedBox(height: 28),
-
-            // Restrições e Lesões
-            Text(
-              'RESTRIÇÕES OU LESÕES ATUAIS',
-              style: TextStyle(
-                color: AppColors.danger,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
-            ),
             const SizedBox(height: 8),
-            Text(
-              'Alterar restrições notifica automaticamente seu treinador para revisão de segurança.',
-              style: TextStyle(
-                color: AppColors.subtext(context),
-                fontSize: 13,
-              ),
-            ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 12,
-              children: _availableRestrictions.map((r) {
-                final isSelected = _selectedRestrictions.contains(r);
-                return FilterChip(
-                  label: Text(r),
-                  selected: isSelected,
-                  onSelected: (selected) {
-                    setState(() {
-                      if (r == kNoRestriction) {
-                        _selectedRestrictions
-                          ..clear()
-                          ..add(kNoRestriction);
-                      } else {
-                        _selectedRestrictions.remove(kNoRestriction);
-                        if (selected) {
-                          _selectedRestrictions.add(r);
-                        } else {
-                          _selectedRestrictions.remove(r);
-                          if (_selectedRestrictions.isEmpty) {
-                            _selectedRestrictions.add(kNoRestriction);
-                          }
-                        }
-                      }
-                    });
-                  },
-                  selectedColor: AppColors.danger.withValues(alpha: 0.2),
-                  checkmarkColor: AppColors.danger,
-                  labelStyle: TextStyle(
-                    color:
-                        isSelected ? AppColors.danger : AppColors.text(context),
-                    fontWeight:
-                        isSelected ? FontWeight.bold : FontWeight.normal,
-                  ),
-                  backgroundColor: AppColors.card(context),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(100),
-                    side: BorderSide(
-                      color: isSelected
-                          ? AppColors.danger
-                          : AppColors.cardBorder(context),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 36),
-
-            // Botão Principal de Salvar Perfil
-            SizedBox(
-              width: double.infinity,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                child: ElevatedButton(
-                  key: const Key('btn_save_profile'),
-                  onPressed: (_isSaving || _isSavedSuccess) ? null : _handleSave,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _isSavedSuccess
-                        ? MetaColors.emerald
-                        : AppColors.emerald(context),
-                    disabledBackgroundColor: _isSavedSuccess
-                        ? MetaColors.emerald
-                        : AppColors.emerald(context).withValues(alpha: 0.6),
-                    foregroundColor: Colors.white,
-                    disabledForegroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: _isSaving
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : _isSavedSuccess
-                          ? Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
-                                Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Alterações Salvas!',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : const Text(
-                              'Salvar Alterações',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 40),
-
-            // Divisor decorativo
-            Divider(color: AppColors.cardBorder(context), thickness: 1),
-            const SizedBox(height: 28),
-
-            // Seção: Aparência do Aplicativo
-            Text(
-              'APARÊNCIA DO APLICATIVO',
-              style: TextStyle(
-                color: AppColors.emerald(context),
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 14),
-            ListenableBuilder(
-              listenable: ThemeController.instance,
-              builder: (context, _) {
-                final currentMode = ThemeController.instance.themeMode;
-                return SizedBox(
-                  width: double.infinity,
-                  child: SegmentedButton<ThemeMode>(
-                    segments: const [
-                      ButtonSegment<ThemeMode>(
-                        value: ThemeMode.dark,
-                        label: Text('Escuro'),
-                        icon: Icon(Icons.dark_mode_rounded),
-                      ),
-                      ButtonSegment<ThemeMode>(
-                        value: ThemeMode.light,
-                        label: Text('Claro'),
-                        icon: Icon(Icons.light_mode_rounded),
-                      ),
-                      ButtonSegment<ThemeMode>(
-                        value: ThemeMode.system,
-                        label: Text('Sistema'),
-                        icon: Icon(Icons.brightness_auto_rounded),
-                      ),
-                    ],
-                    selected: {currentMode},
-                    onSelectionChanged: (selection) {
-                      if (selection.isNotEmpty) {
-                        ThemeController.instance.setThemeMode(selection.first);
-                      }
-                    },
-                    emptySelectionAllowed: false,
-                  ),
-                );
-              },
-            ),
-
-            // MFA se for professor
-            if (_roles.contains('trainer')) ...[
-              const SizedBox(height: 28),
-              Text(
-                'SEGURANÇA DA CONTA',
-                style: TextStyle(
-                  color: AppColors.emerald(context),
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 12),
-              ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: AppColors.cardBorder(context)),
-                ),
-                tileColor: AppColors.card(context),
-                leading: const Icon(Icons.security_outlined),
-                title: const Text('Verificação em duas etapas (2FA)'),
-                subtitle: Text(
-                  _totpFactorId == null
-                      ? 'Recomendado para proteger acesso de treinador'
-                      : 'Autenticador ativo e verificado',
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const TeacherMfaScreen()),
-                  );
-                  _load();
-                },
-              ),
-            ],
-
-            const SizedBox(height: 36),
-            Text(
-              'SESSÃO E CONECTIVIDADE',
-              style: TextStyle(
-                color: AppColors.emerald(context),
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _signOut(false),
-                icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
-                label: const Text(
-                  'Sair neste aparelho',
-                  style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600),
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.5)),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: TextButton.icon(
-                onPressed: () => _signOut(true),
-                icon: Icon(Icons.phonelink_erase_rounded, color: AppColors.subtext(context)),
-                label: Text(
-                  'Sair de todos os dispositivos',
-                  style: TextStyle(color: AppColors.subtext(context), fontSize: 13),
-                ),
-              ),
-            ),
             const AppVersionFooter(userRole: 'student'),
           ],
         ),
@@ -1512,7 +1571,10 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         elevation: 0,
         leading: showBackButton
             ? IconButton(
-                icon: Icon(Icons.arrow_back_rounded, color: AppColors.text(context)),
+                icon: Icon(
+                  Icons.arrow_back_rounded,
+                  color: AppColors.text(context),
+                ),
                 onPressed: () => Navigator.pop(context),
               )
             : null,
