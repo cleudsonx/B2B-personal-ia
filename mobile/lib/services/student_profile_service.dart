@@ -44,6 +44,32 @@ class StudentProfileData {
 
   String get restrictionsText => restrictions.join(', ');
 
+  StudentProfileData copyWith({
+    String? name,
+    int? age,
+    double? weightKg,
+    int? heightCm,
+    Set<String>? restrictions,
+    String? trainerId,
+    String? timezone,
+    Object? photoUrl = _sentinel,
+  }) {
+    return StudentProfileData(
+      name: name ?? this.name,
+      age: age ?? this.age,
+      weightKg: weightKg ?? this.weightKg,
+      heightCm: heightCm ?? this.heightCm,
+      restrictions: restrictions ?? this.restrictions,
+      trainerId: trainerId ?? this.trainerId,
+      timezone: timezone ?? this.timezone,
+      photoUrl: identical(photoUrl, _sentinel)
+          ? this.photoUrl
+          : (photoUrl as String?),
+    );
+  }
+
+  static const Object _sentinel = Object();
+
   factory StudentProfileData.fromRow(Map<String, dynamic> row) {
     final raw = (row['clinical_restrictions'] as String?)?.trim() ?? '';
     final parsed = raw.isEmpty

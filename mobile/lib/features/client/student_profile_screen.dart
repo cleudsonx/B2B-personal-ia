@@ -1,15 +1,18 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../core/widgets/avatar_selector_sheet.dart';
 import '../../core/widgets/meta_components.dart';
+import '../../core/widgets/profile_edit_sheet.dart';
 import '../../core/widgets/student_ux_components.dart';
 import '../../core/widgets/app_version_footer.dart';
 import '../../core/widgets/pwa_install_prompt_card.dart';
 import '../../services/auth_service.dart';
 import '../../services/body_metrics_service.dart';
+import '../../services/referral_service.dart';
 import '../../services/student_profile_service.dart';
 import '../../services/workout_service.dart';
 import '../auth/teacher_mfa_screen.dart';
@@ -35,18 +38,14 @@ class StudentProfileScreen extends StatefulWidget {
 class _StudentProfileScreenState extends State<StudentProfileScreen> {
   late final StudentProfileService _service;
   bool _isLoadingData = true;
-  bool _isSaving = false;
-  bool _isSavedSuccess = false;
-  Timer? _successTimer;
   String? _loadError;
   StudentProfileData? _original;
-  Map<String, String> _fieldErrors = {};
-  String? _photoUrl;
   String? _email;
   List<String> _roles = const [];
   String? _totpFactorId;
   bool _isSwitchingRole = false;
   Map<String, dynamic>? _latestAnamnesis;
+  int _currentStreak = 1;
 
   // Informações do Treinador Associado
   String? _trainerName;
@@ -55,24 +54,6 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
   String? _trainerPhone;
   bool _isLoadingTrainer = true;
 
-  final _formKey = GlobalKey<FormState>();
-  final _nameCtrl = TextEditingController();
-  final _ageCtrl = TextEditingController();
-  final _weightCtrl = TextEditingController();
-  final _heightCtrl = TextEditingController();
-
-  static const Map<String, String> _timezoneOptions = {
-    'UTC': 'UTC',
-    'America/Sao_Paulo': 'São Paulo',
-    'America/Manaus': 'Manaus',
-    'America/Rio_Branco': 'Rio Branco',
-    'America/Noronha': 'Noronha',
-  };
-
-  final List<String> _availableRestrictions = [...kStudentRestrictionOptions];
-  final Set<String> _selectedRestrictions = {kNoRestriction};
-  String _selectedTimezone = 'UTC';
-
   String? get _userId => widget.userId ?? AuthService.currentUser?.id;
 
   @override
@@ -80,16 +61,6 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     super.initState();
     _service = widget.service ?? StudentProfileService();
     _load();
-  }
-
-  @override
-  void dispose() {
-    _successTimer?.cancel();
-    _nameCtrl.dispose();
-    _ageCtrl.dispose();
-    _weightCtrl.dispose();
-    _heightCtrl.dispose();
-    super.dispose();
   }
 
   Future<void> _load() async {
@@ -116,45 +87,14 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         return;
       }
       _original = data;
-      _photoUrl = data.photoUrl;
-      _nameCtrl.text = data.name;
-      _ageCtrl.text = data.age?.toString() ?? '';
-      _weightCtrl.text = data.weightKg?.toString() ?? '';
-      _heightCtrl.text = data.heightCm?.toString() ?? '';
-      _selectedTimezone =
-          _timezoneOptions.containsKey(data.timezone) ? data.timezone : 'UTC';
-      _selectedRestrictions
-        ..clear()
-        ..addAll(data.restrictions);
-      for (final r in data.restrictions) {
-        if (!_availableRestrictions.contains(r)) _availableRestrictions.add(r);
-      }
 
-      // Carrega a Anamnese Expandida para sincronizar biometria e mostrar o resumo clínico
+      // Carrega a Anamnese Expandida para sincronizar biometria e metas
       try {
         final anamnesis = await WorkoutService.getLatestStudentAnamnesis(uid);
-        if (anamnesis != null) {
+        if (anamnesis != null && mounted) {
           _latestAnamnesis = anamnesis;
-          final details = (anamnesis['details'] as Map<String, dynamic>?) ?? {};
-          if (_ageCtrl.text.isEmpty) {
-            final ageVal = anamnesis['age'] ?? details['age'];
-            if (ageVal != null) _ageCtrl.text = ageVal.toString();
-          }
-          if (_weightCtrl.text.isEmpty) {
-            final weightVal = anamnesis['weight'] ?? details['weight'];
-            if (weightVal != null) _weightCtrl.text = weightVal.toString();
-          }
-          if (_heightCtrl.text.isEmpty) {
-            final heightVal = anamnesis['height'] ?? details['height'];
-            if (heightVal != null) {
-              final parsedH = double.tryParse(heightVal.toString());
-              if (parsedH != null && parsedH > 0) {
-                final cm =
-                    parsedH < 3.0 ? (parsedH * 100).round() : parsedH.round();
-                _heightCtrl.text = cm.toString();
-              }
-            }
-          }
+          final s = anamnesis['streak_days'] ?? anamnesis['streak'];
+          if (s is num) _currentStreak = s.toInt();
         }
       } catch (_) {}
 
@@ -235,17 +175,6 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     }
   }
 
-  StudentProfileData _currentFormData() => StudentProfileData(
-        name: _nameCtrl.text.trim(),
-        age: int.tryParse(_ageCtrl.text.trim()),
-        weightKg: StudentProfileValidator.parseDecimal(_weightCtrl.text),
-        heightCm: int.tryParse(_heightCtrl.text.trim()),
-        restrictions: Set.of(_selectedRestrictions),
-        trainerId: _original?.trainerId,
-        timezone: _selectedTimezone,
-        photoUrl: _photoUrl,
-      );
-
   void _snack(
     String msg, {
     Color? color,
@@ -284,156 +213,232 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     );
   }
 
-  Future<void> _handleSave() async {
-    final errors = StudentProfileValidator.validate(
-      name: _nameCtrl.text,
-      age: _ageCtrl.text,
-      weight: _weightCtrl.text,
-      height: _heightCtrl.text,
-    );
-    setState(() => _fieldErrors = errors);
-    if (errors.isNotEmpty) return;
-
+  Future<void> _saveFromSheet(StudentProfileData updated) async {
     final uid = _userId;
     final original = _original;
     if (uid == null || original == null) return;
 
-    setState(() => _isSaving = true);
-    try {
-      final updated = _currentFormData();
-      final weightChanged = updated.weightKg != original.weightKg;
-      final heightChanged = updated.heightCm != original.heightCm;
-      final result = await _service.save(
-        userId: uid,
-        original: original,
-        updated: updated,
-      );
-      _original = updated;
+    final weightChanged = updated.weightKg != original.weightKg;
+    final heightChanged = updated.heightCm != original.heightCm;
 
-      if ((weightChanged || heightChanged) &&
-          (updated.weightKg != null || updated.heightCm != null)) {
-        try {
-          await BodyMetricsService.saveMetrics(
-            targetStudentId: uid,
-            weightKg: updated.weightKg,
-            heightCm: updated.heightCm?.toDouble(),
-            notes: 'Atualização rápida no Perfil',
-          );
-        } catch (_) {}
-      }
+    final result = await _service.save(
+      userId: uid,
+      original: original,
+      updated: updated,
+    );
+    _original = updated;
 
-      if (!mounted) return;
-
-      // Atualiza o cache do Smart Re-entry para refletir o novo nome ou foto em background
+    if ((weightChanged || heightChanged) &&
+        (updated.weightKg != null || updated.heightCm != null)) {
       try {
-        AuthService.saveLastAuthenticatedUser(
-          email: _email ?? '',
-          name: updated.name,
-          role: 'client',
-          photoUrl: updated.photoUrl,
-        ).catchError((_) {});
+        await BodyMetricsService.saveMetrics(
+          targetStudentId: uid,
+          weightKg: updated.weightKg,
+          heightCm: updated.heightCm?.toDouble(),
+          notes: 'Atualização rápida no Perfil',
+        );
       } catch (_) {}
+    }
 
-      setState(() {
-        _isSaving = false;
-        _isSavedSuccess = true;
-      });
+    try {
+      AuthService.saveLastAuthenticatedUser(
+        email: _email ?? '',
+        name: updated.name,
+        role: 'client',
+        photoUrl: updated.photoUrl,
+      ).catchError((_) {});
+    } catch (_) {}
 
-      // Retorna o botão ao estado padrão após 2.5 segundos
-      _successTimer?.cancel();
-      _successTimer = Timer(const Duration(milliseconds: 2500), () {
-        if (mounted) {
-          setState(() => _isSavedSuccess = false);
-        }
-      });
+    if (!mounted) return;
+    setState(() {});
 
-      switch (result.review) {
-        case ReviewStatus.notNeeded:
-          _snack(
-            'Perfil atualizado com sucesso.',
-            color: MetaColors.emerald,
-            icon: Icons.check_circle_rounded,
-          );
-          return;
-        case ReviewStatus.requested:
-          _snack(
-            'Perfil atualizado. Seu professor foi notificado para revisar a ficha com suas novas restrições.',
-            color: MetaColors.emerald,
-            icon: Icons.mark_email_read_rounded,
-          );
-          return;
-        case ReviewStatus.noTrainer:
-          _snack(
-            'Perfil atualizado. Você ainda não tem professor vinculado para revisar a ficha.',
-            color: MetaColors.emerald,
-            icon: Icons.info_outline_rounded,
-          );
-          return;
-        case ReviewStatus.failed:
-          _snack(
-            'Perfil salvo, mas não conseguimos avisar seu professor para revisar a ficha.',
-            color: Colors.orange.shade800,
-            icon: Icons.warning_amber_rounded,
-            action: SnackBarAction(
-              label: 'Tentar novamente',
-              textColor: Colors.white,
-              onPressed: _retryReview,
-            ),
-          );
-      }
-    } catch (e) {
-      final cleanMsg = e.toString().replaceFirst('Exception: ', '').trim();
-      _snack(
-        cleanMsg.isNotEmpty
-            ? 'Não foi possível salvar: $cleanMsg'
-            : 'Não foi possível salvar. Nada foi alterado.',
-        color: Colors.red,
-        icon: Icons.error_outline_rounded,
-      );
-    } finally {
-      if (mounted && _isSaving) {
-        setState(() => _isSaving = false);
-      }
+    switch (result.review) {
+      case ReviewStatus.notNeeded:
+        _snack(
+          'Perfil atualizado com sucesso.',
+          color: MetaColors.emerald,
+          icon: Icons.check_circle_rounded,
+        );
+        break;
+      case ReviewStatus.requested:
+        _snack(
+          'Perfil atualizado. Seu professor foi notificado para revisar a ficha com suas novas restrições.',
+          color: MetaColors.emerald,
+          icon: Icons.mark_email_read_rounded,
+        );
+        break;
+      case ReviewStatus.noTrainer:
+        _snack(
+          'Perfil atualizado. Você ainda não tem professor vinculado para revisar a ficha.',
+          color: MetaColors.emerald,
+          icon: Icons.info_outline_rounded,
+        );
+        break;
+      case ReviewStatus.failed:
+        _snack(
+          'Perfil salvo, mas não conseguimos avisar seu professor para revisar a ficha.',
+          color: Colors.orange.shade800,
+          icon: Icons.warning_amber_rounded,
+          action: SnackBarAction(
+            label: 'Tentar novamente',
+            textColor: Colors.white,
+            onPressed: () => _service.requestReview(userId: uid, data: updated),
+          ),
+        );
+        break;
     }
   }
 
-  Future<void> _retryReview() async {
-    final uid = _userId;
-    final data = _original;
-    if (uid == null || data == null) return;
-    final status = await _service.requestReview(userId: uid, data: data);
-    if (!mounted) return;
-    if (status == ReviewStatus.requested) {
-      _snack(
-        'Seu professor foi notificado para revisar a ficha.',
-        color: AppColors.emerald(context),
-      );
-    } else {
-      _snack(
-        'Ainda não foi possível avisar seu professor.',
-        color: Colors.orange.shade800,
-        action: SnackBarAction(
-          label: 'Tentar novamente',
-          textColor: Colors.white,
-          onPressed: _retryReview,
+  Future<void> _openEditProfileSheet() async {
+    final original = _original;
+    if (original == null) return;
+    await ProfileEditSheet.show(
+      context: context,
+      initialData: original,
+      onSave: _saveFromSheet,
+    );
+  }
+
+  Future<void> _openShareModal() async {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => SafeArea(
+        child: Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          decoration: BoxDecoration(
+            color: MetaColors.card(ctx),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: MetaColors.cardBorder(ctx)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: MetaColors.subtext(ctx).withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Compartilhar',
+                style: TextStyle(
+                  color: MetaColors.text(ctx),
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 14),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.military_tech_rounded,
+                    color: Color(0xFFF59E0B),
+                    size: 22,
+                  ),
+                ),
+                title: Text(
+                  'Conquistas & Selos de Força',
+                  style: TextStyle(
+                    color: MetaColors.text(ctx),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14.5,
+                  ),
+                ),
+                subtitle: Text(
+                  'Compartilhe seus marcos de treino e ofensiva',
+                  style: TextStyle(
+                    color: MetaColors.subtext(ctx),
+                    fontSize: 12,
+                  ),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  StudentAchievementsModalSheet.show(
+                    context,
+                    userId: _userId,
+                    trainerName: _trainerName,
+                  );
+                },
+              ),
+              const Divider(height: 16),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: MetaColors.emerald.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.person_add_alt_1_rounded,
+                    color: MetaColors.emerald,
+                    size: 22,
+                  ),
+                ),
+                title: Text(
+                  'Convidar Amigo para Treinar',
+                  style: TextStyle(
+                    color: MetaColors.text(ctx),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14.5,
+                  ),
+                ),
+                subtitle: Text(
+                  'Envie o link exclusivo de indicação do app',
+                  style: TextStyle(
+                    color: MetaColors.subtext(ctx),
+                    fontSize: 12,
+                  ),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  final slug = ReferralService.getActiveReferralSlug() ?? 'ALUNO';
+                  final link = 'https://mrcoach.app/r/$slug';
+                  await Clipboard.setData(ClipboardData(text: link));
+                  _snack(
+                    'Link de indicação copiado: $link',
+                    icon: Icons.link_rounded,
+                    color: MetaColors.emerald,
+                  );
+                },
+              ),
+            ],
+          ),
         ),
-      );
-    }
+      ),
+    );
   }
 
   Future<void> _signOut(bool allDevices) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: MetaColors.card(ctx),
         title: Text(
-          allDevices
-              ? 'Sair de todos os dispositivos?'
-              : 'Sair deste aparelho?',
+          allDevices ? 'Sair de todos os dispositivos?' : 'Sair deste aparelho?',
+          style: TextStyle(color: MetaColors.text(ctx)),
         ),
         content: Text(
           allDevices
               ? 'Isso revogará todas as sessões ativas da sua conta em qualquer dispositivo. Você precisará fazer login novamente.'
               : 'Deseja realmente encerrar a sessão neste dispositivo?',
+          style: TextStyle(color: MetaColors.subtext(ctx)),
         ),
         actions: [
           TextButton(
@@ -453,75 +458,22 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     try {
       await AuthService.signOut(allDevices: allDevices);
       if (mounted) {
-        Navigator.of(context)
-            .pushNamedAndRemoveUntil('/login', (route) => false);
+        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
       }
     } catch (error) {
       if (mounted) {
-        _snack(
-          error.toString().replaceFirst('Exception: ', ''),
-          color: Colors.red,
-        );
+        _snack(error.toString().replaceFirst('Exception: ', ''), color: Colors.red);
       }
     }
   }
 
-  Future<void> _pickAvatar() async {
-    final uid = _userId;
-    final selected = await AvatarSelectorSheet.show(
-      context: context,
-      isTrainer: false,
-      currentUrl: _photoUrl,
-      userId: uid,
-    );
-    if (selected != null && mounted) {
-      setState(() => _photoUrl = selected.isEmpty ? null : selected);
-    }
-  }
-
-  double _computeProfileCompletion() {
-    var score = 0.2;
-    if (_nameCtrl.text.trim().isNotEmpty) score += 0.2;
-    if (_ageCtrl.text.trim().isNotEmpty) score += 0.2;
-    if (_weightCtrl.text.trim().isNotEmpty) score += 0.2;
-    if (_heightCtrl.text.trim().isNotEmpty) score += 0.2;
-    return score.clamp(0.0, 1.0);
-  }
-
-  InputDecoration _decoration(String label, String? error) => InputDecoration(
-        labelText: label,
-        errorText: error,
-        filled: true,
-        fillColor: MetaColors.highlight(context).withValues(alpha: 0.45),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 13,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: MetaColors.cardBorder(context)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: MetaColors.cardBorder(context)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(
-            color: AppColors.emerald(context),
-            width: 1.5,
-          ),
-        ),
-      );
-
   Widget _buildIdentityHeroCard() {
-    final completion = _computeProfileCompletion();
+    final d = _original;
     final emerald = AppColors.emerald(context);
-    final ageText = _ageCtrl.text.trim();
-    final details =
-        (_latestAnamnesis?['details'] as Map<String, dynamic>?) ?? {};
-    final objective =
-        (_latestAnamnesis?['objective'] ?? details['objective'])?.toString();
+    final details = (_latestAnamnesis?['details'] as Map<String, dynamic>?) ?? {};
+    final weeklyDays =
+        _latestAnamnesis?['weekly_days'] ?? details['weekly_days'] ?? 4;
+    final ageText = d?.age != null ? '${d!.age} anos' : null;
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -535,28 +487,40 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
           Row(
             children: [
               GestureDetector(
-                onTap: _pickAvatar,
+                onTap: () async {
+                  final uid = _userId;
+                  final selected = await AvatarSelectorSheet.show(
+                    context: context,
+                    isTrainer: false,
+                    currentUrl: d?.photoUrl,
+                    userId: uid,
+                  );
+                  if (selected != null && mounted) {
+                    final updated = d!.copyWith(photoUrl: selected.isEmpty ? null : selected);
+                    _saveFromSheet(updated);
+                  }
+                },
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
                     ProgressRing(
-                      progress: completion,
-                      size: 84,
+                      progress: 0.85, // Meta semanal ativa
+                      size: 86,
                       strokeWidth: 4.5,
                       color: emerald,
                       center: Container(
-                        width: 70,
-                        height: 70,
+                        width: 72,
+                        height: 72,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: MetaColors.highlight(context),
                         ),
                         clipBehavior: Clip.antiAlias,
-                        child: (_photoUrl != null && _photoUrl!.isNotEmpty)
-                            ? (_photoUrl!.startsWith('assets/')
-                                ? Image.asset(_photoUrl!, fit: BoxFit.cover)
+                        child: (d?.photoUrl != null && d!.photoUrl!.isNotEmpty)
+                            ? (d.photoUrl!.startsWith('assets/')
+                                ? Image.asset(d.photoUrl!, fit: BoxFit.cover)
                                 : Image.network(
-                                    _photoUrl!,
+                                    d.photoUrl!,
                                     fit: BoxFit.cover,
                                     errorBuilder: (_, _, _) => const Icon(
                                       Icons.person_rounded,
@@ -575,7 +539,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                       bottom: 0,
                       right: 0,
                       child: Container(
-                        padding: const EdgeInsets.all(5.5),
+                        padding: const EdgeInsets.all(5),
                         decoration: BoxDecoration(
                           color: emerald,
                           shape: BoxShape.circle,
@@ -599,24 +563,16 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ValueListenableBuilder<TextEditingValue>(
-                      valueListenable: _nameCtrl,
-                      builder: (context, value, _) {
-                        final displayName = value.text.trim().isNotEmpty
-                            ? value.text.trim()
-                            : 'Atleta Mr. Coach';
-                        return Text(
-                          displayName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: AppColors.text(context),
-                            fontSize: 19,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.3,
-                          ),
-                        );
-                      },
+                    Text(
+                      d?.name.isNotEmpty == true ? d!.name : 'Atleta Mr. Coach',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppColors.text(context),
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
+                      ),
                     ),
                     if (_email != null && _email!.isNotEmpty) ...[
                       const SizedBox(height: 2),
@@ -631,26 +587,26 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                       ),
                     ],
                     const SizedBox(height: 8),
+                    // Decisão 2: Streak e Meta semanal no cabeçalho
                     Wrap(
                       spacing: 6,
                       runSpacing: 6,
                       children: [
                         _buildIdentityPill(
-                          icon: Icons.verified_rounded,
-                          label: 'Perfil ${(completion * 100).round()}%',
+                          icon: Icons.local_fire_department_rounded,
+                          label: '$_currentStreak dias 🔥',
+                          color: const Color(0xFFF59E0B),
+                        ),
+                        _buildIdentityPill(
+                          icon: Icons.flag_rounded,
+                          label: 'Meta: ${weeklyDays}x/sem',
                           color: emerald,
                         ),
-                        if (ageText.isNotEmpty)
+                        if (ageText != null)
                           _buildIdentityPill(
                             icon: Icons.cake_outlined,
-                            label: '$ageText anos',
+                            label: ageText,
                             color: MetaColors.accentBlue,
-                          ),
-                        if (objective != null && objective.isNotEmpty)
-                          _buildIdentityPill(
-                            icon: Icons.flag_rounded,
-                            label: objective,
-                            color: const Color(0xFFF59E0B),
                           ),
                       ],
                     ),
@@ -659,27 +615,44 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
+          // Decisão 1 e 3: Ações "Editar perfil" (sheet) e "Compartilhar" (conquistas + convite)
           Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _pickAvatar,
-                  icon: Icon(Icons.edit_rounded, size: 15, color: emerald),
-                  label: Text(
-                    'Alterar Foto ou Avatar',
-                    style: TextStyle(
-                      color: emerald,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                    ),
+                child: FilledButton.tonalIcon(
+                  key: const Key('btn_open_edit_profile'),
+                  onPressed: _openEditProfileSheet,
+                  icon: const Icon(Icons.edit_rounded, size: 16),
+                  label: const Text(
+                    'Editar perfil',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                   ),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: emerald.withValues(alpha: 0.35)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: emerald.withValues(alpha: 0.16),
+                    foregroundColor: emerald,
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.tonalIcon(
+                key: const Key('btn_share_profile'),
+                onPressed: _openShareModal,
+                icon: const Icon(Icons.share_rounded, size: 16),
+                label: const Text(
+                  'Compartilhar',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: MetaColors.highlight(context),
+                  foregroundColor: MetaColors.text(context),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
@@ -720,76 +693,75 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
   }
 
   Widget _buildLiveBiometricStats() {
-    return AnimatedBuilder(
-      animation: Listenable.merge([_weightCtrl, _heightCtrl]),
-      builder: (context, _) {
-        final w = StudentProfileValidator.parseDecimal(_weightCtrl.text);
-        final h = int.tryParse(_heightCtrl.text.trim());
-        double? bmi;
-        String bmiStatus = 'Pendente';
-        Color bmiColor = MetaColors.subtext(context);
+    final d = _original;
+    final w = d?.weightKg;
+    final h = d?.heightCm;
+    double? bmi;
+    String bmiStatus = 'Pendente';
+    Color bmiColor = MetaColors.subtext(context);
 
-        if (w != null && h != null && h >= 100) {
-          final hm = h / 100.0;
-          bmi = w / (hm * hm);
-          if (bmi < 18.5) {
-            bmiStatus = 'Abaixo';
-            bmiColor = MetaColors.accentBlue;
-          } else if (bmi < 25.0) {
-            bmiStatus = 'Ideal';
-            bmiColor = MetaColors.emerald;
-          } else if (bmi < 30.0) {
-            bmiStatus = 'Atenção';
-            bmiColor = const Color(0xFFF59E0B);
-          } else {
-            bmiStatus = 'Elevado';
-            bmiColor = Colors.redAccent;
-          }
-        }
+    if (w != null && h != null && h >= 100) {
+      final hm = h / 100.0;
+      bmi = w / (hm * hm);
+      if (bmi < 18.5) {
+        bmiStatus = 'Abaixo';
+        bmiColor = MetaColors.accentBlue;
+      } else if (bmi < 25.0) {
+        bmiStatus = 'Ideal';
+        bmiColor = MetaColors.emerald;
+      } else if (bmi < 30.0) {
+        bmiStatus = 'Atenção';
+        bmiColor = const Color(0xFFF59E0B);
+      } else {
+        bmiStatus = 'Elevado';
+        bmiColor = Colors.redAccent;
+      }
+    }
 
-        final weightDisplay =
-            w != null ? w.toStringAsFixed(1).replaceAll('.', ',') : '--';
-        final heightDisplay =
-            h != null ? (h / 100.0).toStringAsFixed(2).replaceAll('.', ',') : '--';
-        final bmiDisplay =
-            bmi != null ? bmi.toStringAsFixed(1).replaceAll('.', ',') : '--';
+    final weightDisplay =
+        w != null ? w.toStringAsFixed(1).replaceAll('.', ',') : '--';
+    final heightDisplay =
+        h != null ? (h / 100.0).toStringAsFixed(2).replaceAll('.', ',') : '--';
+    final bmiDisplay =
+        bmi != null ? bmi.toStringAsFixed(1).replaceAll('.', ',') : '--';
 
-        return Row(
-          children: [
-            Expanded(
-              child: StatTile(
-                label: 'Peso atual',
-                value: weightDisplay,
-                unit: 'kg',
-                badgeText: w != null ? 'Ativo' : null,
-                icon: Icons.monitor_weight_rounded,
-                accentColor: MetaColors.emerald,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: StatTile(
-                label: 'Estatura',
-                value: heightDisplay,
-                unit: 'm',
-                icon: Icons.straighten_rounded,
-                accentColor: MetaColors.accentBlue,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: StatTile(
-                label: 'IMC estimado',
-                value: bmiDisplay,
-                badgeText: bmi != null ? bmiStatus : null,
-                badgeColor: bmiColor,
-                icon: Icons.speed_rounded,
-                accentColor: bmi != null ? bmiColor : const Color(0xFFF59E0B),
-              ),
-            ),
-          ],
-        );
-      },
+    return Row(
+      children: [
+        Expanded(
+          child: StatTile(
+            label: 'Peso atual',
+            value: weightDisplay,
+            unit: 'kg',
+            badgeText: w != null ? 'Ativo' : null,
+            icon: Icons.monitor_weight_rounded,
+            accentColor: MetaColors.emerald,
+            onTap: _openEditProfileSheet,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: StatTile(
+            label: 'Estatura',
+            value: heightDisplay,
+            unit: 'm',
+            icon: Icons.straighten_rounded,
+            accentColor: MetaColors.accentBlue,
+            onTap: _openEditProfileSheet,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: StatTile(
+            label: 'IMC estimado',
+            value: bmiDisplay,
+            badgeText: bmi != null ? bmiStatus : null,
+            badgeColor: bmiColor,
+            icon: Icons.speed_rounded,
+            accentColor: bmi != null ? bmiColor : const Color(0xFFF59E0B),
+            onTap: _openEditProfileSheet,
+          ),
+        ),
+      ],
     );
   }
 
@@ -910,8 +882,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
   }
 
   Widget _buildAnamnesisHeroCard() {
-    final details =
-        (_latestAnamnesis?['details'] as Map<String, dynamic>?) ?? {};
+    final details = (_latestAnamnesis?['details'] as Map<String, dynamic>?) ?? {};
     final objective =
         (_latestAnamnesis?['objective'] ?? details['objective'])?.toString();
     final weeklyDays =
@@ -1023,9 +994,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                   context,
                   MaterialPageRoute(
                     builder: (_) => WelcomeOnboardingScreen(
-                      studentName: _nameCtrl.text.isNotEmpty
-                          ? _nameCtrl.text
-                          : _original?.name,
+                      studentName: _original?.name,
                       trainerId: _original?.trainerId,
                       isReviewMode: true,
                       initialData: _latestAnamnesis,
@@ -1087,215 +1056,6 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     );
   }
 
-  Widget _buildEditableBiometricsCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.card(context),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.cardBorder(context)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextFormField(
-            key: const Key('field_name'),
-            controller: _nameCtrl,
-            style: TextStyle(color: AppColors.text(context), fontSize: 14),
-            decoration: _decoration('Nome Completo', _fieldErrors['name']),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: TextFormField(
-                  key: const Key('field_age'),
-                  controller: _ageCtrl,
-                  keyboardType: TextInputType.number,
-                  style: TextStyle(color: AppColors.text(context), fontSize: 14),
-                  decoration: _decoration('Idade', _fieldErrors['age']),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextFormField(
-                  key: const Key('field_weight'),
-                  controller: _weightCtrl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  style: TextStyle(color: AppColors.text(context), fontSize: 14),
-                  decoration: _decoration('Peso (kg)', _fieldErrors['weight']),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextFormField(
-                  key: const Key('field_height'),
-                  controller: _heightCtrl,
-                  keyboardType: TextInputType.number,
-                  style: TextStyle(color: AppColors.text(context), fontSize: 14),
-                  decoration:
-                      _decoration('Altura (cm)', _fieldErrors['height']),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: _timezoneOptions.containsKey(_selectedTimezone)
-                ? _selectedTimezone
-                : 'UTC',
-            items: _timezoneOptions.entries
-                .map(
-                  (entry) => DropdownMenuItem<String>(
-                    value: entry.key,
-                    child: Text(entry.value),
-                  ),
-                )
-                .toList(),
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _selectedTimezone = value);
-              }
-            },
-            decoration: _decoration('Fuso horário', null),
-            style: TextStyle(color: AppColors.text(context), fontSize: 14),
-            dropdownColor: AppColors.card(context),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Restrições ou lesões articulares',
-            style: TextStyle(
-              color: AppColors.text(context),
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Alterar restrições avisa automaticamente seu treinador.',
-            style: TextStyle(
-              color: AppColors.subtext(context),
-              fontSize: 11.5,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _availableRestrictions.map((r) {
-              final isSelected = _selectedRestrictions.contains(r);
-              return FilterChip(
-                label: Text(r),
-                selected: isSelected,
-                onSelected: (selected) {
-                  setState(() {
-                    if (r == kNoRestriction) {
-                      _selectedRestrictions
-                        ..clear()
-                        ..add(kNoRestriction);
-                    } else {
-                      _selectedRestrictions.remove(kNoRestriction);
-                      if (selected) {
-                        _selectedRestrictions.add(r);
-                      } else {
-                        _selectedRestrictions.remove(r);
-                        if (_selectedRestrictions.isEmpty) {
-                          _selectedRestrictions.add(kNoRestriction);
-                        }
-                      }
-                    }
-                  });
-                },
-                selectedColor: AppColors.danger.withValues(alpha: 0.18),
-                checkmarkColor: AppColors.danger,
-                labelStyle: TextStyle(
-                  fontSize: 12,
-                  color:
-                      isSelected ? AppColors.danger : AppColors.text(context),
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                ),
-                backgroundColor: MetaColors.highlight(context).withValues(alpha: 0.4),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(100),
-                  side: BorderSide(
-                    color: isSelected
-                        ? AppColors.danger
-                        : AppColors.cardBorder(context),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              child: ElevatedButton(
-                key: const Key('btn_save_profile'),
-                onPressed:
-                    (_isSaving || _isSavedSuccess) ? null : _handleSave,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _isSavedSuccess
-                      ? MetaColors.emerald
-                      : AppColors.emerald(context),
-                  disabledBackgroundColor: _isSavedSuccess
-                      ? MetaColors.emerald
-                      : AppColors.emerald(context).withValues(alpha: 0.6),
-                  foregroundColor: Colors.white,
-                  disabledForegroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  elevation: 0,
-                ),
-                child: _isSaving
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : _isSavedSuccess
-                        ? const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.check_circle_rounded,
-                                color: Colors.white,
-                                size: 19,
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                'Alterações Salvas!',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          )
-                        : const Text(
-                            'Salvar Alterações',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildBody() {
     if (_isLoadingData) {
       return const Center(child: CircularProgressIndicator());
@@ -1322,7 +1082,10 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         ),
       );
     }
+
     final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final d = _original;
+
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
         18,
@@ -1330,85 +1093,122 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         18,
         bottomInset + (widget.isTab ? 110 : 48),
       ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. Identity Hero Card com Anel de Progresso
-            _buildIdentityHeroCard(),
-            const SizedBox(height: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 1. Identity Hero Card com Avatar, ProgressRing, Streak 🔥 e Ações
+          _buildIdentityHeroCard(),
+          const SizedBox(height: 14),
 
-            // 2. Pílula Compacta do Treinador Responsável
-            TrainerCompactPill(
-              isLoading: _isLoadingTrainer,
-              trainerName: _trainerName,
-              trainerCref: _trainerCref,
-              trainerPhotoUrl: _trainerPhotoUrl,
-              hasWhatsApp:
-                  _trainerPhone != null && _trainerPhone!.trim().isNotEmpty,
-              onWhatsAppTap: _contactTrainerWhatsApp,
+          // 2. Pílula Compacta do Treinador Responsável (1 linha 72px)
+          TrainerCompactPill(
+            isLoading: _isLoadingTrainer,
+            trainerName: _trainerName,
+            trainerCref: _trainerCref,
+            trainerPhotoUrl: _trainerPhotoUrl,
+            hasWhatsApp: _trainerPhone != null && _trainerPhone!.trim().isNotEmpty,
+            onWhatsAppTap: _contactTrainerWhatsApp,
+          ),
+          const SizedBox(height: 14),
+
+          // 3. Card Indutor PWA
+          const PwaInstallPromptCard(),
+          const SizedBox(height: 18),
+
+          // 4. Estatísticas Vivas (Peso com delta, Estatura, IMC)
+          StudentSectionHeader(
+            title: 'Biometria e composição',
+            subtitle: 'Toque para editar ou atualizar seus dados',
+            icon: Icons.monitor_weight_rounded,
+            actionLabel: 'Editar',
+            onActionTap: _openEditProfileSheet,
+          ),
+          _buildLiveBiometricStats(),
+          const SizedBox(height: 22),
+
+          // 5. Progresso & Gamificação (Bento Grid 2 colunas)
+          const StudentSectionHeader(
+            title: 'Performance e evolução',
+            subtitle: 'Metas de sobrecarga, 1RM e marcos conquistados',
+            icon: Icons.emoji_events_rounded,
+            iconColor: Color(0xFFF59E0B),
+          ),
+          _buildProgressBentoCards(),
+          const SizedBox(height: 22),
+
+          // 6. Saúde & Anamnese Completa
+          const StudentSectionHeader(
+            title: 'Saúde e periodização',
+            subtitle: 'Ficha clínica e preferências de rotina',
+            icon: Icons.favorite_rounded,
+          ),
+          _buildAnamnesisHeroCard(),
+          const SizedBox(height: 22),
+
+          // 7. Preferências e Conta (Lista Agrupada estilo One UI / iOS 18)
+          const StudentSectionHeader(
+            title: 'Preferências e conta',
+            icon: Icons.settings_rounded,
+          ),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.card(context),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.cardBorder(context)),
             ),
-            const SizedBox(height: 14),
-
-            // 3. Card Indutor PWA (Exibido para usuários acessando pelo navegador)
-            const PwaInstallPromptCard(),
-            const SizedBox(height: 18),
-
-            // 4. Métricas Biométricas Ao Vivo (Peso, Estatura, IMC)
-            const StudentSectionHeader(
-              title: 'Biometria e composição',
-              subtitle: 'Indicadores usados para calibrar seu volume semanal',
-              icon: Icons.monitor_weight_rounded,
-            ),
-            _buildLiveBiometricStats(),
-            const SizedBox(height: 22),
-
-            // 5. Progresso & Gamificação (Bento Grid 2 colunas)
-            const StudentSectionHeader(
-              title: 'Performance e evolução',
-              subtitle: 'Metas de sobrecarga, 1RM e marcos conquistados',
-              icon: Icons.emoji_events_rounded,
-              iconColor: Color(0xFFF59E0B),
-            ),
-            _buildProgressBentoCards(),
-            const SizedBox(height: 22),
-
-            // 6. Saúde & Anamnese Completa
-            const StudentSectionHeader(
-              title: 'Saúde e periodização',
-              subtitle: 'Ficha clínica e preferências de rotina',
-              icon: Icons.favorite_rounded,
-            ),
-            _buildAnamnesisHeroCard(),
-            const SizedBox(height: 22),
-
-            // 7. Dados Cadastrais, Biometria Rápida & Restrições
-            const StudentSectionHeader(
-              title: 'Dados pessoais e restrições',
-              subtitle: 'Atualize seus dados biométricos e articulares',
-              icon: Icons.tune_rounded,
-            ),
-            _buildEditableBiometricsCard(),
-            const SizedBox(height: 24),
-
-            // 8. Preferências do App & Conta (Estilo iOS / One UI)
-            const StudentSectionHeader(
-              title: 'Preferências e segurança',
-              icon: Icons.settings_rounded,
-            ),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.card(context),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.cardBorder(context)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Aparência do aplicativo',
+                  style: TextStyle(
+                    color: AppColors.text(context),
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ListenableBuilder(
+                  listenable: ThemeController.instance,
+                  builder: (context, _) {
+                    final currentMode = ThemeController.instance.themeMode;
+                    return SizedBox(
+                      width: double.infinity,
+                      child: SegmentedButton<ThemeMode>(
+                        segments: const [
+                          ButtonSegment<ThemeMode>(
+                            value: ThemeMode.dark,
+                            label: Text('Escuro'),
+                            icon: Icon(Icons.dark_mode_rounded),
+                          ),
+                          ButtonSegment<ThemeMode>(
+                            value: ThemeMode.light,
+                            label: Text('Claro'),
+                            icon: Icon(Icons.light_mode_rounded),
+                          ),
+                          ButtonSegment<ThemeMode>(
+                            value: ThemeMode.system,
+                            label: Text('Sistema'),
+                            icon: Icon(Icons.brightness_auto_rounded),
+                          ),
+                        ],
+                        selected: {currentMode},
+                        onSelectionChanged: (selection) {
+                          if (selection.isNotEmpty) {
+                            ThemeController.instance.setThemeMode(selection.first);
+                          }
+                        },
+                        emptySelectionAllowed: false,
+                      ),
+                    );
+                  },
+                ),
+                // Decisão 4: "Usar aplicativo como" só para quem tem mais de um papel
+                if (_roles.length > 1) ...[
+                  const SizedBox(height: 16),
                   Text(
-                    'Aparência do aplicativo',
+                    'Usar aplicativo como',
                     style: TextStyle(
                       color: AppColors.text(context),
                       fontSize: 13.5,
@@ -1416,146 +1216,103 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  ListenableBuilder(
-                    listenable: ThemeController.instance,
-                    builder: (context, _) {
-                      final currentMode = ThemeController.instance.themeMode;
-                      return SizedBox(
-                        width: double.infinity,
-                        child: SegmentedButton<ThemeMode>(
-                          segments: const [
-                            ButtonSegment<ThemeMode>(
-                              value: ThemeMode.dark,
-                              label: Text('Escuro'),
-                              icon: Icon(Icons.dark_mode_rounded),
+                  SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<String>(
+                      segments: [
+                        for (final role in _roles)
+                          ButtonSegment<String>(
+                            value: role,
+                            label: Text(
+                              role == 'admin'
+                                  ? 'Admin ⚡'
+                                  : (role == 'trainer' ? 'Treinador' : 'Aluno'),
                             ),
-                            ButtonSegment<ThemeMode>(
-                              value: ThemeMode.light,
-                              label: Text('Claro'),
-                              icon: Icon(Icons.light_mode_rounded),
+                            icon: Icon(
+                              role == 'admin'
+                                  ? Icons.admin_panel_settings_rounded
+                                  : (role == 'trainer'
+                                      ? Icons.fitness_center
+                                      : Icons.person_outline),
                             ),
-                            ButtonSegment<ThemeMode>(
-                              value: ThemeMode.system,
-                              label: Text('Sistema'),
-                              icon: Icon(Icons.brightness_auto_rounded),
-                            ),
-                          ],
-                          selected: {currentMode},
-                          onSelectionChanged: (selection) {
-                            if (selection.isNotEmpty) {
-                              ThemeController.instance
-                                  .setThemeMode(selection.first);
-                            }
-                          },
-                          emptySelectionAllowed: false,
-                        ),
-                      );
-                    },
-                  ),
-                  if (_roles.length > 1) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      'Usar aplicativo como',
-                      style: TextStyle(
-                        color: AppColors.text(context),
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: SegmentedButton<String>(
-                        segments: [
-                          for (final role in _roles)
-                            ButtonSegment<String>(
-                              value: role,
-                              label: Text(
-                                role == 'admin'
-                                    ? 'Admin ⚡'
-                                    : (role == 'trainer'
-                                        ? 'Treinador'
-                                        : 'Aluno'),
-                              ),
-                              icon: Icon(
-                                role == 'admin'
-                                    ? Icons.admin_panel_settings_rounded
-                                    : (role == 'trainer'
-                                        ? Icons.fitness_center
-                                        : Icons.person_outline),
-                              ),
-                            ),
-                        ],
-                        selected: const {'client'},
-                        onSelectionChanged: (selection) async {
-                          if (_isSwitchingRole) return;
-                          final nextRole = selection.first;
-                          if (nextRole == 'client') return;
-                          setState(() => _isSwitchingRole = true);
-                          try {
-                            await AuthService.setActiveRole(nextRole);
-                            if (mounted) {
-                              Navigator.of(context)
-                                  .pushNamedAndRemoveUntil('/', (r) => false);
-                            }
-                          } catch (e) {
-                            if (mounted) {
-                              _snack(
-                                e.toString().replaceFirst('Exception: ', ''),
-                              );
-                            }
-                          } finally {
-                            if (mounted) {
-                              setState(() => _isSwitchingRole = false);
-                            }
+                          ),
+                      ],
+                      selected: const {'client'},
+                      onSelectionChanged: (selection) async {
+                        if (_isSwitchingRole) return;
+                        final nextRole = selection.first;
+                        if (nextRole == 'client') return;
+                        setState(() => _isSwitchingRole = true);
+                        try {
+                          await AuthService.setActiveRole(nextRole);
+                          if (mounted) {
+                            Navigator.of(context).pushNamedAndRemoveUntil('/', (r) => false);
                           }
-                        },
-                      ),
+                        } catch (e) {
+                          if (mounted) {
+                            _snack(e.toString().replaceFirst('Exception: ', ''));
+                          }
+                        } finally {
+                          if (mounted) {
+                            setState(() => _isSwitchingRole = false);
+                          }
+                        }
+                      },
                     ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            SettingsGroup(
-              children: [
-                if (_roles.contains('trainer'))
-                  SettingsTile(
-                    icon: Icons.security_rounded,
-                    title: 'Verificação em duas etapas (2FA)',
-                    subtitle: _totpFactorId == null
-                        ? 'Recomendado para proteger acesso de treinador'
-                        : 'Autenticador ativo e verificado',
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const TeacherMfaScreen(),
-                        ),
-                      );
-                      _load();
-                    },
                   ),
-                SettingsTile(
-                  icon: Icons.logout_rounded,
-                  title: 'Sair neste aparelho',
-                  subtitle: 'Encerrar sessão atual com segurança',
-                  isDestructive: true,
-                  onTap: () => _signOut(false),
-                ),
-                SettingsTile(
-                  icon: Icons.phonelink_erase_rounded,
-                  iconColor: MetaColors.subtext(context),
-                  title: 'Sair de todos os dispositivos',
-                  subtitle: 'Revogar acessos ativos em outros aparelhos',
-                  onTap: () => _signOut(true),
-                ),
+                ],
               ],
             ),
-            const SizedBox(height: 8),
-            const AppVersionFooter(userRole: 'student'),
-          ],
-        ),
+          ),
+          const SizedBox(height: 14),
+          SettingsGroup(
+            children: [
+              SettingsTile(
+                icon: Icons.tune_rounded,
+                title: 'Dados cadastrais e restrições',
+                subtitle: '${d?.name ?? "Editar"} • ${d?.restrictions.length ?? 0} restrições',
+                onTap: _openEditProfileSheet,
+              ),
+              SettingsTile(
+                icon: Icons.public_rounded,
+                title: 'Fuso horário',
+                trailingText: d?.timezone ?? 'UTC',
+                onTap: _openEditProfileSheet,
+              ),
+              if (_roles.contains('trainer'))
+                SettingsTile(
+                  icon: Icons.security_rounded,
+                  title: 'Verificação em duas etapas (2FA)',
+                  subtitle: _totpFactorId == null
+                      ? 'Recomendado para proteger acesso de treinador'
+                      : 'Autenticador ativo e verificado',
+                  onTap: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const TeacherMfaScreen()),
+                    );
+                    _load();
+                  },
+                ),
+              SettingsTile(
+                icon: Icons.logout_rounded,
+                title: 'Sair neste aparelho',
+                subtitle: 'Encerrar sessão atual com segurança',
+                isDestructive: true,
+                onTap: () => _signOut(false),
+              ),
+              SettingsTile(
+                icon: Icons.phonelink_erase_rounded,
+                iconColor: MetaColors.subtext(context),
+                title: 'Sair de todos os dispositivos',
+                subtitle: 'Revogar acessos ativos em outros aparelhos',
+                onTap: () => _signOut(true),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const AppVersionFooter(userRole: 'student'),
+        ],
       ),
     );
   }

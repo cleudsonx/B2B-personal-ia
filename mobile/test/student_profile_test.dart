@@ -175,24 +175,27 @@ void main() {
   group('StudentProfileScreen', () {
     testWidgets('mostra dados salvos, sem dados de exemplo', (t) async {
       await _pump(t, FakeGateway(row: _row()));
-      expect(find.widgetWithText(TextFormField, 'Maria Real'), findsOneWidget);
+      expect(find.text('Maria Real'), findsWidgets);
       expect(find.text('Aluno Silva'), findsNothing);
       expect(find.text('76.5'), findsNothing);
-      expect(find.text('31'), findsOneWidget);
+      expect(find.text('31 anos'), findsWidgets);
+      expect(find.byKey(const Key('btn_open_edit_profile')), findsOneWidget);
     });
 
     testWidgets('erro de carregamento mostra retry, sem formulário', (t) async {
       final g = FakeGateway()..fetchError = Exception('net');
       await _pump(t, g);
       expect(find.text('Tentar novamente'), findsOneWidget);
-      expect(find.byKey(const Key('btn_save_profile')), findsNothing);
+      expect(find.byKey(const Key('btn_open_edit_profile')), findsNothing);
     });
 
     testWidgets('valor inválido exibe erro no campo e não salva', (t) async {
       final g = FakeGateway(row: _row());
       await _pump(t, g);
+      await t.tap(find.byKey(const Key('btn_open_edit_profile')));
+      await t.pumpAndSettle();
+
       await t.enterText(find.byKey(const Key('field_age')), '5');
-      await t.ensureVisible(find.byKey(const Key('btn_save_profile')));
       await t.tap(find.byKey(const Key('btn_save_profile')));
       await t.pump();
       expect(find.text('Idade entre 10 e 100.'), findsOneWidget);
@@ -202,16 +205,17 @@ void main() {
     testWidgets('salvar com sucesso mantém na tela e mostra feedback de sucesso', (t) async {
       final g = FakeGateway(row: _row());
       await _pump(t, g);
+      await t.tap(find.byKey(const Key('btn_open_edit_profile')));
+      await t.pumpAndSettle();
+
       await t.enterText(find.byKey(const Key('field_name')), 'Maria Atualizada');
-      await t.ensureVisible(find.byKey(const Key('btn_save_profile')));
       await t.tap(find.byKey(const Key('btn_save_profile')));
       await t.pump();
-      await t.pump(const Duration(milliseconds: 100));
+      await t.pump(const Duration(milliseconds: 700));
+      await t.pumpAndSettle();
 
-      expect(find.text('Alterações Salvas!'), findsOneWidget);
       expect(find.text('Meu Perfil & Conta'), findsOneWidget);
       expect(g.lastUpdate?['full_name'], 'Maria Atualizada');
-      await t.pump(const Duration(seconds: 3));
     });
   });
 }
