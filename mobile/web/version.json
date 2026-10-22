@@ -1,10 +1,15 @@
 {
   "version": "1.9.0",
-  "build": 2026103046,
-  "updated_at": "2026-10-22T10:31:31.414491Z",
-  "notes": "Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas, Central de 1RM & Metas de Sobrecarga, Conquistas & Badges de Força e Gestão Dinâmica de Preços & Planos.",
+  "build": 2026103047,
+  "updated_at": "2026-10-22T10:41:03.448252Z",
+  "notes": "Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas, Central de 1RM & Metas de Sobrecarga, Conquistas & Badges, Telemetria Apple Health & Health Connect e Gestão Dinâmica de Preços & Planos.",
   "changelog": {
     "student": [
+      {
+        "title": "Conector de Saúde Apple Health & Google Health Connect",
+        "description": "Sincronize seus passos, calorias ativas gastas, sono e batimentos em repouso diretamente do seu relógio ou celular, com registro rápido de copos d\\",
+        "badge": "SAÚDE VITAL"
+      },
       {
         "title": "Galeria de Conquistas & Selos de Força (Gamificação)",
         "description": "Desbloqueie badges comemorativos ao atingir marcos reais de força (1RM de 100kg, 140kg), consistência de treinos e metas da IA, com visualização de tiers, progresso detalhado e compartilhamento direto nos Stories.",
@@ -82,6 +87,11 @@
       }
     ],
     "trainer": [
+      {
+        "title": "Painel de Telemetria e Recuperação dos Alunos no BioHub",
+        "description": "Acompanhe o gasto calórico ativo, passos diários, frequência cardíaca de repouso e qualidade do sono dos seus alunos na aba de evolução para periodizar treinos e descanso.",
+        "badge": "RECUPERAÇÃO"
+      },
       {
         "title": "Selo e Prova Social com Menção ao Personal nos Stories",
         "description": "Quando seus alunos desbloqueiam marcas de força (ex: Clube dos 100kg no Supino) ou consistência, geram Stories estilizados que creditam você como o treinador oficial, acelerando sua captação orgânica.",
@@ -164,6 +174,11 @@
       }
     ],
     "admin": [
+      {
+        "title": "Módulo de Telemetria Vital & Saúde Integrada (Suíte Meta Health)",
+        "description": "Conector unificado com suporte a Apple Health, Google Health Connect e registro manual, cache local resiliente e telemetria de passos, calorias, sono e hidratação.",
+        "badge": "SAÚDE & IOT"
+      },
       {
         "title": "Módulo de Conquistas & Gamificação (Suíte Meta Growth)",
         "description": "Sistema desacoplado de selos de retenção com tiers (Bronze a Diamante), persistência local, métricas de conclusão de metas e geração de prova social orgânica com menção ao personal.",

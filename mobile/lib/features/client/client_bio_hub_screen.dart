@@ -1544,6 +1544,10 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
         _buildWeeklyCheckinCard(),
         const SizedBox(height: 24),
 
+        // Bloco 1.4: Telemetria de Saúde & Conectores Vitais (Apple Health / Health Connect)
+        const HealthMetricsCard(),
+        const SizedBox(height: 24),
+
         // Bloco 1.5: Medidas Corporais & Antropometria (Bio-Hub 2.0)
         _buildBodyMetricsSection(),
         const SizedBox(height: 24),

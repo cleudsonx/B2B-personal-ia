@@ -5,6 +5,7 @@ export 'ai_overload_card.dart';
 export 'interactive_tour_guide_modal.dart';
 export 'student_overload_center_sheet.dart';
 export 'student_achievements_sheet.dart';
+export 'health_metrics_card.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 

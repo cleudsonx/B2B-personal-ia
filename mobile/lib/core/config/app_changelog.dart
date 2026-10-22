@@ -42,12 +42,20 @@ class AppChangelog {
   static const List<VersionRelease> history = [
     VersionRelease(
       version: '1.9.0',
-      buildNumber: 2026103046,
+      buildNumber: 2026103047,
       date: '21 de Outubro, 2026',
       summary:
-          'Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas, Central de 1RM & Metas de Sobrecarga, Conquistas & Badges de Força e Gestão Dinâmica de Preços & Planos.',
+          'Versão 1.9.0: Central de Liquidação Pix (Payout Engine), Rede de Afiliados & Links de Indicação (/r/{slug}), Cupons Promocionais SaaS, Imersão Edge-to-Edge sem Tarjas, Central de 1RM & Metas de Sobrecarga, Conquistas & Badges, Telemetria Apple Health & Health Connect e Gestão Dinâmica de Preços & Planos.',
       highlights: [
         // --- PARA O ADMIN / GESTOR ---
+        ChangelogItem(
+          icon: Icons.monitor_heart_rounded,
+          title: 'Módulo de Telemetria Vital & Saúde Integrada (Suíte Meta Health)',
+          description:
+              'Conector unificado com suporte a Apple Health, Google Health Connect e registro manual, cache local resiliente e telemetria de passos, calorias, sono e hidratação.',
+          badge: 'SAÚDE & IOT',
+          targetRoles: ['admin'],
+        ),
         ChangelogItem(
           icon: Icons.military_tech_rounded,
           title: 'Módulo de Conquistas & Gamificação (Suíte Meta Growth)',
@@ -224,6 +232,14 @@ class AppChangelog {
 
         // --- PARA O PROFESSOR / TREINADOR ---
         ChangelogItem(
+          icon: Icons.favorite_rounded,
+          title: 'Painel de Telemetria e Recuperação dos Alunos no BioHub',
+          description:
+              'Acompanhe o gasto calórico ativo, passos diários, frequência cardíaca de repouso e qualidade do sono dos seus alunos na aba de evolução para periodizar treinos e descanso.',
+          badge: 'RECUPERAÇÃO',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
           icon: Icons.share_rounded,
           title: 'Selo e Prova Social com Menção ao Personal nos Stories',
           description:
@@ -358,6 +374,14 @@ class AppChangelog {
         ),
 
         // --- PARA O ALUNO ---
+        ChangelogItem(
+          icon: Icons.favorite_rounded,
+          title: 'Conector de Saúde Apple Health & Google Health Connect',
+          description:
+              'Sincronize seus passos, calorias ativas gastas, sono e batimentos em repouso diretamente do seu relógio ou celular, com registro rápido de copos d\'água e score de recuperação física.',
+          badge: 'SAÚDE VITAL',
+          targetRoles: ['student'],
+        ),
         ChangelogItem(
           icon: Icons.military_tech_rounded,
           title: 'Galeria de Conquistas & Selos de Força (Gamificação)',
