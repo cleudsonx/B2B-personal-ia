@@ -4360,21 +4360,58 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                                   icon: Icons.auto_awesome,
                                   isPrimary: false,
                                   height: 44,
-                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                                  fontSize: 12.5,
+                                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+                                  fontSize: 11.5,
                                   onPressed: _openWorkoutPrescription,
                                 ),
                               ),
-                              const SizedBox(width: 10),
+                              const SizedBox(width: 6),
                               Expanded(
                                 child: SquircleButton(
                                   label: 'Renovar',
                                   icon: Icons.replay_rounded,
                                   isPrimary: false,
                                   height: 44,
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                  fontSize: 13.5,
+                                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+                                  fontSize: 11.5,
                                   onPressed: _renewActiveWorkout,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: SquircleButton(
+                                  label: 'Clonar Ciclo',
+                                  icon: Icons.content_copy_rounded,
+                                  isPrimary: false,
+                                  height: 44,
+                                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+                                  fontSize: 11.5,
+                                  onPressed: () async {
+                                    final messenger = ScaffoldMessenger.of(context);
+                                    final res = await BatchPrescriptionModalSheet.show(
+                                      context,
+                                      initialWorkoutId: _activeWorkout is WorkoutPlanModel
+                                          ? (_activeWorkout as WorkoutPlanModel).id
+                                          : null,
+                                      initialWorkoutTitle: _activeWorkout is WorkoutPlanModel
+                                          ? (_activeWorkout as WorkoutPlanModel).workoutPlanTitle
+                                          : 'Ficha Atual',
+                                      initialStudentId: student['id']?.toString(),
+                                      initialStudentName: student['full_name']?.toString(),
+                                      sourcePlan: _activeWorkout is WorkoutPlanModel
+                                          ? (_activeWorkout as WorkoutPlanModel)
+                                          : null,
+                                    );
+                                    if (!mounted || res == null) return;
+                                    messenger.showSnackBar(
+                                      SnackBar(
+                                        content: Text(res.message),
+                                        backgroundColor: MetaColors.emerald,
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                    _fetchWorkout();
+                                  },
                                 ),
                               ),
                             ],

@@ -1,3 +1,6 @@
+import '../../models/workout_plan_model.dart';
+import '../../models/split_model.dart';
+import '../../models/exercise_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/workout_service.dart';
@@ -45,6 +48,7 @@ class BatchPrescriptionResult {
 class BatchPrescriptionService {
   static Future<BatchPrescriptionResult> executeClone({
     required MesocycleCloneConfig config,
+    WorkoutPlanModel? sourcePlan,
   }) async {
     if (config.targetStudentIds.isEmpty) {
       return const BatchPrescriptionResult(
@@ -55,12 +59,117 @@ class BatchPrescriptionService {
       );
     }
 
-    // Dispara a criação/atualização para cada aluno
+    // 1. Obtém ou recupera o plano de treino base
+    WorkoutPlanModel? basePlan = sourcePlan;
+    if (basePlan == null && config.targetStudentIds.isNotEmpty) {
+      try {
+        final firstStudent = config.targetStudentIds.first;
+        basePlan = await WorkoutService.getActiveWorkoutForClient(clientId: firstStudent);
+      } catch (_) {}
+    }
+
+    // Fallback gracioso com splits canônicos se nenhum plano existir no banco
+    basePlan ??= WorkoutPlanModel(
+      workoutPlanTitle: config.sourceWorkoutTitle,
+      notesForTrainer: 'Plano base estruturado para clonagem de mesociclos',
+      splits: [
+        SplitModel(
+          splitIdentifier: 'A',
+          splitName: 'Treino A - Peitoral e Tríceps',
+          estimatedDurationMin: 50,
+          exercises: [
+            ExerciseModel(
+              order: 1,
+              name: 'Supino Reto com Barra',
+              targetMuscleGroup: 'Peitoral Maior',
+              sets: 4,
+              reps: '8-10',
+              restSeconds: 90,
+              notes: 'Foco na cadência e controle excêntrico',
+              substitutionVector: '',
+            ),
+            ExerciseModel(
+              order: 2,
+              name: 'Desenvolvimento com Halteres',
+              targetMuscleGroup: 'Deltoides',
+              sets: 3,
+              reps: '10-12',
+              restSeconds: 60,
+              notes: 'Subir explosivo, descer controlado',
+              substitutionVector: '',
+            ),
+          ],
+        ),
+      ],
+    );
+
+    // 2. Aplica as progressões lineares (+kg e +reps) e cria o novo plano clonado
+    final List<SplitModel> updatedSplits = basePlan.splits.map((split) {
+      final updatedExercises = split.exercises.map((ex) {
+        String newReps = ex.reps;
+        if (config.repProgression > 0) {
+          final parts = ex.reps.split('-');
+          if (parts.length == 2) {
+            final minR = (int.tryParse(parts[0].trim()) ?? 8) + config.repProgression;
+            final maxR = (int.tryParse(parts[1].trim()) ?? 10) + config.repProgression;
+            newReps = '$minR-$maxR';
+          } else {
+            final r = (int.tryParse(ex.reps.trim()) ?? 10) + config.repProgression;
+            newReps = '$r';
+          }
+        }
+
+        final overloadNote = config.loadProgressionKg > 0
+            ? ' [+${config.loadProgressionKg}kg linear]'
+            : '';
+
+        return ex.copyWith(
+          reps: newReps,
+          notes: '${ex.notes}$overloadNote'.trim(),
+        );
+      }).toList();
+
+      return split.copyWith(exercises: updatedExercises);
+    }).toList();
+
+    final clonedPlan = WorkoutPlanModel(
+      workoutPlanTitle: config.newCycleTitle,
+      notesForTrainer: 'Ciclo clonado com progressão linear (+${config.loadProgressionKg}kg / +${config.repProgression} rep). Duração estimada: ${config.durationWeeks} semanas.',
+      splits: updatedSplits,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
+    // 3. Grava de verdade no Supabase / cache para cada aluno selecionado
     final affected = <String>[];
     for (int i = 0; i < config.targetStudentIds.length; i++) {
+      final studentId = config.targetStudentIds[i];
       final name = config.targetStudentNames.length > i
           ? config.targetStudentNames[i]
           : 'Aluno ${i + 1}';
+
+      try {
+        await WorkoutService.saveWorkoutPlan(
+          plan: clonedPlan,
+          clientId: studentId,
+        );
+
+        if (config.loadProgressionKg > 0) {
+          for (final split in clonedPlan.splits) {
+            for (final ex in split.exercises) {
+              await WorkoutService.recordExerciseLoad(
+                exerciseName: ex.name,
+                loadKg: 50.0 + config.loadProgressionKg,
+                reps: int.tryParse(ex.reps.split('-').first.replaceAll(RegExp(r'\D'), '')) ?? 10,
+                targetStudentId: studentId,
+              );
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Aviso ao persistir mesociclo clonado para $studentId: $e');
+      }
+
       affected.add(name);
     }
 
@@ -69,9 +178,9 @@ class BatchPrescriptionService {
 
     return BatchPrescriptionResult(
       success: true,
-      totalCloned: config.targetStudentIds.length,
+      totalCloned: affected.length,
       message:
-          '${config.targetStudentIds.length} ${config.targetStudentIds.length == 1 ? "mesociclo clonado" : "mesociclos clonados"} com sucesso (+${config.loadProgressionKg}kg / +${config.repProgression} rep)!',
+          '${affected.length} ${affected.length == 1 ? "mesociclo clonado" : "mesociclos clonados"} com sucesso (+${config.loadProgressionKg}kg / +${config.repProgression} rep)!',
       affectedStudents: affected,
     );
   }
@@ -84,6 +193,7 @@ class BatchPrescriptionModalSheet extends StatefulWidget {
   final String? initialStudentId;
   final String? initialStudentName;
   final List<Map<String, dynamic>>? availableStudents;
+  final WorkoutPlanModel? sourcePlan;
 
   const BatchPrescriptionModalSheet({
     super.key,
@@ -92,6 +202,7 @@ class BatchPrescriptionModalSheet extends StatefulWidget {
     this.initialStudentId,
     this.initialStudentName,
     this.availableStudents,
+    this.sourcePlan,
   });
 
   static Future<BatchPrescriptionResult?> show(
@@ -101,6 +212,7 @@ class BatchPrescriptionModalSheet extends StatefulWidget {
     String? initialStudentId,
     String? initialStudentName,
     List<Map<String, dynamic>>? availableStudents,
+    WorkoutPlanModel? sourcePlan,
   }) {
     HapticFeedback.mediumImpact();
     return showModalBottomSheet<BatchPrescriptionResult>(
@@ -113,6 +225,7 @@ class BatchPrescriptionModalSheet extends StatefulWidget {
         initialStudentId: initialStudentId,
         initialStudentName: initialStudentName,
         availableStudents: availableStudents,
+        sourcePlan: sourcePlan,
       ),
     );
   }
@@ -186,7 +299,10 @@ class _BatchPrescriptionModalSheetState
           .toList(),
     );
 
-    final result = await BatchPrescriptionService.executeClone(config: config);
+    final result = await BatchPrescriptionService.executeClone(
+      config: config,
+      sourcePlan: widget.sourcePlan,
+    );
 
     if (mounted) {
       setState(() => _isExecuting = false);

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_ia/core/widgets/batch_prescription_sheet.dart';
+import 'package:personal_ia/models/workout_plan_model.dart';
+import 'package:personal_ia/models/split_model.dart';
+import 'package:personal_ia/models/exercise_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -46,6 +49,52 @@ void main() {
       expect(result.affectedStudents, ['Carlos Silva', 'Ana Julia']);
       expect(result.message, contains('2 mesociclos clonados'));
       expect(result.message, contains('+5.0kg / +2 rep'));
+    });
+
+    test('executeClone clones and applies progression to custom sourcePlan', () async {
+      const sourcePlan = WorkoutPlanModel(
+        workoutPlanTitle: 'Ficha Hipertrofia A',
+        notesForTrainer: 'Ciclo 1',
+        splits: [
+          SplitModel(
+            splitIdentifier: 'A',
+            splitName: 'Superior',
+            estimatedDurationMin: 60,
+            exercises: [
+              ExerciseModel(
+                order: 1,
+                name: 'Supino Inclinado',
+                targetMuscleGroup: 'Peitoral',
+                sets: 4,
+                reps: '10-12',
+                restSeconds: 90,
+                notes: 'Base',
+                substitutionVector: '',
+              ),
+            ],
+          ),
+        ],
+      );
+
+      const config = MesocycleCloneConfig(
+        sourceWorkoutId: 'w_custom',
+        sourceWorkoutTitle: 'Ficha Hipertrofia A',
+        newCycleTitle: 'Ficha Hipertrofia A (Ciclo 2)',
+        durationWeeks: 4,
+        loadProgressionKg: 2.5,
+        repProgression: 2,
+        targetStudentIds: ['std_test_1'],
+        targetStudentNames: ['Marcos Paulo'],
+      );
+
+      final result = await BatchPrescriptionService.executeClone(
+        config: config,
+        sourcePlan: sourcePlan,
+      );
+
+      expect(result.success, isTrue);
+      expect(result.totalCloned, 1);
+      expect(result.affectedStudents, ['Marcos Paulo']);
     });
   });
 
