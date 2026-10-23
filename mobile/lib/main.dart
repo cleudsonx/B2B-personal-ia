@@ -108,9 +108,9 @@ class B2BPersonalIaApp extends StatelessWidget {
             trainerSlug: '',
             token: segments[1],
           );
-    } else if (segments.length >= 2 && segments[0] == 'prof') {
+    } else if (segments.length >= 2 && (segments[0] == 'p' || segments[0] == 'prof')) {
       builder = (_) => TrainerPublicLandingScreen(username: segments[1]);
-    } else if (uri.path == '/prof') {
+    } else if (uri.path == '/coaches' || uri.path == '/treinadores' || uri.path == '/prof') {
       builder = (_) => const PublicTrainerDirectoryScreen();
     } else {
       switch (uri.path) {
@@ -156,6 +156,7 @@ class B2BPersonalIaApp extends StatelessWidget {
           builder = (_) => const RegisterScreen(initialRole: 'trainer');
         case '/subscription':
           builder = (_) => const SubscriptionScreen();
+        case '/hq':
         case '/admin':
           builder = (adminCtx) => AdminShellScreen(
                 onExitAdmin: () async {

@@ -1502,21 +1502,38 @@ class _BiomechanicalTestDriveSectionState extends State<_BiomechanicalTestDriveS
                     runSpacing: 10,
                     children: [
                       ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 520),
+                        constraints: const BoxConstraints(maxWidth: 420),
                         child: Text(
                           'Essa proteção acompanha seus alunos em cada série e avisa você no WhatsApp.',
                           style: TextStyle(color: B2BLandingScreen._muted, fontSize: 12),
                         ),
                       ),
-                      FilledButton(
-                        onPressed: () => Navigator.pushNamed(context, '/register'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: B2BLandingScreen._green,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                        ),
-                        child: const Text('Prescrever com essa IA', style: TextStyle(fontSize: 12)),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: () => Navigator.pushNamed(context, '/coaches'),
+                            icon: const Icon(Icons.search_rounded, size: 14),
+                            label: const Text('Encontrar Personal'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(color: Color(0xFF35443B)),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                            ),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.pushNamed(context, '/register'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: B2BLandingScreen._green,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                            ),
+                            child: const Text('Prescrever com essa IA', style: TextStyle(fontSize: 12)),
+                          ),
+                        ],
                       ),
                     ],
                   ),

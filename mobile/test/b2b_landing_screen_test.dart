@@ -34,6 +34,8 @@ void main() {
     expect(find.text('Supino Reto com Barra'), findsOneWidget);
     expect(find.text('DIAGNÓSTICO DO VETOR DE FORÇA'), findsOneWidget);
     expect(find.text('AJUSTE IMEDIATO RECOMENDADO AO ALUNO'), findsOneWidget);
+    expect(find.text('Encontrar Personal'), findsOneWidget);
+    expect(find.text('Prescrever com essa IA'), findsOneWidget);
 
     // 4. Verify Comparison Section (Old vs New)
     expect(find.text('O FIM DA CONSULTORIA EM PDF'), findsOneWidget);
