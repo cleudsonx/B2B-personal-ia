@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/widgets/meta_components.dart';
 import '../services/admin_data_service.dart';
+import '../../../core/utils/currency_pt_br_formatter.dart';
 
 /// Módulo: Gestão Dinâmica de Preços, Planos SaaS & Cupons de Desconto
 class AdminPricingManagerScreen extends StatefulWidget {
@@ -161,8 +162,8 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
     final messenger = ScaffoldMessenger.of(context);
     final nameCtrl = TextEditingController(text: plan.name);
     final badgeCtrl = TextEditingController(text: plan.badge);
-    final monthlyCtrl = TextEditingController(text: plan.priceMonthly.toStringAsFixed(2));
-    final yearlyCtrl = TextEditingController(text: plan.priceYearly.toStringAsFixed(2));
+    final monthlyCtrl = TextEditingController(text: CurrencyPtBrFormatter.format(plan.priceMonthly, includeSymbol: false));
+    final yearlyCtrl = TextEditingController(text: CurrencyPtBrFormatter.format(plan.priceYearly, includeSymbol: false));
     final studentLimitCtrl = TextEditingController(text: plan.studentLimit.toString());
     final splitCtrl = TextEditingController(text: plan.platformFeePercent.toStringAsFixed(1));
     final aiQuotaCtrl = TextEditingController(text: plan.aiQuotaLimit.toString());
@@ -235,17 +236,23 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
                         children: [
                           Expanded(
                             child: _buildModalTextField(
-                              label: 'Preço Mensal (R\$)',
+                              label: 'Preço Mensal',
                               controller: monthlyCtrl,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              prefixText: 'R\$ ',
+                              prefixStyle: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold),
+                              keyboardType: TextInputType.number,
+                              inputFormatters: const [CurrencyPtBrInputFormatter(includeSymbol: false)],
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: _buildModalTextField(
-                              label: 'Preço Anual (R\$)',
+                              label: 'Preço Anual',
                               controller: yearlyCtrl,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              prefixText: 'R\$ ',
+                              prefixStyle: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold),
+                              keyboardType: TextInputType.number,
+                              inputFormatters: const [CurrencyPtBrInputFormatter(includeSymbol: false)],
                             ),
                           ),
                         ],
@@ -392,8 +399,8 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    final monthly = double.tryParse(monthlyCtrl.text.replaceAll(',', '.')) ?? plan.priceMonthly;
-                    final yearly = double.tryParse(yearlyCtrl.text.replaceAll(',', '.')) ?? plan.priceYearly;
+                    final monthly = CurrencyPtBrFormatter.parse(monthlyCtrl.text, defaultValue: plan.priceMonthly);
+                    final yearly = CurrencyPtBrFormatter.parse(yearlyCtrl.text, defaultValue: plan.priceYearly);
                     final studentLimit = unlimitedStudents ? 0 : (int.tryParse(studentLimitCtrl.text) ?? plan.studentLimit);
                     final split = double.tryParse(splitCtrl.text.replaceAll(',', '.')) ?? plan.platformFeePercent;
                     final aiQuota = unlimitedAi ? 0 : (int.tryParse(aiQuotaCtrl.text) ?? plan.aiQuotaLimit);
@@ -647,9 +654,14 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
                           const SizedBox(width: 12),
                           Expanded(
                             child: _buildModalTextField(
-                              label: discountType == 'percentage' ? 'Percentual (%)' : 'Valor (R\$)',
+                              label: discountType == 'percentage' ? 'Percentual (%)' : 'Valor do Desconto',
                               controller: valCtrl,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              prefixText: discountType == 'fixed' ? 'R\$ ' : null,
+                              prefixStyle: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold),
+                              keyboardType: TextInputType.number,
+                              inputFormatters: discountType == 'fixed'
+                                  ? const [CurrencyPtBrInputFormatter(includeSymbol: false)]
+                                  : null,
                             ),
                           ),
                         ],
@@ -799,7 +811,7 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
                       return;
                     }
 
-                    final discountVal = double.tryParse(valCtrl.text.replaceAll(',', '.')) ?? 10.0;
+                    final discountVal = CurrencyPtBrFormatter.parse(valCtrl.text, defaultValue: 10.0);
                     final maxUses = unlimitedUses ? 0 : (int.tryParse(maxUsesCtrl.text) ?? 50);
 
                     final newCoupon = AdminCouponItem(
@@ -883,6 +895,9 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
     TextCapitalization textCapitalization = TextCapitalization.none,
     String? hintText,
     int maxLines = 1,
+    List<TextInputFormatter>? inputFormatters,
+    String? prefixText,
+    TextStyle? prefixStyle,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -893,9 +908,12 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
           controller: controller,
           keyboardType: keyboardType,
           textCapitalization: textCapitalization,
+          inputFormatters: inputFormatters,
           maxLines: maxLines,
           style: const TextStyle(color: Colors.white, fontSize: 13),
           decoration: InputDecoration(
+            prefixText: prefixText,
+            prefixStyle: prefixStyle,
             filled: true,
             fillColor: const Color(0xFF090D16),
             hintText: hintText,
@@ -1787,7 +1805,10 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
   Future<void> _openPayoutDialog(AdminAffiliatePartnerItem affiliate) async {
     final messenger = ScaffoldMessenger.of(context);
     final amountCtrl = TextEditingController(
-      text: affiliate.totalCommissionDueBrl > 0 ? affiliate.totalCommissionDueBrl.toStringAsFixed(2) : '100.00',
+      text: CurrencyPtBrFormatter.format(
+        affiliate.totalCommissionDueBrl > 0 ? affiliate.totalCommissionDueBrl : 100.0,
+        includeSymbol: false,
+      ),
     );
     final pixCtrl = TextEditingController(text: affiliate.pixKey ?? '');
     final txCtrl = TextEditingController();
@@ -1891,9 +1912,12 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
 
                       // Valor do Repasse
                       _buildModalTextField(
-                        label: 'Valor a Liquidar (R\$)',
+                        label: 'Valor a Liquidar',
                         controller: amountCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        prefixText: 'R\$ ',
+                        prefixStyle: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: const [CurrencyPtBrInputFormatter(includeSymbol: false)],
                       ),
                       const SizedBox(height: 12),
 
@@ -1953,9 +1977,8 @@ class _AdminPricingManagerScreenState extends State<AdminPricingManagerScreen>
                   onPressed: isSubmitting
                       ? null
                       : () async {
-                          final valStr = amountCtrl.text.replaceAll(',', '.').trim();
-                          final val = double.tryParse(valStr);
-                          if (val == null || val <= 0) {
+                          final val = CurrencyPtBrFormatter.parse(amountCtrl.text);
+                          if (val <= 0) {
                             messenger.showSnackBar(
                               const SnackBar(
                                 content: Text('Informe um valor de liquidação válido.'),

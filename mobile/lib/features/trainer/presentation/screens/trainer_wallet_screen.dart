@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/widgets/meta_components.dart';
 import '../../../../services/wallet_service.dart';
+import '../../../../core/utils/currency_pt_br_formatter.dart';
 
 class TrainerWalletScreen extends StatefulWidget {
   const TrainerWalletScreen({super.key});
@@ -271,10 +272,13 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
 
               TextField(
                 controller: amountCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: TextInputType.number,
+                inputFormatters: const [CurrencyPtBrInputFormatter(includeSymbol: false)],
                 style: const TextStyle(color: MetaColors.textPrimary),
                 decoration: InputDecoration(
-                  labelText: 'Valor em R\$',
+                  prefixText: 'R\$ ',
+                  prefixStyle: const TextStyle(color: MetaColors.emerald, fontWeight: FontWeight.bold),
+                  labelText: 'Valor da Cobrança',
                   hintText: '150,00',
                   labelStyle: const TextStyle(color: MetaColors.textSecondary),
                   filled: true,
@@ -306,8 +310,7 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                 isPrimary: true,
                 onPressed: () async {
                   if (nameCtrl.text.trim().isEmpty) return;
-                  final rawVal = amountCtrl.text.replaceAll('.', '').replaceAll(',', '.').trim();
-                  final val = double.tryParse(rawVal) ?? 0;
+                  final val = CurrencyPtBrFormatter.parse(amountCtrl.text);
                   if (val <= 0) return;
 
                   Navigator.pop(ctx);
@@ -339,7 +342,7 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
 
   void _showWithdrawModal() {
     final available = _summary?.balance ?? 0.0;
-    final amountCtrl = TextEditingController(text: available.toStringAsFixed(2));
+    final amountCtrl = TextEditingController(text: CurrencyPtBrFormatter.format(available, includeSymbol: false));
 
     showModalBottomSheet(
       context: context,
@@ -380,7 +383,7 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Saldo disponível: R\$ ${available.toStringAsFixed(2)}',
+              'Saldo disponível: ${CurrencyPtBrFormatter.format(available)}',
               style: const TextStyle(color: MetaColors.emerald, fontSize: 14, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -392,10 +395,13 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
 
             TextField(
               controller: amountCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: TextInputType.number,
+              inputFormatters: const [CurrencyPtBrInputFormatter(includeSymbol: false)],
               style: const TextStyle(color: MetaColors.textPrimary),
               decoration: InputDecoration(
-                labelText: 'Valor a sacar em R\$',
+                prefixText: 'R\$ ',
+                prefixStyle: const TextStyle(color: MetaColors.emerald, fontWeight: FontWeight.bold),
+                labelText: 'Valor a sacar',
                 labelStyle: const TextStyle(color: MetaColors.textSecondary),
                 filled: true,
                 fillColor: MetaColors.surfaceHighlight,
@@ -409,8 +415,7 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
               icon: Icons.payments_outlined,
               isPrimary: true,
               onPressed: () async {
-                final raw = amountCtrl.text.replaceAll('.', '').replaceAll(',', '.').trim();
-                final val = double.tryParse(raw) ?? 0;
+                final val = CurrencyPtBrFormatter.parse(amountCtrl.text);
                 if (val <= 0) return;
 
                 Navigator.pop(ctx);

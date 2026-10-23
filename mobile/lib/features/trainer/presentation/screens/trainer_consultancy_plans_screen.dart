@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/widgets/meta_components.dart';
 import '../../../../services/consultancy_plan_service.dart';
+import '../../../../core/utils/currency_pt_br_formatter.dart';
 
 class TrainerConsultancyPlansScreen extends StatefulWidget {
   const TrainerConsultancyPlansScreen({super.key});
@@ -444,7 +445,7 @@ class _PlanEditorModalState extends State<_PlanEditorModal> {
     final p = widget.existingPlan;
     _nameCtrl = TextEditingController(text: p?.name ?? '');
     _descCtrl = TextEditingController(text: p?.description ?? '');
-    _priceCtrl = TextEditingController(text: p != null ? p.price.toStringAsFixed(2).replaceAll('.', ',') : '150,00');
+    _priceCtrl = TextEditingController(text: CurrencyPtBrFormatter.format(p?.price ?? 150.0, includeSymbol: false));
     _billingPeriod = p?.billingPeriod ?? 'monthly';
     _features = p != null
         ? List.from(p.features)
@@ -481,8 +482,7 @@ class _PlanEditorModalState extends State<_PlanEditorModal> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final rawPrice = _priceCtrl.text.replaceAll('.', '').replaceAll(',', '.').trim();
-    final priceVal = double.tryParse(rawPrice) ?? 0.0;
+    final priceVal = CurrencyPtBrFormatter.parse(_priceCtrl.text);
     final priceCents = (priceVal * 100).round();
 
     if (priceCents < 1000) {
@@ -587,7 +587,8 @@ class _PlanEditorModalState extends State<_PlanEditorModal> {
                         const SizedBox(height: 6),
                         TextFormField(
                           controller: _priceCtrl,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: const [CurrencyPtBrInputFormatter(includeSymbol: false)],
                           style: const TextStyle(color: MetaColors.textPrimary, fontWeight: FontWeight.bold),
                           decoration: InputDecoration(
                             prefixText: 'R\$ ',
@@ -596,7 +597,11 @@ class _PlanEditorModalState extends State<_PlanEditorModal> {
                             fillColor: MetaColors.highlight(context),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                           ),
-                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Informe o valor' : null,
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) return 'Informe o valor';
+                            if (CurrencyPtBrFormatter.parse(v) <= 0) return 'Valor deve ser maior que zero';
+                            return null;
+                          },
                         ),
                       ],
                     ),
