@@ -388,6 +388,18 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
 
                   const SizedBox(height: 36),
 
+                  BeforeAfterCaseViewer(
+                    onSelectPlan: () {
+                      if (_plans.isNotEmpty) {
+                        _openCheckoutModal(_plans.first);
+                      } else {
+                        _openTrainerWhatsapp();
+                      }
+                    },
+                  ),
+
+                  const SizedBox(height: 36),
+
                   // Como funciona o app (Social Proof)
                   const Align(
                     alignment: Alignment.centerLeft,
@@ -725,6 +737,406 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     );
   }
 }
+
+// =============================================================================
+// ONDA 1: VITRINE 2.0 - COMPARADOR DE ANTES/DEPOIS & RESULTADOS REAIS
+// =============================================================================
+
+class BeforeAfterCaseViewer extends StatefulWidget {
+  final VoidCallback onSelectPlan;
+
+  const BeforeAfterCaseViewer({super.key, required this.onSelectPlan});
+
+  @override
+  State<BeforeAfterCaseViewer> createState() => _BeforeAfterCaseViewerState();
+}
+
+class _CaseItem {
+  final String title;
+  final String category;
+  final String duration;
+  final String studentQuote;
+  final String beforeWeight;
+  final String afterWeight;
+  final String beforeMetric;
+  final String afterMetric;
+  final String metricLabel;
+  final String biomechanicalNote;
+  final IconData icon;
+
+  const _CaseItem({
+    required this.title,
+    required this.category,
+    required this.duration,
+    required this.studentQuote,
+    required this.beforeWeight,
+    required this.afterWeight,
+    required this.beforeMetric,
+    required this.afterMetric,
+    required this.metricLabel,
+    required this.biomechanicalNote,
+    required this.icon,
+  });
+}
+
+class _BeforeAfterCaseViewerState extends State<BeforeAfterCaseViewer> {
+  int _selectedCaseIndex = 0;
+  bool _showAfter = true;
+
+  static const List<_CaseItem> _cases = [
+    _CaseItem(
+      title: 'Rodrigo M. (32 anos)',
+      category: 'Hipertrofia & Força',
+      duration: '16 semanas de consultoria',
+      studentQuote:
+          'Treinava há 2 anos estagnado e achando que consultoria online era só PDF pronto. O acompanhamento com recálculo de cargas e ajuste biomecânico destravou meus ganhos.',
+      beforeWeight: '74 kg • 18% gordura',
+      afterWeight: '79 kg • 11% gordura',
+      metricLabel: '1RM Estimada no Supino',
+      beforeMetric: '60 kg (estagnado)',
+      afterMetric: '94 kg (+34 kg)',
+      biomechanicalNote:
+          'Ajuste do ângulo cotovelo-tronco de 75° para 50° eliminou dor na cápsula anterior do ombro, permitindo sobrecarga linear.',
+      icon: Icons.fitness_center_rounded,
+    ),
+    _CaseItem(
+      title: 'Juliana S. (28 anos)',
+      category: 'Reabilitação Lombar',
+      duration: '12 semanas de consultoria',
+      studentQuote:
+          'Tinha pânico de fazer agachamento por causa de uma hérnia de disco L5-S1. Meu treinador usou a IA para calibrar substituições exatas e hoje treino sem nenhuma dor.',
+      beforeWeight: '68 kg • Crises constantes',
+      afterWeight: '62 kg • 100% sem dor',
+      metricLabel: 'Capacidade de Carga em Pernas',
+      beforeMetric: '0 kg (repouso forçado)',
+      afterMetric: '140 kg no Leg Press 45°',
+      biomechanicalNote:
+          'Substituição do agachamento axial por variações com tronco verticalizado e vetor de força sem cisalhamento sobre os discos vertebrais.',
+      icon: Icons.health_and_safety_rounded,
+    ),
+    _CaseItem(
+      title: 'Marcos T. (41 anos)',
+      category: 'Emagrecimento & Definição',
+      duration: '20 semanas de consultoria',
+      studentQuote:
+          'Trabalho mais de 10 horas por dia. O timer de descanso cadenciado e a praticidade de registrar o treino no celular me mantiveram constante pela primeira vez.',
+      beforeWeight: '96 kg • 31% gordura',
+      afterWeight: '81 kg (-15 kg) • 16% gordura',
+      metricLabel: 'Assiduidade & Streak de Treino',
+      beforeMetric: '1x na semana (desistia)',
+      afterMetric: '94% de consistência no app',
+      biomechanicalNote:
+          'Periodização ondulatória diária respeitando os dias de maior estresse corporativo, com foco em densidade metabólica de 45 minutos.',
+      icon: Icons.trending_up_rounded,
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final currentCase = _cases[_selectedCaseIndex];
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFF141F18),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.25)),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: MetaColors.emerald.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.stars_rounded, color: MetaColors.emerald, size: 20),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'TRANSFORMAÇÕES REAIS',
+                      style: TextStyle(
+                        color: MetaColors.emerald,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Resultados Comprovados com Mr. Coach',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Category chips
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (var i = 0; i < _cases.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () => setState(() => _selectedCaseIndex = i),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _selectedCaseIndex == i
+                            ? MetaColors.emerald
+                            : const Color(0xFF1C2B22),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: _selectedCaseIndex == i
+                              ? MetaColors.emerald
+                              : const Color(0xFF2C3E33),
+                        ),
+                      ),
+                      child: Text(
+                        _cases[i].category,
+                        style: TextStyle(
+                          color: _selectedCaseIndex == i ? Colors.white : MetaColors.textSecondary,
+                          fontSize: 12,
+                          fontWeight: _selectedCaseIndex == i ? FontWeight.w800 : FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          // Student & Case Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      currentCase.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      currentCase.duration,
+                      style: const TextStyle(
+                        color: MetaColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Antes/Depois interactive toggle
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F1713),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFF2B3C31)),
+                ),
+                padding: const EdgeInsets.all(3),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildTogglePill('Antes', !_showAfter, () => setState(() => _showAfter = false)),
+                    _buildTogglePill('Depois', _showAfter, () => setState(() => _showAfter = true)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Interactive Comparison State Card
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _showAfter ? const Color(0xFF112218) : const Color(0xFF1D1B1B),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _showAfter
+                    ? MetaColors.emerald.withValues(alpha: 0.4)
+                    : const Color(0xFF423737),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _showAfter ? 'ESTADO ATUAL (COM MR. COACH)' : 'ESTADO INICIAL (SEM CONSULTORIA)',
+                      style: TextStyle(
+                        color: _showAfter ? MetaColors.emerald : const Color(0xFFE57373),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    Icon(
+                      _showAfter ? Icons.check_circle_rounded : Icons.history_rounded,
+                      color: _showAfter ? MetaColors.emerald : const Color(0xFFE57373),
+                      size: 16,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _showAfter ? currentCase.afterWeight : currentCase.beforeWeight,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Text(
+                      '${currentCase.metricLabel}: ',
+                      style: const TextStyle(color: MetaColors.textSecondary, fontSize: 12),
+                    ),
+                    Text(
+                      _showAfter ? currentCase.afterMetric : currentCase.beforeMetric,
+                      style: TextStyle(
+                        color: _showAfter ? MetaColors.emerald : Colors.white70,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Biomechanical note
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F1713),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF26362C)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.psychology_outlined, color: MetaColors.emerald, size: 17),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'DIFERENCIAL BIOMECÂNICO APLICADO:',
+                        style: TextStyle(
+                          color: MetaColors.emerald,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        currentCase.biomechanicalNote,
+                        style: const TextStyle(
+                          color: Color(0xFFB4C8BE),
+                          fontSize: 12,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Student Quote
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: const BoxDecoration(
+              border: Border(left: BorderSide(color: MetaColors.emerald, width: 3)),
+            ),
+            child: Text(
+              '"${currentCase.studentQuote}"',
+              style: const TextStyle(
+                color: MetaColors.textSecondary,
+                fontSize: 12.5,
+                fontStyle: FontStyle.italic,
+                height: 1.45,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Action button
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: widget.onSelectPlan,
+              icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+              label: const Text('Quero Uma Transformação Assim'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: MetaColors.emerald,
+                side: const BorderSide(color: MetaColors.emerald),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTogglePill(String label, bool isSelected, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? MetaColors.emerald : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : MetaColors.textSecondary,
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 
 class _PublicCheckoutModal extends StatefulWidget {
   final String username;
