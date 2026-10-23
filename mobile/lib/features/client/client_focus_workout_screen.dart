@@ -1103,7 +1103,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                                   Row(
                                     children: [
                                       Text(
-                                        '${widget.splitIdentifier} · ${_currentPage + 1}/$totalEx',
+                                        '${widget.splitIdentifier} · EXERCÍCIO ${_currentPage + 1}/$totalEx',
                                         style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w900,
@@ -1945,28 +1945,11 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                       ? cardBg
                       : cardBg.withValues(alpha: 0.6)),
               borderRadius: BorderRadius.circular(16),
-              border: Border(
-                left: BorderSide(
-                  color: isActive
-                      ? MetaColors.emerald
-                      : (isDone ? MetaColors.emerald : border),
-                  width: isActive ? 3.5 : 1.0,
-                ),
-                top: BorderSide(
-                  color: isDone
-                      ? MetaColors.emerald.withValues(alpha: 0.3)
-                      : border,
-                ),
-                right: BorderSide(
-                  color: isDone
-                      ? MetaColors.emerald.withValues(alpha: 0.3)
-                      : border,
-                ),
-                bottom: BorderSide(
-                  color: isDone
-                      ? MetaColors.emerald.withValues(alpha: 0.3)
-                      : border,
-                ),
+              border: Border.all(
+                color: isDone
+                    ? MetaColors.emerald.withValues(alpha: 0.35)
+                    : (isActive ? MetaColors.emerald : border),
+                width: isActive ? 1.5 : 1.0,
               ),
               boxShadow: isActive
                   ? [
