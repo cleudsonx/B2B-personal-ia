@@ -34,7 +34,6 @@ import 'core/config/app_config.dart';
 import 'core/theme/theme_controller.dart';
 import 'core/widgets/theme_toggle_button.dart';
 import 'core/widgets/pwa_update_wrapper.dart';
-import 'core/widgets/workout_guide_modal.dart';
 import 'core/widgets/app_version_footer.dart';
 import 'core/widgets/meta_components.dart';
 import 'core/utils/pwa_navigation_state.dart';
@@ -229,7 +228,6 @@ class MainShellScreen extends StatefulWidget {
 class _MainShellScreenState extends State<MainShellScreen> {
   late int _currentIndex;
   late String _activeRole;
-  String? _studentTrainerShortName;
 
   @override
   void initState() {
@@ -240,7 +238,6 @@ class _MainShellScreenState extends State<MainShellScreen> {
       if (widget.initialIndex == 0) {
         _restoreStudentTab();
       }
-      _loadStudentTrainerPill();
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -250,21 +247,6 @@ class _MainShellScreenState extends State<MainShellScreen> {
         );
       }
     });
-  }
-
-  Future<void> _loadStudentTrainerPill() async {
-    try {
-      final trainer = await AuthService.getTrainerForStudent();
-      if (!mounted || trainer == null) return;
-      final rawName =
-          (trainer['trainer_name'] ?? trainer['full_name'])?.toString().trim();
-      if (rawName != null && rawName.isNotEmpty) {
-        final parts = rawName.split(RegExp(r'\s+'));
-        setState(() {
-          _studentTrainerShortName = parts.first;
-        });
-      }
-    } catch (_) {}
   }
 
   Future<void> _restoreStudentTab() async {
@@ -826,328 +808,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
         value: AppTheme.systemUiOverlayFor(isDark: isDark),
         child: Scaffold(
           extendBody: true,
-          body: Column(
-            children: [
-              // Top Compact Role & User Banner (Scroll-Aware Glass Header)
-              ClipRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                  child: Container(
-                    padding: EdgeInsets.only(
-                      top: MediaQuery.paddingOf(context).top + 6,
-                      bottom: 8,
-                      left: 14,
-                      right: 14,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF131B2E).withValues(alpha: 0.85)
-                          : Colors.white.withValues(alpha: 0.88),
-                      border: Border(
-                        bottom: BorderSide(color: AppColors.cardBorder(context)),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
-                          blurRadius: 12,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: roleColor.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: roleColor.withValues(alpha: 0.3),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: BoxDecoration(
-                                    color: roleColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  _isTrainer ? 'Treinador' : 'Aluno',
-                                  style: TextStyle(
-                                    color: roleColor,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              widget.userName,
-                              style: TextStyle(
-                                color: AppColors.text(context),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (_isTrainer) ...[
-                            const SizedBox(width: 8),
-                            ValueListenableBuilder<MySubscriptionModel?>(
-                              valueListenable:
-                                  SubscriptionService.activeSubscriptionNotifier,
-                              builder: (context, sub, _) {
-                                final planName = sub?.planName ?? 'Personal Pro';
-                                final planId = sub?.planId ?? 'pro';
-                                final Color planColor;
-                                final IconData planIcon;
-                                if (planId == 'starter') {
-                                  planColor = Colors.orange;
-                                  planIcon = Icons.rocket_launch_rounded;
-                                } else if (planId == 'elite') {
-                                  planColor = const Color(0xFFF59E0B);
-                                  planIcon = Icons.workspace_premium_rounded;
-                                } else if (planId == 'studio') {
-                                  planColor = const Color(0xFF8B5CF6);
-                                  planIcon = Icons.stars_rounded;
-                                } else {
-                                  planColor = AppColors.trainerEmerald;
-                                  planIcon = Icons.workspace_premium_rounded;
-                                }
-                                return InkWell(
-                                  onTap: () => setState(() => _currentIndex = 3),
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 7,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: planColor.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                        color: planColor.withValues(alpha: 0.4),
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          planIcon,
-                                          size: 13,
-                                          color: planColor,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          planName,
-                                          style: TextStyle(
-                                            color: planColor,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ] else if (_studentTrainerShortName != null) ...[
-                            const SizedBox(width: 8),
-                            InkWell(
-                              onTap: () {
-                                setState(() => _currentIndex = 3);
-                                PwaNavigationState.saveStudentTab(3);
-                              },
-                              borderRadius: BorderRadius.circular(8),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 7,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.trainerEmerald.withValues(alpha: 0.14),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: AppColors.trainerEmerald.withValues(alpha: 0.35),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.verified_user_rounded,
-                                      size: 12,
-                                      color: AppColors.trainerEmerald,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'Coach $_studentTrainerShortName',
-                                      style: const TextStyle(
-                                        color: AppColors.trainerEmerald,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const ThemeToggleButton(compact: true),
-                        const SizedBox(width: 4),
-                        if (!_isTrainer)
-                          IconButton(
-                            icon: Icon(
-                              Icons.help_outline_rounded,
-                              size: 19,
-                              color: AppColors.subtext(context),
-                            ),
-                            tooltip: 'Tour & Ajuda do Aluno',
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 32,
-                              minHeight: 32,
-                            ),
-                            onPressed: () {
-                              showModalBottomSheet<void>(
-                                context: context,
-                                backgroundColor: Colors.transparent,
-                                builder: (ctx) => SafeArea(
-                                  child: Container(
-                                    margin: const EdgeInsets.all(16),
-                                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                                    decoration: BoxDecoration(
-                                      color: MetaColors.bg(ctx),
-                                      borderRadius: BorderRadius.circular(24),
-                                      border: Border.all(color: MetaColors.cardBorder(ctx)),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(alpha: 0.5),
-                                          blurRadius: 28,
-                                          offset: const Offset(0, 10),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Center(
-                                          child: Container(
-                                            width: 36,
-                                            height: 4,
-                                            decoration: BoxDecoration(
-                                              color: MetaColors.subtext(ctx).withValues(alpha: 0.3),
-                                              borderRadius: BorderRadius.circular(2),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 14),
-                                        ListTile(
-                                          leading: Container(
-                                            padding: const EdgeInsets.all(8),
-                                            decoration: BoxDecoration(
-                                              color: MetaColors.emerald.withValues(alpha: 0.15),
-                                              borderRadius: BorderRadius.circular(10),
-                                            ),
-                                            child: const Icon(Icons.explore_rounded, color: MetaColors.emerald, size: 22),
-                                          ),
-                                          title: Text('Tour do Aluno (3 Passos)', style: TextStyle(color: MetaColors.text(ctx), fontWeight: FontWeight.bold, fontSize: 14.5)),
-                                          subtitle: Text('Apresentação rápida das funções principais', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 12)),
-                                          onTap: () {
-                                            Navigator.pop(ctx);
-                                            InteractiveTourGuideModal.show(context, role: 'student');
-                                          },
-                                        ),
-                                        const SizedBox(height: 4),
-                                        ListTile(
-                                          leading: Container(
-                                            padding: const EdgeInsets.all(8),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
-                                              borderRadius: BorderRadius.circular(10),
-                                            ),
-                                            child: const Icon(Icons.fitness_center_rounded, color: Color(0xFFF59E0B), size: 22),
-                                          ),
-                                          title: Text('Guia de Treino no Salão', style: TextStyle(color: MetaColors.text(ctx), fontWeight: FontWeight.bold, fontSize: 14.5)),
-                                          subtitle: Text('Instruções de execução, cargas e trocas', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 12)),
-                                          onTap: () {
-                                            Navigator.pop(ctx);
-                                            WorkoutGuideModal.show(context);
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          )
-                        else
-                          TextButton.icon(
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              visualDensity: VisualDensity.compact,
-                            ),
-                            icon: Icon(
-                              Icons.person_outline_rounded,
-                              size: 14,
-                              color: AppColors.subtext(context),
-                            ),
-                            label: Text(
-                              'Conta',
-                              style: TextStyle(
-                                color: AppColors.subtext(context),
-                                fontSize: 11,
-                              ),
-                            ),
-                            onPressed: _openAccount,
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-              // Screen Content (removeTop evita duplicação do padding da Status Bar que já foi absorvido pelo banner superior)
-              Expanded(
-                child: MediaQuery.removePadding(
-                  context: context,
-                  removeTop: true,
-                  child: IndexedStack(index: _currentIndex, children: screens),
-                ),
-              ),
-            ],
-          ),
+          // Edge-to-Edge real: cada aba do aluno gerencia o prÃ³prio cabeÃ§alho
+          // (sem barra fixa superior duplicada).
+          body: IndexedStack(index: _currentIndex, children: screens),
           bottomNavigationBar: OneUiFloatingNavBar(
             selectedIndex: _currentIndex,
             onDestinationSelected: (idx) {

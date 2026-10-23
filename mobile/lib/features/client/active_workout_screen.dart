@@ -1,5 +1,4 @@
 import '../../core/theme/theme_controller.dart';
-import '../../core/widgets/theme_toggle_button.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
@@ -11,6 +10,7 @@ import 'client_focus_workout_screen.dart';
 import 'widgets/warmup_sheet.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/meta_components.dart';
+import '../../core/widgets/one_ui_glass_components.dart';
 import '../../core/widgets/student_ux_components.dart';
 import '../../core/widgets/biomechanical_analysis_sheet.dart';
 import '../../core/widgets/exercise_media_sheet.dart';
@@ -780,6 +780,365 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     final s = _startedAt;
     if (s == null) return '--';
     return '${DateTime.now().difference(s).inMinutes} min';
+  }
+
+
+  // ---------------------------------------------------------------------------
+  // CabeÃ§alho Edge-to-Edge unificado (TÃ­tulo + NotificaÃ§Ãµes + Coach + Menu â‹®)
+  // ---------------------------------------------------------------------------
+  void _openCoachSheet() {
+    final subtitle = _trainerCref.isNotEmpty ? _trainerCref : 'CREF Ativo';
+    OneUiGlassSheet.show(
+      context,
+      header: Row(
+        children: [
+          _buildCoachAvatar(size: 56),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _trainerName,
+                  style: TextStyle(
+                    color: MetaColors.text(context),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    const Icon(Icons.verified_rounded,
+                        size: 14, color: MetaColors.emerald),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: MetaColors.subtext(context),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        GlassAction(
+          icon: Icons.chat_bubble_rounded,
+          label: 'Falar no WhatsApp (24h)',
+          subtitle: 'Tire dÃºvidas direto com o seu treinador',
+          onTap: _contactTrainerWhatsApp,
+        ),
+      ],
+    );
+  }
+
+  void _openMoreMenu() {
+    final dark = ThemeController.instance.isEffectiveDark(context);
+    OneUiGlassSheet.show(
+      context,
+      actions: [
+        GlassAction(
+          icon: dark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+          label: dark ? 'Modo Claro' : 'Modo Escuro',
+          subtitle: 'Alterna o tema de todo o aplicativo',
+          color: const Color(0xFF8B5CF6),
+          onTap: () => ThemeController.instance.toggleTheme(context),
+        ),
+        GlassAction(
+          icon: Icons.fitness_center_rounded,
+          label: 'Como treinar',
+          subtitle: 'Guia de execuÃ§Ã£o, cargas e trocas',
+          color: const Color(0xFFF59E0B),
+          onTap: () => WorkoutGuideModal.show(context),
+        ),
+        GlassAction(
+          icon: Icons.explore_rounded,
+          label: 'Tour do Aluno',
+          subtitle: 'ApresentaÃ§Ã£o rÃ¡pida das funÃ§Ãµes',
+          onTap: () => InteractiveTourGuideModal.show(context, role: 'student'),
+        ),
+        GlassAction(
+          icon: Icons.person_outline_rounded,
+          label: 'Meu Perfil & Anamnese',
+          color: const Color(0xFF38BDF8),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const StudentProfileScreen()),
+          ),
+        ),
+        if (kDebugMode)
+          GlassAction(
+            icon: Icons.settings_ethernet_rounded,
+            label: 'Configurar IP do Servidor (Dev)',
+            color: Colors.grey,
+            onTap: () => ServerConfigDialog.show(context),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildCoachAvatar({double size = 40}) {
+    final hasPhoto = _trainerPhotoUrl != null && _trainerPhotoUrl!.isNotEmpty;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+              colors: [MetaColors.emerald, MetaColors.accentBlue],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            image: hasPhoto
+                ? DecorationImage(
+                    image: _trainerPhotoUrl!.startsWith('assets/')
+                        ? AssetImage(_trainerPhotoUrl!) as ImageProvider
+                        : NetworkImage(_trainerPhotoUrl!),
+                    fit: BoxFit.cover,
+                  )
+                : null,
+          ),
+          child: hasPhoto
+              ? null
+              : Center(
+                  child: Text(
+                    _getTrainerInitials(),
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w900,
+                      fontSize: size * 0.34,
+                    ),
+                  ),
+                ),
+        ),
+        Positioned(
+          bottom: -1,
+          right: -1,
+          child: Container(
+            width: size * 0.36,
+            height: size * 0.36,
+            decoration: BoxDecoration(
+              color: MetaColors.emerald,
+              shape: BoxShape.circle,
+              border: Border.all(color: MetaColors.bg(context), width: 2),
+            ),
+            child: Icon(Icons.check_rounded,
+                color: Colors.black, size: size * 0.24),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStudentHeader() {
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: _openCoachSheet,
+            behavior: HitTestBehavior.opaque,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Meu Treino',
+                  style: TextStyle(
+                    color: _textPrimary,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.6,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        'com $_trainerName',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: _textSecondary,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.verified_rounded,
+                        size: 13, color: MetaColors.emerald),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        ValueListenableBuilder<int>(
+          valueListenable: StudentNotificationService.unreadCountNotifier,
+          builder: (context, unread, _) => GlassIconButton(
+            icon: unread > 0
+                ? Icons.notifications_active_rounded
+                : Icons.notifications_none_rounded,
+            tooltip: 'NotificaÃ§Ãµes',
+            showDot: unread > 0,
+            onTap: () => StudentNotificationSheet.show(
+              context,
+              onOpenWorkout: () {
+                if (_exercises.isNotEmpty) _startFocusMode();
+              },
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: _openCoachSheet,
+          child: _buildCoachAvatar(size: 40),
+        ),
+        const SizedBox(width: 8),
+        GlassIconButton(
+          icon: Icons.more_vert_rounded,
+          tooltip: 'Mais opÃ§Ãµes',
+          onTap: _openMoreMenu,
+        ),
+      ],
+    );
+  }
+
+  // Bento de telemetria: Ofensiva + Progresso da SessÃ£o
+  Widget _buildTelemetryBento() {
+    final done = _completedExerciseIndices.length;
+    final total = _exercises.length;
+    final ratio = total == 0 ? 0.0 : done / total;
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 118,
+            child: GlassCard(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'OFENSIVA',
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.8,
+                      color: _textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      const Text('ðŸ”¥', style: TextStyle(fontSize: 20)),
+                      const SizedBox(width: 6),
+                      Text(
+                        currentStreak == null ? 'â€”' : '$currentStreak',
+                        semanticsLabel: currentStreak == null
+                            ? 'SequÃªncia indisponÃ­vel'
+                            : '$currentStreak dias',
+                        style: TextStyle(
+                          fontSize: 26,
+                          height: 1,
+                          fontWeight: FontWeight.w900,
+                          color: _textPrimary,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                      const SizedBox(width: 3),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: Text('dias',
+                            style: TextStyle(fontSize: 11, color: _textSecondary)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: GlassCard(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'PROGRESSO',
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                          color: _textSecondary,
+                        ),
+                      ),
+                      Text(
+                        '${(ratio * 100).round()}%',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: MetaColors.emeraldText(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '$done',
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w900,
+                            color: _textPrimary,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' / $total exercÃ­cios',
+                          style: TextStyle(fontSize: 12, color: _textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: LinearProgressIndicator(
+                      value: ratio,
+                      minHeight: 6,
+                      backgroundColor: _highlight,
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                          MetaColors.emerald),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildNoWorkoutScaffold(double topPadding) {
@@ -1667,6 +2026,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         backgroundColor: _bg,
         body: Stack(
           children: [
+            const AmbientGlowCanvas(),
             ListView(
               physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.only(
@@ -1691,405 +2051,23 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   },
                   padding: const EdgeInsets.only(bottom: 12),
                 ),
-                // 1. Topo: Treinador & Ações
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Stack(
-                          clipBehavior: Clip.none,
-                          alignment: Alignment.center,
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    MetaColors.emerald,
-                                    MetaColors.accentBlue,
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                shape: BoxShape.circle,
-                                image:
-                                    _trainerPhotoUrl != null &&
-                                            _trainerPhotoUrl!.isNotEmpty
-                                        ? DecorationImage(
-                                          image: _trainerPhotoUrl!.startsWith('assets/')
-                                              ? AssetImage(_trainerPhotoUrl!) as ImageProvider
-                                              : NetworkImage(_trainerPhotoUrl!),
-                                          fit: BoxFit.cover,
-                                        )
-                                        : null,
-                              ),
-                              child:
-                                  _trainerPhotoUrl == null ||
-                                          _trainerPhotoUrl!.isEmpty
-                                      ? Center(
-                                        child: Text(
-                                          _getTrainerInitials(),
-                                          style: const TextStyle(
-                                            color: Colors.black,
-                                            fontWeight: FontWeight.w900,
-                                            fontSize: 16,
-                                            letterSpacing: -0.5,
-                                          ),
-                                        ),
-                                      )
-                                      : null,
-                            ),
-                            Positioned(
-                              bottom: -1,
-                              right: -1,
-                              child: Container(
-                                width: 18,
-                                height: 18,
-                                decoration: BoxDecoration(
-                                  color: MetaColors.emerald,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: _bg,
-                                    width: 2.0,
-                                  ),
-                                ),
-                                child: const Icon(
-                                  Icons.check_rounded,
-                                  color: Colors.black,
-                                  size: 11,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Seu treino com',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: _textSecondary,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 1),
-                            Text(
-                              _trainerName,
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w900,
-                                color: _textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 1),
-                            Text(
-                              '($_trainerCref)',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: _textSecondary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        if (kDebugMode)
-                          IconButton(
-                            icon: Icon(
-                              Icons.settings_ethernet_rounded,
-                              size: 20,
-                              color: _textSecondary,
-                            ),
-                            tooltip: 'Configurar IP do Servidor (Dev)',
-                            onPressed: () => ServerConfigDialog.show(context),
-                          ),
-                        const ThemeToggleButton(compact: true),
-                        const SizedBox(width: 8),
-                        InkWell(
-                          onTap: () => StudentNotificationSheet.show(
-                            context,
-                            onOpenWorkout: () {
-                              if (_exercises.isNotEmpty) {
-                                _startFocusMode();
-                              }
-                            },
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: MetaColors.highlight(context),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: MetaColors.cardBorder(context),
-                                width: 0.8,
-                              ),
-                            ),
-                            child: ValueListenableBuilder<int>(
-                              valueListenable: StudentNotificationService.unreadCountNotifier,
-                              builder: (context, unreadCount, child) {
-                                return Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    Icon(
-                                      unreadCount > 0
-                                          ? Icons.notifications_active_rounded
-                                          : Icons.notifications_outlined,
-                                      size: 16,
-                                      color: unreadCount > 0
-                                          ? const Color(0xFFF59E0B)
-                                          : MetaColors.subtext(context),
-                                    ),
-                                    if (unreadCount > 0)
-                                      Positioned(
-                                        top: -3,
-                                        right: -3,
-                                        child: Container(
-                                          width: 7,
-                                          height: 7,
-                                          decoration: const BoxDecoration(
-                                            color: Color(0xFFEF4444),
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        InkWell(
-                          onTap: _contactTrainerWhatsApp,
-                          borderRadius: BorderRadius.circular(10),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: MetaColors.emerald.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: MetaColors.emerald.withValues(alpha: 0.4),
-                                width: 0.8,
-                              ),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.chat_bubble_rounded,
-                                  size: 14,
-                                  color: MetaColors.emerald,
-                                ),
-                                SizedBox(width: 5),
-                                Text(
-                                  'Zap 24h',
-                                  style: TextStyle(
-                                    color: MetaColors.emerald,
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                // 1. CabeÃ§alho Edge-to-Edge unificado
+                _buildStudentHeader(),
                 const SizedBox(height: 16),
 
-                // 2. Topo: Barra de Progresso do Treino em Pílula + Indicador de Streak 🔥
-                Row(
-                  children: [
-                    // Indicador de "Streak 🔥" (ofensiva)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _cardBg,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
-                          width: 1.2,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('🔥', style: TextStyle(fontSize: 16)),
-                          const SizedBox(width: 6),
-                          Text(
-                            currentStreak == null ? '—' : '$currentStreak dias',
-                            semanticsLabel: currentStreak == null
-                                ? 'Sequência indisponível'
-                                : '$currentStreak dias',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 13,
-                              color: _textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-
-                    // Barra de progresso do treino em formato de pílula
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 9,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _cardBg,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: _border,
-                            width: 1.0,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Progresso do Treino',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: _textSecondary,
-                                  ),
-                                ),
-                                Text(
-                                  '${_completedExerciseIndices.length}/${_exercises.length}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w900,
-                                    color: MetaColors.emerald,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: LinearProgressIndicator(
-                                value:
-                                    _exercises.isEmpty
-                                        ? 0.0
-                                        : (_completedExerciseIndices.length /
-                                            _exercises.length),
-                                minHeight: 6,
-                                backgroundColor: _highlight,
-                                valueColor: const AlwaysStoppedAnimation<Color>(
-                                  MetaColors.emerald,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                // 2. Bento de telemetria translÃºcido
+                _buildTelemetryBento(),
                 const SizedBox(height: 16),
 
-                // 3. SELETOR DE DIVISÕES (Carrossel Compacto de Pílulas - Hevy / Strong)
+                // 3. Seletor de divisÃµes em cÃ¡psula translÃºcida (One UI)
                 if (_splits.length > 1) ...[
-                  SizedBox(
-                    height: 40,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: _splits.length,
-                      separatorBuilder: (context, index) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        final split = _splits[index];
-                        final isSelected = index == _selectedSplitIndex;
-                        final isToday = index == 0;
-
-                        return InkWell(
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            _selectSplit(index);
-                          },
-                          borderRadius: BorderRadius.circular(22),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? MetaColors.emerald
-                                  : _cardBg,
-                              borderRadius: BorderRadius.circular(22),
-                              border: Border.all(
-                                color: isSelected
-                                    ? MetaColors.emerald
-                                    : _border,
-                                width: isSelected ? 1.4 : 1.0,
-                              ),
-                              boxShadow: isSelected
-                                  ? [
-                                      BoxShadow(
-                                        color: MetaColors.emerald.withValues(alpha: 0.25),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Split ${split.splitIdentifier}',
-                                  style: TextStyle(
-                                    color: isSelected ? Colors.black : _textPrimary,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 12.5,
-                                  ),
-                                ),
-                                if (isToday) ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? Colors.black.withValues(alpha: 0.15)
-                                          : _highlight,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      'Hoje',
-                                      style: TextStyle(
-                                        fontSize: 9.5,
-                                        fontWeight: FontWeight.w800,
-                                        color: isSelected ? Colors.black : MetaColors.emerald,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                  OneUiGlassSegmentedBar(
+                    selectedIndex: _selectedSplitIndex,
+                    onChanged: _selectSplit,
+                    segments: [
+                      for (int i = 0; i < _splits.length; i++)
+                        GlassSegment(label: 'Split ${_splits[i].splitIdentifier}', badge: i == 0 ? 'Hoje' : null),
+                    ],
                   ),
                   const SizedBox(height: 14),
                 ],
@@ -2100,8 +2078,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        _cardBg,
-                        _isDark ? const Color(0xFF0F1E19) : const Color(0xFFE6F4EA),
+                        _cardBg.withValues(alpha: _isDark ? 0.55 : 0.78),
+                        (_isDark ? const Color(0xFF0F1E19) : const Color(0xFFE6F4EA))
+                            .withValues(alpha: _isDark ? 0.55 : 0.78),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
