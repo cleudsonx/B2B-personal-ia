@@ -8,6 +8,12 @@ import '../../core/widgets/server_config_dialog.dart';
 import '../../core/constants/ai_prompts.dart';
 import '../../services/gemini_service.dart';
 import '../../services/workout_service.dart';
+import '../../services/auth_service.dart';
+import '../../core/theme/theme_controller.dart';
+import '../../core/widgets/one_ui_glass_components.dart';
+import '../../core/widgets/workout_guide_modal.dart';
+import '../client/student_profile_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class B2BAssistantScreen extends StatefulWidget {
   final bool isStudentView;
@@ -26,12 +32,17 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
 
   String _selectedPillar = 'Todos';
   List<String> _studentExercises = [];
+  String? _trainerName;
+  String? _trainerCref;
+  String? _trainerPhotoUrl;
+  String? _trainerPhone;
 
   @override
   void initState() {
     super.initState();
     if (widget.isStudentView) {
       _loadStudentExercises();
+      _loadTrainer();
     }
   }
 
@@ -310,13 +321,316 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final accentColor = widget.isStudentView ? MetaColors.emerald : AppColors.trainerIndigo;
+  Future<void> _loadTrainer() async {
+    try {
+      final trainer = await AuthService.getTrainerForStudent();
+      if (trainer != null && mounted) {
+        setState(() {
+          _trainerName = (trainer['trainer_name'] ?? trainer['full_name']) as String?;
+          _trainerCref = (trainer['cref_or_registry'] ?? trainer['cref'] ?? trainer['professional_document']) as String?;
+          _trainerPhotoUrl = trainer['trainer_photo_url'] as String?;
+          _trainerPhone = (trainer['phone'] ?? trainer['whatsapp']) as String?;
+        });
+      }
+    } catch (_) {}
+  }
 
-    return Scaffold(
-      backgroundColor: MetaColors.bg(context),
-      appBar: AppBar(
+  void _openCoachSheet() {
+    final name = _trainerName ?? 'Seu Treinador';
+    final subtitle = (_trainerCref != null && _trainerCref!.isNotEmpty) ? _trainerCref! : 'CREF Ativo';
+    OneUiGlassSheet.show(
+      context,
+      header: Row(
+        children: [
+          _buildCoachAvatar(size: 56),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: TextStyle(
+                    color: MetaColors.text(context),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    const Icon(Icons.verified_rounded, size: 14, color: MetaColors.emerald),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: MetaColors.subtext(context),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        GlassAction(
+          icon: Icons.chat_bubble_rounded,
+          label: 'Falar no WhatsApp (24h)',
+          subtitle: 'Tire dúvidas sobre execução e carga',
+          onTap: _contactTrainerWhatsApp,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _contactTrainerWhatsApp() async {
+    Navigator.of(context, rootNavigator: true).pop();
+    final cleanPhone = (_trainerPhone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+    if (cleanPhone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: MetaColors.surfaceHighlight,
+          content: Text('Seu treinador ($_trainerName) ainda não cadastrou o WhatsApp profissional.'),
+        ),
+      );
+      return;
+    }
+    final uri = Uri.parse(
+      'https://wa.me/$cleanPhone?text=${Uri.encodeComponent('Olá professor(a) $_trainerName! Sou seu aluno no Mr. Coach e gostaria de tirar uma dúvida biomecânica.')}',
+    );
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.redAccent,
+            content: Text('Não foi possível abrir o WhatsApp.'),
+          ),
+        );
+      }
+    }
+  }
+
+  void _openMoreMenu() {
+    final dark = ThemeController.instance.isEffectiveDark(context);
+    OneUiGlassSheet.show(
+      context,
+      actions: [
+        GlassAction(
+          icon: dark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+          label: dark ? 'Modo Claro' : 'Modo Escuro',
+          subtitle: 'Alterna o tema de todo o aplicativo',
+          color: const Color(0xFF8B5CF6),
+          onTap: () => ThemeController.instance.toggleTheme(context),
+        ),
+        GlassAction(
+          icon: Icons.fitness_center_rounded,
+          label: 'Como treinar',
+          subtitle: 'Guia de execução, cargas e trocas',
+          color: const Color(0xFFF59E0B),
+          onTap: () => WorkoutGuideModal.show(context),
+        ),
+        GlassAction(
+          icon: Icons.explore_rounded,
+          label: 'Tour do Aluno',
+          subtitle: 'Apresentação rápida das funções',
+          onTap: () => InteractiveTourGuideModal.show(context, role: 'student'),
+        ),
+        GlassAction(
+          icon: Icons.person_outline_rounded,
+          label: 'Meu Perfil & Anamnese',
+          color: const Color(0xFF38BDF8),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const StudentProfileScreen()),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCoachAvatar({double size = 40}) {
+    final hasPhoto = _trainerPhotoUrl != null && _trainerPhotoUrl!.isNotEmpty;
+    final initials = (_trainerName ?? 'Personal')
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((s) => s.isNotEmpty)
+        .take(2)
+        .map((s) => s[0].toUpperCase())
+        .join();
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+              colors: [MetaColors.emerald, MetaColors.accentBlue],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            image: hasPhoto
+                ? DecorationImage(
+                    image: _trainerPhotoUrl!.startsWith('assets/')
+                        ? AssetImage(_trainerPhotoUrl!) as ImageProvider
+                        : NetworkImage(_trainerPhotoUrl!),
+                    fit: BoxFit.cover,
+                  )
+                : null,
+          ),
+          child: hasPhoto
+              ? null
+              : Center(
+                  child: Text(
+                    initials.isNotEmpty ? initials : 'P',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w900,
+                      fontSize: size * 0.34,
+                    ),
+                  ),
+                ),
+        ),
+        Positioned(
+          bottom: -1,
+          right: -1,
+          child: Container(
+            width: size * 0.36,
+            height: size * 0.36,
+            decoration: BoxDecoration(
+              color: MetaColors.emerald,
+              shape: BoxShape.circle,
+              border: Border.all(color: MetaColors.bg(context), width: 2),
+            ),
+            child: Icon(Icons.check_rounded, color: Colors.black, size: size * 0.24),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStudentHeader() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 18, right: 18, top: 10, bottom: 8),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: MetaColors.emerald.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: MetaColors.emerald.withValues(alpha: 0.3),
+              ),
+            ),
+            child: const Icon(
+              Icons.biotech_rounded,
+              color: MetaColors.emerald,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Mr. Coach AI',
+                      style: TextStyle(
+                        color: MetaColors.text(context),
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: MetaColors.emerald.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: MetaColors.emerald.withValues(alpha: 0.3),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: MetaColors.emerald,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Text(
+                            'ATIVO',
+                            style: TextStyle(
+                              color: MetaColors.emerald,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Laboratório Biomecânico • 3D',
+                  style: TextStyle(
+                    color: MetaColors.subtext(context),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_messages.isNotEmpty) ...[
+            GlassIconButton(
+              icon: Icons.refresh_rounded,
+              tooltip: 'Limpar Chat',
+              onTap: () => setState(() => _messages.clear()),
+            ),
+            const SizedBox(width: 8),
+          ],
+          if (_trainerName != null && _trainerName!.isNotEmpty) ...[
+            GestureDetector(
+              onTap: _openCoachSheet,
+              behavior: HitTestBehavior.opaque,
+              child: _buildCoachAvatar(size: 38),
+            ),
+            const SizedBox(width: 8),
+          ],
+          GlassIconButton(
+            icon: Icons.more_vert_rounded,
+            tooltip: 'Menu',
+            onTap: _openMoreMenu,
+          ),
+        ],
+      ),
+    );
+  }
+  PreferredSizeWidget _buildTrainerAppBar(BuildContext context, Color accentColor) {
+    return AppBar(
         backgroundColor: MetaColors.bg(context),
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -468,10 +782,17 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
               onPressed: () => ServerConfigDialog.show(context),
             ),
         ],
-      ),
-      body: Column(
-        children: [
-          if (_messages.isEmpty) ...[
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accentColor = widget.isStudentView ? MetaColors.emerald : AppColors.trainerIndigo;
+
+    final bodyWidget = Column(
+      children: [
+        if (widget.isStudentView) _buildStudentHeader(),
+        if (_messages.isEmpty) ...[
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
@@ -951,7 +1272,27 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
           // BARRA INFERIOR DE DIGITAÇÃO FLUTUANTE (Ergonômica & Estilo Meta Obsidian)
           _buildFloatingPromptBar(context, accentColor),
         ],
-      ),
+      );
+
+    if (widget.isStudentView) {
+      return Scaffold(
+        backgroundColor: MetaColors.bg(context),
+        body: Stack(
+          children: [
+            const AmbientGlowCanvas(),
+            SafeArea(
+              bottom: false,
+              child: bodyWidget,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: MetaColors.bg(context),
+      appBar: _buildTrainerAppBar(context, accentColor),
+      body: bodyWidget,
     );
   }
 

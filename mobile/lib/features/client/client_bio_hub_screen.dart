@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../core/widgets/meta_components.dart';
-import '../../core/widgets/theme_toggle_button.dart';
 import '../../core/widgets/student_ux_components.dart';
 import '../../core/widgets/split_photo_slider.dart';
 import '../../core/widgets/student_weekly_checkin_sheet.dart';
@@ -13,6 +12,10 @@ import '../../services/evolution_photo_service.dart';
 import '../../services/workout_service.dart';
 import 'welcome_onboarding_screen.dart';
 import 'widgets/warmup_sheet.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../core/widgets/one_ui_glass_components.dart';
+import '../../core/widgets/workout_guide_modal.dart';
+import 'student_profile_screen.dart';
 
 /// Aba 4 do Aluno: 🧬 Bio-Hub
 /// Central integrada de Performance (Pré e Pós-Treino), Cargas & Fotos, e Bio-Recovery.
@@ -31,6 +34,10 @@ class ClientBioHubScreen extends StatefulWidget {
 class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _currentSubTab = 0;
+  String _trainerName = 'Seu Treinador';
+  String _trainerPhone = '';
+  String? _trainerPhotoUrl;
+  String _trainerCref = 'CREF Ativo';
 
   // Histórico & Linha do Tempo de Anamnese State
   List<Map<String, dynamic>> _anamnesisHistory = [];
@@ -107,10 +114,274 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
         setState(() => _currentSubTab = _tabController.index);
       }
     });
+    _loadTrainer();
     _loadEvolutionPhotos();
     _loadRecoveryAndLoads();
     _loadAnamnesisHistory();
     _loadBodyMetrics();
+  }
+
+  Future<void> _loadTrainer() async {
+    try {
+      final trainer = await AuthService.getTrainerForStudent();
+      if (trainer != null && mounted) {
+        setState(() {
+          final name = (trainer['trainer_name'] ?? trainer['full_name']) as String?;
+          if (name != null && name.isNotEmpty) _trainerName = name;
+          final phone = (trainer['phone'] ?? trainer['whatsapp']) as String?;
+          if (phone != null && phone.isNotEmpty) _trainerPhone = phone;
+          final photoUrl = trainer['trainer_photo_url'] as String?;
+          if (photoUrl != null && photoUrl.isNotEmpty) {
+            _trainerPhotoUrl = photoUrl;
+          }
+          final reg = (trainer['cref_or_registry'] ??
+                  trainer['cref'] ??
+                  trainer['professional_document']) as String?;
+          if (reg != null && reg.isNotEmpty) _trainerCref = reg;
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _openCoachSheet() {
+    final subtitle = _trainerCref.isNotEmpty ? _trainerCref : 'CREF Ativo';
+    OneUiGlassSheet.show(
+      context,
+      header: Row(
+        children: [
+          _buildCoachAvatar(size: 56),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _trainerName,
+                  style: TextStyle(
+                    color: MetaColors.text(context),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    const Icon(Icons.verified_rounded, size: 14, color: MetaColors.emerald),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: MetaColors.subtext(context),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        GlassAction(
+          icon: Icons.chat_bubble_rounded,
+          label: 'Falar no WhatsApp (24h)',
+          subtitle: 'Tire dúvidas sobre prontidão e cargas',
+          onTap: _contactTrainerWhatsApp,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _contactTrainerWhatsApp() async {
+    Navigator.of(context, rootNavigator: true).pop();
+    final cleanPhone = _trainerPhone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (cleanPhone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: MetaColors.surfaceHighlight,
+          content: Text('Seu treinador ($_trainerName) ainda não cadastrou o WhatsApp profissional.'),
+        ),
+      );
+      return;
+    }
+    final uri = Uri.parse(
+      'https://wa.me/$cleanPhone?text=${Uri.encodeComponent('Olá professor(a) $_trainerName! Gostaria de falar sobre meu Bio-Hub e prontidão no Mr. Coach.')}',
+    );
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.redAccent,
+            content: Text('Não foi possível abrir o WhatsApp.'),
+          ),
+        );
+      }
+    }
+  }
+
+  void _openMoreMenu() {
+    final dark = ThemeController.instance.isEffectiveDark(context);
+    OneUiGlassSheet.show(
+      context,
+      actions: [
+        GlassAction(
+          icon: dark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+          label: dark ? 'Modo Claro' : 'Modo Escuro',
+          subtitle: 'Alterna o tema de todo o aplicativo',
+          color: const Color(0xFF8B5CF6),
+          onTap: () => ThemeController.instance.toggleTheme(context),
+        ),
+        GlassAction(
+          icon: Icons.fitness_center_rounded,
+          label: 'Como treinar',
+          subtitle: 'Guia de execução, cargas e trocas',
+          color: const Color(0xFFF59E0B),
+          onTap: () => WorkoutGuideModal.show(context),
+        ),
+        GlassAction(
+          icon: Icons.explore_rounded,
+          label: 'Tour do Aluno',
+          subtitle: 'Apresentação rápida das funções',
+          onTap: () => InteractiveTourGuideModal.show(context, role: 'student'),
+        ),
+        GlassAction(
+          icon: Icons.person_outline_rounded,
+          label: 'Meu Perfil & Anamnese',
+          color: const Color(0xFF38BDF8),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const StudentProfileScreen()),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCoachAvatar({double size = 40}) {
+    final hasPhoto = _trainerPhotoUrl != null && _trainerPhotoUrl!.isNotEmpty;
+    final initials = _trainerName
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((s) => s.isNotEmpty)
+        .take(2)
+        .map((s) => s[0].toUpperCase())
+        .join();
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+              colors: [MetaColors.emerald, MetaColors.accentBlue],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            image: hasPhoto
+                ? DecorationImage(
+                    image: _trainerPhotoUrl!.startsWith('assets/')
+                        ? AssetImage(_trainerPhotoUrl!) as ImageProvider
+                        : NetworkImage(_trainerPhotoUrl!),
+                    fit: BoxFit.cover,
+                  )
+                : null,
+          ),
+          child: hasPhoto
+              ? null
+              : Center(
+                  child: Text(
+                    initials.isNotEmpty ? initials : 'P',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w900,
+                      fontSize: size * 0.34,
+                    ),
+                  ),
+                ),
+        ),
+        Positioned(
+          bottom: -1,
+          right: -1,
+          child: Container(
+            width: size * 0.36,
+            height: size * 0.36,
+            decoration: BoxDecoration(
+              color: MetaColors.emerald,
+              shape: BoxShape.circle,
+              border: Border.all(color: MetaColors.bg(context), width: 2),
+            ),
+            child: Icon(Icons.check_rounded, color: Colors.black, size: size * 0.24),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBioHubHeader() {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: MetaColors.emerald.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: MetaColors.emerald.withValues(alpha: 0.3),
+            ),
+          ),
+          child: const Icon(
+            Icons.biotech_rounded,
+            color: MetaColors.emerald,
+            size: 22,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Bio-Hub',
+                style: TextStyle(
+                  color: MetaColors.text(context),
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Performance • Cargas • Recovery',
+                style: TextStyle(
+                  color: MetaColors.subtext(context),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+        GestureDetector(
+          onTap: _openCoachSheet,
+          behavior: HitTestBehavior.opaque,
+          child: _buildCoachAvatar(size: 38),
+        ),
+        const SizedBox(width: 8),
+        GlassIconButton(
+          icon: Icons.more_vert_rounded,
+          tooltip: 'Menu',
+          onTap: _openMoreMenu,
+        ),
+      ],
+    );
   }
 
   Future<void> _loadBodyMetrics() async {
@@ -1014,109 +1285,64 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
       ),
       child: Scaffold(
         backgroundColor: MetaColors.bg(context),
-        body: NestedScrollView(
-          headerSliverBuilder: (context, innerBoxIsScrolled) => [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.only(
-                  top: topPadding + 16,
-                  left: 20,
-                  right: 20,
-                  bottom: 12,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+        body: Stack(
+          children: [
+            const AmbientGlowCanvas(),
+            NestedScrollView(
+              headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      top: topPadding + 16,
+                      left: 20,
+                      right: 20,
+                      bottom: 12,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: MetaColors.emerald.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: MetaColors.emerald.withValues(alpha: 0.3),
+                        _buildBioHubHeader(),
+                        const SizedBox(height: 14),
+                        // Top 3 Activity Rings Summary Card (Apple Fitness+ / Whoop style)
+                        _buildActivityRingsSummaryCard(),
+                        const SizedBox(height: 14),
+                        // Segmented Control (Pílulas no Padrão One UI 7 Frosted Glass)
+                        OneUiGlassSegmentedBar(
+                          selectedIndex: _currentSubTab,
+                          onChanged: (index) {
+                            _tabController.animateTo(index);
+                            setState(() => _currentSubTab = index);
+                          },
+                          segments: const [
+                            GlassSegment(
+                              icon: Icons.bolt_rounded,
+                              label: 'Sessão',
                             ),
-                          ),
-                          child: const Icon(
-                            Icons.biotech_rounded,
-                            color: MetaColors.emerald,
-                            size: 22,
-                          ),
+                            GlassSegment(
+                              icon: Icons.show_chart_rounded,
+                              label: 'Cargas & Fotos',
+                            ),
+                            GlassSegment(
+                              icon: Icons.battery_charging_full_rounded,
+                              label: 'Recovery',
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Bio-Hub',
-                                style: TextStyle(
-                                  color: MetaColors.text(context),
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Performance • Cargas • Bio-Recovery',
-                                style: TextStyle(
-                                  color: MetaColors.subtext(context),
-                                  fontSize: 12.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const ThemeToggleButton(compact: true),
                       ],
                     ),
-                    const SizedBox(height: 14),
-                    // Top 3 Activity Rings Summary Card (Apple Fitness+ / Whoop style)
-                    _buildActivityRingsSummaryCard(),
-                    const SizedBox(height: 14),
-                    // Segmented Control (Pílulas no Padrão One UI 7 / Material 3)
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: MetaColors.card(context),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: MetaColors.cardBorder(context)),
-                      ),
-                      child: Row(
-                        children: [
-                          _buildSubTabButton(
-                            index: 0,
-                            icon: Icons.bolt_rounded,
-                            title: 'Sessão',
-                          ),
-                          _buildSubTabButton(
-                            index: 1,
-                            icon: Icons.show_chart_rounded,
-                            title: 'Cargas & Fotos',
-                          ),
-                          _buildSubTabButton(
-                            index: 2,
-                            icon: Icons.battery_charging_full_rounded,
-                            title: 'Recovery',
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
+              ],
+              body: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildSessionTab(bottomPadding),
+                  _buildProgressTab(bottomPadding),
+                  _buildRecoveryTab(bottomPadding),
+                ],
               ),
             ),
           ],
-          body: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildSessionTab(bottomPadding),
-              _buildProgressTab(bottomPadding),
-              _buildRecoveryTab(bottomPadding),
-            ],
-          ),
         ),
       ),
     );
@@ -1142,13 +1368,9 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
           'Recuperação em atenção (${readiness.toInt()}%) — priorize técnica e mobilidade.';
     }
 
-    return Container(
+    return GlassCard(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: MetaColors.card(context),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: MetaColors.cardBorder(context)),
-      ),
+      radius: 18,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1278,54 +1500,6 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
     );
   }
 
-  Widget _buildSubTabButton({
-    required int index,
-    required IconData icon,
-    required String title,
-  }) {
-    final isSelected = _currentSubTab == index;
-    final inactiveColor = MetaColors.subtext(context);
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          _tabController.animateTo(index);
-          setState(() => _currentSubTab = index);
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? MetaColors.emerald : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: isSelected ? Colors.white : inactiveColor,
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : inactiveColor,
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   // -------------------------------------------------------------
   // ABA 1: SESSÃO (PRÉ & PÓS-TREINO)

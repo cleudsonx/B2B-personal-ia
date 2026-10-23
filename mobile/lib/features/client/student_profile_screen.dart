@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/theme_controller.dart';
-import '../../core/widgets/theme_toggle_button.dart';
 import '../../core/widgets/avatar_selector_sheet.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/profile_edit_sheet.dart';
@@ -18,6 +17,7 @@ import '../../services/student_profile_service.dart';
 import '../../services/workout_service.dart';
 import '../auth/teacher_mfa_screen.dart';
 import 'welcome_onboarding_screen.dart';
+import '../../core/widgets/one_ui_glass_components.dart';
 
 class StudentProfileScreen extends StatefulWidget {
   /// Injetáveis para testes; em produção usam o usuário autenticado e o Supabase.
@@ -476,13 +476,9 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         _latestAnamnesis?['weekly_days'] ?? details['weekly_days'] ?? 4;
     final ageText = d?.age != null ? '${d!.age} anos' : null;
 
-    return Container(
+    return GlassCard(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.card(context),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.cardBorder(context)),
-      ),
+      radius: 22,
       child: Column(
         children: [
           Row(
@@ -1318,43 +1314,255 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     );
   }
 
+  void _openCoachSheet() {
+    final name = _trainerName ?? 'Seu Treinador';
+    final subtitle = (_trainerCref != null && _trainerCref!.isNotEmpty) ? _trainerCref! : 'CREF Ativo';
+    OneUiGlassSheet.show(
+      context,
+      header: Row(
+        children: [
+          _buildCoachAvatar(size: 56),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: TextStyle(
+                    color: MetaColors.text(context),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    const Icon(Icons.verified_rounded, size: 14, color: MetaColors.emerald),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: MetaColors.subtext(context),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        GlassAction(
+          icon: Icons.chat_bubble_rounded,
+          label: 'Falar no WhatsApp (24h)',
+          subtitle: 'Tire dúvidas direto com seu treinador',
+          onTap: _contactTrainerWhatsApp,
+        ),
+      ],
+    );
+  }
+
+  void _openMoreMenu() {
+    final dark = ThemeController.instance.isEffectiveDark(context);
+    OneUiGlassSheet.show(
+      context,
+      actions: [
+        GlassAction(
+          icon: dark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+          label: dark ? 'Modo Claro' : 'Modo Escuro',
+          subtitle: 'Alterna o tema de todo o aplicativo',
+          color: const Color(0xFF8B5CF6),
+          onTap: () => ThemeController.instance.toggleTheme(context),
+        ),
+        GlassAction(
+          icon: Icons.edit_rounded,
+          label: 'Editar Dados Cadastrais',
+          subtitle: 'Nome, peso, altura e telefone',
+          color: MetaColors.emerald,
+          onTap: _openEditProfileSheet,
+        ),
+        GlassAction(
+          icon: Icons.account_circle_rounded,
+          label: 'Trocar Foto / Avatar',
+          subtitle: 'Escolha um avatar ou foto de perfil',
+          color: MetaColors.accentBlue,
+          onTap: () async {
+            final uid = _userId;
+            final selected = await AvatarSelectorSheet.show(
+              context: context,
+              isTrainer: false,
+              currentUrl: _original?.photoUrl,
+              userId: uid,
+            );
+            if (selected != null && mounted && _original != null) {
+              final updated = _original!.copyWith(photoUrl: selected.isEmpty ? null : selected);
+              _saveFromSheet(updated);
+            }
+          },
+        ),
+        GlassAction(
+          icon: Icons.explore_rounded,
+          label: 'Tour do Aluno',
+          subtitle: 'Apresentação rápida das funções',
+          onTap: () => InteractiveTourGuideModal.show(context, role: 'student'),
+        ),
+        GlassAction(
+          icon: Icons.logout_rounded,
+          label: 'Sair deste aparelho',
+          subtitle: 'Encerrar sessão com segurança',
+          color: Colors.redAccent,
+          onTap: () => _signOut(false),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCoachAvatar({double size = 40}) {
+    final hasPhoto = _trainerPhotoUrl != null && _trainerPhotoUrl!.isNotEmpty;
+    final initials = (_trainerName ?? 'Personal')
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((s) => s.isNotEmpty)
+        .take(2)
+        .map((s) => s[0].toUpperCase())
+        .join();
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+              colors: [MetaColors.emerald, MetaColors.accentBlue],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            image: hasPhoto
+                ? DecorationImage(
+                    image: _trainerPhotoUrl!.startsWith('assets/')
+                        ? AssetImage(_trainerPhotoUrl!) as ImageProvider
+                        : NetworkImage(_trainerPhotoUrl!),
+                    fit: BoxFit.cover,
+                  )
+                : null,
+          ),
+          child: hasPhoto
+              ? null
+              : Center(
+                  child: Text(
+                    initials.isNotEmpty ? initials : 'P',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w900,
+                      fontSize: size * 0.34,
+                    ),
+                  ),
+                ),
+        ),
+        Positioned(
+          bottom: -1,
+          right: -1,
+          child: Container(
+            width: size * 0.36,
+            height: size * 0.36,
+            decoration: BoxDecoration(
+              color: MetaColors.emerald,
+              shape: BoxShape.circle,
+              border: Border.all(color: MetaColors.bg(context), width: 2),
+            ),
+            child: Icon(Icons.check_rounded, color: Colors.black, size: size * 0.24),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfileHeader(bool showBackButton) {
+    return Padding(
+      padding: const EdgeInsets.only(
+        left: 18,
+        right: 18,
+        top: 8,
+        bottom: 8,
+      ),
+      child: Row(
+        children: [
+          if (showBackButton) ...[
+            GlassIconButton(
+              icon: Icons.arrow_back_rounded,
+              tooltip: 'Voltar',
+              onTap: () => Navigator.pop(context),
+            ),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Meu Perfil & Conta',
+                  style: TextStyle(
+                    color: AppColors.text(context),
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Biometria • Metas • Configurações',
+                  style: TextStyle(
+                    color: AppColors.subtext(context),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_trainerName != null && _trainerName!.isNotEmpty) ...[
+            GestureDetector(
+              onTap: _openCoachSheet,
+              behavior: HitTestBehavior.opaque,
+              child: _buildCoachAvatar(size: 38),
+            ),
+            const SizedBox(width: 8),
+          ],
+          GlassIconButton(
+            icon: Icons.more_vert_rounded,
+            tooltip: 'Menu',
+            onTap: _openMoreMenu,
+          ),
+        ],
+      ),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     final canPop = Navigator.canPop(context);
     final showBackButton = !widget.isTab && canPop;
     return Scaffold(
       backgroundColor: AppColors.bg(context),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: showBackButton
-            ? IconButton(
-                icon: Icon(
-                  Icons.arrow_back_rounded,
-                  color: AppColors.text(context),
-                ),
-                onPressed: () => Navigator.pop(context),
-              )
-            : null,
-        title: Text(
-          'Meu Perfil & Conta',
-          style: TextStyle(
-            color: AppColors.text(context),
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        actions: [
-          const ThemeToggleButton(compact: true),
-          const SizedBox(width: 4),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
-            tooltip: 'Sair deste aparelho',
-            onPressed: () => _signOut(false),
+      body: Stack(
+        children: [
+          const AmbientGlowCanvas(),
+          SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                _buildProfileHeader(showBackButton),
+                Expanded(child: _buildBody()),
+              ],
+            ),
           ),
         ],
       ),
-      body: _buildBody(),
     );
   }
 }

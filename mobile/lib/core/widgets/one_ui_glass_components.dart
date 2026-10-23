@@ -162,7 +162,8 @@ class GlassIconButton extends StatelessWidget {
 class GlassSegment {
   final String label;
   final String? badge;
-  const GlassSegment({required this.label, this.badge});
+  final IconData? icon;
+  const GlassSegment({required this.label, this.badge, this.icon});
 }
 
 /// Cápsula translúcida única com pílula deslizante (estilo Samsung Health).
@@ -228,6 +229,16 @@ class OneUiGlassSegmentedBar extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      if (seg.icon != null) ...[
+                        Icon(
+                          seg.icon,
+                          size: 16,
+                          color: selected
+                              ? (isDark ? MetaColors.emerald : const Color(0xFF047857))
+                              : MetaColors.subtext(context),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
                       Text(
                         seg.label,
                         style: TextStyle(
@@ -376,3 +387,4 @@ class OneUiGlassSheet {
     );
   }
 }
+
