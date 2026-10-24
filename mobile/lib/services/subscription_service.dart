@@ -29,7 +29,7 @@ class SubscriptionService {
     return headers;
   }
 
-  /// Salva a assinatura ativa no armazenamento local para persistÃªncia permanente
+  /// Salva a assinatura ativa no armazenamento local para persistência permanente
   static Future<void> _saveToLocalCache(MySubscriptionModel model) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -55,8 +55,8 @@ class SubscriptionService {
                 .map((p) => PlanModel.fromJson(p as Map<String, dynamic>))
                 .toList();
 
-        // Garante que TODOS os 4 planos canÃ´nicos (Starter, Pro, Elite, Studio) estejam presentes,
-        // mesmo se o servidor backend remoto ainda estiver sincronizando uma versÃ£o anterior.
+        // Garante que TODOS os 4 planos canônicos (Starter, Pro, Elite, Studio) estejam presentes,
+        // mesmo se o servidor backend remoto ainda estiver sincronizando uma versão anterior.
         final Map<String, PlanModel> merged = {
           for (final def in _defaultPlans) def.id: def,
         };
@@ -72,12 +72,12 @@ class SubscriptionService {
             .toList();
       }
     } catch (_) {
-      // Fallback gracioso com planos padrÃ£o caso offline
+      // Fallback gracioso com planos padrão caso offline
     }
     return _defaultPlans;
   }
 
-  /// Retorna o plano atual do Personal Trainer com verificaÃ§Ã£o de persistÃªncia
+  /// Retorna o plano atual do Personal Trainer com verificação de persistência
   static Future<MySubscriptionModel> getMySubscription() =>
       refreshMySubscription();
 
@@ -168,7 +168,7 @@ class SubscriptionService {
     throw Exception('Não foi possível obter dados da assinatura.');
   }
 
-  /// Ativa ou troca o plano do Personal Trainer imediatamente e garante persistÃªncia total
+  /// Ativa ou troca o plano do Personal Trainer imediatamente e garante persistência total
   static Future<MySubscriptionModel> activatePlan({
     required String planId,
     String billingInterval = 'monthly',
@@ -321,7 +321,7 @@ class SubscriptionService {
             jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
         return {'success': true, 'data': data};
       } else {
-        String detail = 'Erro no processamento do cartÃ£o.';
+        String detail = 'Erro no processamento do cartão.';
         try {
           final data =
               jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
@@ -337,7 +337,7 @@ class SubscriptionService {
     }
   }
 
-  /// Simula e calcula o impacto financeiro (prÃ³-rata) e as regras de transiÃ§Ã£o de plano (Upgrade / Downgrade)
+  /// Simula e calcula o impacto financeiro (pró-rata) e as regras de transição de plano (Upgrade / Downgrade)
   static Future<PlanChangeSimulationModel> simulatePlanChange({
     required String currentPlanId,
     required String newPlanId,
@@ -400,7 +400,7 @@ class SubscriptionService {
         changeType: 'downgrade',
         isBlocked: true,
         blockReason:
-            'VocÃª possui $activeStudentsCount alunos ativos. O plano ${planNames[newPlanId]} permite no mÃ¡ximo $targetMaxStudents alunos. Desative ou arquive pelo menos $excess aluno(s) antes de mudar.',
+            'Você possui $activeStudentsCount alunos ativos. O plano ${planNames[newPlanId]} permite no máximo $targetMaxStudents alunos. Desative ou arquive pelo menos $excess aluno(s) antes de mudar.',
         currentPlanName: planNames[currentPlanId] ?? 'Plano Atual',
         newPlanName: planNames[newPlanId] ?? 'Novo Plano',
         currentPlanPriceCents: currentPrice,
@@ -433,12 +433,12 @@ class SubscriptionService {
       unusedCreditCents: unusedCredit,
       netChargeCents: netCharge,
       effectiveDate:
-          isUpgrade ? 'Imediato apÃ³s pagamento' : 'No fim do ciclo atual',
+          isUpgrade ? 'Imediato após pagamento' : 'No fim do ciclo atual',
       newStudentLimit: targetMaxStudents,
       newAiLimit: newPlanId == 'starter' ? 10 : -1,
       summaryMessage:
           isUpgrade
-              ? 'Upgrade com crÃ©dito prÃ³-rata de R\$ ${(unusedCredit / 100).toStringAsFixed(2)}.'
+              ? 'Upgrade com crédito pró-rata de R\$ ${(unusedCredit / 100).toStringAsFixed(2)}.'
               : 'Downgrade agendado para o final do ciclo atual.',
     );
   }

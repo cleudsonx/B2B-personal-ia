@@ -809,7 +809,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         value: AppTheme.systemUiOverlayFor(isDark: isDark),
         child: Scaffold(
           extendBody: true,
-          // Edge-to-Edge real: cada aba do aluno gerencia o prÃ³prio cabeÃ§alho
+          // Edge-to-Edge real: cada aba do aluno gerencia o próprio cabeçalho
           // (sem barra fixa superior duplicada).
           body: IndexedStack(index: _currentIndex, children: screens),
           bottomNavigationBar: OneUiFloatingNavBar(

@@ -264,7 +264,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
         backgroundColor: const Color(0xFF111827),
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 768 ? 16 : 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -289,18 +289,19 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
   }
 
   Widget _buildHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Row(
-                children: [
-                  Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF818CF8), size: 24),
-                  SizedBox(width: 10),
-                  Text(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 768;
+
+        final titleBlock = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Row(
+              children: [
+                Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF818CF8), size: 24),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
                     'Financeiro & Unit Economics',
                     style: TextStyle(
                       color: Colors.white,
@@ -309,19 +310,22 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
                       letterSpacing: 0.3,
                     ),
                   ),
-                ],
-              ),
-              SizedBox(height: 4),
-              Text(
-                'Auditoria de transações Asaas/Pix, repasses, split 5% e modelagem preditiva de fluxo de caixa & runway',
-                style: TextStyle(color: Colors.white60, fontSize: 13),
-              ),
-            ],
-          ),
-        ),
-        Row(
+                ),
+              ],
+            ),
+            SizedBox(height: 6),
+            Text(
+              'Auditoria de transações Asaas/Pix, repasses, split 5% e modelagem preditiva de fluxo de caixa & runway',
+              style: TextStyle(color: Colors.white60, fontSize: 13, height: 1.3),
+            ),
+          ],
+        );
+
+        final actionButtons = Wrap(
+          spacing: 10,
+          runSpacing: 10,
           children: [
-            if (widget.onNavigateToSimulator != null) ...[
+            if (widget.onNavigateToSimulator != null)
               OutlinedButton.icon(
                 onPressed: widget.onNavigateToSimulator,
                 icon: const Icon(Icons.calculate_rounded, size: 16, color: Color(0xFF10B981)),
@@ -333,8 +337,6 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               ),
-              const SizedBox(width: 10),
-            ],
             ElevatedButton.icon(
               onPressed: () => AdminFinanceExportModal.show(context, _transactions),
               icon: const Icon(Icons.download_rounded, size: 16),
@@ -347,7 +349,6 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
                 elevation: 0,
               ),
             ),
-            const SizedBox(width: 10),
             OutlinedButton.icon(
               onPressed: () {
                 _loadTransactions();
@@ -363,79 +364,113 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
               ),
             ),
           ],
-        ),
-      ],
+        );
+
+        if (isMobile) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              titleBlock,
+              const SizedBox(height: 16),
+              actionButtons,
+            ],
+          );
+        }
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: titleBlock),
+            const SizedBox(width: 16),
+            actionButtons,
+          ],
+        );
+      },
     );
   }
 
   Widget _buildSegmentSwitcher() {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111827),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF1F2937)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: InkWell(
-              onTap: () => setState(() => _selectedTab = 0),
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: _selectedTab == 0 ? const Color(0xFF6366F1) : Colors.transparent,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 650;
+        return Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: const Color(0xFF111827),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF1F2937)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () => setState(() => _selectedTab = 0),
                   borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.receipt_long_rounded, size: 16, color: _selectedTab == 0 ? Colors.white : Colors.white60),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Faturamento & Split (Transações Asaas)',
-                      style: TextStyle(
-                        color: _selectedTab == 0 ? Colors.white : Colors.white60,
-                        fontSize: 13,
-                        fontWeight: _selectedTab == 0 ? FontWeight.bold : FontWeight.w500,
-                      ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: _selectedTab == 0 ? const Color(0xFF6366F1) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  ],
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.receipt_long_rounded, size: 16, color: _selectedTab == 0 ? Colors.white : Colors.white60),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            isMobile ? 'Transações & Split' : 'Faturamento & Split (Transações Asaas)',
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            style: TextStyle(
+                              color: _selectedTab == 0 ? Colors.white : Colors.white60,
+                              fontSize: 13,
+                              fontWeight: _selectedTab == 0 ? FontWeight.bold : FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          Expanded(
-            child: InkWell(
-              onTap: () => setState(() => _selectedTab = 1),
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: _selectedTab == 1 ? const Color(0xFF6366F1) : Colors.transparent,
+              Expanded(
+                child: InkWell(
+                  onTap: () => setState(() => _selectedTab = 1),
                   borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.trending_up_rounded, size: 16, color: _selectedTab == 1 ? Colors.white : Colors.white60),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Modelagem LTV/CAC & Runway Forecast (12M)',
-                      style: TextStyle(
-                        color: _selectedTab == 1 ? Colors.white : Colors.white60,
-                        fontSize: 13,
-                        fontWeight: _selectedTab == 1 ? FontWeight.bold : FontWeight.w500,
-                      ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: _selectedTab == 1 ? const Color(0xFF6366F1) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  ],
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.trending_up_rounded, size: 16, color: _selectedTab == 1 ? Colors.white : Colors.white60),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            isMobile ? 'Runway (12M)' : 'Modelagem LTV/CAC & Runway Forecast (12M)',
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            style: TextStyle(
+                              color: _selectedTab == 1 ? Colors.white : Colors.white60,
+                              fontSize: 13,
+                              fontWeight: _selectedTab == 1 ? FontWeight.bold : FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -526,14 +561,13 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
               ),
               const SizedBox(height: 12),
               // Filtros por Status
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   _buildStatusFilterChip('all', 'Todas (${_transactions.length})'),
-                  const SizedBox(width: 8),
                   _buildStatusFilterChip('paid', 'Pagas ($_paidCount)', color: MetaColors.emerald),
-                  const SizedBox(width: 8),
                   _buildStatusFilterChip('pending', 'Pendentes ($_pendingCount)', color: Colors.amber),
-                  const SizedBox(width: 8),
                   _buildStatusFilterChip('failed', 'Falhas ($_failedCount)', color: Colors.redAccent),
                 ],
               ),

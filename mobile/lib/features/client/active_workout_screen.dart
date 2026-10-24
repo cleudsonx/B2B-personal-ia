@@ -784,7 +784,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
 
   // ---------------------------------------------------------------------------
-  // CabeÃ§alho Edge-to-Edge unificado (TÃ­tulo + NotificaÃ§Ãµes + Coach + Menu â‹®)
+  // Cabeçalho Edge-to-Edge unificado (Título + Notificações + Coach + Menu ⋮)
   // ---------------------------------------------------------------------------
   void _openCoachSheet() {
     final subtitle = _trainerCref.isNotEmpty ? _trainerCref : 'CREF Ativo';
@@ -832,7 +832,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         GlassAction(
           icon: Icons.chat_bubble_rounded,
           label: 'Falar no WhatsApp (24h)',
-          subtitle: 'Tire dÃºvidas direto com o seu treinador',
+          subtitle: 'Tire dúvidas direto com o seu treinador',
           onTap: _contactTrainerWhatsApp,
         ),
       ],
@@ -854,14 +854,14 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         GlassAction(
           icon: Icons.fitness_center_rounded,
           label: 'Como treinar',
-          subtitle: 'Guia de execuÃ§Ã£o, cargas e trocas',
+          subtitle: 'Guia de execução, cargas e trocas',
           color: const Color(0xFFF59E0B),
           onTap: () => WorkoutGuideModal.show(context),
         ),
         GlassAction(
           icon: Icons.explore_rounded,
           label: 'Tour do Aluno',
-          subtitle: 'ApresentaÃ§Ã£o rÃ¡pida das funÃ§Ãµes',
+          subtitle: 'Apresentação rápida das funções',
           onTap: () => InteractiveTourGuideModal.show(context, role: 'student'),
         ),
         GlassAction(
@@ -989,7 +989,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             icon: unread > 0
                 ? Icons.notifications_active_rounded
                 : Icons.notifications_none_rounded,
-            tooltip: 'NotificaÃ§Ãµes',
+            tooltip: 'Notificações',
             showDot: unread > 0,
             onTap: () => StudentNotificationSheet.show(
               context,
@@ -1007,14 +1007,14 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         const SizedBox(width: 8),
         GlassIconButton(
           icon: Icons.more_vert_rounded,
-          tooltip: 'Mais opÃ§Ãµes',
+          tooltip: 'Mais opções',
           onTap: _openMoreMenu,
         ),
       ],
     );
   }
 
-  // Bento de telemetria: Ofensiva + Progresso da SessÃ£o
+  // Bento de telemetria: Ofensiva + Progresso da Sessão
   Widget _buildTelemetryBento() {
     final done = _completedExerciseIndices.length;
     final total = _exercises.length;
@@ -1044,12 +1044,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const Text('ðŸ”¥', style: TextStyle(fontSize: 20)),
+                      const Text('🔥', style: TextStyle(fontSize: 20)),
                       const SizedBox(width: 6),
                       Text(
-                        currentStreak == null ? 'â€”' : '$currentStreak',
+                        currentStreak == null ? '—' : '$currentStreak',
                         semanticsLabel: currentStreak == null
-                            ? 'SequÃªncia indisponÃ­vel'
+                            ? 'Sequência indisponível'
                             : '$currentStreak dias',
                         style: TextStyle(
                           fontSize: 26,
@@ -1115,7 +1115,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           ),
                         ),
                         TextSpan(
-                          text: ' / $total exercÃ­cios',
+                          text: ' / $total exercícios',
                           style: TextStyle(fontSize: 12, color: _textSecondary),
                         ),
                       ],
@@ -2051,15 +2051,15 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   },
                   padding: const EdgeInsets.only(bottom: 12),
                 ),
-                // 1. CabeÃ§alho Edge-to-Edge unificado
+                // 1. Cabeçalho Edge-to-Edge unificado
                 _buildStudentHeader(),
                 const SizedBox(height: 16),
 
-                // 2. Bento de telemetria translÃºcido
+                // 2. Bento de telemetria translúcido
                 _buildTelemetryBento(),
                 const SizedBox(height: 16),
 
-                // 3. Seletor de divisÃµes em cÃ¡psula translÃºcida (One UI)
+                // 3. Seletor de divisões em cápsula translúcida (One UI)
                 if (_splits.length > 1) ...[
                   OneUiGlassSegmentedBar(
                     selectedIndex: _selectedSplitIndex,
@@ -2114,7 +2114,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                               ),
                             ),
                             child: Text(
-                              'DIVISÁO ${(_splitIdentifier ?? 'A').toUpperCase()} • PROGRAMADO',
+                              'DIVISÃO ${(_splitIdentifier ?? 'A').toUpperCase()} • PROGRAMADO',
                               style: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w900,
@@ -2662,7 +2662,7 @@ class _AnatomicalMuscleCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'BIOMECÂNICA & ATIVAÇÁO 3D',
+                        'BIOMECÂNICA & ATIVAÇÃO 3D',
                         style: TextStyle(
                           color: glowColor,
                           fontSize: 9,
