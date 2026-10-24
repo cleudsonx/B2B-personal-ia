@@ -284,6 +284,8 @@ class ConsultancyPlanService {
   }
 
   /// Templates padrão caso a internet esteja offline ou início rápido
+  static List<ConsultancyPlan> getDefaultTemplates() => _defaultTemplates();
+
   static List<ConsultancyPlan> _defaultTemplates() {
     return [
       ConsultancyPlan(

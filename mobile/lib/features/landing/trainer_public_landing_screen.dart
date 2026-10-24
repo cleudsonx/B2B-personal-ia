@@ -7,14 +7,22 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/utils/currency_pt_br_formatter.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../services/consultancy_plan_service.dart';
 import '../auth/login_screen.dart';
 
 class TrainerPublicLandingScreen extends StatefulWidget {
   final String username;
+  final Map<String, dynamic>? initialTrainerData;
+  final List<ConsultancyPlan>? initialPlans;
 
-  const TrainerPublicLandingScreen({super.key, required this.username});
+  const TrainerPublicLandingScreen({
+    super.key,
+    required this.username,
+    this.initialTrainerData,
+    this.initialPlans,
+  });
 
   @override
   State<TrainerPublicLandingScreen> createState() => _TrainerPublicLandingScreenState();
@@ -31,8 +39,18 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
   @override
   void initState() {
     super.initState();
-    _fetchTrainerProfile();
-    _fetchPlans();
+    if (widget.initialTrainerData != null) {
+      _trainerData = widget.initialTrainerData;
+      _isLoading = false;
+    } else {
+      _fetchTrainerProfile();
+    }
+    if (widget.initialPlans != null) {
+      _plans = widget.initialPlans!;
+      _isLoadingPlans = false;
+    } else {
+      _fetchPlans();
+    }
   }
 
   Future<void> _fetchTrainerProfile() async {
@@ -333,61 +351,20 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                       style: const TextStyle(color: MetaColors.textSecondary, fontSize: 12),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 24),
                   ] else ...[
                     const SizedBox(height: 20),
                   ],
 
-                  // ==========================================================
-                  // SEÇÃO DE PLANOS & PREÇOS (FASE 6 - PASSO 3)
-                  // ==========================================================
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Planos de Consultoria',
-                      style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Assine diretamente com pagamento seguro via Pix ou Cartão:',
-                      style: TextStyle(color: MetaColors.textSecondary, fontSize: 13),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  if (_isLoadingPlans)
-                    const Center(child: Padding(
-                      padding: EdgeInsets.all(24.0),
-                      child: CircularProgressIndicator(color: MetaColors.emerald),
-                    ))
-                  else if (_plans.isEmpty)
-                    MetaCard(
-                      padding: const EdgeInsets.all(20),
-                      child: const Column(
-                        children: [
-                          Icon(Icons.hourglass_empty_rounded, color: MetaColors.textSecondary, size: 36),
-                          SizedBox(height: 10),
-                          Text(
-                            'Nenhum plano configurado no momento',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Entre em contato pelo WhatsApp para verificar valores e disponibilidade.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: MetaColors.textSecondary, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    ..._plans.map((plan) => _buildPublicPlanCard(plan)),
-
+                  // 1. BIG NUMBERS DE AUTORIDADE
+                  _buildAuthorityStatsBar(),
                   const SizedBox(height: 36),
 
+                  // 2. METODOLOGIA DO TREINADOR
+                  _buildMethodologySection(name),
+                  const SizedBox(height: 36),
+
+                  // 3. CASOS REAIS & TRANSFORMAÇÕES ANTES/DEPOIS
                   BeforeAfterCaseViewer(
                     onSelectPlan: () {
                       if (_plans.isNotEmpty) {
@@ -397,26 +374,25 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                       }
                     },
                   ),
-
                   const SizedBox(height: 36),
 
-                  // Como funciona o app (Social Proof)
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'O que você terá no app Mr. Coach',
-                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildProofRow(Icons.assignment_outlined, 'Avaliação Inicial Personalizada', 'Seu treinador analisa seus objetivos, rotina e histórico articular.'),
-                  const SizedBox(height: 14),
-                  _buildProofRow(Icons.fitness_center_rounded, 'Treinos e Cargas Acompanhadas', 'Acesse sua ficha exclusiva, veja vídeos de execução e marque seu streak.'),
-                  const SizedBox(height: 14),
-                  _buildProofRow(Icons.auto_awesome_rounded, 'IA de Substituição em 1 Toque', 'Aparelho ocupado na academia? Troque por outro biomecanicamente equivalente na hora.'),
-                  const SizedBox(height: 14),
-                  _buildProofRow(Icons.chat_bubble_outline_rounded, 'Suporte com Seu Treinador', 'Canal direto para tirar dúvidas sobre cargas, evolução e execução.'),
+                  // 4. PARA QUEM É A CONSULTORIA
+                  _buildTargetAudienceSection(),
+                  const SizedBox(height: 36),
 
+                  // 5. A EXPERIÊNCIA COM O APP MR. COACH
+                  _buildAppExperienceSection(),
+                  const SizedBox(height: 40),
+
+                  // 6. PLANOS DE CONSULTORIA & CHECKOUT PIX
+                  _buildPlansSection(),
+                  const SizedBox(height: 36),
+
+                  // 7. PASSO A PASSO PÓS-COMPRA & FAQ
+                  _buildPostPurchaseStepsSection(),
+                  const SizedBox(height: 32),
+
+                  _buildFaqSection(),
                   const SizedBox(height: 32),
 
                   if ((_trainerData!['public_whatsapp'] as String?)?.trim().isNotEmpty == true) ...[
@@ -449,33 +425,54 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0),
-        child: SizedBox(
-          width: double.infinity,
-          height: 56,
-          child: ElevatedButton.icon(
-            onPressed: () {
-              if (_plans.isNotEmpty) {
-                _openCheckoutModal(_plans.first);
-              } else {
-                _openTrainerWhatsapp();
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: MetaColors.emerald,
-              foregroundColor: Colors.white,
-              elevation: 4,
-              shadowColor: MetaColors.emerald.withValues(alpha: 0.4),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            ),
-            icon: const Icon(Icons.flash_on_rounded, size: 20),
-            label: const Text(
-              'COMEÇAR MINHA CONSULTORIA',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, letterSpacing: 0.8),
-            ),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: Row(
+            children: [
+              if ((_trainerData?['public_whatsapp'] as String?)?.trim().isNotEmpty == true) ...[
+                Container(
+                  height: 54,
+                  width: 54,
+                  margin: const EdgeInsets.only(right: 10),
+                  child: FloatingActionButton(
+                    heroTag: 'trainer_whatsapp_fab',
+                    onPressed: _openTrainerWhatsapp,
+                    backgroundColor: const Color(0xFF25D366),
+                    elevation: 3,
+                    child: const Icon(Icons.chat_rounded, color: Colors.white, size: 24),
+                  ),
+                ),
+              ],
+              Expanded(
+                child: SizedBox(
+                  height: 54,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      if (_plans.isNotEmpty) {
+                        _openCheckoutModal(_plans.first);
+                      } else {
+                        _openTrainerWhatsapp();
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: MetaColors.emerald,
+                      foregroundColor: Colors.white,
+                      elevation: 4,
+                      shadowColor: MetaColors.emerald.withValues(alpha: 0.4),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    icon: const Icon(Icons.flash_on_rounded, size: 20),
+                    label: const Text(
+                      'CONTRATAR CONSULTORIA PIX',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ).animate(onPlay: (controller) => controller.repeat(reverse: true))
-         .scaleXY(begin: 1.0, end: 1.02, duration: 1.5.seconds, curve: Curves.easeInOut),
+        ),
       ),
     );
   }
@@ -548,7 +545,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      'R\$ ${plan.price.toStringAsFixed(2).replaceAll('.', ',')}',
+                      CurrencyPtBrFormatter.format(plan.price),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 22,
@@ -557,7 +554,9 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                     ),
                     if (plan.billingPeriod != 'one_time')
                       Text(
-                        plan.billingPeriod == 'quarterly' ? '(R\$ ${(plan.price / 3).toStringAsFixed(2).replaceAll('.', ',')}/mês)' : '/mês',
+                        plan.billingPeriod == 'quarterly'
+                            ? '(${CurrencyPtBrFormatter.format(plan.price / 3)}/mês)'
+                            : '/mês',
                         style: const TextStyle(color: MetaColors.textSecondary, fontSize: 11),
                       ),
                   ],
@@ -734,6 +733,401 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildAuthorityStatsBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF141F18),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF26392D)),
+      ),
+      child: const Row(
+        children: [
+          Expanded(
+            child: _StatBadge(
+              number: '10+',
+              unit: 'Anos',
+              label: 'Experiência',
+            ),
+          ),
+          SizedBox(height: 28, child: VerticalDivider(color: Color(0xFF2C4033))),
+          Expanded(
+            child: _StatBadge(
+              number: '+500',
+              unit: 'Alunos',
+              label: 'Acompanhados',
+            ),
+          ),
+          SizedBox(height: 28, child: VerticalDivider(color: Color(0xFF2C4033))),
+          Expanded(
+            child: _StatBadge(
+              number: '100%',
+              unit: 'Focado',
+              label: 'Individualizado',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMethodologySection(String name) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Metodologia & Prescrição Inteligente',
+            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Cada repetição, carga e exercício possui fundamentação anatômica e científica.',
+            style: TextStyle(color: MetaColors.textSecondary, fontSize: 13),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildMethodCard(
+          icon: Icons.accessibility_new_rounded,
+          title: 'Prescrição Biomecânica Fina',
+          description:
+              'Ajuste do braço de momento, alinhamento articular e seleção de exercícios adaptados à sua anatomia individual.',
+        ),
+        const SizedBox(height: 12),
+        _buildMethodCard(
+          icon: Icons.trending_up_rounded,
+          title: 'Sobrecarga Progressiva com Fórmulas de IA',
+          description:
+              'Volume de séries e intensidade dosados matematicamente com estimativas de 1RM por Epley/Brzycki para hipertrofia sem lesão.',
+        ),
+        const SizedBox(height: 12),
+        _buildMethodCard(
+          icon: Icons.forum_rounded,
+          title: 'Acompanhamento Ativo & Presença no WhatsApp',
+          description:
+              'Suporte contínuo para tirar dúvidas de execução, analisar vídeos de séries pesadas e ajustar o treino conforme seu feedback.',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMethodCard({
+    required IconData icon,
+    required String title,
+    required String description,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF131D17),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF26382D)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: MetaColors.emerald.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: MetaColors.emerald, size: 20),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: const TextStyle(color: MetaColors.textSecondary, fontSize: 12.5, height: 1.4),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTargetAudienceSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF101914),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF223528)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.checklist_rounded, color: MetaColors.emerald, size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Esta consultoria é ideal para você se:',
+                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _buildAudienceCheckItem('Quer hipertrofia ou queima de gordura consistente sem estagnação.'),
+          _buildAudienceCheckItem('Sente dores no ombro, joelho ou coluna e precisa de correção biomecânica.'),
+          _buildAudienceCheckItem('Trabalha muito e quer treinos objetivos de 45 a 60 minutos com alta densidade.'),
+          _buildAudienceCheckItem('Treina em academia comercial, condomínio ou casa e quer saber exatamente o que fazer.'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAudienceCheckItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.check_circle_rounded, color: MetaColors.emerald, size: 16),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(color: Color(0xFFCFDBD2), fontSize: 13, height: 1.35),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppExperienceSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'A Experiência no App Mr. Coach',
+            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Você não recebe um PDF frio de gaveta. Você ganha um ecossistema inteligente:',
+            style: TextStyle(color: MetaColors.textSecondary, fontSize: 13),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildProofRow(Icons.assignment_outlined, 'Avaliação Inicial Personalizada', 'Anamnese completa dos seus objetivos, rotina diária e histórico articular.'),
+        const SizedBox(height: 14),
+        _buildProofRow(Icons.fitness_center_rounded, 'Treinos e Cargas Acompanhadas', 'Ficha exclusiva com vídeos em HD, orientações de execução e streak de consistência.'),
+        const SizedBox(height: 14),
+        _buildProofRow(Icons.auto_awesome_rounded, 'Substituição por IA em 5 Segundos', 'Aparelho ocupado na academia? Troque por outro biomecanicamente equivalente na hora.'),
+        const SizedBox(height: 14),
+        _buildProofRow(Icons.timer_outlined, 'Rest Timer Cadenciado na Tela', 'Descanso monitorado com avisos táteis e sonoros para manter a intensidade hipertrófica.'),
+      ],
+    );
+  }
+
+  Widget _buildPlansSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Planos de Consultoria',
+            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Assine diretamente com pagamento seguro via Pix ou Cartão:',
+            style: TextStyle(color: MetaColors.textSecondary, fontSize: 13),
+          ),
+        ),
+        const SizedBox(height: 16),
+        if (_isLoadingPlans)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24.0),
+              child: CircularProgressIndicator(color: MetaColors.emerald),
+            ),
+          )
+        else if (_plans.isEmpty)
+          MetaCard(
+            padding: const EdgeInsets.all(20),
+            child: const Column(
+              children: [
+                Icon(Icons.hourglass_empty_rounded, color: MetaColors.textSecondary, size: 36),
+                SizedBox(height: 10),
+                Text(
+                  'Nenhum plano configurado no momento',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Entre em contato pelo WhatsApp para verificar valores e disponibilidade.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: MetaColors.textSecondary, fontSize: 12),
+                ),
+              ],
+            ),
+          )
+        else
+          ..._plans.map((plan) => _buildPublicPlanCard(plan)),
+      ],
+    );
+  }
+
+  Widget _buildPostPurchaseStepsSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF131D17),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF25392D)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Como funciona após a matrícula?',
+            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 14),
+          _buildStepRow('1', 'Pagamento confirmado instantaneamente', 'O Pix é reconhecido em segundos e seu acesso é liberado.'),
+          const SizedBox(height: 12),
+          _buildStepRow('2', 'Preencha sua avaliação no app', 'Informe sua rotina, lesões antigas e equipamentos disponíveis.'),
+          const SizedBox(height: 12),
+          _buildStepRow('3', 'Alinhamento & Liberação da Ficha', 'O treinador conversa com você no WhatsApp e libera seu treino em até 48h.'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepRow(String number, String title, String subtitle) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          decoration: const BoxDecoration(
+            color: MetaColors.emerald,
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            number,
+            style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 12),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: const TextStyle(color: MetaColors.textSecondary, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFaqSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Perguntas Frequentes (FAQ)',
+            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildFaqItem(
+          'Nunca treinei antes na vida, a consultoria serve para mim?',
+          'Sim! O treino é prescrito exatamente para o seu nível atual, com vídeos demonstrativos de cada exercício e foco total em postura e segurança articular.',
+        ),
+        _buildFaqItem(
+          'E se eu tiver dor no joelho ou problema na coluna?',
+          'Na avaliação inicial você relata suas queixas articulares. Todos os exercícios são filtrados para descompressão articular e fortalecimento das estruturas vulneráveis.',
+        ),
+        _buildFaqItem(
+          'Posso treinar na academia do condomínio ou em casa?',
+          'Com certeza. O treinador monta a ficha adaptada aos aparelhos e pesos que você realmente tem à disposição.',
+        ),
+        _buildFaqItem(
+          'Como tiro dúvidas durante os treinos?',
+          'Você tem canal direto pelo WhatsApp e pode registrar comentários na própria ficha do app Mr. Coach.',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFaqItem(String question, String answer) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: const Color(0xFF121B15),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: const BorderSide(color: Color(0xFF24352A)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            collapsedIconColor: MetaColors.emerald,
+            iconColor: MetaColors.emerald,
+            title: Text(
+              question,
+              style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w700),
+            ),
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                child: Text(
+                  answer,
+                  style: const TextStyle(color: MetaColors.textSecondary, fontSize: 12.5, height: 1.45),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1137,6 +1531,59 @@ class _BeforeAfterCaseViewerState extends State<BeforeAfterCaseViewer> {
   }
 }
 
+class _StatBadge extends StatelessWidget {
+  final String number;
+  final String unit;
+  final String label;
+
+  const _StatBadge({
+    required this.number,
+    required this.unit,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(
+              number,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(width: 3),
+            Text(
+              unit,
+              style: const TextStyle(
+                color: MetaColors.emerald,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: const TextStyle(
+            color: MetaColors.textSecondary,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class _PublicCheckoutModal extends StatefulWidget {
   final String username;

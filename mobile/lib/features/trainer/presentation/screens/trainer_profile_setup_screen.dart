@@ -5,12 +5,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/widgets/meta_components.dart';
 import '../../../../core/widgets/avatar_selector_sheet.dart';
 import '../../../../core/utils/pwa_navigation_state.dart';
+import '../../../../core/utils/currency_pt_br_formatter.dart';
 import '../../../../services/auth_service.dart';
+import '../../../../services/consultancy_plan_service.dart';
 import 'trainer_main_layout.dart';
 import 'whatsapp_connection_screen.dart';
 
 class TrainerProfileSetupScreen extends StatefulWidget {
-  const TrainerProfileSetupScreen({super.key});
+  final Map<String, dynamic>? initialProfile;
+  const TrainerProfileSetupScreen({super.key, this.initialProfile});
 
   @override
   State<TrainerProfileSetupScreen> createState() =>
@@ -36,18 +39,37 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
   bool _isSaving = false;
   bool _isLoading = true;
   bool _publishInDirectory = false;
+  bool _autoSeedPlans = true;
+
+  int get _completedTriadCount {
+    int count = 0;
+    if (_photoUrlController.text.trim().isNotEmpty) count++;
+    final digits = _whatsappController.text.replaceAll(RegExp(r'\D'), '');
+    if (digits.length >= 10) count++;
+    if (_crefController.text.trim().isNotEmpty) count++;
+    return count;
+  }
+
+  bool get _isTriadComplete => _completedTriadCount == 3;
 
   @override
   void initState() {
     super.initState();
     PwaNavigationState.saveActiveSubscreen('trainer_profile_setup');
+    _photoUrlController.addListener(_onFieldChanged);
+    _whatsappController.addListener(_onFieldChanged);
+    _crefController.addListener(_onFieldChanged);
     _loadProfile();
+  }
+
+  void _onFieldChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadProfile() async {
     if (mounted) setState(() => _isLoading = true);
     try {
-      final profile = await AuthService.getCurrentProfile();
+      final profile = widget.initialProfile ?? await AuthService.getCurrentProfile();
       if (profile != null && mounted) {
         setState(() {
           _usernameController.text = profile['username'] ?? '';
@@ -79,6 +101,9 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
   @override
   void dispose() {
     PwaNavigationState.clearActiveSubscreen();
+    _photoUrlController.removeListener(_onFieldChanged);
+    _whatsappController.removeListener(_onFieldChanged);
+    _crefController.removeListener(_onFieldChanged);
     _usernameController.dispose();
     _crefController.dispose();
     _bioController.dispose();
@@ -225,6 +250,28 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
         );
       } catch (_) {}
 
+      if (_autoSeedPlans) {
+        try {
+          final existingPlans = await ConsultancyPlanService.getMyPlans();
+          if (existingPlans.isEmpty) {
+            final defaults = ConsultancyPlanService.getDefaultTemplates();
+            for (final tpl in defaults) {
+              await ConsultancyPlanService.createPlan(
+                name: tpl.name,
+                description: tpl.description,
+                priceCents: tpl.priceCents,
+                billingPeriod: tpl.billingPeriod,
+                features: tpl.features,
+                isActive: true,
+                sortOrder: tpl.sortOrder,
+              );
+            }
+          }
+        } catch (e) {
+          debugPrint('Aviso ao inicializar planos padrão: $e');
+        }
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -267,6 +314,38 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  void _generateAiBio() {
+    final specs = _selectedSpecialties.toList();
+    final specText = specs.isEmpty
+        ? 'hipertrofia, emagrecimento e definição física'
+        : specs.join(', ').toLowerCase();
+
+    final bio = 'Personal Trainer especialista em $specText. '
+        'Metodologia fundamentada em biomecânica e fisiologia do exercício, com prescrição 100% individualizada no app. '
+        'Acompanhamento próximo de cargas, suporte direto via WhatsApp e periodização inteligente para você atingir seu melhor físico com segurança e consistência.';
+
+    setState(() {
+      _bioController.text = bio;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 18),
+            SizedBox(width: 8),
+            Expanded(child: Text('Bio profissional gerada pela IA com foco em conversão!')),
+          ],
+        ),
+        backgroundColor: MetaColors.emerald,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 3),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
   }
 
   @override
@@ -330,32 +409,189 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                     _buildHeroHeader(context),
                     const SizedBox(height: 16),
 
-                    // 2. Foto de Perfil & Avatar
+                    // 2. Tríade da Vitrine em 60s (Progresso essencial)
+                    _buildTriadProgressCard(context),
+                    const SizedBox(height: 16),
+
+                    // 3. Foto de Perfil & Avatar (Pilar 1/3)
                     _buildAvatarCard(context),
                     const SizedBox(height: 16),
 
-                    // 3. Endereço da Vitrine (URL & Slug)
-                    _buildUrlCard(context),
+                    // 4. WhatsApp & Robô Assistente (Pilar 2/3)
+                    _buildContactCard(context),
                     const SizedBox(height: 16),
 
-                    // 4. Credencial CREF & Diretório
+                    // 5. Credencial CREF & Diretório (Pilar 3/3)
                     _buildCrefCard(context),
                     const SizedBox(height: 16),
 
-                    // 5. Especialidades
+                    // 6. Especialidades
                     _buildSpecialtiesCard(context),
                     const SizedBox(height: 16),
 
-                    // 6. Biografia
+                    // 7. Biografia com Gerador IA
                     _buildBioCard(context),
                     const SizedBox(height: 16),
 
-                    // 7. WhatsApp & Robô Assistente
-                    _buildContactCard(context),
+                    // 8. Planos Recomendados Prontos
+                    _buildDefaultPlansCard(context),
+                    const SizedBox(height: 16),
+
+                    // 9. Endereço da Vitrine (URL & Slug)
+                    _buildUrlCard(context),
                     const SizedBox(height: 24),
                   ],
                 ),
               ),
+      ),
+    );
+  }
+
+  Widget _buildTriadProgressCard(BuildContext context) {
+    final count = _completedTriadCount;
+    final isComplete = _isTriadComplete;
+    return MetaCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isComplete
+                      ? MetaColors.emerald.withValues(alpha: 0.15)
+                      : const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  isComplete ? Icons.verified_rounded : Icons.bolt_rounded,
+                  color: isComplete ? MetaColors.emerald : const Color(0xFFF59E0B),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tríade da Vitrine em 60s',
+                      style: TextStyle(
+                        color: MetaColors.text(context),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      isComplete
+                          ? '✨ Vitrine pronta com os 3 itens essenciais!'
+                          : 'Preencha Foto, WhatsApp e CREF para começar.',
+                      style: TextStyle(
+                        color: MetaColors.subtext(context),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isComplete
+                      ? MetaColors.emerald.withValues(alpha: 0.2)
+                      : MetaColors.highlight(context),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isComplete ? MetaColors.emerald : MetaColors.cardBorder(context),
+                  ),
+                ),
+                child: Text(
+                  '$count/3',
+                  style: TextStyle(
+                    color: isComplete ? MetaColors.emerald : MetaColors.text(context),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: count / 3.0,
+              backgroundColor: MetaColors.highlight(context),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                isComplete ? MetaColors.emerald : const Color(0xFFF59E0B),
+              ),
+              minHeight: 6,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _buildTriadItemChip(
+                context,
+                label: '1. Foto/Avatar',
+                done: _photoUrlController.text.trim().isNotEmpty,
+              ),
+              const SizedBox(width: 8),
+              _buildTriadItemChip(
+                context,
+                label: '2. WhatsApp',
+                done: _whatsappController.text.replaceAll(RegExp(r'\D'), '').length >= 10,
+              ),
+              const SizedBox(width: 8),
+              _buildTriadItemChip(
+                context,
+                label: '3. CREF',
+                done: _crefController.text.trim().isNotEmpty,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTriadItemChip(BuildContext context, {required String label, required bool done}) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        decoration: BoxDecoration(
+          color: done
+              ? MetaColors.emerald.withValues(alpha: 0.12)
+              : MetaColors.highlight(context),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: done ? MetaColors.emerald.withValues(alpha: 0.3) : MetaColors.cardBorder(context),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              done ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+              size: 13,
+              color: done ? MetaColors.emerald : MetaColors.subtext(context),
+            ),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: done ? MetaColors.emerald : MetaColors.subtext(context),
+                  fontSize: 11,
+                  fontWeight: done ? FontWeight.w700 : FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -414,8 +650,8 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const MetaSectionTitle(
-            title: 'Foto ou Marca da Vitrine',
-            subtitle: 'Transmita autoridade com sua foto profissional ou logotipo.',
+            title: '1. Foto ou Marca da Vitrine (Pilar 1)',
+            subtitle: 'Transmita autoridade e identidade visual com sua foto profissional ou avatar esportivo.',
             fontSize: 16,
           ),
           const SizedBox(height: 18),
@@ -718,8 +954,8 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const MetaSectionTitle(
-            title: 'Credencial CREF & Diretório',
-            subtitle: 'Validação profissional exigida para exibição e confiança pública.',
+            title: '3. Credencial CREF & Diretório (Pilar 3)',
+            subtitle: 'Validação profissional exigida para conformidade legal e badge de confiança pública.',
             fontSize: 16,
           ),
           const SizedBox(height: 14),
@@ -753,34 +989,36 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: MetaColors.highlight(context),
+          Material(
+            color: MetaColors.highlight(context),
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: MetaColors.cardBorder(context)),
+              side: BorderSide(color: MetaColors.cardBorder(context)),
             ),
-            child: SwitchListTile.adaptive(
-              contentPadding: EdgeInsets.zero,
-              value: _publishInDirectory,
-              activeTrackColor: MetaColors.emerald,
-              title: Text(
-                'Exibir no Diretório Shaipados',
-                style: TextStyle(
-                  color: MetaColors.text(context),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              child: SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                value: _publishInDirectory,
+                activeTrackColor: MetaColors.emerald,
+                title: Text(
+                  'Exibir no Diretório Shaipados',
+                  style: TextStyle(
+                    color: MetaColors.text(context),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              subtitle: Text(
-                'Alunos poderão encontrar seu perfil na busca de treinadores certificados.',
-                style: TextStyle(
-                  color: MetaColors.subtext(context),
-                  fontSize: 12,
-                  height: 1.35,
+                subtitle: Text(
+                  'Alunos poderão encontrar seu perfil na busca de treinadores certificados.',
+                  style: TextStyle(
+                    color: MetaColors.subtext(context),
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
                 ),
+                onChanged: (value) => setState(() => _publishInDirectory = value),
               ),
-              onChanged: (value) => setState(() => _publishInDirectory = value),
             ),
           ),
         ],
@@ -850,10 +1088,26 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const MetaSectionTitle(
-            title: 'Biografia do Treinador',
-            subtitle: 'Conte um pouco sobre sua formação, metodologia e histórico.',
-            fontSize: 16,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Expanded(
+                child: MetaSectionTitle(
+                  title: 'Biografia do Treinador',
+                  subtitle: 'Conte um pouco sobre sua formação, metodologia e histórico.',
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(width: 8),
+              SquircleButton(
+                label: 'Gerar com IA',
+                icon: Icons.auto_awesome_rounded,
+                isPrimary: false,
+                height: 36,
+                fontSize: 12,
+                onPressed: _generateAiBio,
+              ),
+            ],
           ),
           const SizedBox(height: 14),
           TextField(
@@ -886,6 +1140,135 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
     );
   }
 
+  Widget _buildDefaultPlansCard(BuildContext context) {
+    final templates = ConsultancyPlanService.getDefaultTemplates();
+    return MetaCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: MetaColors.emerald.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.sell_rounded, color: MetaColors.emerald, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Planos de Consultoria na Vitrine',
+                      style: TextStyle(
+                        color: MetaColors.text(context),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      '3 planos recomendados com Pix e contratação imediata.',
+                      style: TextStyle(
+                        color: MetaColors.subtext(context),
+                        fontSize: 12,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ...templates.map((tpl) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: MetaColors.highlight(context),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: MetaColors.cardBorder(context)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: MetaColors.emerald, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tpl.name,
+                          style: TextStyle(
+                            color: MetaColors.text(context),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          tpl.billingPeriodLabel,
+                          style: TextStyle(
+                            color: MetaColors.subtext(context),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    CurrencyPtBrFormatter.formatFromCents(tpl.priceCents),
+                    style: const TextStyle(
+                      color: MetaColors.emerald,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 8),
+          Material(
+            color: MetaColors.highlight(context),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: MetaColors.cardBorder(context)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              child: SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                value: _autoSeedPlans,
+                activeTrackColor: MetaColors.emerald,
+                title: Text(
+                  'Ativar estes 3 planos recomendados',
+                  style: TextStyle(
+                    color: MetaColors.text(context),
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                subtitle: Text(
+                  'Você poderá alterar preços e nomes na aba Financeiro.',
+                  style: TextStyle(
+                    color: MetaColors.subtext(context),
+                    fontSize: 11.5,
+                    height: 1.3,
+                  ),
+                ),
+                onChanged: (val) => setState(() => _autoSeedPlans = val),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildContactCard(BuildContext context) {
     return MetaCard(
       padding: const EdgeInsets.all(20),
@@ -893,8 +1276,8 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const MetaSectionTitle(
-            title: 'WhatsApp de Atendimento & Notificações',
-            subtitle: 'Número público pelo qual os alunos entrarão em contato.',
+            title: '2. WhatsApp de Atendimento (Pilar 2)',
+            subtitle: 'Número onde os futuros alunos e notificações de novos planos chegam.',
             fontSize: 16,
           ),
           const SizedBox(height: 14),

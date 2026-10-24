@@ -1,7 +1,7 @@
 {
   "version": "1.9.0",
-  "build": 2026103061,
-  "updated_at": "2026-10-23T22:22:30.593608Z",
+  "build": 2026103062,
+  "updated_at": "2026-10-24T00:05:03.911958Z",
   "notes": "Versão 1.10.0: Redesign Completo da Experiência do Aluno (Treino, Mr. Coach AI, Bio-Hub e Perfil) no padrão Apple Fitness+ / Samsung One UI 7 / Material 3 Expressive, Anéis de Atividade no Bio-Hub, Biometria & IMC em Tempo Real, Cards de Adaptação no Copiloto IA e Pílula Compacta do Coach.",
   "changelog": {
     "student": [
