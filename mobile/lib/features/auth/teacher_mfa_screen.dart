@@ -144,7 +144,7 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
     });
     try {
       final res = await AuthService.requestMfaCode(channel: channel);
-      final dest = res['destination'] as String?;
+      final dest = res['masked_target'] as String?;
       if (mounted) {
         setState(() {
           _destinationHint = dest;
@@ -206,8 +206,8 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
     }
 
     if (_currentMethod == MfaMethod.backupCode) {
-      if (sanitizedCode.length < 8) {
-        setState(() => _error = 'O código de reserva deve ter exatamente 8 dígitos/caracteres.');
+      if (sanitizedCode.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').length != 10) {
+        setState(() => _error = 'O código de reserva tem 10 caracteres (ex.: ABCDE-FGHJK).');
         return;
       }
     } else {
@@ -238,9 +238,6 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
           factorId: factorId,
           code: sanitizedCode.replaceAll(RegExp(r'\D'), ''),
         );
-        if (_rememberDevice) {
-          await AuthService.saveCurrentDeviceTrusted();
-        }
       } else if (_currentMethod == MfaMethod.backupCode) {
         await AuthService.verifyMfaBackupCode(
           code: sanitizedCode.toUpperCase(),
@@ -947,15 +944,15 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
                         ? TextInputType.text
                         : TextInputType.number,
                     textAlign: TextAlign.center,
-                    maxLength: _currentMethod == MfaMethod.backupCode ? 8 : 6,
+                    maxLength: _currentMethod == MfaMethod.backupCode ? 11 : 6,
                     autofillHints: const [AutofillHints.oneTimeCode],
                     textCapitalization: _currentMethod == MfaMethod.backupCode
                         ? TextCapitalization.characters
                         : TextCapitalization.none,
                     inputFormatters: _currentMethod == MfaMethod.backupCode
                         ? [
-                            FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
-                            LengthLimitingTextInputFormatter(8),
+                            FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9-]')),
+                            LengthLimitingTextInputFormatter(11),
                           ]
                         : [
                             FilteringTextInputFormatter.digitsOnly,
@@ -968,14 +965,17 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
                       letterSpacing: _currentMethod == MfaMethod.backupCode ? 4 : 8,
                     ),
                     onChanged: (val) {
-                      final maxLen = _currentMethod == MfaMethod.backupCode ? 8 : 6;
-                      if (val.trim().length == maxLen && !_submitting) {
+                      final isBackup = _currentMethod == MfaMethod.backupCode;
+                      final typed = isBackup
+                          ? val.replaceAll(RegExp(r'[^A-Za-z0-9]'), '')
+                          : val.trim();
+                      if (typed.length == (isBackup ? 10 : 6) && !_submitting) {
                         _verify();
                       }
                     },
                     decoration: InputDecoration(
                       labelText: _currentMethod == MfaMethod.backupCode
-                          ? 'Código de reserva (8 caracteres)'
+                          ? 'Código de reserva (10 caracteres)'
                           : 'Código de 6 dígitos',
                       labelStyle: TextStyle(
                         color: MetaColors.subtext(context),

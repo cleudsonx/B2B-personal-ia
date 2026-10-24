@@ -5,6 +5,7 @@ from app.core.security import get_current_user_payload
 from app.services.gemini_service import gemini_service, GeminiService
 from app.services.supabase_service import supabase_service, is_valid_uuid
 from app.core.config import settings
+from app.services.mfa_security import has_recent_mfa
 
 
 async def get_current_user(payload: Dict[str, Any] = Depends(get_current_user_payload)) -> Dict[str, Any]:
@@ -56,19 +57,10 @@ async def get_current_trainer(current_user: Dict[str, Any] = Depends(get_current
     if "trainer" not in roles:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso exclusivo para treinadores.")
     
-    # 2FA aceita AAL2 nativo (TOTP) OU 2FA Multi-Canal (WhatsApp/E-mail OTP) / Dispositivo Confiável
+    # 2FA aceita AAL2 nativo (TOTP) OU verificação multi-canal recente (janela curta de sessão).
+    # A confiança de 30 dias é por dispositivo e renovada via /auth/mfa/trusted-login.
     is_aal2 = current_user.get("aal") == "aal2"
-    mfa_verified_at = profile.get("mfa_verified_at")
-    has_valid_multichannel_mfa = False
-
-    if mfa_verified_at:
-        try:
-            mfa_time = datetime.fromisoformat(str(mfa_verified_at).replace("Z", "+00:00"))
-            # Confiável por até 30 dias após validação
-            if datetime.now(timezone.utc) - mfa_time < timedelta(days=30):
-                has_valid_multichannel_mfa = True
-        except Exception:
-            pass
+    has_valid_multichannel_mfa = has_recent_mfa(profile)
 
     if not is_aal2 and not has_valid_multichannel_mfa:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Verificação em duas etapas obrigatória para treinadores.")

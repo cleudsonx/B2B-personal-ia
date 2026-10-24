@@ -733,21 +733,51 @@ class AuthService {
     // 1. Se tem AAL2 no Supabase (TOTP)
     if (await isCurrentSessionAal2()) return true;
 
-    // 2. Se o dispositivo local é confiável (lembrado por 30 dias)
-    if (await isCurrentDeviceTrusted()) return true;
-
-    // 3. Se o profile tem mfa_verified_at recente (nas últimas 24h ou 30 dias)
+    // 2. Se o profile tem mfa_verified_at dentro da janela de sessão (12h, igual ao servidor)
     try {
       final profile = await getCurrentProfile();
       final verifiedAtStr = profile?['mfa_verified_at'] as String?;
       if (verifiedAtStr != null) {
         final verifiedAt = DateTime.tryParse(verifiedAtStr);
-        if (verifiedAt != null && DateTime.now().difference(verifiedAt).inDays < 30) {
+        if (verifiedAt != null && DateTime.now().difference(verifiedAt).inHours < 12) {
           return true;
         }
       }
     } catch (_) {}
 
+    // 3. Dispositivo confiável (30 dias): o servidor valida o token e renova a janela
+    return restoreTrustedSession();
+  }
+
+  /// Apresenta ao servidor o token do dispositivo confiável. Só libera se o servidor
+  /// reconhecer o token; se ele for recusado (expirado/revogado), limpa a confiança local.
+  static Future<bool> restoreTrustedSession() async {
+    try {
+      final user = currentUser;
+      final token = accessToken;
+      if (user == null || token == null) return false;
+      final prefs = await SharedPreferences.getInstance();
+      final trustedToken = prefs.getString('$_keyMfaTrustedToken${user.id}');
+      if (trustedToken == null || trustedToken.isEmpty || !await isCurrentDeviceTrusted()) {
+        return false;
+      }
+      final res = await http.post(
+        Uri.parse('${AppConfig.apiBaseUrl}/auth/mfa/trusted-login'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'trusted_device_token': trustedToken}),
+      ).timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        _cachedProfile = null; // força releitura de mfa_verified_at
+        return true;
+      }
+      if (res.statusCode == 403) {
+        await clearCurrentDeviceTrusted();
+      }
+    } catch (_) {}
     return false;
   }
 
