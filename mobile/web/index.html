@@ -265,6 +265,96 @@
           return false;
         }
       };
+
+      // =========================================================================
+      // Motor de Áudio Esportivo (Web Audio API) & Vibração Nativa (3-2-1 GO!)
+      // =========================================================================
+      var _restAudioCtx = null;
+      function _getRestAudioCtx() {
+        try {
+          if (!_restAudioCtx) {
+            var AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) {
+              _restAudioCtx = new AudioCtx();
+            }
+          }
+          if (_restAudioCtx && _restAudioCtx.state === 'suspended') {
+            _restAudioCtx.resume();
+          }
+          return _restAudioCtx;
+        } catch (_) {
+          return null;
+        }
+      }
+
+      window.unlockAudioContext = function() {
+        try {
+          var ctx = _getRestAudioCtx();
+          if (ctx) {
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            gain.gain.value = 0.0001;
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(0);
+            osc.stop(ctx.currentTime + 0.01);
+          }
+        } catch (_) {}
+      };
+
+      // Destrava o AudioContext automaticamente no primeiro toque na tela
+      document.addEventListener('touchstart', function _unlockTouch() {
+        window.unlockAudioContext();
+        document.removeEventListener('touchstart', _unlockTouch);
+      }, { passive: true });
+      document.addEventListener('click', function _unlockClick() {
+        window.unlockAudioContext();
+        document.removeEventListener('click', _unlockClick);
+      }, { passive: true });
+
+      function _playSportTone(ctx, freq, startOffset, duration, volume, type) {
+        try {
+          var osc = ctx.createOscillator();
+          var gain = ctx.createGain();
+          osc.type = type || 'triangle';
+          osc.frequency.setValueAtTime(freq, ctx.currentTime + startOffset);
+          gain.gain.setValueAtTime(0.001, ctx.currentTime + startOffset);
+          gain.gain.exponentialRampToValueAtTime(volume || 0.38, ctx.currentTime + startOffset + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startOffset + duration);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(ctx.currentTime + startOffset);
+          osc.stop(ctx.currentTime + startOffset + duration + 0.02);
+        } catch (_) {}
+      }
+
+      window.triggerRestTimerCue = function(secondsRemaining, soundEnabled, hapticEnabled) {
+        try {
+          if (hapticEnabled && navigator.vibrate) {
+            if (secondsRemaining <= 0) {
+              navigator.vibrate([200, 90, 200, 90, 420]);
+            } else if (secondsRemaining <= 3) {
+              navigator.vibrate(90);
+            }
+          }
+        } catch (_) {}
+
+        try {
+          if (soundEnabled) {
+            var ctx = _getRestAudioCtx();
+            if (!ctx) return;
+            if (secondsRemaining === 3 || secondsRemaining === 2 || secondsRemaining === 1) {
+              // Beep curto de contagem regressiva (880Hz - Lá5)
+              _playSportTone(ctx, 880, 0.0, 0.12, 0.35, 'triangle');
+            } else if (secondsRemaining <= 0) {
+              // Alerta triplo ascendente de fim de descanso (GO!)
+              _playSportTone(ctx, 880, 0.0, 0.12, 0.40, 'triangle');
+              _playSportTone(ctx, 1174.66, 0.14, 0.12, 0.42, 'triangle');
+              _playSportTone(ctx, 1318.51, 0.28, 0.36, 0.48, 'triangle');
+            }
+          }
+        } catch (_) {}
+      };
     })();
   </script>
 

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/pwa_installer.dart';
 import 'meta_components.dart';
 
 /// BottomSheet imersivo e tátil de descanso entre séries (Padrão Ouro Mr. Coach AI).
@@ -31,8 +32,15 @@ class RestTimerSheet extends StatefulWidget {
     bool hapticEnabled = true,
   }) {
     try {
+      // Dispara sintetizador Web Audio API + navigator.vibrate para PWA / Web Mobile
+      PwaInstaller.triggerRestTimerCue(
+        secondsRemaining: secondsRemaining,
+        soundEnabled: soundEnabled,
+        hapticEnabled: hapticEnabled,
+      );
+
       if (secondsRemaining == 3) {
-        if (hapticEnabled) HapticFeedback.lightImpact();
+        if (hapticEnabled) HapticFeedback.mediumImpact();
         if (soundEnabled) SystemSound.play(SystemSoundType.click);
       } else if (secondsRemaining == 2) {
         if (hapticEnabled) HapticFeedback.mediumImpact();
@@ -42,10 +50,14 @@ class RestTimerSheet extends StatefulWidget {
         if (soundEnabled) SystemSound.play(SystemSoundType.click);
       } else if (secondsRemaining <= 0) {
         if (hapticEnabled) {
-          HapticFeedback.heavyImpact();
+          HapticFeedback.vibrate();
           Future.delayed(
-            const Duration(milliseconds: 140),
+            const Duration(milliseconds: 160),
             () => HapticFeedback.heavyImpact(),
+          );
+          Future.delayed(
+            const Duration(milliseconds: 320),
+            () => HapticFeedback.vibrate(),
           );
         }
         if (soundEnabled) SystemSound.play(SystemSoundType.alert);
@@ -60,6 +72,7 @@ class RestTimerSheet extends StatefulWidget {
     required String exerciseName,
     VoidCallback? onFinished,
   }) {
+    PwaInstaller.unlockAudioContext();
     HapticFeedback.selectionClick();
     return showModalBottomSheet(
       context: context,
@@ -117,11 +130,20 @@ class _RestTimerSheetState extends State<RestTimerSheet>
   }
 
   Future<void> _toggleSoundAlert() async {
+    PwaInstaller.unlockAudioContext();
     HapticFeedback.selectionClick();
     final newVal = !_soundAlertEnabled;
     setState(() {
       _soundAlertEnabled = newVal;
     });
+    if (newVal) {
+      // Emite um bip imediato para confirmar ativação e desbloquear o canal de áudio
+      RestTimerSheet.triggerCadencedFeedback(
+        3,
+        soundEnabled: true,
+        hapticEnabled: false,
+      );
+    }
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_kSoundPrefKey, newVal);
@@ -134,6 +156,13 @@ class _RestTimerSheetState extends State<RestTimerSheet>
     setState(() {
       _hapticAlertEnabled = newVal;
     });
+    if (newVal) {
+      RestTimerSheet.triggerCadencedFeedback(
+        1,
+        soundEnabled: false,
+        hapticEnabled: true,
+      );
+    }
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_kHapticPrefKey, newVal);
@@ -236,10 +265,10 @@ class _RestTimerSheetState extends State<RestTimerSheet>
   }
 
   String _getUrgentCountdownLabel(bool isFinished) {
-    if (isFinished) return 'HORA DA PRÓXIMA SÉRIE! GO! 🔥';
-    if (_remainingSeconds == 3) return '3 • PREPARE-SE!';
-    if (_remainingSeconds == 2) return '2 • RESPIRE FUNDO!';
-    if (_remainingSeconds == 1) return '1 • POSICIONE-SE!';
+    if (isFinished) return 'PRÓXIMA SÉRIE!\nVAMOS LÁ! \u{1F525}';
+    if (_remainingSeconds == 3) return '3 \u2022 PREPARE-SE!';
+    if (_remainingSeconds == 2) return '2 \u2022 RESPIRE FUNDO!';
+    if (_remainingSeconds == 1) return '1 \u2022 POSICIONE-SE!';
     return _isRunning ? 'Em recuperação ativa...' : 'Descanso pausado';
   }
 
@@ -352,66 +381,81 @@ class _RestTimerSheetState extends State<RestTimerSheet>
               const SizedBox(height: 20),
 
               // Mostrador Circular Regressivo com Pulso
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    width: 210,
-                    height: 210,
-                    child: CircularProgressIndicator(
-                      value: progress,
-                      strokeWidth: 12,
-                      backgroundColor: isDark
-                          ? const Color(0xFF131B2E)
-                          : MetaColors.lightSurfaceHighlight,
-                      valueColor: AlwaysStoppedAnimation<Color>(themeColor),
+              SizedBox(
+                width: 224,
+                height: 224,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      width: 220,
+                      height: 220,
+                      child: CircularProgressIndicator(
+                        value: progress,
+                        strokeWidth: 11,
+                        backgroundColor: isDark
+                            ? const Color(0xFF131B2E)
+                            : MetaColors.lightSurfaceHighlight,
+                        valueColor: AlwaysStoppedAnimation<Color>(themeColor),
+                      ),
                     ),
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AnimatedBuilder(
-                        animation: _pulseController,
-                        builder: (context, child) {
-                          final scale = (isFinished || (_remainingSeconds <= 3 && _remainingSeconds > 0))
-                              ? 1.0 + (_pulseController.value * 0.08)
-                              : 1.0;
-                          return Transform.scale(
-                            scale: scale,
-                            child: Text(
-                              _formatTime(_remainingSeconds),
-                              style: TextStyle(
-                                fontSize: 52,
-                                fontWeight: FontWeight.w900,
-                                fontFeatures: const [
-                                  FontFeature.tabularFigures(),
-                                ],
-                                color: themeColor,
-                                shadows: [
-                                  BoxShadow(
-                                    color: themeColor.withValues(alpha: 0.4),
-                                    blurRadius: 20,
+                    SizedBox(
+                      width: 168,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          AnimatedBuilder(
+                            animation: _pulseController,
+                            builder: (context, child) {
+                              final scale = (isFinished || (_remainingSeconds <= 3 && _remainingSeconds > 0))
+                                  ? 1.0 + (_pulseController.value * 0.06)
+                                  : 1.0;
+                              return Transform.scale(
+                                scale: scale,
+                                child: Text(
+                                  _formatTime(_remainingSeconds),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 48,
+                                    height: 1.05,
+                                    fontWeight: FontWeight.w900,
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures(),
+                                    ],
+                                    color: themeColor,
+                                    shadows: [
+                                      BoxShadow(
+                                        color: themeColor.withValues(alpha: 0.4),
+                                        blurRadius: 20,
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _getUrgentCountdownLabel(isFinished),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              height: 1.25,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.3,
+                              color: (_remainingSeconds <= 3 && _remainingSeconds > 0)
+                                  ? Colors.redAccent
+                                  : (isFinished ? MetaColors.emerald : textSecondary),
                             ),
-                          );
-                        },
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _getUrgentCountdownLabel(isFinished),
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: (_remainingSeconds <= 3 && _remainingSeconds > 0)
-                              ? Colors.redAccent
-                              : (isFinished ? MetaColors.emerald : textSecondary),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 20),
 

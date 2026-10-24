@@ -8,5 +8,5 @@ void triggerPwaReload() {}
 void onPwaUpdateAvailable(void Function() callback) {}
 Future<bool> isWebBiometricsAvailable() async => false;
 Future<bool> authenticateWithWebBiometrics() async => false;
-
-
+void unlockAudioContext() {}
+void triggerRestTimerCue(int secondsRemaining, bool soundEnabled, bool hapticEnabled) {}

@@ -118,3 +118,32 @@ Future<bool> authenticateWithWebBiometrics() async {
   }
 }
 
+@JS('unlockAudioContext')
+external void _jsUnlockAudioContext();
+
+@JS('triggerRestTimerCue')
+external void _jsTriggerRestTimerCue(
+  JSNumber secondsRemaining,
+  JSBoolean soundEnabled,
+  JSBoolean hapticEnabled,
+);
+
+void unlockAudioContext() {
+  try {
+    _jsUnlockAudioContext();
+  } catch (_) {}
+}
+
+void triggerRestTimerCue(
+  int secondsRemaining,
+  bool soundEnabled,
+  bool hapticEnabled,
+) {
+  try {
+    _jsTriggerRestTimerCue(
+      secondsRemaining.toJS,
+      soundEnabled.toJS,
+      hapticEnabled.toJS,
+    );
+  } catch (_) {}
+}

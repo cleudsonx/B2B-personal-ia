@@ -63,5 +63,21 @@ class PwaInstaller {
     if (!kIsWeb) return Future.value(false);
     return impl.authenticateWithWebBiometrics();
   }
+
+  /// Desbloqueia o AudioContext do navegador no gesto do usuário (iOS Safari / Chrome Mobile)
+  static void unlockAudioContext() {
+    if (!kIsWeb) return;
+    impl.unlockAudioContext();
+  }
+
+  /// Dispara os sinais sonoros (Web Audio API) e vibração (navigator.vibrate) do timer de descanso
+  static void triggerRestTimerCue({
+    required int secondsRemaining,
+    required bool soundEnabled,
+    required bool hapticEnabled,
+  }) {
+    if (!kIsWeb) return;
+    impl.triggerRestTimerCue(secondsRemaining, soundEnabled, hapticEnabled);
+  }
 }
 
