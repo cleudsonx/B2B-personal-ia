@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -10,14 +11,23 @@ import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/smart_install_banner.dart';
 import '../../services/auth_service.dart';
 
+enum MfaMethod {
+  whatsapp,
+  email,
+  authenticator,
+  backupCode,
+}
+
 class TeacherMfaScreen extends StatefulWidget {
   final Future<void> Function()? onVerified;
   final bool allowEnrollment;
+  final MfaMethod initialMethod;
 
   const TeacherMfaScreen({
     super.key,
     this.onVerified,
     this.allowEnrollment = true,
+    this.initialMethod = MfaMethod.whatsapp,
   });
 
   @override
@@ -26,25 +36,52 @@ class TeacherMfaScreen extends StatefulWidget {
 
 class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
   final _codeController = TextEditingController();
+  
+  MfaMethod _currentMethod = MfaMethod.whatsapp;
+  bool _rememberDevice = true;
+  
   AuthMFAEnrollResponse? _enrollment;
   String? _factorId;
   bool _loading = true;
   bool _submitting = false;
   bool _alreadyEnabled = false;
   String? _error;
+  String? _destinationHint;
+  
+  Timer? _countdownTimer;
+  int _secondsRemaining = 0;
 
-  bool get _isEnrolling => _enrollment != null;
+  bool get _isEnrollingTotp => _currentMethod == MfaMethod.authenticator && _enrollment != null;
 
   @override
   void initState() {
     super.initState();
+    _currentMethod = widget.initialMethod;
     _prepare();
   }
 
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     _codeController.dispose();
     super.dispose();
+  }
+
+  void _startCountdown([int seconds = 45]) {
+    _countdownTimer?.cancel();
+    setState(() => _secondsRemaining = seconds);
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_secondsRemaining <= 1) {
+        timer.cancel();
+        setState(() => _secondsRemaining = 0);
+      } else {
+        setState(() => _secondsRemaining--);
+      }
+    });
   }
 
   Future<void> _prepare() async {
@@ -52,56 +89,176 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
       _loading = true;
       _error = null;
     });
+
     try {
-      final factorId = await AuthService.getVerifiedTotpFactorId();
-      if (factorId != null) {
-        if (await AuthService.isCurrentSessionAal2()) {
-          if (widget.onVerified != null) {
-            await widget.onVerified!.call();
-          } else if (mounted) {
-            setState(() {
-              _factorId = factorId;
-              _alreadyEnabled = true;
-            });
-          }
-          return;
+      // 1. Verifica se já está com MFA satisfeito (AAL2 ou dispositivo confiável ativo)
+      if (await AuthService.isCurrentSessionMfaSatisfied()) {
+        if (widget.onVerified != null) {
+          await widget.onVerified!.call();
+        } else if (mounted) {
+          setState(() => _alreadyEnabled = true);
         }
-        if (mounted) setState(() => _factorId = factorId);
         return;
       }
-      if (!widget.allowEnrollment) {
-        throw StateError('Configure a verificação em duas etapas antes de continuar.');
+
+      // 2. Verifica se o usuário tem TOTP cadastrado
+      final factorId = await AuthService.getVerifiedTotpFactorId();
+      _factorId = factorId;
+
+      // 3. Define método inicial inteligente:
+      // Se tiver TOTP e o usuário não especificou WhatsApp explicitamente, podemos oferecer TOTP
+      // mas se o usuário entrou normalmente, WhatsApp é o canal padrão de menor atrito no Brasil.
+      if (factorId != null && widget.initialMethod == MfaMethod.authenticator) {
+        _currentMethod = MfaMethod.authenticator;
+      } else {
+        _currentMethod = MfaMethod.whatsapp;
+        await _requestOtpCode(channel: 'whatsapp', showToast: false);
       }
-      final enrollment = await AuthService.enrollTeacherTotp();
-      if (mounted) setState(() => _enrollment = enrollment);
     } catch (error) {
-      if (mounted) setState(() => _error = AuthService.formatMfaError(error));
+      // Se falhar ao solicitar no WhatsApp (ex: professor não tem telefone cadastrado ainda), faz fallback para TOTP ou Email
+      if (_currentMethod == MfaMethod.whatsapp) {
+        try {
+          _currentMethod = MfaMethod.email;
+          await _requestOtpCode(channel: 'email', showToast: false);
+        } catch (_) {
+          if (_factorId != null) {
+            _currentMethod = MfaMethod.authenticator;
+          } else if (widget.allowEnrollment) {
+            _currentMethod = MfaMethod.authenticator;
+            final enrollment = await AuthService.enrollTeacherTotp();
+            if (mounted) setState(() => _enrollment = enrollment);
+          }
+        }
+      } else if (mounted) {
+        setState(() => _error = AuthService.formatMfaError(error));
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  Future<void> _regenerateEnrollment() async {
+  Future<void> _requestOtpCode({required String channel, bool showToast = true}) async {
     setState(() {
       _loading = true;
       _error = null;
-      _codeController.clear();
     });
     try {
-      final enrollment = await AuthService.enrollTeacherTotp();
+      final res = await AuthService.requestMfaCode(channel: channel);
+      final dest = res['destination'] as String?;
       if (mounted) {
-        setState(() => _enrollment = enrollment);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Nova chave de configuração gerada com sucesso!'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        setState(() {
+          _destinationHint = dest;
+        });
+        _startCountdown(45);
+        if (showToast) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Código enviado para ${dest ?? channel}!'),
+              backgroundColor: MetaColors.emerald,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
       }
-    } catch (error) {
-      if (mounted) setState(() => _error = AuthService.formatMfaError(error));
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = e.toString().replaceAll('Exception: ', ''));
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _switchMethod(MfaMethod method) async {
+    if (_currentMethod == method) return;
+    setState(() {
+      _currentMethod = method;
+      _codeController.clear();
+      _error = null;
+    });
+
+    if (method == MfaMethod.whatsapp) {
+      await _requestOtpCode(channel: 'whatsapp');
+    } else if (method == MfaMethod.email) {
+      await _requestOtpCode(channel: 'email');
+    } else if (method == MfaMethod.authenticator) {
+      if (_factorId == null && _enrollment == null && widget.allowEnrollment) {
+        setState(() => _loading = true);
+        try {
+          final enrollment = await AuthService.enrollTeacherTotp();
+          if (mounted) setState(() => _enrollment = enrollment);
+        } catch (e) {
+          if (mounted) setState(() => _error = AuthService.formatMfaError(e));
+        } finally {
+          if (mounted) setState(() => _loading = false);
+        }
+      }
+    }
+  }
+
+  Future<void> _verify() async {
+    final rawCode = _codeController.text.trim();
+    final sanitizedCode = rawCode.replaceAll(RegExp(r'\s+'), '');
+
+    if (sanitizedCode.isEmpty) {
+      setState(() => _error = 'Por favor, digite o código de verificação.');
+      return;
+    }
+
+    if (_currentMethod == MfaMethod.backupCode) {
+      if (sanitizedCode.length < 8) {
+        setState(() => _error = 'O código de reserva deve ter exatamente 8 dígitos/caracteres.');
+        return;
+      }
+    } else {
+      final digits = sanitizedCode.replaceAll(RegExp(r'\D'), '');
+      if (digits.length != 6) {
+        setState(() => _error = 'O código de verificação deve ter exatamente 6 dígitos.');
+        return;
+      }
+    }
+
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+
+    try {
+      if (_currentMethod == MfaMethod.whatsapp || _currentMethod == MfaMethod.email) {
+        await AuthService.verifyMfaCode(
+          code: sanitizedCode,
+          rememberDevice: _rememberDevice,
+        );
+      } else if (_currentMethod == MfaMethod.authenticator) {
+        final factorId = _enrollment?.id ?? _factorId;
+        if (factorId == null) {
+          throw StateError('Fator de autenticação não identificado.');
+        }
+        await AuthService.verifyTotp(
+          factorId: factorId,
+          code: sanitizedCode.replaceAll(RegExp(r'\D'), ''),
+        );
+        if (_rememberDevice) {
+          await AuthService.saveCurrentDeviceTrusted();
+        }
+      } else if (_currentMethod == MfaMethod.backupCode) {
+        await AuthService.verifyMfaBackupCode(
+          code: sanitizedCode.toUpperCase(),
+          rememberDevice: _rememberDevice,
+        );
+      }
+
+      if (widget.onVerified != null) {
+        await widget.onVerified!.call();
+      } else if (mounted) {
+        Navigator.of(context).pop(true);
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() => _error = AuthService.formatMfaError(error));
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
@@ -111,9 +268,7 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
       try {
         final uri = Uri.parse(uriStr);
         final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-        if (!launched) {
-          _copySecret();
-        }
+        if (!launched) _copySecret();
       } catch (_) {
         _copySecret();
       }
@@ -165,39 +320,6 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
     }
   }
 
-  Future<void> _verify() async {
-    final factorId = _enrollment?.id ?? _factorId;
-    final sanitizedCode = _codeController.text.replaceAll(RegExp(r'\D'), '').trim();
-
-    if (factorId == null || sanitizedCode.length != 6) {
-      setState(() => _error = 'Digite o código de exatamente seis dígitos do aplicativo autenticador.');
-      return;
-    }
-
-    setState(() {
-      _submitting = true;
-      _error = null;
-    });
-
-    try {
-      await AuthService.verifyTotp(
-        factorId: factorId,
-        code: sanitizedCode,
-      );
-      if (widget.onVerified != null) {
-        await widget.onVerified!.call();
-      } else if (mounted) {
-        Navigator.of(context).pop(true);
-      }
-    } catch (error) {
-      if (mounted) {
-        setState(() => _error = AuthService.formatMfaError(error));
-      }
-    } finally {
-      if (mounted) setState(() => _submitting = false);
-    }
-  }
-
   Future<void> _signOut() async {
     await AuthService.signOut();
     if (mounted) {
@@ -205,18 +327,409 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
     }
   }
 
+  void _showAlternativeMethodsModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: MetaColors.bg(context),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 24,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Opções de verificação',
+                    style: TextStyle(
+                      color: MetaColors.text(context),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close, color: MetaColors.subtext(context)),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Escolha como deseja receber ou validar sua verificação em duas etapas:',
+                style: TextStyle(
+                  color: MetaColors.subtext(context),
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 18),
+              _buildMethodOptionTile(
+                context,
+                title: 'WhatsApp (Recomendado)',
+                subtitle: 'Envio rápido e direto no seu WhatsApp cadastrado',
+                icon: Icons.chat_bubble_outline,
+                badge: 'Sem app extra',
+                badgeColor: MetaColors.emerald,
+                selected: _currentMethod == MfaMethod.whatsapp,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _switchMethod(MfaMethod.whatsapp);
+                },
+              ),
+              const SizedBox(height: 10),
+              _buildMethodOptionTile(
+                context,
+                title: 'E-mail',
+                subtitle: 'Código de segurança enviado para sua caixa de entrada',
+                icon: Icons.mail_outline,
+                selected: _currentMethod == MfaMethod.email,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _switchMethod(MfaMethod.email);
+                },
+              ),
+              const SizedBox(height: 10),
+              _buildMethodOptionTile(
+                context,
+                title: 'Aplicativo Autenticador',
+                subtitle: 'Google Authenticator, Microsoft ou 1Password',
+                icon: Icons.security_rounded,
+                selected: _currentMethod == MfaMethod.authenticator,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _switchMethod(MfaMethod.authenticator);
+                },
+              ),
+              const SizedBox(height: 10),
+              _buildMethodOptionTile(
+                context,
+                title: 'Código de reserva',
+                subtitle: 'Use um dos seus 8 códigos de emergência salvos',
+                icon: Icons.vpn_key_outlined,
+                selected: _currentMethod == MfaMethod.backupCode,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _switchMethod(MfaMethod.backupCode);
+                },
+              ),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 8),
+              InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showResetTotpDialog();
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.help_outline, color: Colors.orangeAccent, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Perdeu o autenticador ou trocou de celular?',
+                          style: TextStyle(
+                            color: MetaColors.text(context),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, color: Colors.orangeAccent, size: 20),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMethodOptionTile(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+    String? badge,
+    Color? badgeColor,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: selected
+              ? MetaColors.emerald.withValues(alpha: 0.1)
+              : MetaColors.highlight(context),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? MetaColors.emerald : MetaColors.cardBorder(context),
+            width: selected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: (selected ? MetaColors.emerald : MetaColors.subtext(context)).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: selected ? MetaColors.emerald : MetaColors.text(context),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            color: MetaColors.text(context),
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (badge != null) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: (badgeColor ?? MetaColors.emerald).withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            badge,
+                            style: TextStyle(
+                              color: badgeColor ?? MetaColors.emerald,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: MetaColors.subtext(context),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (selected)
+              const Icon(Icons.check_circle, color: MetaColors.emerald, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showResetTotpDialog() {
+    final recoveryCodeController = TextEditingController();
+    String channel = 'whatsapp';
+    bool requesting = false;
+    bool resetting = false;
+    String? resetError;
+    final messenger = ScaffoldMessenger.of(context);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: MetaColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              const Icon(Icons.lock_reset, color: Colors.orangeAccent),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Desvincular Autenticador',
+                  style: TextStyle(color: MetaColors.text(context), fontSize: 17, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Se você trocou de aparelho ou não tem mais acesso ao aplicativo autenticador, enviaremos um código de segurança para seu WhatsApp ou E-mail para desvincular o app anterior.',
+                  style: TextStyle(color: MetaColors.subtext(context), fontSize: 13, height: 1.4),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Via WhatsApp'),
+                      selected: channel == 'whatsapp',
+                      onSelected: (val) {
+                        if (val) setDialogState(() => channel = 'whatsapp');
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    ChoiceChip(
+                      label: const Text('Via E-mail'),
+                      selected: channel == 'email',
+                      onSelected: (val) {
+                        if (val) setDialogState(() => channel = 'email');
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                ElevatedButton.icon(
+                  onPressed: requesting
+                      ? null
+                      : () async {
+                          setDialogState(() {
+                            requesting = true;
+                            resetError = null;
+                          });
+                          try {
+                            await AuthService.requestMfaCode(channel: channel);
+                            if (mounted) {
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text('Código de desvinculação enviado via $channel!'),
+                                  backgroundColor: MetaColors.emerald,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setDialogState(() => resetError = e.toString().replaceAll('Exception: ', ''));
+                          } finally {
+                            setDialogState(() => requesting = false);
+                          }
+                        },
+                  icon: requesting
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.send, size: 16),
+                  label: Text(requesting ? 'Enviando...' : '1. Solicitar código de recuperação'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: MetaColors.highlight(context),
+                    foregroundColor: MetaColors.text(context),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: recoveryCodeController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(6),
+                  ],
+                  decoration: const InputDecoration(
+                    labelText: '2. Digite o código de 6 dígitos recebido',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                if (resetError != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    resetError!,
+                    style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: resetting
+                  ? null
+                  : () async {
+                      final code = recoveryCodeController.text.trim();
+                      if (code.length != 6) {
+                        setDialogState(() => resetError = 'Digite os 6 dígitos recebidos.');
+                        return;
+                      }
+                      setDialogState(() {
+                        resetting = true;
+                        resetError = null;
+                      });
+                      try {
+                        await AuthService.resetMfaTotp(
+                          code: code,
+                          channel: channel,
+                        );
+                        if (ctx.mounted) {
+                          Navigator.pop(ctx);
+                        }
+                        if (mounted) {
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('Autenticador desvinculado com sucesso!'),
+                              backgroundColor: MetaColors.emerald,
+                            ),
+                          );
+                          _prepare();
+                        }
+                      } catch (e) {
+                        setDialogState(() => resetError = e.toString().replaceAll('Exception: ', ''));
+                      } finally {
+                        setDialogState(() => resetting = false);
+                      }
+                    },
+              child: Text(resetting ? 'Desvinculando...' : 'Confirmar e Desvincular'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final secret = _enrollment?.totp?.secret;
     final isDark = MetaColors.isDark(context);
 
-    final isConfirming = _factorId != null && !_isEnrolling;
-
     return Scaffold(
       backgroundColor: MetaColors.bg(context),
       appBar: AppBar(
         title: Text(
-          'Segurança do treinador',
+          'Segurança do Treinador',
           style: TextStyle(
             color: MetaColors.text(context),
             fontWeight: FontWeight.w600,
@@ -256,11 +769,9 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
                   color: MetaColors.emerald,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               Text(
-                isConfirming
-                    ? 'Confirme sua identidade'
-                    : 'Ative a verificação em duas etapas',
+                _getHeaderTitle(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: MetaColors.text(context),
@@ -269,11 +780,9 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
                   letterSpacing: -0.5,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Text(
-                isConfirming
-                    ? 'Digite o código de 6 dígitos gerado pelo seu aplicativo autenticador para liberar o painel do treinador.'
-                    : 'Adicione a chave abaixo ao seu aplicativo autenticador (Google Authenticator, Microsoft ou 1Password) para proteger o acesso às ferramentas de treinador.',
+                _getHeaderSubtitle(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: MetaColors.subtext(context),
@@ -281,96 +790,35 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
                   fontSize: 14,
                 ),
               ),
+              if (_destinationHint != null && (_currentMethod == MfaMethod.whatsapp || _currentMethod == MfaMethod.email)) ...[
+                const SizedBox(height: 8),
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: MetaColors.highlight(context),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: MetaColors.cardBorder(context)),
+                    ),
+                    child: Text(
+                      'Destino: $_destinationHint',
+                      style: TextStyle(
+                        color: MetaColors.emerald,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+
               if (_loading) ...[
                 const SizedBox(height: 40),
                 const Center(
                   child: CircularProgressIndicator(color: MetaColors.emerald),
                 ),
                 const SizedBox(height: 40),
-              ] else if (secret != null) ...[
-                const SizedBox(height: 20),
-                _buildAuthenticatorGuide(context),
-                const SizedBox(height: 20),
-                MetaCard(
-                  padding: const EdgeInsets.all(18),
-                  borderRadius: 16,
-                  backgroundColor: MetaColors.highlight(context),
-                  borderColor: MetaColors.cardBorder(context),
-                  child: Column(
-                    children: [
-                      Text(
-                        'CHAVE DE CONFIGURAÇÃO',
-                        style: TextStyle(
-                          color: MetaColors.subtext(context),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      SelectableText(
-                        secret,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: MetaColors.text(context),
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.5,
-                          fontFamily: 'monospace',
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: _copySecret,
-                            icon: const Icon(Icons.copy, size: 16),
-                            label: const Text('Copiar chave'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: MetaColors.text(context),
-                              side: BorderSide(color: MetaColors.cardBorder(context)),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                            ),
-                          ),
-                          ElevatedButton.icon(
-                            onPressed: _openInAuthenticator,
-                            icon: const Icon(Icons.open_in_new, size: 16),
-                            label: const Text('Abrir no App'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: MetaColors.primaryColor(context),
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Center(
-                  child: TextButton.icon(
-                    onPressed: _loading ? null : _regenerateEnrollment,
-                    icon: const Icon(Icons.refresh, size: 15),
-                    label: const Text('Gerar nova chave'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: MetaColors.subtext(context),
-                      textStyle: const TextStyle(fontSize: 13),
-                    ),
-                  ),
-                ),
-              ],
-              if (_alreadyEnabled) ...[
+              ] else if (_alreadyEnabled) ...[
                 const SizedBox(height: 24),
                 MetaCard(
                   padding: const EdgeInsets.all(16),
@@ -384,7 +832,7 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Verificação em duas etapas ativa',
+                              'Dispositivo verificado e seguro',
                               style: TextStyle(
                                 color: MetaColors.text(context),
                                 fontWeight: FontWeight.w600,
@@ -393,7 +841,7 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Sua conta de treinador já está protegida.',
+                              'Seu acesso às ferramentas de treinador está liberado.',
                               style: TextStyle(
                                 color: MetaColors.subtext(context),
                                 fontSize: 13,
@@ -405,9 +853,82 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
                     ],
                   ),
                 ),
-              ],
-              if (!_loading && !_alreadyEnabled && (_isEnrolling || _factorId != null)) ...[
-                const SizedBox(height: 16),
+              ] else ...[
+                // Guia do Authenticator apenas se o método for Authenticator e estiver em enrollment
+                if (_isEnrollingTotp && secret != null) ...[
+                  const SizedBox(height: 20),
+                  _buildAuthenticatorGuide(context),
+                  const SizedBox(height: 20),
+                  MetaCard(
+                    padding: const EdgeInsets.all(18),
+                    borderRadius: 16,
+                    backgroundColor: MetaColors.highlight(context),
+                    borderColor: MetaColors.cardBorder(context),
+                    child: Column(
+                      children: [
+                        Text(
+                          'CHAVE DE CONFIGURAÇÃO MANUAL',
+                          style: TextStyle(
+                            color: MetaColors.subtext(context),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        SelectableText(
+                          secret,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: MetaColors.text(context),
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.5,
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: _copySecret,
+                              icon: const Icon(Icons.copy, size: 16),
+                              label: const Text('Copiar chave'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: MetaColors.text(context),
+                                side: BorderSide(color: MetaColors.cardBorder(context)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              ),
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: _openInAuthenticator,
+                              icon: const Icon(Icons.open_in_new, size: 16),
+                              label: const Text('Abrir no App'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: MetaColors.primaryColor(context),
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 20),
+                // Campo de digitação de código
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   decoration: BoxDecoration(
@@ -422,27 +943,40 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
                   ),
                   child: TextField(
                     controller: _codeController,
-                    keyboardType: TextInputType.number,
+                    keyboardType: _currentMethod == MfaMethod.backupCode
+                        ? TextInputType.text
+                        : TextInputType.number,
                     textAlign: TextAlign.center,
-                    maxLength: 6,
+                    maxLength: _currentMethod == MfaMethod.backupCode ? 8 : 6,
                     autofillHints: const [AutofillHints.oneTimeCode],
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(6),
-                    ],
+                    textCapitalization: _currentMethod == MfaMethod.backupCode
+                        ? TextCapitalization.characters
+                        : TextCapitalization.none,
+                    inputFormatters: _currentMethod == MfaMethod.backupCode
+                        ? [
+                            FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+                            LengthLimitingTextInputFormatter(8),
+                          ]
+                        : [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(6),
+                          ],
                     style: TextStyle(
                       color: MetaColors.text(context),
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
-                      letterSpacing: 10,
+                      letterSpacing: _currentMethod == MfaMethod.backupCode ? 4 : 8,
                     ),
                     onChanged: (val) {
-                      if (val.replaceAll(RegExp(r'\D'), '').length == 6 && !_submitting) {
+                      final maxLen = _currentMethod == MfaMethod.backupCode ? 8 : 6;
+                      if (val.trim().length == maxLen && !_submitting) {
                         _verify();
                       }
                     },
                     decoration: InputDecoration(
-                      labelText: 'Código de 6 dígitos',
+                      labelText: _currentMethod == MfaMethod.backupCode
+                          ? 'Código de reserva (8 caracteres)'
+                          : 'Código de 6 dígitos',
                       labelStyle: TextStyle(
                         color: MetaColors.subtext(context),
                         letterSpacing: 0,
@@ -454,29 +988,92 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 18),
+
+                const SizedBox(height: 12),
+                // Checkbox "Lembrar deste dispositivo por 30 dias"
+                InkWell(
+                  onTap: () => setState(() => _rememberDevice = !_rememberDevice),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                    child: Row(
+                      children: [
+                        Checkbox(
+                          value: _rememberDevice,
+                          onChanged: (v) => setState(() => _rememberDevice = v ?? true),
+                          activeColor: MetaColors.emerald,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                        ),
+                        Expanded(
+                          child: Text(
+                            'Confiar neste dispositivo por 30 dias (não pedir código a cada login)',
+                            style: TextStyle(
+                              color: MetaColors.text(context),
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 14),
                 SquircleButton(
-                  label: _isEnrolling ? 'Ativar e continuar' : 'Verificar código',
+                  label: _getSubmitButtonLabel(),
                   icon: Icons.lock_open,
                   isLoading: _submitting,
                   isPrimary: true,
                   onPressed: _submitting ? null : _verify,
                 ),
-                if (isConfirming) ...[
-                  const SizedBox(height: 12),
+
+                // Reenviar código (se método for WhatsApp ou Email)
+                if (_currentMethod == MfaMethod.whatsapp || _currentMethod == MfaMethod.email) ...[
+                  const SizedBox(height: 10),
                   Center(
-                    child: TextButton.icon(
-                      onPressed: () => _showGuideDialog(context),
-                      icon: const Icon(Icons.help_outline, size: 16),
-                      label: const Text('Onde encontro este código?'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: MetaColors.subtext(context),
-                        textStyle: const TextStyle(fontSize: 13),
-                      ),
-                    ),
+                    child: _secondsRemaining > 0
+                        ? Text(
+                            'Reenviar código em ${_secondsRemaining}s',
+                            style: TextStyle(
+                              color: MetaColors.subtext(context),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          )
+                        : TextButton.icon(
+                            onPressed: _loading
+                                ? null
+                                : () => _requestOtpCode(
+                                      channel: _currentMethod == MfaMethod.whatsapp ? 'whatsapp' : 'email',
+                                    ),
+                            icon: const Icon(Icons.refresh, size: 16),
+                            label: const Text('Reenviar código agora'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: MetaColors.emerald,
+                              textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                            ),
+                          ),
                   ),
                 ],
+
+                const SizedBox(height: 12),
+                // Botão "Tentar de outro jeito"
+                Center(
+                  child: OutlinedButton.icon(
+                    onPressed: _showAlternativeMethodsModal,
+                    icon: const Icon(Icons.alt_route, size: 16),
+                    label: const Text('Tentar de outro jeito'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: MetaColors.text(context),
+                      side: BorderSide(color: MetaColors.cardBorder(context)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    ),
+                  ),
+                ),
               ],
+
               if (_error != null) ...[
                 const SizedBox(height: 18),
                 Container(
@@ -507,12 +1104,12 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                            if (_isEnrolling) ...[
+                            if (_currentMethod == MfaMethod.authenticator) ...[
                               const SizedBox(height: 8),
                               GestureDetector(
-                                onTap: _regenerateEnrollment,
+                                onTap: _showResetTotpDialog,
                                 child: Text(
-                                  '→ Toque aqui para gerar uma nova chave limpa',
+                                  '→ Perdeu o autenticador? Toque aqui para desvincular com segurança',
                                   style: TextStyle(
                                     color: MetaColors.text(context),
                                     fontSize: 12,
@@ -528,51 +1125,9 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
                     ],
                   ),
                 ),
-                if (_factorId == null && _enrollment == null) ...[
-                  const SizedBox(height: 16),
-                  SquircleButton(
-                    label: 'Tentar novamente',
-                    icon: Icons.refresh,
-                    isPrimary: true,
-                    onPressed: _prepare,
-                  ),
-                ],
               ],
-              if (!_loading && !_alreadyEnabled) ...[
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: MetaColors.highlight(context).withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: MetaColors.cardBorder(context).withValues(alpha: 0.6),
-                    ),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: MetaColors.subtext(context),
-                        size: 16,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'O código expira a cada 30 segundos. Caso o erro persista, verifique se a data e a hora do seu smartphone estão configuradas como automáticas (padrão de rede).',
-                          style: TextStyle(
-                            color: MetaColors.subtext(context),
-                            fontSize: 12,
-                            height: 1.4,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              const SizedBox(height: 16),
+
+              const SizedBox(height: 24),
               Center(
                 child: TextButton(
                   onPressed: _signOut,
@@ -592,42 +1147,37 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
     );
   }
 
-  void _showGuideDialog(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: MetaColors.surface,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildAuthenticatorGuide(context),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: MetaColors.emerald,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Entendido', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  String _getHeaderTitle() {
+    switch (_currentMethod) {
+      case MfaMethod.whatsapp:
+        return 'Código via WhatsApp';
+      case MfaMethod.email:
+        return 'Código via E-mail';
+      case MfaMethod.authenticator:
+        return _isEnrollingTotp ? 'Ativar Autenticador' : 'Código do Autenticador';
+      case MfaMethod.backupCode:
+        return 'Código de Reserva';
+    }
+  }
+
+  String _getHeaderSubtitle() {
+    switch (_currentMethod) {
+      case MfaMethod.whatsapp:
+        return 'Enviamos um código temporário de 6 dígitos para o seu WhatsApp para liberar o painel com total agilidade.';
+      case MfaMethod.email:
+        return 'Enviamos um código de segurança de 6 dígitos para a caixa de entrada do seu e-mail.';
+      case MfaMethod.authenticator:
+        return _isEnrollingTotp
+            ? 'Adicione a chave abaixo ao seu aplicativo autenticador preferido (Google Authenticator, Microsoft ou 1Password).'
+            : 'Digite o código de 6 dígitos gerado pelo seu aplicativo autenticador.';
+      case MfaMethod.backupCode:
+        return 'Digite um dos seus códigos de emergência de 8 caracteres salvos na ativação da conta.';
+    }
+  }
+
+  String _getSubmitButtonLabel() {
+    if (_isEnrollingTotp) return 'Ativar e continuar';
+    return 'Verificar código';
   }
 
   Widget _buildAuthenticatorGuide(BuildContext context) {
@@ -669,7 +1219,7 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            'Para a segurança dos seus alunos e faturamento, o Mr. Coach utiliza autenticação em dois fatores. O app autenticador gera tokens temporários de 6 dígitos que mudam a cada 30 segundos.',
+            'Se optar por app autenticador, ele gera tokens temporários de 6 dígitos que mudam a cada 30 segundos, sem depender de sinal de operadora.',
             style: TextStyle(
               color: MetaColors.subtext(context),
               fontSize: 13,
@@ -679,7 +1229,7 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
           const SizedBox(height: 14),
           Text(
             'PASSO 1: BAIXE UM AUTENTICADOR GRATUITO',
-            style: TextStyle(
+            style: const TextStyle(
               color: MetaColors.emerald,
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -725,7 +1275,7 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
           const SizedBox(height: 16),
           Text(
             'PASSO 2: CONFIGURE A CONTA',
-            style: TextStyle(
+            style: const TextStyle(
               color: MetaColors.emerald,
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -742,13 +1292,13 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
           _buildGuideStepItem(
             context,
             number: '2',
-            text: 'Selecione "Inserir chave de configuração" e cole a chave abaixo (ou toque em "Abrir no App").',
+            text: 'Selecione "Inserir chave de configuração" e cole a chave manual abaixo (ou toque em "Abrir no App").',
           ),
           const SizedBox(height: 8),
           _buildGuideStepItem(
             context,
             number: '3',
-            text: 'O autenticador começará a gerar um código de 6 dígitos. Digite esse código no campo de verificação.',
+            text: 'Digite o código de 6 dígitos gerado pelo aplicativo.',
           ),
         ],
       ),

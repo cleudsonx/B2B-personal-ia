@@ -1,5 +1,5 @@
 from typing import Dict, Any
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from fastapi import Depends, HTTPException, status
 from app.core.security import get_current_user_payload
 from app.services.gemini_service import gemini_service, GeminiService
@@ -25,7 +25,7 @@ async def get_current_user(payload: Dict[str, Any] = Depends(get_current_user_pa
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Não foi possível validar a sessão.")
     result = await (
         client.table("profiles")
-        .select("role, roles, trainer_id, session_revoked_at, subscription_status")
+        .select("role, roles, trainer_id, session_revoked_at, subscription_status, mfa_verified_at, mfa_trusted_devices")
         .eq("id", user_id)
         .maybe_single()
         .execute()
@@ -55,7 +55,22 @@ async def get_current_trainer(current_user: Dict[str, Any] = Depends(get_current
     roles = profile.get("roles") or [profile.get("role")]
     if "trainer" not in roles:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso exclusivo para treinadores.")
-    if current_user.get("aal") != "aal2":
+    
+    # 2FA aceita AAL2 nativo (TOTP) OU 2FA Multi-Canal (WhatsApp/E-mail OTP) / Dispositivo Confiável
+    is_aal2 = current_user.get("aal") == "aal2"
+    mfa_verified_at = profile.get("mfa_verified_at")
+    has_valid_multichannel_mfa = False
+
+    if mfa_verified_at:
+        try:
+            mfa_time = datetime.fromisoformat(str(mfa_verified_at).replace("Z", "+00:00"))
+            # Confiável por até 30 dias após validação
+            if datetime.now(timezone.utc) - mfa_time < timedelta(days=30):
+                has_valid_multichannel_mfa = True
+        except Exception:
+            pass
+
+    if not is_aal2 and not has_valid_multichannel_mfa:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Verificação em duas etapas obrigatória para treinadores.")
     return current_user
 

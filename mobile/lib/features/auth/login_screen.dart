@@ -261,7 +261,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     await AuthService.setActiveRole(_selectedRole);
     if (roles.contains('trainer') &&
-        !await AuthService.isCurrentSessionAal2()) {
+        !await AuthService.isCurrentSessionMfaSatisfied()) {
       if (!mounted) return;
       final verified = await Navigator.push<bool>(
         context,

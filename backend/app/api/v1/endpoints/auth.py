@@ -1,9 +1,12 @@
 import logging
-from datetime import datetime, timezone
-from typing import Optional, Dict, Any
-from fastapi import APIRouter, HTTPException, Depends, status
+import uuid
+from datetime import datetime, timezone, timedelta
+from typing import Optional, Dict, Any, List
+from fastapi import APIRouter, HTTPException, Depends, status, Security
+from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from app.services.supabase_service import supabase_service
+from app.core.security import security_bearer, decode_supabase_jwt
 import re
 
 logger = logging.getLogger(__name__)
@@ -335,4 +338,548 @@ async def verify_otp_and_reset_password(req: VerifyOtpResetPassword):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao processar redefinição: {str(e)}")
+
+
+# ==============================================================================
+# SMART ADAPTIVE 2FA (MULTI-CANAL, RESET TOTP & TRUSTED DEVICE)
+# ==============================================================================
+
+class RequestMfaCodeRequest(BaseModel):
+    channel: str = Field("whatsapp", description="'whatsapp' ou 'email'")
+    phone_or_email: Optional[str] = None
+
+
+class RequestMfaCodeResponse(BaseModel):
+    success: bool
+    channel: str
+    masked_target: str
+    message: str
+
+
+class VerifyMfaCodeRequest(BaseModel):
+    code: str = Field(..., min_length=6, max_length=6)
+    phone_or_email: Optional[str] = None
+    remember_device: bool = False
+    device_name: Optional[str] = None
+
+
+class VerifyMfaCodeResponse(BaseModel):
+    success: bool
+    message: str
+    trusted_device_token: Optional[str] = None
+    trusted_until: Optional[str] = None
+
+
+class ResetMfaTotpRequest(BaseModel):
+    code: str = Field(..., min_length=6, max_length=6)
+    channel: str = Field("whatsapp", description="'whatsapp' ou 'email'")
+    phone_or_email: Optional[str] = None
+    password: Optional[str] = None
+
+
+class BackupCodesResponse(BaseModel):
+    success: bool
+    backup_codes: List[str]
+    message: str
+
+
+class VerifyBackupCodeRequest(BaseModel):
+    code: str
+    phone_or_email: Optional[str] = None
+    remember_device: bool = False
+
+
+class UpdateContactChannelRequest(BaseModel):
+    new_phone: Optional[str] = None
+    new_email: Optional[str] = None
+    validation_code: str
+    validation_channel: str = Field("email", description="Canal que recebeu o código de validação ('email' ou 'whatsapp')")
+
+
+@router.post("/mfa/request-code", response_model=RequestMfaCodeResponse)
+async def request_mfa_code(
+    req: RequestMfaCodeRequest,
+    credentials: Optional[HTTPAuthorizationCredentials] = Security(security_bearer),
+):
+    """
+    Envia código de 6 dígitos via WhatsApp ou E-mail para verificação em duas etapas (2FA).
+    Funciona tanto com Bearer Token (usuário após login com senha) quanto por phone_or_email.
+    """
+    client = await supabase_service.get_client()
+    if not client:
+        raise HTTPException(status_code=500, detail="Erro de conexão com o banco de dados.")
+
+    user_id = None
+    user_email = None
+    user_phone = None
+    full_name = "Treinador"
+
+    # 1. Identificar usuário a partir do token JWT (se fornecido)
+    if credentials and credentials.credentials:
+        try:
+            payload = decode_supabase_jwt(credentials.credentials)
+            user_id = payload.get("sub")
+        except Exception:
+            pass
+
+    # 2. Se temos user_id, busca os dados no profile
+    if user_id:
+        profile_res = await client.table("profiles").select("id, full_name, phone, public_whatsapp").eq("id", user_id).maybe_single().execute()
+        if profile_res and profile_res.data:
+            prof = profile_res.data
+            full_name = prof.get("full_name") or full_name
+            user_phone = prof.get("public_whatsapp") or prof.get("phone")
+        try:
+            admin_u = await client.auth.admin.get_user_by_id(user_id)
+            if admin_u and hasattr(admin_u, "user") and admin_u.user:
+                user_email = admin_u.user.email
+                if not user_phone:
+                    user_phone = getattr(admin_u.user, "phone", None)
+        except Exception:
+            pass
+
+    # 3. Se não identificado via token, usa req.phone_or_email
+    identifier = (req.phone_or_email or "").strip()
+    if not user_id and identifier:
+        clean_phone = re.sub(r"\D", "", identifier)
+        if "@" in identifier:
+            try:
+                users = await client.auth.admin.list_users()
+                u_target = next((u for u in users if u.email and u.email.lower() == identifier.lower()), None)
+                if u_target:
+                    user_id = u_target.id
+                    user_email = u_target.email
+                    p_res = await client.table("profiles").select("full_name, phone, public_whatsapp").eq("id", user_id).maybe_single().execute()
+                    if p_res and p_res.data:
+                        full_name = p_res.data.get("full_name") or full_name
+                        user_phone = p_res.data.get("public_whatsapp") or p_res.data.get("phone")
+            except Exception as e:
+                logger.error(f"[MFA] Erro ao buscar usuário por email: {e}")
+        elif clean_phone and len(clean_phone) >= 10:
+            try:
+                p_res = await client.table("profiles").select("id, full_name, phone, public_whatsapp").ilike("phone", f"%{clean_phone[-9:]}%").maybe_single().execute()
+                if p_res and p_res.data:
+                    user_id = p_res.data["id"]
+                    full_name = p_res.data.get("full_name") or full_name
+                    user_phone = p_res.data.get("public_whatsapp") or p_res.data.get("phone")
+                    try:
+                        admin_u = await client.auth.admin.get_user_by_id(user_id)
+                        if admin_u and hasattr(admin_u, "user") and admin_u.user:
+                            user_email = admin_u.user.email
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.error(f"[MFA] Erro ao buscar usuário por telefone: {e}")
+
+    if not user_id:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado para envio do código de segurança.")
+
+    # 4. Gera código OTP
+    otp_code = f"{random.randint(100000, 999999)}"
+
+    # Salva na tabela auth_recovery_otps com propósito mfa_challenge
+    identifiers_to_save = set()
+    if user_email:
+        identifiers_to_save.add(user_email.strip().lower())
+    if user_phone:
+        clean_p = re.sub(r"\D", "", user_phone)
+        identifiers_to_save.add(clean_p)
+        if not clean_p.startswith("55"):
+            identifiers_to_save.add(f"55{clean_p}")
+    if identifier:
+        identifiers_to_save.add(identifier.lower() if "@" in identifier else identifier)
+
+    for ident in identifiers_to_save:
+        try:
+            await client.table("auth_recovery_otps").insert({
+                "identifier": ident,
+                "channel": req.channel,
+                "otp_code": otp_code,
+                "user_id": user_id,
+                "purpose": "mfa_challenge",
+            }).execute()
+        except Exception as e:
+            logger.warning(f"[MFA] Falha ao registrar OTP para {ident}: {e}")
+
+    # 5. Envio
+    channel = req.channel.lower().strip()
+    masked_target = ""
+
+    if channel == "whatsapp":
+        target_phone = user_phone or identifier
+        clean_target = re.sub(r"\D", "", target_phone)
+        if len(clean_target) < 10:
+            raise HTTPException(status_code=400, detail="Número de WhatsApp não cadastrado ou inválido.")
+        formatted_phone = clean_target if clean_target.startswith("55") else f"55{clean_target}"
+        masked_target = f"+55 ({clean_target[-11:-9]}) 9****-{clean_target[-4:]}" if len(clean_target) >= 10 else clean_target
+        msg_text = (
+            f"Olá, {full_name}! 👋\n\n"
+            f"Seu código de segurança (2FA) do *Mr. Coach* é:\n\n"
+            f"🔐 *{otp_code}*\n\n"
+            f"Ele é válido por 10 minutos. Nunca compartilhe este código com ninguém."
+        )
+        try:
+            await whatsapp_service.send_text_with_fallback(number=formatted_phone, text=msg_text)
+        except Exception as e:
+            logger.error(f"[MFA] Falha ao enviar WhatsApp: {e}")
+            raise HTTPException(status_code=502, detail="Não foi possível enviar o código via WhatsApp. Tente por E-mail.")
+
+    elif channel == "email":
+        target_email = user_email or identifier
+        if "@" not in target_email:
+            raise HTTPException(status_code=400, detail="E-mail de destino inválido ou não cadastrado.")
+        parts = target_email.split("@")
+        masked_target = f"{parts[0][:2]}***@{parts[1]}"
+        try:
+            await email_service.send_recovery_otp_email(
+                recipient_email=target_email,
+                user_name=full_name,
+                otp_code=otp_code,
+            )
+        except Exception as e:
+            logger.error(f"[MFA] Falha ao enviar E-mail: {e}")
+            raise HTTPException(status_code=502, detail="Não foi possível enviar o código via E-mail. Tente por WhatsApp.")
+
+    else:
+        raise HTTPException(status_code=400, detail="Canal inválido. Escolha 'whatsapp' ou 'email'.")
+
+    return RequestMfaCodeResponse(
+        success=True,
+        channel=channel,
+        masked_target=masked_target,
+        message=f"Código de segurança enviado via {channel.capitalize()} para {masked_target}."
+    )
+
+
+@router.post("/mfa/verify-code", response_model=VerifyMfaCodeResponse)
+async def verify_mfa_code(
+    req: VerifyMfaCodeRequest,
+    credentials: Optional[HTTPAuthorizationCredentials] = Security(security_bearer),
+):
+    """
+    Valida código de 6 dígitos recebido por WhatsApp ou E-mail.
+    Atualiza `mfa_verified_at` no profile e emite token de dispositivo confiável se solicitado.
+    """
+    client = await supabase_service.get_client()
+    if not client:
+        raise HTTPException(status_code=500, detail="Erro de conexão com o banco de dados.")
+
+    user_id = None
+    if credentials and credentials.credentials:
+        try:
+            payload = decode_supabase_jwt(credentials.credentials)
+            user_id = payload.get("sub")
+        except Exception:
+            pass
+
+    now_utc = datetime.now(timezone.utc).isoformat()
+    code = req.code.strip()
+
+    # Busca OTP válido e não expirado
+    query = client.table("auth_recovery_otps").select("*").eq("otp_code", code).is_("used_at", "null").gt("expires_at", now_utc)
+    if user_id:
+        query = query.eq("user_id", user_id)
+    elif req.phone_or_email:
+        clean_p = re.sub(r"\D", "", req.phone_or_email.strip())
+        candidates = [req.phone_or_email.strip().lower()]
+        if clean_p:
+            candidates.append(clean_p)
+            if not clean_p.startswith("55"):
+                candidates.append(f"55{clean_p}")
+        query = query.in_("identifier", candidates)
+
+    res = await query.order("created_at", desc=True).limit(1).execute()
+    if not res or not res.data:
+        raise HTTPException(status_code=400, detail="Código incorreto ou expirado. Verifique os 6 dígitos digitados.")
+
+    otp_row = res.data[0]
+    matched_user_id = otp_row["user_id"]
+
+    # Marca OTP como utilizado
+    await client.table("auth_recovery_otps").update({"used_at": now_utc}).eq("id", otp_row["id"]).execute()
+
+    # Atualiza mfa_verified_at no profile
+    update_data: Dict[str, Any] = {"mfa_verified_at": now_utc}
+
+    trusted_token = None
+    trusted_until = None
+
+    if req.remember_device:
+        trusted_token = str(uuid.uuid4())
+        trusted_until_dt = datetime.now(timezone.utc) + timedelta(days=30)
+        trusted_until = trusted_until_dt.isoformat()
+
+        # Busca dispositivos confiáveis existentes
+        prof_res = await client.table("profiles").select("mfa_trusted_devices").eq("id", matched_user_id).maybe_single().execute()
+        existing_devices = prof_res.data.get("mfa_trusted_devices") if (prof_res and prof_res.data) else []
+        if not isinstance(existing_devices, list):
+            existing_devices = []
+
+        # Remove expirados e adiciona o novo
+        active_devices = [d for d in existing_devices if isinstance(d, dict) and d.get("expires_at", "") > now_utc]
+        active_devices.append({
+            "token": trusted_token,
+            "name": req.device_name or "Dispositivo Confiável",
+            "created_at": now_utc,
+            "expires_at": trusted_until,
+        })
+        update_data["mfa_trusted_devices"] = active_devices
+
+    await client.table("profiles").update(update_data).eq("id", matched_user_id).execute()
+
+    return VerifyMfaCodeResponse(
+        success=True,
+        message="Identidade confirmada com sucesso! Acesso liberado.",
+        trusted_device_token=trusted_token,
+        trusted_until=trusted_until,
+    )
+
+
+@router.post("/mfa/reset-totp")
+async def reset_mfa_totp(
+    req: ResetMfaTotpRequest,
+    credentials: Optional[HTTPAuthorizationCredentials] = Security(security_bearer),
+):
+    """
+    Desvincula o aplicativo autenticador (TOTP) perdido após validação de código por WhatsApp ou E-mail.
+    Resolve permanentemente o bloqueio de quem perdeu, formatou o aparelho ou trocou de celular.
+    """
+    client = await supabase_service.get_client()
+    if not client:
+        raise HTTPException(status_code=500, detail="Erro de conexão com o banco de dados.")
+
+    user_id = None
+    if credentials and credentials.credentials:
+        try:
+            payload = decode_supabase_jwt(credentials.credentials)
+            user_id = payload.get("sub")
+        except Exception:
+            pass
+
+    now_utc = datetime.now(timezone.utc).isoformat()
+    code = req.code.strip()
+
+    # 1. Valida o código OTP
+    query = client.table("auth_recovery_otps").select("*").eq("otp_code", code).is_("used_at", "null").gt("expires_at", now_utc)
+    if user_id:
+        query = query.eq("user_id", user_id)
+    elif req.phone_or_email:
+        clean_p = re.sub(r"\D", "", req.phone_or_email.strip())
+        candidates = [req.phone_or_email.strip().lower()]
+        if clean_p:
+            candidates.append(clean_p)
+            if not clean_p.startswith("55"):
+                candidates.append(f"55{clean_p}")
+        query = query.in_("identifier", candidates)
+
+    res = await query.order("created_at", desc=True).limit(1).execute()
+    if not res or not res.data:
+        raise HTTPException(status_code=400, detail="Código de segurança incorreto ou expirado.")
+
+    otp_row = res.data[0]
+    matched_user_id = otp_row["user_id"]
+
+    # 2. Marca OTP como utilizado
+    await client.table("auth_recovery_otps").update({"used_at": now_utc}).eq("id", otp_row["id"]).execute()
+
+    # 3. Remove os fatores TOTP usando a Admin API do Supabase
+    deleted_count = 0
+    try:
+        if hasattr(client.auth, "admin") and hasattr(client.auth.admin, "mfa"):
+            factors = await client.auth.admin.mfa.list_factors({"user_id": matched_user_id})
+            for factor in factors:
+                factor_id = getattr(factor, "id", None) or (factor.get("id") if isinstance(factor, dict) else None)
+                if factor_id:
+                    try:
+                        await client.auth.admin.mfa.delete_factor({"id": factor_id, "user_id": matched_user_id})
+                        deleted_count += 1
+                    except Exception as del_err:
+                        logger.warning(f"[MFA Reset] Erro ao deletar fator {factor_id}: {del_err}")
+    except Exception as e:
+        logger.warning(f"[MFA Reset] Aviso ao listar/deletar fatores via Admin API: {e}")
+
+    # 4. Registra verificação no profile
+    await client.table("profiles").update({"mfa_verified_at": now_utc}).eq("id", matched_user_id).execute()
+
+    return {
+        "success": True,
+        "deleted_factors": deleted_count,
+        "message": "Autenticador anterior desvinculado com sucesso! Você já pode acessar seu painel."
+    }
+
+
+@router.post("/mfa/backup-codes/generate", response_model=BackupCodesResponse)
+async def generate_backup_codes(current_user: Dict[str, Any] = Depends(get_current_user)):
+    """
+    Gera 8 códigos de reserva únicos (Kit de Emergência) para o treinador.
+    """
+    user_id = current_user.get("sub")
+    client = await supabase_service.get_client()
+    if not user_id or not client:
+        raise HTTPException(status_code=500, detail="Não foi possível gerar códigos de emergência.")
+
+    # Gera 8 códigos no formato MRC-XXXX-XXXX
+    codes = []
+    for _ in range(8):
+        c1 = f"{random.randint(1000, 9999)}"
+        c2 = f"{random.randint(1000, 9999)}"
+        codes.append(f"MRC-{c1}-{c2}")
+
+    # Salva no profile
+    await client.table("profiles").update({"mfa_backup_codes": codes}).eq("id", user_id).execute()
+
+    return BackupCodesResponse(
+        success=True,
+        backup_codes=codes,
+        message="8 códigos de emergência gerados com sucesso. Guarde-os em local seguro."
+    )
+
+
+@router.post("/mfa/backup-codes/verify")
+async def verify_backup_code(
+    req: VerifyBackupCodeRequest,
+    credentials: Optional[HTTPAuthorizationCredentials] = Security(security_bearer),
+):
+    """
+    Valida um código de emergência de uso único.
+    """
+    client = await supabase_service.get_client()
+    if not client:
+        raise HTTPException(status_code=500, detail="Erro de conexão com o banco de dados.")
+
+    user_id = None
+    if credentials and credentials.credentials:
+        try:
+            payload = decode_supabase_jwt(credentials.credentials)
+            user_id = payload.get("sub")
+        except Exception:
+            pass
+
+    if not user_id and req.phone_or_email:
+        ident = req.phone_or_email.strip()
+        clean_p = re.sub(r"\D", "", ident)
+        if "@" in ident:
+            u_res = await client.table("profiles").select("id").eq("email", ident.lower()).maybe_single().execute()
+            if u_res and u_res.data:
+                user_id = u_res.data["id"]
+        elif clean_p:
+            p_res = await client.table("profiles").select("id").ilike("phone", f"%{clean_p[-9:]}%").maybe_single().execute()
+            if p_res and p_res.data:
+                user_id = p_res.data["id"]
+
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Identificação do usuário necessária para validar código de reserva.")
+
+    prof_res = await client.table("profiles").select("mfa_backup_codes, mfa_trusted_devices").eq("id", user_id).maybe_single().execute()
+    if not prof_res or not prof_res.data:
+        raise HTTPException(status_code=404, detail="Perfil não encontrado.")
+
+    stored_codes: List[str] = prof_res.data.get("mfa_backup_codes") or []
+    input_code = req.code.strip().upper()
+
+    if input_code not in stored_codes:
+        raise HTTPException(status_code=400, detail="Código de reserva inválido ou já utilizado.")
+
+    # Remove o código utilizado (Single-use)
+    stored_codes.remove(input_code)
+    now_utc = datetime.now(timezone.utc).isoformat()
+    update_data: Dict[str, Any] = {
+        "mfa_backup_codes": stored_codes,
+        "mfa_verified_at": now_utc,
+    }
+
+    trusted_token = None
+    trusted_until = None
+    if req.remember_device:
+        trusted_token = str(uuid.uuid4())
+        trusted_until_dt = datetime.now(timezone.utc) + timedelta(days=30)
+        trusted_until = trusted_until_dt.isoformat()
+        existing_devices = prof_res.data.get("mfa_trusted_devices") or []
+        if not isinstance(existing_devices, list):
+            existing_devices = []
+        existing_devices.append({
+            "token": trusted_token,
+            "name": "Dispositivo Confiável (Reserva)",
+            "created_at": now_utc,
+            "expires_at": trusted_until,
+        })
+        update_data["mfa_trusted_devices"] = existing_devices
+
+    await client.table("profiles").update(update_data).eq("id", user_id).execute()
+
+    return {
+        "success": True,
+        "remaining_codes": len(stored_codes),
+        "trusted_device_token": trusted_token,
+        "trusted_until": trusted_until,
+        "message": f"Código de emergência aceito! Restam {len(stored_codes)} códigos de reserva."
+    }
+
+
+@router.post("/contact/update-channel")
+async def update_contact_channel(
+    req: UpdateContactChannelRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Atualização segura de canal com validação cruzada:
+    - Se for alterar o telefone/WhatsApp, valida pelo código enviado ao E-mail.
+    - Se for alterar o E-mail, valida pelo código enviado ao WhatsApp.
+    """
+    user_id = current_user.get("sub")
+    client = await supabase_service.get_client()
+    if not user_id or not client:
+        raise HTTPException(status_code=500, detail="Serviço indisponível.")
+
+    now_utc = datetime.now(timezone.utc).isoformat()
+    code = req.validation_code.strip()
+
+    # Valida código de autorização
+    otp_res = await client.table("auth_recovery_otps")\
+        .select("*")\
+        .eq("user_id", user_id)\
+        .eq("otp_code", code)\
+        .eq("channel", req.validation_channel)\
+        .is_("used_at", "null")\
+        .gt("expires_at", now_utc)\
+        .order("created_at", desc=True)\
+        .limit(1)\
+        .execute()
+
+    if not otp_res or not otp_res.data:
+        raise HTTPException(status_code=400, detail="Código de validação cruzada inválido ou expirado.")
+
+    # Marca OTP como utilizado
+    await client.table("auth_recovery_otps").update({"used_at": now_utc}).eq("id", otp_res.data[0]["id"]).execute()
+
+    # Atualiza telefone
+    if req.new_phone:
+        clean_p = re.sub(r"\D", "", req.new_phone.strip())
+        if len(clean_p) < 10:
+            raise HTTPException(status_code=400, detail="Telefone informado inválido. Informe DDD + número.")
+        await client.table("profiles").update({
+            "phone": clean_p,
+            "public_whatsapp": clean_p,
+            "updated_at": now_utc,
+        }).eq("id", user_id).execute()
+        try:
+            await client.auth.admin.update_user_by_id(user_id, {"phone": clean_p})
+        except Exception:
+            pass
+        return {"success": True, "message": "Telefone e WhatsApp atualizados com sucesso via validação cruzada!"}
+
+    # Atualiza e-mail
+    if req.new_email:
+        new_em = req.new_email.strip().lower()
+        if "@" not in new_em or len(new_em) < 5:
+            raise HTTPException(status_code=400, detail="E-mail informado inválido.")
+        try:
+            await client.auth.admin.update_user_by_id(user_id, {"email": new_em, "email_confirm": True})
+        except Exception as e:
+            logger.error(f"[Channel Update] Erro ao atualizar e-mail: {e}")
+            raise HTTPException(status_code=400, detail=f"Não foi possível alterar o e-mail: {str(e)}")
+        return {"success": True, "message": "E-mail atualizado com sucesso via validação cruzada!"}
+
+    raise HTTPException(status_code=400, detail="Informe 'new_phone' ou 'new_email' para atualização.")
+
 

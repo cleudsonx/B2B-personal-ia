@@ -683,6 +683,276 @@ class AuthService {
     );
   }
 
+  static const String _keyMfaTrustedUntil = 'mfa_trusted_until_';
+  static const String _keyMfaTrustedToken = 'mfa_trusted_token_';
+
+  /// Verifica se o dispositivo atual é confiável (lembrado por 30 dias)
+  static Future<bool> isCurrentDeviceTrusted() async {
+    try {
+      final user = currentUser;
+      final userId = user?.id ?? 'device_default';
+      final prefs = await SharedPreferences.getInstance();
+      final untilStr = prefs.getString('$_keyMfaTrustedUntil$userId');
+      if (untilStr == null) return false;
+      final until = DateTime.tryParse(untilStr);
+      if (until == null) return false;
+      return until.isAfter(DateTime.now());
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Salva dispositivo como confiável por 30 dias
+  static Future<void> saveCurrentDeviceTrusted({String? token, String? untilStr}) async {
+    try {
+      final user = currentUser;
+      final userId = user?.id ?? 'device_default';
+      final prefs = await SharedPreferences.getInstance();
+      final expiry = untilStr ?? DateTime.now().add(const Duration(days: 30)).toIso8601String();
+      await prefs.setString('$_keyMfaTrustedUntil$userId', expiry);
+      if (token != null) {
+        await prefs.setString('$_keyMfaTrustedToken$userId', token);
+      }
+    } catch (_) {}
+  }
+
+  /// Limpa dispositivo confiável
+  static Future<void> clearCurrentDeviceTrusted() async {
+    try {
+      final user = currentUser;
+      final userId = user?.id ?? 'device_default';
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('$_keyMfaTrustedUntil$userId');
+      await prefs.remove('$_keyMfaTrustedToken$userId');
+    } catch (_) {}
+  }
+
+  /// Verifica se a sessão atual cumpre os requisitos de 2FA
+  /// (Seja por AAL2 do Supabase, dispositivo confiável ou validação Multi-Canal recente)
+  static Future<bool> isCurrentSessionMfaSatisfied() async {
+    // 1. Se tem AAL2 no Supabase (TOTP)
+    if (await isCurrentSessionAal2()) return true;
+
+    // 2. Se o dispositivo local é confiável (lembrado por 30 dias)
+    if (await isCurrentDeviceTrusted()) return true;
+
+    // 3. Se o profile tem mfa_verified_at recente (nas últimas 24h ou 30 dias)
+    try {
+      final profile = await getCurrentProfile();
+      final verifiedAtStr = profile?['mfa_verified_at'] as String?;
+      if (verifiedAtStr != null) {
+        final verifiedAt = DateTime.tryParse(verifiedAtStr);
+        if (verifiedAt != null && DateTime.now().difference(verifiedAt).inDays < 30) {
+          return true;
+        }
+      }
+    } catch (_) {}
+
+    return false;
+  }
+
+  /// Solicita código de 2FA via WhatsApp ou E-mail
+  static Future<Map<String, dynamic>> requestMfaCode({
+    required String channel,
+    String? phoneOrEmail,
+  }) async {
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/auth/mfa/request-code');
+    final token = accessToken;
+    final headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+    final res = await http.post(
+      uri,
+      headers: headers,
+      body: jsonEncode({
+        'channel': channel,
+        if (phoneOrEmail != null && phoneOrEmail.isNotEmpty) 'phone_or_email': phoneOrEmail.trim(),
+      }),
+    ).timeout(const Duration(seconds: 15));
+
+    if (res.statusCode == 200) {
+      return jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+    }
+    String msg = 'Erro ao solicitar código ($channel)';
+    try {
+      final err = jsonDecode(utf8.decode(res.bodyBytes));
+      if (err is Map && err.containsKey('detail')) msg = err['detail'].toString();
+    } catch (_) {}
+    throw Exception(msg);
+  }
+
+  /// Valida código de 2FA recebido por WhatsApp ou E-mail
+  static Future<Map<String, dynamic>> verifyMfaCode({
+    required String code,
+    String? phoneOrEmail,
+    bool rememberDevice = false,
+  }) async {
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/auth/mfa/verify-code');
+    final token = accessToken;
+    final headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+    final res = await http.post(
+      uri,
+      headers: headers,
+      body: jsonEncode({
+        'code': code.trim(),
+        if (phoneOrEmail != null && phoneOrEmail.isNotEmpty) 'phone_or_email': phoneOrEmail.trim(),
+        'remember_device': rememberDevice,
+      }),
+    ).timeout(const Duration(seconds: 15));
+
+    if (res.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+      if (rememberDevice) {
+        await saveCurrentDeviceTrusted(
+          token: data['trusted_device_token'] as String?,
+          untilStr: data['trusted_until'] as String?,
+        );
+      }
+      return data;
+    }
+    String msg = 'Código incorreto ou expirado';
+    try {
+      final err = jsonDecode(utf8.decode(res.bodyBytes));
+      if (err is Map && err.containsKey('detail')) msg = err['detail'].toString();
+    } catch (_) {}
+    throw Exception(msg);
+  }
+
+  /// Desvincula o aplicativo autenticador perdido via código de WhatsApp/E-mail
+  static Future<Map<String, dynamic>> resetMfaTotp({
+    required String code,
+    required String channel,
+    String? phoneOrEmail,
+  }) async {
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/auth/mfa/reset-totp');
+    final token = accessToken;
+    final headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+    final res = await http.post(
+      uri,
+      headers: headers,
+      body: jsonEncode({
+        'code': code.trim(),
+        'channel': channel,
+        if (phoneOrEmail != null && phoneOrEmail.isNotEmpty) 'phone_or_email': phoneOrEmail.trim(),
+      }),
+    ).timeout(const Duration(seconds: 15));
+
+    if (res.statusCode == 200) {
+      return jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+    }
+    String msg = 'Não foi possível redefinir o autenticador';
+    try {
+      final err = jsonDecode(utf8.decode(res.bodyBytes));
+      if (err is Map && err.containsKey('detail')) msg = err['detail'].toString();
+    } catch (_) {}
+    throw Exception(msg);
+  }
+
+  /// Gera 8 códigos de reserva (Kit de Emergência)
+  static Future<List<String>> generateMfaBackupCodes() async {
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/auth/mfa/backup-codes/generate');
+    final token = accessToken;
+    final headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+    final res = await http.post(uri, headers: headers).timeout(const Duration(seconds: 15));
+    if (res.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+      final list = data['backup_codes'] as List<dynamic>? ?? [];
+      return list.map((e) => e.toString()).toList();
+    }
+    throw Exception('Falha ao gerar códigos de reserva');
+  }
+
+  /// Valida um código de reserva de uso único
+  static Future<Map<String, dynamic>> verifyMfaBackupCode({
+    required String code,
+    String? phoneOrEmail,
+    bool rememberDevice = false,
+  }) async {
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/auth/mfa/backup-codes/verify');
+    final token = accessToken;
+    final headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+    final res = await http.post(
+      uri,
+      headers: headers,
+      body: jsonEncode({
+        'code': code.trim(),
+        if (phoneOrEmail != null && phoneOrEmail.isNotEmpty) 'phone_or_email': phoneOrEmail.trim(),
+        'remember_device': rememberDevice,
+      }),
+    ).timeout(const Duration(seconds: 15));
+
+    if (res.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+      if (rememberDevice) {
+        await saveCurrentDeviceTrusted(
+          token: data['trusted_device_token'] as String?,
+          untilStr: data['trusted_until'] as String?,
+        );
+      }
+      return data;
+    }
+    String msg = 'Código de reserva inválido ou já utilizado';
+    try {
+      final err = jsonDecode(utf8.decode(res.bodyBytes));
+      if (err is Map && err.containsKey('detail')) msg = err['detail'].toString();
+    } catch (_) {}
+    throw Exception(msg);
+  }
+
+  /// Atualização cruzada de e-mail ou telefone
+  static Future<Map<String, dynamic>> updateContactChannel({
+    String? newPhone,
+    String? newEmail,
+    required String validationCode,
+    required String validationChannel,
+  }) async {
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/auth/contact/update-channel');
+    final token = accessToken;
+    final headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+    final res = await http.post(
+      uri,
+      headers: headers,
+      body: jsonEncode({
+        if (newPhone != null) 'new_phone': newPhone.trim(),
+        if (newEmail != null) 'new_email': newEmail.trim(),
+        'validation_code': validationCode.trim(),
+        'validation_channel': validationChannel,
+      }),
+    ).timeout(const Duration(seconds: 15));
+
+    if (res.statusCode == 200) {
+      return jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+    }
+    String msg = 'Erro ao atualizar canal de contato';
+    try {
+      final err = jsonDecode(utf8.decode(res.bodyBytes));
+      if (err is Map && err.containsKey('detail')) msg = err['detail'].toString();
+    } catch (_) {}
+    throw Exception(msg);
+  }
+
   static Future<bool> isCurrentSessionAal2() async {
     final assurance = _client.auth.mfa.getAuthenticatorAssuranceLevel();
     return assurance.currentLevel?.name == 'aal2';

@@ -106,3 +106,18 @@ def test_dual_role_profile_accepts_trainer_context_after_aal2():
         "profile": {"role": "trainer", "roles": ["trainer", "client"]},
     }
     assert asyncio.run(get_current_trainer(user)) is user
+
+
+def test_trainer_accepts_multichannel_mfa_at_aal1():
+    from app.api.deps import get_current_trainer
+
+    user = {
+        "sub": "trainer-id",
+        "aal": "aal1",
+        "profile": {
+            "role": "trainer",
+            "roles": ["trainer"],
+            "mfa_verified_at": datetime.now(timezone.utc).isoformat(),
+        },
+    }
+    assert asyncio.run(get_current_trainer(user)) is user
