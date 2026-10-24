@@ -50,22 +50,50 @@ class AuthService {
       _clientOrNull?.auth.onAuthStateChange ?? const Stream.empty();
 
   /// Realiza login com e-mail e senha e garante integridade do perfil
+  /// Inclui retry automático com backoff exponencial para `AuthRetryableFetchException` / cold start
   static Future<AuthResponse> signIn({
     required String email,
     required String password,
   }) async {
-    try {
-      final response = await _client.auth.signInWithPassword(
-        email: email.trim(),
-        password: password,
-      );
-      if (response.user != null) {
-        await _ensureProfileUpserted(response.user!);
+    const int maxAttempts = 3;
+    int attempt = 0;
+    while (true) {
+      attempt++;
+      try {
+        final response = await _client.auth.signInWithPassword(
+          email: email.trim(),
+          password: password,
+        );
+        if (response.user != null) {
+          await _ensureProfileUpserted(response.user!);
+        }
+        return response;
+      } catch (e) {
+        final isRetryable = _isRetryableNetworkError(e);
+        if (isRetryable && attempt < maxAttempts) {
+          debugPrint('[AuthService] Falha transitória de rede ($attempt/$maxAttempts): $e. Tentando novamente...');
+          await Future.delayed(Duration(milliseconds: 400 * attempt));
+          continue;
+        }
+        throw Exception('Falha ao autenticar: ${_formatAuthError(e)}');
       }
-      return response;
-    } catch (e) {
-      throw Exception('Falha ao autenticar: ${_formatAuthError(e)}');
     }
+  }
+
+  static bool _isRetryableNetworkError(Object error) {
+    if (error is AuthRetryableFetchException) return true;
+    final str = error.toString().toLowerCase();
+    return str.contains('clientload failed') ||
+        str.contains('authretryablefetchexception') ||
+        str.contains('failed host lookup') ||
+        str.contains('socketexception') ||
+        str.contains('connection closed') ||
+        str.contains('connection refused') ||
+        str.contains('connection reset') ||
+        str.contains('network is unreachable') ||
+        str.contains('timed out') ||
+        str.contains('timeout') ||
+        str.contains('handshakeexception');
   }
 
   /// Cadastro de novo usuário (Personal Trainer ou Aluno) com persistência imediata
@@ -848,6 +876,16 @@ class AuthService {
       return 'Este e-mail já está cadastrado.';
     } else if (str.contains('password should be at least')) {
       return 'A senha deve ter no mínimo 6 caracteres.';
+    } else if (str.contains('clientload failed') ||
+        str.contains('authretryablefetchexception') ||
+        str.contains('failed host lookup') ||
+        str.contains('socketexception') ||
+        str.contains('network') ||
+        str.contains('timeout')) {
+      return 'Instabilidade momentânea de conexão. Por favor, verifique sua rede ou toque em Entrar novamente.';
+    }
+    if (error is AuthException) {
+      return error.message;
     }
     return error.toString();
   }
