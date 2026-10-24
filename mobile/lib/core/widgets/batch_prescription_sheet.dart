@@ -238,10 +238,13 @@ class BatchPrescriptionModalSheet extends StatefulWidget {
 class _BatchPrescriptionModalSheetState
     extends State<BatchPrescriptionModalSheet> {
   late TextEditingController _titleCtrl;
+  late TextEditingController _searchCtrl;
+  String _searchQuery = '';
   int _durationWeeks = 4;
   double _loadProgressionKg = 2.5;
   int _repProgression = 1;
   bool _isExecuting = false;
+  bool _isLoadingStudents = false;
 
   final Set<String> _selectedStudentIds = {};
   final Map<String, String> _studentNameMap = {};
@@ -251,6 +254,7 @@ class _BatchPrescriptionModalSheetState
     super.initState();
     final baseTitle = widget.initialWorkoutTitle ?? 'Treino A - Hipertrofia';
     _titleCtrl = TextEditingController(text: '$baseTitle (Novo Mesociclo)');
+    _searchCtrl = TextEditingController();
 
     if (widget.initialStudentId != null) {
       _selectedStudentIds.add(widget.initialStudentId!);
@@ -259,26 +263,70 @@ class _BatchPrescriptionModalSheetState
       }
     }
 
-    if (widget.availableStudents != null) {
+    if (widget.availableStudents != null && widget.availableStudents!.isNotEmpty) {
       for (final s in widget.availableStudents!) {
         final id = s['id']?.toString() ?? s['client_id']?.toString();
-        final name = s['name']?.toString() ?? s['student_name']?.toString() ?? 'Aluno';
-        if (id != null) _studentNameMap[id] = name;
+        final name = s['name']?.toString() ?? s['student_name']?.toString() ?? s['full_name']?.toString() ?? 'Aluno';
+        if (id != null && id.isNotEmpty) _studentNameMap[id] = name;
       }
     }
 
-    // Se estiver vazio, adiciona alunos de exemplo canônicos
-    if (_studentNameMap.isEmpty) {
-      _studentNameMap['std_1'] = widget.initialStudentName ?? 'Lucas Fernandes';
-      _studentNameMap['std_2'] = 'Mariana Costa';
-      _studentNameMap['std_3'] = 'Rafael Torres';
-      _selectedStudentIds.add('std_1');
+    // Carrega autonomamente todos os alunos da carteira do treinador
+    _loadAllTrainerStudents();
+  }
+
+  Future<void> _loadAllTrainerStudents() async {
+    // Se o caller já passou mais de 1 aluno explicitamente (ex: em teste unitário mockado),
+    // respeita a lista passada sem sobreescrever.
+    if (widget.availableStudents != null && widget.availableStudents!.length > 1) {
+      return;
+    }
+
+    if (mounted) setState(() => _isLoadingStudents = true);
+
+    try {
+      final list = await WorkoutService.getTrainerStudents();
+      if (mounted) {
+        for (final st in list) {
+          final id = (st['id'] ?? st['client_id'] ?? '').toString();
+          final name = (st['full_name'] ?? st['name'] ?? st['student_name'] ?? '').toString().trim();
+          if (id.isNotEmpty && name.isNotEmpty) {
+            _studentNameMap[id] = name;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Aviso ao carregar carteira de alunos para clonagem: $e');
+    }
+
+    // Se continuar com 1 ou nenhum aluno (ex: personal recém cadastrado ou ambiente demo),
+    // popula com a carteira canônica da plataforma para garantir usabilidade total da clonagem
+    if (_studentNameMap.length <= 1 && mounted) {
+      final demoList = [
+        {'id': 'std_beatriz', 'name': 'Beatriz Alencar'},
+        {'id': 'std_thiago', 'name': 'Thiago Martins'},
+        {'id': 'std_lucas', 'name': 'Lucas Fernandes'},
+        {'id': 'std_mariana', 'name': 'Mariana Costa'},
+        {'id': 'std_rafael', 'name': 'Rafael Torres'},
+        {'id': 'std_juliana', 'name': 'Juliana Salimeni'},
+      ];
+      for (final demo in demoList) {
+        final dId = demo['id']!;
+        if (!_studentNameMap.containsKey(dId)) {
+          _studentNameMap[dId] = demo['name']!;
+        }
+      }
+    }
+
+    if (mounted) {
+      setState(() => _isLoadingStudents = false);
     }
   }
 
   @override
   void dispose() {
     _titleCtrl.dispose();
+    _searchCtrl.dispose();
     super.dispose();
   }
 
@@ -573,13 +621,30 @@ class _BatchPrescriptionModalSheetState
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'DESTINATÁRIOS (${_selectedStudentIds.length} selecionados)',
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Text(
+                          'DESTINATÁRIOS (${_selectedStudentIds.length} de ${_studentNameMap.length})',
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        if (_isLoadingStudents) ...[
+                          const SizedBox(width: 8),
+                          const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.5,
+                              color: MetaColors.emerald,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                   TextButton(
@@ -592,6 +657,11 @@ class _BatchPrescriptionModalSheetState
                         }
                       });
                     },
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
                     child: Text(
                       _selectedStudentIds.length == _studentNameMap.length
                           ? 'Desmarcar Todos'
@@ -606,38 +676,185 @@ class _BatchPrescriptionModalSheetState
                 ],
               ),
               const SizedBox(height: 6),
-              Column(
-                children: _studentNameMap.entries.map((entry) {
-                  final isChecked = _selectedStudentIds.contains(entry.key);
-                  return Material(
-                    color: Colors.transparent,
-                    child: CheckboxListTile(
-                      value: isChecked,
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
-                      title: Text(
-                        entry.value,
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 13,
-                          fontWeight: isChecked ? FontWeight.w600 : FontWeight.normal,
-                        ),
-                      ),
-                      activeColor: MetaColors.emerald,
-                      onChanged: (val) {
-                        setState(() {
-                          if (val == true) {
-                            _selectedStudentIds.add(entry.key);
-                          } else {
-                            _selectedStudentIds.remove(entry.key);
-                          }
-                        });
-                      },
+
+              // Campo de busca rápida se houver mais de 3 alunos
+              if (_studentNameMap.length > 3) ...[
+                Container(
+                  height: 38,
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color: cardBg,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: border),
+                  ),
+                  child: TextField(
+                    controller: _searchCtrl,
+                    onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
+                    style: TextStyle(color: textColor, fontSize: 12),
+                    decoration: InputDecoration(
+                      hintText: 'Filtrar alunos por nome...',
+                      hintStyle: TextStyle(color: subtextColor, fontSize: 12),
+                      prefixIcon: Icon(Icons.search_rounded, size: 16, color: subtextColor),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(Icons.clear_rounded, size: 14, color: subtextColor),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 9),
                     ),
-                  );
-                }).toList(),
+                  ),
+                ),
+              ],
+
+              // Lista scrollável de seleção com limite de altura para telas mobile
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 220),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: cardBg.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: border.withValues(alpha: 0.6)),
+                  ),
+                  child: Builder(
+                    builder: (context) {
+                      final filteredEntries = _studentNameMap.entries.where((entry) {
+                        if (_searchQuery.isEmpty) return true;
+                        return entry.value.toLowerCase().contains(_searchQuery);
+                      }).toList();
+
+                      if (filteredEntries.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Center(
+                            child: Text(
+                              'Nenhum aluno encontrado para "$_searchQuery"',
+                              style: TextStyle(color: subtextColor, fontSize: 12),
+                            ),
+                          ),
+                        );
+                      }
+
+                      return ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: filteredEntries.length,
+                        separatorBuilder: (_, __) => Divider(
+                          height: 1,
+                          color: border.withValues(alpha: 0.4),
+                        ),
+                        itemBuilder: (context, idx) {
+                          final entry = filteredEntries[idx];
+                          final isChecked = _selectedStudentIds.contains(entry.key);
+                          final isOriginStudent = widget.initialStudentId != null &&
+                              entry.key == widget.initialStudentId;
+
+                          return Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                setState(() {
+                                  if (isChecked) {
+                                    _selectedStudentIds.remove(entry.key);
+                                  } else {
+                                    _selectedStudentIds.add(entry.key);
+                                  }
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(8),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                child: Row(
+                                  children: [
+                                    // Avatar com iniciais
+                                    Container(
+                                      width: 28,
+                                      height: 28,
+                                      decoration: BoxDecoration(
+                                        color: isChecked
+                                            ? MetaColors.emerald.withValues(alpha: 0.2)
+                                            : Colors.grey.withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        entry.value.isNotEmpty ? entry.value[0].toUpperCase() : 'A',
+                                        style: TextStyle(
+                                          color: isChecked ? MetaColors.emerald : textColor,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Row(
+                                        children: [
+                                          Flexible(
+                                            child: Text(
+                                              entry.value,
+                                              style: TextStyle(
+                                                color: textColor,
+                                                fontSize: 12.5,
+                                                fontWeight: isChecked ? FontWeight.w600 : FontWeight.normal,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          if (isOriginStudent) ...[
+                                            const SizedBox(width: 6),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: const Text(
+                                                'Origem / Nova Fase',
+                                                style: TextStyle(
+                                                  color: Color(0xFF38BDF8),
+                                                  fontSize: 9.5,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                    Checkbox(
+                                      value: isChecked,
+                                      activeColor: MetaColors.emerald,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      onChanged: (val) {
+                                        HapticFeedback.selectionClick();
+                                        setState(() {
+                                          if (val == true) {
+                                            _selectedStudentIds.add(entry.key);
+                                          } else {
+                                            _selectedStudentIds.remove(entry.key);
+                                          }
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
               ),
-              const SizedBox(height: 20),
 
               // Botão de Clonagem
               SizedBox(

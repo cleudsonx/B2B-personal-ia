@@ -278,62 +278,87 @@ class _AdminExercisesScreenState extends State<AdminExercisesScreen> {
         backgroundColor: const Color(0xFF111827),
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 768 ? 16 : 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Header do Módulo
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isMobile = constraints.maxWidth < 700;
+
+                  final titleBlock = Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: const [
                       Row(
                         children: [
                           Icon(Icons.fitness_center_rounded, color: Color(0xFF818CF8), size: 24),
                           SizedBox(width: 10),
-                          Text(
-                            'Catálogo Global de Exercícios & Biomecânica',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.3,
+                          Expanded(
+                            child: Text(
+                              'Catálogo Global de Exercícios & Biomecânica',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.3,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      SizedBox(height: 4),
+                      SizedBox(height: 6),
                       Text(
                         'Curadoria de exercícios, vídeos em loop, dicas posturais e análise articular para toda a plataforma',
-                        style: TextStyle(color: Colors.white60, fontSize: 13),
+                        style: TextStyle(color: Colors.white60, fontSize: 13, height: 1.3),
                       ),
                     ],
-                  ),
-                  ElevatedButton.icon(
+                  );
+
+                  final addBtn = ElevatedButton.icon(
                     onPressed: () => _showAddEditExerciseDialog(),
                     icon: const Icon(Icons.add_rounded, size: 18),
                     label: const Text('Novo Exercício', style: TextStyle(fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF6366F1),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       elevation: 4,
                     ),
-                  ),
-                ],
+                  );
+
+                  if (isMobile) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        titleBlock,
+                        const SizedBox(height: 14),
+                        addBtn,
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: titleBlock),
+                      const SizedBox(width: 16),
+                      addBtn,
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 24),
 
               // KPI Badges de Cobertura
-              Row(
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
                 children: [
                   _buildCoveragePill('Total Catalogado', _exercises.length.toString(), const Color(0xFF818CF8)),
-                  const SizedBox(width: 12),
                   _buildCoveragePill('Com Demonstração/GIF', _withMediaCount.toString(), MetaColors.emerald),
-                  const SizedBox(width: 12),
                   _buildCoveragePill('Sem Mídia Vinculada', _withoutMediaCount.toString(), Colors.amber),
                 ],
               ),
@@ -349,43 +374,41 @@ class _AdminExercisesScreenState extends State<AdminExercisesScreen> {
                 ),
                 child: Column(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _searchCtrl,
-                            style: const TextStyle(color: Colors.white, fontSize: 13),
-                            onChanged: (_) => _loadExercises(),
-                            decoration: InputDecoration(
-                              hintText: 'Buscar exercício por nome, equipamento ou padrão motor...',
-                              hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
-                              prefixIcon: const Icon(Icons.search_rounded, color: Colors.white38, size: 20),
-                              suffixIcon: _searchCtrl.text.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear_rounded, size: 18, color: Colors.white38),
-                                      onPressed: () {
-                                        _searchCtrl.clear();
-                                        _loadExercises();
-                                      },
-                                    )
-                                  : null,
-                              filled: true,
-                              fillColor: const Color(0xFF090D16),
-                              contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: const BorderSide(color: Color(0xFF1F2937)),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: const BorderSide(color: Color(0xFF1F2937)),
-                              ),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isMobile = constraints.maxWidth < 650;
+                        final searchField = TextField(
+                          controller: _searchCtrl,
+                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                          onChanged: (_) => _loadExercises(),
+                          decoration: InputDecoration(
+                            hintText: 'Buscar por nome, equipamento ou padrão...',
+                            hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
+                            prefixIcon: const Icon(Icons.search_rounded, color: Colors.white38, size: 20),
+                            suffixIcon: _searchCtrl.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear_rounded, size: 18, color: Colors.white38),
+                                    onPressed: () {
+                                      _searchCtrl.clear();
+                                      _loadExercises();
+                                    },
+                                  )
+                                : null,
+                            filled: true,
+                            fillColor: const Color(0xFF090D16),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: const BorderSide(color: Color(0xFF1F2937)),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: const BorderSide(color: Color(0xFF1F2937)),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        // Toggle apenas com mídia
-                        InkWell(
+                        );
+
+                        final mediaToggle = InkWell(
                           onTap: () {
                             setState(() => _hasMediaOnly = !_hasMediaOnly);
                             _loadExercises();
@@ -403,6 +426,7 @@ class _AdminExercisesScreenState extends State<AdminExercisesScreen> {
                               ),
                             ),
                             child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
                                   Icons.play_circle_fill_rounded,
@@ -421,8 +445,30 @@ class _AdminExercisesScreenState extends State<AdminExercisesScreen> {
                               ],
                             ),
                           ),
-                        ),
-                      ],
+                        );
+
+                        if (isMobile) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              searchField,
+                              const SizedBox(height: 10),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: mediaToggle,
+                              ),
+                            ],
+                          );
+                        }
+
+                        return Row(
+                          children: [
+                            Expanded(child: searchField),
+                            const SizedBox(width: 12),
+                            mediaToggle,
+                          ],
+                        );
+                      },
                     ),
                     const SizedBox(height: 14),
                     // Chips de Grupo Muscular
@@ -558,7 +604,7 @@ class _AdminExercisesScreenState extends State<AdminExercisesScreen> {
 
   Widget _buildExerciseCard(AdminExerciseItem ex) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFF111827),
         borderRadius: BorderRadius.circular(14),
@@ -574,8 +620,8 @@ class _AdminExercisesScreenState extends State<AdminExercisesScreen> {
             },
             borderRadius: BorderRadius.circular(12),
             child: Container(
-              width: 72,
-              height: 72,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
                 color: const Color(0xFF090D16),
                 borderRadius: BorderRadius.circular(12),
@@ -591,16 +637,16 @@ class _AdminExercisesScreenState extends State<AdminExercisesScreen> {
                       borderRadius: BorderRadius.circular(11),
                       child: Image.network(
                         ex.displayMediaUrl,
-                        width: 72,
-                        height: 72,
+                        width: 64,
+                        height: 64,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) => const Center(
-                          child: Icon(Icons.fitness_center_rounded, color: Colors.white24, size: 28),
+                          child: Icon(Icons.fitness_center_rounded, color: Colors.white24, size: 26),
                         ),
                       ),
                     )
                   else
-                    const Icon(Icons.videocam_off_rounded, color: Colors.white24, size: 28),
+                    const Icon(Icons.videocam_off_rounded, color: Colors.white24, size: 26),
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
@@ -610,36 +656,44 @@ class _AdminExercisesScreenState extends State<AdminExercisesScreen> {
                     child: Icon(
                       ex.hasMedia ? Icons.play_arrow_rounded : Icons.add_link_rounded,
                       color: Colors.white,
-                      size: 18,
+                      size: 16,
                     ),
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
 
           // Informações Biomecânicas
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Text(
+                  ex.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    height: 1.25,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                // Badges de Classificação & Status de Mídia juntos no Wrap (evita esmagamento horizontal)
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Expanded(
-                      child: Text(
-                        ex.name,
-                        style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-                      ),
-                    ),
                     // Badge de Mídia
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                       decoration: BoxDecoration(
                         color: ex.hasMedia
                             ? MetaColors.emerald.withValues(alpha: 0.15)
                             : Colors.amber.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(5),
                         border: Border.all(
                           color: ex.hasMedia
                               ? MetaColors.emerald.withValues(alpha: 0.4)
@@ -666,14 +720,6 @@ class _AdminExercisesScreenState extends State<AdminExercisesScreen> {
                         ],
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                // Badges de Classificação
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: [
                     _buildAttributeBadge(ex.muscleGroup, const Color(0xFF6366F1)),
                     _buildAttributeBadge(ex.equipment, Colors.teal),
                     if (ex.motorPattern != null)
@@ -692,19 +738,25 @@ class _AdminExercisesScreenState extends State<AdminExercisesScreen> {
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 6),
 
           // Ações do Card
           Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
                 icon: const Icon(Icons.edit_rounded, size: 18, color: Color(0xFF818CF8)),
                 tooltip: 'Editar Exercício',
+                padding: const EdgeInsets.all(6),
+                constraints: const BoxConstraints(),
                 onPressed: () => _showAddEditExerciseDialog(ex),
               ),
+              const SizedBox(height: 8),
               IconButton(
                 icon: const Icon(Icons.ondemand_video_rounded, size: 18, color: MetaColors.emerald),
                 tooltip: 'Testar Player In-App',
+                padding: const EdgeInsets.all(6),
+                constraints: const BoxConstraints(),
                 onPressed: () => ExerciseMediaSheet.show(context, exerciseName: ex.name),
               ),
             ],

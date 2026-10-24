@@ -4751,52 +4751,9 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: MetaColors.cardBorder(context), width: 0.8),
                       ),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.trending_up_rounded, color: MetaColors.emerald, size: 20),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: InkWell(
-                              onTap: () {
-                                StudentOverloadCenterSheet.show(
-                                  context,
-                                  studentId: student['id']?.toString(),
-                                  exerciseName: _studentOverloads.isNotEmpty
-                                      ? _studentOverloads.first['exercise'] as String?
-                                      : null,
-                                );
-                              },
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _studentOverloads.isNotEmpty
-                                        ? (_studentOverloads.first['is_baseline'] == true
-                                            ? 'Marco Inicial Ativo (${_studentOverloads.first['exercise']})'
-                                            : 'Sobrecarga: ${_studentOverloads.first['gain_percent']} (${_studentOverloads.first['exercise']})')
-                                        : 'Curva de Sobrecarga em Calibração',
-                                    style: TextStyle(
-                                      color: MetaColors.text(context),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                  Text(
-                                    _studentOverloads.isNotEmpty
-                                        ? _studentOverloads.map((e) => '${e['exercise']}: ${e['start_load']} ➔ ${e['current_load']}').take(2).join(' • ')
-                                        : 'Nenhuma carga registrada. Toque para ver ou calibrar.',
-                                    style: TextStyle(
-                                      color: MetaColors.subtext(context),
-                                      fontSize: 11,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
                           InkWell(
                             onTap: () {
                               StudentOverloadCenterSheet.show(
@@ -4808,90 +4765,148 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                               );
                             },
                             borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF06B6D4).withValues(alpha: 0.14),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: const Color(0xFF06B6D4).withValues(alpha: 0.35)),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.insights_rounded, size: 13, color: Color(0xFF06B6D4)),
-                                  SizedBox(width: 3),
-                                  Text(
-                                    '1RM',
-                                    style: TextStyle(
-                                      color: Color(0xFF06B6D4),
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 2),
+                                  child: Icon(Icons.trending_up_rounded, color: MetaColors.emerald, size: 20),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _studentOverloads.isNotEmpty
+                                            ? (_studentOverloads.first['is_baseline'] == true
+                                                ? 'Marco Inicial Ativo (${_studentOverloads.first['exercise']})'
+                                                : 'Sobrecarga: ${_studentOverloads.first['gain_percent']} (${_studentOverloads.first['exercise']})')
+                                            : 'Curva de Sobrecarga em Calibração',
+                                        style: TextStyle(
+                                          color: MetaColors.text(context),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _studentOverloads.isNotEmpty
+                                            ? _studentOverloads.map((e) => '${e['exercise']}: ${e['start_load']} ➔ ${e['current_load']}').take(2).join(' • ')
+                                            : 'Nenhuma carga registrada. Toque para ver ou calibrar.',
+                                        style: TextStyle(
+                                          color: MetaColors.subtext(context),
+                                          fontSize: 11,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          InkWell(
-                            onTap: () {
-                              StudentAchievementsModalSheet.show(
-                                context,
-                                userId: student['id']?.toString(),
-                              );
-                            },
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF59E0B).withValues(alpha: 0.14),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              InkWell(
+                                onTap: () {
+                                  StudentOverloadCenterSheet.show(
+                                    context,
+                                    studentId: student['id']?.toString(),
+                                    exerciseName: _studentOverloads.isNotEmpty
+                                        ? _studentOverloads.first['exercise'] as String?
+                                        : null,
+                                  );
+                                },
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.35)),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.military_tech_rounded, size: 13, color: Color(0xFFF59E0B)),
-                                  SizedBox(width: 3),
-                                  Text(
-                                    'Selos',
-                                    style: TextStyle(
-                                      color: Color(0xFFF59E0B),
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF06B6D4).withValues(alpha: 0.14),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFF06B6D4).withValues(alpha: 0.35)),
                                   ),
-                                ],
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.insights_rounded, size: 13, color: Color(0xFF06B6D4)),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        '1RM',
+                                        style: TextStyle(
+                                          color: Color(0xFF06B6D4),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          InkWell(
-                            onTap: _openTrainerAddLoadModal,
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: MetaColors.emerald.withValues(alpha: 0.14),
+                              InkWell(
+                                onTap: () {
+                                  StudentAchievementsModalSheet.show(
+                                    context,
+                                    userId: student['id']?.toString(),
+                                  );
+                                },
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.35)),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.add_rounded, size: 13, color: MetaColors.emerald),
-                                  SizedBox(width: 3),
-                                  Text(
-                                    'Calibrar',
-                                    style: TextStyle(
-                                      color: MetaColors.emerald,
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF59E0B).withValues(alpha: 0.14),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.35)),
                                   ),
-                                ],
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.military_tech_rounded, size: 13, color: Color(0xFFF59E0B)),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Selos',
+                                        style: TextStyle(
+                                          color: Color(0xFFF59E0B),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
-                            ),
+                              InkWell(
+                                onTap: _openTrainerAddLoadModal,
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: MetaColors.emerald.withValues(alpha: 0.14),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.35)),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.add_rounded, size: 13, color: MetaColors.emerald),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Calibrar',
+                                        style: TextStyle(
+                                          color: MetaColors.emerald,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -4903,15 +4918,19 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                       children: [
                         const Icon(Icons.lock_rounded, color: MetaColors.emerald, size: 15),
                         const SizedBox(width: 6),
-                        Text(
-                          'Galeria Sigilosa Antes & Depois',
-                          style: TextStyle(
-                            color: MetaColors.text(context),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
+                        Expanded(
+                          child: Text(
+                            'Galeria Sigilosa Antes & Depois',
+                            style: TextStyle(
+                              color: MetaColors.text(context),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const Spacer(),
+                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(

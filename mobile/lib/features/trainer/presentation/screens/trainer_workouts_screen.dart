@@ -480,7 +480,8 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                     initialWorkoutTitle: workout.workoutTitle,
                     initialStudentId: workout.studentId,
                     initialStudentName: workout.studentName,
-                    availableStudents: _pendingStudents,
+                    // Carrega todos os alunos da carteira do personal
+                    availableStudents: null,
                   );
                   if (!mounted || res == null) return;
                   messenger.showSnackBar(
@@ -849,7 +850,8 @@ class _TrainerWorkoutsScreenState extends State<TrainerWorkoutsScreen> {
                                 final messenger = ScaffoldMessenger.of(context);
                                 final res = await BatchPrescriptionModalSheet.show(
                                   context,
-                                  availableStudents: _pendingStudents,
+                                  // Carrega todos os alunos da carteira do personal
+                    availableStudents: null,
                                 );
                                 if (!mounted || res == null) return;
                                 messenger.showSnackBar(

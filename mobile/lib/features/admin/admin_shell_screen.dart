@@ -164,16 +164,21 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
           : AppBar(
               backgroundColor: barBg,
               elevation: 0,
+              titleSpacing: 8,
               title: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('⚡', style: TextStyle(fontSize: 18)),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Mr. Coach • Admin',
-                    style: TextStyle(
-                      color: textPrimary,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w900,
+                  const Text('⚡', style: TextStyle(fontSize: 16)),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      'Mr. Coach',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                 ],
@@ -185,14 +190,12 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                   icon: const Icon(Icons.search_rounded, color: Color(0xFF818CF8)),
                   onPressed: _openOmniSearch,
                 ),
-                TextButton.icon(
+                IconButton(
+                  tooltip: 'Sair do Admin',
+                  icon: const Icon(Icons.exit_to_app_rounded, size: 20, color: Color(0xFF818CF8)),
                   onPressed: widget.onExitAdmin,
-                  icon: const Icon(Icons.exit_to_app_rounded, size: 16, color: Color(0xFF818CF8)),
-                  label: const Text(
-                    'Sair',
-                    style: TextStyle(color: Color(0xFF818CF8), fontSize: 13, fontWeight: FontWeight.bold),
-                  ),
                 ),
+                const SizedBox(width: 4),
               ],
             ),
       drawer: isDesktop ? null : _buildDrawer(),
