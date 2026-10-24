@@ -266,6 +266,20 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
     super.dispose();
   }
 
+  String _cleanExerciseNotes(String notes) {
+    if (notes.isEmpty) return '';
+    final pattern = RegExp(r'(\(Substitu[íi]do de "[^"]+"\))\s*');
+    final matches = pattern.allMatches(notes).toList();
+    if (matches.length > 1) {
+      final firstMatch = matches.first.group(1)!;
+      final withoutDuplicates = notes.replaceAll(pattern, '').trim();
+      return withoutDuplicates.isEmpty
+          ? firstMatch
+          : '$withoutDuplicates $firstMatch';
+    }
+    return notes;
+  }
+
   String _formatTimer(int totalSeconds) {
     final m = totalSeconds ~/ 60;
     final s = totalSeconds % 60;
@@ -1100,41 +1114,26 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    children: [
-                                      Text(
-                                        '${widget.splitIdentifier} · EXERCÍCIO ${_currentPage + 1}/$totalEx',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w900,
-                                          letterSpacing: 0.5,
-                                          color: textSecondary,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                                        decoration: BoxDecoration(
-                                          color: MetaColors.emerald.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          '$completedSetsTotal/$allSetsTotal Séries (${(completionRatio * 100).toInt()}%)',
-                                          style: TextStyle(
-                                            fontSize: 9.5,
-                                            fontWeight: FontWeight.w800,
-                                            color: MetaColors.emeraldText(context),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                  Text(
+                                    widget.splitIdentifier.isNotEmpty
+                                        ? 'DIVISÃO ${widget.splitIdentifier.toUpperCase()} · EXERCÍCIO ${_currentPage + 1} DE $totalEx'
+                                        : 'EXERCÍCIO ${_currentPage + 1} DE $totalEx',
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.5,
+                                      color: textSecondary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
                                     widget.splitName,
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 15,
                                       fontWeight: FontWeight.w900,
+                                      letterSpacing: -0.2,
                                       color: textPrimary,
                                     ),
                                     maxLines: 1,
@@ -1143,61 +1142,28 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            // Aquecimento 3 min
-                            InkWell(
-                              onTap: () {
-                                HapticFeedback.lightImpact();
-                                WarmupSheet.show(
-                                  context,
-                                  initialFocus: widget.splitName,
-                                );
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: Colors.amber.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
-                                ),
-                                child: const Row(
-                                  children: [
-                                    Text('🔥', style: TextStyle(fontSize: 11)),
-                                    SizedBox(width: 3),
-                                    Text(
-                                      '3 min',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                        color: Colors.amber,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 10),
                             // Cronômetro da Sessão
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
                               decoration: BoxDecoration(
                                 color: cardBg,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(color: border),
                               ),
                               child: Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
                                     Icons.timer_outlined,
-                                    size: 13,
+                                    size: 13.5,
                                     color: MetaColors.emeraldText(context),
                                   ),
-                                  const SizedBox(width: 4),
+                                  const SizedBox(width: 4.5),
                                   Text(
                                     _formatTimer(_elapsedSeconds),
                                     style: TextStyle(
-                                      fontSize: 11.5,
+                                      fontSize: 12,
                                       fontWeight: FontWeight.w900,
                                       fontFeatures: const [FontFeature.tabularFigures()],
                                       color: textPrimary,
@@ -1206,7 +1172,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: 6),
                             // Toggle Claro / Escuro Rápido
                             const ThemeToggleButton(compact: true),
                           ],
@@ -1852,7 +1818,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          ex.notes,
+                          _cleanExerciseNotes(ex.notes),
                           style: TextStyle(
                             fontSize: 11.5,
                             color: textSecondary,
