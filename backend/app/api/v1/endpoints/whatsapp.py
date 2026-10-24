@@ -91,12 +91,26 @@ async def connect_whatsapp(req: ConnectRequest, user: Dict[str, Any] = Depends(g
         pairing_code = None
         qr_base64 = None
         if isinstance(data, dict):
-            pairing_code = data.get("pairingCode") or data.get("code")
+            pairing_code = data.get("pairingCode")
             qr_base64 = data.get("base64")
             qr_obj = data.get("qrcode")
             if isinstance(qr_obj, dict):
-                pairing_code = pairing_code or qr_obj.get("pairingCode") or qr_obj.get("code")
+                pairing_code = pairing_code or qr_obj.get("pairingCode")
                 qr_base64 = qr_base64 or qr_obj.get("base64")
+
+        # Se create_instance não retornou pairingCode/QR de imediato, invoca connect_instance
+        if not pairing_code and not qr_base64:
+            try:
+                conn_data = await whatsapp_service.connect_instance(instance, number)
+                if isinstance(conn_data, dict):
+                    pairing_code = conn_data.get("pairingCode")
+                    qr_base64 = conn_data.get("base64")
+                    qr_obj = conn_data.get("qrcode")
+                    if isinstance(qr_obj, dict):
+                        pairing_code = pairing_code or qr_obj.get("pairingCode")
+                        qr_base64 = qr_base64 or qr_obj.get("base64")
+            except Exception as conn_err:
+                logger.warning(f"[WhatsApp] Falha ao obter dados de conexão via connect_instance: {conn_err}")
 
         return {
             "instance_name": instance,

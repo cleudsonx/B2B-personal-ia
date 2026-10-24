@@ -90,3 +90,4 @@ supabase/.branches/
 # Scratch & Temporary local files
 scratch/
 evolution_mrcoach_qr.png
+evolution_*.png
