@@ -164,8 +164,10 @@
 
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (!isRefreshing) {
-            isRefreshing = true;
+          // Apenas recarrega se o recarregamento foi explicitamente acionado pelo usuário
+          // (ex: clicou em 'Atualizar' na UI), evitando recarregamentos silenciosos em background
+          // que engolem alertas de novidades ou interrompem a navegação ativa.
+          if (isRefreshing) {
             window.location.reload();
           }
         });

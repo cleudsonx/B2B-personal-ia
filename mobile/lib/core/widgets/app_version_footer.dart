@@ -40,13 +40,18 @@ class AppVersionFooter extends StatelessWidget {
     try {
       final prefs = await SharedPreferences.getInstance();
       final lastSeenVersion = prefs.getString(_lastSeenVersionKey);
+      final lastSeenBuild = prefs.getInt(_lastSeenBuildKey);
       final currentVersion = AppChangelog.current.version;
       final currentBuild = AppConfig.buildNumber > AppChangelog.current.buildNumber
           ? AppConfig.buildNumber
           : AppChangelog.current.buildNumber;
 
-      // Abre automaticamente se nunca visualizou ou se a versão semântica mudou (ex: 1.8.0 -> 1.9.0)
-      if (lastSeenVersion == null || lastSeenVersion != currentVersion) {
+      // Abre automaticamente se o usuário ainda não visualizou a versão semântica
+      // OU se um novo build superior foi publicado (garantindo que o alerta chegue no iOS, Android e Web)
+      final bool isFirstTimeOrNewVersion = lastSeenVersion == null || lastSeenVersion != currentVersion;
+      final bool isNewerBuild = lastSeenBuild == null ? (lastSeenVersion == null) : (currentBuild > lastSeenBuild);
+
+      if (isFirstTimeOrNewVersion || isNewerBuild) {
         await prefs.setString(_lastSeenVersionKey, currentVersion);
         await prefs.setInt(_lastSeenBuildKey, currentBuild);
         _hasAutoShown = true;
@@ -335,56 +340,99 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
     required Color textColor,
     required Color subtextColor,
     String? badge,
+    bool isFeatured = false,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: MetaColors.surfaceHighlight,
-              borderRadius: BorderRadius.circular(8),
+      padding: EdgeInsets.only(bottom: isFeatured ? 10 : 8),
+      child: Container(
+        padding: isFeatured ? const EdgeInsets.all(10) : const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+        decoration: isFeatured
+            ? BoxDecoration(
+                color: MetaColors.emerald.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: MetaColors.emerald.withValues(alpha: 0.35),
+                  width: 1.2,
+                ),
+              )
+            : null,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: isFeatured
+                    ? MetaColors.emerald.withValues(alpha: 0.2)
+                    : MetaColors.surfaceHighlight,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: 16, color: MetaColors.emerald),
             ),
-            child: Icon(icon, size: 16, color: MetaColors.emerald),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: isFeatured ? 13.5 : 12.5,
+                            fontWeight: isFeatured ? FontWeight.bold : FontWeight.w600,
+                          ),
                         ),
                       ),
-                    ),
-                    if (badge != null) ...[
-                      const SizedBox(width: 6),
-                      _buildBadge(badge),
+                      if (isFeatured) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: MetaColors.emerald.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.4), width: 0.8),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.star_rounded, size: 10, color: MetaColors.emerald),
+                              SizedBox(width: 3),
+                              Text(
+                                'DESTAQUE',
+                                style: TextStyle(
+                                  color: MetaColors.emerald,
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      if (badge != null) ...[
+                        const SizedBox(width: 6),
+                        _buildBadge(badge),
+                      ],
                     ],
-                  ],
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  description,
-                  style: TextStyle(
-                    color: subtextColor,
-                    fontSize: 12,
-                    height: 1.35,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 3),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      color: subtextColor,
+                      fontSize: isFeatured ? 12 : 11.5,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -768,14 +816,15 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
                       // 1. ADMIN: Vê Sistema & Infraestrutura
                       if (isAdmin && adminItems.isNotEmpty && (_selectedFilter == 'all' || _selectedFilter == 'admin')) ...[
                         _buildRoleSectionHeader('SISTEMA & INFRAESTRUTURA', Icons.admin_panel_settings_rounded, MetaColors.accentBlue),
-                        ...adminItems.map(
-                          (item) => _buildChangelogItem(
-                            icon: item.icon,
-                            title: item.title,
-                            description: item.description,
-                            badge: item.badge,
+                        ...adminItems.asMap().entries.map(
+                          (entry) => _buildChangelogItem(
+                            icon: entry.value.icon,
+                            title: entry.value.title,
+                            description: entry.value.description,
+                            badge: entry.value.badge,
                             textColor: textColor,
                             subtextColor: subtextColor,
+                            isFeatured: entry.key < 3,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -784,14 +833,15 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
                       // 2. PROFESSOR e ADMIN: Vêem melhorias de Negócio / Consultoria
                       if ((isTrainer || isAdmin) && trainerItems.isNotEmpty && (_selectedFilter == 'all' || _selectedFilter == 'trainer')) ...[
                         _buildRoleSectionHeader('PARA SUA CONSULTORIA & NEGÓCIO', Icons.business_center_rounded, MetaColors.emerald),
-                        ...trainerItems.map(
-                          (item) => _buildChangelogItem(
-                            icon: item.icon,
-                            title: item.title,
-                            description: item.description,
-                            badge: item.badge,
+                        ...trainerItems.asMap().entries.map(
+                          (entry) => _buildChangelogItem(
+                            icon: entry.value.icon,
+                            title: entry.value.title,
+                            description: entry.value.description,
+                            badge: entry.value.badge,
                             textColor: textColor,
                             subtextColor: subtextColor,
+                            isFeatured: isTrainer ? entry.key < 3 : false,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -805,14 +855,15 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
                           Icons.fitness_center_rounded,
                           const Color(0xFFF59E0B),
                         ),
-                        ...studentItems.map(
-                          (item) => _buildChangelogItem(
-                            icon: item.icon,
-                            title: item.title,
-                            description: item.description,
-                            badge: item.badge,
+                        ...studentItems.asMap().entries.map(
+                          (entry) => _buildChangelogItem(
+                            icon: entry.value.icon,
+                            title: entry.value.title,
+                            description: entry.value.description,
+                            badge: entry.value.badge,
                             textColor: textColor,
                             subtextColor: subtextColor,
+                            isFeatured: isClient ? entry.key < 3 : false,
                           ),
                         ),
                       ],

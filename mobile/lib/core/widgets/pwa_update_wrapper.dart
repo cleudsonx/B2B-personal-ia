@@ -53,8 +53,8 @@ class PwaUpdateNotifier extends ChangeNotifier {
   }
 }
 
-/// Wrapper global para detectar e exibir atualizações do PWA de forma nativa e garantida
-/// no Android (Chrome/WebAPK) e iOS (Safari), sem depender unicamente de eventos do DOM.
+/// Wrapper global para detectar e exibir atualizações do ecossistema de forma nativa e garantida
+/// no Android (Chrome/WebAPK/APK), iOS (Safari/App) e Web, sem depender unicamente de eventos isolados do DOM.
 class PwaUpdateWrapper extends StatefulWidget {
   final Widget child;
 
@@ -71,9 +71,9 @@ class _PwaUpdateWrapperState extends State<PwaUpdateWrapper> with WidgetsBinding
   @override
   void initState() {
     super.initState();
-    if (kIsWeb) {
-      WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addObserver(this);
 
+    if (kIsWeb) {
       // Checagem imediata via version.json se o Service Worker sinalizar update
       if (PwaInstaller.hasPendingUpdate) {
         _checkForUpdate();
@@ -83,40 +83,43 @@ class _PwaUpdateWrapperState extends State<PwaUpdateWrapper> with WidgetsBinding
       PwaInstaller.onPwaUpdateAvailable(() {
         _checkForUpdate();
       });
-
-      // Checagem inicial via version.json após 1.2 segundos
-      Future.delayed(const Duration(milliseconds: 1200), _checkForUpdate);
-      // Checagem periódica a cada 1 minuto
-      _checkTimer = Timer.periodic(const Duration(minutes: 1), (_) => _checkForUpdate());
     }
+
+    // Checagem inicial via version.json após 1.2 segundos (Web, iOS e Android)
+    Future.delayed(const Duration(milliseconds: 1200), _checkForUpdate);
+    // Checagem periódica a cada 2 minutos
+    _checkTimer = Timer.periodic(const Duration(minutes: 2), (_) => _checkForUpdate());
   }
 
   @override
   void dispose() {
-    if (kIsWeb) {
-      WidgetsBinding.instance.removeObserver(this);
-      _checkTimer?.cancel();
-    }
+    WidgetsBinding.instance.removeObserver(this);
+    _checkTimer?.cancel();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && kIsWeb) {
+    if (state == AppLifecycleState.resumed) {
       _checkForUpdate();
     }
   }
 
   Future<void> _checkForUpdate() async {
-    if (_isChecking || !kIsWeb) return;
+    if (_isChecking) return;
     _isChecking = true;
 
     try {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      // Garante consulta direta na raiz com cache bust e URL absoluta resolvida
-      final uri = kIsWeb
-          ? Uri.base.resolve('/version.json?_t=$timestamp')
-          : Uri.parse('/version.json?_t=$timestamp');
+      // Garante consulta direta com cache bust e URL resolvida para cada plataforma
+      final Uri uri;
+      if (kIsWeb) {
+        uri = Uri.base.resolve('/version.json?_t=$timestamp');
+      } else {
+        final apiHost = AppConfig.apiBaseUrl.replaceAll('/api/v1', '');
+        final cleanBase = apiHost.isNotEmpty ? apiHost : 'https://shaipados.com';
+        uri = Uri.parse('$cleanBase/version.json?_t=$timestamp');
+      }
       final response = await http.get(uri).timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
@@ -141,10 +144,6 @@ class _PwaUpdateWrapperState extends State<PwaUpdateWrapper> with WidgetsBinding
 
   @override
   Widget build(BuildContext context) {
-    if (!kIsWeb) {
-      return widget.child;
-    }
-
     return ListenableBuilder(
       listenable: PwaUpdateNotifier.instance,
       builder: (context, _) {
@@ -257,7 +256,14 @@ class _PwaUpdateWrapperState extends State<PwaUpdateWrapper> with WidgetsBinding
             ElevatedButton(
               onPressed: () {
                 PwaUpdateNotifier.instance.dismiss();
-                PwaInstaller.triggerPwaReload();
+                if (kIsWeb) {
+                  PwaInstaller.triggerPwaReload();
+                } else {
+                  AppVersionFooter.showReleaseNotesModal(
+                    context,
+                    remoteReleaseData: PwaUpdateNotifier.instance.remoteData,
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: MetaColors.emerald,
@@ -285,4 +291,3 @@ class _PwaUpdateWrapperState extends State<PwaUpdateWrapper> with WidgetsBinding
     );
   }
 }
-

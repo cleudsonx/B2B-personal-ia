@@ -280,6 +280,41 @@ void main() {
     expect(find.text('NOVIDADES DESTA VERSÃO'), findsNothing);
   });
 
+  testWidgets('checkAndShowAutoModal abre automaticamente quando ha novo build compilado',
+      (tester) async {
+    // Configura como se o usuário já estivesse na versão 1.9.0, mas em um build anterior
+    SharedPreferences.setMockInitialValues({
+      'pwa_last_seen_changelog_version': AppChangelog.current.version,
+      'pwa_last_seen_changelog_build': 2026102801, // build mais antigo que o atual
+    });
+    AppVersionFooter.enableAutoModal = true;
+
+    await tester.pumpWidget(
+      Builder(
+        builder: (context) {
+          return MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (innerContext) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    AppVersionFooter.checkAndShowAutoModal(innerContext, roleOverride: 'client');
+                  });
+                  return const SizedBox();
+                },
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    await tester.pump(const Duration(milliseconds: 1500));
+    await tester.pumpAndSettle();
+
+    // Modal deve abrir pois o buildNumber atual é maior que o build anterior registrado
+    expect(find.text('NOVIDADES DESTA VERSÃO'), findsOneWidget);
+  });
+
   testWidgets('AppVersionFooter exibe banner de contexto de perfil para aluno, professor e admin',
       (tester) async {
     tester.view.physicalSize = const Size(1080, 1920);
