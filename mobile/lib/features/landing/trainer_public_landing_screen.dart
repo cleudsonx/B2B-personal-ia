@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/config/app_config.dart';
 import '../../core/utils/currency_pt_br_formatter.dart';
 import '../../core/widgets/meta_components.dart';
+import '../../core/widgets/theme_toggle_button.dart';
 import '../../services/consultancy_plan_service.dart';
 import '../auth/login_screen.dart';
 
@@ -29,6 +30,7 @@ class TrainerPublicLandingScreen extends StatefulWidget {
 }
 
 class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen> {
+  bool get isDark => MetaColors.isDark(context);
   bool _isLoading = true;
   Map<String, dynamic>? _trainerData;
   String? _errorMessage;
@@ -111,7 +113,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: MetaColors.surface,
+      backgroundColor: MetaColors.card(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -217,17 +219,24 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     final specialties = (_trainerData!['specialties'] as List<dynamic>?) ?? [];
     final photoUrl = _trainerData!['photo_url'];
     final hasPhoto = photoUrl != null && photoUrl.toString().trim().isNotEmpty;
+    final isDark = MetaColors.isDark(context);
 
     return Scaffold(
-      backgroundColor: MetaColors.background,
+      backgroundColor: MetaColors.bg(context),
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
             expandedHeight: 280.0,
             pinned: false,
             elevation: 0,
-            backgroundColor: MetaColors.background,
-            systemOverlayStyle: SystemUiOverlayStyle.light,
+            backgroundColor: MetaColors.bg(context),
+            systemOverlayStyle: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+            actions: const [
+              Padding(
+                padding: EdgeInsets.only(right: 12.0),
+                child: ThemeToggleButton(compact: true),
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 fit: StackFit.expand,
@@ -248,8 +257,8 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          MetaColors.background.withValues(alpha: 0.6),
-                          MetaColors.background,
+                          MetaColors.bg(context).withValues(alpha: 0.6),
+                          MetaColors.bg(context),
                         ],
                       ),
                     ),
@@ -294,8 +303,8 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
 
                   Text(
                     name.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
                       fontSize: 26,
                       fontWeight: FontWeight.w900,
                       letterSpacing: -0.5,
@@ -334,8 +343,8 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                   if (bio != null && bio.trim().isNotEmpty) ...[
                     Text(
                       bio,
-                      style: const TextStyle(
-                        color: MetaColors.textSecondary,
+                      style: TextStyle(
+                        color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary,
                         fontSize: 14,
                         height: 1.45,
                         fontWeight: FontWeight.w400,
@@ -446,7 +455,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
               ],
               Expanded(
                 child: SizedBox(
-                  height: 54,
+                  height: 52,
                   child: ElevatedButton.icon(
                     onPressed: () {
                       if (_plans.isNotEmpty) {
@@ -456,16 +465,25 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: MetaColors.emerald,
+                      backgroundColor: isDark ? MetaColors.emerald : MetaColors.lightEmerald,
                       foregroundColor: Colors.white,
                       elevation: 4,
                       shadowColor: MetaColors.emerald.withValues(alpha: 0.4),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
                     ),
                     icon: const Icon(Icons.flash_on_rounded, size: 20),
-                    label: const Text(
-                      'CONTRATAR CONSULTORIA PIX',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                    label: const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        'CONTRATAR CONSULTORIA PIX',
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -485,7 +503,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isHighlighted ? MetaColors.emerald : Colors.white12,
+          color: isHighlighted ? (isDark ? MetaColors.emerald : MetaColors.lightEmerald) : (isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
           width: isHighlighted ? 2.0 : 1.0,
         ),
       ),
@@ -500,13 +518,13 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: MetaColors.emerald,
+                      color: isDark ? MetaColors.emerald : MetaColors.lightEmerald,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Text(
                       'MAIS POPULAR • MELHOR CUSTO-BENEFÍCIO',
                       style: TextStyle(
-                        color: Colors.black,
+                        color: Colors.white,
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 0.5,
@@ -527,8 +545,8 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                     children: [
                       Text(
                         plan.name,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
@@ -536,7 +554,11 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                       const SizedBox(height: 4),
                       Text(
                         plan.billingPeriodLabel,
-                        style: const TextStyle(color: MetaColors.emerald, fontSize: 12, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          color: isDark ? MetaColors.emerald : MetaColors.lightEmerald,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -546,8 +568,8 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                   children: [
                     Text(
                       CurrencyPtBrFormatter.format(plan.price),
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
                         fontSize: 22,
                         fontWeight: FontWeight.w900,
                       ),
@@ -696,16 +718,17 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
   }
 
   Widget _buildProofRow(IconData icon, String title, String subtitle) {
+    final isDark = MetaColors.isDark(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: MetaColors.emerald.withValues(alpha: 0.1),
+            color: (isDark ? MetaColors.emerald : MetaColors.lightEmerald).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(icon, color: MetaColors.emerald, size: 20),
+          child: Icon(icon, color: isDark ? MetaColors.emerald : MetaColors.lightEmerald, size: 20),
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -714,8 +737,8 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
             children: [
               Text(
                 title, 
-                style: const TextStyle(
-                  color: Colors.white, 
+                style: TextStyle(
+                  color: isDark ? Colors.white : const Color(0xFF0F172A), 
                   fontSize: 15, 
                   fontWeight: FontWeight.w700,
                 )
@@ -723,8 +746,8 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
               const SizedBox(height: 3),
               Text(
                 subtitle, 
-                style: const TextStyle(
-                  color: MetaColors.textSecondary, 
+                style: TextStyle(
+                  color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary, 
                   fontSize: 13,
                   height: 1.35,
                 )
@@ -737,32 +760,40 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
   }
 
   Widget _buildAuthorityStatsBar() {
+    final isDark = MetaColors.isDark(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFF141F18),
+        color: isDark ? const Color(0xFF141F18) : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF26392D)),
+        border: Border.all(color: isDark ? const Color(0xFF26392D) : const Color(0xFFE2E8F0)),
+        boxShadow: isDark ? null : [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Expanded(
+          const Expanded(
             child: _StatBadge(
               number: '10+',
               unit: 'Anos',
               label: 'Experiência',
             ),
           ),
-          SizedBox(height: 28, child: VerticalDivider(color: Color(0xFF2C4033))),
-          Expanded(
+          SizedBox(height: 28, child: VerticalDivider(color: isDark ? const Color(0xFF2C4033) : const Color(0xFFE2E8F0))),
+          const Expanded(
             child: _StatBadge(
               number: '+500',
               unit: 'Alunos',
               label: 'Acompanhados',
             ),
           ),
-          SizedBox(height: 28, child: VerticalDivider(color: Color(0xFF2C4033))),
-          Expanded(
+          SizedBox(height: 28, child: VerticalDivider(color: isDark ? const Color(0xFF2C4033) : const Color(0xFFE2E8F0))),
+          const Expanded(
             child: _StatBadge(
               number: '100%',
               unit: 'Focado',
@@ -778,11 +809,11 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Align(
+        Align(
           alignment: Alignment.centerLeft,
           child: Text(
             'Metodologia & Prescrição Inteligente',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+            style: TextStyle(color: isDark ? Colors.white : const Color(0xFF0F172A), fontSize: 18, fontWeight: FontWeight.w800),
           ),
         ),
         const SizedBox(height: 4),
@@ -823,12 +854,20 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     required String title,
     required String description,
   }) {
+    final isDark = MetaColors.isDark(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF131D17),
+        color: isDark ? const Color(0xFF131D17) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF26382D)),
+        border: Border.all(color: isDark ? const Color(0xFF26382D) : const Color(0xFFE2E8F0)),
+        boxShadow: isDark ? null : [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -836,10 +875,10 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: MetaColors.emerald.withValues(alpha: 0.15),
+              color: (isDark ? MetaColors.emerald : MetaColors.lightEmerald).withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: MetaColors.emerald, size: 20),
+            child: Icon(icon, color: isDark ? MetaColors.emerald : MetaColors.lightEmerald, size: 20),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -848,12 +887,20 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
               children: [
                 Text(
                   title,
-                  style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style: const TextStyle(color: MetaColors.textSecondary, fontSize: 12.5, height: 1.4),
+                  style: TextStyle(
+                    color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary,
+                    fontSize: 12.5,
+                    height: 1.4,
+                  ),
                 ),
               ],
             ),
@@ -864,25 +911,37 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
   }
 
   Widget _buildTargetAudienceSection() {
+    final isDark = MetaColors.isDark(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF101914),
+        color: isDark ? const Color(0xFF101914) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF223528)),
+        border: Border.all(color: isDark ? const Color(0xFF223528) : const Color(0xFFE2E8F0)),
+        boxShadow: isDark ? null : [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.checklist_rounded, color: MetaColors.emerald, size: 20),
-              SizedBox(width: 8),
+              Icon(Icons.checklist_rounded, color: isDark ? MetaColors.emerald : MetaColors.lightEmerald, size: 20),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'Esta consultoria é ideal para você se:',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],
@@ -898,17 +957,22 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
   }
 
   Widget _buildAudienceCheckItem(String text) {
+    final isDark = MetaColors.isDark(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.check_circle_rounded, color: MetaColors.emerald, size: 16),
+          Icon(Icons.check_circle_rounded, color: isDark ? MetaColors.emerald : MetaColors.lightEmerald, size: 16),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(color: Color(0xFFCFDBD2), fontSize: 13, height: 1.35),
+              style: TextStyle(
+                color: isDark ? const Color(0xFFCFDBD2) : const Color(0xFF334155),
+                fontSize: 13,
+                height: 1.35,
+              ),
             ),
           ),
         ],
@@ -920,11 +984,11 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Align(
+        Align(
           alignment: Alignment.centerLeft,
           child: Text(
             'A Experiência no App Mr. Coach',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+            style: TextStyle(color: isDark ? Colors.white : const Color(0xFF0F172A), fontSize: 18, fontWeight: FontWeight.w800),
           ),
         ),
         const SizedBox(height: 4),
@@ -951,11 +1015,11 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Align(
+        Align(
           alignment: Alignment.centerLeft,
           child: Text(
             'Planos de Consultoria',
-            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(color: isDark ? Colors.white : const Color(0xFF0F172A), fontSize: 20, fontWeight: FontWeight.bold),
           ),
         ),
         const SizedBox(height: 4),
@@ -1001,20 +1065,32 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
   }
 
   Widget _buildPostPurchaseStepsSection() {
+    final isDark = MetaColors.isDark(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF131D17),
+        color: isDark ? const Color(0xFF131D17) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF25392D)),
+        border: Border.all(color: isDark ? const Color(0xFF25392D) : const Color(0xFFE2E8F0)),
+        boxShadow: isDark ? null : [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Como funciona após a matrícula?',
-            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
+            style: TextStyle(
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: 14),
           _buildStepRow('1', 'Pagamento confirmado instantaneamente', 'O Pix é reconhecido em segundos e seu acesso é liberado.'),
@@ -1028,20 +1104,21 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
   }
 
   Widget _buildStepRow(String number, String title, String subtitle) {
+    final isDark = MetaColors.isDark(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           width: 24,
           height: 24,
-          decoration: const BoxDecoration(
-            color: MetaColors.emerald,
+          decoration: BoxDecoration(
+            color: isDark ? MetaColors.emerald : MetaColors.lightEmerald,
             shape: BoxShape.circle,
           ),
           alignment: Alignment.center,
           child: Text(
             number,
-            style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 12),
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12),
           ),
         ),
         const SizedBox(width: 12),
@@ -1051,12 +1128,19 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
             children: [
               Text(
                 title,
-                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: const TextStyle(color: MetaColors.textSecondary, fontSize: 12),
+                style: TextStyle(
+                  color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
@@ -1069,11 +1153,11 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Align(
+        Align(
           alignment: Alignment.centerLeft,
           child: Text(
             'Perguntas Frequentes (FAQ)',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+            style: TextStyle(color: isDark ? Colors.white : const Color(0xFF0F172A), fontSize: 18, fontWeight: FontWeight.w800),
           ),
         ),
         const SizedBox(height: 12),
@@ -1098,30 +1182,39 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
   }
 
   Widget _buildFaqItem(String question, String answer) {
+    final isDark = MetaColors.isDark(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: const Color(0xFF121B15),
+        color: isDark ? const Color(0xFF121B15) : Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
-          side: const BorderSide(color: Color(0xFF24352A)),
+          side: BorderSide(color: isDark ? const Color(0xFF24352A) : const Color(0xFFE2E8F0)),
         ),
         clipBehavior: Clip.antiAlias,
         child: Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
-            collapsedIconColor: MetaColors.emerald,
-            iconColor: MetaColors.emerald,
+            collapsedIconColor: isDark ? MetaColors.emerald : MetaColors.lightEmerald,
+            iconColor: isDark ? MetaColors.emerald : MetaColors.lightEmerald,
             title: Text(
               question,
-              style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
                 child: Text(
                   answer,
-                  style: const TextStyle(color: MetaColors.textSecondary, fontSize: 12.5, height: 1.45),
+                  style: TextStyle(
+                    color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary,
+                    fontSize: 12.5,
+                    height: 1.45,
+                  ),
                 ),
               ),
             ],
@@ -1229,12 +1322,23 @@ class _BeforeAfterCaseViewerState extends State<BeforeAfterCaseViewer> {
   Widget build(BuildContext context) {
     final currentCase = _cases[_selectedCaseIndex];
 
+    final isDark = MetaColors.isDark(context);
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFF141F18),
+        color: isDark ? const Color(0xFF141F18) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.25)),
+        border: Border.all(
+          color: isDark ? MetaColors.emerald.withValues(alpha: 0.25) : const Color(0xFFE2E8F0),
+        ),
+        boxShadow: isDark ? null : [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -1251,7 +1355,7 @@ class _BeforeAfterCaseViewerState extends State<BeforeAfterCaseViewer> {
                 child: const Icon(Icons.stars_rounded, color: MetaColors.emerald, size: 20),
               ),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1268,7 +1372,7 @@ class _BeforeAfterCaseViewerState extends State<BeforeAfterCaseViewer> {
                     Text(
                       'Resultados Comprovados com Mr. Coach',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                       ),
@@ -1280,41 +1384,40 @@ class _BeforeAfterCaseViewerState extends State<BeforeAfterCaseViewer> {
           ),
           const SizedBox(height: 16),
           // Category chips
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (var i = 0; i < _cases.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 8),
-                  InkWell(
-                    onTap: () => setState(() => _selectedCaseIndex = i),
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (var i = 0; i < _cases.length; i++)
+                InkWell(
+                  onTap: () => setState(() => _selectedCaseIndex = i),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _selectedCaseIndex == i
+                          ? (isDark ? MetaColors.emerald : MetaColors.lightEmerald)
+                          : (isDark ? const Color(0xFF1C2B22) : const Color(0xFFF1F5F9)),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
                         color: _selectedCaseIndex == i
-                            ? MetaColors.emerald
-                            : const Color(0xFF1C2B22),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: _selectedCaseIndex == i
-                              ? MetaColors.emerald
-                              : const Color(0xFF2C3E33),
-                        ),
+                            ? (isDark ? MetaColors.emerald : MetaColors.lightEmerald)
+                            : (isDark ? const Color(0xFF2C3E33) : const Color(0xFFCBD5E1)),
                       ),
-                      child: Text(
-                        _cases[i].category,
-                        style: TextStyle(
-                          color: _selectedCaseIndex == i ? Colors.white : MetaColors.textSecondary,
-                          fontSize: 12,
-                          fontWeight: _selectedCaseIndex == i ? FontWeight.w800 : FontWeight.w600,
-                        ),
+                    ),
+                    child: Text(
+                      _cases[i].category,
+                      style: TextStyle(
+                        color: _selectedCaseIndex == i
+                            ? Colors.white
+                            : (isDark ? MetaColors.textSecondary : const Color(0xFF475569)),
+                        fontSize: 12,
+                        fontWeight: _selectedCaseIndex == i ? FontWeight.w800 : FontWeight.w600,
                       ),
                     ),
                   ),
-                ],
-              ],
-            ),
+                ),
+            ],
           ),
           const SizedBox(height: 18),
           // Student & Case Header
@@ -1327,16 +1430,16 @@ class _BeforeAfterCaseViewerState extends State<BeforeAfterCaseViewer> {
                   children: [
                     Text(
                       currentCase.title,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     Text(
                       currentCase.duration,
-                      style: const TextStyle(
-                        color: MetaColors.textSecondary,
+                      style: TextStyle(
+                        color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary,
                         fontSize: 12,
                       ),
                     ),
@@ -1346,9 +1449,9 @@ class _BeforeAfterCaseViewerState extends State<BeforeAfterCaseViewer> {
               // Antes/Depois interactive toggle
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0F1713),
+                  color: isDark ? const Color(0xFF0F1713) : const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFF2B3C31)),
+                  border: Border.all(color: isDark ? const Color(0xFF2B3C31) : const Color(0xFFCBD5E1)),
                 ),
                 padding: const EdgeInsets.all(3),
                 child: Row(
@@ -1368,12 +1471,14 @@ class _BeforeAfterCaseViewerState extends State<BeforeAfterCaseViewer> {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: _showAfter ? const Color(0xFF112218) : const Color(0xFF1D1B1B),
+              color: _showAfter
+                  ? (isDark ? const Color(0xFF112218) : const Color(0xFFECFDF5))
+                  : (isDark ? const Color(0xFF1D1B1B) : const Color(0xFFFEF2F2)),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: _showAfter
-                    ? MetaColors.emerald.withValues(alpha: 0.4)
-                    : const Color(0xFF423737),
+                    ? (isDark ? MetaColors.emerald.withValues(alpha: 0.4) : const Color(0xFFA7F3D0))
+                    : (isDark ? const Color(0xFF423737) : const Color(0xFFFECACA)),
               ),
             ),
             child: Column(
@@ -1401,23 +1506,29 @@ class _BeforeAfterCaseViewerState extends State<BeforeAfterCaseViewer> {
                 const SizedBox(height: 8),
                 Text(
                   _showAfter ? currentCase.afterWeight : currentCase.beforeWeight,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
                 const SizedBox(height: 6),
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
                       '${currentCase.metricLabel}: ',
-                      style: const TextStyle(color: MetaColors.textSecondary, fontSize: 12),
+                      style: TextStyle(
+                        color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary,
+                        fontSize: 12,
+                      ),
                     ),
                     Text(
                       _showAfter ? currentCase.afterMetric : currentCase.beforeMetric,
                       style: TextStyle(
-                        color: _showAfter ? MetaColors.emerald : Colors.white70,
+                        color: _showAfter
+                            ? (isDark ? MetaColors.emerald : MetaColors.lightEmerald)
+                            : (isDark ? Colors.white70 : Colors.black87),
                         fontSize: 12.5,
                         fontWeight: FontWeight.w800,
                       ),
@@ -1433,9 +1544,9 @@ class _BeforeAfterCaseViewerState extends State<BeforeAfterCaseViewer> {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFF0F1713),
+              color: isDark ? const Color(0xFF0F1713) : const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF26362C)),
+              border: Border.all(color: isDark ? const Color(0xFF26362C) : const Color(0xFFE2E8F0)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1553,8 +1664,8 @@ class _StatBadge extends StatelessWidget {
           children: [
             Text(
               number,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: MetaColors.text(context),
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
                 letterSpacing: -0.5,
