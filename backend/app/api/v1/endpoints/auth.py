@@ -567,7 +567,12 @@ async def request_mfa_code(
         if len(clean_target) < 10:
             raise HTTPException(status_code=400, detail="Número de WhatsApp não cadastrado ou inválido. Use o e-mail.")
         identifier = clean_target
-        masked_target = f"+55 ({clean_target[-11:-9]}) 9****-{clean_target[-4:]}"
+        if len(clean_target) == 11:
+            masked_target = f"+55 ({clean_target[:2]}) {clean_target[2]}****-{clean_target[-4:]}"
+        elif len(clean_target) >= 10:
+            masked_target = f"+55 ({clean_target[:2]}) ****-{clean_target[-4:]}"
+        else:
+            masked_target = f"+55 {clean_target}"
     else:
         if not user_email or "@" not in user_email:
             raise HTTPException(status_code=400, detail="E-mail não cadastrado. Use o WhatsApp.")
@@ -594,7 +599,9 @@ async def request_mfa_code(
             f"Ele é válido por 10 minutos. Nunca compartilhe este código com ninguém."
         )
         try:
-            await whatsapp_service.send_text_with_fallback(number=formatted_phone, text=msg_text)
+            wa_res = await whatsapp_service.send_text_with_fallback(number=formatted_phone, text=msg_text)
+            if isinstance(wa_res, dict) and wa_res.get("status") == "failed":
+                raise RuntimeError(wa_res.get("reason") or "Falha no envio WhatsApp")
         except Exception as e:
             logger.error(f"[MFA] Falha ao enviar WhatsApp: {e}")
             raise HTTPException(status_code=502, detail="Não foi possível enviar o código via WhatsApp. Tente por E-mail.")
