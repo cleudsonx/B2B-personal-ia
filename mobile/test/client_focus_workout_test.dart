@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:personal_ia/services/offline_sync_service.dart';
 import 'package:personal_ia/features/client/client_focus_workout_screen.dart';
 import 'package:personal_ia/models/exercise_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +30,10 @@ void main() {
       substitutionVector: 'deltoide_anterior_desenvolvimento',
     ),
   ];
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
 
   testWidgets('ClientFocusWorkoutScreen renders exercise and increments weight without keyboard', (tester) async {
     await tester.pumpWidget(
@@ -65,5 +71,61 @@ void main() {
 
     // Auto-Rest Timer deve iniciar
     expect(find.text('DESCANSO EM ANDAMENTO'), findsOneWidget);
+  });
+
+  testWidgets('ClientFocusWorkoutScreen restores completed exercises and partial sets across sessions', (tester) async {
+    // 1. Pré-salva no OfflineSyncService um progresso onde o Exercício 1 está 100% feito
+    // e o Exercício 2 tem 1 de 3 séries feitas (parcial)
+    await OfflineSyncService.instance.saveWorkoutDraft('guest', {
+      'splitIdentifier': 'A',
+      'splits': {
+        'A': {
+          'splitIdentifier': 'A',
+          'currentExerciseIndex': 1,
+          'elapsedSeconds': 180,
+          'exerciseSets': {
+            '0': [
+              {'setNumber': 1, 'weightKg': 32.5, 'reps': 10, 'isCompleted': true},
+              {'setNumber': 2, 'weightKg': 32.5, 'reps': 10, 'isCompleted': true},
+              {'setNumber': 3, 'weightKg': 32.5, 'reps': 10, 'isCompleted': true},
+            ],
+            '1': [
+              {'setNumber': 1, 'weightKg': 16.0, 'reps': 12, 'isCompleted': true},
+              {'setNumber': 2, 'weightKg': 16.0, 'reps': 12, 'isCompleted': false},
+              {'setNumber': 3, 'weightKg': 16.0, 'reps': 12, 'isCompleted': false},
+            ],
+          },
+        },
+      },
+    });
+
+    // 2. Abre o Modo Foco no Exercício 1 (índice 0) passando initialCompletedIndices: {0}
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ClientFocusWorkoutScreen(
+          workoutTitle: 'Treino A · Peito e Ombros',
+          splitIdentifier: 'A',
+          splitName: 'Superior',
+          exercises: mockExercises,
+          trainerName: 'Prof. Cleudson',
+          workoutLocation: 'Academia Completa',
+          initialExerciseIndex: 0,
+          initialCompletedIndices: const {0},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Deve exibir o banner de Exercício Concluído Hoje no Exercício 1 e a carga restaurada
+    expect(find.textContaining('EXERCÍCIO CONCLUÍDO HOJE (3/3 séries feitas)'), findsOneWidget);
+    expect(find.text('32.5 kg'), findsWidgets);
+
+    // 3. Avança para o Exercício 2 (que possui séries parciais salvas)
+    await tester.tap(find.text('Próximo Exercício'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Desenvolvimento com Halteres'), findsOneWidget);
+    expect(find.textContaining('SÉRIES PARCIAIS SALVAS (1/3 feitas) • Continue na Série #2'), findsOneWidget);
+    expect(find.text('16.0 kg'), findsWidgets);
   });
 }

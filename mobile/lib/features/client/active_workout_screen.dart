@@ -58,6 +58,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   String? _trainerPhotoUrl;
   final Set<int> _adaptedIndices = {};
   final Set<int> _completedExerciseIndices = {};
+  final Map<int, int> _partialSetsByExercise = {};
   final WorkoutSessionService _sessionService = WorkoutSessionService();
   bool _isLoadingWorkout = true;
   DateTime? _startedAt;
@@ -265,6 +266,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             'Treino ${firstSplit.splitIdentifier}: ${firstSplit.splitName}';
         _exercises = List.from(firstSplit.exercises);
         _completedExerciseIndices.clear();
+        _partialSetsByExercise.clear();
         _adaptedIndices.clear();
         _startedAt ??= DateTime.now();
       } else {
@@ -273,11 +275,14 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         _exercises = [];
         _workoutTitle = '•';
         _completedExerciseIndices.clear();
+        _partialSetsByExercise.clear();
         _adaptedIndices.clear();
         _startedAt = null;
       }
       _isLoadingWorkout = false;
     });
+
+    await _restoreSavedDraftForCurrentSplit();
 
     final workoutLocation = await WorkoutService.getClientWorkoutLocation();
     if (mounted && workoutLocation != null) {
@@ -331,6 +336,143 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     _loadExerciseThumbnails();
   }
 
+  Future<void> _restoreSavedDraftForCurrentSplit() async {
+    try {
+      final uid = AuthService.currentUser?.id ?? 'guest';
+      final draft = await OfflineSyncService.instance.getWorkoutDraft(uid);
+      final currentSplitId = _splitIdentifier ?? 'A';
+      if (draft == null) return;
+
+      Map<String, dynamic>? splitDraft;
+      if (draft['splits'] is Map &&
+          (draft['splits'] as Map)[currentSplitId] is Map) {
+        splitDraft = Map<String, dynamic>.from(
+          (draft['splits'] as Map)[currentSplitId] as Map,
+        );
+      } else if (draft['splitIdentifier'] == currentSplitId) {
+        splitDraft = draft;
+      }
+
+      if (splitDraft == null || splitDraft['exerciseSets'] is! Map) {
+        return;
+      }
+
+      final draftSets = splitDraft['exerciseSets'] as Map;
+      final Set<int> restoredCompleted = {};
+      final Map<int, int> restoredPartial = {};
+
+      for (int i = 0; i < _exercises.length; i++) {
+        final rawList = draftSets[i.toString()];
+        if (rawList is List && rawList.isNotEmpty) {
+          final totalSets = rawList.length;
+          int doneCount = 0;
+          for (final s in rawList) {
+            if (s is Map && s['isCompleted'] == true) {
+              doneCount++;
+            }
+          }
+          if (doneCount >= totalSets && totalSets > 0) {
+            restoredCompleted.add(i);
+          } else if (doneCount > 0) {
+            restoredPartial[i] = doneCount;
+          }
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _completedExerciseIndices
+            ..clear()
+            ..addAll(restoredCompleted);
+          _partialSetsByExercise
+            ..clear()
+            ..addAll(restoredPartial);
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _syncManualExerciseToggleToDraft(
+    int exerciseIndex,
+    bool completed,
+  ) async {
+    try {
+      final uid = AuthService.currentUser?.id ?? 'guest';
+      final currentSplitId = _splitIdentifier ?? 'A';
+      final existingDraft =
+          await OfflineSyncService.instance.getWorkoutDraft(uid) ??
+              <String, dynamic>{};
+      final splitsMap = existingDraft['splits'] is Map
+          ? Map<String, dynamic>.from(existingDraft['splits'] as Map)
+          : <String, dynamic>{};
+
+      Map<String, dynamic> splitData = {};
+      if (splitsMap[currentSplitId] is Map) {
+        splitData = Map<String, dynamic>.from(splitsMap[currentSplitId] as Map);
+      } else if (existingDraft['splitIdentifier'] == currentSplitId) {
+        splitData = Map<String, dynamic>.from(existingDraft);
+      }
+
+      final draftSets = splitData['exerciseSets'] is Map
+          ? Map<String, dynamic>.from(splitData['exerciseSets'] as Map)
+          : <String, dynamic>{};
+
+      for (int i = 0; i < _exercises.length; i++) {
+        final ex = _exercises[i];
+        final setsCount = ex.sets > 0 ? ex.sets : 3;
+        final isExDone = i == exerciseIndex
+            ? completed
+            : _completedExerciseIndices.contains(i);
+
+        if (i == exerciseIndex || !draftSets.containsKey(i.toString())) {
+          final existingList = draftSets[i.toString()];
+          if (existingList is List && existingList.isNotEmpty) {
+            draftSets[i.toString()] = existingList.map((item) {
+              if (item is Map) {
+                return {
+                  'weightKg': item['weightKg'] ?? 20.0,
+                  'reps': item['reps'] ?? 10,
+                  'isCompleted': i == exerciseIndex
+                      ? completed
+                      : (item['isCompleted'] == true),
+                };
+              }
+              return {
+                'weightKg': 20.0,
+                'reps': 10,
+                'isCompleted': isExDone,
+              };
+            }).toList();
+          } else {
+            draftSets[i.toString()] = List.generate(
+              setsCount,
+              (_) => {
+                'weightKg': 20.0,
+                'reps': 10,
+                'isCompleted': isExDone,
+              },
+            );
+          }
+        }
+      }
+
+      final updatedSplitData = {
+        'splitIdentifier': currentSplitId,
+        'splitName': _splitName ?? 'Treino do Dia',
+        'startedAt': (_startedAt ?? DateTime.now()).toIso8601String(),
+        'currentPage': exerciseIndex,
+        'exerciseSets': draftSets,
+      };
+
+      splitsMap[currentSplitId] = updatedSplitData;
+
+      await OfflineSyncService.instance.saveWorkoutDraft(uid, {
+        ...updatedSplitData,
+        'splits': splitsMap,
+      });
+    } catch (_) {}
+  }
+
   void _loadExerciseThumbnails() {
     for (final ex in _exercises) {
       if (!_exerciseThumbnails.containsKey(ex.name)) {
@@ -357,14 +499,38 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       _workoutTitle = 'Treino ${split.splitIdentifier}: ${split.splitName}';
       _exercises = List.from(split.exercises);
       _completedExerciseIndices.clear();
+      _partialSetsByExercise.clear();
       _adaptedIndices.clear();
       _startedAt = DateTime.now();
     });
+    _restoreSavedDraftForCurrentSplit();
     _loadExerciseThumbnails();
   }
 
-  void _startFocusMode({int initialIndex = 0}) {
+  void _startFocusMode({int? initialIndex}) {
     if (_exercises.isEmpty) return;
+    int targetIndex = initialIndex ?? 0;
+    if (initialIndex == null) {
+      // Prioriza exercício com séries parciais em andamento ou o primeiro não concluído
+      int? firstPartial;
+      for (int i = 0; i < _exercises.length; i++) {
+        if (_partialSetsByExercise.containsKey(i)) {
+          firstPartial = i;
+          break;
+        }
+      }
+      if (firstPartial != null) {
+        targetIndex = firstPartial;
+      } else {
+        for (int i = 0; i < _exercises.length; i++) {
+          if (!_completedExerciseIndices.contains(i)) {
+            targetIndex = i;
+            break;
+          }
+        }
+      }
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -377,12 +543,17 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           trainerPhone: _trainerPhone,
           workoutLocation: _workoutLocation,
           currentStreak: currentStreak,
-          initialExerciseIndex: initialIndex,
+          initialExerciseIndex: targetIndex,
+          initialCompletedIndices: Set<int>.from(_completedExerciseIndices),
         ),
       ),
-    ).then((result) {
+    ).then((result) async {
       if (!mounted) return;
       if (result == true) {
+        setState(() {
+          _completedExerciseIndices.clear();
+          _partialSetsByExercise.clear();
+        });
         _loadActiveWorkout();
         _initRealtimeWorkoutListener();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -402,10 +573,35 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             ),
           ),
         );
-      } else if (result is Set<int> && result.isNotEmpty) {
+      } else if (result == 'discarded') {
+        setState(() {
+          _completedExerciseIndices.clear();
+          _partialSetsByExercise.clear();
+        });
+      } else if (result is Set<int>) {
+        await _restoreSavedDraftForCurrentSplit();
+        if (!mounted) return;
         setState(() {
           _completedExerciseIndices.addAll(result);
+          for (final idx in result) {
+            _partialSetsByExercise.remove(idx);
+          }
         });
+        final int doneExCount = _completedExerciseIndices.length;
+        final int partialSetsCount = _partialSetsByExercise.values.fold(
+          0,
+          (sum, val) => sum + val,
+        );
+        String msg = 'Progresso salvo!';
+        if (doneExCount > 0 && partialSetsCount > 0) {
+          msg =
+              'Progresso salvo ($doneExCount exercício(s) completo(s) + $partialSetsCount série(s) parcial(is))!';
+        } else if (doneExCount > 0) {
+          msg = 'Progresso salvo ($doneExCount exercício(s) concluído(s))!';
+        } else if (partialSetsCount > 0) {
+          msg = 'Progresso salvo ($partialSetsCount série(s) realizada(s))!';
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: _highlight,
@@ -426,7 +622,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Progresso salvo (${result.length} exercício(s) concluído(s))!',
+                    msg,
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
@@ -437,6 +633,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             ),
           ),
         );
+      } else {
+        await _restoreSavedDraftForCurrentSplit();
       }
     });
   }
@@ -1252,7 +1450,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           final ex = _exercises[idx];
           final setsCount = ex.sets;
           final repsCount =
-              int.tryParse(ex.reps.replaceAll(RegExp(r'\D'), '•')) ?? 10;
+              int.tryParse(ex.reps.replaceAll(RegExp(r'\D'), '')) ?? 10;
           totalSets += setsCount;
           final weightKey =
               'pwa_last_weight_${uid}_${ex.name.toLowerCase().trim()}';
@@ -1276,6 +1474,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       }
     }
 
+    try {
+      await OfflineSyncService.instance.clearWorkoutDraft(uid ?? 'guest');
+    } catch (_) {}
+
     if (!mounted) return;
 
     await WorkoutTriumphModal.show(
@@ -1294,6 +1496,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         if (mounted) {
           setState(() {
             _completedExerciseIndices.clear();
+            _partialSetsByExercise.clear();
             _startedAt = DateTime.now();
           });
           StudentNotificationService.instance.refreshNotifications();
@@ -1322,6 +1525,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     final item = _exercises[index];
     final isAdapted = _adaptedIndices.contains(index);
     final isCompleted = _completedExerciseIndices.contains(index);
+    final int partialSets = _partialSetsByExercise[index] ?? 0;
+    final bool isPartial = !isCompleted && partialSets > 0;
     final setsCount = item.sets > 0 ? item.sets : 3;
     final thumbUrl = _exerciseThumbnails[item.name];
 
@@ -1329,7 +1534,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       backgroundColor: _cardBg,
       borderColor: isCompleted
           ? MetaColors.emerald.withValues(alpha: 0.6)
-          : (isAdapted ? const Color(0xFFF59E0B) : _border),
+          : (isPartial
+              ? const Color(0xFFF59E0B).withValues(alpha: 0.65)
+              : (isAdapted ? const Color(0xFFF59E0B) : _border)),
       borderRadius: 18,
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.only(bottom: 10),
@@ -1354,7 +1561,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 border: Border.all(
                   color: isCompleted
                       ? MetaColors.emerald.withValues(alpha: 0.4)
-                      : _border,
+                      : (isPartial
+                          ? const Color(0xFFF59E0B).withValues(alpha: 0.5)
+                          : _border),
                   width: 1.0,
                 ),
               ),
@@ -1449,11 +1658,15 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     Text('•', style: TextStyle(color: _textSecondary, fontSize: 11)),
                     const SizedBox(width: 5),
                     Text(
-                      '$setsCount séries \u2022 ${item.reps}',
-                      style: const TextStyle(
+                      isCompleted
+                          ? '✓ $setsCount/$setsCount séries \u2022 ${item.reps}'
+                          : (isPartial
+                              ? '$partialSets/$setsCount séries feitas \u2022 ${item.reps}'
+                              : '$setsCount séries \u2022 ${item.reps}'),
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: MetaColors.emerald,
+                        color: isPartial ? const Color(0xFFF59E0B) : MetaColors.emerald,
                       ),
                     ),
                     const SizedBox(width: 5),
@@ -1478,13 +1691,20 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           InkWell(
             onTap: () {
               HapticFeedback.selectionClick();
+              if (isPartial) {
+                _startFocusMode(initialIndex: index);
+                return;
+              }
+              final nextCompleted = !isCompleted;
               setState(() {
                 if (isCompleted) {
                   _completedExerciseIndices.remove(index);
                 } else {
                   _completedExerciseIndices.add(index);
+                  _partialSetsByExercise.remove(index);
                 }
               });
+              _syncManualExerciseToggleToDraft(index, nextCompleted);
             },
             borderRadius: BorderRadius.circular(12),
             child: AnimatedContainer(
@@ -1493,12 +1713,16 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               decoration: BoxDecoration(
                 color: isCompleted
                     ? MetaColors.emerald
-                    : _highlight,
+                    : (isPartial
+                        ? const Color(0xFFF59E0B).withValues(alpha: 0.16)
+                        : _highlight),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: isCompleted
                       ? MetaColors.emerald
-                      : _border,
+                      : (isPartial
+                          ? const Color(0xFFF59E0B).withValues(alpha: 0.6)
+                          : _border),
                   width: 1.0,
                 ),
               ),
@@ -1508,17 +1732,25 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   Icon(
                     isCompleted
                         ? Icons.check_circle_rounded
-                        : Icons.play_arrow_rounded,
+                        : (isPartial
+                            ? Icons.timelapse_rounded
+                            : Icons.play_arrow_rounded),
                     size: 16,
-                    color: isCompleted ? Colors.black : MetaColors.emerald,
+                    color: isCompleted
+                        ? Colors.black
+                        : (isPartial ? const Color(0xFFF59E0B) : MetaColors.emerald),
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    isCompleted ? 'Feito' : 'Treinar',
+                    isCompleted
+                        ? 'Feito'
+                        : (isPartial ? 'Continuar ($partialSets/$setsCount)' : 'Treinar'),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w900,
-                      color: isCompleted ? Colors.black : MetaColors.emerald,
+                      color: isCompleted
+                          ? Colors.black
+                          : (isPartial ? const Color(0xFFF59E0B) : MetaColors.emerald),
                     ),
                   ),
                 ],
@@ -2297,12 +2529,14 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       ),
                       const SizedBox(height: 12),
                       SquircleButton(
-                        label: _completedExerciseIndices.isEmpty
+                        label: (_completedExerciseIndices.isEmpty &&
+                                _partialSetsByExercise.isEmpty)
                             ? 'Iniciar Treino de Hoje'
                             : (_completedExerciseIndices.length == _exercises.length
                                 ? 'Finalizar Treino (${_completedExerciseIndices.length}/${_exercises.length})'
                                 : 'Continuar Treino (${_completedExerciseIndices.length}/${_exercises.length})'),
-                        icon: _completedExerciseIndices.isEmpty
+                        icon: (_completedExerciseIndices.isEmpty &&
+                                _partialSetsByExercise.isEmpty)
                             ? Icons.play_arrow_rounded
                             : (_completedExerciseIndices.length == _exercises.length
                                 ? Icons.check_circle_rounded
@@ -2319,14 +2553,23 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                             _finishWorkout();
                             return;
                           }
-                          int nextIndex = 0;
+                          int? nextIndex;
                           for (int i = 0; i < _exercises.length; i++) {
-                            if (!_completedExerciseIndices.contains(i)) {
+                            if (_partialSetsByExercise.containsKey(i) &&
+                                !_completedExerciseIndices.contains(i)) {
                               nextIndex = i;
                               break;
                             }
                           }
-                          _startFocusMode(initialIndex: nextIndex);
+                          if (nextIndex == null) {
+                            for (int i = 0; i < _exercises.length; i++) {
+                              if (!_completedExerciseIndices.contains(i)) {
+                                nextIndex = i;
+                                break;
+                              }
+                            }
+                          }
+                          _startFocusMode(initialIndex: nextIndex ?? 0);
                         },
                       ),
                     ],

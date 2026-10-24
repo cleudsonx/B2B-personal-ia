@@ -7,7 +7,6 @@ import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/exercise_media_sheet.dart';
 import '../../core/widgets/biomechanical_analysis_sheet.dart';
 import '../../core/widgets/theme_toggle_button.dart';
-import 'widgets/warmup_sheet.dart';
 import '../../models/exercise_model.dart';
 import '../../models/adaptation_model.dart';
 import '../../services/api_service.dart';
@@ -33,6 +32,7 @@ class ClientFocusWorkoutScreen extends StatefulWidget {
   final String workoutLocation;
   final int? currentStreak;
   final int initialExerciseIndex;
+  final Set<int> initialCompletedIndices;
 
   const ClientFocusWorkoutScreen({
     super.key,
@@ -45,6 +45,7 @@ class ClientFocusWorkoutScreen extends StatefulWidget {
     required this.workoutLocation,
     this.currentStreak,
     this.initialExerciseIndex = 0,
+    this.initialCompletedIndices = const {},
   });
 
   @override
@@ -57,8 +58,11 @@ class _SetProgress {
   int reps;
   bool isCompleted;
 
-  _SetProgress({required this.weightKg, required this.reps})
-      : isCompleted = false;
+  _SetProgress({
+    required this.weightKg,
+    required this.reps,
+    this.isCompleted = false,
+  });
 }
 
 class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
@@ -126,10 +130,15 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
       final setsCount = ex.sets > 0 ? ex.sets : 3;
       final defaultReps = _parseDefaultReps(ex.reps);
       final defaultWeight = _parseDefaultWeight(ex.notes);
+      final preCompleted = widget.initialCompletedIndices.contains(i);
 
       _exerciseSets[i] = List.generate(
         setsCount,
-        (_) => _SetProgress(weightKg: defaultWeight, reps: defaultReps),
+        (_) => _SetProgress(
+          weightKg: defaultWeight,
+          reps: defaultReps,
+          isCompleted: preCompleted,
+        ),
       );
     }
   }
@@ -153,6 +162,57 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
           }
         } else {
           refs[i] = _parseDefaultWeight(ex.notes);
+        }
+      }
+
+      // Restaura rascunho de treino ativo (exercícios concluídos e séries parciais)
+      final draft = await OfflineSyncService.instance.getWorkoutDraft(uid);
+      if (draft != null) {
+        Map<String, dynamic>? splitDraft;
+        if (draft['splits'] is Map &&
+            (draft['splits'] as Map)[widget.splitIdentifier] is Map) {
+          splitDraft = Map<String, dynamic>.from(
+            (draft['splits'] as Map)[widget.splitIdentifier] as Map,
+          );
+        } else if (draft['splitIdentifier'] == widget.splitIdentifier) {
+          splitDraft = draft;
+        }
+
+        if (splitDraft != null && splitDraft['exerciseSets'] is Map) {
+          final draftSets = splitDraft['exerciseSets'] as Map;
+          for (int i = 0; i < _currentExercises.length; i++) {
+            final rawList = draftSets[i.toString()];
+            if (rawList is List && _exerciseSets.containsKey(i)) {
+              final currentSets = _exerciseSets[i]!;
+              final restoredSets = <_SetProgress>[];
+              final maxLen = rawList.length > currentSets.length
+                  ? rawList.length
+                  : currentSets.length;
+              for (int sIdx = 0; sIdx < maxLen; sIdx++) {
+                if (sIdx < rawList.length && rawList[sIdx] is Map) {
+                  final m = rawList[sIdx] as Map;
+                  final fallbackW = sIdx < currentSets.length
+                      ? currentSets[sIdx].weightKg
+                      : (refs[i] ?? 20.0);
+                  final fallbackR = sIdx < currentSets.length
+                      ? currentSets[sIdx].reps
+                      : _parseDefaultReps(_currentExercises[i].reps);
+                  final w = (m['weightKg'] as num?)?.toDouble() ?? fallbackW;
+                  final r = (m['reps'] as num?)?.toInt() ?? fallbackR;
+                  final done = (m['isCompleted'] == true) ||
+                      widget.initialCompletedIndices.contains(i);
+                  restoredSets.add(
+                    _SetProgress(weightKg: w, reps: r, isCompleted: done),
+                  );
+                } else if (sIdx < currentSets.length) {
+                  restoredSets.add(currentSets[sIdx]);
+                }
+              }
+              if (restoredSets.isNotEmpty) {
+                _exerciseSets[i] = restoredSets;
+              }
+            }
+          }
         }
       }
 
@@ -227,6 +287,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
       sets.add(_SetProgress(weightKg: lastWeight, reps: lastReps));
       _exerciseSets[exerciseIndex] = sets;
     });
+    _persistCurrentDraft();
   }
 
   void _removeLastSet(int exerciseIndex) {
@@ -236,6 +297,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
       setState(() {
         sets.removeLast();
       });
+      _persistCurrentDraft();
     }
   }
 
@@ -309,34 +371,69 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
       HapticFeedback.lightImpact();
     }
 
-    final uid = AuthService.currentUser?.id;
-    if (uid != null) {
-      _saveDraftDebounced(uid);
-    }
+    _persistCurrentDraft();
   }
 
-  void _saveDraftDebounced(String uid) {
+  Future<void> _persistCurrentDraft() async {
     try {
+      final uid = AuthService.currentUser?.id ?? 'guest';
+      final existingDraft =
+          await OfflineSyncService.instance.getWorkoutDraft(uid) ??
+              <String, dynamic>{};
+      final splitsMap = existingDraft['splits'] is Map
+          ? Map<String, dynamic>.from(existingDraft['splits'] as Map)
+          : <String, dynamic>{};
+
       final draftSets = <String, dynamic>{};
       _exerciseSets.forEach((k, v) {
-        draftSets[k.toString()] =
-            v
-                .map(
-                  (s) => {
-                    'weightKg': s.weightKg,
-                    'reps': s.reps,
-                    'isCompleted': s.isCompleted,
-                  },
-                )
-                .toList();
+        draftSets[k.toString()] = v
+            .map(
+              (s) => {
+                'weightKg': s.weightKg,
+                'reps': s.reps,
+                'isCompleted': s.isCompleted,
+              },
+            )
+            .toList();
       });
-      OfflineSyncService.instance.saveWorkoutDraft(uid, {
+
+      final currentSplitData = {
         'splitIdentifier': widget.splitIdentifier,
         'splitName': widget.splitName,
         'startedAt': _startedAt.toIso8601String(),
         'currentPage': _currentPage,
         'exerciseSets': draftSets,
+      };
+
+      splitsMap[widget.splitIdentifier] = currentSplitData;
+
+      await OfflineSyncService.instance.saveWorkoutDraft(uid, {
+        ...currentSplitData,
+        'splits': splitsMap,
       });
+    } catch (_) {}
+  }
+
+  Future<void> _clearCurrentSplitDraft() async {
+    try {
+      final uid = AuthService.currentUser?.id ?? 'guest';
+      final existingDraft =
+          await OfflineSyncService.instance.getWorkoutDraft(uid);
+      if (existingDraft == null) return;
+      if (existingDraft['splits'] is Map) {
+        final splitsMap =
+            Map<String, dynamic>.from(existingDraft['splits'] as Map);
+        splitsMap.remove(widget.splitIdentifier);
+        if (splitsMap.isEmpty) {
+          await OfflineSyncService.instance.clearWorkoutDraft(uid);
+        } else {
+          await OfflineSyncService.instance.saveWorkoutDraft(uid, {
+            'splits': splitsMap,
+          });
+        }
+      } else {
+        await OfflineSyncService.instance.clearWorkoutDraft(uid);
+      }
     } catch (_) {}
   }
 
@@ -392,6 +489,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
       final newW = (set.weightKg + delta).clamp(0.0, 500.0);
       set.weightKg = (newW * 2).round() / 2; // Arredonda para 0.5kg
     });
+    _persistCurrentDraft();
   }
 
   void _adjustReps(int exerciseIndex, int setIndex, int delta) {
@@ -401,6 +499,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
       final newReps = (set.reps + delta).clamp(1, 100);
       set.reps = newReps;
     });
+    _persistCurrentDraft();
   }
 
   double _calculateTotalVolumeLoadKg() {
@@ -795,6 +894,8 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
     final durationMin = (_elapsedSeconds / 60).round();
     final uid = AuthService.currentUser?.id;
 
+    await _clearCurrentSplitDraft();
+
     if (uid != null) {
       try {
         final record = WorkoutSessionRecord(
@@ -808,7 +909,6 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
           completedAt: DateTime.now(),
         );
         final status = await _sessionService.complete(record);
-        await OfflineSyncService.instance.clearWorkoutDraft(uid);
         if (status == SessionSaveStatus.pendingSync) {
           await OfflineSyncService.instance.refreshPendingCount(uid);
         }
@@ -1011,21 +1111,15 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
 
     if (action == 'save_exit' && mounted) {
       await _saveWeights();
-      final uid = AuthService.currentUser?.id;
-      if (uid != null) {
-        await OfflineSyncService.instance.clearWorkoutDraft(uid);
-      }
+      await _persistCurrentDraft();
       final completedIndices = _getCompletedExerciseIndices();
       if (mounted) {
         Navigator.pop(context, completedIndices);
       }
     } else if (action == 'discard' && mounted) {
-      final uid = AuthService.currentUser?.id;
-      if (uid != null) {
-        await OfflineSyncService.instance.clearWorkoutDraft(uid);
-      }
+      await _clearCurrentSplitDraft();
       if (mounted) {
-        Navigator.pop(context, null);
+        Navigator.pop(context, 'discarded');
       }
     }
   }
@@ -1054,10 +1148,6 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
     }
 
     final totalEx = _currentExercises.length;
-    final completedSetsTotal = _countCompletedSets();
-    final allSetsTotal = _countTotalSets();
-    final double completionRatio =
-        allSetsTotal > 0 ? (completedSetsTotal / allSetsTotal).clamp(0.0, 1.0) : 0.0;
 
     return PopScope(
       canPop: false,
@@ -1182,6 +1272,8 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                         Row(
                           children: List.generate(totalEx, (barIdx) {
                             final isDone = _isExerciseFullyCompleted(barIdx);
+                            final hasPartial = !isDone &&
+                                (_exerciseSets[barIdx]?.any((s) => s.isCompleted) ?? false);
                             final isCurrent = barIdx == _currentPage;
                             return Expanded(
                               child: GestureDetector(
@@ -1201,9 +1293,11 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                                   decoration: BoxDecoration(
                                     color: isDone
                                         ? MetaColors.emerald
-                                        : (isCurrent
-                                            ? MetaColors.emerald.withValues(alpha: 0.75)
-                                            : border),
+                                        : (hasPartial
+                                            ? const Color(0xFFF59E0B)
+                                            : (isCurrent
+                                                ? MetaColors.emerald.withValues(alpha: 0.75)
+                                                : border)),
                                     borderRadius: BorderRadius.circular(3),
                                   ),
                                 ),
@@ -1515,12 +1609,81 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
       }
     }
 
+    final int completedInThisEx = sets.where((s) => s.isCompleted).length;
+    final bool isFullyDone = sets.isNotEmpty && completedInThisEx == sets.length;
     final origName = _originalExerciseNames[index];
 
     return ListView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
       children: [
+        if (isFullyDone)
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: MetaColors.emerald.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: MetaColors.emerald.withValues(alpha: 0.5),
+                width: 1.2,
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.check_circle_rounded,
+                  size: 18,
+                  color: MetaColors.emerald,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'EXERCÍCIO CONCLUÍDO HOJE ($completedInThisEx/${sets.length} séries feitas)',
+                    style: TextStyle(
+                      color: MetaColors.emeraldText(context),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (completedInThisEx > 0)
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: const Color(0xFFF59E0B).withValues(alpha: 0.45),
+                width: 1.2,
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.timelapse_rounded,
+                  size: 18,
+                  color: Color(0xFFF59E0B),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'SÉRIES PARCIAIS SALVAS ($completedInThisEx/${sets.length} feitas) • Continue na Série #${activeSetIndex + 1}',
+                    style: const TextStyle(
+                      color: Color(0xFFF59E0B),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         // Hero Stage (Card Unificado Raio 24px)
         Container(
           padding: const EdgeInsets.all(16),
