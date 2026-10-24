@@ -1044,10 +1044,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const Text('🔥', style: TextStyle(fontSize: 20)),
+                      const Text('\u{1F525}', style: TextStyle(fontSize: 20)),
                       const SizedBox(width: 6),
                       Text(
-                        currentStreak == null ? '—' : '$currentStreak',
+                        currentStreak == null ? '\u2014' : '$currentStreak',
                         semanticsLabel: currentStreak == null
                             ? 'Sequência indisponível'
                             : '$currentStreak dias',
@@ -1115,7 +1115,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           ),
                         ),
                         TextSpan(
-                          text: ' / $total exercícios',
+                          text: ' / $total exerc\u00EDcios',
                           style: TextStyle(fontSize: 12, color: _textSecondary),
                         ),
                       ],
@@ -1449,7 +1449,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     Text('•', style: TextStyle(color: _textSecondary, fontSize: 11)),
                     const SizedBox(width: 5),
                     Text(
-                      '$setsCount séries Á— ${item.reps}',
+                      '$setsCount séries \u2022 ${item.reps}',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -1564,7 +1564,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       border: Border.all(color: _border),
                     ),
                     child: Text(
-                      'EXERCÁCIO ${index + 1} DE ${_exercises.length}',
+                      'EXERCÍCIO ${index + 1} DE ${_exercises.length}',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
@@ -2325,14 +2325,14 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
                 const SizedBox(height: 18),
 
-                // 5. CABEÁ‡ALHO DA SEÁ‡ÁƒO DE EXERCÁCIOS
+                // 5. CABEÇALHO DA SEÇÃO DE EXERCÍCIOS
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
                       children: [
                         Text(
-                          'EXERCÁCIOS DA SESSÁƒO',
+                          'EXERCÍCIOS DA SESSÃO',
                           style: TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w900,
