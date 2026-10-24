@@ -1116,8 +1116,8 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                                 children: [
                                   Text(
                                     widget.splitIdentifier.isNotEmpty
-                                        ? 'DIVISÃO ${widget.splitIdentifier.toUpperCase()} · EXERCÍCIO ${_currentPage + 1} DE $totalEx'
-                                        : 'EXERCÍCIO ${_currentPage + 1} DE $totalEx',
+                                        ? '${widget.splitIdentifier} · EXERCÍCIO ${_currentPage + 1}/$totalEx'
+                                        : 'EXERCÍCIO ${_currentPage + 1}/$totalEx',
                                     style: TextStyle(
                                       fontSize: 10.5,
                                       fontWeight: FontWeight.w800,
