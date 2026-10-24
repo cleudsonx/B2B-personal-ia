@@ -2299,10 +2299,14 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       SquircleButton(
                         label: _completedExerciseIndices.isEmpty
                             ? 'Iniciar Treino de Hoje'
-                            : 'Continuar Treino (${_completedExerciseIndices.length}/${_exercises.length})',
+                            : (_completedExerciseIndices.length == _exercises.length
+                                ? 'Finalizar Treino (${_completedExerciseIndices.length}/${_exercises.length})'
+                                : 'Continuar Treino (${_completedExerciseIndices.length}/${_exercises.length})'),
                         icon: _completedExerciseIndices.isEmpty
                             ? Icons.play_arrow_rounded
-                            : Icons.bolt_rounded,
+                            : (_completedExerciseIndices.length == _exercises.length
+                                ? Icons.check_circle_rounded
+                                : Icons.bolt_rounded),
                         isPrimary: true,
                         height: 52,
                         borderRadius: 16,
@@ -2310,6 +2314,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                         foregroundColor: Colors.black,
                         onPressed: () {
                           HapticFeedback.heavyImpact();
+                          if (_completedExerciseIndices.isNotEmpty &&
+                              _completedExerciseIndices.length == _exercises.length) {
+                            _finishWorkout();
+                            return;
+                          }
                           int nextIndex = 0;
                           for (int i = 0; i < _exercises.length; i++) {
                             if (!_completedExerciseIndices.contains(i)) {
@@ -2416,8 +2425,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               ],
             ),
 
-            // Botão de Finalizar Flutuante (Rodapé) - Flutua acima da dock bar flutuante sem colisão
-            if (_completedExerciseIndices.isNotEmpty)
+            // Botão de Finalizar Flutuante (Rodapé) - Exibido apenas quando todos os exercícios forem concluídos (100%)
+            if (_exercises.isNotEmpty && _completedExerciseIndices.length == _exercises.length)
               Positioned(
                 left: 18,
                 right: 18,
