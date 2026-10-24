@@ -86,3 +86,7 @@ supabase/.branches/
 
 # Local CLI tools
 .tools/
+
+# Scratch & Temporary local files
+scratch/
+evolution_mrcoach_qr.png
