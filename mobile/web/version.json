@@ -1,318 +1,58 @@
 {
-  "version": "1.10.0",
-  "build": 2026103063,
-  "updated_at": "2026-10-24T14:39:23.909832Z",
-  "notes": "Versão 1.10.0: Redesign Completo da Experiência do Aluno (Treino, Mr. Coach AI, Bio-Hub e Perfil) no padrão Apple Fitness+ / Samsung One UI 7 / Material 3 Expressive, Anéis de Atividade no Bio-Hub, Biometria & IMC em Tempo Real, Cards de Adaptação no Copiloto IA e Pílula Compacta do Coach.",
+  "version": "1.11.0",
+  "build": 2026103065,
+  "updated_at": "2026-10-25T02:54:19.539335Z",
+  "notes": "Versão 1.11.0: Modernização Inteligente do 2FA Multi-Canal (WhatsApp, E-mail e Backup Codes de 10 dígitos), Dispositivo Confiável de 30 dias e Integração Estável com Evolution API v2.",
   "changelog": {
     "student": [
       {
-        "title": "Nova Experiência Visual do Aluno (4 Abas + Shell Edge-to-Edge)",
-        "description": "Redesign integral das abas Treino, Mr. Coach AI, Bio-Hub e Perfil com anéis de progresso animados (ProgressRing), tríade de prontidão no Bio-Hub, cálculo de IMC ao vivo com dígitos tabulares, botão de aplicar adaptação no Copiloto IA e grupos de preferências estilo iOS/One UI.",
-        "badge": "UX/UI 2.0"
+        "title": "Autenticação Multifatorial (2FA) Inteligente",
+        "description": "Acesse sua conta com segurança reforçada. Caso não tenha aplicativo autenticador, receba o código via WhatsApp ou E-mail com 1 toque.",
+        "badge": "PROTEÇÃO"
       },
       {
-        "title": "Continuidade de Periodização com Sobrecarga Gradual",
-        "description": "Fichas renovadas e novos mesociclos atualizados pelo seu treinador entram diretamente no aplicativo sem atritos, já incorporando suas novas metas calibradas de repetições e carga.",
-        "badge": "TREINOS"
-      },
-      {
-        "title": "Conector de Saúde Apple Health & Google Health Connect",
-        "description": "Sincronize seus passos, calorias ativas gastas, sono e batimentos em repouso diretamente do seu relógio ou celular, com registro rápido de copos d\\",
-        "badge": "SAÚDE VITAL"
-      },
-      {
-        "title": "Galeria de Conquistas & Selos de Força (Gamificação)",
-        "description": "Desbloqueie badges comemorativos ao atingir marcos reais de força (1RM de 100kg, 140kg), consistência de treinos e metas da IA, com visualização de tiers, progresso detalhado e compartilhamento direto nos Stories.",
-        "badge": "CONQUISTAS"
-      },
-      {
-        "title": "Central de 1RM & Metas de Sobrecarga com Gráfico de Volume",
-        "description": "Descubra sua força máxima teórica calculada cientificamente (Epley e Brzycki), visualize zonas de hipertrofia e força, acompanhe seu volume em toneladas e simule novas marcas.",
-        "badge": "FORÇA & 1RM"
-      },
-      {
-        "title": "Imersão Visual Edge-to-Edge sem Tarjas",
-        "description": "Treine em tela cheia real! O app agora preenche 100% da tela do seu celular até as bordas, sem faixas pretas no topo e no rodapé, integrando-se naturalmente à Dynamic Island e barra de gestos.",
-        "badge": "DESIGN"
-      },
-      {
-        "title": "Entrada VIP por Links de Parcerias (/r/{slug})",
-        "description": "Ao abrir um convite de parceiro ou amigo, sua tela de matrícula já carrega com o cupom aplicado e o desconto destacado na hora.",
-        "badge": "ACESSO VIP"
-      },
-      {
-        "title": "Cupons de Desconto Auto-Aplicados no Checkout",
-        "description": "Visualização transparente da economia em R$ e porcentagem ao contratar planos e consultorias com Pix e Cartão.",
-        "badge": "PAGAMENTO"
-      },
-      {
-        "title": "Instalação do Aplicativo (PWA)",
-        "description": "Guia interativo ensinando a instalar o app na tela inicial do celular com 1 toque no iPhone (Safari) e Android (Chrome).",
-        "badge": "EXPERIÊNCIA"
-      },
-      {
-        "title": "Boas-Vindas Instantâneas no WhatsApp",
-        "description": "Ao confirmar o pagamento, você recebe seu link seguro no WhatsApp para ativar o acesso e preencher sua avaliação física inicial.",
-        "badge": "ACESSO RÁPIDO"
-      },
-      {
-        "title": "Checkout Seguro e Sem Interrupções",
-        "description": "Geração instantânea de Pix Copia e Cola e Cartão de Crédito com validação de vagas e mensagens claras dentro da própria tela.",
-        "badge": "PAGAMENTO"
-      },
-      {
-        "title": "Celebração de Treino com Haptic Feedback",
-        "description": "Modal de triunfo animado com confetes e feedback tátil ao finalizar a sessão com sucesso.",
-        "badge": "CELEBRAÇÃO"
-      },
-      {
-        "title": "Card de Triunfo & Compartilhamento Social (Stories / Redes)",
-        "description": "Gere um card comemorativo em formato Story (9:16) no final de cada treino com seus recordes (PRs), volume em kg, séries e ofensiva para postar no Instagram e compartilhar no WhatsApp.",
-        "badge": "CONQUISTAS"
-      },
-      {
-        "title": "Cabeçalho de Vidro Dinâmico (Scroll-Aware Glass Header)",
-        "description": "Efeito translúcido ultra-fluido com desfoque de vidro inteligente no topo enquanto você rola seus treinos e fichas de exercícios.",
-        "badge": "VISUAL"
-      },
-      {
-        "title": "Cronômetro de Descanso Háptico & Alerta 3-2-1 (Audio Ducking)",
-        "description": "Contagem regressiva circular com feedback tátil e sonoro cadenciado nos últimos 3 segundos (3, 2, 1, GO!), presets rápidos (30s, 60s, 90s, 120s), ajuste fino e modo silencioso/vibração.",
-        "badge": "FOCO"
-      },
-      {
-        "title": "Motor de Sobrecarga Progressiva Inteligente (AI Overload)",
-        "description": "O app analisa o RPE e sugere automaticamente a progressão ideal para o exercício (+2.5 kg, +1 rep ou consolidação técnica), com aplicação direta na ficha em 1 toque.",
-        "badge": "EVOLUÇÃO"
-      },
-      {
-        "title": "Tour Guiado do Aluno em 3 Passos",
-        "description": "Guia interativo ensinando como registrar cargas no salão em tela cheia, usar o cronômetro com alertas 3-2-1 e compartilhar seus recordes em Stories de triunfo.",
-        "badge": "TOUR GUIADO"
-      },
-      {
-        "title": "Demonstrações em Vídeo e Raio-X Anatômico 100% Offline",
-        "description": "Pré-carregamento automático dos exercícios do seu treino no celular. Visualize execução, músculos trabalhados e ângulos articulares sem gastar dados móveis.",
-        "badge": "OFFLINE"
+        "title": "Alertas e Mensagens de Treino em Tempo Real no WhatsApp",
+        "description": "Receba notificações de novas fichas, avisos de streak em risco e mensagens de apoio do seu treinador diretamente no seu WhatsApp.",
+        "badge": "COMUNICAÇÃO"
       }
     ],
     "trainer": [
       {
-        "title": "Clonagem Rápida de Mesociclos & Prescrição em Bloco",
-        "description": "Duplique fichas e periodizações vigentes para novos ciclos com acréscimo automático de carga linear (+2.5kg ou +reps) e aplicação instantânea para 1 ou múltiplos alunos da consultoria.",
-        "badge": "AGILIDADE"
+        "title": "Pareamento Direto do WhatsApp do Treinador por Código de 8 Dígitos",
+        "description": "Conecte seu WhatsApp instantaneamente digitando o código de pareamento no celular, sem necessidade de escanear QR Code com a câmera.",
+        "badge": "WHATSAPP PRO"
       },
       {
-        "title": "Painel de Telemetria e Recuperação dos Alunos no Cockpit",
-        "description": "Acompanhe o gasto calórico ativo, passos diários, frequência cardíaca de repouso, sono e DOMS dos seus alunos direto nos detalhes de cada aluno para periodizar treinos e descanso.",
-        "badge": "RECUPERAÇÃO"
+        "title": "Acesso 2FA Sem Bloqueio com Dispositivo Confiável de 30 Dias",
+        "description": "Mantenha seu cockpit autenticado por 30 dias no seu dispositivo pessoal, com canais alternativos flexíveis para evitar qualquer perda de acesso.",
+        "badge": "PRATICIDADE"
       },
       {
-        "title": "Selo e Prova Social com Menção ao Personal nos Stories",
-        "description": "Quando seus alunos desbloqueiam marcas de força (ex: Clube dos 100kg no Supino) ou consistência, geram Stories estilizados que creditam você como o treinador oficial, acelerando sua captação orgânica.",
-        "badge": "AUTORIDADE"
+        "title": "Autenticação Multifatorial (2FA) Inteligente",
+        "description": "Acesse sua conta com segurança reforçada. Caso não tenha aplicativo autenticador, receba o código via WhatsApp ou E-mail com 1 toque.",
+        "badge": "PROTEÇÃO"
       },
       {
-        "title": "Visualizador Analítico de 1RM & Curva de Tonelagem",
-        "description": "Inspecione a evolução de cargas, histórico de progressão e 1RM teórico estimado (fórmulas de Epley e Brzycki) direto na ficha do aluno, acompanhando zonas de força e hipertrofia.",
-        "badge": "SOBRECARGA"
-      },
-      {
-        "title": "Galeria de Conquistas & Selos de Força dos Alunos",
-        "description": "Visualize marcos desbloqueados pelos alunos da sua consultoria (1RM 100kg, 140kg, consistência de treinos) com stories de prova social gerados creditando você como personal.",
-        "badge": "CONQUISTAS"
-      },
-      {
-        "title": "Cockpit Edge-to-Edge com Doca Flutuante Translúcida",
-        "description": "Interface moderna em tela cheia que flui suavemente por trás da barra de navegação de vidro fosco (glassmorphism), garantindo máximo espaço útil para gerenciar alunos e prescrever treinos.",
-        "badge": "DESIGN"
-      },
-      {
-        "title": "Landing Pages Públicas (/r/{slug}) & Auto-Cupom",
-        "description": "Compartilhe links personalizados de captação de alunos e parceiros com desconto já aplicado na vitrine pública da sua consultoria com total transparência.",
-        "badge": "PARCERIAS"
-      },
-      {
-        "title": "Repasse de Comissões e Parcerias via Pix",
-        "description": "Acompanhe o saldo gerado por indicações de novos personals parceiros e receba seus repasses com quitação direta via Pix.",
-        "badge": "FINANÇAS"
-      },
-      {
-        "title": "Aplicação Dinâmica de Cupom no Checkout",
-        "description": "Campo nativo para resgate de cupons promocionais (ex: LAUNCH50, PROMOVIP20) na contratação de planos com validação instantânea, cálculo de economia e suporte a Pix e Cartão de Crédito.",
-        "badge": "CHECKOUT"
-      },
-      {
-        "title": "Baixa e Crédito Automático via Asaas",
-        "description": "Ao pagar a consultoria por Pix ou Cartão na sua vitrine, o valor líquido (95%) é creditado automaticamente na sua carteira em tempo real.",
-        "badge": "RECEITA"
-      },
-      {
-        "title": "Alerta de Novo Aluno no WhatsApp",
-        "description": "Notificação direta no seu WhatsApp com o nome do aluno, plano contratado e valor recebido assim que o pagamento for compensado.",
-        "badge": "AUTOMAÇÃO"
-      },
-      {
-        "title": "Gestão Estrita de Vagas & Escassez",
-        "description": "Controle automático de vagas do plano contratado com badge \"TURMA LOTADA • LISTA DE ESPERA\" e proteção contra novos cadastros excedentes.",
-        "badge": "CONSULTORIA"
-      },
-      {
-        "title": "Modal de Orientação Premium nas Cotas",
-        "description": "Aviso elegante e direto orientando sobre o limite de vagas atingido, com opção de upgrade e desativação de alunos.",
-        "badge": "EXPERIÊNCIA"
-      },
-      {
-        "title": "Cabeçalho de Vidro Dinâmico (Scroll-Aware Glass Header)",
-        "description": "Navegação fluida com efeito frosted glass inteligente ao rolar a lista de alunos e painéis de prescrição.",
-        "badge": "INTERFACE"
-      },
-      {
-        "title": "Viral Loop & Prova Social dos Alunos",
-        "description": "Alunos agora geram cards comemorativos estilizados com o nome do seu treinador oficial e link direto para sua consultoria ao baterem metas.",
-        "badge": "MARKETING"
-      },
-      {
-        "title": "Densidade de Treino & Cadência Rígida de Descanso",
-        "description": "Alunos agora contam com cronômetro inteligente com alertas táteis cadenciados para respeitarem estritamente os intervalos prescritos.",
-        "badge": "TREINAMENTO"
-      },
-      {
-        "title": "Prescrição Adaptativa & Sobrecarga Científica",
-        "description": "Seus alunos agora contam com sugestões biomecanicamente dosadas de sobrecarga progressiva (+kg ou +reps) baseadas na intensidade percebida (RPE).",
-        "badge": "SOBRECARGA"
-      },
-      {
-        "title": "Tour Guiado do Personal em 3 Passos",
-        "description": "Apresentação dinâmica das ferramentas essenciais: gestão de fichas com IA, vitrine pública de vendas com cupons e atendimento 24h integrado ao WhatsApp.",
-        "badge": "TOUR GUIADO"
-      },
-      {
-        "title": "Fichas e Mídias com Acesso Offline Instantâneo",
-        "description": "Seus alunos agora acessam a demonstração e orientações biomecânicas de todos os exercícios da ficha mesmo em academias subterrâneas ou com sinal oscilante.",
-        "badge": "CONECTIVIDADE"
+        "title": "Alertas e Mensagens de Treino em Tempo Real no WhatsApp",
+        "description": "Receba notificações de novas fichas, avisos de streak em risco e mensagens de apoio do seu treinador diretamente no seu WhatsApp.",
+        "badge": "COMUNICAÇÃO"
       }
     ],
     "admin": [
       {
-        "title": "Blindagem de Acesso SuperAdmin & Treinador para Prof. Cleudson",
-        "description": "Garantia irrestrita de permissão de Treinador Pro e SuperAdmin em todas as contas canônicas do Prof. Cleudson (@mrcoach, @cleudson-antigo, cleudsonx@hotmail.com, cleudsonx@gmail.com, cleudsonx2021@gmail.com), eliminação de barreira de convites de aluno e roteamento inteligente.",
+        "title": "Blindagem de Segurança do 2FA & Multi-Canal (WhatsApp, Email e Backup)",
+        "description": "Armazenamento de segredos com hash HMAC-SHA256, expiração atômica de OTPs, rate limiting de 45s e bloqueio preventivo após 5 tentativas.",
         "badge": "SEGURANÇA & ACESSO"
       },
       {
-        "title": "Motor de Prescrição em Lote & Clonagem de Mesociclos (Suíte Meta Ops)",
-        "description": "Algoritmo de duplicação em lote com regras dinâmicas de progressão linear (+kg e +reps), escalonamento para múltiplos alunos e notificação transversal de sincronização.",
-        "badge": "AUTOMAÇÃO"
-      },
-      {
-        "title": "Módulo de Telemetria Vital & Saúde Integrada (Suíte Meta Health)",
-        "description": "Conector unificado com suporte a Apple Health, Google Health Connect e registro manual, cache local resiliente e telemetria de passos, calorias, sono e hidratação.",
-        "badge": "SAÚDE & IOT"
-      },
-      {
-        "title": "Módulo de Conquistas & Gamificação (Suíte Meta Growth)",
-        "description": "Sistema desacoplado de selos de retenção com tiers (Bronze a Diamante), persistência local, métricas de conclusão de metas e geração de prova social orgânica com menção ao personal.",
-        "badge": "GROWTH"
-      },
-      {
-        "title": "Central de Sobrecarga & 1RM Teórico (Suíte Meta Science)",
-        "description": "Métricas fisiológicas desacopladas no app com fórmulas de Epley e Brzycki, zonas de intensidade (90%, 75%, 60%), monitoramento de tonelagem semanal e simulador interativo.",
-        "badge": "CIÊNCIA"
-      },
-      {
-        "title": "Central de Liquidação Pix (Payout Engine) & Comprovantes",
-        "description": "Quitação atômica de comissões acumuladas de afiliados e parceiros com um clique, cópia de chave Pix, dedução imediata de saldo e extrato auditável de repasses.",
-        "badge": "PIX PAYOUT"
-      },
-      {
-        "title": "Arquitetura Visual Edge-to-Edge Global (Mobile, Web & PWA)",
-        "description": "Imersão contínua por trás da Status Bar, Dynamic Island e Home Indicator em 100% das telas (Aluno, Treinador e Admin), com eliminação de scrims no Android Dark Mode e dock translúcido calibrado.",
-        "badge": "DESIGN"
-      },
-      {
-        "title": "Rede de Afiliados, Parcerias & Referral Engine",
-        "description": "Rastreamento completo de parcerias com links curtos (app.sheipados.com/r/SLUG), comissões fixas ou percentuais, cupons vinculados, KPIs de cliques/conversões e repasses via Pix.",
-        "badge": "AFILIADOS"
-      },
-      {
-        "title": "Cupons de Desconto & Campanhas Promocionais SaaS",
-        "description": "Motor de criação e validação de cupons promocionais percentuais ou com desconto fixo em R$, controle de limite de resgates com barra de progresso, restrição por plano e métricas de conversão e CAC.",
-        "badge": "CUPONS"
-      },
-      {
-        "title": "Gestão Dinâmica de Preços & Planos SaaS",
-        "description": "Controle em tempo real de mensalidade, anuidade, capacidade de alunos, taxa de split (5%) e cotas de IA Gemini dos planos Starter, Pro e Elite com sincronização instantânea.",
-        "badge": "PRICING"
-      },
-      {
-        "title": "Auditoria Avançada de Sessões & Radar de Ameaças",
-        "description": "Monitoramento em tempo real de sessões ativas com IP, dispositivo e geolocalização. Detecção instantânea de acessos simultâneos, tentativas suspeitas e kill-switch para revogação imediata.",
-        "badge": "SEGURANÇA"
-      },
-      {
-        "title": "Simulador de Margem & Unit Economics SaaS",
-        "description": "Simulação de faturamento com slider de personals, modelo híbrido de split 5% e consumo de tokens Gemini 3.1 Pro com exportação analítica.",
-        "badge": "FINANÇAS"
-      },
-      {
-        "title": "Modelagem LTV/CAC & Forecast de Runway (12 Meses)",
-        "description": "Simulador dinâmico de fluxo de caixa preditivo mês a mês (M1 a M12), projeção de burn rate, saldo final, horizonte de sobrevivência Default Alive e análise de breakeven.",
-        "badge": "MISSION CONTROL"
-      },
-      {
-        "title": "Central de Notificações Push & WhatsApp em Massa",
-        "description": "Disparo multicanal (Push, WhatsApp e In-App) com segmentação inteligente por plano, alunos inativos ou turmas lotadas, radar de alcance e telemetria de entrega.",
-        "badge": "MISSION CONTROL"
-      },
-      {
-        "title": "Radar Preditivo de Churn B2B & Payback de Coortes",
-        "description": "Monitoramento preditivo de treinadores em risco com probabilidade de churn, matriz histórica de coortes com recuperação de CAC e resgate executivo VIP via WhatsApp.",
-        "badge": "MISSION CONTROL"
-      },
-      {
-        "title": "Exportação Executiva em CSV & Pitch Deck",
-        "description": "Geração instantânea de relatórios financeiros em CSV (padrão Excel Brasil) e resumo executivo em Markdown para investidores e reuniões de diretoria.",
-        "badge": "MISSION CONTROL"
-      },
-      {
-        "title": "Webhook Unificado Asaas com Idempotência",
-        "description": "Processamento atômico de eventos PAYMENT_RECEIVED e PAYMENT_CONFIRMED, com suporte a leases duráveis e proteção contra duplicidade.",
+        "title": "Conexão Otimizada da Evolution API & Persistência de Sessões",
+        "description": "Mapeamento de volumes persistentes na VPS, integração nativa com cache Redis e eliminação de timeouts em disparos assíncronos.",
         "badge": "INFRAESTRUTURA"
       },
       {
-        "title": "Monitor de Custos de IA & Tokens Gemini 2.5",
-        "description": "Painel executivo com telemetria de tokens, custo em R$/US$, barômetro de eficiência Zero-Cost e ajuste dinâmico de cotas por treinador.",
-        "badge": "MISSION CONTROL"
-      },
-      {
-        "title": "Roteamento Transversal Resiliente",
-        "description": "Interceptação inteligente de faturas de alunos em /subscriptions/webhook/asaas e /webhooks/asaas para 100% de tolerância a falhas externas.",
-        "badge": "BACKEND"
-      },
-      {
-        "title": "Componente ScrollAwareGlassHeader na Suíte Meta Design",
-        "description": "Componente desacoplado e reutilizável com interpolação de blur de 0 a 18px, borda dinâmica e zero jitter em taxas de atualização de 120Hz.",
-        "badge": "SISTEMA"
-      },
-      {
-        "title": "Módulo RestTimerSheet na Biblioteca Meta Components",
-        "description": "Cronômetro de descanso imersivo e desacoplado, com cadência háptica 3-2-1, suporte a Audio Ducking e persistência local de preferências.",
-        "badge": "SISTEMA"
-      },
-      {
-        "title": "Motor ProgressiveOverloadEngine na Suíte de IA",
-        "description": "Algoritmo determinístico de progressão de carga (Double Progression e Step Loading) integrado aos modelos de treino e suíte visual Meta.",
-        "badge": "IA & CIÊNCIA"
-      },
-      {
-        "title": "Onboarding Interativo & Tour Guiado em 3 Passos",
-        "description": "Módulo desacoplado de introdução interativa (InteractiveTourGuideModal) com persistência local de conclusão e segmentação personalizada para treinadores e alunos.",
-        "badge": "SISTEMA"
-      },
-      {
-        "title": "Arquitetura de Pré-carregamento & Modo Offline de Mídias",
-        "description": "Motor de persistência resiliente em ExerciseMediaService com cache local em SharedPreferences, catálogo canônico offline de exercícios e pré-carregamento assíncrono de fichas.",
-        "badge": "OFFLINE FIRST"
+        "title": "Autenticação Multifatorial (2FA) Inteligente",
+        "description": "Acesse sua conta com segurança reforçada. Caso não tenha aplicativo autenticador, receba o código via WhatsApp ou E-mail com 1 toque.",
+        "badge": "PROTEÇÃO"
       }
     ]
   }

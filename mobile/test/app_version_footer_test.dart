@@ -336,8 +336,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Perfil Aluno: Novidades para sua Rotina de Treino e Acesso'), findsOneWidget);
-    expect(find.text('Imersão Visual Edge-to-Edge sem Tarjas'), findsOneWidget);
-    expect(find.text('Entrada VIP por Links de Parcerias (/r/{slug})'), findsOneWidget);
+    expect(find.text('Autenticação Multifatorial (2FA) Inteligente'), findsOneWidget);
+    expect(find.text('Alertas e Mensagens de Treino em Tempo Real no WhatsApp'), findsOneWidget);
 
     // Fecha modal
     await tester.ensureVisible(find.text('Entendido'));
@@ -357,9 +357,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Perfil Personal: Novidades para sua Consultoria e Alunos'), findsOneWidget);
-    expect(find.text('Cockpit Edge-to-Edge com Doca Flutuante Translúcida'), findsOneWidget);
-    expect(find.text('Landing Pages Públicas (/r/{slug}) & Auto-Cupom'), findsOneWidget);
-    expect(find.text('Repasse de Comissões e Parcerias via Pix'), findsOneWidget);
+    expect(find.text('Pareamento Direto do WhatsApp do Treinador por Código de 8 Dígitos'), findsOneWidget);
+    expect(find.text('Acesso 2FA Sem Bloqueio com Dispositivo Confiável de 30 Dias'), findsOneWidget);
 
     // Fecha modal
     await tester.ensureVisible(find.text('Entendido'));
@@ -379,6 +378,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Visão Executiva: Novidades de Infraestrutura, Finanças e Plataforma'), findsOneWidget);
-    expect(find.text('Central de Liquidação Pix (Payout Engine) & Comprovantes'), findsOneWidget);
+    expect(find.text('Blindagem de Segurança do 2FA & Multi-Canal (WhatsApp, Email e Backup)'), findsOneWidget);
+    expect(find.text('Conexão Otimizada da Evolution API & Persistência de Sessões'), findsOneWidget);
   });
 }
