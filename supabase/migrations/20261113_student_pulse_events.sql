@@ -50,3 +50,4 @@ DROP POLICY IF EXISTS "Clients can view own pulse events" ON public.student_puls
 CREATE POLICY "Clients can view own pulse events"
     ON public.student_pulse_events FOR SELECT
     USING (student_id = auth.uid());
+

@@ -117,3 +117,4 @@ async def mark_pulse_event_viewed(
             detail="Evento não encontrado ou já reconhecido.",
         )
     return {"id": event_id, "viewed_by_trainer": True, "action_taken": req.action_taken}
+

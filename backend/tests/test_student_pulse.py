@@ -67,3 +67,4 @@ async def test_supabase_service_pulse_methods():
     assert target is not None
     assert target.viewed_by_trainer is True
     assert target.action_taken == "whatsapp_contacted"
+

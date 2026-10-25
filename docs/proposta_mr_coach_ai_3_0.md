@@ -104,9 +104,9 @@ Para garantir **máxima eficiência de contexto, redução drástica do consumo 
 - [x] **Bloco 2.1 — Barramento de Eventos de Alunos (Alertas de Dor e Adaptações)**:
   - *Arquivo principal:* `backend/app/services/supabase_service.py` / `backend/app/api/v1/endpoints/student_pulse.py` / migrations
   - *Entrega:* Tabela `student_pulse_events` com RLS e índices, endpoints de registro (`POST /pulse/events`), listagem (`GET /pulse/trainer/{trainer_id}`), resumo de KPIs (`GET /pulse/trainer/{trainer_id}/summary`) e marcação (`PATCH /pulse/events/{id}/view`), com sincronização automática de alertas biomecânicos. *(Concluído)*
-- [ ] **Bloco 2.2 — Live Student Pulse (Feed ao Vivo dos Alunos)**:
+- [x] **Bloco 2.2 — Live Student Pulse (Feed ao Vivo dos Alunos)**:
   - *Arquivo principal:* `mobile/lib/features/trainer/presentation/screens/trainer_ai_assistant_screen.dart`
-  - *Entrega:* Painel em tempo real na visão do treinador mostrando treinos concluídos, dúvidas atendidas e ausências.
+  - *Entrega:* Painel em tempo real na visão do treinador mostrando fluxo de atividades (dores, treinos concluídos, trocas de aparelho e dúvidas), com badge de alerta clínico urgente, mini KPI dashboard, filtros horizontais e atalhos para WhatsApp e marcação de ciente. *(Concluído)*
 - [ ] **Bloco 2.3 — Ações Rápidas Executivas de 1 Toque para o Professor**:
   - *Arquivo principal:* `mobile/lib/features/trainer/presentation/screens/trainer_ai_assistant_screen.dart`
   - *Entrega:* Botões acionáveis rápidos (`[Cobrar Check-in]`, `[Elogiar Ofensiva]`, `[Gerar Ficha com IA]`).

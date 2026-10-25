@@ -51,3 +51,4 @@ class StudentPulseSummaryResponse(BaseModel):
     workouts_completed_today: int
     high_risk_inactivity_count: int
     recent_events: List[StudentPulseEventResponse]
+

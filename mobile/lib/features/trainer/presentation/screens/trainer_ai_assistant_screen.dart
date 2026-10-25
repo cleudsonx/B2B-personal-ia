@@ -42,6 +42,11 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
   String? _dispatchingStudentId;
   bool _isSendingDigest = false;
 
+  List<Map<String, dynamic>> _pulseEvents = [];
+  Map<String, dynamic>? _pulseSummary;
+  bool _isLoadingPulse = false;
+  String _selectedPulseFilter = 'todos';
+
   final TextEditingController _simulatorController = TextEditingController();
   bool _isSimulating = false;
   Map<String, dynamic>? _simulationResult;
@@ -114,8 +119,9 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
       final statusFuture = _fetchWhatsAppStatus();
       final telemetryFuture = _fetchTelemetry();
       final radarFuture = _fetchProactiveRadar();
+      final pulseFuture = _fetchStudentPulse();
 
-      final results = await Future.wait([subFuture, statusFuture, telemetryFuture, radarFuture]);
+      final results = await Future.wait([subFuture, statusFuture, telemetryFuture, radarFuture, pulseFuture]);
       if (mounted) {
         setState(() {
           _subscription = results[0] as MySubscriptionModel?;
@@ -347,6 +353,168 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
         });
       }
     } catch (_) {}
+  }
+
+  Future<void> _fetchStudentPulse() async {
+    setState(() => _isLoadingPulse = true);
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+      final token = session?.accessToken;
+      final trainerId = session?.user.id ?? 'current-trainer';
+
+      // 1. Tenta carregar do backend via API REST
+      if (token != null) {
+        try {
+          final uri = Uri.parse('${AppConfig.apiBaseUrl}/pulse/trainer/$trainerId');
+          final res = await http.get(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          ).timeout(const Duration(seconds: 6));
+
+          if (res.statusCode == 200) {
+            final list = jsonDecode(res.body) as List<dynamic>;
+            if (mounted) {
+              setState(() {
+                _pulseEvents = list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+              });
+            }
+
+            final sumUri = Uri.parse('${AppConfig.apiBaseUrl}/pulse/trainer/$trainerId/summary');
+            final sumRes = await http.get(
+              sumUri,
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $token',
+              },
+            ).timeout(const Duration(seconds: 4));
+            if (sumRes.statusCode == 200 && mounted) {
+              setState(() {
+                _pulseSummary = jsonDecode(sumRes.body) as Map<String, dynamic>;
+              });
+            }
+            return;
+          }
+        } catch (_) {}
+      }
+
+      // 2. Fallback direto do Supabase se o backend REST oscilar
+      final rows = await Supabase.instance.client
+          .from('student_pulse_events')
+          .select('*')
+          .order('created_at', ascending: false)
+          .limit(30);
+
+      if (mounted) {
+        setState(() {
+          _pulseEvents = (rows as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Aviso ao carregar student_pulse: $e');
+    } finally {
+      if (mounted) setState(() => _isLoadingPulse = false);
+    }
+  }
+
+  Future<void> _markPulseEventViewed(String eventId, {String? actionTaken}) async {
+    setState(() {
+      final index = _pulseEvents.indexWhere((e) => e['id'] == eventId);
+      if (index != -1) {
+        _pulseEvents[index]['viewed_by_trainer'] = true;
+        if (actionTaken != null) {
+          _pulseEvents[index]['action_taken'] = actionTaken;
+        }
+      }
+    });
+
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+      final token = session?.accessToken;
+      if (token != null) {
+        await http.patch(
+          Uri.parse('${AppConfig.apiBaseUrl}/pulse/events/$eventId/view'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({'action_taken': actionTaken}),
+        ).timeout(const Duration(seconds: 5));
+        return;
+      }
+      await Supabase.instance.client
+          .from('student_pulse_events')
+          .update({'viewed_by_trainer': true, if (actionTaken != null) 'action_taken': actionTaken})
+          .eq('id', eventId);
+    } catch (_) {}
+  }
+
+  Future<void> _contactStudentFromPulse(Map<String, dynamic> event) async {
+    final meta = (event['metadata'] as Map?) ?? {};
+    final studentName = event['student_name'] ?? meta['student_name'] ?? 'Aluno';
+    final firstName = studentName.toString().split(' ').first;
+    final eventType = event['event_type'] ?? 'info';
+    final eventTitle = event['title'] ?? '';
+
+    String? phone = (meta['student_phone'] ?? meta['phone'])?.toString();
+    if (phone == null || phone.isEmpty) {
+      try {
+        final sid = event['student_id']?.toString();
+        if (sid != null && sid.isNotEmpty) {
+          final res = await Supabase.instance.client
+              .from('profiles')
+              .select('phone, whatsapp')
+              .eq('id', sid)
+              .maybeSingle();
+          if (res != null) {
+            phone = (res['whatsapp'] ?? res['phone'])?.toString();
+          }
+        }
+      } catch (_) {}
+    }
+
+    final cleanPhone = (phone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+
+    String message;
+    if (eventType == 'pain_alert') {
+      message = 'Olá $firstName! Vi aqui no alerta do Mr. Coach que você sentiu um desconforto/dor em: "$eventTitle". Como você está se sentindo agora? Vamos ajustar seu treino!';
+    } else if (eventType == 'workout_completed') {
+      message = 'Parabéns pelo treino concluído hoje, $firstName! Vi a finalização aqui no Mr. Coach. Mantenha a constância!';
+    } else if (eventType == 'exercise_adapted') {
+      message = 'Olá $firstName! Vi que você fez uma adaptação de exercício hoje no app. Precisando de qualquer ajuste na ficha, conte comigo!';
+    } else {
+      message = 'Olá $firstName! Sou seu treinador no Mr. Coach. Vi sua atividade recente e estou à disposição para qualquer dúvida biomecânica!';
+    }
+
+    if (cleanPhone.isNotEmpty) {
+      final uri = Uri.parse('https://wa.me/$cleanPhone?text=${Uri.encodeComponent(message)}');
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      await _markPulseEventViewed(event['id']?.toString() ?? '', actionTaken: 'whatsapp_contacted');
+    } else {
+      await Clipboard.setData(ClipboardData(text: message));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Aluno sem telefone cadastrado. Mensagem para $firstName copiada para a área de transferência!'),
+            backgroundColor: MetaColors.emerald,
+          ),
+        );
+        await _markPulseEventViewed(event['id']?.toString() ?? '', actionTaken: 'clipboard_copied');
+      }
+    }
+  }
+
+  String _formatPulseTime(String? dateStr) {
+    if (dateStr == null) return 'Agora';
+    final parsed = DateTime.tryParse(dateStr)?.toLocal();
+    if (parsed == null) return 'Hoje';
+    final diff = DateTime.now().difference(parsed);
+    if (diff.inMinutes < 2) return 'Agora';
+    if (diff.inMinutes < 60) return 'há ${diff.inMinutes}m';
+    if (diff.inHours < 24) return 'há ${diff.inHours}h';
+    return '${parsed.day.toString().padLeft(2, '0')}/${parsed.month.toString().padLeft(2, '0')} ${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
   }
 
   Future<void> _triggerProactiveCheckin({
@@ -630,7 +798,11 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
                     _buildConnectionStatusBar(context),
                     const SizedBox(height: 18),
 
-                    // 2.1 Resumo Executivo Semanal do Professor (Fase 7)
+                    // 2.1 Live Student Pulse 3.0 (Barramento ao Vivo de Alunos)
+                    _buildLiveStudentPulseSection(context),
+                    const SizedBox(height: 18),
+
+                    // 2.2 Resumo Executivo Semanal do Professor (Fase 7)
                     _buildWeeklyDigestCard(context),
                     const SizedBox(height: 18),
 
@@ -901,6 +1073,536 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLiveStudentPulseSection(BuildContext context) {
+    final painAlerts = _pulseEvents.where((e) => e['event_type'] == 'pain_alert').toList();
+    final workouts = _pulseEvents.where((e) => e['event_type'] == 'workout_completed').toList();
+    final adaptations = _pulseEvents.where((e) => e['event_type'] == 'exercise_adapted').toList();
+    final doubts = _pulseEvents.where((e) => e['event_type'] == 'ai_doubt').toList();
+
+    final unreadPainCount = painAlerts.where((e) => e['viewed_by_trainer'] != true).length;
+    final hasUrgent = unreadPainCount > 0;
+
+    final painCount = _pulseSummary?['pain_alerts_count'] ?? painAlerts.length;
+    final workoutCount = _pulseSummary?['workouts_completed_today'] ?? workouts.length;
+    final totalCount = _pulseSummary?['total_events'] ?? _pulseEvents.length;
+
+    List<Map<String, dynamic>> filteredEvents;
+    if (_selectedPulseFilter == 'pain_alert') {
+      filteredEvents = painAlerts;
+    } else if (_selectedPulseFilter == 'workout_completed') {
+      filteredEvents = workouts;
+    } else if (_selectedPulseFilter == 'exercise_adapted') {
+      filteredEvents = adaptations;
+    } else if (_selectedPulseFilter == 'ai_doubt') {
+      filteredEvents = doubts;
+    } else {
+      filteredEvents = _pulseEvents;
+    }
+
+    final isDark = MetaColors.isDark(context);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: MetaColors.card(context),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: hasUrgent
+              ? Colors.redAccent.withValues(alpha: 0.6)
+              : MetaColors.emerald.withValues(alpha: 0.35),
+          width: 1.4,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header com indicador Live
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: (hasUrgent ? Colors.redAccent : MetaColors.emerald).withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.sensors_rounded,
+                  color: hasUrgent ? Colors.redAccent : MetaColors.emerald,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Live Student Pulse 3.0',
+                          style: TextStyle(
+                            color: MetaColors.text(context),
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: hasUrgent ? Colors.redAccent : MetaColors.emerald,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: (hasUrgent ? Colors.redAccent : MetaColors.emerald).withValues(alpha: 0.6),
+                                blurRadius: 4,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'Alertas clínicos, treinos feitos e trocas no salão',
+                      style: TextStyle(
+                        color: MetaColors.subtext(context),
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (_isLoadingPulse)
+                const Padding(
+                  padding: EdgeInsets.only(right: 6),
+                  child: SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: MetaColors.emerald,
+                    ),
+                  ),
+                ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: (hasUrgent ? Colors.redAccent : MetaColors.emerald).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.bolt_rounded,
+                      size: 13,
+                      color: hasUrgent ? Colors.redAccent : MetaColors.emerald,
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      hasUrgent ? '$unreadPainCount URGENTE' : 'AO VIVO',
+                      style: TextStyle(
+                        color: hasUrgent ? Colors.redAccent : MetaColors.emerald,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Mini KPI Dashboard
+          Row(
+            children: [
+              Expanded(
+                child: _buildPulseKpiBox(
+                  context,
+                  label: 'Alertas Dor',
+                  value: '$painCount',
+                  color: painCount > 0 ? Colors.redAccent : MetaColors.emerald,
+                  icon: Icons.healing_rounded,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildPulseKpiBox(
+                  context,
+                  label: 'Treinos Hoje',
+                  value: '$workoutCount',
+                  color: MetaColors.emerald,
+                  icon: Icons.check_circle_outline_rounded,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildPulseKpiBox(
+                  context,
+                  label: 'Adaptações',
+                  value: '${adaptations.length}',
+                  color: const Color(0xFFF59E0B),
+                  icon: Icons.swap_horiz_rounded,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildPulseKpiBox(
+                  context,
+                  label: 'Total',
+                  value: '$totalCount',
+                  color: MetaColors.subtext(context),
+                  icon: Icons.stream_rounded,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Chips de Filtro Horizontal
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: Row(
+              children: [
+                _buildPulseFilterChip('todos', 'Todos (${_pulseEvents.length})'),
+                const SizedBox(width: 6),
+                _buildPulseFilterChip('pain_alert', '🚨 Dor (${painAlerts.length})'),
+                const SizedBox(width: 6),
+                _buildPulseFilterChip('workout_completed', '✅ Treinos (${workouts.length})'),
+                const SizedBox(width: 6),
+                _buildPulseFilterChip('exercise_adapted', '🔄 Trocas (${adaptations.length})'),
+                const SizedBox(width: 6),
+                _buildPulseFilterChip('ai_doubt', '💬 Dúvidas (${doubts.length})'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Lista de Eventos ou Estado Vazio
+          if (filteredEvents.isEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: MetaColors.cardBorder(context).withValues(alpha: 0.4),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.done_all_rounded,
+                    size: 36,
+                    color: MetaColors.emerald.withValues(alpha: 0.8),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Salão de treino sem ocorrências',
+                    style: TextStyle(
+                      color: MetaColors.text(context),
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Conforme seus alunos treinarem, relatarem dores ou tirarem dúvidas com a IA, o feed ao vivo atualizará aqui.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: MetaColors.subtext(context),
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            Column(
+              children: filteredEvents.take(6).map((event) => _buildPulseEventCard(context, event)).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPulseKpiBox(
+    BuildContext context, {
+    required String label,
+    required String value,
+    required Color color,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      decoration: BoxDecoration(
+        color: MetaColors.highlight(context),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: MetaColors.cardBorder(context).withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              color: MetaColors.subtext(context),
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPulseFilterChip(String filterKey, String label) {
+    final isSelected = _selectedPulseFilter == filterKey;
+    return InkWell(
+      onTap: () => setState(() => _selectedPulseFilter = filterKey),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? MetaColors.emerald : MetaColors.highlight(context),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? MetaColors.emerald : MetaColors.cardBorder(context).withValues(alpha: 0.5),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.black : MetaColors.text(context),
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPulseEventCard(BuildContext context, Map<String, dynamic> event) {
+    final eventType = event['event_type'] ?? 'info';
+    final severity = event['severity'] ?? 'info';
+    final isUrgent = eventType == 'pain_alert' || severity == 'critical';
+    final isViewed = event['viewed_by_trainer'] == true;
+    final meta = (event['metadata'] as Map?) ?? {};
+    final studentName = event['student_name'] ?? meta['student_name'] ?? 'Aluno';
+    final timeStr = _formatPulseTime(event['created_at']);
+
+    Color cardBorder;
+    Color iconColor;
+    IconData icon;
+    String badgeLabel;
+
+    if (eventType == 'pain_alert') {
+      cardBorder = Colors.redAccent;
+      iconColor = Colors.redAccent;
+      icon = Icons.health_and_safety_rounded;
+      badgeLabel = '🚨 Alerta Clínico';
+    } else if (eventType == 'workout_completed') {
+      cardBorder = MetaColors.emerald;
+      iconColor = MetaColors.emerald;
+      icon = Icons.check_circle_rounded;
+      badgeLabel = '✅ Treino Concluído';
+    } else if (eventType == 'exercise_adapted') {
+      cardBorder = const Color(0xFFF59E0B);
+      iconColor = const Color(0xFFF59E0B);
+      icon = Icons.swap_horiz_rounded;
+      badgeLabel = '🔄 Aparelho Ocupado';
+    } else if (eventType == 'ai_doubt') {
+      cardBorder = const Color(0xFF6366F1);
+      iconColor = const Color(0xFF6366F1);
+      icon = Icons.chat_bubble_outline_rounded;
+      badgeLabel = '💬 Dúvida Biomecânica';
+    } else {
+      cardBorder = MetaColors.cardBorder(context);
+      iconColor = MetaColors.subtext(context);
+      icon = Icons.notifications_active_rounded;
+      badgeLabel = 'ℹ️ Notificação';
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isUrgent
+            ? Colors.redAccent.withValues(alpha: 0.05)
+            : MetaColors.highlight(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isUrgent
+              ? Colors.redAccent.withValues(alpha: 0.35)
+              : cardBorder.withValues(alpha: 0.25),
+          width: 1.1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: iconColor, size: 16),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Row(
+                  children: [
+                    Text(
+                      studentName,
+                      style: TextStyle(
+                        color: MetaColors.text(context),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: iconColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        badgeLabel,
+                        style: TextStyle(
+                          color: iconColor,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                timeStr,
+                style: TextStyle(
+                  color: MetaColors.subtext(context),
+                  fontSize: 10.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            event['title'] ?? '',
+            style: TextStyle(
+              color: MetaColors.text(context),
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          if ((event['description'] ?? '').toString().isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(
+              event['description'] ?? '',
+              style: TextStyle(
+                color: MetaColors.subtext(context),
+                fontSize: 11,
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              InkWell(
+                onTap: () => _contactStudentFromPulse(event),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: MetaColors.emerald,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.chat_rounded, size: 12, color: Colors.black),
+                      SizedBox(width: 4),
+                      Text(
+                        'WhatsApp',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (!isViewed)
+                InkWell(
+                  onTap: () => _markPulseEventViewed(event['id']?.toString() ?? '', actionTaken: 'trainer_acknowledged'),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: MetaColors.cardBorder(context),
+                      ),
+                    ),
+                    child: Text(
+                      'Marcar Ciente',
+                      style: TextStyle(
+                        color: MetaColors.text(context),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.check_rounded, size: 13, color: MetaColors.emerald),
+                    const SizedBox(width: 3),
+                    Text(
+                      'Ciente',
+                      style: TextStyle(
+                        color: MetaColors.subtext(context),
+                        fontSize: 10.5,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
