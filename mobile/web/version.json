@@ -1,7 +1,7 @@
 {
   "version": "1.11.0",
-  "build": 2026103065,
-  "updated_at": "2026-10-25T02:54:19.539335Z",
+  "build": 2026103066,
+  "updated_at": "2026-10-25T03:37:20.560421Z",
   "notes": "Versão 1.11.0: Modernização Inteligente do 2FA Multi-Canal (WhatsApp, E-mail e Backup Codes de 10 dígitos), Dispositivo Confiável de 30 dias e Integração Estável com Evolution API v2.",
   "changelog": {
     "student": [

@@ -390,39 +390,33 @@ class _WhatsNewModalState extends State<WhatsNewModal> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: const TextStyle(
-                          color: MetaColors.textPrimary,
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w700,
-                        ),
+                if (tag != null && tag.isNotEmpty) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: tagColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      tag,
+                      style: TextStyle(
+                        color: tagColor,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.4,
                       ),
                     ),
-                    if (tag != null && tag.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: tagColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          tag,
-                          style: TextStyle(
-                            color: tagColor,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+                  ),
+                ],
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: MetaColors.textPrimary,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    height: 1.25,
+                  ),
                 ),
                 const SizedBox(height: 5),
                 Text(

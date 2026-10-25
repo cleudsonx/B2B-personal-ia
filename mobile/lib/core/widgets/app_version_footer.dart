@@ -374,50 +374,50 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: TextStyle(
-                            color: textColor,
-                            fontSize: isFeatured ? 13.5 : 12.5,
-                            fontWeight: isFeatured ? FontWeight.bold : FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      if (isFeatured) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                          decoration: BoxDecoration(
-                            color: MetaColors.emerald.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.4), width: 0.8),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.star_rounded, size: 10, color: MetaColors.emerald),
-                              SizedBox(width: 3),
-                              Text(
-                                'DESTAQUE',
-                                style: TextStyle(
-                                  color: MetaColors.emerald,
-                                  fontSize: 8.5,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.4,
+                  if (isFeatured || (badge != null && badge.isNotEmpty)) ...[
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (badge != null && badge.isNotEmpty) _buildBadge(badge),
+                        if (isFeatured)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: MetaColors.emerald.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.4), width: 0.8),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.star_rounded, size: 10, color: MetaColors.emerald),
+                                SizedBox(width: 3),
+                                Text(
+                                  'DESTAQUE',
+                                  style: TextStyle(
+                                    color: MetaColors.emerald,
+                                    fontSize: 8.5,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.4,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
                       ],
-                      if (badge != null) ...[
-                        const SizedBox(width: 6),
-                        _buildBadge(badge),
-                      ],
-                    ],
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: isFeatured ? 13.5 : 12.5,
+                      fontWeight: isFeatured ? FontWeight.bold : FontWeight.w600,
+                      height: 1.25,
+                    ),
                   ),
                   const SizedBox(height: 3),
                   Text(
