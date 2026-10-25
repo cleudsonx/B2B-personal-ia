@@ -70,26 +70,51 @@ Para o Personal Trainer, o Mr. Coach AI deixa de ser um chat genérico e se tran
 | **Radar de Retenção (Aluno ausente >4 dias)** | WhatsApp com trava anti-spam de 48h | Template de Utilidade | **~R$ 0,04** |
 | **Lembretes de Hábito (Beba Água, Timer, Streak)** | **Aba Mr. Coach AI & Notificações Push** | Canal interno do App (Web/PWA/Mobile) | **R$ 0,00 (Ilimitado)** |
 
-### Ganhos da Meta Cloud API Oficial:
-- **Disponibilidade 99,99%**: Sem dependência de emulação Baileys/QR Code para a instância central.
-- **Risco Zero de Banimento**: Tráfego oficial homologado pela Meta.
-- **Botões Nativos**: O aluno recebe botões clicáveis no WhatsApp (`[Ver Treino]`, `[Ofensiva]`), dispensando digitação manual.
+---
+
+## 5. Metodologia de Execução: Desenvolvimento Atômico em Blocos Enxutos (AI-Lean Execution)
+
+Para garantir **máxima eficiência de contexto, redução drástica do consumo de cotas/tokens dos modelos de IA e zero risco de regressões**, toda a engenharia deste projeto segue a **Metodologia de Blocos Atômicos**:
+
+> **Princípios Operacionais:**
+> 1. **Uma Tarefa por Turno**: Cada solicitação implementa estritamente **1 único bloco lógico**.
+> 2. **Escopo Cirúrgico**: Alteração de 1 arquivo principal por bloco, com testes e compilação imediata.
+> 3. **Validação e Commits Incrementais**: O código é verificado com `flutter analyze` e comitado logo após cada bloco, mantendo o repositório sempre funcional e sincronizado.
+> 4. **Candidata a Padrão da Equipe**: A eficácia desta metodologia será avaliada ao final do ciclo para adoção formal como padrão de engenharia em todo o Mr. Coach B2B.
 
 ---
 
-## 5. Roteiro de Implementação Técnica (Fases)
+## 6. Roteiro Detalhado em Blocos Atômicos
 
-### Fase 1: Interface & Central Unificada da Aba Mr. Coach AI (Aluno)
-- Reestruturação visual no padrão One UI com **Header da Consultoria**, **Pulse de Notificações/Versão** e **Action Cards**.
-- Injeção das notificações locais (`StudentNotificationService`) dentro do feed da IA.
+### **FASE 1: Aba Mr. Coach AI do Aluno (Foco em Experiência Imediata)**
+- [ ] **Bloco 1.1 — Header da Consultoria & Pulse Unificado de Notificações**:
+  - *Arquivo principal:* `mobile/lib/features/assistant/b2b_assistant_screen.dart`
+  - *Entrega:* Visual One UI moderno no topo do aluno com foto/CREF do professor, status da ficha e sino retrátil integrado com novidades da versão.
+- [ ] **Bloco 1.2 — Motor de Triagem Local Custo Zero (Ficha, Streak e Água)**:
+  - *Arquivo principal:* `mobile/lib/features/assistant/b2b_assistant_screen.dart`
+  - *Entrega:* Roteamento determinístico em <100ms para consultas de treino, dias de ofensiva e hidratação com **0 tokens de IA**.
+- [ ] **Bloco 1.3 — Componente de Action Cards Interativos no Chat**:
+  - *Arquivo principal:* `mobile/lib/core/widgets/ai_action_card.dart`
+  - *Entrega:* Cartões acionáveis em 1 toque dentro dos balões de resposta (`[Ir para o Treino]`, `[Registrar Água]`, `[Ver Raio-X 3D]`).
+- [ ] **Bloco 1.4 — RAG Biomecânico Contextual & Guardrail Clínico de Dor**:
+  - *Arquivo principal:* `mobile/lib/services/gemini_service.dart` / `b2b_assistant_screen.dart`
+  - *Entrega:* Injeção do JSON compacto da ficha ativa para substituição de aparelhos ocupados e trava de segurança para queixas articulares.
 
-### Fase 2: Motor RAG da Consultoria no App
-- Conexão do robô aos dados do aluno no Supabase (`active_workout`, `profiles`, `streak_days`, `anamnesis`, `bio_hub_metrics`).
-- Triagem local determinística (0 tokens) para intenções frequentes + prompt enxuto Gemini 2.5 Flash-Lite para adaptações biomecânicas.
+### **FASE 2: Central do Professor (Agente Guardião da Carteira)**
+- [ ] **Bloco 2.1 — Barramento de Eventos de Alunos (Alertas de Dor e Adaptações)**:
+  - *Arquivo principal:* `backend/app/services/supabase_service.py` / migrations
+  - *Entrega:* Tabela e endpoint leve para registrar eventos críticos gerados pelo aluno ou robô.
+- [ ] **Bloco 2.2 — Live Student Pulse (Feed ao Vivo dos Alunos)**:
+  - *Arquivo principal:* `mobile/lib/features/trainer/presentation/screens/trainer_ai_assistant_screen.dart`
+  - *Entrega:* Painel em tempo real na visão do treinador mostrando treinos concluídos, dúvidas atendidas e ausências.
+- [ ] **Bloco 2.3 — Ações Rápidas Executivas de 1 Toque para o Professor**:
+  - *Arquivo principal:* `mobile/lib/features/trainer/presentation/screens/trainer_ai_assistant_screen.dart`
+  - *Entrega:* Botões acionáveis rápidos (`[Cobrar Check-in]`, `[Elogiar Ofensiva]`, `[Gerar Ficha com IA]`).
 
-### Fase 3: Cockpit de Monitoramento Contínuo do Treinador
-- Criação do feed em tempo real de eventos dos alunos (`workout_sessions`, `adaptation_logs`).
-- Assistente executivo com consultas da carteira em linguagem natural e ações de 1 toque.
-
-### Fase 4: Integração de Provedor Meta Cloud API no Backend
-- Adição do provider `meta_cloud` em [`whatsapp_service.py`](file:///c:/Users/Cleudson/OneDrive/Documentos/PROJETOS%202026/B2B-personal-ia/backend/app/services/whatsapp_service.py) para disparos oficiais de alta confiabilidade.
+### **FASE 3: Omnichannel & Meta Cloud API**
+- [ ] **Bloco 3.1 — Provider Meta Cloud API Oficial no Backend**:
+  - *Arquivo principal:* `backend/app/services/whatsapp_service.py`
+  - *Entrega:* Integração oficial da Graph API da Meta como canal de alta disponibilidade e custo zero na janela receptiva.
+- [ ] **Bloco 3.2 — Matriz Inteligente de Roteamento (Push Grátis vs WhatsApp)**:
+  - *Arquivo principal:* `backend/app/services/whatsapp_service.py` / `notification_service`
+  - *Entrega:* Separação automática entre lembretes de hábito (push grátis no app) e mensagens de impacto comercial (WhatsApp).
