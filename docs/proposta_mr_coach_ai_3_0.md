@@ -96,9 +96,9 @@ Para garantir **máxima eficiência de contexto, redução drástica do consumo 
 - [x] **Bloco 1.3 — Componente de Action Cards Interativos no Chat**:
   - *Arquivo principal:* `mobile/lib/core/widgets/ai_action_card.dart`
   - *Entrega:* Cartões acionáveis em 1 toque dentro dos balões de resposta (`[Ir para o Treino]`, `[Registrar Água]`, `[Ver Raio-X 3D]`). *(Concluído)*
-- [ ] **Bloco 1.4 — RAG Biomecânico Contextual & Guardrail Clínico de Dor**:
-  - *Arquivo principal:* `mobile/lib/services/gemini_service.dart` / `b2b_assistant_screen.dart`
-  - *Entrega:* Injeção do JSON compacto da ficha ativa para substituição de aparelhos ocupados e trava de segurança para queixas articulares.
+- [x] **Bloco 1.4 — RAG Biomecânico Contextual & Guardrail Clínico de Dor**:
+  - *Arquivo principal:* `mobile/lib/features/assistant/b2b_assistant_screen.dart`
+  - *Entrega:* Injeção de contexto compacto da ficha ativa (divisões, exercícios e treinador) para substituição inteligente de máquinas ocupadas, guardrail clínico local com protocolo de segurança contra dores/lesões (0 tokens) e botões de ação imediata para Execução 3D e Raio-X Biomecânico. *(Concluído)*
 
 ### **FASE 2: Central do Professor (Agente Guardião da Carteira)**
 - [ ] **Bloco 2.1 — Barramento de Eventos de Alunos (Alertas de Dor e Adaptações)**:

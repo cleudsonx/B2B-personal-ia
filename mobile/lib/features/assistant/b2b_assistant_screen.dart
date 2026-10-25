@@ -440,12 +440,99 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
         });
         return;
       }
+
+      // 5. GUARDRAIL CLÍNICO DE DOR / DESCONFORTO ARTICULAR (0 Tokens Local)
+      final painKeywords = [
+        'dor',
+        'doendo',
+        'machuc',
+        'lesion',
+        'desconforto',
+        'estalo',
+        'pinçando',
+        'pincando',
+        'travei',
+        'pontada',
+        'ombro doendo',
+        'joelho doendo',
+        'lombar doendo',
+      ];
+      final hasPain = painKeywords.any((kw) => normalized.contains(kw));
+      if (hasPain) {
+        final trainerTitle = (_trainerName != null && _trainerName!.trim().isNotEmpty)
+            ? _trainerName!.trim()
+            : 'seu treinador';
+
+        setState(() {
+          _messages.add(
+            _ChatMessage(
+              text: '🚨 **Atenção Clínica & Segurança Articular**\n\n'
+                  'Ao primeiro sinal de dor aguda, estalo atípico ou pinçamento articular, interrompa a série imediatamente.\n\n'
+                  '🛡️ **Protocolo de Segurança:**\n'
+                  '• Não force a carga nem insista na repetição com dor;\n'
+                  '• Alivie a pressão articular e descanse a musculatura envolvida;\n'
+                  '• Avise imediatamente $trainerTitle para ajuste na prescrição ou substituição do movimento.',
+              isUser: false,
+              actionCardTitle: 'Suporte Clínico Imediato',
+              actionCardIcon: Icons.health_and_safety_rounded,
+              actionItems: [
+                AiActionCardItem(
+                  label: 'Falar com $trainerTitle',
+                  icon: Icons.chat_rounded,
+                  color: MetaColors.emerald,
+                  isPrimary: true,
+                  onTap: () => _openTrainerWhatsApp(
+                    customMessage: 'Olá $trainerTitle! Senti um desconforto/dor articular durante meu treino no Mr. Coach e parei a série para falar com você.',
+                  ),
+                ),
+                AiActionCardItem(
+                  label: 'Sugerir Substituto sem Dor',
+                  icon: Icons.swap_horiz_rounded,
+                  color: const Color(0xFFF59E0B),
+                  onTap: () => _sendPrompt('Exercício alternativo seguro que não sobrecarregue essa região'),
+                ),
+              ],
+            ),
+          );
+          _isLoading = false;
+        });
+        return;
+      }
     }
 
     try {
+      String studentContext = '';
+      if (widget.isStudentView) {
+        final planName = _workoutPlanTitle ?? _cachedActivePlan?.workoutPlanTitle ?? 'Ficha Atual';
+        final trainer = (_trainerName != null && _trainerName!.trim().isNotEmpty)
+            ? _trainerName!.trim()
+            : 'Personal Trainer';
+        final buffer = StringBuffer();
+        buffer.writeln('Contexto do Aluno:');
+        buffer.writeln('- Treinador responsável: $trainer');
+        buffer.writeln('- Ficha Ativa: $planName');
+        if (_cachedActivePlan != null && _cachedActivePlan!.splits.isNotEmpty) {
+          buffer.writeln('- Divisões e Exercícios prescritos:');
+          for (final split in _cachedActivePlan!.splits) {
+            final exNames = split.exercises
+                .map((e) => e.name.trim())
+                .where((n) => n.isNotEmpty)
+                .join(', ');
+            buffer.writeln('  * ${split.splitIdentifier} (${split.splitName}): $exNames');
+          }
+        }
+        studentContext = buffer.toString();
+      }
+
       final promptWithContext =
           widget.isStudentView
-              ? 'Você é o Copiloto de Salão. O aluno está treinando agora. Responda em formato ultra-enxuto, scannable e direto ao ponto (máximo 4 tópicos curtos: 🟢 Regra de Ouro, 📐 Ajuste de Ângulo/Pegada, 🚫 O que Evitar, 🔄 Alternativa se o Aparelho estiver Ocupado). Sem introdução ou conclusões longas. Dúvida: $text'
+              ? 'Você é o Copiloto de Salão do Mr. Coach. O aluno está treinando na academia agora.\n'
+                '$studentContext\n'
+                'Diretrizes obrigatórias de resposta:\n'
+                '1. Formato ultra-enxuto, scannable e direto ao ponto (máximo 4 tópicos curtos: 🟢 Regra de Ouro, 📐 Ajuste de Ângulo/Pegada, 🚫 O que Evitar, 🔄 Alternativa se o Aparelho estiver Ocupado).\n'
+                '2. Se o aluno pedir substituto para aparelho ocupado, recomende prioritariamente uma alternativa equivalente que trabalhe o mesmo grupo muscular respeitando a ficha prescrita.\n'
+                '3. Sem introduções longas ou saudações repetitivas.\n\n'
+                'Dúvida do Aluno: $text'
               : text;
 
       final reply = await GeminiService.askB2BAssistant(
@@ -459,12 +546,45 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
       if (!mounted) return;
       final replyExercise = detectedExercise ?? _detectExerciseInText(reply);
 
+      List<AiActionCardItem>? actionItems;
+      String? actionCardTitle;
+      IconData? actionCardIcon;
+
+      if (replyExercise != null && widget.isStudentView) {
+        actionCardTitle = 'Ações Rápidas: $replyExercise';
+        actionCardIcon = Icons.biotech_rounded;
+        actionItems = [
+          AiActionCardItem(
+            label: 'Execução 3D',
+            icon: Icons.play_circle_fill_rounded,
+            color: MetaColors.emerald,
+            isPrimary: true,
+            onTap: () => ExerciseMediaSheet.show(
+              context,
+              exerciseName: replyExercise,
+            ),
+          ),
+          AiActionCardItem(
+            label: 'Raio-X Biomecânico',
+            icon: Icons.biotech_rounded,
+            color: const Color(0xFF6366F1),
+            onTap: () => BiomechanicalAnalysisSheet.show(
+              context,
+              exerciseName: replyExercise,
+            ),
+          ),
+        ];
+      }
+
       setState(() {
         _messages.add(
           _ChatMessage(
             text: reply,
             isUser: false,
             detectedExercise: replyExercise,
+            actionCardTitle: actionCardTitle,
+            actionCardIcon: actionCardIcon,
+            actionItems: actionItems,
           ),
         );
       });
@@ -474,9 +594,37 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
 
       final fallbackExercise = detectedExercise;
       final String fallbackText;
+      List<AiActionCardItem>? fallbackActionItems;
+      String? fallbackCardTitle;
+      IconData? fallbackCardIcon;
 
       if (fallbackExercise != null) {
         fallbackText = _generateBiomechanicsFallback(fallbackExercise);
+        if (widget.isStudentView) {
+          fallbackCardTitle = 'Ações Rápidas: $fallbackExercise';
+          fallbackCardIcon = Icons.biotech_rounded;
+          fallbackActionItems = [
+            AiActionCardItem(
+              label: 'Execução 3D',
+              icon: Icons.play_circle_fill_rounded,
+              color: MetaColors.emerald,
+              isPrimary: true,
+              onTap: () => ExerciseMediaSheet.show(
+                context,
+                exerciseName: fallbackExercise,
+              ),
+            ),
+            AiActionCardItem(
+              label: 'Raio-X Biomecânico',
+              icon: Icons.biotech_rounded,
+              color: const Color(0xFF6366F1),
+              onTap: () => BiomechanicalAnalysisSheet.show(
+                context,
+                exerciseName: fallbackExercise,
+              ),
+            ),
+          ];
+        }
       } else {
         fallbackText = widget.isStudentView
             ? 'Estou temporariamente reconectando ao servidor em nuvem. Como posso te orientar na execução, postura ou biomecânica de algum exercício específico hoje?'
@@ -490,6 +638,9 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
             isUser: false,
             detectedExercise: fallbackExercise,
             isError: false,
+            actionCardTitle: fallbackCardTitle,
+            actionCardIcon: fallbackCardIcon,
+            actionItems: fallbackActionItems,
           ),
         );
       });
@@ -567,21 +718,24 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
     );
   }
 
-  Future<void> _contactTrainerWhatsApp() async {
-    Navigator.of(context, rootNavigator: true).pop();
+  Future<void> _openTrainerWhatsApp({String? customMessage}) async {
     final cleanPhone = (_trainerPhone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
     if (cleanPhone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: MetaColors.surfaceHighlight,
-          content: Text('Seu treinador ($_trainerName) ainda não cadastrou o WhatsApp profissional.'),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: MetaColors.surfaceHighlight,
+            content: Text('Seu treinador ($_trainerName) ainda não cadastrou o WhatsApp profissional.'),
+          ),
+        );
+      }
       return;
     }
+    final message = customMessage ??
+        'Olá professor(a) $_trainerName! Sou seu aluno no Mr. Coach e gostaria de tirar uma dúvida biomecânica.';
     final uri = Uri.parse(
-      'https://wa.me/$cleanPhone?text=${Uri.encodeComponent('Olá professor(a) $_trainerName! Sou seu aluno no Mr. Coach e gostaria de tirar uma dúvida biomecânica.')}',
+      'https://wa.me/$cleanPhone?text=${Uri.encodeComponent(message)}',
     );
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -596,6 +750,11 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
         );
       }
     }
+  }
+
+  Future<void> _contactTrainerWhatsApp() async {
+    Navigator.of(context, rootNavigator: true).pop();
+    await _openTrainerWhatsApp();
   }
 
   void _openMoreMenu() {
