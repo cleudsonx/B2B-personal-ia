@@ -15,7 +15,9 @@ import '../../core/widgets/workout_guide_modal.dart';
 import '../../core/widgets/whats_new_modal.dart';
 import '../../models/workout_plan_model.dart';
 import '../../services/student_notification_service.dart';
+import '../../core/widgets/ai_action_card.dart';
 import '../client/student_profile_screen.dart';
+import '../client/active_workout_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class B2BAssistantScreen extends StatefulWidget {
@@ -284,6 +286,27 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
             _ChatMessage(
               text: workoutText,
               isUser: false,
+              actionCardTitle: 'Ações de Treino Recomendadas',
+              actionCardIcon: Icons.fitness_center_rounded,
+              actionItems: [
+                AiActionCardItem(
+                  label: 'Abrir Treino de Hoje',
+                  icon: Icons.play_arrow_rounded,
+                  isPrimary: true,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ActiveWorkoutScreen()),
+                    );
+                  },
+                ),
+                AiActionCardItem(
+                  label: 'Aparelho Ocupado?',
+                  icon: Icons.swap_horiz_rounded,
+                  color: const Color(0xFFF59E0B),
+                  onTap: () => _sendPrompt('O aparelho da minha ficha está ocupado. Qual o melhor substituto biomecânico?'),
+                ),
+              ],
             ),
           );
           _isLoading = false;
@@ -321,6 +344,30 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
             _ChatMessage(
               text: streakMsg,
               isUser: false,
+              actionCardTitle: 'Metas e Consistência',
+              actionCardIcon: Icons.local_fire_department_rounded,
+              actionItems: [
+                AiActionCardItem(
+                  label: 'Iniciar Treino e Pontuar',
+                  icon: Icons.bolt_rounded,
+                  isPrimary: true,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ActiveWorkoutScreen()),
+                    );
+                  },
+                ),
+                AiActionCardItem(
+                  label: 'Ver Meu Bio-Hub',
+                  icon: Icons.monitor_weight_rounded,
+                  color: MetaColors.accentBlue,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const StudentProfileScreen()),
+                  ),
+                ),
+              ],
             ),
           );
           _isLoading = false;
@@ -370,6 +417,23 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
             _ChatMessage(
               text: waterMsg,
               isUser: false,
+              actionCardTitle: 'Registro Rápido de Água',
+              actionCardIcon: Icons.water_drop_rounded,
+              actionItems: [
+                AiActionCardItem(
+                  label: '+250ml Copo',
+                  icon: Icons.add_rounded,
+                  color: const Color(0xFF38BDF8),
+                  isPrimary: true,
+                  onTap: () => _sendPrompt('+250ml'),
+                ),
+                AiActionCardItem(
+                  label: '+500ml Garrafa',
+                  icon: Icons.local_drink_rounded,
+                  color: MetaColors.emerald,
+                  onTap: () => _sendPrompt('+500ml'),
+                ),
+              ],
             ),
           );
           _isLoading = false;
@@ -1421,6 +1485,15 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                               ),
                             ),
                           ],
+                          // Action Cards Interativos (Generative UI Mr. Coach AI)
+                          if (msg.actionItems != null && msg.actionItems!.isNotEmpty) ...[
+                            AiActionCard(
+                              title: msg.actionCardTitle,
+                              headerIcon: msg.actionCardIcon,
+                              actions: msg.actionItems!,
+                            ),
+                          ],
+
                           if (msg.isError && kDebugMode) ...[
                             const SizedBox(height: 8),
                             InkWell(
@@ -2220,11 +2293,17 @@ class _ChatMessage {
   final bool isUser;
   final bool isError;
   final String? detectedExercise;
+  final List<AiActionCardItem>? actionItems;
+  final String? actionCardTitle;
+  final IconData? actionCardIcon;
 
   _ChatMessage({
     required this.text,
     required this.isUser,
     this.isError = false,
     this.detectedExercise,
+    this.actionItems,
+    this.actionCardTitle,
+    this.actionCardIcon,
   });
 }

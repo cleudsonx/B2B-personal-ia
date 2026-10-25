@@ -93,9 +93,9 @@ Para garantir **máxima eficiência de contexto, redução drástica do consumo 
 - [x] **Bloco 1.2 — Motor de Triagem Local Custo Zero (Ficha, Streak e Água)**:
   - *Arquivo principal:* `mobile/lib/features/assistant/b2b_assistant_screen.dart`
   - *Entrega:* Roteamento determinístico em <100ms para consultas de treino, dias de ofensiva e hidratação com **0 tokens de IA**. *(Concluído)*
-- [ ] **Bloco 1.3 — Componente de Action Cards Interativos no Chat**:
+- [x] **Bloco 1.3 — Componente de Action Cards Interativos no Chat**:
   - *Arquivo principal:* `mobile/lib/core/widgets/ai_action_card.dart`
-  - *Entrega:* Cartões acionáveis em 1 toque dentro dos balões de resposta (`[Ir para o Treino]`, `[Registrar Água]`, `[Ver Raio-X 3D]`).
+  - *Entrega:* Cartões acionáveis em 1 toque dentro dos balões de resposta (`[Ir para o Treino]`, `[Registrar Água]`, `[Ver Raio-X 3D]`). *(Concluído)*
 - [ ] **Bloco 1.4 — RAG Biomecânico Contextual & Guardrail Clínico de Dor**:
   - *Arquivo principal:* `mobile/lib/services/gemini_service.dart` / `b2b_assistant_screen.dart`
   - *Entrega:* Injeção do JSON compacto da ficha ativa para substituição de aparelhos ocupados e trava de segurança para queixas articulares.
