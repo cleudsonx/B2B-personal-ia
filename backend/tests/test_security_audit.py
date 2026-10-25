@@ -209,9 +209,11 @@ def test_assistant_chat_requires_auth(monkeypatch):
 # Segurança — Evolution API sem valor padrão hardcoded
 # ---------------------------------------------------------------------------
 
-def test_evolution_api_key_has_no_hardcoded_default():
+def test_evolution_api_key_has_no_hardcoded_default(monkeypatch):
     """A chave da Evolution API não deve ter valor padrão hardcoded."""
     from app.services.whatsapp_service import WhatsAppService
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "EVOLUTION_API_KEY", "")
     svc = WhatsAppService()
     assert svc.evolution_key != "mr_coach_secret_api_key_2026", (
         "Chave da Evolution API ainda está hardcoded no código — risco de credencial exposta!"
