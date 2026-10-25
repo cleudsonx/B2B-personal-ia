@@ -557,6 +557,8 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
     String channel = 'whatsapp';
     bool requesting = false;
     bool resetting = false;
+    bool codeSent = false;
+    String? maskedTarget;
     String? resetError;
     final messenger = ScaffoldMessenger.of(context);
 
@@ -608,6 +610,34 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
                   ],
                 ),
                 const SizedBox(height: 14),
+                if (codeSent) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: MetaColors.emerald.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle_rounded, color: MetaColors.emerald, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Código enviado com sucesso para ${maskedTarget ?? (channel == "whatsapp" ? "seu WhatsApp" : "seu E-mail")}!',
+                            style: const TextStyle(
+                              color: MetaColors.emerald,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 ElevatedButton.icon(
                   onPressed: requesting
                       ? null
@@ -617,28 +647,40 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
                             resetError = null;
                           });
                           try {
-                            await AuthService.requestMfaCode(channel: channel);
+                            final res = await AuthService.requestMfaCode(channel: channel);
+                            setDialogState(() {
+                              codeSent = true;
+                              maskedTarget = res['masked_target']?.toString();
+                              resetError = null;
+                            });
                             if (mounted) {
-                              messenger.showSnackBar(
-                                SnackBar(
-                                  content: Text('Código de desvinculação enviado via $channel!'),
-                                  backgroundColor: MetaColors.emerald,
-                                ),
+                              AppToast.success(
+                                context,
+                                'Código de segurança enviado para ${maskedTarget ?? (channel == "whatsapp" ? "WhatsApp" : "E-mail")}!',
+                                title: 'Código Enviado',
+                                icon: Icons.mark_chat_read_rounded,
                               );
                             }
                           } catch (e) {
-                            setDialogState(() => resetError = e.toString().replaceAll('Exception: ', ''));
+                            final raw = e.toString().replaceAll('Exception: ', '');
+                            final friendly = (raw.contains('Not Found') || raw.contains('404'))
+                                ? 'Serviço de 2FA em atualização no servidor. Tente em instantes ou faça deploy das novas rotas no Render.'
+                                : raw;
+                            setDialogState(() => resetError = friendly);
                           } finally {
                             setDialogState(() => requesting = false);
                           }
                         },
                   icon: requesting
                       ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.send, size: 16),
-                  label: Text(requesting ? 'Enviando...' : '1. Solicitar código de recuperação'),
+                      : Icon(codeSent ? Icons.refresh_rounded : Icons.send, size: 16),
+                  label: Text(requesting
+                      ? 'Enviando código...'
+                      : (codeSent ? 'Reenviar código de recuperação' : '1. Solicitar código de recuperação')),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: MetaColors.highlight(context),
-                    foregroundColor: MetaColors.text(context),
+                    backgroundColor: codeSent ? MetaColors.emerald.withValues(alpha: 0.15) : MetaColors.highlight(context),
+                    foregroundColor: codeSent ? MetaColors.emerald : MetaColors.text(context),
+                    side: codeSent ? BorderSide(color: MetaColors.emerald.withValues(alpha: 0.4)) : null,
                   ),
                 ),
                 const SizedBox(height: 16),

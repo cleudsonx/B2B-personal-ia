@@ -44,7 +44,7 @@ class AppChangelog {
     // ==========================================
     VersionRelease(
       version: '1.11.0',
-      buildNumber: 2026103067,
+      buildNumber: 2026103068,
       date: '24 de Outubro, 2026',
       summary:
           'Versão 1.11.0: Modernização Inteligente do 2FA Multi-Canal (WhatsApp, E-mail e Backup Codes de 10 dígitos), Dispositivo Confiável de 30 dias e Integração Estável com Evolution API v2.',
