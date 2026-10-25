@@ -13,6 +13,7 @@ import '../../core/theme/theme_controller.dart';
 import '../../core/widgets/one_ui_glass_components.dart';
 import '../../core/widgets/workout_guide_modal.dart';
 import '../../core/widgets/whats_new_modal.dart';
+import '../../models/workout_plan_model.dart';
 import '../../services/student_notification_service.dart';
 import '../client/student_profile_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -34,6 +35,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
 
   String _selectedPillar = 'Todos';
   List<String> _studentExercises = [];
+  WorkoutPlanModel? _cachedActivePlan;
   String? _trainerName;
   String? _trainerCref;
   String? _trainerPhotoUrl;
@@ -66,6 +68,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
         }
         if (mounted) {
           setState(() {
+            _cachedActivePlan = activePlan;
             _workoutPlanTitle = activePlan.workoutPlanTitle;
             _totalSplitsCount = activePlan.splits.length;
             if (exercises.isNotEmpty) {
@@ -219,50 +222,153 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
 
     final normalized = text.toLowerCase().trim();
     if (widget.isStudentView) {
+      // 1. GREETINGS & MENU (0 Tokens)
       if (normalized == 'menu' ||
           normalized == 'ajuda' ||
           normalized == '0' ||
           normalized == 'oi' ||
           normalized == 'olá' ||
-          normalized == 'ola') {
+          normalized == 'ola' ||
+          normalized == 'bom dia' ||
+          normalized == 'boa tarde' ||
+          normalized == 'boa noite') {
         setState(() {
           _messages.add(
             _ChatMessage(
-              text: '💪 **Olá! Eu sou o Copiloto de Treino do Mr. Coach.**\n\n'
-                  'Aqui dentro do app você pode tirar dúvidas em tempo real:\n'
-                  '• Digite o nome de um exercício para ver postura e ativação 3D (ex: *Supino*, *Leg Press*)\n'
-                  '• Digite *Ocupado* se o aparelho estiver cheio para ver uma adaptação biomecânica instantânea!\n\n'
-                  '📲 **No WhatsApp:** Caso você mande mensagem direto no **WhatsApp do seu treinador**, você pode usar os comandos rápidos:\n'
-                  '*1* - Ver ficha de treino\n'
-                  '*2* - Ver ofensiva (Streak 🔥)\n'
-                  '*3* - Link de acesso do app',
+              text: '💪 **Olá! Eu sou o seu Copiloto de Treino no Mr. Coach.**\n\n'
+                  'Posso te ajudar em tempo real com seu treino e sua rotina:\n'
+                  '• Digite **1** ou **Treino** para ver sua ficha ativa e os exercícios de hoje\n'
+                  '• Digite **2** ou **Streak** para consultar seus dias de ofensiva 🔥\n'
+                  '• Digite **Água** para ver seu consumo ou registrar hidratação 💧\n'
+                  '• Digite o nome de um exercício para ver postura e ativação 3D\n'
+                  '• Digite **Ocupado** se o aparelho na academia estiver cheio!',
               isUser: false,
             ),
           );
           _isLoading = false;
         });
         return;
-      } else if (normalized == '1' || normalized == 'treino' || normalized == 'ficha') {
+      }
+      
+      // 2. CONSULTA REAL DE FICHA ATIVA / TREINO DO DIA (0 Tokens)
+      if (normalized == '1' ||
+          normalized == 'treino' ||
+          normalized == 'meu treino' ||
+          normalized == 'ficha' ||
+          normalized == 'qual meu treino' ||
+          normalized == 'treino de hoje' ||
+          normalized.contains('qual o meu treino') ||
+          normalized.contains('qual meu treino')) {
+        String workoutText;
+        if (_cachedActivePlan != null && _cachedActivePlan!.splits.isNotEmpty) {
+          final splits = _cachedActivePlan!.splits;
+          final buffer = StringBuffer();
+          buffer.writeln('📋 **Sua Ficha Ativa: ${_cachedActivePlan!.workoutPlanTitle}**\n');
+          buffer.writeln('Seu treinador organizou **${splits.length} divisões** para você:');
+          for (final sp in splits) {
+            buffer.writeln('\n• **Divisão ${sp.splitIdentifier} (${sp.splitName})** ~${sp.estimatedDurationMin} min:');
+            for (int i = 0; i < sp.exercises.length; i++) {
+              final ex = sp.exercises[i];
+              buffer.writeln('   ${i + 1}. ${ex.name} — ${ex.sets} séries x ${ex.reps} (desc. ${ex.restSeconds}s)');
+            }
+          }
+          buffer.writeln('\n💡 *Dica:* Toque na aba **Treino** na barra inferior para marcar suas séries e ligar o timer de descanso!');
+          workoutText = buffer.toString();
+        } else {
+          workoutText = '📋 **Seu Treino Ativo**\n\n'
+              'Sua ficha está sendo sincronizada com seu professor. Você pode acompanhar todas as divisões e marcar suas séries tocando na aba **Treino** na barra inferior.';
+        }
+
         setState(() {
           _messages.add(
             _ChatMessage(
-              text: '📋 **Seu Treino Ativo**\n\n'
-                  'Você pode acompanhar sua ficha completa, marcar séries e acionar o timer de descanso tocando na aba **Treino** (ícone de halter na barra inferior).\n\n'
-                  '💡 Se preferir receber o resumo da ficha por mensagem, basta mandar *1* no WhatsApp do seu treinador!',
+              text: workoutText,
               isUser: false,
             ),
           );
           _isLoading = false;
         });
         return;
-      } else if (normalized == '2' || normalized == 'streak' || normalized == 'ofensiva') {
+      }
+
+      // 3. CONSULTA REAL DE STREAK / OFENSIVA (0 Tokens)
+      if (normalized == '2' ||
+          normalized == 'streak' ||
+          normalized == 'ofensiva' ||
+          normalized == 'foguinho' ||
+          normalized == 'minha ofensiva' ||
+          normalized.contains('quantos dias') ||
+          normalized.contains('meu streak')) {
+        int streak = 0;
+        try {
+          final user = AuthService.currentUser;
+          if (user != null) {
+            final profile = await AuthService.getCurrentProfile();
+            streak = int.tryParse((profile?['streak_days'] ?? 0).toString()) ?? 0;
+          }
+        } catch (_) {}
+
+        final streakMsg = streak > 0
+            ? '🔥 **Sua Ofensiva Atual: $streak dias consecutivos!**\n\n'
+                'Parabéns pela consistência! A cada treino concluído na aba **Treino**, seu foguinho é mantido aceso. '
+                'Bora treinar hoje para manter esse recorde vivo! 💪'
+            : '🔥 **Ofensiva & Consistência**\n\n'
+                'Você está pronto para começar uma nova sequência! Complete o treino de hoje na aba **Treino** '
+                'para acender seu foguinho e somar dias de consistência com seu professor! 🚀';
+
         setState(() {
           _messages.add(
             _ChatMessage(
-              text: '🔥 **Ofensiva & Consistência**\n\n'
-                  'Sua ofensiva é contabilizada a cada treino concluído na aba **Treino**!\n'
-                  'Mantenha a frequência para acumular dias seguidos de treino sem zerar o foguinho.\n\n'
-                  '💡 Você também pode digitar *2* no WhatsApp do seu treinador para consultar seu streak.',
+              text: streakMsg,
+              isUser: false,
+            ),
+          );
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // 4. CONSULTA E REGISTRO DE ÁGUA / HIDRATAÇÃO (0 Tokens)
+      if (normalized == 'agua' ||
+          normalized == 'água' ||
+          normalized == 'hidratacao' ||
+          normalized == 'hidratação' ||
+          normalized.contains('bebi agua') ||
+          normalized.contains('bebi água') ||
+          normalized.contains('quanto de agua') ||
+          normalized.contains('meta de agua')) {
+        final user = AuthService.currentUser;
+        int currentIntake = 0;
+        int dailyGoal = 2500;
+        if (user != null) {
+          try {
+            currentIntake = await StudentNotificationService.instance.getTodayHydration(user.id);
+            dailyGoal = await StudentNotificationService.instance.getDailyHydrationGoal(user.id);
+          } catch (_) {}
+        }
+
+        // Se o usuário digitou explicitamente que bebeu água (ex: "bebi 250ml", "+250", "bebi agua")
+        if (normalized.contains('+') || normalized.contains('bebi') || normalized.contains('tomei')) {
+          int addMl = 250;
+          final match = RegExp(r'(\d+)\s*ml').firstMatch(normalized);
+          if (match != null) {
+            addMl = int.tryParse(match.group(1)!) ?? 250;
+          }
+          if (user != null) {
+            currentIntake = await StudentNotificationService.instance.addWaterIntake(user.id, addMl);
+          }
+        }
+
+        final percent = dailyGoal > 0 ? ((currentIntake / dailyGoal) * 100).round() : 0;
+        final waterMsg = '💧 **Controle de Hidratação de Hoje**\n\n'
+            '• Consumo atual: **${currentIntake}ml** de **${dailyGoal}ml** ($percent% da meta)\n'
+            '• Restante para hoje: **${(dailyGoal - currentIntake).clamp(0, dailyGoal)}ml**\n\n'
+            '💡 *Dica:* A água otimiza a recuperação muscular e reduz cãibras. Você pode digitar *+250ml* ou *+500ml* aqui a qualquer momento para registrar!';
+
+        setState(() {
+          _messages.add(
+            _ChatMessage(
+              text: waterMsg,
               isUser: false,
             ),
           );

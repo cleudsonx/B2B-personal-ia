@@ -90,9 +90,9 @@ Para garantir **máxima eficiência de contexto, redução drástica do consumo 
 - [x] **Bloco 1.1 — Header da Consultoria & Pulse Unificado de Notificações**:
   - *Arquivo principal:* `mobile/lib/features/assistant/b2b_assistant_screen.dart`
   - *Entrega:* Visual One UI moderno no topo do aluno com foto/CREF do professor, status da ficha e sino retrátil integrado com novidades da versão. *(Concluído)*
-- [ ] **Bloco 1.2 — Motor de Triagem Local Custo Zero (Ficha, Streak e Água)**:
+- [x] **Bloco 1.2 — Motor de Triagem Local Custo Zero (Ficha, Streak e Água)**:
   - *Arquivo principal:* `mobile/lib/features/assistant/b2b_assistant_screen.dart`
-  - *Entrega:* Roteamento determinístico em <100ms para consultas de treino, dias de ofensiva e hidratação com **0 tokens de IA**.
+  - *Entrega:* Roteamento determinístico em <100ms para consultas de treino, dias de ofensiva e hidratação com **0 tokens de IA**. *(Concluído)*
 - [ ] **Bloco 1.3 — Componente de Action Cards Interativos no Chat**:
   - *Arquivo principal:* `mobile/lib/core/widgets/ai_action_card.dart`
   - *Entrega:* Cartões acionáveis em 1 toque dentro dos balões de resposta (`[Ir para o Treino]`, `[Registrar Água]`, `[Ver Raio-X 3D]`).
