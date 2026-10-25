@@ -87,9 +87,9 @@ Para garantir **máxima eficiência de contexto, redução drástica do consumo 
 ## 6. Roteiro Detalhado em Blocos Atômicos
 
 ### **FASE 1: Aba Mr. Coach AI do Aluno (Foco em Experiência Imediata)**
-- [ ] **Bloco 1.1 — Header da Consultoria & Pulse Unificado de Notificações**:
+- [x] **Bloco 1.1 — Header da Consultoria & Pulse Unificado de Notificações**:
   - *Arquivo principal:* `mobile/lib/features/assistant/b2b_assistant_screen.dart`
-  - *Entrega:* Visual One UI moderno no topo do aluno com foto/CREF do professor, status da ficha e sino retrátil integrado com novidades da versão.
+  - *Entrega:* Visual One UI moderno no topo do aluno com foto/CREF do professor, status da ficha e sino retrátil integrado com novidades da versão. *(Concluído)*
 - [ ] **Bloco 1.2 — Motor de Triagem Local Custo Zero (Ficha, Streak e Água)**:
   - *Arquivo principal:* `mobile/lib/features/assistant/b2b_assistant_screen.dart`
   - *Entrega:* Roteamento determinístico em <100ms para consultas de treino, dias de ofensiva e hidratação com **0 tokens de IA**.

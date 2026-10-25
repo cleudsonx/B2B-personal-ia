@@ -12,6 +12,8 @@ import '../../services/auth_service.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../core/widgets/one_ui_glass_components.dart';
 import '../../core/widgets/workout_guide_modal.dart';
+import '../../core/widgets/whats_new_modal.dart';
+import '../../services/student_notification_service.dart';
 import '../client/student_profile_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -36,6 +38,8 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
   String? _trainerCref;
   String? _trainerPhotoUrl;
   String? _trainerPhone;
+  String? _workoutPlanTitle;
+  int _totalSplitsCount = 0;
 
   @override
   void initState() {
@@ -43,6 +47,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
     if (widget.isStudentView) {
       _loadStudentExercises();
       _loadTrainer();
+      StudentNotificationService.instance.refreshNotifications();
     }
   }
 
@@ -59,9 +64,13 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
             }
           }
         }
-        if (exercises.isNotEmpty && mounted) {
+        if (mounted) {
           setState(() {
-            _studentExercises = exercises.take(6).toList();
+            _workoutPlanTitle = activePlan.workoutPlanTitle;
+            _totalSplitsCount = activePlan.splits.length;
+            if (exercises.isNotEmpty) {
+              _studentExercises = exercises.take(6).toList();
+            }
           });
         }
       }
@@ -520,110 +529,222 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
   }
 
   Widget _buildStudentHeader() {
+    final trainerDisplay = _trainerName?.trim().isNotEmpty == true ? _trainerName! : 'Personal Trainer';
+    final planDisplay = _workoutPlanTitle?.trim().isNotEmpty == true
+        ? '$_workoutPlanTitle${_totalSplitsCount > 0 ? " ($_totalSplitsCount divisões)" : ""}'
+        : 'Consultoria Ativa • Prescrição Individualizada';
+
     return Padding(
-      padding: const EdgeInsets.only(left: 18, right: 18, top: 10, bottom: 8),
-      child: Row(
+      padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // 1. CARD HERO DA CONSULTORIA (Padrão One UI 7 / Meta)
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: MetaColors.emerald.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: MetaColors.emerald.withValues(alpha: 0.3),
-              ),
+              color: MetaColors.card(context),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: MetaColors.cardBorder(context), width: 1.0),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
-            child: const Icon(
-              Icons.biotech_rounded,
-              color: MetaColors.emerald,
-              size: 22,
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: _openCoachSheet,
+                  behavior: HitTestBehavior.opaque,
+                  child: _buildCoachAvatar(size: 46),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              trainerDisplay,
+                              style: TextStyle(
+                                color: MetaColors.text(context),
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.2,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: MetaColors.emerald.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'COACH',
+                              style: TextStyle(
+                                color: MetaColors.emerald,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        planDisplay,
+                        style: TextStyle(
+                          color: MetaColors.subtext(context),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 6),
+                if (_messages.isNotEmpty) ...[
+                  GlassIconButton(
+                    icon: Icons.refresh_rounded,
+                    tooltip: 'Limpar Conversa',
+                    onTap: () => setState(() => _messages.clear()),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                GlassIconButton(
+                  icon: Icons.more_vert_rounded,
+                  tooltip: 'Mais Opções',
+                  onTap: _openMoreMenu,
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      'Mr. Coach AI',
-                      style: TextStyle(
-                        color: MetaColors.text(context),
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
+          const SizedBox(height: 8),
+
+          // 2. PULSE RETRÁTIL UNIFICADO: CENTRAL DE NOTIFICAÇÕES & VERSÃO DO APP
+          ValueListenableBuilder<List<StudentNotificationItem>>(
+            valueListenable: StudentNotificationService.notificationsNotifier,
+            builder: (context, notifs, _) {
+              final unreadList = notifs.where((n) => !n.isRead).toList();
+              final topNotification = unreadList.isNotEmpty ? unreadList.first : null;
+
+              return Row(
+                children: [
+                  // A. Alerta Proativo da Consultoria (ou Status Online)
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: topNotification != null
+                            ? const Color(0xFFF59E0B).withValues(alpha: 0.12)
+                            : MetaColors.surfaceHighlight,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: topNotification != null
+                              ? const Color(0xFFF59E0B).withValues(alpha: 0.35)
+                              : MetaColors.cardBorder(context),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            topNotification != null
+                                ? Icons.notifications_active_rounded
+                                : Icons.verified_user_rounded,
+                            size: 15,
+                            color: topNotification != null
+                                ? const Color(0xFFF59E0B)
+                                : MetaColors.emerald,
+                          ),
+                          const SizedBox(width: 7),
+                          Expanded(
+                            child: Text(
+                              topNotification != null
+                                  ? topNotification.title
+                                  : 'Mr. Coach Copiloto Ativo • IA Pronta',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: topNotification != null
+                                    ? const Color(0xFFF59E0B)
+                                    : MetaColors.text(context),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (unreadList.length > 1) ...[
+                            const SizedBox(width: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF59E0B),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '+${unreadList.length - 1}',
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // B. Pílula Discreta de Novidades da Versão (What's New)
+                  InkWell(
+                    onTap: () => WhatsNewModal.show(context),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                       decoration: BoxDecoration(
-                        color: MetaColors.emerald.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(6),
+                        color: MetaColors.emerald.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: MetaColors.emerald.withValues(alpha: 0.3),
                           width: 0.8,
                         ),
                       ),
-                      child: Row(
+                      child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: MetaColors.emerald,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Text(
-                            'ATIVO',
+                          Icon(Icons.auto_awesome_rounded, size: 14, color: MetaColors.emerald),
+                          SizedBox(width: 5),
+                          Text(
+                            'Novidades',
                             style: TextStyle(
                               color: MetaColors.emerald,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Laboratório Biomecânico • 3D',
-                  style: TextStyle(
-                    color: MetaColors.subtext(context),
-                    fontSize: 12,
                   ),
-                ),
-              ],
-            ),
-          ),
-          if (_messages.isNotEmpty) ...[
-            GlassIconButton(
-              icon: Icons.refresh_rounded,
-              tooltip: 'Limpar Chat',
-              onTap: () => setState(() => _messages.clear()),
-            ),
-            const SizedBox(width: 8),
-          ],
-          if (_trainerName != null && _trainerName!.isNotEmpty) ...[
-            GestureDetector(
-              onTap: _openCoachSheet,
-              behavior: HitTestBehavior.opaque,
-              child: _buildCoachAvatar(size: 38),
-            ),
-            const SizedBox(width: 8),
-          ],
-          GlassIconButton(
-            icon: Icons.more_vert_rounded,
-            tooltip: 'Menu',
-            onTap: _openMoreMenu,
+                ],
+              );
+            },
           ),
         ],
       ),
