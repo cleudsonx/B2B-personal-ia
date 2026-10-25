@@ -135,9 +135,9 @@ def env():
     client = make_client()
     sent = []
 
-    async def fake_send(number, text):
+    async def fake_send(number, text, *args, **kwargs):
         sent.append(text)
-        return True
+        return {"status": "sent"}
 
     with patch.object(supabase_service, "get_client", new=AsyncMock(return_value=client)), \
          patch.object(whatsapp_service, "send_text_with_fallback", new=fake_send), \
