@@ -13,6 +13,7 @@ import '../../../../models/subscription_model.dart';
 import '../../../../services/subscription_service.dart';
 import '../../../subscription/subscription_screen.dart';
 import 'whatsapp_connection_screen.dart';
+import '../../anamnesis_screen.dart';
 
 /// Cockpit One UI 7 do Consultor Ativo IA 2.0 (Coach Proativo no WhatsApp).
 ///
@@ -286,6 +287,7 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
           streakRanking.add({
             'id': sid,
             'full_name': sname,
+            'phone': sphone,
             'streak_days': streak,
           });
         }
@@ -802,7 +804,11 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
                     _buildLiveStudentPulseSection(context),
                     const SizedBox(height: 18),
 
-                    // 2.2 Resumo Executivo Semanal do Professor (Fase 7)
+                    // 2.2 Ações Rápidas Executivas de 1 Toque (Fase 2 - Bloco 2.3)
+                    _buildExecutiveOneTouchActions(context),
+                    const SizedBox(height: 18),
+
+                    // 2.3 Resumo Executivo Semanal do Professor (Fase 7)
                     _buildWeeklyDigestCard(context),
                     const SizedBox(height: 18),
 
@@ -1604,6 +1610,418 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildExecutiveOneTouchActions(BuildContext context) {
+    final topStreaks = (_weeklyDigest?['top_streaks'] as List?) ?? [];
+    final inactiveCount = _inactiveStudents.length;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: MetaColors.card(context),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: const Color(0xFF6366F1).withValues(alpha: 0.35),
+          width: 1.3,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.electric_bolt_rounded,
+                  color: Color(0xFF818CF8),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Ações Rápidas Executivas',
+                      style: TextStyle(
+                        color: MetaColors.text(context),
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    Text(
+                      'Automações táticas para retenção e engajamento da carteira',
+                      style: TextStyle(
+                        color: MetaColors.subtext(context),
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  '1 Toque',
+                  style: TextStyle(
+                    color: Color(0xFF818CF8),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // 1. Cobrar Check-in
+          _buildOneTouchActionTile(
+            context,
+            icon: Icons.notifications_active_rounded,
+            iconColor: const Color(0xFFF59E0B),
+            title: 'Cobrar Check-in em Lote',
+            subtitle: inactiveCount > 0
+                ? '$inactiveCount alunos ausentes há +4 dias'
+                : 'Todos os alunos estão em dia com a frequência',
+            badgeText: inactiveCount > 0 ? '$inactiveCount Ausentes' : 'Em Dia',
+            badgeColor: inactiveCount > 0 ? const Color(0xFFF59E0B) : MetaColors.emerald,
+            buttonLabel: _isDispatchingBatch ? 'Disparando...' : 'Cobrar Todos',
+            onTap: inactiveCount > 0 && !_isDispatchingBatch
+                ? () => _triggerProactiveCheckin(force: true)
+                : null,
+          ),
+          const SizedBox(height: 10),
+
+          // 2. Elogiar Ofensiva
+          _buildOneTouchActionTile(
+            context,
+            icon: Icons.local_fire_department_rounded,
+            iconColor: const Color(0xFFEF4444),
+            title: 'Elogiar Campeões de Ofensiva',
+            subtitle: topStreaks.isNotEmpty
+                ? '${topStreaks.length} alunos com consistência máxima esta semana'
+                : 'Nenhum aluno em streak ativa no momento',
+            badgeText: topStreaks.isNotEmpty ? 'Top Streaks' : 'Sem Dados',
+            badgeColor: topStreaks.isNotEmpty ? const Color(0xFFEF4444) : MetaColors.subtext(context),
+            buttonLabel: 'Elogiar no WhatsApp',
+            onTap: topStreaks.isNotEmpty
+                ? () => _openCongratulateStreaksSheet(context, topStreaks)
+                : null,
+          ),
+          const SizedBox(height: 10),
+
+          // 3. Gerar Ficha com IA
+          _buildOneTouchActionTile(
+            context,
+            icon: Icons.auto_awesome_rounded,
+            iconColor: MetaColors.emerald,
+            title: 'Gerar Nova Ficha com IA',
+            subtitle: 'Periodização biomecânica hipertrófica via Gemini em 30 segundos',
+            badgeText: 'IA Gemini',
+            badgeColor: MetaColors.emerald,
+            buttonLabel: 'Abrir Gerador',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const TrainerAnamnesisScreen(),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOneTouchActionTile(
+    BuildContext context, {
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required String badgeText,
+    required Color badgeColor,
+    required String buttonLabel,
+    required VoidCallback? onTap,
+  }) {
+    final enabled = onTap != null;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: MetaColors.highlight(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: MetaColors.cardBorder(context).withValues(alpha: 0.4),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: iconColor, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          color: MetaColors.text(context),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: badgeColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: Text(
+                        badgeText,
+                        style: TextStyle(
+                          color: badgeColor,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: MetaColors.subtext(context),
+                    fontSize: 11,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+              decoration: BoxDecoration(
+                color: enabled ? iconColor : MetaColors.subtext(context).withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                buttonLabel,
+                style: TextStyle(
+                  color: enabled ? Colors.black : MetaColors.subtext(context),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openCongratulateStreaksSheet(BuildContext context, List<dynamic> topStreaks) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          decoration: BoxDecoration(
+            color: MetaColors.bg(ctx),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border.all(color: MetaColors.cardBorder(ctx)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: MetaColors.subtext(ctx).withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.local_fire_department_rounded,
+                      color: Color(0xFFEF4444),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Elogiar Campeões de Consistência',
+                          style: TextStyle(
+                            color: MetaColors.text(ctx),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          'Envie um incentivo personalizado no WhatsApp em 1 toque',
+                          style: TextStyle(
+                            color: MetaColors.subtext(ctx),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ...topStreaks.map((s) {
+                final student = Map<String, dynamic>.from(s as Map);
+                final sname = student['full_name'] ?? 'Aluno';
+                final firstName = sname.toString().split(' ').first;
+                final streak = student['streak_days'] ?? 0;
+                final phone = (student['phone'] ?? '').toString().replaceAll(RegExp(r'[^0-9]'), '');
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: MetaColors.highlight(ctx),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: MetaColors.cardBorder(ctx).withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.local_fire_department_rounded, size: 14, color: Color(0xFFEF4444)),
+                            const SizedBox(width: 2),
+                            Text(
+                              '$streak d',
+                              style: const TextStyle(
+                                color: Color(0xFFEF4444),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          sname,
+                          style: TextStyle(
+                            color: MetaColors.text(ctx),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          Navigator.pop(ctx);
+                          final msg = 'Fala $firstName! Passando para parabenizar sua dedicação impecável: você está com $streak dias seguidos de treino firme no Mr. Coach! 🔥 Orgulho demais da sua consistência, bora manter o foco!';
+                          if (phone.isNotEmpty) {
+                            final uri = Uri.parse('https://wa.me/$phone?text=${Uri.encodeComponent(msg)}');
+                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          } else {
+                            await Clipboard.setData(ClipboardData(text: msg));
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text('Aluno sem telefone cadastrado. Mensagem copiada para $firstName!'),
+                                backgroundColor: MetaColors.emerald,
+                              ),
+                            );
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: MetaColors.emerald,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.chat_rounded, size: 12, color: Colors.black),
+                              SizedBox(width: 4),
+                              Text(
+                                'Elogiar',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
     );
   }
 

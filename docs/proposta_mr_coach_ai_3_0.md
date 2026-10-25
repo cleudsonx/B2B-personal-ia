@@ -107,9 +107,9 @@ Para garantir **máxima eficiência de contexto, redução drástica do consumo 
 - [x] **Bloco 2.2 — Live Student Pulse (Feed ao Vivo dos Alunos)**:
   - *Arquivo principal:* `mobile/lib/features/trainer/presentation/screens/trainer_ai_assistant_screen.dart`
   - *Entrega:* Painel em tempo real na visão do treinador mostrando fluxo de atividades (dores, treinos concluídos, trocas de aparelho e dúvidas), com badge de alerta clínico urgente, mini KPI dashboard, filtros horizontais e atalhos para WhatsApp e marcação de ciente. *(Concluído)*
-- [ ] **Bloco 2.3 — Ações Rápidas Executivas de 1 Toque para o Professor**:
+- [x] **Bloco 2.3 — Ações Rápidas Executivas de 1 Toque para o Professor**:
   - *Arquivo principal:* `mobile/lib/features/trainer/presentation/screens/trainer_ai_assistant_screen.dart`
-  - *Entrega:* Botões acionáveis rápidos (`[Cobrar Check-in]`, `[Elogiar Ofensiva]`, `[Gerar Ficha com IA]`).
+  - *Entrega:* Card de ações táticas de 1 toque no cockpit com `[Cobrar Check-in em Lote]` para alunos ausentes, `[Elogiar no WhatsApp]` com bottom sheet dos campeões de consistência/streaks, e `[Abrir Gerador IA]` navegando direto para prescrição com Gemini. *(Concluído)*
 
 ### **FASE 3: Omnichannel & Meta Cloud API**
 - [ ] **Bloco 3.1 — Provider Meta Cloud API Oficial no Backend**:
