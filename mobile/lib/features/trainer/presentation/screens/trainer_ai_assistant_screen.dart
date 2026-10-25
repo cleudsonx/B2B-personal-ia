@@ -522,11 +522,11 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
 
         if (sentViaEvo && mounted) {
           setState(() => _isSendingDigest = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('📊 Resumo Executivo Semanal enviado para o seu WhatsApp via Robô!'),
-              backgroundColor: MetaColors.emerald,
-            ),
+          AppToast.success(
+            context,
+            'Resumo Executivo Semanal enviado para o seu WhatsApp via Robô!',
+            title: 'Resumo Enviado',
+            icon: Icons.mark_chat_read_rounded,
           );
           return;
         }
@@ -547,11 +547,11 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
       } else {
         await Clipboard.setData(ClipboardData(text: digestMsg));
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('📋 Resumo Executivo Semanal copiado para a área de transferência!'),
-              backgroundColor: MetaColors.emerald,
-            ),
+          AppToast.success(
+            context,
+            'Resumo Executivo Semanal copiado para a área de transferência!',
+            title: 'Copiado',
+            icon: Icons.copy_rounded,
           );
         }
       }

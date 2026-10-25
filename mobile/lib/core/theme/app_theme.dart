@@ -159,6 +159,21 @@ class AppTheme {
           );
         }),
       ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF131B2E),
+        elevation: 10,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0x3310B981), width: 1.2),
+        ),
+        insetPadding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+        contentTextStyle: GoogleFonts.inter(
+          color: MetaColors.textPrimary,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
@@ -297,6 +312,21 @@ class AppTheme {
             color: MetaColors.lightTextSecondary,
           );
         }),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.white,
+        elevation: 8,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0x33008069), width: 1.2),
+        ),
+        insetPadding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+        contentTextStyle: GoogleFonts.inter(
+          color: MetaColors.lightTextPrimary,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

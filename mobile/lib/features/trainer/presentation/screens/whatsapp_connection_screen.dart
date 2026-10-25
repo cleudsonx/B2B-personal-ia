@@ -209,12 +209,11 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
 
       if (response.statusCode == 200) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('🚀 Mensagem de teste enviada com sucesso para o seu WhatsApp!'),
-            backgroundColor: MetaColors.emerald,
-            duration: Duration(seconds: 4),
-          ),
+        AppToast.success(
+          context,
+          'Mensagem de teste enviada com sucesso para o seu WhatsApp!',
+          title: 'Teste Enviado',
+          icon: Icons.mark_chat_read_rounded,
         );
         await _loadTelemetryAndLogs();
       } else {
@@ -223,11 +222,10 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro: ${e.toString().replaceFirst("Exception: ", "")}'),
-            backgroundColor: AppColors.danger,
-          ),
+        AppToast.error(
+          context,
+          e.toString().replaceFirst("Exception: ", ""),
+          title: 'Erro de Envio',
         );
       }
     } finally {
@@ -396,11 +394,10 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
-            backgroundColor: AppColors.danger,
-          ),
+        AppToast.error(
+          context,
+          e.toString().replaceFirst('Exception: ', ''),
+          title: 'Pareamento',
         );
       }
     }
@@ -412,12 +409,11 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
         ClipboardData(text: _pairingCode!.replaceAll('-', '')),
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Código copiado! Abra "Aparelhos Conectados" no seu WhatsApp e cole o código.'),
-          backgroundColor: MetaColors.emerald,
-          duration: Duration(seconds: 4),
-        ),
+      AppToast.success(
+        context,
+        'Abra "Aparelhos Conectados" no WhatsApp e cole o código copiado.',
+        title: 'Código Copiado',
+        icon: Icons.copy_rounded,
       );
     }
   }
