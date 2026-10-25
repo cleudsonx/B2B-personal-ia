@@ -243,6 +243,23 @@ class WhatsAppService:
             logger.warning("[WhatsApp] Erro ao obter base64 de mídia na instância %s: %s", instance_name, e)
         return None
 
+    async def find_any_open_instance(self) -> Optional[str]:
+        """Busca qualquer instância que esteja com status 'open' na Evolution API."""
+        if self.provider == "mock":
+            return None
+        try:
+            async with httpx.AsyncClient(timeout=6) as client:
+                res = await client.get(f"{self._base()}/instance/fetchInstances", headers=self._headers())
+                if res.status_code == 200:
+                    data = res.json()
+                    if isinstance(data, list):
+                        for inst in data:
+                            if inst.get("connectionStatus") == "open":
+                                return inst.get("name")
+        except Exception as e:
+            logger.debug(f"[WhatsApp] Erro ao buscar instância aberta de fallback: {e}")
+        return None
+
     async def send_text_with_fallback(
         self,
         number: str,
@@ -293,7 +310,23 @@ class WhatsAppService:
             }
         except Exception as e:
             logger.warning("[WhatsApp] Falha ao enviar via instância oficial da Plataforma (%s): %s", platform_inst, e)
-            return {"status": "failed", "reason": str(e), "phone": target_number}
+
+        # Nível 3: Contingência Dinâmica - Qualquer instância conectada na VPS
+        try:
+            open_inst = await self.find_any_open_instance()
+            if open_inst and open_inst != platform_inst and open_inst != (instance_name_for(trainer_id) if trainer_id else None):
+                res = await self.send_text_message(open_inst, target_number, text)
+                logger.info("[WhatsApp] Mensagem enviada via instância aberta de contingência (%s)", open_inst)
+                return {
+                    "status": "sent",
+                    "channel": "contingency_instance",
+                    "instance": open_inst,
+                    "provider_response": res,
+                }
+        except Exception as e3:
+            logger.warning("[WhatsApp] Falha no envio de contingência: %s", e3)
+
+        return {"status": "failed", "reason": "Nenhuma instância conectada disponível", "phone": target_number}
 
     async def notify_new_workout(
         self,

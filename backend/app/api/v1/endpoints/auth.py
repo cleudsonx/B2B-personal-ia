@@ -599,11 +599,33 @@ async def request_mfa_code(
             f"Ele é válido por 10 minutos. Nunca compartilhe este código com ninguém."
         )
         try:
-            wa_res = await whatsapp_service.send_text_with_fallback(number=formatted_phone, text=msg_text)
+            wa_res = await whatsapp_service.send_text_with_fallback(
+                number=formatted_phone,
+                text=msg_text,
+                trainer_id=user_id,
+            )
             if isinstance(wa_res, dict) and wa_res.get("status") == "failed":
                 raise RuntimeError(wa_res.get("reason") or "Falha no envio WhatsApp")
         except Exception as e:
             logger.error(f"[MFA] Falha ao enviar WhatsApp: {e}")
+            if user_email and "@" in user_email:
+                try:
+                    await email_service.send_recovery_otp_email(
+                        recipient_email=user_email,
+                        user_name=full_name,
+                        otp_code=otp_code,
+                    )
+                    logger.info("[MFA] Fallback automático para email %s enviado com sucesso", user_email)
+                    local, domain = user_email.split("@", 1)
+                    masked_target = f"{local[:2]}***@{domain}"
+                    return RequestMfaCodeResponse(
+                        success=True,
+                        channel="email",
+                        masked_target=masked_target,
+                        message=f"Não foi possível enviar pelo WhatsApp, mas enviamos o código com segurança para seu E-mail ({masked_target}).",
+                    )
+                except Exception as mail_e:
+                    logger.error(f"[MFA] Falha no fallback por email: {mail_e}")
             raise HTTPException(status_code=502, detail="Não foi possível enviar o código via WhatsApp. Tente por E-mail.")
     else:
         try:

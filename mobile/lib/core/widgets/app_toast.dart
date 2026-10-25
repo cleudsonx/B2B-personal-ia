@@ -325,3 +325,4 @@ extension BuildContextToastX on BuildContext {
     AppToast.info(this, message, title: title, icon: icon, duration: duration ?? const Duration(milliseconds: 3800));
   }
 }
+
