@@ -18,6 +18,11 @@ from app.schemas.workout import (
     BiomechanicalAlertResponse,
 )
 from app.schemas.subscription import MySubscriptionResponse
+from app.schemas.student_pulse import (
+    StudentPulseEventCreate,
+    StudentPulseEventResponse,
+    StudentPulseSummaryResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +82,7 @@ class SupabaseService:
         self._mem_ai_usage: Dict[str, int] = {}
         self._mem_processed_events: Dict[str, Dict[str, Any]] = {}
         self._mem_checkout_sessions: Dict[str, Dict[str, Any]] = {}
+        self._mem_pulse_events: Dict[str, Dict[str, Any]] = {}
 
     @staticmethod
     def _extract_rpc_row(res_data: Any) -> tuple[Dict[str, Any], Any]:
@@ -1732,6 +1738,34 @@ class SupabaseService:
         )
         if not self._is_production():
             self._mem_alerts[alert_id] = resp.model_dump()
+
+        # Sincroniza automaticamente com o Barramento de Eventos de Alunos (Student Pulse)
+        try:
+            pulse_type = "pain_alert" if alert.pain_location or "dor" in alert.reason.lower() else "exercise_adapted"
+            pulse_sev = "critical" if alert.severity.lower() in ("alta", "grave", "severa") else ("warning" if alert.pain_location else "info")
+            pulse_title = f"Alerta de Dor: {alert.pain_location}" if alert.pain_location else f"Adaptação: {alert.original_exercise}"
+            pulse_desc = f"{alert.student_name} substituiu '{alert.original_exercise}' por '{alert.adapted_exercise}'. Motivo: {alert.reason}"
+            await self.create_student_pulse_event(
+                StudentPulseEventCreate(
+                    student_id=alert.student_id,
+                    student_name=alert.student_name,
+                    trainer_id=t_uuid,
+                    event_type=pulse_type,
+                    severity=pulse_sev,
+                    title=pulse_title,
+                    description=pulse_desc,
+                    metadata={
+                        "original_exercise": alert.original_exercise,
+                        "adapted_exercise": alert.adapted_exercise,
+                        "pain_location": alert.pain_location,
+                        "severity": alert.severity,
+                        "workout_id": alert.workout_id,
+                    }
+                )
+            )
+        except Exception as e:
+            logger.warning(f"Aviso ao espelhar alerta para o student_pulse: {e}")
+
         return resp
 
     async def list_trainer_alerts(self, trainer_id: str) -> List[BiomechanicalAlertResponse]:
@@ -1804,6 +1838,186 @@ class SupabaseService:
             self._mem_alerts[alert_id]["status"] = "acknowledged"
             return True
         return False
+
+    # =========================================================================
+    # BARRAMENTO DE EVENTOS DE ALUNOS (MR. COACH AI 3.0 - STUDENT PULSE)
+    # =========================================================================
+
+    async def create_student_pulse_event(self, event: StudentPulseEventCreate) -> StudentPulseEventResponse:
+        """Registra um evento crítico ou informativo no Barramento de Eventos de Alunos."""
+        c_uuid = to_valid_uuid_str(event.student_id)
+        t_uuid_str = event.trainer_id
+        client = await self.get_client()
+
+        if not t_uuid_str and client and is_valid_uuid(c_uuid):
+            try:
+                prof = await client.table("profiles").select("trainer_id").eq("id", c_uuid).maybe_single().execute()
+                if prof and prof.data:
+                    t_uuid_str = prof.data.get("trainer_id")
+            except Exception:
+                pass
+
+        t_uuid = to_valid_uuid_str(t_uuid_str)
+        event_id = str(uuid.uuid4())
+        created_at_str = datetime.now(timezone.utc).isoformat()
+
+        meta = dict(event.metadata or {})
+        meta["student_name"] = event.student_name
+
+        if client and is_valid_uuid(c_uuid) and is_valid_uuid(t_uuid):
+            try:
+                res = await client.table("student_pulse_events").insert({
+                    "id": event_id,
+                    "trainer_id": t_uuid,
+                    "student_id": c_uuid,
+                    "event_type": event.event_type,
+                    "severity": event.severity,
+                    "title": event.title,
+                    "description": event.description,
+                    "metadata": meta,
+                    "viewed_by_trainer": False,
+                }).execute()
+                if res.data:
+                    event_id = res.data[0]["id"]
+            except Exception as e:
+                logger.error(f"Erro ao salvar student_pulse_event no Supabase: {e}")
+                self._raise_if_production("salvar evento de student pulse", e)
+
+        resp = StudentPulseEventResponse(
+            id=event_id,
+            student_id=event.student_id,
+            student_name=event.student_name,
+            trainer_id=t_uuid,
+            event_type=event.event_type,
+            severity=event.severity,
+            title=event.title,
+            description=event.description,
+            metadata=meta,
+            viewed_by_trainer=False,
+            action_taken=None,
+            created_at=created_at_str,
+        )
+        if not self._is_production():
+            self._mem_pulse_events[event_id] = resp.model_dump()
+        return resp
+
+    async def list_trainer_pulse_events(
+        self,
+        trainer_id: str,
+        limit: int = 50,
+        unread_only: bool = False,
+        event_type: Optional[str] = None,
+    ) -> List[StudentPulseEventResponse]:
+        """Lista os eventos do barramento do aluno para o feed do treinador."""
+        t_uuid = to_valid_uuid_str(trainer_id)
+        client = await self.get_client()
+        events: List[StudentPulseEventResponse] = []
+
+        if client and is_valid_uuid(t_uuid):
+            try:
+                query = client.table("student_pulse_events").select("*").eq("trainer_id", t_uuid)
+                if unread_only:
+                    query = query.eq("viewed_by_trainer", False)
+                if event_type:
+                    query = query.eq("event_type", event_type)
+                res = await query.order("created_at", desc=True).limit(limit).execute()
+
+                for row in res.data:
+                    dt = row.get("metadata") or {}
+                    events.append(StudentPulseEventResponse(
+                        id=row["id"],
+                        student_id=row["student_id"],
+                        student_name=dt.get("student_name") or "Aluno",
+                        trainer_id=row["trainer_id"],
+                        event_type=row["event_type"],
+                        severity=row.get("severity") or "info",
+                        title=row.get("title") or "Evento do Aluno",
+                        description=row.get("description") or "",
+                        metadata=dt,
+                        viewed_by_trainer=bool(row.get("viewed_by_trainer")),
+                        action_taken=row.get("action_taken"),
+                        created_at=row.get("created_at") or datetime.now(timezone.utc).isoformat(),
+                    ))
+                return events
+            except Exception as e:
+                logger.error(f"Erro ao listar student_pulse_events no Supabase: {e}")
+                self._raise_if_production("listar eventos de student pulse", e)
+
+        # Fallback local
+        for ev in reversed(list(self._mem_pulse_events.values())):
+            if ev.get("trainer_id") in (trainer_id, t_uuid, "current-trainer"):
+                if unread_only and ev.get("viewed_by_trainer"):
+                    continue
+                if event_type and ev.get("event_type") != event_type:
+                    continue
+                events.append(StudentPulseEventResponse(**ev))
+                if len(events) >= limit:
+                    break
+        return events
+
+    async def mark_pulse_event_viewed(
+        self,
+        event_id: str,
+        trainer_id: str,
+        action_taken: Optional[str] = None,
+    ) -> bool:
+        """Marca o evento do barramento como visualizado ou tratado pelo treinador."""
+        t_uuid = to_valid_uuid_str(trainer_id)
+        client = await self.get_client()
+
+        update_payload: Dict[str, Any] = {"viewed_by_trainer": True}
+        if action_taken:
+            update_payload["action_taken"] = action_taken
+
+        if client and is_valid_uuid(event_id):
+            try:
+                res = await client.table("student_pulse_events")\
+                    .update(update_payload)\
+                    .eq("id", event_id)\
+                    .eq("trainer_id", t_uuid)\
+                    .execute()
+                if res.data:
+                    return True
+            except Exception as e:
+                logger.error(f"Erro ao atualizar student_pulse_event no Supabase: {e}")
+                self._raise_if_production("atualizar evento de student pulse", e)
+
+        if not self._is_production() and event_id in self._mem_pulse_events:
+            self._mem_pulse_events[event_id]["viewed_by_trainer"] = True
+            if action_taken:
+                self._mem_pulse_events[event_id]["action_taken"] = action_taken
+            return True
+        return False
+
+    async def get_trainer_pulse_summary(self, trainer_id: str) -> StudentPulseSummaryResponse:
+        """Gera o sumário executivo em tempo real para o card Live Student Pulse da Central do Professor."""
+        events = await self.list_trainer_pulse_events(trainer_id, limit=50)
+
+        total = len(events)
+        unread = sum(1 for e in events if not e.viewed_by_trainer)
+        pain_alerts = sum(1 for e in events if e.event_type == "pain_alert")
+
+        cutoff_24h = datetime.now(timezone.utc) - timedelta(hours=24)
+        workouts_today = 0
+        for e in events:
+            if e.event_type == "workout_completed":
+                try:
+                    dt = datetime.fromisoformat(e.created_at.replace("Z", "+00:00"))
+                    if dt >= cutoff_24h:
+                        workouts_today += 1
+                except Exception:
+                    workouts_today += 1
+
+        inactivity_count = sum(1 for e in events if e.event_type == "inactivity_risk")
+
+        return StudentPulseSummaryResponse(
+            total_events=total,
+            unread_events=unread,
+            pain_alerts_count=pain_alerts,
+            workouts_completed_today=workouts_today,
+            high_risk_inactivity_count=inactivity_count,
+            recent_events=events[:10],
+        )
 
     # =========================================================================
     # ASSINATURAS SAAS (SUBSCRIPTIONS + PLANS)

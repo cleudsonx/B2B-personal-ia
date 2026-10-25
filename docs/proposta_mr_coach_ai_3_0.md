@@ -101,9 +101,9 @@ Para garantir **máxima eficiência de contexto, redução drástica do consumo 
   - *Entrega:* Injeção de contexto compacto da ficha ativa (divisões, exercícios e treinador) para substituição inteligente de máquinas ocupadas, guardrail clínico local com protocolo de segurança contra dores/lesões (0 tokens) e botões de ação imediata para Execução 3D e Raio-X Biomecânico. *(Concluído)*
 
 ### **FASE 2: Central do Professor (Agente Guardião da Carteira)**
-- [ ] **Bloco 2.1 — Barramento de Eventos de Alunos (Alertas de Dor e Adaptações)**:
-  - *Arquivo principal:* `backend/app/services/supabase_service.py` / migrations
-  - *Entrega:* Tabela e endpoint leve para registrar eventos críticos gerados pelo aluno ou robô.
+- [x] **Bloco 2.1 — Barramento de Eventos de Alunos (Alertas de Dor e Adaptações)**:
+  - *Arquivo principal:* `backend/app/services/supabase_service.py` / `backend/app/api/v1/endpoints/student_pulse.py` / migrations
+  - *Entrega:* Tabela `student_pulse_events` com RLS e índices, endpoints de registro (`POST /pulse/events`), listagem (`GET /pulse/trainer/{trainer_id}`), resumo de KPIs (`GET /pulse/trainer/{trainer_id}/summary`) e marcação (`PATCH /pulse/events/{id}/view`), com sincronização automática de alertas biomecânicos. *(Concluído)*
 - [ ] **Bloco 2.2 — Live Student Pulse (Feed ao Vivo dos Alunos)**:
   - *Arquivo principal:* `mobile/lib/features/trainer/presentation/screens/trainer_ai_assistant_screen.dart`
   - *Entrega:* Painel em tempo real na visão do treinador mostrando treinos concluídos, dúvidas atendidas e ausências.
