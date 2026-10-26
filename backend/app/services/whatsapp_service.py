@@ -29,6 +29,9 @@ class WhatsAppService:
     def __init__(self, provider: Optional[str] = None, api_key: Optional[str] = None):
         self.provider = (provider or settings.WHATSAPP_PROVIDER).lower()
         self.evolution_key = api_key if api_key is not None else settings.EVOLUTION_API_KEY
+        self.meta_token = settings.META_WA_ACCESS_TOKEN
+        self.meta_phone_id = settings.META_WA_PHONE_NUMBER_ID
+        self.meta_version = settings.META_WA_API_VERSION
 
     @staticmethod
     def _base() -> str:
@@ -221,6 +224,101 @@ class WhatsAppService:
             r.raise_for_status()
             return r.json()
 
+    # =========================================================================
+    # META CLOUD API (WHATSAPP BUSINESS GRAPH API OFICIAL)
+    # =========================================================================
+
+    async def send_meta_cloud_message(
+        self,
+        number: str,
+        text: Optional[str] = None,
+        template_name: Optional[str] = None,
+        template_language: str = "pt_BR",
+        template_components: Optional[list] = None,
+    ) -> dict:
+        """
+        Envia mensagem oficial via Meta Cloud API (WhatsApp Business Graph API).
+        - Se `text` fornecido: envia mensagem de texto livre (ideal para respostas dentro da janela de 24h, custo R$ 0,00).
+        - Se `template_name` fornecido: envia mensagem de template aprovado pela Meta (para notificações fora da janela de 24h).
+        """
+        clean_number = self._format_phone(number)
+        if not clean_number:
+            return {"status": "skipped", "reason": "invalid_phone"}
+
+        if self.provider == "mock" or not self.meta_token or not self.meta_phone_id:
+            logger.info("[Meta Cloud API] Modo mock/não-configurado para %s", clean_number)
+            return {
+                "status": "success",
+                "provider": "meta_cloud",
+                "mode": "mock",
+                "messages": [{"id": f"wamid.mock.{clean_number}"}],
+            }
+
+        payload: dict = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": clean_number,
+        }
+
+        if template_name:
+            payload["type"] = "template"
+            payload["template"] = {
+                "name": template_name,
+                "language": {"code": template_language},
+            }
+            if template_components:
+                payload["template"]["components"] = template_components
+        elif text:
+            payload["type"] = "text"
+            payload["text"] = {"preview_url": False, "body": text}
+        else:
+            raise ValueError("Texto ou template_name obrigatório para envio na Meta Cloud API.")
+
+        url = f"https://graph.facebook.com/{self.meta_version}/{self.meta_phone_id}/messages"
+        headers = {
+            "Authorization": f"Bearer {self.meta_token}",
+            "Content-Type": "application/json",
+        }
+
+        async with httpx.AsyncClient(timeout=20) as client:
+            r = await client.post(url, headers=headers, json=payload)
+            if r.status_code >= 400:
+                logger.error("[Meta Cloud API] Erro %s ao enviar mensagem: %s", r.status_code, r.text)
+                r.raise_for_status()
+            res_data = r.json()
+            return {
+                "status": "sent",
+                "provider": "meta_cloud",
+                "provider_response": res_data,
+            }
+
+    async def check_meta_cloud_health(self) -> dict:
+        """Verifica a saúde e permissões da conexão Meta Cloud API."""
+        if not self.meta_token or not self.meta_phone_id:
+            return {
+                "status": "unconfigured",
+                "phone_number_id": self.meta_phone_id or None,
+                "provider": "meta_cloud",
+            }
+        url = f"https://graph.facebook.com/{self.meta_version}/{self.meta_phone_id}"
+        headers = {"Authorization": f"Bearer {self.meta_token}"}
+        try:
+            async with httpx.AsyncClient(timeout=8) as client:
+                r = await client.get(url, headers=headers)
+                if r.status_code == 200:
+                    return {
+                        "status": "connected",
+                        "provider": "meta_cloud",
+                        "data": r.json(),
+                    }
+                return {
+                    "status": "error",
+                    "code": r.status_code,
+                    "error": r.text,
+                }
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
+
     async def get_base64_from_media(self, instance_name: str, message_key: dict) -> Optional[dict]:
         """
         Obtém o arquivo de mídia (áudio/voz, imagem) em base64 da Evolution API v2.
@@ -277,6 +375,26 @@ class WhatsAppService:
         if not target_number:
             logger.warning("[WhatsApp] Telefone inválido para envio: %s", number)
             return {"status": "skipped", "reason": "invalid_phone"}
+
+        # Nível 0: Meta Cloud API Oficial (WhatsApp Business Graph API Oficial)
+        if (
+            self.provider in ("meta", "meta_cloud")
+            or (self.meta_token and self.meta_phone_id)
+        ):
+            try:
+                res = await self.send_meta_cloud_message(number=target_number, text=text)
+                if res.get("status") in ("sent", "success"):
+                    logger.info("[WhatsApp] Mensagem enviada via Meta Cloud API Oficial para %s", target_number)
+                    return {
+                        "status": "sent",
+                        "channel": "meta_cloud",
+                        "provider_response": res,
+                    }
+            except Exception as e_meta:
+                logger.warning(
+                    "[WhatsApp] Falha ao enviar via Meta Cloud API (%s). Recorrendo à Evolution API de contingência.",
+                    e_meta,
+                )
 
         # Nível 1: Instância White-label do Treinador
         if trainer_id:

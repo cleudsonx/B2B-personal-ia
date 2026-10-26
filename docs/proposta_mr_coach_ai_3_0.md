@@ -112,9 +112,9 @@ Para garantir **máxima eficiência de contexto, redução drástica do consumo 
   - *Entrega:* Card de ações táticas de 1 toque no cockpit com `[Cobrar Check-in em Lote]` para alunos ausentes, `[Elogiar no WhatsApp]` com bottom sheet dos campeões de consistência/streaks, e `[Abrir Gerador IA]` navegando direto para prescrição com Gemini. *(Concluído)*
 
 ### **FASE 3: Omnichannel & Meta Cloud API**
-- [ ] **Bloco 3.1 — Provider Meta Cloud API Oficial no Backend**:
-  - *Arquivo principal:* `backend/app/services/whatsapp_service.py`
-  - *Entrega:* Integração oficial da Graph API da Meta como canal de alta disponibilidade e custo zero na janela receptiva.
+- [x] **Bloco 3.1 — Provider Meta Cloud API Oficial no Backend**:
+  - *Arquivo principal:* `backend/app/services/whatsapp_service.py` / `backend/app/api/v1/endpoints/whatsapp.py`
+  - *Entrega:* Integração oficial da Graph API da Meta como canal de alta disponibilidade e custo zero na janela receptiva de 24h, suporte a templates e validação completa de webhook (hub.challenge e payload de status). *(Concluído)*
 - [ ] **Bloco 3.2 — Matriz Inteligente de Roteamento (Push Grátis vs WhatsApp)**:
   - *Arquivo principal:* `backend/app/services/whatsapp_service.py` / `notification_service`
   - *Entrega:* Separação automática entre lembretes de hábito (push grátis no app) e mensagens de impacto comercial (WhatsApp).

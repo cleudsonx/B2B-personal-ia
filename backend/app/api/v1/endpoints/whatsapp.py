@@ -2,12 +2,14 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
 from app.api.deps import get_current_trainer, get_current_user
 from app.services.whatsapp_service import instance_name_for, whatsapp_service
 from app.services.supabase_service import supabase_service
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -1001,5 +1003,80 @@ async def admin_notify_quota_risk(
         "message": "Alerta de cota enviado via WhatsApp com sucesso.",
         "provider_result": send_res,
     }
+
+
+# =============================================================================
+# META CLOUD API (WHATSAPP BUSINESS OFICIAL) ENDPOINTS
+# =============================================================================
+
+@router.get("/meta-status", summary="Status da Conexão Meta Cloud API")
+async def get_meta_cloud_status(user: Dict[str, Any] = Depends(get_current_trainer)):
+    """Verifica a conectividade e configuração da Meta Cloud API oficial."""
+    return await whatsapp_service.check_meta_cloud_health()
+
+
+@router.get("/meta-webhook", summary="Verificação de Webhook Meta Cloud API")
+async def verify_meta_webhook(
+    hub_mode: Optional[str] = Query(None, alias="hub.mode"),
+    hub_verify_token: Optional[str] = Query(None, alias="hub.verify_token"),
+    hub_challenge: Optional[str] = Query(None, alias="hub.challenge"),
+):
+    """
+    Endpoint obrigatório para a Meta validar o Webhook do WhatsApp Business.
+    A Meta envia GET com hub.mode='subscribe', hub.verify_token e hub.challenge.
+    Se o token bater com settings.META_WA_WEBHOOK_VERIFY_TOKEN, retorna hub.challenge em texto puro com HTTP 200.
+    """
+    expected_token = settings.META_WA_WEBHOOK_VERIFY_TOKEN or "mrcoach_meta_webhook_verify_sec_tok"
+    if hub_mode == "subscribe" and hub_verify_token == expected_token:
+        logger.info("[Meta Webhook] Validação de handshake do webhook aprovada com sucesso!")
+        return PlainTextResponse(content=hub_challenge or "", status_code=status.HTTP_200_OK)
+
+    logger.warning(
+        "[Meta Webhook] Tentativa de validação com token inválido. Recebido: %s",
+        hub_verify_token,
+    )
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Token de verificação inválido.")
+
+
+@router.post("/meta-webhook", summary="Receber Mensagens e Status da Meta Cloud API")
+async def receive_meta_webhook(request: Request):
+    """
+    Recebe eventos de mensagens, status de entrega e leitura da Meta Cloud API.
+    Processa payloads no formato padrão oficial do WhatsApp Business Graph API.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return {"status": "ignored", "reason": "invalid_json"}
+
+    entry_list = body.get("entry") or []
+    for entry in entry_list:
+        changes = entry.get("changes") or []
+        for change in changes:
+            value = change.get("value") or {}
+            messages = value.get("messages") or []
+            contacts = value.get("contacts") or []
+
+            contact_name = "Aluno"
+            if contacts and isinstance(contacts, list):
+                contact_name = contacts[0].get("profile", {}).get("name", "Aluno")
+
+            for msg in messages:
+                msg_type = msg.get("type")
+                from_num = msg.get("from")
+                msg_id = msg.get("id")
+
+                if msg_type == "text" and from_num:
+                    text_body = msg.get("text", {}).get("body", "").strip()
+                    logger.info(
+                        "[Meta Cloud API Webhook] Mensagem recebida de %s (%s): %s [ID: %s]",
+                        contact_name,
+                        from_num,
+                        text_body,
+                        msg_id,
+                    )
+
+    # Meta requer confirmação 200 OK rápida para não retransmitir o evento
+    return {"status": "EVENT_RECEIVED"}
 
 

@@ -50,6 +50,13 @@ class Settings(BaseSettings):
     EVOLUTION_WEBHOOK_TOKEN: str = "mrcoach_evolution_webhook_sec_2026_tok"
     # URL publica do backend, usada para registrar o webhook na Evolution
     PUBLIC_BACKEND_URL: str = "https://b2b-personal-ia-backend.onrender.com"
+
+    # WhatsApp Oficial (Meta Cloud API / Graph API)
+    META_WA_PHONE_NUMBER_ID: str = ""
+    META_WA_ACCESS_TOKEN: str = ""
+    META_WA_BUSINESS_ACCOUNT_ID: str = ""
+    META_WA_API_VERSION: str = "v21.0"
+    META_WA_WEBHOOK_VERIFY_TOKEN: str = "mrcoach_meta_webhook_verify_sec_tok"
     
     # CORS (aceita string "*", JSON '["*"]' ou listas sem erro no EnvSettingsSource do Pydantic)
     CORS_ORIGINS: Union[str, List[str]] = "*"
