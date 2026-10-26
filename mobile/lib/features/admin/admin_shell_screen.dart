@@ -16,6 +16,7 @@ import 'screens/admin_whatsapp_screen.dart';
 import 'screens/admin_ai_usage_screen.dart';
 import 'screens/admin_simulator_screen.dart';
 import 'screens/admin_pricing_manager_screen.dart';
+import 'tabs/public_funnel_tab.dart';
 import 'widgets/admin_omni_search_modal.dart';
 import 'widgets/admin_database_explorer_modal.dart';
 import 'widgets/admin_webhook_reprocess_modal.dart';
@@ -393,6 +394,10 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
       case 10:
         return AdminPricingManagerScreen(
           onNavigateToSimulator: () => setState(() => _currentSectionIndex = 9),
+        );
+      case 11:
+        return AdminPublicFunnelTab(
+          onNavigateToAffiliates: () => setState(() => _currentSectionIndex = 10),
         );
       default:
         return AdminDashboardScreen(
@@ -865,6 +870,13 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                     label: 'Preços & Planos SaaS',
                     badge: 'PRICING',
                   ),
+                  const SizedBox(height: 4),
+                  _buildSidebarItem(
+                    index: 11,
+                    icon: Icons.filter_alt_rounded,
+                    label: 'Funil Público & Afiliados',
+                    badge: 'NORTH STAR',
+                  ),
                   const SizedBox(height: 12),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1210,6 +1222,15 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
               selected: _currentSectionIndex == 10,
               onTap: () {
                 setState(() => _currentSectionIndex = 10);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.filter_alt_rounded, color: Color(0xFF818CF8)),
+              title: const Text('Funil Público & Afiliados', style: TextStyle(color: Colors.white)),
+              selected: _currentSectionIndex == 11,
+              onTap: () {
+                setState(() => _currentSectionIndex = 11);
                 Navigator.pop(context);
               },
             ),
