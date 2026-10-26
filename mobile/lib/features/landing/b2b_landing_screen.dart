@@ -968,10 +968,16 @@ class _ConsultancyComparisonSection extends StatelessWidget {
         aiWay: 'Timer cadenciado na tela com alerta tátil e sonoro, mantendo o tempo sob tensão exato da prescrição.',
       ),
       _ComparisonCardData(
+        title: 'Cobrança de Mensalidades & Split Automático',
+        icon: Icons.payments_outlined,
+        oldWay: 'Cobrança manual constrangedora no WhatsApp, comprovantes perdidos e prejuízo com calotes frequentes.',
+        aiWay: 'Cobrança automatizada via Asaas (Pix e Cartão) com split 95%/5%, liberação instantânea e gestão de inadimplência.',
+      ),
+      _ComparisonCardData(
         title: 'Percepção de Valor & Retenção',
         icon: Icons.workspace_premium_rounded,
         oldWay: 'Sensação de ter pago por um PDF estático disponível na internet. Churn alto em menos de 60 dias.',
-        aiWay: 'Sensação de personal VIP 24 horas no bolso. Retenção média superior a 8 meses com tickets de R\$ 200 a R\$ 500+.',
+        aiWay: 'Sensação de personal VIP 24 horas no bolso. Retenção média superior a 8 meses com tickets de ${CurrencyPtBrFormatter.format(200)} a ${CurrencyPtBrFormatter.format(500)}+.',
       ),
     ];
 
@@ -989,7 +995,7 @@ class _ConsultancyComparisonSection extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: B2BLandingScreen._green.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(5),
+                  borderRadius: BorderRadius.circular(999),
                   border: Border.all(color: B2BLandingScreen._green.withValues(alpha: 0.3)),
                 ),
                 child: const Row(
@@ -1038,17 +1044,19 @@ class _ConsultancyComparisonSection extends StatelessWidget {
                         Expanded(child: _buildBentoCard(items[0])),
                         const SizedBox(width: 20),
                         Expanded(child: _buildBentoCard(items[1])),
+                        const SizedBox(width: 20),
+                        Expanded(child: _buildBentoCard(items[2])),
                       ],
                     ),
                     const SizedBox(height: 20),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: _buildBentoCard(items[2])),
-                        const SizedBox(width: 20),
                         Expanded(child: _buildBentoCard(items[3])),
                         const SizedBox(width: 20),
                         Expanded(child: _buildBentoCard(items[4])),
+                        const SizedBox(width: 20),
+                        Expanded(child: _buildBentoCard(items[5])),
                       ],
                     ),
                   ],
@@ -1063,6 +1071,41 @@ class _ConsultancyComparisonSection extends StatelessWidget {
                       ),
                   ],
                 ),
+              const SizedBox(height: 28),
+              // Callout de Retenção & Performance One UI 7
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF142018),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: B2BLandingScreen._green.withValues(alpha: 0.35)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: B2BLandingScreen._green.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.insights_rounded, color: B2BLandingScreen._green, size: 22),
+                    ),
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Text(
+                        'Estatística Comprovada: Alunos acompanhados pelo ecossistema Mr. Coach treinam 3.4x mais dias seguidos e renovam 85% mais planos do que em consultorias de planilha estática.',
+                        style: TextStyle(
+                          color: Color(0xFFE2F3E9),
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          height: 1.45,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -1075,7 +1118,7 @@ class _ConsultancyComparisonSection extends StatelessWidget {
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: B2BLandingScreen._panel,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFF2C3C31)),
       ),
       child: Column(
@@ -1084,10 +1127,10 @@ class _ConsultancyComparisonSection extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(9),
                 decoration: BoxDecoration(
                   color: const Color(0xFF1E2D23),
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(data.icon, color: B2BLandingScreen._green, size: 20),
               ),
@@ -1097,7 +1140,7 @@ class _ConsultancyComparisonSection extends StatelessWidget {
                   data.title,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: 15.5,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -1110,7 +1153,7 @@ class _ConsultancyComparisonSection extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: const Color(0xFF1C1314),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(color: const Color(0xFF422325)),
             ),
             child: Column(
@@ -1147,7 +1190,7 @@ class _ConsultancyComparisonSection extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: const Color(0xFF122218),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(color: const Color(0xFF2E533B)),
             ),
             child: Column(

@@ -307,9 +307,9 @@ flowchart LR
 - [x] **Bloco 2.1 — Widget de Test-Drive Biomecânico Web Público**:
   - *Arquivo principal:* `mobile/lib/features/landing/widgets/biomechanical_test_drive_widget.dart` / `b2b_landing_screen.dart`
   - *Entrega:* Componente modular de simulação instantânea (<100ms, 0 cadastro) cobrindo tanto dores articulares (ombro, lombar, joelho) quanto aparelhos ocupados no horário de pico, diagnóstico do vetor de força, sugestão de ajuste e exercício substituto com ponte para `/coaches`. *(Concluído)*
-- [ ] **Bloco 2.2 — Matriz Comparativa Visual (Planilha PDF vs Mr. Coach AI)**:
+- [x] **Bloco 2.2 — Matriz Comparativa Visual (Planilha PDF vs Mr. Coach AI)**:
   - *Arquivo principal:* `mobile/lib/features/landing/b2b_landing_screen.dart`
-  - *Entrega:* Grid Bento comparativo destacando em verde e vermelho a diferença entre uma planilha PDF morta vs. acompanhamento inteligente com IA, feedback de dor e segurança.
+  - *Entrega:* Grid Bento comparativo 2x3 simétrico One UI 7 destacando em verde e vermelho a diferença entre uma planilha PDF morta vs. acompanhamento inteligente com IA, feedback de dor/substituição de aparelhos, cobrança com split 95%/5% e callout de retenção de 85%. *(Concluído)*
 - [ ] **Bloco 2.3 — Diretório Nacional de Coaches 2.0 (`public_trainer_directory_screen.dart`)**:
   - *Arquivo principal:* `mobile/lib/features/landing/public_trainer_directory_screen.dart`
   - *Entrega:* Filtros dinâmicos por especialidade clínica/biomecânica (hipertrofia, emagrecimento, reabilitação lombar/ombro), localização e selo CREF, com botão direto para a vitrine `/p/{username}`.
