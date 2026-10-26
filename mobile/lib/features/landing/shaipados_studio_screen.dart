@@ -1,4 +1,4 @@
-ï»¿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -101,7 +101,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
              .scale(begin: const Offset(0.9, 0.9), end: const Offset(1.2, 1.2), duration: 4000.ms),
 
             // ==========================================
-            // CONTEÃšDO PRINCIPAL (SCROLL)
+            // CONTEÚDO PRINCIPAL (SCROLL)
             // ==========================================
             SingleChildScrollView(
               padding: EdgeInsets.only(
@@ -212,7 +212,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                                 ),
                                 SizedBox(width: 8),
                                 Text(
-                                  'A NOVA GERAÃ‡ÃƒO DE SOFTWARE FITNESS',
+                                  'A NOVA GERAÇÃO DE SOFTWARE FITNESS',
                                   style: TextStyle(
                                     color: MetaColors.emerald,
                                     fontWeight: FontWeight.bold,
@@ -227,7 +227,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                           const SizedBox(height: 32),
 
                           Text(
-                            'Onde a BiomecÃ¢nica\nencontra a InteligÃªncia Artificial.',
+                            'Onde a Biomecânica\nencontra a Inteligência Artificial.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: MetaColors.textPrimary,
@@ -248,7 +248,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                           const SizedBox(height: 28),
 
                           Text(
-                            'Criamos produtos digitais para profissionais do movimento, academias e pessoas que treinam, conectando tecnologia e ferramentas prÃ¡ticas para o dia a dia.',
+                            'Criamos produtos digitais para profissionais do movimento, academias e pessoas que treinam, conectando tecnologia e ferramentas práticas para o dia a dia.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: MetaColors.textSecondary,
@@ -337,7 +337,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               const Text(
-                                'Â© 2026 Shaipados Labs. Todos os direitos reservados.',
+                                '© 2026 Shaipados Labs. Todos os direitos reservados.',
                                 style: TextStyle(
                                   color: MetaColors.textSecondary,
                                   fontSize: 13,
@@ -474,7 +474,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Mr. Coach: espaÃ§o de trabalho para treinadores e alunos',
+                  'Mr. Coach: espaço de trabalho para treinadores e alunos',
                   style: TextStyle(
                     color: MetaColors.textPrimary,
                     fontSize: 26,
@@ -485,7 +485,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                 const SizedBox(height: 12),
 
                 const Text(
-                  'Treinadores organizam alunos e treinos. Alunos entram por convite ou encontram profissionais no diretÃ³rio, preenchem seus dados e aguardam o alinhamento antes de receber um treino.',
+                  'Treinadores organizam alunos e treinos. Alunos entram por convite ou encontram profissionais no diretório, preenchem seus dados e aguardam o alinhamento antes de receber um treino.',
                   style: TextStyle(
                     color: MetaColors.textSecondary,
                     fontSize: 16,
@@ -497,7 +497,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: SquircleButton(
-                    label: 'Ver DemonstraÃ§Ã£o do Mr. Coach â†’',
+                    label: 'Ver Demonstração do Mr. Coach ?',
                     icon: Icons.open_in_new_rounded,
                     isPrimary: true,
                     height: 52,
@@ -515,7 +515,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                     border: Border.all(color: MetaColors.border.withValues(alpha: 0.5)),
                   ),
                   child: const Text(
-                    'Convites preservam o vÃ­nculo com o treinador. A avaliaÃ§Ã£o fica na conta do aluno; a liberaÃ§Ã£o do treino acontece depois do alinhamento profissional.',
+                    'Convites preservam o vínculo com o treinador. A avaliação fica na conta do aluno; a liberação do treino acontece depois do alinhamento profissional.',
                     style: TextStyle(
                       color: MetaColors.textSecondary,
                       fontSize: 13,
@@ -531,7 +531,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
     );
   }
 
-  // Card do LaboratÃ³rio 3D BiomecÃ¢nico
+  // Card do Laboratório 3D Biomecânico
   Widget _buildBiomech3DCard() {
     return MetaCard(
       padding: const EdgeInsets.all(28),
@@ -549,7 +549,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                   border: Border.all(color: MetaColors.border),
                 ),
                 child: const Text(
-                  'MOTOR BIOMECÃ‚NICO',
+                  'MOTOR BIOMECÂNICO',
                   style: TextStyle(
                     color: MetaColors.emerald,
                     fontSize: 10,
@@ -605,7 +605,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Ferramentas digitais para apoiar a organizaÃ§Ã£o e a consulta de informaÃ§Ãµes de treino.',
+            'Ferramentas digitais para apoiar a organização e a consulta de informações de treino.',
             style: TextStyle(
               color: MetaColors.textSecondary,
               fontSize: 14,
@@ -617,7 +617,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
     );
   }
 
-  // Card de NutriÃ§Ã£o e VisÃ£o Computacional
+  // Card de Nutrição e Visão Computacional
   Widget _buildNutriIACard() {
     return MetaCard(
       padding: const EdgeInsets.all(28),
@@ -649,7 +649,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
           ),
           const SizedBox(height: 20),
           
-          // Imagem Ultra-realista NutriÃ§Ã£o
+          // Imagem Ultra-realista Nutrição
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: SizedBox(
@@ -687,7 +687,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Uma experiÃªncia de apoio Ã  organizaÃ§Ã£o alimentar em desenvolvimento.',
+            'Uma experiência de apoio à organização alimentar em desenvolvimento.',
             style: TextStyle(
               color: MetaColors.textSecondary,
               fontSize: 14,

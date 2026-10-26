@@ -1,4 +1,4 @@
-ï»¿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../config/app_config.dart';
 
 class ServerConfigDialog extends StatefulWidget {
@@ -69,9 +69,9 @@ class _ServerConfigDialogState extends State<ServerConfigDialog> {
             ),
             const SizedBox(height: 6),
             const Text(
-              'â€¢ No Celular FÃ­sico: Digite o IP local do seu computador na mesma rede Wi-Fi (ex: http://192.168.1.15:8000/api/v1).\n'
-              'â€¢ No Emulador Android: Use http://10.0.2.2:8000/api/v1\n'
-              'â€¢ Na Nuvem (Cloud Run / Render): Digite a URL HTTPS da API.',
+              '• No Celular Físico: Digite o IP local do seu computador na mesma rede Wi-Fi (ex: http://192.168.1.15:8000/api/v1).\n'
+              '• No Emulador Android: Use http://10.0.2.2:8000/api/v1\n'
+              '• Na Nuvem (Cloud Run / Render): Digite a URL HTTPS da API.',
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 16),

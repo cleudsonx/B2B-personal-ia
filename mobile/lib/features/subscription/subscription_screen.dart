@@ -99,62 +99,65 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder:
-          (ctx) => AlertDialog(
-            backgroundColor: MetaColors.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-              side: const BorderSide(color: MetaColors.border),
-            ),
-            title: const Row(
-              children: [
-                Icon(
-                  Icons.rocket_launch_rounded,
-                  color: MetaColors.emerald,
-                  size: 24,
+          (ctx) {
+            final isDark = MetaColors.isDark(ctx);
+            return AlertDialog(
+              backgroundColor: MetaColors.card(ctx),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+              ),
+              title: Row(
+                children: [
+                  const Icon(
+                    Icons.rocket_launch_rounded,
+                    color: MetaColors.emerald,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Ativar Plano Starter',
+                    style: TextStyle(
+                      color: MetaColors.text(ctx),
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              content: Text(
+                'Deseja ativar o plano gratuito ${plan.name} com limite de até ${plan.maxStudents} alunos e 10 fichas IA mensais?',
+                style: TextStyle(
+                  color: MetaColors.subtext(ctx),
+                  fontSize: 13,
+                  height: 1.4,
                 ),
-                SizedBox(width: 10),
-                Text(
-                  'Ativar Plano Starter',
-                  style: TextStyle(
-                    color: MetaColors.textPrimary,
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text(
+                    'Cancelar',
+                    style: TextStyle(color: MetaColors.subtext(ctx)),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: MetaColors.emerald,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text(
+                    'Confirmar Ativação',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
-            ),
-            content: Text(
-              'Deseja ativar o plano gratuito ${plan.name} com limite de até ${plan.maxStudents} alunos e 10 fichas IA mensais?',
-              style: const TextStyle(
-                color: MetaColors.textSecondary,
-                fontSize: 13,
-                height: 1.4,
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text(
-                  'Cancelar',
-                  style: TextStyle(color: MetaColors.textSecondary),
-                ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: MetaColors.emerald,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text(
-                  'Confirmar Ativação',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
+            );
+          },
     );
 
     if (confirm == true && mounted) {
@@ -168,8 +171,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         setState(() => _mySubscription = updated);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            backgroundColor: MetaColors.surfaceHighlight,
-            content: Text('Plano ${plan.name} ativado pelo servidor.'),
+            backgroundColor: MetaColors.isDark(context) ? const Color(0xFF1E293B) : const Color(0xFF0F172A),
+            content: Text('Plano ${plan.name} ativado pelo servidor.', style: const TextStyle(color: Colors.white)),
           ),
         );
       } catch (error) {
@@ -219,8 +222,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 } catch (_) {}
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    backgroundColor: MetaColors.surfaceHighlight,
-                    content: Text('Plano ${plan.name} confirmado pelo servidor.'),
+                    backgroundColor: MetaColors.isDark(context) ? const Color(0xFF1E293B) : const Color(0xFF0F172A),
+                    content: Text('Plano ${plan.name} confirmado pelo servidor.', style: const TextStyle(color: Colors.white)),
                   ),
                 );
               } catch (error) {
@@ -241,34 +244,35 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
+    final isDark = MetaColors.isDark(context);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
+      value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
         systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: MetaColors.background,
+        backgroundColor: MetaColors.bg(context),
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-            color: MetaColors.textPrimary,
+            color: MetaColors.text(context),
             onPressed: () {
               if (Navigator.canPop(context)) {
                 Navigator.pop(context);
               }
             },
           ),
-          title: const Text(
+          title: Text(
             'Planos & Assinatura',
             style: TextStyle(
-              color: MetaColors.textPrimary,
+              color: MetaColors.text(context),
               fontWeight: FontWeight.w800,
               fontSize: 18,
               letterSpacing: -0.4,
@@ -276,9 +280,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           ),
           actions: [
             IconButton(
-              icon: const Icon(
+              icon: Icon(
                 Icons.refresh_rounded,
-                color: MetaColors.textSecondary,
+                color: MetaColors.subtext(context),
                 size: 22,
               ),
               tooltip: 'Atualizar',
@@ -303,7 +307,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           Text(
                             _loadError!,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(color: MetaColors.textSecondary),
+                            style: TextStyle(color: MetaColors.subtext(context)),
                           ),
                           const SizedBox(height: 12),
                           OutlinedButton.icon(
@@ -318,7 +322,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             : RefreshIndicator(
                 onRefresh: _loadData,
                 color: MetaColors.emerald,
-                backgroundColor: MetaColors.surface,
+                backgroundColor: MetaColors.card(context),
                 child: ListView(
                   physics: const BouncingScrollPhysics(),
                   padding: EdgeInsets.only(
@@ -344,7 +348,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: MetaColors.surfaceHighlight,
+                              color: MetaColors.highlight(context),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
                                 color: MetaColors.emerald.withValues(alpha: 0.3),
@@ -361,21 +365,21 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          const Text(
+                          Text(
                             'Escale sua Consultoria',
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.w900,
-                              color: MetaColors.textPrimary,
+                              color: MetaColors.text(context),
                               letterSpacing: -0.5,
                             ),
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 6),
-                          const Text(
+                          Text(
                             'Prescrições ilimitadas com IA biomecânica e retenção máxima no salão.',
                             style: TextStyle(
-                              color: MetaColors.textSecondary,
+                              color: MetaColors.subtext(context),
                               fontSize: 13,
                               height: 1.4,
                             ),
@@ -391,9 +395,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: MetaColors.surface,
+                          color: MetaColors.card(context),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: MetaColors.border),
+                          border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -435,6 +439,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     bool isHighlighted = false,
     required VoidCallback onTap,
   }) {
+    final isDark = MetaColors.isDark(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -443,19 +448,19 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
-              ? (isHighlighted ? MetaColors.emerald : MetaColors.surfaceHighlight)
+              ? (isHighlighted ? MetaColors.emerald : MetaColors.highlight(context))
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: isSelected && !isHighlighted
-              ? Border.all(color: MetaColors.border)
+              ? Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1))
               : null,
         ),
         child: Text(
           label,
           style: TextStyle(
             color: isSelected
-                ? (isHighlighted ? Colors.white : MetaColors.textPrimary)
-                : MetaColors.textSecondary,
+                ? (isHighlighted ? Colors.white : MetaColors.text(context))
+                : MetaColors.subtext(context),
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             fontSize: 12,
           ),
@@ -500,7 +505,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: MetaColors.surfaceHighlight,
+                  color: MetaColors.highlight(context),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
                     color: MetaColors.emerald.withValues(alpha: 0.4),
@@ -525,16 +530,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             children: [
               Text(
                 'Alunos Cadastrados: ${sub.currentStudents} / ${sub.maxStudents}',
-                style: const TextStyle(
-                  color: MetaColors.textPrimary,
+                style: TextStyle(
+                  color: MetaColors.text(context),
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
                 '${(progress * 100).toInt()}%',
-                style: const TextStyle(
-                  color: MetaColors.textSecondary,
+                style: TextStyle(
+                  color: MetaColors.subtext(context),
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),
@@ -548,7 +553,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               value: progress,
               minHeight: 8,
               color: MetaColors.emerald,
-              backgroundColor: MetaColors.surfaceHighlight,
+              backgroundColor: MetaColors.highlight(context),
             ),
           ),
           const SizedBox(height: 12),
@@ -560,8 +565,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 sub.nextBillingDate != null
                     ? 'Renovação em: ${sub.nextBillingDate}'
                     : 'Período gratuito ativo',
-                style: const TextStyle(
-                  color: MetaColors.textSecondary,
+                style: TextStyle(
+                  color: MetaColors.subtext(context),
                   fontSize: 11,
                 ),
               ),
@@ -583,15 +588,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   Widget _buildPlanMetaCard(PlanModel plan) {
+    final isDark = MetaColors.isDark(context);
     final isCurrent = _mySubscription?.planId == plan.id;
     final isPro = plan.id == 'pro' || plan.isPopular;
-    // final isStudio = plan.id == 'studio';
     final price =
         _isYearly ? plan.priceYearlyMonthlyEquivalent : plan.priceMonthly;
 
     return MetaCard(
-      backgroundColor: MetaColors.surface,
-      borderColor: isPro ? MetaColors.emerald : MetaColors.border,
+      backgroundColor: MetaColors.card(context),
+      borderColor: isPro ? MetaColors.emerald : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
       borderRadius: 20.0,
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(22),
@@ -604,10 +609,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             children: [
               Text(
                 plan.name,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w900,
-                  color: MetaColors.textPrimary,
+                  color: MetaColors.text(context),
                 ),
               ),
               if (isPro)
@@ -637,14 +642,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: MetaColors.surfaceHighlight,
+                    color: MetaColors.highlight(context),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: MetaColors.border),
+                    border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                   ),
                   child: Text(
                     plan.badge!,
-                    style: const TextStyle(
-                      color: MetaColors.textSecondary,
+                    style: TextStyle(
+                      color: MetaColors.subtext(context),
                       fontWeight: FontWeight.bold,
                       fontSize: 10,
                       letterSpacing: 0.6,
@@ -656,8 +661,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           const SizedBox(height: 6),
           Text(
             plan.tagline,
-            style: const TextStyle(
-              color: MetaColors.textSecondary,
+            style: TextStyle(
+              color: MetaColors.subtext(context),
               fontSize: 12,
             ),
           ),
@@ -673,14 +678,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.w900,
-                  color: isPro ? MetaColors.emerald : MetaColors.textPrimary,
+                  color: isPro ? MetaColors.emerald : MetaColors.text(context),
                 ),
               ),
               if (price > 0)
-                const Text(
+                Text(
                   ' /mês',
                   style: TextStyle(
-                    color: MetaColors.textSecondary,
+                    color: MetaColors.subtext(context),
                     fontSize: 13,
                   ),
                 ),
@@ -692,9 +697,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: MetaColors.surfaceHighlight,
+                    color: MetaColors.highlight(context),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: MetaColors.border),
+                    border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                   ),
                   child: Text(
                     'Cobrado R\$ ${plan.priceYearlyTotal.toStringAsFixed(0)}/ano',
@@ -709,7 +714,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             ],
           ),
           const SizedBox(height: 18),
-          const Divider(color: MetaColors.border, height: 1),
+          Divider(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0), height: 1),
           const SizedBox(height: 16),
 
           // Lista de Recursos / Features
@@ -727,7 +732,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         ? (f.highlight
                             ? MetaColors.emerald
                             : MetaColors.accentBlue)
-                        : MetaColors.textSecondary.withValues(alpha: 0.4),
+                        : MetaColors.subtext(context).withValues(alpha: 0.4),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -736,8 +741,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       style: TextStyle(
                         fontSize: 12,
                         color: f.included
-                            ? MetaColors.textPrimary
-                            : MetaColors.textSecondary,
+                            ? MetaColors.text(context)
+                            : MetaColors.subtext(context),
                         fontWeight:
                             f.highlight ? FontWeight.bold : FontWeight.normal,
                       ),
@@ -758,11 +763,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     : 'Assinar ${plan.name}'),
             isPrimary: isPro && !isCurrent,
             backgroundColor: isCurrent
-                ? MetaColors.surfaceHighlight
-                : (isPro ? MetaColors.emerald : MetaColors.surfaceHighlight),
+                ? MetaColors.highlight(context)
+                : (isPro ? MetaColors.emerald : MetaColors.highlight(context)),
             foregroundColor: isCurrent
-                ? MetaColors.textSecondary
-                : (isPro ? Colors.white : MetaColors.textPrimary),
+                ? MetaColors.subtext(context)
+                : (isPro ? Colors.white : MetaColors.text(context)),
             onPressed: isCurrent ? null : () => _selectPlan(plan),
           ),
         ],
@@ -776,18 +781,18 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(
+              const Icon(
                 Icons.help_outline_rounded,
                 color: MetaColors.accentBlue,
                 size: 18,
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
                 'Perguntas Frequentes',
                 style: TextStyle(
-                  color: MetaColors.textPrimary,
+                  color: MetaColors.text(context),
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),
@@ -820,8 +825,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         children: [
           Text(
             question,
-            style: const TextStyle(
-              color: MetaColors.textPrimary,
+            style: TextStyle(
+              color: MetaColors.text(context),
               fontWeight: FontWeight.w600,
               fontSize: 12.5,
             ),
@@ -829,8 +834,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           const SizedBox(height: 3),
           Text(
             answer,
-            style: const TextStyle(
-              color: MetaColors.textSecondary,
+            style: TextStyle(
+              color: MetaColors.subtext(context),
               fontSize: 11.5,
               height: 1.35,
             ),
@@ -1064,14 +1069,14 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
 
   Widget _buildCardBrandBadge(String brand) {
     if (brand.isEmpty) {
-      return const Icon(
+      return Icon(
         Icons.credit_card_rounded,
-        color: MetaColors.textSecondary,
+        color: MetaColors.subtext(context),
         size: 20,
       );
     }
-    Color badgeColor = MetaColors.surfaceHighlight;
-    Color textColor = MetaColors.textPrimary;
+    Color badgeColor = MetaColors.highlight(context);
+    Color textColor = MetaColors.text(context);
     if (brand == 'Visa') {
       badgeColor = const Color(0xFF1A1F71);
       textColor = Colors.white;
@@ -1092,7 +1097,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
       decoration: BoxDecoration(
         color: badgeColor,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: MetaColors.border, width: 0.8),
+        border: Border.all(color: MetaColors.cardBorder(context), width: 0.8),
       ),
       child: Text(
         brand.toUpperCase(),
@@ -1493,7 +1498,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
       barrierDismissible: false,
       builder:
           (ctx) => AlertDialog(
-            backgroundColor: MetaColors.surface,
+            backgroundColor: MetaColors.card(ctx),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
               side: const BorderSide(color: MetaColors.emerald, width: 1.5),
@@ -1515,10 +1520,10 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   '🎉 Pagamento Aprovado!',
                   style: TextStyle(
-                    color: MetaColors.textPrimary,
+                    color: MetaColors.text(ctx),
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
                   ),
@@ -1526,8 +1531,8 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                 const SizedBox(height: 8),
                 Text(
                   'Sua assinatura do plano ${widget.plan.name} já foi ativada com sucesso.',
-                  style: const TextStyle(
-                    color: MetaColors.textSecondary,
+                  style: TextStyle(
+                    color: MetaColors.subtext(ctx),
                     fontSize: 13,
                   ),
                   textAlign: TextAlign.center,
@@ -1699,25 +1704,26 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
       );
     }
 
+    final isDark = MetaColors.isDark(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: MetaColors.surfaceHighlight,
+        color: MetaColors.highlight(context),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: MetaColors.border),
+        border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.confirmation_number_outlined, color: MetaColors.accentBlue, size: 18),
-              SizedBox(width: 8),
+              const Icon(Icons.confirmation_number_outlined, color: MetaColors.accentBlue, size: 18),
+              const SizedBox(width: 8),
               Text(
                 'Possui cupom de desconto?',
                 style: TextStyle(
-                  color: MetaColors.textPrimary,
+                  color: MetaColors.text(context),
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1733,20 +1739,20 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                   child: TextField(
                     controller: _couponController,
                     textCapitalization: TextCapitalization.characters,
-                    style: const TextStyle(color: MetaColors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: MetaColors.text(context), fontSize: 13, fontWeight: FontWeight.bold),
                     decoration: InputDecoration(
                       hintText: 'EX: LAUNCH50',
-                      hintStyle: const TextStyle(color: MetaColors.textSecondary, fontSize: 12),
+                      hintStyle: TextStyle(color: MetaColors.subtext(context), fontSize: 12),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
                       filled: true,
-                      fillColor: MetaColors.surface,
+                      fillColor: MetaColors.card(context),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: MetaColors.border),
+                        borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: MetaColors.border),
+                        borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
                       ),
                     ),
                     onSubmitted: (_) => _applyCoupon(),
@@ -1799,14 +1805,15 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
         ? _appliedCoupon!.finalPrice
         : originalAmount;
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
+    final isDark = MetaColors.isDark(context);
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.88,
-      decoration: const BoxDecoration(
-        color: MetaColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: MetaColors.card(context),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         border: Border(
-          top: BorderSide(color: MetaColors.border, width: 1),
+          top: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0), width: 1),
         ),
       ),
       child: Column(
@@ -1816,7 +1823,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
             width: 44,
             height: 4,
             decoration: BoxDecoration(
-              color: MetaColors.border,
+              color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -1831,10 +1838,10 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Checkout Seguro',
                       style: TextStyle(
-                        color: MetaColors.textPrimary,
+                        color: MetaColors.text(context),
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.3,
@@ -1846,12 +1853,12 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                         children: [
                           Text(
                             '${widget.plan.name} • ',
-                            style: const TextStyle(color: MetaColors.textSecondary, fontSize: 13),
+                            style: TextStyle(color: MetaColors.subtext(context), fontSize: 13),
                           ),
                           Text(
                             'R\$ ${originalAmount.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              color: MetaColors.textSecondary,
+                            style: TextStyle(
+                              color: MetaColors.subtext(context),
                               fontSize: 12,
                               decoration: TextDecoration.lineThrough,
                             ),
@@ -1879,9 +1886,9 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                   ],
                 ),
                 IconButton(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.close_rounded,
-                    color: MetaColors.textSecondary,
+                    color: MetaColors.subtext(context),
                   ),
                   onPressed: () => Navigator.pop(context),
                 ),
@@ -1963,7 +1970,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                                 Expanded(
                                   child: Text(
                                     _checkoutError!,
-                                    style: const TextStyle(color: MetaColors.textPrimary, fontSize: 12.5),
+                                    style: TextStyle(color: MetaColors.text(context), fontSize: 12.5),
                                   ),
                                 ),
                               ],
@@ -1991,6 +1998,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
     required Color activeColor,
     required VoidCallback onTap,
   }) {
+    final isDark = MetaColors.isDark(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
@@ -1998,10 +2006,10 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? MetaColors.surfaceHighlight : Colors.transparent,
+          color: isSelected ? MetaColors.highlight(context) : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isSelected ? activeColor : MetaColors.border,
+            color: isSelected ? activeColor : (isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
             width: 1.2,
           ),
         ),
@@ -2011,7 +2019,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
             Icon(
               icon,
               size: 18,
-              color: isSelected ? activeColor : MetaColors.textSecondary,
+              color: isSelected ? activeColor : MetaColors.subtext(context),
             ),
             const SizedBox(width: 8),
             Text(
@@ -2019,7 +2027,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? MetaColors.textPrimary : MetaColors.textSecondary,
+                color: isSelected ? MetaColors.text(context) : MetaColors.subtext(context),
               ),
             ),
           ],
@@ -2030,25 +2038,26 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
 
   Widget _buildPixContent() {
     final pixCode = _session?.pixCopyPaste ?? '';
+    final isDark = MetaColors.isDark(context);
 
     if (pixCode.trim().isEmpty) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           MetaCard(
-            backgroundColor: MetaColors.surfaceHighlight,
+            backgroundColor: MetaColors.highlight(context),
             padding: const EdgeInsets.all(18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.pix_rounded, color: MetaColors.accentBlue, size: 26),
-                    SizedBox(width: 10),
+                    const Icon(Icons.pix_rounded, color: MetaColors.accentBlue, size: 26),
+                    const SizedBox(width: 10),
                     Text(
                       'Gerar Cobrança Pix',
                       style: TextStyle(
-                        color: MetaColors.textPrimary,
+                        color: MetaColors.text(context),
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -2056,10 +2065,10 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                const Text(
+                Text(
                   'O Banco Central e o Asaas exigem a identificação por CPF ou CNPJ para emissão do QR Code instantâneo com conciliação automática.',
                   style: TextStyle(
-                    color: MetaColors.textSecondary,
+                    color: MetaColors.subtext(context),
                     fontSize: 12.5,
                     height: 1.4,
                   ),
@@ -2072,17 +2081,17 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                     FilteringTextInputFormatter.digitsOnly,
                     CpfCnpjInputFormatter(),
                   ],
-                  style: const TextStyle(color: MetaColors.textPrimary),
-                  decoration: const InputDecoration(
+                  style: TextStyle(color: MetaColors.text(context)),
+                  decoration: InputDecoration(
                     labelText: 'CPF ou CNPJ do Pagador *',
                     hintText: '000.000.000-00',
                     prefixIcon: Icon(
                       Icons.badge_outlined,
-                      color: MetaColors.textSecondary,
+                      color: MetaColors.subtext(context),
                       size: 20,
                     ),
                     helperText: 'Exigido pelo BACEN para emissão de Pix nominal',
-                    helperStyle: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w500),
+                    helperStyle: TextStyle(color: MetaColors.subtext(context), fontSize: 11, fontWeight: FontWeight.w500),
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -2111,19 +2120,19 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         MetaCard(
-          backgroundColor: MetaColors.surfaceHighlight,
+          backgroundColor: MetaColors.highlight(context),
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              const Row(
+              Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.qr_code_2_rounded, color: MetaColors.accentBlue, size: 28),
-                  SizedBox(width: 8),
+                  const Icon(Icons.qr_code_2_rounded, color: MetaColors.accentBlue, size: 28),
+                  const SizedBox(width: 8),
                   Text(
                     'PIX Copia e Cola',
                     style: TextStyle(
-                      color: MetaColors.textPrimary,
+                      color: MetaColors.text(context),
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
                     ),
@@ -2131,10 +2140,10 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                 ],
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Copie o código abaixo e cole no aplicativo do seu banco para pagamento instantâneo:',
                 style: TextStyle(
-                  color: MetaColors.textSecondary,
+                  color: MetaColors.subtext(context),
                   fontSize: 12.5,
                   height: 1.4,
                 ),
@@ -2144,18 +2153,18 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: MetaColors.background,
+                  color: MetaColors.card(context),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: MetaColors.border),
+                  border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                 ),
                 child: Text(
                   pixCode,
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'monospace',
                     fontSize: 11,
-                    color: MetaColors.textSecondary,
+                    color: MetaColors.text(context),
                   ),
                 ),
               ),
@@ -2180,10 +2189,10 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
         if (_pollingExpired)
           Column(
             children: [
-              const Text(
+              Text(
                 'Ainda não recebemos a confirmação. Confira o pagamento no banco e tente verificar novamente.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: MetaColors.textSecondary, fontSize: 12),
+                style: TextStyle(color: MetaColors.subtext(context), fontSize: 12),
               ),
               const SizedBox(height: 8),
               TextButton.icon(
@@ -2202,10 +2211,10 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
             ],
           )
         else
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SizedBox(
+              const SizedBox(
                 width: 14,
                 height: 14,
                 child: CircularProgressIndicator(
@@ -2213,11 +2222,11 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                   color: MetaColors.emerald,
                 ),
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
                 'Aguardando confirmação do banco...',
                 style: TextStyle(
-                  color: MetaColors.textSecondary,
+                  color: MetaColors.subtext(context),
                   fontSize: 12,
                 ),
               ),
@@ -2229,6 +2238,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
 
   Widget _buildCreditCardContent(double amount) {
     final currentBrand = _detectCardBrand(_cardNumberController.text);
+    final isDark = MetaColors.isDark(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2238,15 +2248,15 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF2A1515), // Dark Crimson / Amber
+              color: isDark ? const Color(0xFF2A1515) : const Color(0xFFFEF2F2),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: Colors.amber.shade500.withValues(alpha: 0.8),
+                color: isDark ? Colors.amber.shade500.withValues(alpha: 0.8) : const Color(0xFFFCA5A5),
                 width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.5),
+                  color: isDark ? Colors.black.withValues(alpha: 0.5) : const Color(0xFFEF4444).withValues(alpha: 0.08),
                   blurRadius: 16,
                   offset: const Offset(0, 4),
                 ),
@@ -2263,9 +2273,9 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                         color: Colors.amber.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.credit_card_off_rounded,
-                        color: Colors.amberAccent,
+                        color: isDark ? Colors.amberAccent : Colors.amber.shade900,
                         size: 20,
                       ),
                     ),
@@ -2273,8 +2283,8 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                     Expanded(
                       child: Text(
                         _declineFeedback!.title,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: MetaColors.text(context),
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
@@ -2285,8 +2295,8 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                 const SizedBox(height: 8),
                 Text(
                   _declineFeedback!.message,
-                  style: const TextStyle(
-                    color: Color(0xFFF1F5F9),
+                  style: TextStyle(
+                    color: MetaColors.subtext(context),
                     fontSize: 12.5,
                     height: 1.4,
                   ),
@@ -2339,14 +2349,14 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.25)),
           ),
-          child: const Row(
+          child: Row(
             children: [
-              Icon(Icons.shield_outlined, color: MetaColors.emerald, size: 18),
-              SizedBox(width: 10),
+              const Icon(Icons.shield_outlined, color: MetaColors.emerald, size: 18),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   'Seus dados estão protegidos com criptografia de ponta a ponta (PCI-DSS).',
-                  style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11.5, height: 1.3),
+                  style: TextStyle(color: MetaColors.subtext(context), fontSize: 11.5, height: 1.3),
                 ),
               ),
             ],
@@ -2363,18 +2373,18 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
             CardNumberInputFormatter(),
           ],
           onChanged: (_) => setState(() {}),
-          style: const TextStyle(color: MetaColors.textPrimary, letterSpacing: 1.2),
+          style: TextStyle(color: MetaColors.text(context), letterSpacing: 1.2),
           decoration: InputDecoration(
             labelText: 'Número do Cartão *',
             hintText: '0000 0000 0000 0000',
-            prefixIcon: const Icon(
+            prefixIcon: Icon(
               Icons.credit_card_rounded,
-              color: MetaColors.textSecondary,
+              color: MetaColors.subtext(context),
               size: 20,
             ),
             suffixIcon: _buildCardBrandBadge(currentBrand),
             helperText: 'Bandeiras: Visa, Mastercard, Elo, Amex e Hipercard',
-            helperStyle: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w500),
+            helperStyle: TextStyle(color: MetaColors.subtext(context), fontSize: 11, fontWeight: FontWeight.w500),
           ),
         ),
         const SizedBox(height: 14),
@@ -2383,17 +2393,17 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
         TextFormField(
           controller: _cardHolderController,
           textCapitalization: TextCapitalization.characters,
-          style: const TextStyle(color: MetaColors.textPrimary),
-          decoration: const InputDecoration(
+          style: TextStyle(color: MetaColors.text(context)),
+          decoration: InputDecoration(
             labelText: 'Nome no Cartão *',
             hintText: 'Como impresso no cartão',
             prefixIcon: Icon(
               Icons.person_outline_rounded,
-              color: MetaColors.textSecondary,
+              color: MetaColors.subtext(context),
               size: 20,
             ),
             helperText: 'Ex: CLEUDSON J CAVALCANTE',
-            helperStyle: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w500),
+            helperStyle: TextStyle(color: MetaColors.subtext(context), fontSize: 11, fontWeight: FontWeight.w500),
           ),
         ),
         const SizedBox(height: 14),
@@ -2410,17 +2420,17 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                   FilteringTextInputFormatter.digitsOnly,
                   CardExpiryInputFormatter(),
                 ],
-                style: const TextStyle(color: MetaColors.textPrimary, letterSpacing: 1.1),
-                decoration: const InputDecoration(
+                style: TextStyle(color: MetaColors.text(context), letterSpacing: 1.1),
+                decoration: InputDecoration(
                   labelText: 'Validade *',
                   hintText: 'MM/AA',
                   prefixIcon: Icon(
                     Icons.date_range_outlined,
-                    color: MetaColors.textSecondary,
+                    color: MetaColors.subtext(context),
                     size: 20,
                   ),
                   helperText: 'Ex: 08/29',
-                  helperStyle: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w500),
+                  helperStyle: TextStyle(color: MetaColors.subtext(context), fontSize: 11, fontWeight: FontWeight.w500),
                 ),
               ),
             ),
@@ -2434,17 +2444,17 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                   FilteringTextInputFormatter.digitsOnly,
                   LengthLimitingTextInputFormatter(4),
                 ],
-                style: const TextStyle(color: MetaColors.textPrimary, letterSpacing: 2),
+                style: TextStyle(color: MetaColors.text(context), letterSpacing: 2),
                 decoration: InputDecoration(
                   labelText: 'CVV *',
                   hintText: '123',
-                  prefixIcon: const Icon(
+                  prefixIcon: Icon(
                     Icons.lock_outline_rounded,
-                    color: MetaColors.textSecondary,
+                    color: MetaColors.subtext(context),
                     size: 20,
                   ),
                   suffixIcon: IconButton(
-                    icon: const Icon(Icons.help_outline_rounded, size: 18, color: MetaColors.textSecondary),
+                    icon: Icon(Icons.help_outline_rounded, size: 18, color: MetaColors.subtext(context)),
                     tooltip: 'Código no verso do cartão',
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -2456,7 +2466,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                     },
                   ),
                   helperText: '3 dígitos no verso',
-                  helperStyle: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w500),
+                  helperStyle: TextStyle(color: MetaColors.subtext(context), fontSize: 11, fontWeight: FontWeight.w500),
                 ),
               ),
             ),
@@ -2472,17 +2482,17 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
             FilteringTextInputFormatter.digitsOnly,
             CpfCnpjInputFormatter(),
           ],
-          style: const TextStyle(color: MetaColors.textPrimary),
-          decoration: const InputDecoration(
+          style: TextStyle(color: MetaColors.text(context)),
+          decoration: InputDecoration(
             labelText: 'CPF ou CNPJ do Titular *',
             hintText: '000.000.000-00',
             prefixIcon: Icon(
               Icons.badge_outlined,
-              color: MetaColors.textSecondary,
+              color: MetaColors.subtext(context),
               size: 20,
             ),
             helperText: 'Exigido pelo Banco Central e Asaas para emissão de nota fiscal',
-            helperStyle: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w500),
+            helperStyle: TextStyle(color: MetaColors.subtext(context), fontSize: 11, fontWeight: FontWeight.w500),
           ),
         ),
         const SizedBox(height: 14),
@@ -2495,22 +2505,22 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
             FilteringTextInputFormatter.digitsOnly,
             PhoneInputFormatter(),
           ],
-          style: const TextStyle(color: MetaColors.textPrimary),
-          decoration: const InputDecoration(
+          style: TextStyle(color: MetaColors.text(context)),
+          decoration: InputDecoration(
             labelText: 'Telefone / WhatsApp',
             hintText: '(00) 00000-0000',
             prefixIcon: Icon(
               Icons.phone_outlined,
-              color: MetaColors.textSecondary,
+              color: MetaColors.subtext(context),
               size: 20,
             ),
             helperText: 'Para envio de comprovantes e confirmação de pagamento',
-            helperStyle: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.w500),
+            helperStyle: TextStyle(color: MetaColors.subtext(context), fontSize: 11, fontWeight: FontWeight.w500),
           ),
         ),
         const SizedBox(height: 14),
 
-        // Endereço de Cobrança do Cartão (Item 2: Sem truncamento, 100% legível)
+        // Endereço de Cobrança do Cartão
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -2523,13 +2533,13 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                   FilteringTextInputFormatter.digitsOnly,
                   PostalCodeInputFormatter(),
                 ],
-                style: const TextStyle(color: MetaColors.textPrimary),
-                decoration: const InputDecoration(
+                style: TextStyle(color: MetaColors.text(context)),
+                decoration: InputDecoration(
                   labelText: 'CEP da Fatura *',
                   hintText: '00000-000',
                   prefixIcon: Icon(
                     Icons.location_on_outlined,
-                    color: MetaColors.textSecondary,
+                    color: MetaColors.subtext(context),
                     size: 20,
                   ),
                   helperText: null,
@@ -2542,18 +2552,18 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
               child: TextFormField(
                 controller: _addressNumberController,
                 keyboardType: TextInputType.text,
-                style: const TextStyle(color: MetaColors.textPrimary),
-                decoration: const InputDecoration(
+                style: TextStyle(color: MetaColors.text(context)),
+                decoration: InputDecoration(
                   labelText: 'Número',
                   hintText: 'Ex: 100',
                   prefixIcon: Icon(
                     Icons.home_outlined,
-                    color: MetaColors.textSecondary,
+                    color: MetaColors.subtext(context),
                     size: 20,
                   ),
                   helperText: 'Ou S/N',
                   helperStyle: TextStyle(
-                    color: Color(0xFFCBD5E1),
+                    color: MetaColors.subtext(context),
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
                   ),
@@ -2563,23 +2573,23 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
           ],
         ),
         const SizedBox(height: 6),
-        // Explicação em largura total (100% legível, com ícone e alto contraste)
+        // Explicação em largura total
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E293B),
+            color: MetaColors.highlight(context),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFF334155)),
+            border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
           ),
-          child: const Row(
+          child: Row(
             children: [
-              Icon(Icons.shield_outlined, size: 14, color: MetaColors.emerald),
-              SizedBox(width: 8),
+              const Icon(Icons.shield_outlined, size: 14, color: MetaColors.emerald),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'CEP e número de cobrança do cartão (exigido pelos bancos para validação antifraude).',
                   style: TextStyle(
-                    color: Color(0xFFE2E8F0),
+                    color: MetaColors.subtext(context),
                     fontSize: 11,
                     fontWeight: FontWeight.w400,
                     height: 1.3,

@@ -30,7 +30,10 @@ Todos os problemas de "fundo pitch black forçado no modo claro", "texto branco 
 | **Fase 3** | **3.3** | `admin_users_screen.dart`, `admin_finance_screen.dart`, `admin_whatsapp_screen.dart`, `admin_ai_usage_screen.dart` | Telas satélites do Admin (Usuários, Finanças & LTV/CAC, WhatsApp, Custos IA) e seus 4 diálogos de God Mode. | `admin_satellites_test.dart` (8/8 - 100%) | `0fc6c6f` |
 | **Fase 4** | **4.1** | `public_trainer_directory_screen.dart` & `b2b_landing_screen.dart` | Diretório público `/prof`, filtros por especialidade e CREF, cards de treinador, e modais legais de Termos de Uso e LGPD. | `public_pages_contrast_test.dart` (4/4 - 100%) | `25bc2a2` |
 | **Fase 4** | **4.2** | Suíte Consolidada Global | Bateria global de testes de integração e regressão de ponta a ponta. | **34/34 testes verdes (100%)** | `25bc2a2` |
-| **Fase 5** | **5.1** | `b2b_assistant_screen.dart` (Mr. Coach AI Aluno) | Hero spotlight card adaptativo, alerta proativo, cards biomecânicos e chips de exercício com alto contraste no Light e Dark. | `b2b_assistant_student_contrast_test.dart` (2/2 - 100%) | *Pendente push* |
+| **Fase 5** | **5.1** | `b2b_assistant_screen.dart` (Mr. Coach AI Aluno) | Hero spotlight card adaptativo, alerta proativo, cards biomecânicos e chips de exercício com alto contraste no Light e Dark. | `b2b_assistant_student_contrast_test.dart` (2/2 - 100%) | `7845f94` |
+| **Fase 6** | **6.1** | `trainer_business_screen.dart` (Vitrine do Personal B2B) | Harmonização completa dos 6 modais inferiores (_showTipModal, _showCrefLockedModal, _showSubscriptionDetailsModal, _showAiAssistantModal, _showPublicShowcaseModal, _showWhatsAppIntegrationModal), cards de dicas, banners e links de vitrine. | `trainer_vitrine_subscription_contrast_test.dart` (6/6 - 100%) | `1.11.0+2026103089` |
+| **Fase 6** | **6.2** | `subscription_screen.dart` (Assinatura Mr. Coach & Checkout) | Cards de planos (Starter, Pro, Studio, Elite), toggle Mensal/Anual, accordion FAQ, BottomSheet de checkout completo com formulários de Cartão de Crédito e Pix, corrigindo texto invisível em inputs no modo claro. | `trainer_vitrine_subscription_contrast_test.dart` (6/6 - 100%) | `1.11.0+2026103089` |
+| **Fase 6** | **6.3** | `pix_payment_screen.dart` & `trainer_profile_setup_screen.dart` | Tela de instruções de pagamento via Pix com botões de atalho bancário e tela de setup da vitrine pública com contraste dinâmico de ícones e inputs. | `trainer_vitrine_subscription_contrast_test.dart` (6/6 - 100%) | `1.11.0+2026103089` |
 
 ---
 
@@ -64,7 +67,8 @@ final emeraldAccent = MetaColors.emerald;      // Emerald Brand
 
 ### 4. Bateria de Verificação Automatizada
 
-- **Bateria Consolidada de 11 Suítes de Teste:** **34/34 testes passaram com 100% de sucesso**.
-- **Análise Estática (`flutter analyze`):** 0 erros, 0 warnings.
-- **Versão Atual do App:** `1.11.0+2026103087` (sincronizada no GitHub `origin/main`).
+- **Suíte Total do Aplicativo (`flutter test`):** **284/284 testes passaram com 100% de sucesso**.
+- **Testes de Contraste Vitrine e Assinatura (`trainer_vitrine_subscription_contrast_test.dart`):** **6/6 testes passaram (100%)**.
+- **Análise Estática (`dart analyze`):** 0 erros, 0 warnings nos arquivos modificados.
+- **Versão Atual do App:** `1.11.0+2026103089` (sincronizada no GitHub `origin/main`).
 

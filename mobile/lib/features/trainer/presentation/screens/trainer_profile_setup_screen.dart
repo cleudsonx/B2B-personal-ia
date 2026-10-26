@@ -695,9 +695,9 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                                   : Image.network(
                                       url,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, _, _) => const Icon(
+                                      errorBuilder: (_, _, _) => Icon(
                                         Icons.broken_image_rounded,
-                                        color: MetaColors.textSecondary,
+                                        color: MetaColors.subtext(context),
                                         size: 32,
                                       ),
                                     ))
@@ -920,7 +920,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.copy_rounded, size: 16, color: MetaColors.textSecondary),
+                    icon: Icon(Icons.copy_rounded, size: 16, color: MetaColors.subtext(context)),
                     tooltip: 'Copiar link',
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),

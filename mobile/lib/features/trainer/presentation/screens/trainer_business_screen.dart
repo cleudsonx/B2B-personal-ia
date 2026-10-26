@@ -155,11 +155,12 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
   void _showTipModal(_BusinessTip tip) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: MetaColors.surface,
+      backgroundColor: MetaColors.card(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
+        final isDark = MetaColors.isDark(ctx);
         return Padding(
           padding: EdgeInsets.only(
             left: 20,
@@ -176,7 +177,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: MetaColors.border,
+                    color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -207,8 +208,8 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
               const SizedBox(height: 18),
               Text(
                 tip.title,
-                style: const TextStyle(
-                  color: MetaColors.textPrimary,
+                style: TextStyle(
+                  color: MetaColors.text(ctx),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -216,8 +217,8 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
               const SizedBox(height: 8),
               Text(
                 tip.description,
-                style: const TextStyle(
-                  color: MetaColors.textSecondary,
+                style: TextStyle(
+                  color: MetaColors.subtext(ctx),
                   fontSize: 14,
                   height: 1.45,
                 ),
@@ -442,7 +443,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
   void _showCrefLockedModal() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: MetaColors.surface,
+      backgroundColor: MetaColors.card(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -454,15 +455,15 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
             children: [
               const Icon(Icons.lock_person_rounded, color: Colors.amber, size: 48),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Acesso Bloqueado',
-                style: TextStyle(color: MetaColors.textPrimary, fontSize: 20, fontWeight: FontWeight.bold),
+                style: TextStyle(color: MetaColors.text(context), fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Sua Vitrine Pública não pode ser ativada porque seu CREF/Registro Profissional ainda não foi preenchido.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: MetaColors.textSecondary, fontSize: 15),
+                style: TextStyle(color: MetaColors.subtext(context), fontSize: 15),
               ),
               const SizedBox(height: 24),
               SizedBox(
@@ -491,11 +492,12 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
   void _showSubscriptionDetailsModal() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: MetaColors.surface,
+      backgroundColor: MetaColors.card(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
+        final isDark = MetaColors.isDark(ctx);
         return Padding(
           padding: EdgeInsets.only(
             left: 20,
@@ -512,7 +514,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: MetaColors.border,
+                    color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -524,9 +526,9 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                     width: 46,
                     height: 46,
                     decoration: BoxDecoration(
-                      color: MetaColors.surfaceHighlight,
+                      color: MetaColors.highlight(ctx),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: MetaColors.border),
+                      border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                     ),
                     child: const Icon(
                       Icons.workspace_premium_outlined,
@@ -535,23 +537,23 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                     ),
                   ),
                   const SizedBox(width: 14),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Assinatura Mr. Coach',
                           style: TextStyle(
-                            color: MetaColors.textPrimary,
+                            color: MetaColors.text(ctx),
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 2),
                         Text(
                           'Potencialize sua consultoria fitness',
                           style: TextStyle(
-                            color: MetaColors.textSecondary,
+                            color: MetaColors.subtext(ctx),
                             fontSize: 13,
                           ),
                         ),
@@ -592,11 +594,12 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: MetaColors.surface,
+      backgroundColor: MetaColors.card(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
+        final isDark = MetaColors.isDark(ctx);
         return DraggableScrollableSheet(
           initialChildSize: 0.72,
           minChildSize: 0.5,
@@ -619,7 +622,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                       width: 44,
                       height: 5,
                       decoration: BoxDecoration(
-                        color: MetaColors.border,
+                        color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
                         borderRadius: BorderRadius.circular(2.5),
                       ),
                     ),
@@ -645,23 +648,23 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                         ),
                       ),
                       const SizedBox(width: 14),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'Consultor Ativo IA 24h',
                               style: TextStyle(
-                                color: MetaColors.textPrimary,
+                                color: MetaColors.text(ctx),
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            SizedBox(height: 2),
+                            const SizedBox(height: 2),
                             Text(
                               'Suporte autônomo aos seus alunos no WhatsApp',
                               style: TextStyle(
-                                color: MetaColors.textSecondary,
+                                color: MetaColors.subtext(ctx),
                                 fontSize: 12.5,
                               ),
                             ),
@@ -676,9 +679,9 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: MetaColors.surfaceHighlight,
+                      color: MetaColors.highlight(ctx),
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: MetaColors.border),
+                      border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -704,19 +707,19 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                           ],
                         ),
                         const SizedBox(height: 10),
-                        const Text(
+                        Text(
                           'Comandos Rápidos Automáticos',
                           style: TextStyle(
-                            color: MetaColors.textPrimary,
+                            color: MetaColors.text(ctx),
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(height: 6),
-                        const Text(
+                        Text(
                           'Seus alunos recebem respostas imediatas sem consumir cotas de IA:',
                           style: TextStyle(
-                            color: MetaColors.textSecondary,
+                            color: MetaColors.subtext(ctx),
                             fontSize: 12.5,
                           ),
                         ),
@@ -736,9 +739,9 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: MetaColors.surfaceHighlight,
+                      color: MetaColors.highlight(ctx),
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: MetaColors.border),
+                      border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -764,19 +767,19 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                           ],
                         ),
                         const SizedBox(height: 10),
-                        const Text(
+                        Text(
                           'Dúvidas Biomecânicas e de Exercícios',
                           style: TextStyle(
-                            color: MetaColors.textPrimary,
+                            color: MetaColors.text(ctx),
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(height: 6),
-                        const Text(
+                        Text(
                           'Quando o aluno manda perguntas abertas ("como posicionar os pés no agachamento?", "posso trocar o crucifixo por voador?"), o robô responde com base na prescrição atual, com tom amigável e limite diário seguro.',
                           style: TextStyle(
-                            color: MetaColors.textSecondary,
+                            color: MetaColors.subtext(ctx),
                             fontSize: 12.5,
                             height: 1.35,
                           ),
@@ -790,9 +793,9 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                               child: Text(
                                 'Guardrail médico: nunca medica e orienta procurar você em caso de dor.',
                                 style: TextStyle(
-                                  color: Colors.amber.shade300,
+                                  color: isDark ? Colors.amber.shade300 : Colors.amber.shade900,
                                   fontSize: 11.5,
-                                  fontWeight: FontWeight.w500,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
@@ -851,7 +854,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
         Expanded(
           child: RichText(
             text: TextSpan(
-              style: const TextStyle(fontSize: 12, color: MetaColors.textPrimary),
+              style: TextStyle(fontSize: 12, color: MetaColors.text(context)),
               children: [
                 TextSpan(
                   text: '$cmd: ',
@@ -859,7 +862,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                 ),
                 TextSpan(
                   text: desc,
-                  style: const TextStyle(color: MetaColors.textSecondary),
+                  style: TextStyle(color: MetaColors.subtext(context)),
                 ),
               ],
             ),
@@ -876,11 +879,12 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
     final showcaseUrl = 'https://shaipados.com/#/prof/${Uri.encodeComponent(cleanUser)}';
     showModalBottomSheet(
       context: context,
-      backgroundColor: MetaColors.surface,
+      backgroundColor: MetaColors.card(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
+        final isDark = MetaColors.isDark(ctx);
         return Padding(
           padding: EdgeInsets.only(
             left: 20,
@@ -897,7 +901,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: MetaColors.border,
+                    color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -909,9 +913,9 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                     width: 46,
                     height: 46,
                     decoration: BoxDecoration(
-                      color: MetaColors.surfaceHighlight,
+                      color: MetaColors.highlight(ctx),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: MetaColors.border),
+                      border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                     ),
                     child: const Icon(
                       Icons.storefront_outlined,
@@ -920,23 +924,23 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                     ),
                   ),
                   const SizedBox(width: 14),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Minha Vitrine Pública',
                           style: TextStyle(
-                            color: MetaColors.textPrimary,
+                            color: MetaColors.text(ctx),
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 2),
                         Text(
                           'Página de conversão de alunos',
                           style: TextStyle(
-                            color: MetaColors.textSecondary,
+                            color: MetaColors.subtext(ctx),
                             fontSize: 13,
                           ),
                         ),
@@ -949,9 +953,9 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
-                  color: MetaColors.surfaceHighlight,
+                  color: MetaColors.highlight(ctx),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: MetaColors.border),
+                  border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                 ),
                 child: Row(
                   children: [
@@ -959,7 +963,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                       child: Text(
                         showcaseUrl.replaceFirst('https://', ''),
                         style: TextStyle(
-                          color: MetaColors.textPrimary,
+                          color: MetaColors.text(ctx),
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -975,11 +979,11 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                           ClipboardData(text: showcaseUrl),
                         );
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            backgroundColor: MetaColors.surfaceHighlight,
-                            content: Text(
+                          SnackBar(
+                            backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFF0F172A),
+                            content: const Text(
                               'Link copiado para a área de transferência!',
-                              style: TextStyle(color: MetaColors.textPrimary),
+                              style: TextStyle(color: Colors.white),
                             ),
                           ),
                         );
@@ -994,8 +998,8 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                   Expanded(
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: MetaColors.border),
-                        foregroundColor: MetaColors.textPrimary,
+                        side: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+                        foregroundColor: MetaColors.text(ctx),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -1060,11 +1064,12 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
   void _showWhatsAppIntegrationModal() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: MetaColors.surface,
+      backgroundColor: MetaColors.card(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
+        final isDark = MetaColors.isDark(ctx);
         return Padding(
           padding: EdgeInsets.only(
             left: 20,
@@ -1081,7 +1086,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: MetaColors.border,
+                    color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -1093,9 +1098,9 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                     width: 46,
                     height: 46,
                     decoration: BoxDecoration(
-                      color: MetaColors.surfaceHighlight,
+                      color: MetaColors.highlight(ctx),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: MetaColors.border),
+                      border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                     ),
                     child: const Icon(
                       Icons.chat_outlined,
@@ -1104,23 +1109,23 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                     ),
                   ),
                   const SizedBox(width: 14),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Conexão WhatsApp',
                           style: TextStyle(
-                            color: MetaColors.textPrimary,
+                            color: MetaColors.text(ctx),
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 2),
                         Text(
                           'Disparos inteligentes para seus alunos',
                           style: TextStyle(
-                            color: MetaColors.textSecondary,
+                            color: MetaColors.subtext(ctx),
                             fontSize: 13,
                           ),
                         ),
@@ -1173,8 +1178,8 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(
-              color: MetaColors.textPrimary,
+            style: TextStyle(
+              color: MetaColors.text(context),
               fontSize: 13.5,
             ),
           ),
@@ -1304,10 +1309,10 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                 children: [
                   const Icon(Icons.warning_amber_rounded, color: MetaColors.emerald, size: 20),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'Perfil Público Incompleto',
                     style: TextStyle(
-                      color: MetaColors.textPrimary,
+                      color: MetaColors.text(context),
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
                     ),
@@ -1315,16 +1320,16 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                 ],
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Sua vitrine pública ainda não tem informações suficientes para atrair alunos. Configure sua bio, especialidades e seu nome de usuário.',
-                style: TextStyle(color: MetaColors.textSecondary, fontSize: 13, height: 1.4),
+                style: TextStyle(color: MetaColors.subtext(context), fontSize: 13, height: 1.4),
               ),
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: MetaColors.surfaceHighlight,
+                    backgroundColor: MetaColors.highlight(context),
                     foregroundColor: MetaColors.emerald,
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
