@@ -74,60 +74,62 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF6366F1).withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: const Color(0xFF6366F1).withValues(alpha: 0.4),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: const Color(0xFF6366F1).withValues(alpha: 0.4),
+                                      ),
+                                    ),
+                                    child: const Row(
+                                      children: [
+                                        Text('⚡', style: TextStyle(fontSize: 12)),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'MISSION CONTROL • GOD MODE',
+                                          style: TextStyle(
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: 0.8,
+                                            color: Color(0xFF818CF8),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  child: const Row(
-                                    children: [
-                                      Text('⚡', style: TextStyle(fontSize: 12)),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        'MISSION CONTROL • GOD MODE',
-                                        style: TextStyle(
-                                          fontSize: 10.5,
-                                          fontWeight: FontWeight.w900,
-                                          letterSpacing: 0.8,
-                                          color: Color(0xFF818CF8),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Visão Geral do Ecossistema',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w900,
+                                  color: textPrimary,
+                                  letterSpacing: -0.5,
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Visão Geral do Ecossistema',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w900,
-                                color: textPrimary,
-                                letterSpacing: -0.5,
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Monitoramento em tempo real de infraestrutura, faturamento e usuários.',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: textSecondary,
+                              const SizedBox(height: 4),
+                              Text(
+                                'Monitoramento em tempo real de infraestrutura, faturamento e usuários.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: textSecondary,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.refresh_rounded),

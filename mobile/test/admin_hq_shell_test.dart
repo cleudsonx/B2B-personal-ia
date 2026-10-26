@@ -63,4 +63,77 @@ void main() {
     await tester.tap(exitBtn);
     expect(exited, isTrue);
   });
+
+  testWidgets('AdminShellScreen renders cleanly under Light mode with proper text contrast', (tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        themeMode: ThemeMode.light,
+        home: AdminShellScreen(
+          key: const ValueKey('light_admin_shell'),
+          isHqMode: true,
+          onExitAdmin: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final hqTitleWidget = tester.widget<Text>(find.text('SHAIPADOS HQ'));
+    expect(hqTitleWidget.style?.color, equals(const Color(0xFF0F172A)));
+  });
+
+  testWidgets('AdminShellScreen renders cleanly under Dark mode with proper text contrast', (tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        darkTheme: ThemeData.dark(),
+        themeMode: ThemeMode.dark,
+        home: AdminShellScreen(
+          key: const ValueKey('dark_admin_shell'),
+          isHqMode: true,
+          onExitAdmin: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final hqTitleWidget = tester.widget<Text>(find.text('SHAIPADOS HQ'));
+    expect(hqTitleWidget.style?.color, equals(Colors.white));
+  });
+
+  testWidgets('AdminShellScreen mobile drawer renders with high contrast under Light mode', (tester) async {
+    tester.view.physicalSize = const Size(800, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        themeMode: ThemeMode.light,
+        home: AdminShellScreen(
+          key: const ValueKey('mobile_light_admin'),
+          isHqMode: true,
+          onExitAdmin: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Open drawer via AppBar leading
+    final drawerBtn = find.byTooltip('Open navigation menu');
+    if (drawerBtn.evaluate().isNotEmpty) {
+      await tester.tap(drawerBtn);
+      await tester.pumpAndSettle();
+      final drawerDashboard = find.descendant(of: find.byType(Drawer), matching: find.text('Dashboard'));
+      expect(drawerDashboard, findsOneWidget);
+      final dashboardWidget = tester.widget<Text>(drawerDashboard);
+      expect(dashboardWidget.style?.color, equals(const Color(0xFF0F172A)));
+    }
+  });
 }

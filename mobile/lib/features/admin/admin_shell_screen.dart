@@ -162,13 +162,14 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
   }
 
   Widget _buildProtectedShell(BuildContext context) {
+    final isDark = MetaColors.isDark(context);
     final width = MediaQuery.sizeOf(context).width;
     final isDesktop = width > 900;
     if (_mirrorRole != null) {
       return AnnotatedRegion<SystemUiOverlayStyle>(
-        value: AppTheme.systemUiOverlayFor(isDark: true),
+        value: AppTheme.systemUiOverlayFor(isDark: isDark),
         child: Scaffold(
-          backgroundColor: const Color(0xFF090D16),
+          backgroundColor: isDark ? const Color(0xFF090D16) : const Color(0xFFF1F5F9),
           body: Column(
             children: [
               Container(
@@ -224,7 +225,6 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
     }
 
 
-    final isDark = MetaColors.isDark(context);
     final bg = isDark ? const Color(0xFF090D16) : const Color(0xFFF1F5F9);
     final barBg = isDark ? const Color(0xFF111827) : Colors.white;
     final textPrimary = isDark ? Colors.white : const Color(0xFF0F172A);
@@ -452,43 +452,51 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Linha 1: Contexto do SaaS selecionado & Role
-              Row(
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: currentSaaS.statusColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(currentSaaS.icon, size: 16, color: currentSaaS.statusColor),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'PORTFÓLIO: ${currentSaaS.name.toUpperCase()}',
-                    style: TextStyle(
-                      color: currentSaaS.statusColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: currentSaaS.statusColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      currentSaaS.status,
-                      style: TextStyle(
-                        color: currentSaaS.statusColor,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: currentSaaS.statusColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(currentSaaS.icon, size: 16, color: currentSaaS.statusColor),
                       ),
-                    ),
+                      Text(
+                        'PORTFÓLIO: ${currentSaaS.name.toUpperCase()}',
+                        style: TextStyle(
+                          color: currentSaaS.statusColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: currentSaaS.statusColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          currentSaaS.status,
+                          style: TextStyle(
+                            color: currentSaaS.statusColor,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const Spacer(),
                   // Seletor dinâmico de RBAC
                   PopupMenuButton<String>(
                     tooltip: 'Alterar Nível de Permissão RBAC',
@@ -548,26 +556,29 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                   _buildHqMetricPill('NRR', '118%', MetaColors.emerald),
 
                   // Health checks
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.circle, size: 7, color: MetaColors.emerald),
-                        const SizedBox(width: 5),
-                        Text(
-                          'Render: 200 OK (140ms) • Supabase: 99.98% • WhatsApp: 3 Instâncias • Gemini: Ativo',
-                          style: TextStyle(
-                            color: isDark ? Colors.white70 : const Color(0xFF475569),
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w600,
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.circle, size: 7, color: MetaColors.emerald),
+                          const SizedBox(width: 5),
+                          Text(
+                            'Render: 200 OK (140ms) • Supabase: 99.98% • WhatsApp: 3 Instâncias • Gemini: Ativo',
+                            style: TextStyle(
+                              color: isDark ? Colors.white70 : const Color(0xFF475569),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -619,8 +630,8 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                   children: [
                     Text(
                       _isHqView ? 'SHAIPADOS HQ' : 'MR. COACH',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
                         fontSize: 15,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 0.5,
@@ -645,15 +656,15 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
             decoration: BoxDecoration(
-              color: const Color(0xFF090D16),
+              color: isDark ? const Color(0xFF090D16) : const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF1F2937)),
+              border: Border.all(color: isDark ? const Color(0xFF1F2937) : const Color(0xFFCBD5E1)),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: _selectedSaaS,
                 isExpanded: true,
-                dropdownColor: const Color(0xFF111827),
+                dropdownColor: isDark ? const Color(0xFF111827) : Colors.white,
                 icon: const Icon(Icons.unfold_more_rounded, size: 16, color: Color(0xFF818CF8)),
                 onChanged: (val) {
                   if (val != null) setState(() => _selectedSaaS = val);
@@ -668,8 +679,8 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                         Expanded(
                           child: Text(
                             s.name,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                             ),
@@ -747,7 +758,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
         children: [
           // Logo & Branding com Seletor Multi-SaaS
           _buildSidebarHeader(isDark),
-          const Divider(color: Color(0xFF1F2937), height: 1),
+          Divider(color: sidebarBorder, height: 1),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
             child: InkWell(
@@ -756,26 +767,26 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF090D16),
+                  color: isDark ? const Color(0xFF090D16) : const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF1F2937)),
+                  border: Border.all(color: isDark ? const Color(0xFF1F2937) : const Color(0xFFCBD5E1)),
                 ),
                 child: Row(
                   children: [
                     const Icon(Icons.search_rounded, size: 16, color: Color(0xFF818CF8)),
                     const SizedBox(width: 8),
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'Comandos... (Ctrl+K)',
-                        style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 12, fontWeight: FontWeight.w600),
+                        style: TextStyle(color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF64748B), fontSize: 12, fontWeight: FontWeight.w600),
                       ),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1F2937),
+                        color: isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0),
                         borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: const Color(0xFF374151)),
+                        border: Border.all(color: isDark ? const Color(0xFF374151) : const Color(0xFFCBD5E1)),
                       ),
                       child: const Text(
                         '⌘K',
@@ -929,9 +940,9 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF090D16),
+                    color: isDark ? const Color(0xFF090D16) : const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF1F2937)),
+                    border: Border.all(color: isDark ? const Color(0xFF1F2937) : const Color(0xFFCBD5E1)),
                   ),
                   child: Column(
                     children: [
@@ -939,7 +950,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                         padding: EdgeInsets.only(bottom: 10),
                         child: ThemeToggleButton(),
                       ),
-                      const Row(
+                      Row(
                         children: [
                           CircleAvatar(
                             radius: 14,
@@ -954,7 +965,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                             child: Text(
                               'Acesso SuperAdmin',
                               style: TextStyle(
-                                color: Colors.white,
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -979,7 +990,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF1F2937)),
+                    side: BorderSide(color: isDark ? const Color(0xFF1F2937) : const Color(0xFFCBD5E1)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -998,6 +1009,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
     required VoidCallback onTap,
     String? badge,
   }) {
+    final isDark = MetaColors.isDark(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -1017,10 +1029,10 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFFE5E7EB),
+                  color: isDark ? const Color(0xFFE5E7EB) : const Color(0xFF1E293B),
                 ),
               ),
             ),
@@ -1052,6 +1064,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
     required String label,
     String? badge,
   }) {
+    final isDark = MetaColors.isDark(context);
     final isSelected = _currentSectionIndex == index;
     return InkWell(
       onTap: () => setState(() => _currentSectionIndex = index),
@@ -1070,7 +1083,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             Icon(
               icon,
               size: 20,
-              color: isSelected ? const Color(0xFF818CF8) : const Color(0xFF9CA3AF),
+              color: isSelected ? (isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5)) : (isDark ? const Color(0xFF9CA3AF) : const Color(0xFF64748B)),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1079,7 +1092,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                 style: TextStyle(
                   fontSize: 13.5,
                   fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                  color: isSelected ? Colors.white : const Color(0xFF9CA3AF),
+                  color: isSelected ? (isDark ? Colors.white : const Color(0xFF4338CA)) : (isDark ? const Color(0xFF9CA3AF) : const Color(0xFF334155)),
                 ),
               ),
             ),
@@ -1106,29 +1119,34 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
   }
 
   Widget _buildDrawer() {
+    final isDark = MetaColors.isDark(context);
+    final drawerBg = isDark ? const Color(0xFF111827) : Colors.white;
+    final drawerDivider = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
+    final itemTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+
     return Drawer(
-      backgroundColor: const Color(0xFF111827),
+      backgroundColor: drawerBg,
       child: SafeArea(
         child: Column(
           children: [
             ListTile(
               leading: Icon(_isHqView ? Icons.account_balance_rounded : Icons.shield_rounded, color: const Color(0xFF818CF8)),
-              title: Text(_isHqView ? 'Shaipados Studio HQ' : 'Mr. Coach Admin', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              subtitle: Text(_isHqView ? 'War Room Multi-SaaS • ${_currentRbacRole.split('_').first}' : 'Mission Control • God Mode', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              title: Text(_isHqView ? 'Shaipados Studio HQ' : 'Mr. Coach Admin', style: TextStyle(color: itemTextColor, fontWeight: FontWeight.bold)),
+              subtitle: Text(_isHqView ? 'War Room Multi-SaaS • ${_currentRbacRole.split('_').first}' : 'Mission Control • God Mode', style: TextStyle(color: isDark ? Colors.grey : const Color(0xFF64748B), fontSize: 12)),
               trailing: IconButton(
                 tooltip: 'Alternar Visão HQ / Operacional',
                 icon: Icon(_isHqView ? Icons.toggle_on_rounded : Icons.toggle_off_rounded, color: const Color(0xFF818CF8)),
                 onPressed: () => setState(() => _isHqView = !_isHqView),
               ),
             ),
-            const Divider(color: Color(0xFF1F2937), height: 1),
+            Divider(color: drawerDivider, height: 1),
             Expanded(
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
                   ListTile(
                     leading: const Icon(Icons.insights_rounded, color: Color(0xFF818CF8)),
-              title: const Text('Dashboard', style: TextStyle(color: Colors.white)),
+              title: Text('Dashboard', style: TextStyle(color: itemTextColor)),
               selected: _currentSectionIndex == 0,
               onTap: () {
                 setState(() => _currentSectionIndex = 0);
@@ -1137,7 +1155,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.people_alt_rounded, color: Color(0xFF818CF8)),
-              title: const Text('Usuários & Personals', style: TextStyle(color: Colors.white)),
+              title: Text('Usuários & Personals', style: TextStyle(color: itemTextColor)),
               selected: _currentSectionIndex == 1,
               onTap: () {
                 setState(() => _currentSectionIndex = 1);
@@ -1146,7 +1164,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF818CF8)),
-              title: const Text('Financeiro & Splits', style: TextStyle(color: Colors.white)),
+              title: Text('Financeiro & Splits', style: TextStyle(color: itemTextColor)),
               selected: _currentSectionIndex == 2,
               onTap: () {
                 setState(() => _currentSectionIndex = 2);
@@ -1155,7 +1173,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.fitness_center_rounded, color: Color(0xFF818CF8)),
-              title: const Text('Catálogo de Exercícios', style: TextStyle(color: Colors.white)),
+              title: Text('Catálogo de Exercícios', style: TextStyle(color: itemTextColor)),
               selected: _currentSectionIndex == 3,
               onTap: () {
                 setState(() => _currentSectionIndex = 3);
@@ -1164,7 +1182,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.security_rounded, color: Color(0xFF818CF8)),
-              title: const Text('Auditoria & Telemetria', style: TextStyle(color: Colors.white)),
+              title: Text('Auditoria & Telemetria', style: TextStyle(color: itemTextColor)),
               selected: _currentSectionIndex == 4,
               onTap: () {
                 setState(() => _currentSectionIndex = 4);
@@ -1173,7 +1191,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.campaign_rounded, color: Color(0xFF818CF8)),
-              title: const Text('Broadcast & Avisos', style: TextStyle(color: Colors.white)),
+              title: Text('Broadcast & Avisos', style: TextStyle(color: itemTextColor)),
               selected: _currentSectionIndex == 5,
               onTap: () {
                 setState(() => _currentSectionIndex = 5);
@@ -1182,7 +1200,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.radar_rounded, color: Color(0xFF818CF8)),
-              title: const Text('Retenção & Alunos 360°', style: TextStyle(color: Colors.white)),
+              title: Text('Retenção & Alunos 360°', style: TextStyle(color: itemTextColor)),
               selected: _currentSectionIndex == 6,
               onTap: () {
                 setState(() => _currentSectionIndex = 6);
@@ -1191,7 +1209,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.chat_rounded, color: Color(0xFF818CF8)),
-              title: const Text('WhatsApp & Evolution', style: TextStyle(color: Colors.white)),
+              title: Text('WhatsApp & Evolution', style: TextStyle(color: itemTextColor)),
               selected: _currentSectionIndex == 7,
               onTap: () {
                 setState(() => _currentSectionIndex = 7);
@@ -1200,7 +1218,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.psychology_rounded, color: Color(0xFF818CF8)),
-              title: const Text('Custos IA & Gemini', style: TextStyle(color: Colors.white)),
+              title: Text('Custos IA & Gemini', style: TextStyle(color: itemTextColor)),
               selected: _currentSectionIndex == 8,
               onTap: () {
                 setState(() => _currentSectionIndex = 8);
@@ -1209,7 +1227,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.calculate_rounded, color: Color(0xFF10B981)),
-              title: const Text('Simulador & Margem', style: TextStyle(color: Colors.white)),
+              title: Text('Simulador & Margem', style: TextStyle(color: itemTextColor)),
               selected: _currentSectionIndex == 9,
               onTap: () {
                 setState(() => _currentSectionIndex = 9);
@@ -1218,7 +1236,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.sell_rounded, color: Color(0xFF818CF8)),
-              title: const Text('Preços & Planos SaaS', style: TextStyle(color: Colors.white)),
+              title: Text('Preços & Planos SaaS', style: TextStyle(color: itemTextColor)),
               selected: _currentSectionIndex == 10,
               onTap: () {
                 setState(() => _currentSectionIndex = 10);
@@ -1227,17 +1245,17 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.filter_alt_rounded, color: Color(0xFF818CF8)),
-              title: const Text('Funil Público & Afiliados', style: TextStyle(color: Colors.white)),
+              title: Text('Funil Público & Afiliados', style: TextStyle(color: itemTextColor)),
               selected: _currentSectionIndex == 11,
               onTap: () {
                 setState(() => _currentSectionIndex = 11);
                 Navigator.pop(context);
               },
             ),
-            const Divider(color: Color(0xFF1F2937)),
+            Divider(color: drawerDivider),
             ListTile(
               leading: const Icon(Icons.table_chart_rounded, color: Color(0xFFF59E0B)),
-              title: const Text('Explorador de Banco', style: TextStyle(color: Colors.white)),
+              title: Text('Explorador de Banco', style: TextStyle(color: itemTextColor)),
               onTap: () {
                 Navigator.pop(context);
                 _openDatabaseExplorer();
@@ -1245,7 +1263,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.sync_problem_rounded, color: Color(0xFFF59E0B)),
-              title: const Text('Reprocessar Webhook', style: TextStyle(color: Colors.white)),
+              title: Text('Reprocessar Webhook', style: TextStyle(color: itemTextColor)),
               onTap: () {
                 Navigator.pop(context);
                 _openWebhookReprocess();
@@ -1253,7 +1271,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.visibility_rounded, color: Color(0xFFF59E0B)),
-              title: const Text('Modo Espelho / Omni-Search', style: TextStyle(color: Colors.white)),
+              title: Text('Modo Espelho / Omni-Search', style: TextStyle(color: itemTextColor)),
               onTap: () {
                 Navigator.pop(context);
                 _openOmniSearch();
@@ -1262,11 +1280,11 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                 ],
               ),
             ),
-            const Divider(color: Color(0xFF1F2937), height: 1),
+            Divider(color: drawerDivider, height: 1),
             const AppVersionFooter(userRole: 'admin', padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
             ListTile(
               leading: const Icon(Icons.exit_to_app_rounded, color: Colors.redAccent),
-              title: const Text('Voltar ao App', style: TextStyle(color: Colors.redAccent)),
+              title: Text('Voltar ao App', style: TextStyle(color: Colors.redAccent)),
               onTap: () {
                 Navigator.pop(context);
                 widget.onExitAdmin();
