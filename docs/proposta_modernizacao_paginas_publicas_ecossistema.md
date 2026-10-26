@@ -310,9 +310,9 @@ flowchart LR
 - [x] **Bloco 2.2 — Matriz Comparativa Visual (Planilha PDF vs Mr. Coach AI)**:
   - *Arquivo principal:* `mobile/lib/features/landing/b2b_landing_screen.dart`
   - *Entrega:* Grid Bento comparativo 2x3 simétrico One UI 7 destacando em verde e vermelho a diferença entre uma planilha PDF morta vs. acompanhamento inteligente com IA, feedback de dor/substituição de aparelhos, cobrança com split 95%/5% e callout de retenção de 85%. *(Concluído)*
-- [ ] **Bloco 2.3 — Diretório Nacional de Coaches 2.0 (`public_trainer_directory_screen.dart`)**:
+- [x] **Bloco 2.3 — Diretório Nacional de Coaches 2.0 (`public_trainer_directory_screen.dart`)**:
   - *Arquivo principal:* `mobile/lib/features/landing/public_trainer_directory_screen.dart`
-  - *Entrega:* Filtros dinâmicos por especialidade clínica/biomecânica (hipertrofia, emagrecimento, reabilitação lombar/ombro), localização e selo CREF, com botão direto para a vitrine `/p/{username}`.
+  - *Entrega:* Filtros dinâmicos por especialidade clínica/biomecânica (hipertrofia, emagrecimento, reabilitação lombar/ombro), localização e toggle de selo CREF, visual One UI 7, dados de autoridade e botão de contratação direta para `/p/{username}`. *(Concluído)*
 
 #### **PILAR 3: A Máquina Viral do Mr. Coach (K-Factor & SEO)**
 - [ ] **Bloco 3.1 — Gerador de Stories Share Cards 1080×1920 (Instagram/TikTok)**:
