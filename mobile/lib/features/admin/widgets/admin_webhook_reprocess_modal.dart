@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:personal_ia/core/widgets/meta_components.dart';
 import '../services/admin_data_service.dart';
 
 /// Modal para teste, auditoria e reprocessamento manual de Webhooks Asaas com idempotência
@@ -70,6 +71,17 @@ class _AdminWebhookReprocessModalState extends State<AdminWebhookReprocessModal>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = MetaColors.isDark(context);
+    final cardBg = isDark ? const Color(0xFF111827) : Colors.white;
+    final borderCol = isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0);
+    final controlBg = isDark ? const Color(0xFF1F2937) : const Color(0xFFF1F5F9);
+    final controlBorder = isDark ? const Color(0xFF374151) : const Color(0xFFCBD5E1);
+    final textPrimary = isDark ? Colors.white : const Color(0xFF0F172A);
+    final textSecondary = isDark ? Colors.grey : const Color(0xFF64748B);
+    final textLabel = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF475569);
+    final dividerCol = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
+    final codeBg = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
+    final codeText = isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7);
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 650, maxHeight: 680),
@@ -78,9 +90,9 @@ class _AdminWebhookReprocessModalState extends State<AdminWebhookReprocessModal>
           child: Container(
             margin: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF111827),
+              color: cardBg,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFF374151), width: 1.2),
+              border: Border.all(color: borderCol, width: 1.2),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.8),
@@ -106,29 +118,29 @@ class _AdminWebhookReprocessModalState extends State<AdminWebhookReprocessModal>
                         child: const Icon(Icons.bolt_rounded, color: Color(0xFFF472B6), size: 22),
                       ),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'Reprocessamento de Webhook Asaas',
-                              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                              style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                             Text(
                               'Disparo atômico de eventos com validação de idempotência e lease',
-                              style: TextStyle(color: Colors.grey, fontSize: 12),
+                              style: TextStyle(color: textSecondary, fontSize: 12),
                             ),
                           ],
                         ),
                       ),
                       IconButton(
                         onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close_rounded, color: Colors.grey),
+                        icon: Icon(Icons.close_rounded, color: textSecondary),
                       ),
                     ],
                   ),
                 ),
-                const Divider(color: Color(0xFF1F2937), height: 1),
+                Divider(color: dividerCol, height: 1),
 
                 // Form Fields
                 Expanded(
@@ -137,24 +149,24 @@ class _AdminWebhookReprocessModalState extends State<AdminWebhookReprocessModal>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'EVENTO ASAAS',
-                          style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: textLabel, fontSize: 11, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 6),
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1F2937),
+                            color: controlBg,
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFF374151)),
+                            border: Border.all(color: controlBorder),
                           ),
                           child: DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
                               value: _selectedEvent,
-                              dropdownColor: const Color(0xFF1F2937),
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                              dropdownColor: cardBg,
+                              style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 13),
                               items: _events
                                   .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                                   .toList(),
@@ -166,19 +178,19 @@ class _AdminWebhookReprocessModalState extends State<AdminWebhookReprocessModal>
                         ),
                         const SizedBox(height: 14),
 
-                        const Text(
+                        Text(
                           'PAYMENT ID',
-                          style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: textLabel, fontSize: 11, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 6),
                         TextField(
                           controller: _paymentIdCtrl,
-                          style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
+                          style: TextStyle(color: textPrimary, fontSize: 13, fontFamily: 'monospace'),
                           decoration: InputDecoration(
                             filled: true,
-                            fillColor: const Color(0xFF1F2937),
+                            fillColor: controlBg,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: isDark ? BorderSide.none : BorderSide(color: controlBorder)),
                           ),
                         ),
                         const SizedBox(height: 14),
@@ -189,19 +201,19 @@ class _AdminWebhookReprocessModalState extends State<AdminWebhookReprocessModal>
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'CUSTOMER ID',
-                                    style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold),
+                                    style: TextStyle(color: textLabel, fontSize: 11, fontWeight: FontWeight.bold),
                                   ),
                                   const SizedBox(height: 6),
                                   TextField(
                                     controller: _customerIdCtrl,
-                                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                                    style: TextStyle(color: textPrimary, fontSize: 13),
                                     decoration: InputDecoration(
                                       filled: true,
-                                      fillColor: const Color(0xFF1F2937),
+                                      fillColor: controlBg,
                                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: isDark ? BorderSide.none : BorderSide(color: controlBorder)),
                                     ),
                                   ),
                                 ],
@@ -212,20 +224,20 @@ class _AdminWebhookReprocessModalState extends State<AdminWebhookReprocessModal>
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'VALOR (R\$)',
-                                    style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold),
+                                    style: TextStyle(color: textLabel, fontSize: 11, fontWeight: FontWeight.bold),
                                   ),
                                   const SizedBox(height: 6),
                                   TextField(
                                     controller: _valueCtrl,
                                     keyboardType: TextInputType.number,
-                                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                                    style: TextStyle(color: textPrimary, fontSize: 13),
                                     decoration: InputDecoration(
                                       filled: true,
-                                      fillColor: const Color(0xFF1F2937),
+                                      fillColor: controlBg,
                                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: isDark ? BorderSide.none : BorderSide(color: controlBorder)),
                                     ),
                                   ),
                                 ],
@@ -262,7 +274,7 @@ class _AdminWebhookReprocessModalState extends State<AdminWebhookReprocessModal>
                           Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF0F172A),
+                              color: codeBg,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: _lastResult!.success ? const Color(0xFF10B981) : Colors.redAccent,
@@ -291,14 +303,14 @@ class _AdminWebhookReprocessModalState extends State<AdminWebhookReprocessModal>
                                     const Spacer(),
                                     Text(
                                       '${_lastResult!.durationMs}ms • HTTP ${_lastResult!.statusCode}',
-                                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                                      style: TextStyle(color: textSecondary, fontSize: 11),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 8),
                                 SelectableText(
                                   _lastResult!.responseBody,
-                                  style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 11.5, fontFamily: 'monospace'),
+                                  style: TextStyle(color: codeText, fontSize: 11.5, fontFamily: 'monospace'),
                                 ),
                               ],
                             ),

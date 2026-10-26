@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:personal_ia/core/widgets/meta_components.dart';
 import '../services/admin_data_service.dart';
 
 /// Modal estilo Command Palette (Ctrl+K) para o Mission Control do Admin
@@ -89,6 +90,15 @@ class _AdminOmniSearchModalState extends State<AdminOmniSearchModal> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = MetaColors.isDark(context);
+    final cardBg = isDark ? const Color(0xFF111827) : Colors.white;
+    final borderCol = isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0);
+    final controlBg = isDark ? const Color(0xFF1F2937) : const Color(0xFFF1F5F9);
+    final controlBorder = isDark ? const Color(0xFF374151) : const Color(0xFFCBD5E1);
+    final textPrimary = isDark ? Colors.white : const Color(0xFF0F172A);
+    final textSecondary = isDark ? Colors.grey : const Color(0xFF64748B);
+    final textMuted = isDark ? Colors.grey.shade400 : const Color(0xFF94A3B8);
+    final dividerCol = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
     final cleanQ = _query.trim().toLowerCase();
 
     // Filtra Seções
@@ -115,7 +125,7 @@ class _AdminOmniSearchModalState extends State<AdminOmniSearchModal> {
           margin: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFF374151), width: 1.2),
+            border: Border.all(color: borderCol, width: 1.2),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.8),
@@ -125,7 +135,7 @@ class _AdminOmniSearchModalState extends State<AdminOmniSearchModal> {
             ],
           ),
           child: Material(
-            color: const Color(0xFF111827),
+            color: cardBg,
             borderRadius: BorderRadius.circular(20),
             clipBehavior: Clip.antiAlias,
             child: Column(
@@ -142,10 +152,10 @@ class _AdminOmniSearchModalState extends State<AdminOmniSearchModal> {
                         child: TextField(
                           controller: _searchCtrl,
                           autofocus: true,
-                          style: const TextStyle(color: Colors.white, fontSize: 16),
+                          style: TextStyle(color: textPrimary, fontSize: 16),
                           decoration: InputDecoration(
                             hintText: 'Buscar telas, alunos, comandos (ou digite ?)...',
-                            hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                            hintStyle: TextStyle(color: textMuted, fontSize: 14),
                             border: InputBorder.none,
                             isDense: true,
                           ),
@@ -155,19 +165,19 @@ class _AdminOmniSearchModalState extends State<AdminOmniSearchModal> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1F2937),
+                          color: controlBg,
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFF374151)),
+                          border: Border.all(color: controlBorder),
                         ),
-                        child: const Text(
+                        child: Text(
                           'ESC',
-                          style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: textSecondary, fontSize: 11, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Divider(color: Color(0xFF1F2937), height: 1),
+                Divider(color: dividerCol, height: 1),
                 if (_isLoadingUsers)
                   const LinearProgressIndicator(
                     minHeight: 2,
@@ -246,7 +256,7 @@ class _AdminOmniSearchModalState extends State<AdminOmniSearchModal> {
                 ),
 
                 // Rodapé com atalhos de teclado
-                const Divider(color: Color(0xFF1F2937), height: 1),
+                Divider(color: dividerCol, height: 1),
                 if (_isLoadingUsers)
                   const LinearProgressIndicator(
                     minHeight: 2,
@@ -257,19 +267,23 @@ class _AdminOmniSearchModalState extends State<AdminOmniSearchModal> {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   child: Row(
                     children: [
-                      const Icon(Icons.keyboard_outlined, size: 14, color: Colors.grey),
+                      Icon(Icons.keyboard_outlined, size: 14, color: textSecondary),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
                           'Navegue com setas ou toque para selecionar',
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: Colors.grey.shade400, fontSize: 11),
+                          style: TextStyle(color: textMuted, fontSize: 11),
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Text(
+                      Text(
                         'Ctrl + K',
-                        style: TextStyle(color: Color(0xFF818CF8), fontSize: 11, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -283,12 +297,13 @@ class _AdminOmniSearchModalState extends State<AdminOmniSearchModal> {
   }
 
   Widget _buildCategoryHeader(String title) {
+    final isDark = MetaColors.isDark(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
       child: Text(
         title,
-        style: const TextStyle(
-          color: Color(0xFF9CA3AF),
+        style: TextStyle(
+          color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF64748B),
           fontSize: 10.5,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.8,
@@ -305,6 +320,7 @@ class _AdminOmniSearchModalState extends State<AdminOmniSearchModal> {
     required Color badgeColor,
     required VoidCallback onTap,
   }) {
+    final isDark = MetaColors.isDark(context);
     return ListTile(
       dense: true,
       leading: Container(
@@ -317,11 +333,11 @@ class _AdminOmniSearchModalState extends State<AdminOmniSearchModal> {
       ),
       title: Text(
         title,
-        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+        style: TextStyle(color: isDark ? Colors.white : const Color(0xFF0F172A), fontSize: 13, fontWeight: FontWeight.bold),
       ),
       subtitle: Text(
         subtitle,
-        style: TextStyle(color: Colors.grey.shade400, fontSize: 11),
+        style: TextStyle(color: isDark ? Colors.grey.shade400 : const Color(0xFF64748B), fontSize: 11),
       ),
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -340,6 +356,7 @@ class _AdminOmniSearchModalState extends State<AdminOmniSearchModal> {
   }
 
   Widget _buildSectionTile(Map<String, dynamic> section) {
+    final isDark = MetaColors.isDark(context);
     final idx = section['index'] as int;
     final title = section['title'] as String;
     final icon = section['icon'] as IconData;
@@ -350,24 +367,28 @@ class _AdminOmniSearchModalState extends State<AdminOmniSearchModal> {
       leading: Container(
         padding: const EdgeInsets.all(7),
         decoration: BoxDecoration(
-          color: const Color(0xFF1F2937),
+          color: isDark ? const Color(0xFF1F2937) : const Color(0xFFEEF2FF),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, color: const Color(0xFF818CF8), size: 18),
       ),
       title: Text(
         title,
-        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+        style: TextStyle(color: isDark ? Colors.white : const Color(0xFF0F172A), fontSize: 13, fontWeight: FontWeight.w600),
       ),
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
-          color: const Color(0xFF1F2937),
+          color: isDark ? const Color(0xFF1F2937) : const Color(0xFFEEF2FF),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
           badge,
-          style: const TextStyle(color: Color(0xFF818CF8), fontSize: 9.5, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5),
+            fontSize: 9.5,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
       onTap: () {
@@ -378,6 +399,7 @@ class _AdminOmniSearchModalState extends State<AdminOmniSearchModal> {
   }
 
   Widget _buildUserTile(AdminUserProfile user) {
+    final isDark = MetaColors.isDark(context);
     final isTrainer = user.role == 'trainer';
     final color = isTrainer ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
 
@@ -393,13 +415,13 @@ class _AdminOmniSearchModalState extends State<AdminOmniSearchModal> {
       ),
       title: Text(
         user.name,
-        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+        style: TextStyle(color: isDark ? Colors.white : const Color(0xFF0F172A), fontSize: 13, fontWeight: FontWeight.bold),
       ),
       subtitle: Text(
         '${user.email ?? "Sem email"} • ${user.role.toUpperCase()}',
-        style: TextStyle(color: Colors.grey.shade400, fontSize: 11),
+        style: TextStyle(color: isDark ? Colors.grey.shade400 : const Color(0xFF64748B), fontSize: 11),
       ),
-      trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.grey, size: 12),
+      trailing: Icon(Icons.arrow_forward_ios_rounded, color: isDark ? Colors.grey : const Color(0xFF94A3B8), size: 12),
       onTap: () {
         Navigator.pop(context);
         // Navega para aba de usuários

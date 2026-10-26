@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:personal_ia/core/widgets/meta_components.dart';
 import '../services/admin_data_service.dart';
 
 /// Modal seguro para exploração e auditoria de tabelas do banco de dados (Supabase / Postgres)
@@ -60,11 +61,12 @@ class _AdminDatabaseExplorerModalState extends State<AdminDatabaseExplorerModal>
 
   void _showRowDetails(Map<String, dynamic> row) {
     HapticFeedback.selectionClick();
+    final isDark = MetaColors.isDark(context);
     final jsonStr = const JsonEncoder.withIndent('  ').convert(row);
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
+        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
@@ -72,7 +74,11 @@ class _AdminDatabaseExplorerModalState extends State<AdminDatabaseExplorerModal>
             const SizedBox(width: 8),
             Text(
               'Registro ($_selectedTable)',
-              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
@@ -81,15 +87,15 @@ class _AdminDatabaseExplorerModalState extends State<AdminDatabaseExplorerModal>
           constraints: const BoxConstraints(maxHeight: 400),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF0F172A),
+            color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFF334155)),
+            border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
           ),
           child: SingleChildScrollView(
             child: SelectableText(
               jsonStr,
-              style: const TextStyle(
-                color: Color(0xFF38BDF8),
+              style: TextStyle(
+                color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
                 fontSize: 12,
                 fontFamily: 'monospace',
               ),
@@ -126,6 +132,15 @@ class _AdminDatabaseExplorerModalState extends State<AdminDatabaseExplorerModal>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = MetaColors.isDark(context);
+    final cardBg = isDark ? const Color(0xFF111827) : Colors.white;
+    final borderCol = isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0);
+    final controlBg = isDark ? const Color(0xFF1F2937) : const Color(0xFFF1F5F9);
+    final controlBorder = isDark ? const Color(0xFF374151) : const Color(0xFFCBD5E1);
+    final textPrimary = isDark ? Colors.white : const Color(0xFF0F172A);
+    final textSecondary = isDark ? Colors.grey : const Color(0xFF64748B);
+    final textMuted = isDark ? Colors.grey.shade400 : const Color(0xFF94A3B8);
+    final dividerCol = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 880, maxHeight: 720),
@@ -134,9 +149,9 @@ class _AdminDatabaseExplorerModalState extends State<AdminDatabaseExplorerModal>
           child: Container(
             margin: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF111827),
+              color: cardBg,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFF374151), width: 1.2),
+              border: Border.all(color: borderCol, width: 1.2),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.8),
@@ -162,29 +177,29 @@ class _AdminDatabaseExplorerModalState extends State<AdminDatabaseExplorerModal>
                         child: const Icon(Icons.storage_rounded, color: Color(0xFF818CF8), size: 22),
                       ),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'Explorador Seguro de Banco de Dados',
-                              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                              style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                             Text(
                               'Consulta somente leitura de tabelas operacionais do Supabase',
-                              style: TextStyle(color: Colors.grey, fontSize: 12),
+                              style: TextStyle(color: textSecondary, fontSize: 12),
                             ),
                           ],
                         ),
                       ),
                       IconButton(
                         onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close_rounded, color: Colors.grey),
+                        icon: Icon(Icons.close_rounded, color: textSecondary),
                       ),
                     ],
                   ),
                 ),
-                const Divider(color: Color(0xFF1F2937), height: 1),
+                Divider(color: dividerCol, height: 1),
 
                 // Controls Bar: Table Selector + Search + Refresh
                 Padding(
@@ -195,15 +210,15 @@ class _AdminDatabaseExplorerModalState extends State<AdminDatabaseExplorerModal>
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1F2937),
+                          color: controlBg,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFF374151)),
+                          border: Border.all(color: controlBorder),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
                             value: _selectedTable,
-                            dropdownColor: const Color(0xFF1F2937),
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                            dropdownColor: cardBg,
+                            style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 13),
                             icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF818CF8)),
                             items: _tables.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                             onChanged: (val) {
@@ -224,17 +239,17 @@ class _AdminDatabaseExplorerModalState extends State<AdminDatabaseExplorerModal>
                       Expanded(
                         child: TextField(
                           controller: _searchCtrl,
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                          style: TextStyle(color: textPrimary, fontSize: 13),
                           decoration: InputDecoration(
                             hintText: 'Filtrar por ID, email ou texto...',
-                            hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-                            prefixIcon: const Icon(Icons.filter_list_rounded, color: Colors.grey, size: 18),
+                            hintStyle: TextStyle(color: textMuted, fontSize: 12),
+                            prefixIcon: Icon(Icons.filter_list_rounded, color: textSecondary, size: 18),
                             filled: true,
-                            fillColor: const Color(0xFF1F2937),
+                            fillColor: controlBg,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide.none,
+                              borderSide: isDark ? BorderSide.none : BorderSide(color: controlBorder),
                             ),
                           ),
                           onSubmitted: (_) {
@@ -262,23 +277,23 @@ class _AdminDatabaseExplorerModalState extends State<AdminDatabaseExplorerModal>
                           ? Center(
                               child: Text(
                                 'Nenhum registro encontrado na tabela "$_selectedTable".',
-                                style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                                style: TextStyle(color: textMuted, fontSize: 13),
                               ),
                             )
                           : SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
                               child: SingleChildScrollView(
                                 child: DataTable(
-                                  headingRowColor: WidgetStateProperty.all(const Color(0xFF1F2937)),
+                                  headingRowColor: WidgetStateProperty.all(controlBg),
                                   dataRowMinHeight: 44,
                                   dataRowMaxHeight: 52,
                                   columns: [
-                                    const DataColumn(label: Text('AÇÕES', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
+                                    DataColumn(label: Text('AÇÕES', style: TextStyle(color: textSecondary, fontWeight: FontWeight.bold))),
                                     ..._data!.columns.take(7).map(
                                       (col) => DataColumn(
                                         label: Text(
                                           col.toUpperCase(),
-                                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
+                                          style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 11),
                                         ),
                                       ),
                                     ),
@@ -299,7 +314,7 @@ class _AdminDatabaseExplorerModalState extends State<AdminDatabaseExplorerModal>
                                             Text(
                                               str.length > 25 ? '${str.substring(0, 25)}...' : str,
                                               style: TextStyle(
-                                                color: val == null ? Colors.grey : Colors.white70,
+                                                color: val == null ? textMuted : (isDark ? Colors.white70 : const Color(0xFF334155)),
                                                 fontSize: 12,
                                                 fontFamily: 'monospace',
                                               ),
@@ -315,14 +330,14 @@ class _AdminDatabaseExplorerModalState extends State<AdminDatabaseExplorerModal>
                 ),
 
                 // Footer with Pagination & Count
-                const Divider(color: Color(0xFF1F2937), height: 1),
+                Divider(color: dividerCol, height: 1),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   child: Row(
                     children: [
                       Text(
                         'Total aproximado: ${_data?.totalCount ?? 0} registros',
-                        style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                        style: TextStyle(color: textMuted, fontSize: 12),
                       ),
                       const Spacer(),
                       IconButton(
@@ -332,11 +347,11 @@ class _AdminDatabaseExplorerModalState extends State<AdminDatabaseExplorerModal>
                                 _loadTableData();
                               }
                             : null,
-                        icon: const Icon(Icons.chevron_left_rounded, color: Colors.white),
+                        icon: Icon(Icons.chevron_left_rounded, color: textPrimary),
                       ),
                       Text(
                         'Página ${(_offset / _limit).floor() + 1}',
-                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: textPrimary, fontSize: 12, fontWeight: FontWeight.bold),
                       ),
                       IconButton(
                         onPressed: (_data != null && _data!.rows.length == _limit)
@@ -345,7 +360,7 @@ class _AdminDatabaseExplorerModalState extends State<AdminDatabaseExplorerModal>
                                 _loadTableData();
                               }
                             : null,
-                        icon: const Icon(Icons.chevron_right_rounded, color: Colors.white),
+                        icon: Icon(Icons.chevron_right_rounded, color: textPrimary),
                       ),
                     ],
                   ),
