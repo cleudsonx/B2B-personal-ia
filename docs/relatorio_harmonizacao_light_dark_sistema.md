@@ -70,5 +70,5 @@ final emeraldAccent = MetaColors.emerald;      // Emerald Brand
 - **Suíte Total do Aplicativo (`flutter test`):** **284/284 testes passaram com 100% de sucesso**.
 - **Testes de Contraste Vitrine e Assinatura (`trainer_vitrine_subscription_contrast_test.dart`):** **6/6 testes passaram (100%)**.
 - **Análise Estática (`dart analyze`):** 0 erros, 0 warnings nos arquivos modificados.
-- **Versão Atual do App:** `1.11.0+2026103089` (sincronizada no GitHub `origin/main`).
+- **Versão Atual do App:** `1.11.0+2026103090` (sincronizada no GitHub `origin/main`).
 

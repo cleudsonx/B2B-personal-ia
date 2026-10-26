@@ -1,4 +1,4 @@
-import 'dart:async';
+ï»¿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'meta_components.dart';
 
@@ -19,13 +19,13 @@ class _AIGenerationStepperState extends State<AIGenerationStepper>
 
   final List<Map<String, dynamic>> _steps = [
     {
-      'title': 'Considerando sua avaliação',
-      'detail': 'Levando em conta objetivos e restrições.',
+      'title': 'Considerando sua avaliaÃ§Ã£o',
+      'detail': 'Levando em conta objetivos e restriÃ§Ãµes.',
       'icon': Icons.health_and_safety_outlined,
     },
     {
-      'title': 'Equilibrando exercícios e volume',
-      'detail': 'Dosando estímulo e recuperação.',
+      'title': 'Equilibrando exercÃ­cios e volume',
+      'detail': 'Dosando estÃ­mulo e recuperaÃ§Ã£o.',
       'icon': Icons.fitness_center_rounded,
     },
     {
@@ -35,7 +35,7 @@ class _AIGenerationStepperState extends State<AIGenerationStepper>
     },
     {
       'title': 'Revisando sua ficha',
-      'detail': 'Conferindo os últimos detalhes.',
+      'detail': 'Conferindo os Ãºltimos detalhes.',
       'icon': Icons.verified_outlined,
     },
   ];
@@ -273,7 +273,7 @@ class _AIGenerationStepperState extends State<AIGenerationStepper>
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Seu treino está sendo preparado. Isso pode levar alguns instantes.',
+                  'Seu treino estÃ¡ sendo preparado. Isso pode levar alguns instantes.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: MetaColors.textSecondary,
