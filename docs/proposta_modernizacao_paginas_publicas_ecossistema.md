@@ -318,9 +318,9 @@ flowchart LR
 - [x] **Bloco 3.1 — Gerador de Stories Share Cards 1080×1920 (Instagram/TikTok)**:
   - *Arquivo principal:* `mobile/lib/core/widgets/workout_triumph_modal.dart` / `mobile/lib/features/client/active_workout_screen.dart`
   - *Entrega:* Modal de celebração pós-treino gerando imagem vertical estética para Stories (9:16) com Recorde Pessoal (PR) batido, fogo de ofensiva 🔥, QR Code da vitrine do personal `/p/{username}`, cópia de link de sticker e modo print imersivo. *(Concluído)*
-- [ ] **Bloco 3.2 — Meta Science Hub & Calculadoras SEO (`ai_news_screen.dart` / `/science`)**:
+- [x] **Bloco 3.2 — Meta Science Hub & Calculadoras SEO (`ai_news_screen.dart` / `/science`)**:
   - *Arquivo principal:* `mobile/lib/features/landing/ai_news_screen.dart`
-  - *Entrega:* Hub de ciência aplicada com calculadoras abertas de 1RM e volume muscular semanal, gerando tráfego orgânico via Google e OpenGraph previews.
+  - *Entrega:* Hub de ciência aplicada com calculadoras abertas de 1RM e volume muscular semanal, gerando tráfego orgânico via Google e OpenGraph previews. *(Concluído)*
 
 #### **PILAR 4: Shaipados Studio HQ — War Room Executivo Multi-SaaS (`/hq`)**
 - [ ] **Bloco 4.1 — Unificação do Shell Executivo `/hq` com Seletor Multi-SaaS**:

@@ -112,6 +112,9 @@ class B2BPersonalIaApp extends StatelessWidget {
       builder = (_) => TrainerPublicLandingScreen(username: segments[1]);
     } else if (uri.path == '/coaches' || uri.path == '/treinadores' || uri.path == '/prof') {
       builder = (_) => const PublicTrainerDirectoryScreen();
+    } else if (uri.path == '/science' || uri.path.startsWith('/science/')) {
+      final tab = segments.length >= 2 ? segments[1] : '1rm';
+      builder = (_) => AiNewsScreen(initialTab: tab);
     } else {
       switch (uri.path) {
         case '/':
@@ -121,7 +124,7 @@ class B2BPersonalIaApp extends StatelessWidget {
         case '/b2b':
           builder = (_) => const B2BLandingScreen();
         case '/ai':
-          builder = (_) => const AiNewsScreen();
+          builder = (_) => const AiNewsScreen(initialTab: 'articles');
         case '/demo':
           builder = (_) => const StudentDemoScreen();
         case '/trainer':
