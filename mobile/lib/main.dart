@@ -81,6 +81,12 @@ class B2BPersonalIaApp extends StatelessWidget {
       }
 
       final host = uri.host;
+      if (host.startsWith('hq.') || host.contains('hq')) {
+        return AdminShellScreen(
+          isHqMode: true,
+          onExitAdmin: () {},
+        );
+      }
       if (host.contains('app') || host.contains('localhost')) {
         return const AuthGate();
       }
@@ -160,8 +166,18 @@ class B2BPersonalIaApp extends StatelessWidget {
         case '/subscription':
           builder = (_) => const SubscriptionScreen();
         case '/hq':
+          builder = (adminCtx) => AdminShellScreen(
+                isHqMode: true,
+                onExitAdmin: () async {
+                  await AuthService.setActiveRole('trainer');
+                  if (adminCtx.mounted) {
+                    Navigator.pushReplacementNamed(adminCtx, '/');
+                  }
+                },
+              );
         case '/admin':
           builder = (adminCtx) => AdminShellScreen(
+                isHqMode: false,
                 onExitAdmin: () async {
                   await AuthService.setActiveRole('trainer');
                   if (adminCtx.mounted) {

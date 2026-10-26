@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import '../../core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import '../../core/utils/currency_pt_br_formatter.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/theme_toggle_button.dart';
 import '../../core/widgets/app_version_footer.dart';
@@ -24,19 +25,96 @@ import '../../main.dart';
 
 class AdminShellScreen extends StatefulWidget {
   final VoidCallback onExitAdmin;
+  final bool isHqMode;
 
   const AdminShellScreen({
     super.key,
     required this.onExitAdmin,
+    this.isHqMode = false,
   });
 
   @override
   State<AdminShellScreen> createState() => _AdminShellScreenState();
 }
 
+class _SaaSPortfolioItem {
+  final String id;
+  final String name;
+  final String category;
+  final String status;
+  final Color statusColor;
+  final IconData icon;
+  final double mrr;
+  final String description;
+
+  const _SaaSPortfolioItem({
+    required this.id,
+    required this.name,
+    required this.category,
+    required this.status,
+    required this.statusColor,
+    required this.icon,
+    required this.mrr,
+    required this.description,
+  });
+}
+
 class _AdminShellScreenState extends State<AdminShellScreen> {
   int _currentSectionIndex = 0;
   String? _mirrorRole; // 'client' ou 'trainer'
+  late bool _isHqView;
+  String _selectedSaaS = 'mr_coach';
+  String _currentRbacRole = 'CEO_FOUNDER';
+
+  static const List<_SaaSPortfolioItem> _portfolio = [
+    _SaaSPortfolioItem(
+      id: 'mr_coach',
+      name: 'Mr. Coach AI',
+      category: 'Flagship B2B/B2C Fitness',
+      status: 'PRODUÇÃO • 94% RETENÇÃO',
+      statusColor: MetaColors.emerald,
+      icon: Icons.fitness_center_rounded,
+      mrr: 48750.0,
+      description: 'Prescrição biomecânica inteligente, split Asaas 95/5 e retenção de alunos.',
+    ),
+    _SaaSPortfolioItem(
+      id: 'nutri_ia',
+      name: 'Nutri-IA Shaipados',
+      category: 'Nutrição Computacional',
+      status: 'INCUBAÇÃO • BETA Q1/27',
+      statusColor: Color(0xFF06B6D4),
+      icon: Icons.restaurant_rounded,
+      mrr: 0.0,
+      description: 'Planejamento de macros e cardápios dinâmicos integrados à rotina de treinos.',
+    ),
+    _SaaSPortfolioItem(
+      id: 'studio_box',
+      name: 'Studio Box Cloud',
+      category: 'Gestão CrossFit & Studios',
+      status: 'ROADMAP • PLANEJADO',
+      statusColor: Color(0xFFF59E0B),
+      icon: Icons.domain_rounded,
+      mrr: 0.0,
+      description: 'Controle de check-ins, WODs, planos recorrentes e faturamento de boxes.',
+    ),
+    _SaaSPortfolioItem(
+      id: 'shaipados_core',
+      name: 'Shaipados Hub Core',
+      category: 'Matriz Venture Builder & APIs',
+      status: 'INFRAESTRUTURA CENTRAL',
+      statusColor: Color(0xFF818CF8),
+      icon: Icons.hub_rounded,
+      mrr: 48750.0,
+      description: 'Serviços centrais: Evolution WhatsApp, FastAPI no Render, Supabase e Gateway Pix.',
+    ),
+  ];
+
+  static const Map<String, String> _rbacRoles = {
+    'CEO_FOUNDER': 'Nível 1 • CEO / Founder (Prof. Cleudson)',
+    'CFO_FINANCE': 'Nível 2 • CFO / Diretoria Financeira',
+    'CMO_GROWTH': 'Nível 3 • CMO / Growth & Marketing',
+    'CTO_SRE_SUPPORT': 'Nível 4 • CTO / SRE & Engenharia',
+  };
 
   void _openOmniSearch() {
     AdminOmniSearchModal.show(
@@ -66,6 +144,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
   @override
   void initState() {
     super.initState();
+    _isHqView = widget.isHqMode;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         AppVersionFooter.checkAndShowAutoModal(context, roleOverride: 'admin');
@@ -168,11 +247,11 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
               title: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('⚡', style: TextStyle(fontSize: 16)),
+                  Text(_isHqView ? '🏛️' : '⚡', style: const TextStyle(fontSize: 16)),
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(
-                      'Mr. Coach',
+                      _isHqView ? 'Shaipados HQ' : 'Mr. Coach',
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: textPrimary,
@@ -181,9 +260,36 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                       ),
                     ),
                   ),
+                  if (_isHqView) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+                      ),
+                      child: Text(
+                        _currentRbacRole.split('_').first,
+                        style: const TextStyle(
+                          color: Color(0xFFF59E0B),
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
               actions: [
+                IconButton(
+                  tooltip: _isHqView ? 'Alternar para Visão Operacional' : 'Alternar para Visão Executiva HQ',
+                  icon: Icon(
+                    _isHqView ? Icons.business_center_rounded : Icons.account_balance_rounded,
+                    color: const Color(0xFF818CF8),
+                  ),
+                  onPressed: () => setState(() => _isHqView = !_isHqView),
+                ),
                 const ThemeToggleButton(compact: true),
                 IconButton(
                   tooltip: 'Buscar comando (Ctrl+K)',
@@ -203,7 +309,12 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
         children: [
           if (isDesktop) _buildDesktopSidebar(),
           Expanded(
-            child: _buildCurrentSection(),
+            child: Column(
+              children: [
+                if (_isHqView) _buildHqTopBanner(isDark),
+                Expanded(child: _buildCurrentSection()),
+              ],
+            ),
           ),
         ],
       ),
@@ -296,13 +407,330 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
     }
   }
 
+  Widget _buildHqMetricPill(String label, String value, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '$label: ',
+          style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10.5, fontWeight: FontWeight.w700),
+        ),
+        Text(
+          value,
+          style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w900),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHqTopBanner(bool isDark) {
+    final currentSaaS = _portfolio.firstWhere(
+      (s) => s.id == _selectedSaaS,
+      orElse: () => _portfolio.first,
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F172A) : Colors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+          ),
+        ),
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1400),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Linha 1: Contexto do SaaS selecionado & Role
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: currentSaaS.statusColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(currentSaaS.icon, size: 16, color: currentSaaS.statusColor),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'PORTFÓLIO: ${currentSaaS.name.toUpperCase()}',
+                    style: TextStyle(
+                      color: currentSaaS.statusColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: currentSaaS.statusColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      currentSaaS.status,
+                      style: TextStyle(
+                        color: currentSaaS.statusColor,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  // Seletor dinâmico de RBAC
+                  PopupMenuButton<String>(
+                    tooltip: 'Alterar Nível de Permissão RBAC',
+                    initialValue: _currentRbacRole,
+                    onSelected: (role) => setState(() => _currentRbacRole = role),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.verified_user_rounded, size: 13, color: Color(0xFFF59E0B)),
+                          const SizedBox(width: 4),
+                          Text(
+                            _currentRbacRole,
+                            style: const TextStyle(
+                              color: Color(0xFFF59E0B),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const Icon(Icons.arrow_drop_down_rounded, size: 16, color: Color(0xFFF59E0B)),
+                        ],
+                      ),
+                    ),
+                    itemBuilder: (context) => _rbacRoles.entries.map((e) {
+                      return PopupMenuItem<String>(
+                        value: e.key,
+                        child: Text(
+                          e.value,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: _currentRbacRole == e.key ? FontWeight.w900 : FontWeight.w600,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // Linha 2: Big Numbers Consolidados da Venture & Health Bar
+              Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  _buildHqMetricPill('MRR CONSOLIDADO', CurrencyPtBrFormatter.format(48750.0), MetaColors.emerald),
+                  _buildHqMetricPill('ARR PROJETADO', CurrencyPtBrFormatter.format(585000.0), const Color(0xFF38BDF8)),
+                  _buildHqMetricPill('SPLIT 5% TAKE', CurrencyPtBrFormatter.format(2437.5), const Color(0xFF818CF8)),
+                  _buildHqMetricPill('CHURN', '2.1% /mês', const Color(0xFF94A3B8)),
+                  _buildHqMetricPill('NRR', '118%', MetaColors.emerald),
+
+                  // Health checks
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.circle, size: 7, color: MetaColors.emerald),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Render: 200 OK (140ms) • Supabase: 99.98% • WhatsApp: 3 Instâncias • Gemini: Ativo',
+                          style: TextStyle(
+                            color: isDark ? Colors.white70 : const Color(0xFF475569),
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSidebarHeader(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: _isHqView
+                        ? [const Color(0xFF6366F1), const Color(0xFF38BDF8)]
+                        : [const Color(0xFF10B981), const Color(0xFF059669)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (_isHqView ? const Color(0xFF6366F1) : MetaColors.emerald).withValues(alpha: 0.4),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  _isHqView ? Icons.account_balance_rounded : Icons.shield_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _isHqView ? 'SHAIPADOS HQ' : 'MR. COACH',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    Text(
+                      _isHqView ? 'War Room Multi-SaaS' : 'Mission Control • Admin',
+                      style: TextStyle(
+                        color: _isHqView ? const Color(0xFF38BDF8) : const Color(0xFF818CF8),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Seletor Dropdown de Produto Multi-SaaS
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xFF090D16),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF1F2937)),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _selectedSaaS,
+                isExpanded: true,
+                dropdownColor: const Color(0xFF111827),
+                icon: const Icon(Icons.unfold_more_rounded, size: 16, color: Color(0xFF818CF8)),
+                onChanged: (val) {
+                  if (val != null) setState(() => _selectedSaaS = val);
+                },
+                items: _portfolio.map((s) {
+                  return DropdownMenuItem<String>(
+                    value: s.id,
+                    child: Row(
+                      children: [
+                        Icon(s.icon, size: 14, color: s.statusColor),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            s.name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Botão para alternar entre Visão HQ e Visão Operacional
+          InkWell(
+            onTap: () => setState(() => _isHqView = !_isHqView),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: _isHqView
+                    ? const Color(0xFF6366F1).withValues(alpha: 0.15)
+                    : const Color(0xFF10B981).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: _isHqView
+                      ? const Color(0xFF6366F1).withValues(alpha: 0.4)
+                      : MetaColors.emerald.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _isHqView ? Icons.toggle_on_rounded : Icons.toggle_off_rounded,
+                    size: 16,
+                    color: _isHqView ? const Color(0xFF818CF8) : MetaColors.emerald,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _isHqView ? 'Visão: Venture Builder HQ' : 'Visão: Operacional Mr. Coach',
+                      style: TextStyle(
+                        color: _isHqView ? const Color(0xFF818CF8) : MetaColors.emerald,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDesktopSidebar() {
     final isDark = MetaColors.isDark(context);
     final sidebarBg = isDark ? const Color(0xFF111827) : Colors.white;
     final sidebarBorder = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
     
     return Container(
-      width: 250,
+      width: 260,
       decoration: BoxDecoration(
         color: sidebarBg,
         border: Border(
@@ -312,52 +740,8 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Logo & Branding
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF6366F1),
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF6366F1).withValues(alpha: 0.4),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(Icons.shield_rounded, color: Colors.white, size: 20),
-                ),
-                const SizedBox(width: 12),
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'MR. COACH',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    Text(
-                      'Mission Control • Admin',
-                      style: TextStyle(
-                        color: Color(0xFF818CF8),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+          // Logo & Branding com Seletor Multi-SaaS
+          _buildSidebarHeader(isDark),
           const Divider(color: Color(0xFF1F2937), height: 1),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
@@ -400,128 +784,129 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
           ),
           const SizedBox(height: 6),
 
-          // Menu de Navegação
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Column(
-              children: [
-                _buildSidebarItem(
-                  index: 0,
-                  icon: Icons.insights_rounded,
-                  label: 'Pulse & Métricas',
-                  badge: 'LIVE',
-                ),
-                const SizedBox(height: 4),
-                _buildSidebarItem(
-                  index: 1,
-                  icon: Icons.people_alt_rounded,
-                  label: 'Usuários & Personals',
-                ),
-                const SizedBox(height: 4),
-                _buildSidebarItem(
-                  index: 2,
-                  icon: Icons.account_balance_wallet_rounded,
-                  label: 'Financeiro & Splits',
-                  badge: '5% TAKE',
-                ),
-                const SizedBox(height: 4),
-                _buildSidebarItem(
-                  index: 3,
-                  icon: Icons.fitness_center_rounded,
-                  label: 'Catálogo de Exercícios',
-                  badge: 'GLOBAL',
-                ),
-                const SizedBox(height: 4),
-                _buildSidebarItem(
-                  index: 4,
-                  icon: Icons.security_rounded,
-                  label: 'Auditoria & Telemetria',
-                  badge: 'LOGS',
-                ),
-                const SizedBox(height: 4),
-                _buildSidebarItem(
-                  index: 5,
-                  icon: Icons.campaign_rounded,
-                  label: 'Broadcast & Avisos',
-                  badge: 'PUSH',
-                ),
-                const SizedBox(height: 4),
-                _buildSidebarItem(
-                  index: 6,
-                  icon: Icons.radar_rounded,
-                  label: 'Retenção & Alunos 360°',
-                  badge: 'CHURN RADAR',
-                ),
-                const SizedBox(height: 4),
-                _buildSidebarItem(
-                  index: 7,
-                  icon: Icons.chat_rounded,
-                  label: 'WhatsApp & Evolution',
-                  badge: 'HEALTH',
-                ),
-                const SizedBox(height: 4),
-                _buildSidebarItem(
-                  index: 8,
-                  icon: Icons.psychology_rounded,
-                  label: 'Custos IA & Gemini',
-                  badge: 'TOKENS',
-                ),
-                const SizedBox(height: 4),
-                _buildSidebarItem(
-                  index: 9,
-                  icon: Icons.calculate_rounded,
-                  label: 'Simulador & Margem',
-                  badge: 'UNIT ECON',
-                ),
-                const SizedBox(height: 4),
-                _buildSidebarItem(
-                  index: 10,
-                  icon: Icons.sell_rounded,
-                  label: 'Preços & Planos SaaS',
-                  badge: 'PRICING',
-                ),
-                const SizedBox(height: 12),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: Row(
-                    children: [
-                      Text(
-                        'FERRAMENTAS GOD MODE',
-                        style: TextStyle(
-                          color: Color(0xFF6B7280),
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                    ],
+          // Menu de Navegação Rolável
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Column(
+                children: [
+                  _buildSidebarItem(
+                    index: 0,
+                    icon: Icons.insights_rounded,
+                    label: 'Pulse & Métricas',
+                    badge: 'LIVE',
                   ),
-                ),
-                _buildActionSidebarItem(
-                  icon: Icons.table_chart_rounded,
-                  label: 'Explorador de Banco',
-                  badge: 'SQL/VIEW',
-                  onTap: _openDatabaseExplorer,
-                ),
-                const SizedBox(height: 4),
-                _buildActionSidebarItem(
-                  icon: Icons.sync_problem_rounded,
-                  label: 'Reprocessar Webhook',
-                  badge: 'IDEMPOTENTE',
-                  onTap: _openWebhookReprocess,
-                ),
-                const SizedBox(height: 4),
-                _buildActionSidebarItem(
-                  icon: Icons.visibility_rounded,
-                  label: 'Modo Espelho (View As)',
-                  badge: 'ALUNO/COACH',
-                  onTap: _openOmniSearch,
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  _buildSidebarItem(
+                    index: 1,
+                    icon: Icons.people_alt_rounded,
+                    label: 'Usuários & Personals',
+                  ),
+                  const SizedBox(height: 4),
+                  _buildSidebarItem(
+                    index: 2,
+                    icon: Icons.account_balance_wallet_rounded,
+                    label: 'Financeiro & Splits',
+                    badge: '5% TAKE',
+                  ),
+                  const SizedBox(height: 4),
+                  _buildSidebarItem(
+                    index: 3,
+                    icon: Icons.fitness_center_rounded,
+                    label: 'Catálogo de Exercícios',
+                    badge: 'GLOBAL',
+                  ),
+                  const SizedBox(height: 4),
+                  _buildSidebarItem(
+                    index: 4,
+                    icon: Icons.security_rounded,
+                    label: 'Auditoria & Telemetria',
+                    badge: 'LOGS',
+                  ),
+                  const SizedBox(height: 4),
+                  _buildSidebarItem(
+                    index: 5,
+                    icon: Icons.campaign_rounded,
+                    label: 'Broadcast & Avisos',
+                    badge: 'PUSH',
+                  ),
+                  const SizedBox(height: 4),
+                  _buildSidebarItem(
+                    index: 6,
+                    icon: Icons.radar_rounded,
+                    label: 'Retenção & Alunos 360°',
+                    badge: 'CHURN RADAR',
+                  ),
+                  const SizedBox(height: 4),
+                  _buildSidebarItem(
+                    index: 7,
+                    icon: Icons.chat_rounded,
+                    label: 'WhatsApp & Evolution',
+                    badge: 'HEALTH',
+                  ),
+                  const SizedBox(height: 4),
+                  _buildSidebarItem(
+                    index: 8,
+                    icon: Icons.psychology_rounded,
+                    label: 'Custos IA & Gemini',
+                    badge: 'TOKENS',
+                  ),
+                  const SizedBox(height: 4),
+                  _buildSidebarItem(
+                    index: 9,
+                    icon: Icons.calculate_rounded,
+                    label: 'Simulador & Margem',
+                    badge: 'UNIT ECON',
+                  ),
+                  const SizedBox(height: 4),
+                  _buildSidebarItem(
+                    index: 10,
+                    icon: Icons.sell_rounded,
+                    label: 'Preços & Planos SaaS',
+                    badge: 'PRICING',
+                  ),
+                  const SizedBox(height: 12),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: Row(
+                      children: [
+                        Text(
+                          'FERRAMENTAS GOD MODE',
+                          style: TextStyle(
+                            color: Color(0xFF6B7280),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _buildActionSidebarItem(
+                    icon: Icons.table_chart_rounded,
+                    label: 'Explorador de Banco',
+                    badge: 'SQL/VIEW',
+                    onTap: _openDatabaseExplorer,
+                  ),
+                  const SizedBox(height: 4),
+                  _buildActionSidebarItem(
+                    icon: Icons.sync_problem_rounded,
+                    label: 'Reprocessar Webhook',
+                    badge: 'IDEMPOTENTE',
+                    onTap: _openWebhookReprocess,
+                  ),
+                  const SizedBox(height: 4),
+                  _buildActionSidebarItem(
+                    icon: Icons.visibility_rounded,
+                    label: 'Modo Espelho (View As)',
+                    badge: 'ALUNO/COACH',
+                    onTap: _openOmniSearch,
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
             ),
           ),
-
-          const Spacer(),
 
           // Rodapé do Sidebar: Voltar ao App
           Padding(
@@ -714,14 +1099,23 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
       child: SafeArea(
         child: Column(
           children: [
-            const ListTile(
-              leading: Icon(Icons.shield_rounded, color: Color(0xFF818CF8)),
-              title: Text('Mission Control', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              subtitle: Text('God Mode • Mr. Coach', style: TextStyle(color: Colors.grey, fontSize: 12)),
-            ),
-            const Divider(color: Color(0xFF1F2937)),
             ListTile(
-              leading: const Icon(Icons.insights_rounded, color: Color(0xFF818CF8)),
+              leading: Icon(_isHqView ? Icons.account_balance_rounded : Icons.shield_rounded, color: const Color(0xFF818CF8)),
+              title: Text(_isHqView ? 'Shaipados Studio HQ' : 'Mr. Coach Admin', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              subtitle: Text(_isHqView ? 'War Room Multi-SaaS • ${_currentRbacRole.split('_').first}' : 'Mission Control • God Mode', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              trailing: IconButton(
+                tooltip: 'Alternar Visão HQ / Operacional',
+                icon: Icon(_isHqView ? Icons.toggle_on_rounded : Icons.toggle_off_rounded, color: const Color(0xFF818CF8)),
+                onPressed: () => setState(() => _isHqView = !_isHqView),
+              ),
+            ),
+            const Divider(color: Color(0xFF1F2937), height: 1),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.insights_rounded, color: Color(0xFF818CF8)),
               title: const Text('Dashboard', style: TextStyle(color: Colors.white)),
               selected: _currentSectionIndex == 0,
               onTap: () {
@@ -844,7 +1238,10 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                 _openOmniSearch();
               },
             ),
-            const Spacer(),
+                ],
+              ),
+            ),
+            const Divider(color: Color(0xFF1F2937), height: 1),
             const AppVersionFooter(userRole: 'admin', padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
             ListTile(
               leading: const Icon(Icons.exit_to_app_rounded, color: Colors.redAccent),

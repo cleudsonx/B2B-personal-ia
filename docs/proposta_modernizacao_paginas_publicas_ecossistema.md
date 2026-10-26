@@ -323,9 +323,9 @@ flowchart LR
   - *Entrega:* Hub de ciência aplicada com calculadoras abertas de 1RM e volume muscular semanal, gerando tráfego orgânico via Google e OpenGraph previews. *(Concluído)*
 
 #### **PILAR 4: Shaipados Studio HQ — War Room Executivo Multi-SaaS (`/hq`)**
-- [ ] **Bloco 4.1 — Unificação do Shell Executivo `/hq` com Seletor Multi-SaaS**:
+- [x] **Bloco 4.1 — Unificação do Shell Executivo `/hq` com Seletor Multi-SaaS**:
   - *Arquivo principal:* `mobile/lib/features/admin/admin_shell_screen.dart` / `mobile/lib/main.dart`
-  - *Entrega:* Roteamento direto `/hq` com navegação para os produtos da Venture Builder, telemetria financeira em tempo real (MRR/ARR/Inadimplência) e proteção RBAC.
+  - *Entrega:* Roteamento direto `/hq` e `hq.*` com seletor multi-SaaS da Venture Builder (Mr. Coach AI, Nutri-IA Shaipados, Studio Box Cloud, Shaipados Hub Core), alternador de visão HQ/Operacional, banner cockpit com métricas consolidadas (MRR/ARR/Split 5% Take), live status da infraestrutura (Render, Supabase, WhatsApp, Gemini) e seletor RBAC. *(Concluído)*
 - [ ] **Bloco 4.2 — Dashboard Executivo de Funil Público & Afiliados**:
   - *Arquivo principal:* `mobile/lib/features/admin/tabs/public_funnel_tab.dart`
   - *Entrega:* Monitoramento de cliques nos simuladores de ROI, conversão de vitrines públicas `/p/{user}` e comissões automáticas de afiliados.
