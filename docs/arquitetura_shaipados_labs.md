@@ -61,9 +61,10 @@ Sempre que iniciar uma nova fase, os agentes são instanciados (via invoke_subag
 ---
 
 ## 5. Mantras de Desenvolvimento
-1.  **UTF-8 Sempre:** Todos os códigos são manipulados com proteção de encoding utf-8 para evitar quebra de caracteres (mojibake) em português (experiência prévia documentada em Outubro/2026).
-2.  **Zero Warnings:** A pipeline CI/CD rejeita códigos com warnings (ex: imports não usados). O código deve rodar liso no lutter analyze.
-3.  **No-Code Local:** Segredos e chaves de API nunca são commitados. Sempre dependemos do .env e de variáveis de ambiente injetadas no deploy (Supabase, Resend, Meta).
+1.  **Execução Atômica em Pequenos Blocos (AI-Lean Execution):** Padrão oficial adotado para as **Squads Galaxy e Lenovo**. Cada turno implementa estritamente 1 bloco autocontido, com teste imediato, commit e push síncrono. Isso poupa drasticamente as cotas de contexto dos modelos de IA e garante zero regressão.
+2.  **UTF-8 Sempre:** Todos os códigos são manipulados com proteção de encoding utf-8 para evitar quebra de caracteres (mojibake) em português (experiência prévia documentada em Outubro/2026).
+3.  **Zero Warnings:** A pipeline CI/CD rejeita códigos com warnings (ex: imports não usados). O código deve rodar liso no flutter analyze e pytest.
+4.  **No-Code Local:** Segredos e chaves de API nunca são commitados. Sempre dependemos do .env e de variáveis de ambiente injetadas no deploy (Supabase, Resend, Meta).
 
 *(Documento gerado pela Inteligência Artificial da Google Deepmind durante a transformação arquitetural para Venture Builder - 2026).*
 # Arquitetura Ventur Builder: Shaipados Labs

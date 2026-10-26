@@ -52,3 +52,17 @@ Para mantermos a excelência sem estourar o orçamento, definimos a seguinte pol
 | **Mateus & Leo (Front/UI)** | Iteração Rápida de Telas Flutter | **Gemini 3.8 Flash** | Velocidade absurda ("Fast") para refatoração constante de UI e ajustes de layout responsivo. |
 | **Thiago & Beto (QA/SRE)** | Leitura de Logs e Testes Repetitivos | **Gemini 3.8 Flash** | Tarefas de validação e CI/CD exigem velocidade e baixo custo, ideal para o motor Flash mais recente. |
 | **Laboratório / Pesquisa** | Testes Locais e Alternativas | **GPT-OSS 120B** | Usado sob demanda para não dependermos apenas de APIs proprietárias. |
+
+---
+
+## ⚡ Padrão Oficial de Engenharia: Execução Atômica em Pequenos Blocos por Solicitação (AI-Lean Execution Standard)
+
+> **Mandato Obrigatório:** Este padrão é a diretriz oficial e inegociável de desenvolvimento para o **Squad Galaxy** e para o **Squad Lenovo**. Qualquer desenvolvimento no ecossistema Mr. Coach / Shaipados Labs deve aderir a este protocolo.
+
+### 1. Princípios da Metodologia
+1. **Minimização da Janela de Contexto:** Cada solicitação opera com um contexto enxuto e cirúrgico. Reduz drasticamente o consumo de tokens/cota de LLM e elimina alucinações.
+2. **1 Bloco por Solicitação (Atomic Turns):** Cada turno desenvolve estritamente um único bloco autocontido de escopo reduzido (ex: uma função de serviço, um endpoint, ou um componente visual com sua regra).
+3. **Zero Regressão & Teste Contínuo:** Nenhum bloco é considerado concluído sem validação técnica imediata (`pytest` no backend e/ou `flutter analyze` no front-end).
+4. **Commit & Push Sincronizado por Bloco:** Cada bloco finalizado recebe um commit semântico com prefixo do módulo e é imediatamente sincronizado no GitHub (`git push origin main`), mantendo as estações Galaxy e Lenovo permanentemente alinhadas.
+5. **Rastreabilidade em Checklist:** Toda proposta ou especificação de módulo deve conter um roadmap fatiado em blocos atômicos numerados, atualizados com `[x]` a cada entrega.
+6. **Aprovação Passo a Passo do CEO:** A liderança humana avalia o resultado de cada bloco antes de autorizar o disparo do bloco seguinte.
