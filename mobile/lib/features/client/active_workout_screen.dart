@@ -1486,6 +1486,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           _workoutTitle.isNotEmpty ? _workoutTitle : 'Treino Concluído',
       trainerName: _trainerName,
       trainerPhone: _trainerPhone,
+      trainerCref: _trainerCref,
+      trainerUsername: _trainerName
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^a-z0-9]'), '_')
+          .replaceAll(RegExp(r'_+'), '_'),
       durationMin: minutes,
       totalVolumeKg: totalVolume,
       completedSets: totalSets > 0 ? totalSets : completedCount,

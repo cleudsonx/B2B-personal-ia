@@ -315,9 +315,9 @@ flowchart LR
   - *Entrega:* Filtros dinâmicos por especialidade clínica/biomecânica (hipertrofia, emagrecimento, reabilitação lombar/ombro), localização e toggle de selo CREF, visual One UI 7, dados de autoridade e botão de contratação direta para `/p/{username}`. *(Concluído)*
 
 #### **PILAR 3: A Máquina Viral do Mr. Coach (K-Factor & SEO)**
-- [ ] **Bloco 3.1 — Gerador de Stories Share Cards 1080×1920 (Instagram/TikTok)**:
-  - *Arquivo principal:* `mobile/lib/features/workout/presentation/screens/active_workout_screen.dart` ou widget dedicado
-  - *Entrega:* Modal de celebração pós-treino gerando imagem vertical estética para Stories com Recorde Pessoal (PR) batido, fogo de ofensiva 🔥, QR Code para a vitrine do personal e branding Mr. Coach.
+- [x] **Bloco 3.1 — Gerador de Stories Share Cards 1080×1920 (Instagram/TikTok)**:
+  - *Arquivo principal:* `mobile/lib/core/widgets/workout_triumph_modal.dart` / `mobile/lib/features/client/active_workout_screen.dart`
+  - *Entrega:* Modal de celebração pós-treino gerando imagem vertical estética para Stories (9:16) com Recorde Pessoal (PR) batido, fogo de ofensiva 🔥, QR Code da vitrine do personal `/p/{username}`, cópia de link de sticker e modo print imersivo. *(Concluído)*
 - [ ] **Bloco 3.2 — Meta Science Hub & Calculadoras SEO (`ai_news_screen.dart` / `/science`)**:
   - *Arquivo principal:* `mobile/lib/features/landing/ai_news_screen.dart`
   - *Entrega:* Hub de ciência aplicada com calculadoras abertas de 1RM e volume muscular semanal, gerando tráfego orgânico via Google e OpenGraph previews.
