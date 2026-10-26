@@ -1824,78 +1824,87 @@ class _BeforeAfterSplitCardState extends State<_BeforeAfterSplitCard> {
                         bottom: 0,
                         right: 0,
                         child: ClipRect(
-                          child: Container(
-                            color: isDark ? const Color(0xFF0D2517) : const Color(0xFFECFDF5),
-                            padding: const EdgeInsets.all(16),
-                            child: Align(
-                              alignment: Alignment.centerRight,
-                              child: SizedBox(
-                                width: totalWidth * 0.75,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                          decoration: BoxDecoration(
-                                            color: MetaColors.emerald.withValues(alpha: 0.15),
-                                            borderRadius: BorderRadius.circular(6),
-                                            border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
-                                          ),
-                                          child: const Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(Icons.verified_rounded, size: 12, color: MetaColors.emerald),
-                                              SizedBox(width: 4),
-                                              Text(
-                                                'DEPOIS',
-                                                style: TextStyle(
-                                                  color: MetaColors.emerald,
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w900,
-                                                  letterSpacing: 0.8,
+                          child: OverflowBox(
+                            alignment: Alignment.topRight,
+                            minWidth: totalWidth,
+                            maxWidth: totalWidth,
+                            minHeight: 190,
+                            maxHeight: 190,
+                            child: Container(
+                              width: totalWidth,
+                              height: 190,
+                              color: isDark ? const Color(0xFF0D2517) : const Color(0xFFECFDF5),
+                              padding: const EdgeInsets.all(16),
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: SizedBox(
+                                  width: totalWidth * 0.75,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: MetaColors.emerald.withValues(alpha: 0.15),
+                                              borderRadius: BorderRadius.circular(6),
+                                              border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
+                                            ),
+                                            child: const Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.verified_rounded, size: 12, color: MetaColors.emerald),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  'DEPOIS',
+                                                  style: TextStyle(
+                                                    color: MetaColors.emerald,
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w900,
+                                                    letterSpacing: 0.8,
+                                                  ),
                                                 ),
-                                              ),
-                                            ],
+                                              ],
+                                            ),
                                           ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        item.afterWeight,
+                                        style: TextStyle(
+                                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: -0.5,
                                         ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 10),
-                                    Text(
-                                      item.afterWeight,
-                                      style: TextStyle(
-                                        color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: -0.5,
+                                        textAlign: TextAlign.right,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      textAlign: TextAlign.right,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      '${item.metricLabel}:',
-                                      style: TextStyle(
-                                        color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary,
-                                        fontSize: 11,
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        '${item.metricLabel}:',
+                                        style: TextStyle(
+                                          color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary,
+                                          fontSize: 11,
+                                        ),
+                                        textAlign: TextAlign.right,
                                       ),
-                                      textAlign: TextAlign.right,
-                                    ),
-                                    Text(
-                                      item.afterMetric,
-                                      style: const TextStyle(
-                                        color: MetaColors.emerald,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
+                                      Text(
+                                        item.afterMetric,
+                                        style: const TextStyle(
+                                          color: MetaColors.emerald,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                        textAlign: TextAlign.right,
                                       ),
-                                      textAlign: TextAlign.right,
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
