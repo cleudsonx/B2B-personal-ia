@@ -34,6 +34,7 @@ Todos os problemas de "fundo pitch black forçado no modo claro", "texto branco 
 | **Fase 6** | **6.1** | `trainer_business_screen.dart` (Vitrine do Personal B2B) | Harmonização completa dos 6 modais inferiores (_showTipModal, _showCrefLockedModal, _showSubscriptionDetailsModal, _showAiAssistantModal, _showPublicShowcaseModal, _showWhatsAppIntegrationModal), cards de dicas, banners e links de vitrine. | `trainer_vitrine_subscription_contrast_test.dart` (6/6 - 100%) | `1.11.0+2026103089` |
 | **Fase 6** | **6.2** | `subscription_screen.dart` (Assinatura Mr. Coach & Checkout) | Cards de planos (Starter, Pro, Studio, Elite), toggle Mensal/Anual, accordion FAQ, BottomSheet de checkout completo com formulários de Cartão de Crédito e Pix, corrigindo texto invisível em inputs no modo claro. | `trainer_vitrine_subscription_contrast_test.dart` (6/6 - 100%) | `1.11.0+2026103089` |
 | **Fase 6** | **6.3** | `pix_payment_screen.dart` & `trainer_profile_setup_screen.dart` | Tela de instruções de pagamento via Pix com botões de atalho bancário e tela de setup da vitrine pública com contraste dinâmico de ícones e inputs. | `trainer_vitrine_subscription_contrast_test.dart` (6/6 - 100%) | `1.11.0+2026103089` |
+| **Fase 7** | **7.1** | `theme_controller.dart`, `thematic_watermarks.dart`, `thematic_editorial_card.dart` | Fundação dos Cards Editoriais One UI 7 / Samsung Health: enum de estilos (editorial3D, minimalist, lightPastel), 6 marcas d'água 3D volumétricas e componente mestre squircle. | `thematic_editorial_card_test.dart` (4/4 - 100%) | `1.11.0+2026103091` |
 
 ---
 
@@ -69,6 +70,7 @@ final emeraldAccent = MetaColors.emerald;      // Emerald Brand
 
 - **Suíte Total do Aplicativo (`flutter test`):** **284/284 testes passaram com 100% de sucesso**.
 - **Testes de Contraste Vitrine e Assinatura (`trainer_vitrine_subscription_contrast_test.dart`):** **6/6 testes passaram (100%)**.
+- **Testes dos Cards Editoriais One UI 7 (`thematic_editorial_card_test.dart`):** **4/4 testes passaram (100%)**.
 - **Análise Estática (`dart analyze`):** 0 erros, 0 warnings nos arquivos modificados.
-- **Versão Atual do App:** `1.11.0+2026103090` (sincronizada no GitHub `origin/main`).
+- **Versão Atual do App:** `1.11.0+2026103091` (sincronizada no GitHub `origin/main`).
 
