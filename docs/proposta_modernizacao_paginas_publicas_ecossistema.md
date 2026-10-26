@@ -299,9 +299,9 @@ flowchart LR
 - [x] **Bloco 1.3 — Vitrine Pública 2.0: Checkout Híbrido de Alta Conversão (Pix Asaas + WhatsApp CRM)**:
   - *Arquivo principal:* `mobile/lib/features/landing/trainer_public_landing_screen.dart`
   - *Entrega:* Card de planos com duplo canal de fechamento (Botão primário `Contratar Imediato (Pix / Cartão)` com split Asaas 95%/5% + Botão secundário `Tirar Dúvidas no WhatsApp` com contexto pré-preenchido), badges de garantia de 7 dias e vagas limitadas. *(Concluído)*
-- [ ] **Bloco 1.4 — Landing B2B (`b2b_landing_screen.dart`): Calculadora Interativa de Renda & ROI em R$**:
+- [x] **Bloco 1.4 — Landing B2B (`b2b_landing_screen.dart`): Calculadora Interativa de Renda & ROI em R$**:
   - *Arquivo principal:* `mobile/lib/features/landing/b2b_landing_screen.dart`
-  - *Entrega:* Simulador interativo com slider de número de alunos e mensalidade média em `R$` (`CurrencyPtBr`), calculando renda bruta mensal e provando retorno >60x sobre o custo de assinatura do Mr. Coach.
+  - *Entrega:* Simulador interativo com sliders dinâmicos de alunos e ticket médio em `CurrencyPtBr` (`R$`), presets rápidos de mercado, cálculo em tempo real de horas poupadas (~94%), demonstração de ROI e CTA direto para cadastro de treinador (`/professor/cadastro`). *(Concluído)*
 
 #### **PILAR 2: A Experiência do Aluno & Test-Drive Biomecânico (B2C)**
 - [ ] **Bloco 2.1 — Widget de Test-Drive Biomecânico Web Público**:

@@ -620,7 +620,7 @@ class _RoiCalculatorSectionState extends State<_RoiCalculatorSection> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: B2BLandingScreen._panel,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFF2E3E33)),
       ),
       child: Column(
@@ -640,7 +640,7 @@ class _RoiCalculatorSectionState extends State<_RoiCalculatorSection> {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
                   color: const Color(0xFF0B100D),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: B2BLandingScreen._green.withValues(alpha: 0.4)),
                 ),
                 child: Text(
@@ -684,7 +684,7 @@ class _RoiCalculatorSectionState extends State<_RoiCalculatorSection> {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
                   color: const Color(0xFF0B100D),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: B2BLandingScreen._green.withValues(alpha: 0.4)),
                 ),
                 child: Text(
@@ -723,10 +723,10 @@ class _RoiCalculatorSectionState extends State<_RoiCalculatorSection> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _buildPresetChip('Iniciante (15 alunos • R\$ 180)', 15, 180),
-              _buildPresetChip('Pro Ativo (30 alunos • R\$ 250)', 30, 250),
-              _buildPresetChip('Elite Coach (60 alunos • R\$ 350)', 60, 350),
-              _buildPresetChip('Assessoria (100 alunos • R\$ 400)', 100, 400),
+              _buildPresetChip('Iniciante (15 alunos • ${CurrencyPtBrFormatter.format(180)})', 15, 180),
+              _buildPresetChip('Pro Ativo (30 alunos • ${CurrencyPtBrFormatter.format(250)})', 30, 250),
+              _buildPresetChip('Elite Coach (60 alunos • ${CurrencyPtBrFormatter.format(350)})', 60, 350),
+              _buildPresetChip('Assessoria (100 alunos • ${CurrencyPtBrFormatter.format(400)})', 100, 400),
             ],
           ),
         ],
@@ -738,12 +738,12 @@ class _RoiCalculatorSectionState extends State<_RoiCalculatorSection> {
     final isSelected = (_students == students && _ticketPrice == price);
     return InkWell(
       onTap: () => _applyPreset(students, price),
-      borderRadius: BorderRadius.circular(5),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected ? B2BLandingScreen._green : const Color(0xFF1F2B23),
-          borderRadius: BorderRadius.circular(5),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected ? B2BLandingScreen._green : const Color(0xFF334539),
           ),
@@ -771,12 +771,12 @@ class _RoiCalculatorSectionState extends State<_RoiCalculatorSection> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: const Color(0xFF141F18),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: B2BLandingScreen._green.withValues(alpha: 0.35)),
         boxShadow: [
           BoxShadow(
-            color: B2BLandingScreen._green.withValues(alpha: 0.08),
-            blurRadius: 28,
+            color: B2BLandingScreen._green.withValues(alpha: 0.12),
+            blurRadius: 32,
             offset: const Offset(0, 8),
           ),
         ],
@@ -835,29 +835,32 @@ class _RoiCalculatorSectionState extends State<_RoiCalculatorSection> {
           const SizedBox(height: 14),
           _buildRoiRow(
             icon: Icons.pie_chart_outline_rounded,
-            title: 'Custo do Mr. Coach Pro',
-            highlight: 'Apenas ${costRatio.toStringAsFixed(2)}% da sua receita',
-            sub: 'R\$ ${_proPlanCost.toStringAsFixed(2)}/mês • Sem taxa sobre seus alunos',
+            title: 'Custo da plataforma (Plano Pro)',
+            highlight: 'Apenas ${costRatio.toStringAsFixed(2)}% da sua receita bruta',
+            sub: '${CurrencyPtBrFormatter.format(_proPlanCost)}/mês • 1 aluno já paga 100% da ferramenta',
           ),
           const SizedBox(height: 14),
           _buildRoiRow(
             icon: Icons.rocket_launch_rounded,
-            title: 'Retorno sobre o investimento',
+            title: 'Retorno sobre o investimento (ROI)',
             highlight: '${roiMultiplier.toStringAsFixed(0)}x o valor do software',
-            sub: 'Cada R\$ 1 investido gera R\$ ${roiMultiplier.toStringAsFixed(0)} em consultoria',
+            sub: 'Cada R\$ 1,00 investido gera ${CurrencyPtBrFormatter.format(roiMultiplier)} em consultoria',
           ),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: () => Navigator.pushNamed(context, '/register'),
+              onPressed: () => Navigator.pushNamed(context, '/professor/cadastro'),
               icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-              label: const Text('Começar Gratuitamente no Starter'),
+              label: const Text(
+                'Criar Minha Vitrine Grátis no Starter',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+              ),
               style: FilledButton.styleFrom(
                 backgroundColor: B2BLandingScreen._green,
                 foregroundColor: Colors.white,
-                minimumSize: const Size(0, 50),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                minimumSize: const Size(0, 52),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ),
