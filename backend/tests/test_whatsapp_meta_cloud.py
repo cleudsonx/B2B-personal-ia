@@ -103,3 +103,4 @@ async def test_meta_cloud_health_check():
     health = await whatsapp_service.check_meta_cloud_health()
     assert "status" in health
     assert health["provider"] == "meta_cloud"
+

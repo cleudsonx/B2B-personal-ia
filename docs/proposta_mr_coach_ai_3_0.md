@@ -115,6 +115,6 @@ Para garantir **máxima eficiência de contexto, redução drástica do consumo 
 - [x] **Bloco 3.1 — Provider Meta Cloud API Oficial no Backend**:
   - *Arquivo principal:* `backend/app/services/whatsapp_service.py` / `backend/app/api/v1/endpoints/whatsapp.py`
   - *Entrega:* Integração oficial da Graph API da Meta como canal de alta disponibilidade e custo zero na janela receptiva de 24h, suporte a templates e validação completa de webhook (hub.challenge e payload de status). *(Concluído)*
-- [ ] **Bloco 3.2 — Matriz Inteligente de Roteamento (Push Grátis vs WhatsApp)**:
-  - *Arquivo principal:* `backend/app/services/whatsapp_service.py` / `notification_service`
-  - *Entrega:* Separação automática entre lembretes de hábito (push grátis no app) e mensagens de impacto comercial (WhatsApp).
+- [x] **Bloco 3.2 — Matriz Inteligente de Roteamento (Push Grátis vs WhatsApp)**:
+  - *Arquivo principal:* `backend/app/services/notification_router_service.py` / `backend/app/api/v1/endpoints/notifications.py`
+  - *Entrega:* Separação determinística de canais por categoria de impacto (`habit_reminder`, `workout_released`, `billing_renewal`, `retention_alert`, `in_app_support`), custo R$ 0,00 para hábitos no App móvel, canal WhatsApp oficial para conversão comercial e trava anti-spam estrita de 48h. *(Concluído)*
