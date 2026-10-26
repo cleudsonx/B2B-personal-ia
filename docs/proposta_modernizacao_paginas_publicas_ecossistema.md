@@ -296,9 +296,9 @@ flowchart LR
 - [x] **Bloco 1.2 — Vitrine Pública 2.0: Slider Interativo Antes & Depois**:
   - *Arquivo principal:* `mobile/lib/features/landing/trainer_public_landing_screen.dart`
   - *Entrega:* Componente deslizante interativo (`_BeforeAfterSplitCard`) com divisor tátil arrastável de alta precisão, presets rápidos (`Antes`, `50/50`, `Depois`), métricas comparativas em destaque e diferencial biomecânico aplicado. *(Concluído)*
-- [ ] **Bloco 1.3 — Vitrine Pública 2.0: Checkout Híbrido de Alta Conversão (Pix Asaas + WhatsApp CRM)**:
+- [x] **Bloco 1.3 — Vitrine Pública 2.0: Checkout Híbrido de Alta Conversão (Pix Asaas + WhatsApp CRM)**:
   - *Arquivo principal:* `mobile/lib/features/landing/trainer_public_landing_screen.dart`
-  - *Entrega:* Card de contratação dos planos de consultoria com botão primário Pix Copia e Cola (Split 95% Personal / 5% Plataforma) e botão secundário com mensagem formatada para fechar pelo WhatsApp.
+  - *Entrega:* Card de planos com duplo canal de fechamento (Botão primário `Contratar Imediato (Pix / Cartão)` com split Asaas 95%/5% + Botão secundário `Tirar Dúvidas no WhatsApp` com contexto pré-preenchido), badges de garantia de 7 dias e vagas limitadas. *(Concluído)*
 - [ ] **Bloco 1.4 — Landing B2B (`b2b_landing_screen.dart`): Calculadora Interativa de Renda & ROI em R$**:
   - *Arquivo principal:* `mobile/lib/features/landing/b2b_landing_screen.dart`
   - *Entrega:* Simulador interativo com slider de número de alunos e mensalidade média em `R$` (`CurrencyPtBr`), calculando renda bruta mensal e provando retorno >60x sobre o custo de assinatura do Mr. Coach.

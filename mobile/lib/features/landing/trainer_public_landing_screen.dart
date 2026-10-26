@@ -170,6 +170,13 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     await _openTrainerWhatsapp(customMessage: msg);
   }
 
+  Future<void> _openTrainerWhatsappForPlan(ConsultancyPlan plan) async {
+    final trainerName = _trainerData?['full_name'] as String? ?? 'Treinador';
+    final priceStr = CurrencyPtBrFormatter.format(plan.price);
+    final msg = 'Olá, professor(a) $trainerName! Vi o plano "${plan.name}" ($priceStr) na sua vitrine Mr. Coach e gostaria de tirar uma dúvida antes de fechar a contratação! 💪';
+    await _openTrainerWhatsapp(customMessage: msg);
+  }
+
   void _copyConsultancyLink() {
     final link = 'https://mrcoach.shaipados.com/p/${widget.username}';
     Clipboard.setData(ClipboardData(text: link));
@@ -712,20 +719,105 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
             ],
 
             const SizedBox(height: 16),
-            if (_acceptsNewStudents)
+            if (_acceptsNewStudents) ...[
+              // Selos de Confiança e Escassez One UI
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: (isDark ? MetaColors.emerald : MetaColors.lightEmerald).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: (isDark ? MetaColors.emerald : MetaColors.lightEmerald).withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.shield_outlined, size: 12, color: isDark ? MetaColors.emerald : MetaColors.lightEmerald),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Garantia de 7 Dias',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? MetaColors.emerald : MetaColors.lightEmerald,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.bolt_rounded, size: 12, color: Colors.amber),
+                        SizedBox(width: 4),
+                        Text(
+                          'Vagas Limitadas',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.amber,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // Botão Primário: Pix Copia e Cola / Cartão Imediato Asaas
               SquircleButton(
-                label: 'Assinar Plano (${plan.billingPeriodLabel})',
-                icon: Icons.lock_outline,
+                label: 'Contratar Imediato (Pix / Cartão)',
+                icon: Icons.pix_rounded,
                 isPrimary: true,
                 onPressed: () => _openCheckoutModal(plan),
-              )
-            else
+              ),
+              const SizedBox(height: 8),
+
+              // Botão Secundário: Fechamento Assistido via WhatsApp CRM
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _openTrainerWhatsappForPlan(plan),
+                  icon: const Icon(Icons.chat_outlined, size: 16),
+                  label: const Text('Tirar Dúvidas no WhatsApp'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: isDark ? const Color(0xFFB4C8BE) : const Color(0xFF334155),
+                    side: BorderSide(
+                      color: isDark ? const Color(0xFF2C4033) : const Color(0xFFCBD5E1),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Center(
+                child: Text(
+                  '🔒 Pagamento processado com segurança • Acesso instantâneo',
+                  style: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ] else ...[
               SquircleButton(
                 label: 'Entrar na Lista de Espera',
                 icon: Icons.mark_chat_unread_outlined,
                 isPrimary: false,
                 onPressed: () => _openWaitlistWhatsapp(plan),
               ),
+            ],
           ],
         ),
       ),
