@@ -61,7 +61,7 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: MetaColors.background,
+      backgroundColor: MetaColors.bg(context),
       body: SafeArea(
         child: Column(
           children: [
@@ -82,7 +82,7 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
                         Container(
                           padding: const EdgeInsets.all(32),
                           decoration: BoxDecoration(
-                            color: MetaColors.surfaceHighlight,
+                            color: MetaColors.highlight(context),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -95,8 +95,8 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
                         Text(
                           _slides[index]['title'],
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: MetaColors.textPrimary,
+                          style: TextStyle(
+                            color: MetaColors.text(context),
                             fontSize: 26,
                             fontWeight: FontWeight.bold,
                             letterSpacing: -0.5,
@@ -106,8 +106,8 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
                         Text(
                           _slides[index]['description'],
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: MetaColors.textSecondary,
+                          style: TextStyle(
+                            color: MetaColors.subtext(context),
                             fontSize: 16,
                             height: 1.5,
                           ),
@@ -136,7 +136,7 @@ class _TrainerOnboardingScreenState extends State<TrainerOnboardingScreen> {
                         decoration: BoxDecoration(
                           color: _currentIndex == index
                               ? MetaColors.emerald
-                              : MetaColors.surfaceHighlight,
+                              : MetaColors.highlight(context),
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
