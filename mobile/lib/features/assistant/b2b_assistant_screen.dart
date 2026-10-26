@@ -725,7 +725,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             behavior: SnackBarBehavior.floating,
-            backgroundColor: MetaColors.surfaceHighlight,
+            backgroundColor: MetaColors.isDark(context) ? const Color(0xFF1E293B) : const Color(0xFF0F172A),
             content: Text('Seu treinador ($_trainerName) ainda não cadastrou o WhatsApp profissional.'),
           ),
         );
@@ -979,7 +979,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                       decoration: BoxDecoration(
                         color: topNotification != null
                             ? const Color(0xFFF59E0B).withValues(alpha: 0.12)
-                            : MetaColors.surfaceHighlight,
+                            : MetaColors.highlight(context),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: topNotification != null
@@ -1342,7 +1342,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                             const SizedBox(height: 14),
                             Container(
                               decoration: BoxDecoration(
-                                color: MetaColors.surfaceHighlight,
+                                color: MetaColors.highlight(context),
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
                                   color: MetaColors.emerald.withValues(alpha: 0.5),
@@ -1470,7 +1470,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                                               child: Row(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
-                                                  const Icon(Icons.adjust_rounded, size: 12, color: Colors.white70),
+                                                  const Icon(Icons.adjust_rounded, size: 12, color: MetaColors.emerald),
                                                   const SizedBox(width: 4),
                                                   Text(
                                                     'Músculo Alvo: Fibras Primárias',
@@ -1500,7 +1500,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                                                 child: Container(
                                                   padding: const EdgeInsets.symmetric(vertical: 8),
                                                   decoration: BoxDecoration(
-                                                    color: MetaColors.surfaceHighlight,
+                                                    color: MetaColors.highlight(context),
                                                     borderRadius: BorderRadius.circular(10),
                                                     border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.5)),
                                                   ),
@@ -1757,28 +1757,44 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
 
   /// 1. Hero Spotlight Card - Copiloto de Salão em Tempo Real
   Widget _buildHeroSpotlightCard(BuildContext context, Color accentColor) {
+    final isDark = MetaColors.isDark(context);
+    final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subtitleColor = isDark ? Colors.white.withValues(alpha: 0.8) : const Color(0xFF475569);
+    final iconBg = isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2E8F0);
+    final iconColor = isDark ? Colors.white70 : const Color(0xFF475569);
+    final chipBg = isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFF1F5F9);
+    final chipBorder = isDark ? Colors.white.withValues(alpha: 0.16) : const Color(0xFFCBD5E1);
+    final chipTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            const Color(0xFF0F172A), // Dark Slate
-            const Color(0xFF042F2E), // Deep Teal
-          ],
+          colors: isDark
+              ? [
+                  const Color(0xFF0F172A), // Dark Slate
+                  const Color(0xFF042F2E), // Deep Teal
+                ]
+              : [
+                  Colors.white,            // Pure White Flat Card
+                  const Color(0xFFF0FDF4), // Light Mint
+                ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: MetaColors.emerald.withValues(alpha: 0.35),
+          color: isDark ? MetaColors.emerald.withValues(alpha: 0.35) : const Color(0xFFA7F3D0),
           width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: MetaColors.emerald.withValues(alpha: 0.12),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
+            color: isDark
+                ? MetaColors.emerald.withValues(alpha: 0.12)
+                : Colors.black.withValues(alpha: 0.04),
+            blurRadius: isDark ? 24 : 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -1821,13 +1837,13 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
+                  color: iconBg,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   widget.isStudentView ? Icons.fitness_center_rounded : Icons.business_center_rounded,
                   size: 16,
-                  color: Colors.white70,
+                  color: iconColor,
                 ),
               ),
             ],
@@ -1837,8 +1853,8 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
             widget.isStudentView
                 ? 'Qual a dúvida da sua série agora?'
                 : 'Inteligência Estratégica & Prescrição',
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: titleColor,
               fontSize: 18,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.3,
@@ -1850,7 +1866,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                 ? 'Aparelho ocupado, ajuste de postura para evitar dor ou dúvida de carga na série. Resposta direta em 5 segundos.'
                 : 'Periodização de força, fisiologia de hipertrofia, precificação de planos e engajamento no WhatsApp.',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.8),
+              color: subtitleColor,
               fontSize: 12.5,
               height: 1.4,
             ),
@@ -1872,10 +1888,10 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.08),
+                      color: chipBg,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.16),
+                        color: chipBorder,
                       ),
                     ),
                     child: Row(
@@ -1892,8 +1908,8 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                             ex,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: chipTextColor,
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),
