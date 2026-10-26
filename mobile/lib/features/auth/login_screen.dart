@@ -71,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Confirme o e-mail enviado e depois entre com sua senha.'),
           ),
         );
@@ -168,28 +168,28 @@ class _LoginScreenState extends State<LoginScreen> {
         final switchRole = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            backgroundColor: MetaColors.surface,
+            backgroundColor: MetaColors.card(ctx),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              side: const BorderSide(color: MetaColors.border),
+              side: BorderSide(color: MetaColors.cardBorder(ctx)),
             ),
-            title: const Text(
+            title: Text(
               'Perfil de Aluno',
               style: TextStyle(
-                color: MetaColors.textPrimary,
+                color: MetaColors.text(ctx),
                 fontWeight: FontWeight.bold,
               ),
             ),
-            content: const Text(
+            content: Text(
               'Esta conta está cadastrada como Aluno. Deseja acessar o portal do Aluno agora?',
-              style: TextStyle(color: MetaColors.textSecondary),
+              style: TextStyle(color: MetaColors.subtext(ctx)),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text(
+                child: Text(
                   'Cancelar',
-                  style: TextStyle(color: MetaColors.textSecondary),
+                  style: TextStyle(color: MetaColors.subtext(ctx)),
                 ),
               ),
               ElevatedButton(
@@ -198,7 +198,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   backgroundColor: MetaColors.emerald,
                   foregroundColor: Colors.white,
                 ),
-                child: const Text('Acessar como Aluno'),
+                child: Text('Acessar como Aluno'),
               ),
             ],
           ),
@@ -214,28 +214,28 @@ class _LoginScreenState extends State<LoginScreen> {
         final switchRole = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            backgroundColor: MetaColors.surface,
+            backgroundColor: MetaColors.card(ctx),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              side: const BorderSide(color: MetaColors.border),
+              side: BorderSide(color: MetaColors.cardBorder(ctx)),
             ),
-            title: const Text(
+            title: Text(
               'Perfil de Treinador',
               style: TextStyle(
-                color: MetaColors.textPrimary,
+                color: MetaColors.text(ctx),
                 fontWeight: FontWeight.bold,
               ),
             ),
-            content: const Text(
+            content: Text(
               'Esta conta possui perfil de Professor/Treinador. Deseja acessar o portal do Treinador?',
-              style: TextStyle(color: MetaColors.textSecondary),
+              style: TextStyle(color: MetaColors.subtext(ctx)),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text(
+                child: Text(
                   'Cancelar',
-                  style: TextStyle(color: MetaColors.textSecondary),
+                  style: TextStyle(color: MetaColors.subtext(ctx)),
                 ),
               ),
               ElevatedButton(
@@ -244,7 +244,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   backgroundColor: MetaColors.emerald,
                   foregroundColor: Colors.white,
                 ),
-                child: const Text('Acessar como Treinador'),
+                child: Text('Acessar como Treinador'),
               ),
             ],
           ),
@@ -344,12 +344,12 @@ class _LoginScreenState extends State<LoginScreen> {
     final targetEmail = _cachedUserEmail.isNotEmpty ? _cachedUserEmail : _emailCtrl.text.trim();
     if (targetEmail.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           behavior: SnackBarBehavior.floating,
-          backgroundColor: MetaColors.surfaceHighlight,
+          backgroundColor: MetaColors.highlight(context),
           content: Text(
             'Por favor, informe seu e-mail para autenticar com biometria.',
-            style: TextStyle(color: MetaColors.textPrimary),
+            style: TextStyle(color: MetaColors.text(context)),
           ),
         ),
       );
@@ -368,10 +368,10 @@ class _LoginScreenState extends State<LoginScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               behavior: SnackBarBehavior.floating,
-              backgroundColor: MetaColors.surfaceHighlight,
+              backgroundColor: MetaColors.highlight(context),
               content: Text(
                 authResult.errorMessage!,
-                style: const TextStyle(color: MetaColors.textPrimary),
+                style: TextStyle(color: MetaColors.text(context)),
               ),
             ),
           );
@@ -405,12 +405,12 @@ class _LoginScreenState extends State<LoginScreen> {
       // 4. Biometria validada, mas precisa do primeiro login com senha para salvar o 1 toque:
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             behavior: SnackBarBehavior.floating,
-            backgroundColor: MetaColors.surfaceHighlight,
+            backgroundColor: MetaColors.highlight(context),
             content: Text(
               'Biometria confirmada! Digite sua senha uma vez para ativar o retorno com 1 toque neste aparelho.',
-              style: TextStyle(color: MetaColors.textPrimary),
+              style: TextStyle(color: MetaColors.text(context)),
             ),
           ),
         );
@@ -418,12 +418,12 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             behavior: SnackBarBehavior.floating,
-            backgroundColor: MetaColors.surfaceHighlight,
+            backgroundColor: MetaColors.highlight(context),
             content: Text(
               'Falha no leitor biométrico. Por favor, use sua senha.',
-              style: TextStyle(color: MetaColors.textPrimary),
+              style: TextStyle(color: MetaColors.text(context)),
             ),
           ),
         );
@@ -454,35 +454,35 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            backgroundColor: MetaColors.surface,
+            backgroundColor: MetaColors.card(ctx),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
-              side: const BorderSide(color: MetaColors.border),
+              side: BorderSide(color: MetaColors.cardBorder(ctx)),
             ),
-            title: const Text(
+            title: Text(
               'Verificar Código OTP',
-              style: TextStyle(color: MetaColors.textPrimary, fontWeight: FontWeight.bold),
+              style: TextStyle(color: MetaColors.text(context), fontWeight: FontWeight.bold),
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   'Insira o código de 6 dígitos enviado para $identifier e defina sua nova senha.',
-                  style: const TextStyle(color: MetaColors.textSecondary, fontSize: 13),
+                  style: TextStyle(color: MetaColors.subtext(context), fontSize: 13),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: otpCtrl,
-                  style: const TextStyle(color: MetaColors.textPrimary, letterSpacing: 4, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: MetaColors.text(context), letterSpacing: 4, fontWeight: FontWeight.bold),
                   keyboardType: TextInputType.number,
                   maxLength: 6,
                   decoration: InputDecoration(
                     labelText: 'Código de 6 dígitos',
                     hintText: '123456',
                     counterText: '',
-                    labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                    labelStyle: TextStyle(color: MetaColors.subtext(context)),
                     filled: true,
-                    fillColor: MetaColors.surfaceHighlight,
+                    fillColor: MetaColors.highlight(context),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
@@ -490,12 +490,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextField(
                   controller: passwordCtrl,
                   obscureText: true,
-                  style: const TextStyle(color: MetaColors.textPrimary),
+                  style: TextStyle(color: MetaColors.text(context)),
                   decoration: InputDecoration(
                     labelText: 'Nova Senha (mín. 6 caracteres)',
-                    labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                    labelStyle: TextStyle(color: MetaColors.subtext(context)),
                     filled: true,
-                    fillColor: MetaColors.surfaceHighlight,
+                    fillColor: MetaColors.highlight(context),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
@@ -504,7 +504,7 @@ class _LoginScreenState extends State<LoginScreen> {
             actions: [
               TextButton(
                 onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
-                child: const Text('Cancelar', style: TextStyle(color: MetaColors.textSecondary)),
+                child: Text('Cancelar', style: TextStyle(color: MetaColors.subtext(context))),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -516,7 +516,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   final pwd = passwordCtrl.text.trim();
                   if (otp.length != 6 || pwd.length < 6) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
+                      SnackBar(
                         behavior: SnackBarBehavior.floating,
                         content: Text('Digite o código de 6 dígitos e uma nova senha com no mínimo 6 caracteres.'),
                       ),
@@ -530,7 +530,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (mounted) {
                       Navigator.pop(ctx);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
+                        SnackBar(
                           behavior: SnackBarBehavior.floating, 
                           backgroundColor: MetaColors.emerald,
                           content: Text('Senha redefinida com sucesso! Você já pode entrar com sua nova senha.'),
@@ -569,19 +569,19 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            backgroundColor: MetaColors.surface,
+            backgroundColor: MetaColors.card(ctx),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
-              side: const BorderSide(color: MetaColors.border),
+              side: BorderSide(color: MetaColors.cardBorder(ctx)),
             ),
-            title: const Row(
+            title: Row(
               children: [
                 Icon(Icons.lock_reset_rounded, color: MetaColors.emerald, size: 24),
                 SizedBox(width: 10),
                 Text(
                   'Recuperar Acesso',
                   style: TextStyle(
-                    color: MetaColors.textPrimary,
+                    color: MetaColors.text(ctx),
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -592,10 +592,10 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Escolha por onde deseja receber seu código ou link de recuperação:',
                   style: TextStyle(
-                    color: MetaColors.textSecondary,
+                    color: MetaColors.subtext(context),
                     fontSize: 13,
                     height: 1.4,
                   ),
@@ -614,12 +614,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           decoration: BoxDecoration(
                             color: selectedChannel == 'whatsapp'
                                 ? MetaColors.emerald.withValues(alpha: 0.15)
-                                : MetaColors.surfaceHighlight,
+                                : MetaColors.highlight(context),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: selectedChannel == 'whatsapp'
                                   ? MetaColors.emerald
-                                  : MetaColors.border,
+                                  : MetaColors.cardBorder(context),
                             ),
                           ),
                           child: Row(
@@ -630,7 +630,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 size: 16,
                                 color: selectedChannel == 'whatsapp'
                                     ? MetaColors.emerald
-                                    : MetaColors.textSecondary,
+                                    : MetaColors.subtext(context),
                               ),
                               const SizedBox(width: 6),
                               Text(
@@ -640,7 +640,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   fontWeight: FontWeight.bold,
                                   color: selectedChannel == 'whatsapp'
                                       ? MetaColors.emerald
-                                      : MetaColors.textSecondary,
+                                      : MetaColors.subtext(context),
                                 ),
                               ),
                             ],
@@ -658,12 +658,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           decoration: BoxDecoration(
                             color: selectedChannel == 'email'
                                 ? MetaColors.emerald.withValues(alpha: 0.15)
-                                : MetaColors.surfaceHighlight,
+                                : MetaColors.highlight(context),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: selectedChannel == 'email'
                                   ? MetaColors.emerald
-                                  : MetaColors.border,
+                                  : MetaColors.cardBorder(context),
                             ),
                           ),
                           child: Row(
@@ -674,7 +674,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 size: 16,
                                 color: selectedChannel == 'email'
                                     ? MetaColors.emerald
-                                    : MetaColors.textSecondary,
+                                    : MetaColors.subtext(context),
                               ),
                               const SizedBox(width: 6),
                               Text(
@@ -684,7 +684,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   fontWeight: FontWeight.bold,
                                   color: selectedChannel == 'email'
                                       ? MetaColors.emerald
-                                      : MetaColors.textSecondary,
+                                      : MetaColors.subtext(context),
                                 ),
                               ),
                             ],
@@ -698,22 +698,22 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 TextField(
                   controller: inputCtrl,
-                  style: const TextStyle(color: MetaColors.textPrimary),
+                  style: TextStyle(color: MetaColors.text(context)),
                   keyboardType: selectedChannel == 'whatsapp' ? TextInputType.phone : TextInputType.emailAddress,
                   decoration: InputDecoration(
                     labelText: selectedChannel == 'whatsapp' ? 'WhatsApp (com DDD)' : 'E-mail cadastrado',
                     hintText: selectedChannel == 'whatsapp' ? '11999999999' : 'seu@email.com',
-                    hintStyle: TextStyle(color: MetaColors.textSecondary.withValues(alpha: 0.5)),
-                    labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                    hintStyle: TextStyle(color: MetaColors.subtext(context).withValues(alpha: 0.5)),
+                    labelStyle: TextStyle(color: MetaColors.subtext(context)),
                     filled: true,
-                    fillColor: MetaColors.surfaceHighlight,
+                    fillColor: MetaColors.highlight(context),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: MetaColors.border),
+                      borderSide: BorderSide(color: MetaColors.cardBorder(context)),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: MetaColors.border),
+                      borderSide: BorderSide(color: MetaColors.cardBorder(context)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -726,9 +726,9 @@ class _LoginScreenState extends State<LoginScreen> {
             actions: [
               TextButton(
                 onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
-                child: const Text(
+                child: Text(
                   'Cancelar',
-                  style: TextStyle(color: MetaColors.textSecondary),
+                  style: TextStyle(color: MetaColors.subtext(ctx)),
                 ),
               ),
               ElevatedButton(
@@ -758,7 +758,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             selectedChannel == 'email'
                                 ? 'Código enviado para o e-mail $textVal'
                                 : 'Código enviado via WhatsApp para $textVal',
-                            style: const TextStyle(color: Colors.white),
+                            style: TextStyle(color: Colors.white),
                           ),
                         ),
                       );
@@ -777,7 +777,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
                 child: Text(
                   isSubmitting ? 'Enviando...' : (selectedChannel == 'whatsapp' ? 'Enviar WhatsApp' : 'Enviar E-mail'),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -792,17 +792,18 @@ class _LoginScreenState extends State<LoginScreen> {
     final isTrainer = _selectedRole == 'trainer';
     final topPadding = MediaQuery.paddingOf(context).top;
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
+    final isDark = MetaColors.isDark(context);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
+      value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
         systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: MetaColors.background,
+        backgroundColor: MetaColors.bg(context),
         body: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           padding: EdgeInsets.only(
@@ -829,7 +830,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           children: [
                             CircleAvatar(
                               radius: 46,
-                              backgroundColor: MetaColors.surfaceHighlight,
+                              backgroundColor: MetaColors.highlight(context),
                               backgroundImage: safeImageProvider(_cachedUserPhoto),
                               child: safeImageProvider(_cachedUserPhoto) == null
                                   ? Text(
@@ -852,7 +853,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 decoration: BoxDecoration(
                                   color: isTrainer ? MetaColors.emerald : MetaColors.accentBlue,
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: MetaColors.background, width: 2),
+                                  border: Border.all(color: MetaColors.bg(context), width: 2),
                                 ),
                                 child: Icon(
                                   isTrainer ? Icons.sports_gymnastics : Icons.fitness_center_rounded,
@@ -865,11 +866,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      const Center(
+                      Center(
                         child: Text(
                           'Bem-vindo de volta,',
                           style: TextStyle(
-                            color: MetaColors.textSecondary,
+                            color: MetaColors.subtext(context),
                             fontSize: 14,
                           ),
                         ),
@@ -878,8 +879,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       Center(
                         child: Text(
                           _cachedUserName.isNotEmpty ? _cachedUserName : 'Usuário',
-                          style: const TextStyle(
-                            color: MetaColors.textPrimary,
+                          style: TextStyle(
+                            color: MetaColors.text(context),
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                             letterSpacing: -0.3,
@@ -915,7 +916,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _passwordCtrl,
                         obscureText: _obscurePassword,
                         autofocus: true,
-                        style: const TextStyle(color: MetaColors.textPrimary),
+                        style: TextStyle(color: MetaColors.text(context)),
                         validator: (val) {
                           if (val == null || val.trim().isEmpty) {
                             return 'Informe sua senha';
@@ -924,13 +925,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                         decoration: InputDecoration(
                           labelText: 'Sua senha',
-                          labelStyle: const TextStyle(
-                            color: MetaColors.textSecondary,
+                          labelStyle: TextStyle(
+                            color: MetaColors.subtext(context),
                             fontSize: 13,
                           ),
-                          prefixIcon: const Icon(
+                          prefixIcon: Icon(
                             Icons.lock_outline,
-                            color: MetaColors.textSecondary,
+                            color: MetaColors.subtext(context),
                             size: 20,
                           ),
                           suffixIcon: IconButton(
@@ -938,7 +939,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               _obscurePassword
                                   ? Icons.visibility_outlined
                                   : Icons.visibility_off_outlined,
-                              color: MetaColors.textSecondary,
+                              color: MetaColors.subtext(context),
                               size: 20,
                             ),
                             onPressed: () => setState(
@@ -946,18 +947,18 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           filled: true,
-                          fillColor: MetaColors.surfaceHighlight,
+                          fillColor: MetaColors.highlight(context),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: MetaColors.border),
+                            borderSide: BorderSide(color: MetaColors.cardBorder(context)),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: MetaColors.border),
+                            borderSide: BorderSide(color: MetaColors.cardBorder(context)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: Colors.white, width: 1.5),
+                            borderSide: BorderSide(color: isTrainer ? MetaColors.emerald : MetaColors.accentBlue, width: 1.5),
                           ),
                         ),
                       ),
@@ -968,15 +969,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: TextButton(
                           onPressed: _showForgotPasswordDialog,
                           style: TextButton.styleFrom(
-                            foregroundColor: MetaColors.textSecondary,
+                            foregroundColor: MetaColors.subtext(context),
                             padding: EdgeInsets.zero,
                             minimumSize: Size.zero,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
-                          child: const Text(
+                          child: Text(
                             'Esqueceu a senha?',
                             style: TextStyle(
-                              color: MetaColors.textSecondary,
+                              color: MetaColors.subtext(context),
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
                             ),
@@ -997,8 +998,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         label: kIsWeb ? 'Retornar com biometria (1 toque)' : 'Entrar com biometria',
                         icon: Icons.fingerprint,
                         isPrimary: false,
-                        backgroundColor: MetaColors.surfaceHighlight,
-                        foregroundColor: MetaColors.textPrimary,
+                        backgroundColor: MetaColors.highlight(context),
+                        foregroundColor: MetaColors.text(context),
                         onPressed: _handleBiometricAuth,
                       ),
                       const SizedBox(height: 20),
@@ -1012,10 +1013,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               _emailCtrl.clear();
                             });
                           },
-                          child: const Text(
+                          child: Text(
                             'Entrar com outra conta',
                             style: TextStyle(
-                              color: MetaColors.textSecondary,
+                              color: MetaColors.subtext(context),
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
                             ),
@@ -1029,7 +1030,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           width: 72,
                           height: 72,
                           decoration: BoxDecoration(
-                            color: MetaColors.surfaceHighlight,
+                            color: MetaColors.highlight(context),
                             shape: BoxShape.circle,
                             border: Border.all(
                               color: isTrainer ? MetaColors.emerald : MetaColors.accentBlue,
@@ -1047,14 +1048,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 16),
                       // Title
-                      const Center(
+                      Center(
                         child: Text(
                           'MR. COACH',
                           style: TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 1.5,
-                            color: MetaColors.textPrimary,
+                            color: MetaColors.text(context),
                           ),
                         ),
                       ),
@@ -1064,10 +1065,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           widget.initialRole == 'client'
                               ? 'Área do Aluno • Treino Inteligente'
                               : 'Plataforma para Personal Trainers & IA Biomecânica',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
-                            color: MetaColors.textSecondary,
+                            color: MetaColors.subtext(context),
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -1078,7 +1079,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Text(
                           'Convite de ${widget.invitedTrainerName ?? 'seu treinador'}. A conta de aluno já foi criada. Use a opção Esqueceu a senha? para definir sua senha.',
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: MetaColors.accentBlue,
                             fontSize: 14,
                           ),
@@ -1091,9 +1092,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            color: MetaColors.surface,
+                            color: MetaColors.card(context),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: MetaColors.border),
+                            border: Border.all(color: MetaColors.cardBorder(context)),
                           ),
                           child: Row(
                             children: [
@@ -1124,7 +1125,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Email Input
                       TextFormField(
                         controller: _emailCtrl,
-                        style: const TextStyle(color: MetaColors.textPrimary),
+                        style: TextStyle(color: MetaColors.text(context)),
                         keyboardType: TextInputType.emailAddress,
                         readOnly: widget.invitedStudentId != null,
                         validator: (val) {
@@ -1138,28 +1139,28 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                         decoration: InputDecoration(
                           labelText: 'E-mail',
-                          labelStyle: const TextStyle(
-                            color: MetaColors.textSecondary,
+                          labelStyle: TextStyle(
+                            color: MetaColors.subtext(context),
                             fontSize: 13,
                           ),
-                          prefixIcon: const Icon(
+                          prefixIcon: Icon(
                             Icons.email_outlined,
-                            color: MetaColors.textSecondary,
+                            color: MetaColors.subtext(context),
                             size: 20,
                           ),
                           filled: true,
-                          fillColor: MetaColors.surfaceHighlight,
+                          fillColor: MetaColors.highlight(context),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: MetaColors.border),
+                            borderSide: BorderSide(color: MetaColors.cardBorder(context)),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: MetaColors.border),
+                            borderSide: BorderSide(color: MetaColors.cardBorder(context)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: Colors.white, width: 1.5),
+                            borderSide: BorderSide(color: isTrainer ? MetaColors.emerald : MetaColors.accentBlue, width: 1.5),
                           ),
                         ),
                       ),
@@ -1169,7 +1170,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextFormField(
                         controller: _passwordCtrl,
                         obscureText: _obscurePassword,
-                        style: const TextStyle(color: MetaColors.textPrimary),
+                        style: TextStyle(color: MetaColors.text(context)),
                         validator: (val) {
                           if (val == null || val.trim().isEmpty) {
                             return 'Informe sua senha';
@@ -1181,13 +1182,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                         decoration: InputDecoration(
                           labelText: 'Senha',
-                          labelStyle: const TextStyle(
-                            color: MetaColors.textSecondary,
+                          labelStyle: TextStyle(
+                            color: MetaColors.subtext(context),
                             fontSize: 13,
                           ),
-                          prefixIcon: const Icon(
+                          prefixIcon: Icon(
                             Icons.lock_outline,
-                            color: MetaColors.textSecondary,
+                            color: MetaColors.subtext(context),
                             size: 20,
                           ),
                           suffixIcon: IconButton(
@@ -1195,7 +1196,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               _obscurePassword
                                   ? Icons.visibility_outlined
                                   : Icons.visibility_off_outlined,
-                              color: MetaColors.textSecondary,
+                              color: MetaColors.subtext(context),
                               size: 20,
                             ),
                             onPressed: () => setState(
@@ -1203,18 +1204,18 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           filled: true,
-                          fillColor: MetaColors.surfaceHighlight,
+                          fillColor: MetaColors.highlight(context),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: MetaColors.border),
+                            borderSide: BorderSide(color: MetaColors.cardBorder(context)),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: MetaColors.border),
+                            borderSide: BorderSide(color: MetaColors.cardBorder(context)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: Colors.white, width: 1.5),
+                            borderSide: BorderSide(color: isTrainer ? MetaColors.emerald : MetaColors.accentBlue, width: 1.5),
                           ),
                         ),
                       ),
@@ -1236,8 +1237,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                   value: _rememberMe,
                                   activeColor: MetaColors.emerald,
                                   checkColor: Colors.black,
-                                  side: const BorderSide(
-                                    color: MetaColors.textSecondary,
+                                  side: BorderSide(
+                                    color: MetaColors.subtext(context),
                                   ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(4),
@@ -1247,10 +1248,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              const Text(
+                              Text(
                                 'Lembrar acesso',
                                 style: TextStyle(
-                                  color: MetaColors.textSecondary,
+                                  color: MetaColors.subtext(context),
                                   fontSize: 13,
                                 ),
                               ),
@@ -1259,15 +1260,15 @@ class _LoginScreenState extends State<LoginScreen> {
                           TextButton(
                             onPressed: _showForgotPasswordDialog,
                             style: TextButton.styleFrom(
-                              foregroundColor: MetaColors.textSecondary,
+                              foregroundColor: MetaColors.subtext(context),
                               padding: EdgeInsets.zero,
                               minimumSize: Size.zero,
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
-                            child: const Text(
+                            child: Text(
                               'Esqueceu a senha?',
                               style: TextStyle(
-                                color: MetaColors.textSecondary,
+                                color: MetaColors.subtext(context),
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -1291,8 +1292,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           label: kIsWeb ? 'Retornar com biometria (1 toque)' : 'Entrar com biometria',
                           icon: Icons.fingerprint,
                           isPrimary: false,
-                          backgroundColor: MetaColors.surfaceHighlight,
-                          foregroundColor: MetaColors.textPrimary,
+                          backgroundColor: MetaColors.highlight(context),
+                          foregroundColor: MetaColors.text(context),
                           onPressed: _handleBiometricAuth,
                         ),
                         const SizedBox(height: 24),
@@ -1305,10 +1306,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             alignment: WrapAlignment.center,
                             crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
-                              const Text(
+                              Text(
                                 'Ainda não tem conta? ',
                                 style: TextStyle(
-                                  color: MetaColors.textSecondary,
+                                  color: MetaColors.subtext(context),
                                   fontSize: 13,
                                 ),
                               ),
@@ -1323,7 +1324,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                   );
                                 },
-                                child: const Text(
+                                child: Text(
                                   'Cadastre-se grátis',
                                   style: TextStyle(
                                     color: MetaColors.emerald,
@@ -1339,17 +1340,17 @@ class _LoginScreenState extends State<LoginScreen> {
                             margin: const EdgeInsets.symmetric(horizontal: 8),
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             decoration: BoxDecoration(
-                              color: MetaColors.surfaceHighlight.withValues(alpha: 0.5),
+                              color: MetaColors.highlight(context).withValues(alpha: 0.5),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: MetaColors.surfaceHighlight),
+                              border: Border.all(color: MetaColors.cardBorder(context)),
                             ),
                             child: Column(
                               children: [
-                                const Text(
+                                Text(
                                   'O acesso do aluno é criado mediante convite exclusivo do seu professor.',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color: MetaColors.textSecondary,
+                                    color: MetaColors.subtext(context),
                                     fontSize: 12,
                                     height: 1.4,
                                   ),
@@ -1359,7 +1360,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   onTap: () {
                                     Navigator.pushNamed(context, '/prof');
                                   },
-                                  child: const Text(
+                                  child: Text(
                                     'Ainda não tem treinador? Conheça nossos profissionais',
                                     style: TextStyle(
                                       color: MetaColors.emerald,
@@ -1377,15 +1378,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Landing Web Link
                     Center(
                       child: TextButton.icon(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.public_rounded,
                           size: 16,
-                          color: MetaColors.textSecondary,
+                          color: MetaColors.subtext(context),
                         ),
-                        label: const Text(
+                        label: Text(
                           'Conhecer o Mr. Coach B2B',
                           style: TextStyle(
-                            color: MetaColors.textSecondary,
+                            color: MetaColors.subtext(context),
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
                           ),
@@ -1401,15 +1402,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 12),
                       Center(
                         child: TextButton.icon(
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.settings_ethernet,
                             size: 14,
-                            color: MetaColors.textSecondary,
+                            color: MetaColors.subtext(context),
                           ),
-                          label: const Text(
+                          label: Text(
                             'Configurar IP da API Backend (Dev)',
                             style: TextStyle(
-                              color: MetaColors.textSecondary,
+                              color: MetaColors.subtext(context),
                               fontSize: 11,
                             ),
                           ),
@@ -1420,7 +1421,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 32),
                       Column(
                         mainAxisSize: MainAxisSize.min,
-                        children: const [
+                        children: [
                           Text(
                             'Mr. Coach',
                             style: TextStyle(
@@ -1433,7 +1434,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           SizedBox(height: 2),
                           Text(
                             'Plataforma para Treinadores',
-                            style: TextStyle(color: MetaColors.textSecondary, fontSize: 11.5),
+                            style: TextStyle(color: MetaColors.subtext(context), fontSize: 11.5),
                           ),
                         ],
                       ),
@@ -1462,7 +1463,7 @@ class _LoginScreenState extends State<LoginScreen> {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? MetaColors.surfaceHighlight : Colors.transparent,
+          color: isSelected ? MetaColors.highlight(context) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? activeColor : Colors.transparent,
@@ -1475,7 +1476,7 @@ class _LoginScreenState extends State<LoginScreen> {
             Icon(
               icon,
               size: 18,
-              color: isSelected ? activeColor : MetaColors.textSecondary,
+              color: isSelected ? activeColor : MetaColors.subtext(context),
             ),
             const SizedBox(width: 8),
             Flexible(
@@ -1485,7 +1486,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected ? MetaColors.textPrimary : MetaColors.textSecondary,
+                  color: isSelected ? MetaColors.text(context) : MetaColors.subtext(context),
                 ),
               ),
             ),
