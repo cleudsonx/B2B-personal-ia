@@ -293,9 +293,9 @@ flowchart LR
 - [x] **Bloco 1.1 — Vitrine Pública 2.0: Hero One UI, Badges Verificadas e Estatísticas**:
   - *Arquivo principal:* `mobile/lib/features/landing/trainer_public_landing_screen.dart`
   - *Entrega:* Visual Edge-to-Edge translúcido com Ambient Glow, botão de compartilhamento rápido com cópia do link no topo, badge oficial de CREF Verificado unificada (`🛡️ CREF • VERIFICADO`), bio persuasiva e big numbers de autoridade (estrelas ⭐, alunos acompanhados e experiência). *(Concluído)*
-- [ ] **Bloco 1.2 — Vitrine Pública 2.0: Slider Interativo Antes & Depois**:
+- [x] **Bloco 1.2 — Vitrine Pública 2.0: Slider Interativo Antes & Depois**:
   - *Arquivo principal:* `mobile/lib/features/landing/trainer_public_landing_screen.dart`
-  - *Entrega:* Componente de comparação visual deslizante (*Before/After*) com fotos de evolução física de alunos, tags de tempo de acompanhamento (ex: 90 dias), métricas (ex: -12kg) e depoimento autenticado.
+  - *Entrega:* Componente deslizante interativo (`_BeforeAfterSplitCard`) com divisor tátil arrastável de alta precisão, presets rápidos (`Antes`, `50/50`, `Depois`), métricas comparativas em destaque e diferencial biomecânico aplicado. *(Concluído)*
 - [ ] **Bloco 1.3 — Vitrine Pública 2.0: Checkout Híbrido de Alta Conversão (Pix Asaas + WhatsApp CRM)**:
   - *Arquivo principal:* `mobile/lib/features/landing/trainer_public_landing_screen.dart`
   - *Entrega:* Card de contratação dos planos de consultoria com botão primário Pix Copia e Cola (Split 95% Personal / 5% Plataforma) e botão secundário com mensagem formatada para fechar pelo WhatsApp.

@@ -1346,7 +1346,6 @@ class _CaseItem {
 
 class _BeforeAfterCaseViewerState extends State<BeforeAfterCaseViewer> {
   int _selectedCaseIndex = 0;
-  bool _showAfter = true;
 
   static const List<_CaseItem> _cases = [
     _CaseItem(
@@ -1499,122 +1498,32 @@ class _BeforeAfterCaseViewerState extends State<BeforeAfterCaseViewer> {
           ),
           const SizedBox(height: 18),
           // Student & Case Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      currentCase.title,
-                      style: TextStyle(
-                        color: isDark ? Colors.white : const Color(0xFF0F172A),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    Text(
-                      currentCase.duration,
-                      style: TextStyle(
-                        color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
+              Text(
+                currentCase.title,
+                style: TextStyle(
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              // Antes/Depois interactive toggle
-              Container(
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF0F1713) : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: isDark ? const Color(0xFF2B3C31) : const Color(0xFFCBD5E1)),
-                ),
-                padding: const EdgeInsets.all(3),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildTogglePill('Antes', !_showAfter, () => setState(() => _showAfter = false)),
-                    _buildTogglePill('Depois', _showAfter, () => setState(() => _showAfter = true)),
-                  ],
+              const SizedBox(height: 2),
+              Text(
+                currentCase.duration,
+                style: TextStyle(
+                  color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary,
+                  fontSize: 12,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          // Interactive Comparison State Card
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _showAfter
-                  ? (isDark ? const Color(0xFF112218) : const Color(0xFFECFDF5))
-                  : (isDark ? const Color(0xFF1D1B1B) : const Color(0xFFFEF2F2)),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: _showAfter
-                    ? (isDark ? MetaColors.emerald.withValues(alpha: 0.4) : const Color(0xFFA7F3D0))
-                    : (isDark ? const Color(0xFF423737) : const Color(0xFFFECACA)),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _showAfter ? 'ESTADO ATUAL (COM MR. COACH)' : 'ESTADO INICIAL (SEM CONSULTORIA)',
-                      style: TextStyle(
-                        color: _showAfter ? MetaColors.emerald : const Color(0xFFE57373),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    Icon(
-                      _showAfter ? Icons.check_circle_rounded : Icons.history_rounded,
-                      color: _showAfter ? MetaColors.emerald : const Color(0xFFE57373),
-                      size: 16,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _showAfter ? currentCase.afterWeight : currentCase.beforeWeight,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Text(
-                      '${currentCase.metricLabel}: ',
-                      style: TextStyle(
-                        color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                    Text(
-                      _showAfter ? currentCase.afterMetric : currentCase.beforeMetric,
-                      style: TextStyle(
-                        color: _showAfter
-                            ? (isDark ? MetaColors.emerald : MetaColors.lightEmerald)
-                            : (isDark ? Colors.white70 : Colors.black87),
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+          const SizedBox(height: 14),
+          // Slider Interativo Antes & Depois (One UI Drag Split)
+          _BeforeAfterSplitCard(
+            caseItem: currentCase,
+            isDark: isDark,
           ),
           const SizedBox(height: 14),
           // Biomechanical note
@@ -1697,21 +1606,324 @@ class _BeforeAfterCaseViewerState extends State<BeforeAfterCaseViewer> {
     );
   }
 
-  Widget _buildTogglePill(String label, bool isSelected, VoidCallback onTap) {
+}
+
+class _BeforeAfterSplitCard extends StatefulWidget {
+  final _CaseItem caseItem;
+  final bool isDark;
+
+  const _BeforeAfterSplitCard({
+    required this.caseItem,
+    required this.isDark,
+  });
+
+  @override
+  State<_BeforeAfterSplitCard> createState() => _BeforeAfterSplitCardState();
+}
+
+class _BeforeAfterSplitCardState extends State<_BeforeAfterSplitCard> {
+  double _splitRatio = 0.5;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.isDark;
+    final item = widget.caseItem;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final totalWidth = constraints.maxWidth;
+        final dividerX = totalWidth * _splitRatio;
+
+        return Column(
+          children: [
+            GestureDetector(
+              onHorizontalDragUpdate: (details) {
+                setState(() {
+                  _splitRatio = (details.localPosition.dx / totalWidth).clamp(0.08, 0.92);
+                });
+              },
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: SizedBox(
+                  width: totalWidth,
+                  height: 190,
+                  child: Stack(
+                    children: [
+                      // Camada 1: ANTES (Fundo Completo)
+                      Positioned.fill(
+                        child: Container(
+                          color: isDark ? const Color(0xFF1F1616) : const Color(0xFFFFF1F2),
+                          padding: const EdgeInsets.all(16),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: SizedBox(
+                              width: totalWidth * 0.75,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.3)),
+                                        ),
+                                        child: const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.history_rounded, size: 12, color: Color(0xFFEF4444)),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              'ANTES',
+                                              style: TextStyle(
+                                                color: Color(0xFFEF4444),
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w900,
+                                                letterSpacing: 0.8,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    item.beforeWeight,
+                                    style: TextStyle(
+                                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -0.5,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    '${item.metricLabel}:',
+                                    style: TextStyle(
+                                      color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                  Text(
+                                    item.beforeMetric,
+                                    style: TextStyle(
+                                      color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFFDC2626),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Camada 2: DEPOIS (Clipped Right Layer)
+                      Positioned(
+                        left: dividerX,
+                        top: 0,
+                        bottom: 0,
+                        right: 0,
+                        child: ClipRect(
+                          child: Container(
+                            color: isDark ? const Color(0xFF0D2517) : const Color(0xFFECFDF5),
+                            padding: const EdgeInsets.all(16),
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: SizedBox(
+                                width: totalWidth * 0.75,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: MetaColors.emerald.withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.verified_rounded, size: 12, color: MetaColors.emerald),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                'DEPOIS',
+                                                style: TextStyle(
+                                                  color: MetaColors.emerald,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w900,
+                                                  letterSpacing: 0.8,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      item.afterWeight,
+                                      style: TextStyle(
+                                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -0.5,
+                                      ),
+                                      textAlign: TextAlign.right,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      '${item.metricLabel}:',
+                                      style: TextStyle(
+                                        color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary,
+                                        fontSize: 11,
+                                      ),
+                                      textAlign: TextAlign.right,
+                                    ),
+                                    Text(
+                                      item.afterMetric,
+                                      style: const TextStyle(
+                                        color: MetaColors.emerald,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                      textAlign: TextAlign.right,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Camada 3: Linha Divisória Luminous e Handle de Arraste
+                      Positioned(
+                        left: dividerX - 1.5,
+                        top: 0,
+                        bottom: 0,
+                        width: 3,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: MetaColors.emerald,
+                            boxShadow: [
+                              BoxShadow(
+                                color: MetaColors.emerald.withValues(alpha: 0.5),
+                                blurRadius: 6,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        left: dividerX - 18,
+                        top: 77,
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF0B140F) : Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: MetaColors.emerald, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.compare_arrows_rounded,
+                            size: 20,
+                            color: MetaColors.emerald,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Instrução tátil e botões de atalho rápido
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.touch_app_rounded,
+                      size: 13,
+                      color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Arraste a linha para comparar',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    _buildQuickPreset('Antes', _splitRatio > 0.8, () => setState(() => _splitRatio = 0.92)),
+                    const SizedBox(width: 6),
+                    _buildQuickPreset('50/50', (_splitRatio - 0.5).abs() < 0.1, () => setState(() => _splitRatio = 0.5)),
+                    const SizedBox(width: 6),
+                    _buildQuickPreset('Depois', _splitRatio < 0.2, () => setState(() => _splitRatio = 0.08)),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildQuickPreset(String label, bool isSelected, VoidCallback onTap) {
+    final isDark = widget.isDark;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: isSelected ? MetaColors.emerald : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
+          color: isSelected
+              ? MetaColors.emerald.withValues(alpha: 0.2)
+              : (isDark ? const Color(0xFF1E2922) : const Color(0xFFF1F5F9)),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected
+                ? MetaColors.emerald
+                : (isDark ? const Color(0xFF2C3E33) : const Color(0xFFE2E8F0)),
+            width: 1,
+          ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : MetaColors.textSecondary,
-            fontSize: 11,
+            color: isSelected
+                ? MetaColors.emerald
+                : (isDark ? MetaColors.textSecondary : const Color(0xFF475569)),
+            fontSize: 10.5,
             fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
           ),
         ),
