@@ -308,26 +308,139 @@ class B2BLandingScreen extends StatelessWidget {
   }
 
   Widget _buildFooter(BuildContext context) {
+    final isDark = MetaColors.isDark(context);
     return Container(
       width: double.infinity,
-      decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFF27332B)))),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0B100D) : const Color(0xFFF1F5F9),
+        border: Border(
+          top: BorderSide(color: isDark ? const Color(0xFF27332B) : const Color(0xFFCBD5E1)),
+        ),
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1160),
-          child: Row(
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 16,
+            runSpacing: 12,
             children: [
-              const Expanded(
-                child: Text('© 2026 Shaipados Labs', style: TextStyle(color: _muted, fontSize: 12)),
+              Text(
+                '© 2026 Shaipados Labs • Todos os direitos reservados',
+                style: TextStyle(
+                  color: isDark ? _muted : const Color(0xFF64748B),
+                  fontSize: 12,
+                ),
               ),
-              TextButton(
-                onPressed: () => Navigator.pushNamed(context, '/ai'),
-                style: TextButton.styleFrom(foregroundColor: Colors.white),
-                child: const Text('Mr. Coach IA'),
+              Wrap(
+                spacing: 8,
+                children: [
+                  TextButton(
+                    onPressed: () => _showTermsDialog(context),
+                    style: TextButton.styleFrom(
+                      foregroundColor: isDark ? Colors.white70 : const Color(0xFF334155),
+                    ),
+                    child: const Text('Termos de Uso', style: TextStyle(fontSize: 12)),
+                  ),
+                  TextButton(
+                    onPressed: () => _showPrivacyDialog(context),
+                    style: TextButton.styleFrom(
+                      foregroundColor: isDark ? Colors.white70 : const Color(0xFF334155),
+                    ),
+                    child: const Text('Privacidade', style: TextStyle(fontSize: 12)),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pushNamed(context, '/ai'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                    child: const Text('Mr. Coach IA', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                ],
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  static void _showTermsDialog(BuildContext context) {
+    final isDark = MetaColors.isDark(context);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF111827) : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: isDark ? const Color(0xFF1F2937) : const Color(0xFFCBD5E1)),
+        ),
+        title: Text(
+          'Termos de Uso • Mr. Coach',
+          style: TextStyle(
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Text(
+            'Ao utilizar o Mr. Coach e o ecossistema Shaipados Labs, você concorda com os termos de prestação de serviço de inteligência artificial aplicada ao treinamento físico. '
+            'A plataforma atua como ferramenta de suporte a profissionais de Educação Física certificados e seus alunos. '
+            'Todas as prescrições devem respeitar a individualidade biológica e a liberação médica do praticante.',
+            style: TextStyle(
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
+              fontSize: 13,
+              height: 1.5,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Entendido', style: TextStyle(color: _green, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static void _showPrivacyDialog(BuildContext context) {
+    final isDark = MetaColors.isDark(context);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF111827) : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: isDark ? const Color(0xFF1F2937) : const Color(0xFFCBD5E1)),
+        ),
+        title: Text(
+          'Política de Privacidade & LGPD',
+          style: TextStyle(
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Text(
+            'O Shaipados Labs respeita a sua privacidade e a Lei Geral de Proteção de Dados (LGPD - Lei 13.709/2018). '
+            'Coletamos estritamente os dados necessários para o cálculo biomecânico de periodização e acompanhamento de treinos. '
+            'Seus dados nunca são comercializados com terceiros e estão protegidos por criptografia e Row-Level Security (RLS) no Supabase.',
+            style: TextStyle(
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
+              fontSize: 13,
+              height: 1.5,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Entendido', style: TextStyle(color: _green, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }

@@ -223,9 +223,10 @@ class _PublicTrainerDirectoryScreenState
   Widget build(BuildContext context) {
     final trainers = _filteredTrainers;
     final isDesktop = MediaQuery.sizeOf(context).width > 860;
+    final isDark = MetaColors.isDark(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0B100D),
+      backgroundColor: isDark ? const Color(0xFF0B100D) : const Color(0xFFF8FAFC),
       body: SafeArea(
         bottom: false,
         child: CustomScrollView(
@@ -293,6 +294,7 @@ class _PublicTrainerDirectoryScreenState
   }
 
   Widget _buildHeader(BuildContext context, bool isDesktop) {
+    final isDark = MetaColors.isDark(context);
     return Container(
       padding: EdgeInsets.fromLTRB(
         isDesktop ? 32 : 20,
@@ -300,10 +302,10 @@ class _PublicTrainerDirectoryScreenState
         isDesktop ? 32 : 20,
         12,
       ),
-      decoration: const BoxDecoration(
-        color: Color(0xFF101713),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF101713) : Colors.white,
         border: Border(
-          bottom: BorderSide(color: Color(0xFF1E2D23)),
+          bottom: BorderSide(color: isDark ? const Color(0xFF1E2D23) : const Color(0xFFE2E8F0)),
         ),
       ),
       child: Center(
@@ -322,8 +324,8 @@ class _PublicTrainerDirectoryScreenState
                         Navigator.pushNamed(context, '/');
                       }
                     },
-                    icon: const Icon(Icons.arrow_back_rounded,
-                        color: Colors.white),
+                    icon: Icon(Icons.arrow_back_rounded,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A)),
                     tooltip: 'Voltar',
                   ),
                   const SizedBox(width: 8),
@@ -376,7 +378,7 @@ class _PublicTrainerDirectoryScreenState
               Text(
                 'Encontre seu Personal Trainer Especialista',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
                   fontSize: isDesktop ? 32 : 24,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.5,
@@ -384,10 +386,10 @@ class _PublicTrainerDirectoryScreenState
                 ),
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 'Profissionais certificados pelo Conselho Federal de Educação Física com metodologia biomecânica e acompanhamento diário com IA.',
                 style: TextStyle(
-                  color: Color(0xFF9AA9A1),
+                  color: isDark ? const Color(0xFF9AA9A1) : const Color(0xFF64748B),
                   fontSize: 14,
                   height: 1.45,
                 ),
@@ -396,24 +398,32 @@ class _PublicTrainerDirectoryScreenState
               // Search Field One UI 7
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF16221B),
+                  color: isDark ? const Color(0xFF16221B) : Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFF2C3C31)),
+                  border: Border.all(color: isDark ? const Color(0xFF2C3C31) : const Color(0xFFCBD5E1)),
+                  boxShadow: [
+                    if (!isDark)
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                  ],
                 ),
                 child: TextField(
                   controller: _searchController,
                   onChanged: (_) => setState(() {}),
-                  style: const TextStyle(color: Colors.white, fontSize: 14.5),
+                  style: TextStyle(color: isDark ? Colors.white : const Color(0xFF0F172A), fontSize: 14.5),
                   decoration: InputDecoration(
                     hintText:
                         'Buscar por nome, especialidade, cidade/UF ou CREF...',
-                    hintStyle: const TextStyle(color: Color(0xFF75857C)),
+                    hintStyle: TextStyle(color: isDark ? const Color(0xFF75857C) : const Color(0xFF94A3B8)),
                     prefixIcon: const Icon(Icons.search_rounded,
                         color: MetaColors.emerald),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.clear_rounded,
-                                color: Color(0xFF75857C)),
+                            icon: Icon(Icons.clear_rounded,
+                                color: isDark ? const Color(0xFF75857C) : const Color(0xFF94A3B8)),
                             onPressed: () {
                               _searchController.clear();
                               setState(() {});
@@ -434,6 +444,7 @@ class _PublicTrainerDirectoryScreenState
   }
 
   Widget _buildFiltersSection(int resultsCount) {
+    final isDark = MetaColors.isDark(context);
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1200),
@@ -464,12 +475,12 @@ class _PublicTrainerDirectoryScreenState
                         decoration: BoxDecoration(
                           color: _onlyVerifiedCref
                               ? MetaColors.emerald.withValues(alpha: 0.22)
-                              : const Color(0xFF16221B),
+                              : (isDark ? const Color(0xFF16221B) : Colors.white),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: _onlyVerifiedCref
                                 ? MetaColors.emerald
-                                : const Color(0xFF2C3C31),
+                                : (isDark ? const Color(0xFF2C3C31) : const Color(0xFFCBD5E1)),
                           ),
                         ),
                         child: Row(
@@ -482,15 +493,15 @@ class _PublicTrainerDirectoryScreenState
                               size: 15,
                               color: _onlyVerifiedCref
                                   ? MetaColors.emerald
-                                  : const Color(0xFF889B90),
+                                  : (isDark ? const Color(0xFF889B90) : const Color(0xFF64748B)),
                             ),
                             const SizedBox(width: 6),
                             Text(
                               '🛡️ Só CREF Verificado',
                               style: TextStyle(
                                 color: _onlyVerifiedCref
-                                    ? Colors.white
-                                    : const Color(0xFFB5C8BD),
+                                    ? (isDark ? Colors.white : const Color(0xFF065F46))
+                                    : (isDark ? const Color(0xFFB5C8BD) : const Color(0xFF475569)),
                                 fontSize: 12.5,
                                 fontWeight: _onlyVerifiedCref
                                     ? FontWeight.bold
@@ -513,18 +524,18 @@ class _PublicTrainerDirectoryScreenState
                               setState(() => _selectedSpecialty = filter);
                             }
                           },
-                          backgroundColor: const Color(0xFF16221B),
+                          backgroundColor: isDark ? const Color(0xFF16221B) : Colors.white,
                           selectedColor:
                               MetaColors.emerald.withValues(alpha: 0.22),
                           side: BorderSide(
                             color: _selectedSpecialty == filter
                                 ? MetaColors.emerald
-                                : const Color(0xFF2C3C31),
+                                : (isDark ? const Color(0xFF2C3C31) : const Color(0xFFCBD5E1)),
                           ),
                           labelStyle: TextStyle(
                             color: _selectedSpecialty == filter
-                                ? Colors.white
-                                : const Color(0xFFB5C8BD),
+                                ? (isDark ? Colors.white : const Color(0xFF065F46))
+                                : (isDark ? const Color(0xFFB5C8BD) : const Color(0xFF475569)),
                             fontSize: 12.5,
                             fontWeight: _selectedSpecialty == filter
                                 ? FontWeight.bold
@@ -545,8 +556,8 @@ class _PublicTrainerDirectoryScreenState
                 children: [
                   Text(
                     '$resultsCount treinador${resultsCount == 1 ? '' : 'es'} credenciado${resultsCount == 1 ? '' : 's'} disponíve${resultsCount == 1 ? 'l' : 'is'}',
-                    style: const TextStyle(
-                      color: Color(0xFF889B90),
+                    style: TextStyle(
+                      color: isDark ? const Color(0xFF889B90) : const Color(0xFF64748B),
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -580,6 +591,7 @@ class _PublicTrainerDirectoryScreenState
   }
 
   Widget _buildEmptyState() {
+    final isDark = MetaColors.isDark(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -589,27 +601,30 @@ class _PublicTrainerDirectoryScreenState
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: const Color(0xFF16221B),
+                color: isDark ? const Color(0xFF16221B) : Colors.white,
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFF2C3C31)),
+                border: Border.all(color: isDark ? const Color(0xFF2C3C31) : const Color(0xFFE2E8F0)),
               ),
               child: const Icon(Icons.person_search_rounded,
                   color: MetaColors.emerald, size: 40),
             ),
             const SizedBox(height: 18),
-            const Text(
+            Text(
               'Nenhum treinador encontrado',
               style: TextStyle(
-                color: Colors.white,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Tente ajustar os filtros de especialidade ou o termo pesquisado.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFF889B90), fontSize: 13.5),
+              style: TextStyle(
+                color: isDark ? const Color(0xFF889B90) : const Color(0xFF64748B),
+                fontSize: 13.5,
+              ),
             ),
             const SizedBox(height: 18),
             ElevatedButton(
@@ -648,6 +663,19 @@ class _TrainerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = MetaColors.isDark(context);
+    final cardBg = isDark ? const Color(0xFF141F18) : Colors.white;
+    final cardBorder = isDark ? const Color(0xFF27382D) : const Color(0xFFE2E8F0);
+    final textPrimary = isDark ? Colors.white : const Color(0xFF0F172A);
+    final textSecondary = isDark ? const Color(0xFF8DA396) : const Color(0xFF64748B);
+    final chipBg = isDark ? const Color(0xFF1C2B22) : const Color(0xFFF1F5F9);
+    final chipBorder = isDark ? const Color(0xFF2C4234) : const Color(0xFFCBD5E1);
+    final chipText = isDark ? const Color(0xFFBFE0CD) : const Color(0xFF065F46);
+    final footerBoxBg = isDark ? const Color(0xFF0F1813) : const Color(0xFFF8FAFC);
+    final footerBoxBorder = isDark ? const Color(0xFF233529) : const Color(0xFFE2E8F0);
+    final bioColor = isDark ? const Color(0xFF9CAFA4) : const Color(0xFF475569);
+    final avatarBg = isDark ? const Color(0xFF203227) : const Color(0xFFE2E8F0);
+
     final fullName = trainer['full_name'] as String? ?? 'Treinador Credenciado';
     final username = trainer['username'] as String? ?? trainer['id']?.toString() ?? '';
     final cref = trainer['cref'] as String? ?? '000000-G/BR';
@@ -664,12 +692,12 @@ class _TrainerCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF141F18),
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF27382D)),
+        border: Border.all(color: cardBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
+            color: isDark ? Colors.black.withValues(alpha: 0.25) : Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -694,7 +722,7 @@ class _TrainerCard extends StatelessWidget {
                       children: [
                         CircleAvatar(
                           radius: 28,
-                          backgroundColor: const Color(0xFF203227),
+                          backgroundColor: avatarBg,
                           backgroundImage: photo != null && photo.isNotEmpty
                               ? NetworkImage(photo)
                               : null,
@@ -713,7 +741,7 @@ class _TrainerCard extends StatelessWidget {
                               color: MetaColors.emerald,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: const Color(0xFF141F18),
+                                color: cardBg,
                                 width: 2,
                               ),
                             ),
@@ -733,8 +761,8 @@ class _TrainerCard extends StatelessWidget {
                                   fullName,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: textPrimary,
                                     fontSize: 16.5,
                                     fontWeight: FontWeight.w800,
                                   ),
@@ -775,8 +803,8 @@ class _TrainerCard extends StatelessWidget {
                             'CREF $cref • $cityState',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Color(0xFF8DA396),
+                            style: TextStyle(
+                              color: textSecondary,
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                             ),
@@ -798,14 +826,14 @@ class _TrainerCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1C2B22),
+                          color: chipBg,
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFF2C4234)),
+                          border: Border.all(color: chipBorder),
                         ),
                         child: Text(
                           spec,
-                          style: const TextStyle(
-                            color: Color(0xFFBFE0CD),
+                          style: TextStyle(
+                            color: chipText,
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
@@ -820,8 +848,8 @@ class _TrainerCard extends StatelessWidget {
                   bio,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF9CAFA4),
+                  style: TextStyle(
+                    color: bioColor,
                     fontSize: 12.5,
                     height: 1.4,
                   ),
@@ -833,9 +861,9 @@ class _TrainerCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0F1813),
+                    color: footerBoxBg,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF233529)),
+                    border: Border.all(color: footerBoxBorder),
                   ),
                   child: Row(
                     children: [
@@ -849,8 +877,8 @@ class _TrainerCard extends StatelessWidget {
                               const SizedBox(width: 4),
                               Text(
                                 rating.toStringAsFixed(2),
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: textPrimary,
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -858,8 +886,8 @@ class _TrainerCard extends StatelessWidget {
                               const SizedBox(width: 4),
                               Text(
                                 '($studentsCount alunos)',
-                                style: const TextStyle(
-                                  color: Color(0xFF75857C),
+                                style: TextStyle(
+                                  color: isDark ? const Color(0xFF75857C) : const Color(0xFF94A3B8),
                                   fontSize: 11,
                                 ),
                               ),
@@ -868,16 +896,16 @@ class _TrainerCard extends StatelessWidget {
                           const SizedBox(height: 2),
                           RichText(
                             text: TextSpan(
-                              style: const TextStyle(
-                                color: Color(0xFF8DA396),
+                              style: TextStyle(
+                                color: textSecondary,
                                 fontSize: 11,
                               ),
                               children: [
                                 const TextSpan(text: 'A partir de '),
                                 TextSpan(
                                   text: CurrencyPtBrFormatter.format(startingPrice),
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: textPrimary,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 12.5,
                                   ),
