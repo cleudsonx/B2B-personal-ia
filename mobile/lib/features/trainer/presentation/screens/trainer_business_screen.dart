@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import '../../../../core/widgets/app_version_footer.dart';
 import '../../../../core/widgets/meta_components.dart';
 import '../../../../core/theme/theme_controller.dart';
+import '../../../../core/widgets/thematic_editorial_card.dart';
+import '../../../../core/widgets/thematic_watermarks.dart';
 import '../../../subscription/subscription_screen.dart';
 import 'whatsapp_connection_screen.dart';
 import 'trainer_profile_setup_screen.dart';
@@ -68,41 +70,29 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
       title: 'Gere confiança com seu perfil',
       description:
           'Um perfil completo com sua foto profissional, bio objetiva e credenciais aumenta em até 3x a conversão de novos alunos.',
-      gradient: LinearGradient(
-        colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
+      palette: ThematicCardPalette.businessEmerald,
+      watermark: ThematicWatermarkType.biomechanics,
     ),
     _BusinessTip(
       title: 'Divulgue seus treinos e planos',
       description:
           'Compartilhe links diretos da sua Vitrine Pública no Instagram e WhatsApp para captar alunos com checkout instantâneo.',
-      gradient: LinearGradient(
-        colors: [Color(0xFFEC4899), Color(0xFFF43F5E)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
+      palette: ThematicCardPalette.businessEmerald,
+      watermark: ThematicWatermarkType.walletFinance,
     ),
     _BusinessTip(
       title: 'Automatize mensagens no WhatsApp',
       description:
           'Envie lembretes de treinos e boas-vindas automáticas para manter o engajamento e a aderência aos treinos alta.',
-      gradient: LinearGradient(
-        colors: [Color(0xFF10B981), Color(0xFF06B6D4)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
+      palette: ThematicCardPalette.aiOrchid,
+      watermark: ThematicWatermarkType.aiCopilot,
     ),
     _BusinessTip(
       title: 'Use a IA para dobrar sua retenção',
       description:
           'O assistente de IA responde dúvidas biomecânicas dos alunos 24h por dia com base na sua metodologia de treino.',
-      gradient: LinearGradient(
-        colors: [Color(0xFFF59E0B), Color(0xFFEF4444)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
+      palette: ThematicCardPalette.aiOrchid,
+      watermark: ThematicWatermarkType.aiCopilot,
     ),
   ];
 
@@ -183,27 +173,13 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              Container(
-                height: 120,
-                decoration: BoxDecoration(
-                  gradient: tip.gradient,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Center(
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.play_arrow_rounded,
-                      color: Colors.white,
-                      size: 32,
-                    ),
-                  ),
-                ),
+              ThematicEditorialCard(
+                category: 'DICA DE ESCALABILIDADE',
+                title: tip.title,
+                palette: tip.palette,
+                customWatermark: tip.watermark,
+                minHeight: 110,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
               const SizedBox(height: 18),
               Text(
@@ -1447,7 +1423,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
             ),
             SliverToBoxAdapter(
               child: SizedBox(
-                height: 160,
+                height: 165,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
@@ -1457,62 +1433,27 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                   itemBuilder: (context, index) {
                     final tip = _tips[index];
                     return SizedBox(
-                      width: 220,
-                      child: MetaCard(
-                        padding: EdgeInsets.zero,
-                        borderRadius: 16.0,
+                      width: 250,
+                      child: ThematicEditorialCard(
+                        category: 'COMO ESCALAR',
+                        title: tip.title,
+                        description: tip.description,
+                        palette: tip.palette,
+                        customWatermark: tip.watermark,
+                        minHeight: 165,
+                        padding: const EdgeInsets.all(16),
                         onTap: () => _showTipModal(tip),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(15.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              // Metade superior: Container com gradiente vibrante e ícone de play centralizado
-                              Expanded(
-                                flex: 5,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    gradient: tip.gradient,
-                                  ),
-                                  child: Center(
-                                    child: Container(
-                                      width: 36,
-                                      height: 36,
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withValues(alpha: 0.35),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.play_arrow_rounded,
-                                        color: Colors.white,
-                                        size: 24,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              // Metade inferior: fundo dinâmico com o texto
-                              Container(
-                                height: 68,
-                                color: MetaColors.highlight(context),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  tip.title,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: MetaColors.text(context),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    height: 1.25,
-                                  ),
-                                ),
-                              ),
-                            ],
+                        trailingBadge: Container(
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.22),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.play_arrow_rounded,
+                            color: Colors.white,
+                            size: 16,
                           ),
                         ),
                       ),
@@ -1633,12 +1574,14 @@ enum _ToolType {
 class _BusinessTip {
   final String title;
   final String description;
-  final Gradient gradient;
+  final ThematicCardPalette palette;
+  final ThematicWatermarkType watermark;
 
   const _BusinessTip({
     required this.title,
     required this.description,
-    required this.gradient,
+    required this.palette,
+    required this.watermark,
   });
 }
 

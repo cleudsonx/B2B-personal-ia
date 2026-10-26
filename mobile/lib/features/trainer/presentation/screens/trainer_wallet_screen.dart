@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/widgets/meta_components.dart';
+import '../../../../core/widgets/thematic_editorial_card.dart';
+import '../../../../core/widgets/thematic_watermarks.dart';
 import '../../../../services/wallet_service.dart';
 import '../../../../core/utils/currency_pt_br_formatter.dart';
 
@@ -470,52 +472,50 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Card Principal: Saldo Disponível
-                    MetaCard(
+                    // Card Principal: Saldo Disponível (One UI 7 Health / Samsung Health Editorial)
+                    ThematicEditorialCard(
+                      category: 'CARTEIRA B2B • REPASSE AUTOMÁTICO',
+                      palette: ThematicCardPalette.businessEmerald,
+                      customWatermark: ThematicWatermarkType.walletFinance,
                       padding: const EdgeInsets.all(20),
-                      child: Column(
+                      trailingBadge: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.bolt_rounded, size: 14, color: Colors.white),
+                            SizedBox(width: 4),
+                            Text(
+                              'Pix Imediato',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      customContent: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Saldo Disponível',
-                                style: TextStyle(
-                                  color: MetaColors.subtext(context),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: MetaColors.emerald.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.bolt_rounded, size: 14, color: MetaColors.emerald),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      'Pix Imediato',
-                                      style: TextStyle(
-                                        color: MetaColors.emerald,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                          Text(
+                            'Saldo Disponível',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           Text(
                             'R\$ ${(_summary?.balance ?? 0.0).toStringAsFixed(2)}',
-                            style: TextStyle(
-                              color: MetaColors.text(context),
+                            style: const TextStyle(
+                              color: Colors.white,
                               fontSize: 32,
                               fontWeight: FontWeight.w900,
                               letterSpacing: -0.5,
@@ -524,25 +524,32 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                           const SizedBox(height: 12),
                           Row(
                             children: [
-                              Icon(Icons.qr_code_rounded, size: 14, color: MetaColors.subtext(context)),
+                              Icon(Icons.qr_code_rounded, size: 14, color: Colors.white.withValues(alpha: 0.8)),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
                                   _summary?.pixKey != null
                                       ? 'Pix: ${_summary!.pixKey}'
                                       : 'Nenhuma chave cadastrada',
-                                  style: TextStyle(color: MetaColors.subtext(context), fontSize: 12),
+                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 12),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               InkWell(
                                 onTap: _showPixKeyModal,
-                                child: Text(
-                                  _summary?.pixKey != null ? 'Alterar' : 'Cadastrar',
-                                  style: TextStyle(
-                                    color: MetaColors.accentBlue,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.22),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    _summary?.pixKey != null ? 'Alterar' : 'Cadastrar',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -557,6 +564,8 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                                   icon: Icons.payments_outlined,
                                   isPrimary: true,
                                   height: 46,
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: const Color(0xFF065F46),
                                   onPressed: (_summary?.balance ?? 0) > 0 ? _showWithdrawModal : null,
                                 ),
                               ),
@@ -567,6 +576,8 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                                   icon: Icons.edit_note_rounded,
                                   isPrimary: false,
                                   height: 46,
+                                  backgroundColor: Colors.white.withValues(alpha: 0.2),
+                                  foregroundColor: Colors.white,
                                   onPressed: _showPixKeyModal,
                                 ),
                               ),
