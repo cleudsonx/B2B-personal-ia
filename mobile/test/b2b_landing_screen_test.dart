@@ -25,7 +25,7 @@ void main() {
     expect(find.text('Alunos na consultoria'), findsOneWidget);
     expect(find.text('Mensalidade média do aluno'), findsOneWidget);
     expect(find.text('FATURAMENTO BRUTO ESTIMADO'), findsOneWidget);
-    expect(find.text('Começar Gratuitamente no Starter'), findsOneWidget);
+    expect(find.text('Criar Minha Vitrine Grátis no Starter'), findsOneWidget);
 
     // 3. Verify Biomechanical Test Drive Section
     expect(find.text('TEST-DRIVE DE IA EM TEMPO REAL • SEM CADASTRO'), findsOneWidget);

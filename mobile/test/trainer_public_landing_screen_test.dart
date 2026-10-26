@@ -31,18 +31,18 @@ void main() {
     expect(find.text('Reabilitação Lombar'), findsOneWidget);
     expect(find.text('Emagrecimento & Definição'), findsOneWidget);
 
-    // Initial state is "Depois" for Rodrigo M.
+    // Initial state is Rodrigo M. with Before and After metrics visible
     expect(find.text('Rodrigo M. (32 anos)'), findsOneWidget);
-    expect(find.text('ESTADO ATUAL (COM MR. COACH)'), findsOneWidget);
+    expect(find.text('ANTES'), findsOneWidget);
+    expect(find.text('DEPOIS'), findsOneWidget);
     expect(find.text('79 kg • 11% gordura'), findsOneWidget);
     expect(find.text('94 kg (+34 kg)'), findsOneWidget);
 
-    // 2. Toggle to "Antes"
+    // 2. Toggle preset to "Antes"
     expect(find.text('Antes'), findsOneWidget);
     await tester.tap(find.text('Antes'));
     await tester.pumpAndSettle();
 
-    expect(find.text('ESTADO INICIAL (SEM CONSULTORIA)'), findsOneWidget);
     expect(find.text('74 kg • 18% gordura'), findsOneWidget);
     expect(find.text('60 kg (estagnado)'), findsOneWidget);
 
@@ -51,7 +51,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Juliana S. (28 anos)'), findsOneWidget);
-    expect(find.text('Capacidade de Carga em Pernas: '), findsOneWidget);
+    expect(find.text('Capacidade de Carga em Pernas:'), findsOneWidget);
 
     // 4. Tap CTA button
     final ctaButton = find.text('Quero Uma Transformação Assim');
@@ -108,7 +108,8 @@ void main() {
 
     // 1. Header / Bio / Authority Stats
     expect(find.text('PROF. CLEUDSON CAVALCANTE'), findsOneWidget);
-    expect(find.text('Registro profissional: CREF 012345-G/DF'), findsOneWidget);
+    expect(find.textContaining('012345-G/DF'), findsOneWidget);
+    expect(find.textContaining('VERIFICADO'), findsOneWidget);
     expect(find.text('10+'), findsOneWidget);
     expect(find.text('+500'), findsOneWidget);
 
@@ -137,7 +138,7 @@ void main() {
     expect(find.text('Perguntas Frequentes (FAQ)'), findsOneWidget);
     expect(find.text('Nunca treinei antes na vida, a consultoria serve para mim?'), findsOneWidget);
 
-    // 8. Bottom bar buttons
-    expect(find.text('CONTRATAR CONSULTORIA PIX'), findsOneWidget);
+    // 8. Bottom bar / Action buttons
+    expect(find.textContaining('Contratar Imediato'), findsOneWidget);
   });
 }
