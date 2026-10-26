@@ -2245,6 +2245,7 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = MetaColors.isDark(context);
     return Padding(
       padding: EdgeInsets.only(
         left: 20,
@@ -2253,14 +2254,23 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
         bottom: MediaQuery.of(context).viewInsets.bottom + 24,
       ),
       child: _checkoutResult == null
-          ? _buildFormStep()
+          ? _buildFormStep(isDark)
           : (_checkoutResult!.paymentMethod == 'CREDIT_CARD'
-              ? _buildSuccessCardStep()
-              : _buildSuccessPixStep()),
+              ? _buildSuccessCardStep(isDark)
+              : _buildSuccessPixStep(isDark)),
     );
   }
 
-  Widget _buildFormStep() {
+  Widget _buildFormStep(bool isDark) {
+    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subtextColor = isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary;
+    final inputFill = isDark ? MetaColors.surfaceHighlight : const Color(0xFFF1F5F9);
+    final inputBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: isDark ? BorderSide.none : const BorderSide(color: Color(0xFFCBD5E1)),
+    );
+    final hintColor = isDark ? Colors.white24 : const Color(0xFF94A3B8);
+
     return Form(
       key: _formKey,
       child: SingleChildScrollView(
@@ -2274,7 +2284,7 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                 width: 48,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: Colors.white24,
+                  color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -2288,13 +2298,13 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Checkout Seguro',
-                        style: TextStyle(color: MetaColors.textSecondary, fontSize: 12, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: subtextColor, fontSize: 12, fontWeight: FontWeight.bold),
                       ),
                       Text(
                         widget.plan.name,
-                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -2306,23 +2316,24 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
               ],
             ).animate().fadeIn(duration: 300.ms),
             const SizedBox(height: 16),
-            const Divider(color: Colors.white10),
+            Divider(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
             const SizedBox(height: 14),
 
-            const Text('Seus Dados de Acesso', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+            Text('Seus Dados de Acesso', style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
 
             // Nome
             TextFormField(
               controller: _nameCtrl,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: textColor),
               decoration: InputDecoration(
                 labelText: 'Nome Completo',
-                labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                labelStyle: TextStyle(color: subtextColor),
                 filled: true,
-                fillColor: MetaColors.surfaceHighlight,
-                prefixIcon: const Icon(Icons.person_outline, color: MetaColors.textSecondary),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                fillColor: inputFill,
+                prefixIcon: Icon(Icons.person_outline, color: subtextColor),
+                border: inputBorder,
+                enabledBorder: inputBorder,
               ),
               validator: (v) => (v == null || v.trim().length < 3) ? 'Informe seu nome completo' : null,
             ),
@@ -2332,14 +2343,15 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
             TextFormField(
               controller: _emailCtrl,
               keyboardType: TextInputType.emailAddress,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: textColor),
               decoration: InputDecoration(
                 labelText: 'E-mail para login no app',
-                labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                labelStyle: TextStyle(color: subtextColor),
                 filled: true,
-                fillColor: MetaColors.surfaceHighlight,
-                prefixIcon: const Icon(Icons.email_outlined, color: MetaColors.textSecondary),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                fillColor: inputFill,
+                prefixIcon: Icon(Icons.email_outlined, color: subtextColor),
+                border: inputBorder,
+                enabledBorder: inputBorder,
               ),
               validator: (v) => (v == null || !v.contains('@') || !v.contains('.')) ? 'Informe um e-mail válido' : null,
             ),
@@ -2349,16 +2361,17 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
             TextFormField(
               controller: _phoneCtrl,
               keyboardType: TextInputType.phone,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: textColor),
               decoration: InputDecoration(
                 labelText: 'WhatsApp com DDD',
                 hintText: 'Ex: (11) 98888-7777',
-                labelStyle: const TextStyle(color: MetaColors.textSecondary),
-                hintStyle: const TextStyle(color: Colors.white24),
+                labelStyle: TextStyle(color: subtextColor),
+                hintStyle: TextStyle(color: hintColor),
                 filled: true,
-                fillColor: MetaColors.surfaceHighlight,
-                prefixIcon: const Icon(Icons.phone_outlined, color: MetaColors.textSecondary),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                fillColor: inputFill,
+                prefixIcon: Icon(Icons.phone_outlined, color: subtextColor),
+                border: inputBorder,
+                enabledBorder: inputBorder,
               ),
               validator: (v) => (v == null || v.replaceAll(RegExp(r'\D'), '').length < 10) ? 'Informe seu WhatsApp com DDD' : null,
             ),
@@ -2368,16 +2381,17 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
             TextFormField(
               controller: _cpfCtrl,
               keyboardType: TextInputType.number,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: textColor),
               decoration: InputDecoration(
                 labelText: 'CPF (para nota e cadastro)',
                 hintText: '000.000.000-00',
-                labelStyle: const TextStyle(color: MetaColors.textSecondary),
-                hintStyle: const TextStyle(color: Colors.white24),
+                labelStyle: TextStyle(color: subtextColor),
+                hintStyle: TextStyle(color: hintColor),
                 filled: true,
-                fillColor: MetaColors.surfaceHighlight,
-                prefixIcon: const Icon(Icons.badge_outlined, color: MetaColors.textSecondary),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                fillColor: inputFill,
+                prefixIcon: Icon(Icons.badge_outlined, color: subtextColor),
+                border: inputBorder,
+                enabledBorder: inputBorder,
               ),
               validator: (v) {
                 if (_paymentMethod == 'PIX') return null;
@@ -2391,7 +2405,7 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
             const SizedBox(height: 16),
 
             // Método de Pagamento
-            const Text('Forma de Pagamento', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+            Text('Forma de Pagamento', style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
             Row(
               children: [
@@ -2402,9 +2416,11 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: _paymentMethod == 'PIX' ? MetaColors.emerald.withValues(alpha: 0.15) : MetaColors.surfaceHighlight,
+                        color: _paymentMethod == 'PIX' ? MetaColors.emerald.withValues(alpha: 0.15) : inputFill,
                         border: Border.all(
-                          color: _paymentMethod == 'PIX' ? MetaColors.emerald : Colors.transparent,
+                          color: _paymentMethod == 'PIX'
+                              ? MetaColors.emerald
+                              : (isDark ? Colors.transparent : const Color(0xFFE2E8F0)),
                           width: 1.5,
                         ),
                         borderRadius: BorderRadius.circular(12),
@@ -2412,12 +2428,12 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.pix_rounded, color: _paymentMethod == 'PIX' ? MetaColors.emerald : MetaColors.textSecondary, size: 20),
+                          Icon(Icons.pix_rounded, color: _paymentMethod == 'PIX' ? MetaColors.emerald : subtextColor, size: 20),
                           const SizedBox(width: 8),
                           Text(
                             'Pix (Instantâneo)',
                             style: TextStyle(
-                              color: _paymentMethod == 'PIX' ? Colors.white : MetaColors.textSecondary,
+                              color: _paymentMethod == 'PIX' ? (isDark ? Colors.white : MetaColors.emerald) : subtextColor,
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
                             ),
@@ -2435,9 +2451,11 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: _paymentMethod == 'CREDIT_CARD' ? MetaColors.emerald.withValues(alpha: 0.15) : MetaColors.surfaceHighlight,
+                        color: _paymentMethod == 'CREDIT_CARD' ? MetaColors.emerald.withValues(alpha: 0.15) : inputFill,
                         border: Border.all(
-                          color: _paymentMethod == 'CREDIT_CARD' ? MetaColors.emerald : Colors.transparent,
+                          color: _paymentMethod == 'CREDIT_CARD'
+                              ? MetaColors.emerald
+                              : (isDark ? Colors.transparent : const Color(0xFFE2E8F0)),
                           width: 1.5,
                         ),
                         borderRadius: BorderRadius.circular(12),
@@ -2445,12 +2463,12 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.credit_card, color: _paymentMethod == 'CREDIT_CARD' ? MetaColors.emerald : MetaColors.textSecondary, size: 20),
+                          Icon(Icons.credit_card, color: _paymentMethod == 'CREDIT_CARD' ? MetaColors.emerald : subtextColor, size: 20),
                           const SizedBox(width: 8),
                           Text(
                             'Cartão',
                             style: TextStyle(
-                              color: _paymentMethod == 'CREDIT_CARD' ? Colors.white : MetaColors.textSecondary,
+                              color: _paymentMethod == 'CREDIT_CARD' ? (isDark ? Colors.white : MetaColors.emerald) : subtextColor,
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
                             ),
@@ -2465,13 +2483,13 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
 
             if (_paymentMethod == 'CREDIT_CARD') ...[
               const SizedBox(height: 20),
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.credit_card_rounded, color: MetaColors.emerald, size: 18),
-                  SizedBox(width: 8),
+                  const Icon(Icons.credit_card_rounded, color: MetaColors.emerald, size: 18),
+                  const SizedBox(width: 8),
                   Text(
                     'Dados do Cartão de Crédito',
-                    style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -2481,7 +2499,7 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
               TextFormField(
                 controller: _cardNumberCtrl,
                 keyboardType: TextInputType.number,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: textColor),
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
                   _CardNumberInputFormatter(),
@@ -2489,12 +2507,13 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                 decoration: InputDecoration(
                   labelText: 'Número do Cartão',
                   hintText: '0000 0000 0000 0000',
-                  labelStyle: const TextStyle(color: MetaColors.textSecondary),
-                  hintStyle: const TextStyle(color: Colors.white24),
+                  labelStyle: TextStyle(color: subtextColor),
+                  hintStyle: TextStyle(color: hintColor),
                   filled: true,
-                  fillColor: MetaColors.surfaceHighlight,
-                  prefixIcon: const Icon(Icons.payment_rounded, color: MetaColors.textSecondary),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  fillColor: inputFill,
+                  prefixIcon: Icon(Icons.payment_rounded, color: subtextColor),
+                  border: inputBorder,
+                  enabledBorder: inputBorder,
                 ),
                 validator: (v) {
                   if (_paymentMethod != 'CREDIT_CARD') return null;
@@ -2511,16 +2530,17 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
               TextFormField(
                 controller: _cardHolderCtrl,
                 textCapitalization: TextCapitalization.characters,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: textColor),
                 decoration: InputDecoration(
                   labelText: 'Nome do Titular (como no cartão)',
                   hintText: 'NOME C SOBRENOME',
-                  labelStyle: const TextStyle(color: MetaColors.textSecondary),
-                  hintStyle: const TextStyle(color: Colors.white24),
+                  labelStyle: TextStyle(color: subtextColor),
+                  hintStyle: TextStyle(color: hintColor),
                   filled: true,
-                  fillColor: MetaColors.surfaceHighlight,
-                  prefixIcon: const Icon(Icons.person_pin_outlined, color: MetaColors.textSecondary),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  fillColor: inputFill,
+                  prefixIcon: Icon(Icons.person_pin_outlined, color: subtextColor),
+                  border: inputBorder,
+                  enabledBorder: inputBorder,
                 ),
                 validator: (v) {
                   if (_paymentMethod != 'CREDIT_CARD') return null;
@@ -2539,7 +2559,7 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                     child: TextFormField(
                       controller: _cardExpiryCtrl,
                       keyboardType: TextInputType.number,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: textColor),
                       inputFormatters: [
                         FilteringTextInputFormatter.digitsOnly,
                         _CardExpiryInputFormatter(),
@@ -2547,12 +2567,13 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                       decoration: InputDecoration(
                         labelText: 'Validade',
                         hintText: 'MM/AA',
-                        labelStyle: const TextStyle(color: MetaColors.textSecondary),
-                        hintStyle: const TextStyle(color: Colors.white24),
+                        labelStyle: TextStyle(color: subtextColor),
+                        hintStyle: TextStyle(color: hintColor),
                         filled: true,
-                        fillColor: MetaColors.surfaceHighlight,
-                        prefixIcon: const Icon(Icons.calendar_month_outlined, color: MetaColors.textSecondary),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        fillColor: inputFill,
+                        prefixIcon: Icon(Icons.calendar_month_outlined, color: subtextColor),
+                        border: inputBorder,
+                        enabledBorder: inputBorder,
                       ),
                       validator: (v) {
                         if (_paymentMethod != 'CREDIT_CARD') return null;
@@ -2569,7 +2590,7 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                     child: TextFormField(
                       controller: _cardCcvCtrl,
                       keyboardType: TextInputType.number,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: textColor),
                       inputFormatters: [
                         FilteringTextInputFormatter.digitsOnly,
                         LengthLimitingTextInputFormatter(4),
@@ -2577,12 +2598,13 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                       decoration: InputDecoration(
                         labelText: 'CVV',
                         hintText: '123',
-                        labelStyle: const TextStyle(color: MetaColors.textSecondary),
-                        hintStyle: const TextStyle(color: Colors.white24),
+                        labelStyle: TextStyle(color: subtextColor),
+                        hintStyle: TextStyle(color: hintColor),
                         filled: true,
-                        fillColor: MetaColors.surfaceHighlight,
-                        prefixIcon: const Icon(Icons.lock_outline, color: MetaColors.textSecondary),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        fillColor: inputFill,
+                        prefixIcon: Icon(Icons.lock_outline, color: subtextColor),
+                        border: inputBorder,
+                        enabledBorder: inputBorder,
                       ),
                       validator: (v) {
                         if (_paymentMethod != 'CREDIT_CARD') return null;
@@ -2599,16 +2621,17 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
               TextFormField(
                 controller: _cardCpfCtrl,
                 keyboardType: TextInputType.number,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: textColor),
                 decoration: InputDecoration(
                   labelText: 'CPF do Titular do Cartão',
                   hintText: 'Deixe em branco se for o mesmo CPF acima',
-                  labelStyle: const TextStyle(color: MetaColors.textSecondary),
-                  hintStyle: const TextStyle(color: Colors.white24),
+                  labelStyle: TextStyle(color: subtextColor),
+                  hintStyle: TextStyle(color: hintColor),
                   filled: true,
-                  fillColor: MetaColors.surfaceHighlight,
-                  prefixIcon: const Icon(Icons.badge_outlined, color: MetaColors.textSecondary),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  fillColor: inputFill,
+                  prefixIcon: Icon(Icons.badge_outlined, color: subtextColor),
+                  border: inputBorder,
+                  enabledBorder: inputBorder,
                 ),
                 validator: (v) {
                   if (_paymentMethod != 'CREDIT_CARD') return null;
@@ -2672,8 +2695,8 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                       const SizedBox(height: 8),
                       Text(
                         _checkoutError!,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: textColor,
                           fontSize: 12.5,
                           height: 1.4,
                         ),
@@ -2707,10 +2730,10 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
               onPressed: _isSubmitting ? null : _processPayment,
             ),
             const SizedBox(height: 12),
-            const Center(
+            Center(
               child: Text(
                 '🔒 Pagamento processado com segurança via Asaas Gateway',
-                style: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                style: TextStyle(color: subtextColor, fontSize: 11),
               ),
             ),
           ],
@@ -2719,7 +2742,12 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
     );
   }
 
-  Widget _buildSuccessCardStep() {
+  Widget _buildSuccessCardStep(bool isDark) {
+    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subtextColor = isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary;
+    final cardBg = isDark ? MetaColors.background : const Color(0xFFF8FAFC);
+    final cardBorder = Border.all(color: isDark ? MetaColors.border : const Color(0xFFE2E8F0));
+
     return SingleChildScrollView(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -2731,7 +2759,7 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
               width: 48,
               height: 5,
               decoration: BoxDecoration(
-                color: Colors.white24,
+                color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
@@ -2749,14 +2777,14 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
           const SizedBox(height: 10),
 
           // Título principal
-          const Center(
+          Center(
             child: Text(
               'Assinatura Concluída com Sucesso!',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w900,
-                color: MetaColors.textPrimary,
+                color: textColor,
               ),
             ),
           ).animate().fadeIn(duration: 350.ms, delay: 100.ms).slideY(begin: 0.1, end: 0),
@@ -2768,9 +2796,9 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
             child: Text(
               '${widget.plan.name} · ${widget.trainerName}',
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: MetaColors.textSecondary,
+                color: subtextColor,
               ),
             ),
           ).animate().fadeIn(duration: 350.ms, delay: 150.ms),
@@ -2784,28 +2812,28 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                   decoration: BoxDecoration(
-                    color: MetaColors.background,
+                    color: cardBg,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: MetaColors.border),
+                    border: cardBorder,
                   ),
                   child: Column(
                     children: [
-                      const Text(
+                      Text(
                         'VALOR',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
-                          color: MetaColors.textSecondary,
+                          color: subtextColor,
                           letterSpacing: 0.5,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'R\$ ${widget.plan.price.toStringAsFixed(0)}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
-                          color: MetaColors.textPrimary,
+                          color: textColor,
                         ),
                       ),
                     ],
@@ -2817,23 +2845,23 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                   decoration: BoxDecoration(
-                    color: MetaColors.background,
+                    color: cardBg,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: MetaColors.border),
+                    border: cardBorder,
                   ),
-                  child: const Column(
+                  child: Column(
                     children: [
                       Text(
                         'STATUS',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
-                          color: MetaColors.textSecondary,
+                          color: subtextColor,
                           letterSpacing: 0.5,
                         ),
                       ),
-                      SizedBox(height: 4),
-                      Text(
+                      const SizedBox(height: 4),
+                      const Text(
                         'Aprovado',
                         style: TextStyle(
                           fontSize: 16,
@@ -2850,28 +2878,28 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                   decoration: BoxDecoration(
-                    color: MetaColors.background,
+                    color: cardBg,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: MetaColors.border),
+                    border: cardBorder,
                   ),
-                  child: const Column(
+                  child: Column(
                     children: [
                       Text(
                         'ACESSO',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
-                          color: MetaColors.textSecondary,
+                          color: subtextColor,
                           letterSpacing: 0.5,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
                         'Imediato ⚡',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w900,
-                          color: MetaColors.textPrimary,
+                          color: textColor,
                         ),
                       ),
                     ],
@@ -2901,19 +2929,19 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Matrícula Ativa: Acesso Imediato!',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
-                          color: MetaColors.textPrimary,
+                          color: textColor,
                         ),
                       ),
                       Text(
                         'Vínculo criado com ${widget.trainerName}. Você já pode entrar e fazer sua anamnese.',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: MetaColors.textSecondary,
+                          color: subtextColor,
                         ),
                       ),
                     ],
@@ -2986,7 +3014,14 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
     );
   }
 
-  Widget _buildSuccessPixStep() {
+  Widget _buildSuccessPixStep(bool isDark) {
+    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subtextColor = isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary;
+    final cardBg = isDark ? MetaColors.background : const Color(0xFFF8FAFC);
+    final cardBorder = Border.all(color: isDark ? MetaColors.border : const Color(0xFFE2E8F0));
+    final pixBoxBg = isDark ? MetaColors.surfaceHighlight : const Color(0xFFF1F5F9);
+    final pixBoxBorder = Border.all(color: isDark ? Colors.white12 : const Color(0xFFCBD5E1));
+
     final res = _checkoutResult!;
     final pixCode = res.pixCopyPaste ?? '';
 
@@ -3001,7 +3036,7 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
               width: 48,
               height: 5,
               decoration: BoxDecoration(
-                color: Colors.white24,
+                color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
@@ -3018,14 +3053,14 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
 
           const SizedBox(height: 10),
 
-          const Center(
+          Center(
             child: Text(
               'Cobrança Pix Gerada com Sucesso!',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w900,
-                color: MetaColors.textPrimary,
+                color: textColor,
               ),
             ),
           ).animate().fadeIn(duration: 350.ms, delay: 100.ms).slideY(begin: 0.1, end: 0),
@@ -3036,9 +3071,9 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
             child: Text(
               '${widget.plan.name} · ${widget.trainerName}',
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: MetaColors.textSecondary,
+                color: subtextColor,
               ),
             ),
           ).animate().fadeIn(duration: 350.ms, delay: 150.ms),
@@ -3052,28 +3087,28 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                   decoration: BoxDecoration(
-                    color: MetaColors.background,
+                    color: cardBg,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: MetaColors.border),
+                    border: cardBorder,
                   ),
                   child: Column(
                     children: [
-                      const Text(
+                      Text(
                         'VALOR',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
-                          color: MetaColors.textSecondary,
+                          color: subtextColor,
                           letterSpacing: 0.5,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'R\$ ${widget.plan.price.toStringAsFixed(0)}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
-                          color: MetaColors.textPrimary,
+                          color: textColor,
                         ),
                       ),
                     ],
@@ -3085,23 +3120,23 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                   decoration: BoxDecoration(
-                    color: MetaColors.background,
+                    color: cardBg,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: MetaColors.border),
+                    border: cardBorder,
                   ),
-                  child: const Column(
+                  child: Column(
                     children: [
                       Text(
                         'MÉTODO',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
-                          color: MetaColors.textSecondary,
+                          color: subtextColor,
                           letterSpacing: 0.5,
                         ),
                       ),
-                      SizedBox(height: 4),
-                      Text(
+                      const SizedBox(height: 4),
+                      const Text(
                         'Pix ⚡',
                         style: TextStyle(
                           fontSize: 16,
@@ -3118,28 +3153,28 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                   decoration: BoxDecoration(
-                    color: MetaColors.background,
+                    color: cardBg,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: MetaColors.border),
+                    border: cardBorder,
                   ),
-                  child: const Column(
+                  child: Column(
                     children: [
                       Text(
                         'LIBERAÇÃO',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
-                          color: MetaColors.textSecondary,
+                          color: subtextColor,
                           letterSpacing: 0.5,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
                         'Automática',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w900,
-                          color: MetaColors.textPrimary,
+                          color: textColor,
                         ),
                       ),
                     ],
@@ -3161,10 +3196,10 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                 color: MetaColors.emerald.withValues(alpha: 0.35),
               ),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Text('🛡️', style: TextStyle(fontSize: 22)),
-                SizedBox(width: 12),
+                const Text('🛡️', style: TextStyle(fontSize: 22)),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -3174,14 +3209,14 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
-                          color: MetaColors.textPrimary,
+                          color: textColor,
                         ),
                       ),
                       Text(
                         'Pague no app do seu banco com o código abaixo. O acesso é liberado em segundos.',
                         style: TextStyle(
                           fontSize: 12,
-                          color: MetaColors.textSecondary,
+                          color: subtextColor,
                         ),
                       ),
                     ],
@@ -3197,20 +3232,20 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: MetaColors.surfaceHighlight,
+              color: pixBoxBg,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white12),
+              border: pixBoxBorder,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.pix_rounded, color: MetaColors.emerald, size: 18),
-                    SizedBox(width: 8),
+                    const Icon(Icons.pix_rounded, color: MetaColors.emerald, size: 18),
+                    const SizedBox(width: 8),
                     Text(
                       'Código Pix Copia e Cola:',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                      style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 13),
                     ),
                   ],
                 ),
@@ -3219,7 +3254,7 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                   pixCode,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: MetaColors.textSecondary, fontSize: 11, fontFamily: 'monospace'),
+                  style: TextStyle(color: subtextColor, fontSize: 11, fontFamily: 'monospace'),
                 ),
                 const SizedBox(height: 14),
                 SizedBox(
@@ -3277,8 +3312,8 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
             child: OutlinedButton.icon(
               onPressed: () => Navigator.pop(context),
               style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: const BorderSide(color: Colors.white24, width: 1.5),
+                foregroundColor: textColor,
+                side: BorderSide(color: isDark ? Colors.white24 : const Color(0xFFCBD5E1), width: 1.5),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
               icon: const Icon(Icons.check_circle_outline_rounded, size: 20),

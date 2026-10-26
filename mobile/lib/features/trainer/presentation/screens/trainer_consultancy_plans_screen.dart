@@ -97,15 +97,15 @@ class _TrainerConsultancyPlansScreenState extends State<TrainerConsultancyPlansS
       builder: (ctx) => AlertDialog(
         backgroundColor: MetaColors.card(context),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Excluir Plano', style: TextStyle(color: MetaColors.textPrimary)),
+        title: Text('Excluir Plano', style: TextStyle(color: MetaColors.text(context))),
         content: Text(
           'Deseja realmente remover o plano "${plan.name}" da sua vitrine?',
-          style: const TextStyle(color: MetaColors.textSecondary),
+          style: TextStyle(color: MetaColors.subtext(context)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar', style: TextStyle(color: MetaColors.textSecondary)),
+            child: Text('Cancelar', style: TextStyle(color: MetaColors.subtext(context))),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -137,22 +137,22 @@ class _TrainerConsultancyPlansScreenState extends State<TrainerConsultancyPlansS
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new, color: MetaColors.textPrimary, size: 20),
+                    icon: Icon(Icons.arrow_back_ios_new, color: MetaColors.text(context), size: 20),
                     onPressed: () => Navigator.pop(context),
                   ),
                   const SizedBox(width: 8),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'Planos de Consultoria',
                       style: TextStyle(
-                        color: MetaColors.textPrimary,
+                        color: MetaColors.text(context),
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.refresh, color: MetaColors.textSecondary),
+                    icon: Icon(Icons.refresh, color: MetaColors.subtext(context)),
                     onPressed: _loadPlans,
                   ),
                 ],
@@ -181,14 +181,14 @@ class _TrainerConsultancyPlansScreenState extends State<TrainerConsultancyPlansS
                                 child: const Icon(Icons.account_balance_wallet, color: MetaColors.emerald, size: 24),
                               ),
                               const SizedBox(width: 14),
-                              const Expanded(
+                              Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       'Venda Direta na sua Vitrine',
                                       style: TextStyle(
-                                        color: MetaColors.textPrimary,
+                                        color: MetaColors.text(context),
                                         fontSize: 15,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -197,7 +197,7 @@ class _TrainerConsultancyPlansScreenState extends State<TrainerConsultancyPlansS
                                     Text(
                                       'Seus alunos assinam via Pix ou Cartão no Asaas. Você recebe 95% líquido na sua Carteira do Personal e saca quando quiser.',
                                       style: TextStyle(
-                                        color: MetaColors.textSecondary,
+                                        color: MetaColors.subtext(context),
                                         fontSize: 13,
                                         height: 1.4,
                                       ),
@@ -213,17 +213,17 @@ class _TrainerConsultancyPlansScreenState extends State<TrainerConsultancyPlansS
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
+                            Text(
                               'Seus Planos Configurados',
                               style: TextStyle(
-                                color: MetaColors.textPrimary,
+                                color: MetaColors.text(context),
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             Text(
                               '${_plans.length} planos',
-                              style: const TextStyle(color: MetaColors.textSecondary, fontSize: 13),
+                              style: TextStyle(color: MetaColors.subtext(context), fontSize: 13),
                             ),
                           ],
                         ),
@@ -234,17 +234,17 @@ class _TrainerConsultancyPlansScreenState extends State<TrainerConsultancyPlansS
                             padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
                             child: Column(
                               children: [
-                                Icon(Icons.inventory_2_outlined, color: MetaColors.textSecondary.withValues(alpha: 0.5), size: 48),
+                                Icon(Icons.inventory_2_outlined, color: MetaColors.subtext(context).withValues(alpha: 0.5), size: 48),
                                 const SizedBox(height: 12),
-                                const Text(
+                                Text(
                                   'Nenhum plano cadastrado',
-                                  style: TextStyle(color: MetaColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+                                  style: TextStyle(color: MetaColors.text(context), fontSize: 16, fontWeight: FontWeight.bold),
                                 ),
                                 const SizedBox(height: 6),
-                                const Text(
+                                Text(
                                   'Crie seu primeiro plano para que futuros alunos possam contratar pela sua Vitrine Pública.',
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(color: MetaColors.textSecondary, fontSize: 13),
+                                  style: TextStyle(color: MetaColors.subtext(context), fontSize: 13),
                                 ),
                               ],
                             ),
@@ -298,7 +298,7 @@ class _TrainerConsultancyPlansScreenState extends State<TrainerConsultancyPlansS
                   child: Text(
                     plan.billingPeriodLabel.toUpperCase(),
                     style: TextStyle(
-                      color: plan.isActive ? MetaColors.emerald : MetaColors.textSecondary,
+                      color: plan.isActive ? MetaColors.emerald : MetaColors.subtext(context),
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
@@ -312,7 +312,7 @@ class _TrainerConsultancyPlansScreenState extends State<TrainerConsultancyPlansS
                     Text(
                       plan.isActive ? 'Ativo' : 'Pausado',
                       style: TextStyle(
-                        color: plan.isActive ? MetaColors.emerald : MetaColors.textSecondary,
+                        color: plan.isActive ? MetaColors.emerald : MetaColors.subtext(context),
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -340,8 +340,8 @@ class _TrainerConsultancyPlansScreenState extends State<TrainerConsultancyPlansS
                 Expanded(
                   child: Text(
                     plan.name,
-                    style: const TextStyle(
-                      color: MetaColors.textPrimary,
+                    style: TextStyle(
+                      color: MetaColors.text(context),
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -349,16 +349,16 @@ class _TrainerConsultancyPlansScreenState extends State<TrainerConsultancyPlansS
                 ),
                 Text(
                   'R\$ ${plan.price.toStringAsFixed(2).replaceAll('.', ',')}',
-                  style: const TextStyle(
-                    color: MetaColors.textPrimary,
+                  style: TextStyle(
+                    color: MetaColors.text(context),
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
                 if (plan.billingPeriod != 'one_time')
-                  const Text(
+                  Text(
                     ' /mês',
-                    style: TextStyle(color: MetaColors.textSecondary, fontSize: 12),
+                    style: TextStyle(color: MetaColors.subtext(context), fontSize: 12),
                   ),
               ],
             ),
@@ -367,13 +367,13 @@ class _TrainerConsultancyPlansScreenState extends State<TrainerConsultancyPlansS
               const SizedBox(height: 6),
               Text(
                 plan.description!,
-                style: const TextStyle(color: MetaColors.textSecondary, fontSize: 13, height: 1.35),
+                style: TextStyle(color: MetaColors.subtext(context), fontSize: 13, height: 1.35),
               ),
             ],
 
             if (plan.features.isNotEmpty) ...[
               const SizedBox(height: 12),
-              const Divider(color: Colors.white10),
+              Divider(color: MetaColors.cardBorder(context)),
               const SizedBox(height: 8),
               ...plan.features.map(
                 (feat) => Padding(
@@ -386,7 +386,7 @@ class _TrainerConsultancyPlansScreenState extends State<TrainerConsultancyPlansS
                       Expanded(
                         child: Text(
                           feat,
-                          style: const TextStyle(color: MetaColors.textPrimary, fontSize: 13),
+                          style: TextStyle(color: MetaColors.text(context), fontSize: 13),
                         ),
                       ),
                     ],
@@ -407,8 +407,8 @@ class _TrainerConsultancyPlansScreenState extends State<TrainerConsultancyPlansS
                 const SizedBox(width: 8),
                 TextButton.icon(
                   onPressed: () => _openPlanEditor(existingPlan: plan),
-                  icon: const Icon(Icons.edit_outlined, size: 18, color: MetaColors.textPrimary),
-                  label: const Text('Editar', style: TextStyle(color: MetaColors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
+                  icon: Icon(Icons.edit_outlined, size: 18, color: MetaColors.text(context)),
+                  label: Text('Editar', style: TextStyle(color: MetaColors.text(context), fontSize: 13, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -544,14 +544,14 @@ class _PlanEditorModalState extends State<_PlanEditorModal> {
                 children: [
                   Text(
                     widget.existingPlan == null ? 'Novo Plano de Consultoria' : 'Editar Plano',
-                    style: const TextStyle(
-                      color: MetaColors.textPrimary,
+                    style: TextStyle(
+                      color: MetaColors.text(context),
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: MetaColors.textSecondary),
+                    icon: Icon(Icons.close, color: MetaColors.subtext(context)),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -559,11 +559,11 @@ class _PlanEditorModalState extends State<_PlanEditorModal> {
               const SizedBox(height: 16),
 
               // Nome do Plano
-              const Text('Nome do Plano', style: TextStyle(color: MetaColors.textSecondary, fontSize: 13)),
+              Text('Nome do Plano', style: TextStyle(color: MetaColors.subtext(context), fontSize: 13)),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _nameCtrl,
-                style: const TextStyle(color: MetaColors.textPrimary),
+                style: TextStyle(color: MetaColors.text(context)),
                 decoration: InputDecoration(
                   hintText: 'Ex: Consultoria Mensal Pro',
                   hintStyle: const TextStyle(color: Colors.white30),
@@ -583,13 +583,13 @@ class _PlanEditorModalState extends State<_PlanEditorModal> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Preço (R\$)', style: TextStyle(color: MetaColors.textSecondary, fontSize: 13)),
+                        Text('Preço (R\$)', style: TextStyle(color: MetaColors.subtext(context), fontSize: 13)),
                         const SizedBox(height: 6),
                         TextFormField(
                           controller: _priceCtrl,
                           keyboardType: TextInputType.number,
                           inputFormatters: const [CurrencyPtBrInputFormatter(includeSymbol: false)],
-                          style: const TextStyle(color: MetaColors.textPrimary, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: MetaColors.text(context), fontWeight: FontWeight.bold),
                           decoration: InputDecoration(
                             prefixText: 'R\$ ',
                             prefixStyle: const TextStyle(color: MetaColors.emerald, fontWeight: FontWeight.bold),
@@ -612,7 +612,7 @@ class _PlanEditorModalState extends State<_PlanEditorModal> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Periodicidade', style: TextStyle(color: MetaColors.textSecondary, fontSize: 13)),
+                        Text('Periodicidade', style: TextStyle(color: MetaColors.subtext(context), fontSize: 13)),
                         const SizedBox(height: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -624,7 +624,7 @@ class _PlanEditorModalState extends State<_PlanEditorModal> {
                             child: DropdownButton<String>(
                               value: _billingPeriod,
                               dropdownColor: MetaColors.card(context),
-                              style: const TextStyle(color: MetaColors.textPrimary, fontSize: 14),
+                              style: TextStyle(color: MetaColors.text(context), fontSize: 14),
                               isExpanded: true,
                               items: const [
                                 DropdownMenuItem(value: 'monthly', child: Text('Mensal')),
@@ -647,12 +647,12 @@ class _PlanEditorModalState extends State<_PlanEditorModal> {
               const SizedBox(height: 14),
 
               // Descrição
-              const Text('Descrição Curta', style: TextStyle(color: MetaColors.textSecondary, fontSize: 13)),
+              Text('Descrição Curta', style: TextStyle(color: MetaColors.subtext(context), fontSize: 13)),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _descCtrl,
                 maxLines: 2,
-                style: const TextStyle(color: MetaColors.textPrimary),
+                style: TextStyle(color: MetaColors.text(context)),
                 decoration: InputDecoration(
                   hintText: 'Ex: Acompanhamento individualizado com foco em hipertrofia.',
                   hintStyle: const TextStyle(color: Colors.white30),
@@ -664,7 +664,7 @@ class _PlanEditorModalState extends State<_PlanEditorModal> {
               const SizedBox(height: 16),
 
               // Benefícios / Features
-              const Text('Diferenciais Inclusos', style: TextStyle(color: MetaColors.textSecondary, fontSize: 13)),
+              Text('Diferenciais Inclusos', style: TextStyle(color: MetaColors.subtext(context), fontSize: 13)),
               const SizedBox(height: 8),
               ..._features.asMap().entries.map((entry) {
                 return Padding(
@@ -674,7 +674,7 @@ class _PlanEditorModalState extends State<_PlanEditorModal> {
                       const Icon(Icons.check, color: MetaColors.emerald, size: 18),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Text(entry.value, style: const TextStyle(color: MetaColors.textPrimary, fontSize: 13)),
+                        child: Text(entry.value, style: TextStyle(color: MetaColors.text(context), fontSize: 13)),
                       ),
                       IconButton(
                         icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent, size: 18),
@@ -690,7 +690,7 @@ class _PlanEditorModalState extends State<_PlanEditorModal> {
                   Expanded(
                     child: TextField(
                       controller: _newFeatureCtrl,
-                      style: const TextStyle(color: MetaColors.textPrimary, fontSize: 13),
+                      style: TextStyle(color: MetaColors.text(context), fontSize: 13),
                       decoration: InputDecoration(
                         hintText: 'Novo benefício (ex: Análise de vídeo)',
                         hintStyle: const TextStyle(color: Colors.white30),
