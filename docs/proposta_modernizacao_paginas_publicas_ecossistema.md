@@ -290,9 +290,9 @@ flowchart LR
 ### **Roteiro Detalhado em Blocos Atômicos**
 
 #### **PILAR 1: O Motor de Crescimento do Treinador (Flywheel B2B)**
-- [ ] **Bloco 1.1 — Vitrine Pública 2.0: Hero One UI, Badges Verificadas e Estatísticas**:
+- [x] **Bloco 1.1 — Vitrine Pública 2.0: Hero One UI, Badges Verificadas e Estatísticas**:
   - *Arquivo principal:* `mobile/lib/features/landing/trainer_public_landing_screen.dart`
-  - *Entrega:* Visual Edge-to-Edge translúcido, foto/avatar do treinador com anel de status, badge oficial de CREF Verificado, bio persuasiva de consultoria e estatísticas em tempo real (alunos ativos, nota ⭐ de avaliações e tempo de carreira).
+  - *Entrega:* Visual Edge-to-Edge translúcido com Ambient Glow, botão de compartilhamento rápido com cópia do link no topo, badge oficial de CREF Verificado unificada (`🛡️ CREF • VERIFICADO`), bio persuasiva e big numbers de autoridade (estrelas ⭐, alunos acompanhados e experiência). *(Concluído)*
 - [ ] **Bloco 1.2 — Vitrine Pública 2.0: Slider Interativo Antes & Depois**:
   - *Arquivo principal:* `mobile/lib/features/landing/trainer_public_landing_screen.dart`
   - *Entrega:* Componente de comparação visual deslizante (*Before/After*) com fotos de evolução física de alunos, tags de tempo de acompanhamento (ex: 90 dias), métricas (ex: -12kg) e depoimento autenticado.

@@ -170,6 +170,74 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     await _openTrainerWhatsapp(customMessage: msg);
   }
 
+  void _copyConsultancyLink() {
+    final link = 'https://mrcoach.shaipados.com/p/${widget.username}';
+    Clipboard.setData(ClipboardData(text: link));
+    HapticFeedback.lightImpact();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: MetaColors.emerald, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Link da vitrine copiado: $link',
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: MetaColors.isDark(context) ? const Color(0xFF1E293B) : const Color(0xFF0F172A),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  Widget _buildCrefBadge() {
+    final cref = (_trainerData?['cref'] as String?)?.trim();
+    final hasCref = cref != null && cref.isNotEmpty;
+    final isDark = MetaColors.isDark(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F2618) : const Color(0xFFECFDF5),
+        border: Border.all(
+          color: isDark ? const Color(0xFF1B4D30) : const Color(0xFFA7F3D0),
+          width: 1.2,
+        ),
+        borderRadius: BorderRadius.circular(50),
+        boxShadow: [
+          BoxShadow(
+            color: MetaColors.emerald.withValues(alpha: isDark ? 0.15 : 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.verified_rounded, color: MetaColors.emerald, size: 15),
+          const SizedBox(width: 6),
+          Text(
+            hasCref ? 'CREF $cref • VERIFICADO' : 'TREINADOR COM REGISTRO PROFISSIONAL',
+            style: const TextStyle(
+              color: MetaColors.emerald,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.8,
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2, end: 0);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -231,8 +299,23 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
             elevation: 0,
             backgroundColor: MetaColors.bg(context),
             systemOverlayStyle: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
-            actions: const [
-              Padding(
+            actions: [
+              IconButton(
+                tooltip: 'Compartilhar Vitrine',
+                icon: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: (isDark ? Colors.black : Colors.white).withValues(alpha: 0.65),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.1),
+                    ),
+                  ),
+                  child: const Icon(Icons.share_rounded, size: 16),
+                ),
+                onPressed: _copyConsultancyLink,
+              ),
+              const Padding(
                 padding: EdgeInsets.only(right: 12.0),
                 child: ThemeToggleButton(compact: true),
               ),
@@ -241,6 +324,23 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
               background: Stack(
                 fit: StackFit.expand,
                 children: [
+                  // Ambient Glow Verde Esmeralda (Estética One UI)
+                  Positioned(
+                    top: -40,
+                    left: 0,
+                    right: 0,
+                    height: 240,
+                    child: Center(
+                      child: Container(
+                        width: 260,
+                        height: 200,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: MetaColors.emerald.withValues(alpha: isDark ? 0.20 : 0.12),
+                        ),
+                      ),
+                    ),
+                  ),
                   if (hasPhoto)
                     Image.network(
                       photoUrl.toString().trim(),
@@ -257,7 +357,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          MetaColors.bg(context).withValues(alpha: 0.6),
+                          MetaColors.bg(context).withValues(alpha: 0.65),
                           MetaColors.bg(context),
                         ],
                       ),
@@ -274,31 +374,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: MetaColors.emerald.withValues(alpha: 0.1),
-                      border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.verified_rounded, color: MetaColors.emerald, size: 14),
-                        SizedBox(width: 6),
-                        Text(
-                          'TREINADOR COM REGISTRO PROFISSIONAL',
-                          style: TextStyle(
-                            color: MetaColors.emerald,
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2, end: 0),
-                  
+                  _buildCrefBadge(),
                   const SizedBox(height: 14),
 
                   Text(
@@ -351,18 +427,9 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                       ),
                       textAlign: TextAlign.center,
                     ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1, end: 0),
-                    const SizedBox(height: 12),
-                  ],
-
-                  if ((_trainerData!['cref'] as String?)?.isNotEmpty == true) ...[
-                    Text(
-                      'Registro profissional: ${_trainerData!['cref']}',
-                      style: const TextStyle(color: MetaColors.textSecondary, fontSize: 12),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 18),
                   ] else ...[
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 10),
                   ],
 
                   // 1. BIG NUMBERS DE AUTORIDADE
@@ -761,48 +828,59 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
 
   Widget _buildAuthorityStatsBar() {
     final isDark = MetaColors.isDark(context);
+    final studentsCount = _trainerData?['students_count'] ?? _trainerData?['active_students_count'];
+    final studentsStr = studentsCount != null ? '+$studentsCount' : '+500';
+    final experienceYears = _trainerData?['experience_years']?.toString() ?? '10+';
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF141F18) : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isDark ? const Color(0xFF26392D) : const Color(0xFFE2E8F0)),
-        boxShadow: isDark ? null : [
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0xFF26392D) : const Color(0xFFE2E8F0),
+          width: 1.2,
+        ),
+        boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: _StatBadge(
-              number: '10+',
+              number: experienceYears,
               unit: 'Anos',
               label: 'Experiência',
+              icon: Icons.workspace_premium_rounded,
             ),
           ),
-          SizedBox(height: 28, child: VerticalDivider(color: isDark ? const Color(0xFF2C4033) : const Color(0xFFE2E8F0))),
-          const Expanded(
+          SizedBox(height: 30, child: VerticalDivider(color: isDark ? const Color(0xFF2C4033) : const Color(0xFFE2E8F0))),
+          Expanded(
             child: _StatBadge(
-              number: '+500',
+              number: studentsStr,
               unit: 'Alunos',
               label: 'Acompanhados',
+              icon: Icons.people_alt_rounded,
             ),
           ),
-          SizedBox(height: 28, child: VerticalDivider(color: isDark ? const Color(0xFF2C4033) : const Color(0xFFE2E8F0))),
+          SizedBox(height: 30, child: VerticalDivider(color: isDark ? const Color(0xFF2C4033) : const Color(0xFFE2E8F0))),
           const Expanded(
             child: _StatBadge(
-              number: '100%',
-              unit: 'Focado',
-              label: 'Individualizado',
+              number: '5.0',
+              unit: '★',
+              label: 'Avaliação Média',
+              icon: Icons.star_rounded,
+              isGold: true,
             ),
           ),
         ],
       ),
-    );
+    ).animate().fadeIn(delay: 450.ms).slideY(begin: 0.1, end: 0);
   }
 
   Widget _buildMethodologySection(String name) {
@@ -1646,15 +1724,22 @@ class _StatBadge extends StatelessWidget {
   final String number;
   final String unit;
   final String label;
+  final IconData? icon;
+  final bool isGold;
 
   const _StatBadge({
     required this.number,
     required this.unit,
     required this.label,
+    this.icon,
+    this.isGold = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = MetaColors.isDark(context);
+    final accentColor = isGold ? const Color(0xFFF59E0B) : MetaColors.emerald;
+
     return Column(
       children: [
         Row(
@@ -1662,34 +1747,39 @@ class _StatBadge extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
+            if (icon != null) ...[
+              Icon(icon, size: 13, color: accentColor),
+              const SizedBox(width: 3),
+            ],
             Text(
               number,
               style: TextStyle(
                 color: MetaColors.text(context),
-                fontSize: 18,
+                fontSize: 17,
                 fontWeight: FontWeight.w900,
                 letterSpacing: -0.5,
               ),
             ),
-            const SizedBox(width: 3),
+            const SizedBox(width: 2),
             Text(
               unit,
-              style: const TextStyle(
-                color: MetaColors.emerald,
+              style: TextStyle(
+                color: accentColor,
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 3),
         Text(
           label,
-          style: const TextStyle(
-            color: MetaColors.textSecondary,
-            fontSize: 11,
+          style: TextStyle(
+            color: isDark ? MetaColors.textSecondary : MetaColors.lightTextSecondary,
+            fontSize: 10.5,
             fontWeight: FontWeight.w500,
           ),
+          textAlign: TextAlign.center,
         ),
       ],
     );
