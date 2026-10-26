@@ -136,7 +136,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
             _loadTelemetryAndLogs();
             if (wasNotConnected && silent) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
+                SnackBar(
                   content: Text('🎉 WhatsApp conectado com sucesso!'),
                   backgroundColor: MetaColors.emerald,
                 ),
@@ -237,16 +237,16 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: MetaColors.surface,
-        title: const Text('Desconectar WhatsApp?', style: TextStyle(color: MetaColors.textPrimary)),
-        content: const Text(
+        backgroundColor: MetaColors.card(ctx),
+        title: Text('Desconectar WhatsApp?', style: TextStyle(color: MetaColors.text(ctx))),
+        content: Text(
           'Isso removerá a sessão do robô no servidor para você poder gerar um novo código limpo.',
-          style: TextStyle(color: MetaColors.textSecondary),
+          style: TextStyle(color: MetaColors.subtext(ctx)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar', style: TextStyle(color: MetaColors.textSecondary)),
+            child: Text('Cancelar', style: TextStyle(color: MetaColors.subtext(ctx))),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -278,9 +278,9 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
           _pairingCode = null;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('WhatsApp desconectado com sucesso.'),
-            backgroundColor: MetaColors.surfaceHighlight,
+          SnackBar(
+            content: Text('WhatsApp desconectado com sucesso.', style: TextStyle(color: MetaColors.text(context))),
+            backgroundColor: MetaColors.highlight(context),
           ),
         );
       }
@@ -369,7 +369,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
           });
           _stopPolling();
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('🎉 Seu WhatsApp já está conectado e online!'),
               backgroundColor: MetaColors.emerald,
             ),
@@ -543,8 +543,8 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                     const SizedBox(height: 8),
                     Text(
                       title,
-                      style: const TextStyle(
-                        color: MetaColors.textPrimary,
+                      style: TextStyle(
+                        color: MetaColors.text(context),
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         height: 1.25,
@@ -558,8 +558,8 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
           const SizedBox(height: 14),
           Text(
             description,
-            style: const TextStyle(
-              color: MetaColors.textSecondary,
+            style: TextStyle(
+              color: MetaColors.subtext(context),
               fontSize: 13.5,
               height: 1.5,
             ),
@@ -572,15 +572,15 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: MetaColors.background,
+      backgroundColor: MetaColors.bg(context),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: MetaColors.textPrimary),
+        iconTheme: IconThemeData(color: MetaColors.text(context)),
         title: Text(
           _isConnected ? 'Automação WhatsApp' : 'Conectar WhatsApp',
-          style: const TextStyle(
-            color: MetaColors.textPrimary,
+          style: TextStyle(
+            color: MetaColors.text(context),
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
@@ -588,7 +588,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
         actions: [
           IconButton(
             tooltip: 'Atualizar status',
-            icon: const Icon(Icons.refresh_rounded, color: MetaColors.textPrimary),
+            icon: Icon(Icons.refresh_rounded, color: MetaColors.text(context)),
             onPressed: () => _checkConnectionStatus(),
           ),
         ],
@@ -653,11 +653,11 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
 
         const SizedBox(height: 22),
 
-        const Text(
+        Text(
           'WhatsApp Conectado!',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: MetaColors.textPrimary,
+            color: MetaColors.text(context),
             fontSize: 26,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.5,
@@ -666,11 +666,11 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
 
         const SizedBox(height: 10),
 
-        const Text(
+        Text(
           'Seu robô inteligente está online 24h. Suas fichas de treino, lembretes de rotina e respostas aos alunos agora são sincronizados automaticamente pelo WhatsApp.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: MetaColors.textSecondary,
+            color: MetaColors.subtext(context),
             fontSize: 14.5,
             height: 1.45,
           ),
@@ -682,7 +682,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: MetaColors.surfaceHighlight,
+            color: MetaColors.highlight(context),
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
               color: MetaColors.emerald.withValues(alpha: 0.3),
@@ -695,8 +695,8 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
               const SizedBox(width: 8),
               Text(
                 phoneDisplay,
-                style: const TextStyle(
-                  color: MetaColors.textPrimary,
+                style: TextStyle(
+                  color: MetaColors.text(context),
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                 ),
@@ -705,13 +705,13 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
               Container(
                 width: 6,
                 height: 6,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: MetaColors.emerald,
                   shape: BoxShape.circle,
                 ),
               ),
               const SizedBox(width: 6),
-              const Text(
+              Text(
                 'Operacional 24h',
                 style: TextStyle(
                   color: MetaColors.emerald,
@@ -751,7 +751,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
           icon: const Icon(Icons.link_off_rounded, size: 16, color: AppColors.danger),
           label: Text(
             _isDisconnecting ? 'Desconectando...' : 'Desconectar Sessão do WhatsApp',
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.danger,
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -777,8 +777,8 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
         const SizedBox(height: 20),
         Container(
           padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(
-            color: MetaColors.surfaceHighlight,
+          decoration: BoxDecoration(
+            color: MetaColors.highlight(context),
             shape: BoxShape.circle,
           ),
           child: const Icon(
@@ -788,21 +788,21 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        const Text(
+        Text(
           'Conectar WhatsApp',
           style: TextStyle(
-            color: MetaColors.textPrimary,
+            color: MetaColors.text(context),
             fontSize: 28,
             fontWeight: FontWeight.bold,
             letterSpacing: -0.5,
           ),
         ),
         const SizedBox(height: 16),
-        const Text(
+        Text(
           'Como você está usando o celular, o pareamento via QR Code não é possível.\n\nConfirme seu número abaixo para gerarmos um Código de Pareamento automático de 8 dígitos.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: MetaColors.textSecondary,
+            color: MetaColors.subtext(context),
             fontSize: 15,
             height: 1.5,
           ),
@@ -815,18 +815,18 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
               controller: _phoneController,
               keyboardType: TextInputType.phone,
               onChanged: (_) => setState(() {}),
-              style: const TextStyle(color: MetaColors.textPrimary, fontSize: 18),
+              style: TextStyle(color: MetaColors.text(context), fontSize: 18),
               decoration: InputDecoration(
                 labelText: 'Seu número com DDD (Ex: 11999999999)',
                 hintText: '11999999999',
-                hintStyle: TextStyle(color: MetaColors.textSecondary.withValues(alpha: 0.5)),
-                labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                hintStyle: TextStyle(color: MetaColors.subtext(context).withValues(alpha: 0.5)),
+                labelStyle: TextStyle(color: MetaColors.subtext(context)),
                 border: InputBorder.none,
                 prefixIcon: const Icon(Icons.message_rounded, color: MetaColors.emerald),
                 suffixIcon: _phoneController.text.isNotEmpty
                     ? IconButton(
                         tooltip: 'Limpar número',
-                        icon: const Icon(Icons.clear_rounded, color: MetaColors.textSecondary),
+                        icon: Icon(Icons.clear_rounded, color: MetaColors.subtext(context)),
                         onPressed: () {
                           setState(() {
                             _phoneController.clear();
@@ -855,7 +855,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                   _pairedPhoneDisplay != null
                       ? 'Código gerado para $_pairedPhoneDisplay:'
                       : 'Seu código de conexão:',
-                  style: const TextStyle(color: MetaColors.textSecondary, fontSize: 14),
+                  style: TextStyle(color: MetaColors.subtext(context), fontSize: 14),
                 ),
                 const SizedBox(height: 16),
                 GestureDetector(
@@ -863,7 +863,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
                     decoration: BoxDecoration(
-                      color: MetaColors.surfaceHighlight,
+                      color: MetaColors.highlight(context),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3), width: 2),
                     ),
@@ -872,8 +872,8 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                       children: [
                         Text(
                           _pairingCode!,
-                          style: const TextStyle(
-                            color: MetaColors.textPrimary,
+                          style: TextStyle(
+                            color: MetaColors.text(context),
                             fontSize: 32,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 4,
@@ -909,11 +909,11 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                const Text(
+                Text(
                   '1. Toque no código para copiar\n2. Abra as Configurações do seu WhatsApp\n3. Vá em "Aparelhos Conectados" > "Conectar Aparelho"\n4. Na tela de QR Code, clique em "Conectar com Número de Telefone" na parte inferior\n5. Cole o código copiado',
                   textAlign: TextAlign.left,
                   style: TextStyle(
-                    color: MetaColors.textSecondary,
+                    color: MetaColors.subtext(context),
                     height: 1.5,
                   ),
                 ),
@@ -967,12 +967,12 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Align(
+        Align(
           alignment: Alignment.centerLeft,
           child: Text(
             'AUTOMAÇÕES ATIVAS NO SEU NÚMERO',
             style: TextStyle(
-              color: MetaColors.textSecondary,
+              color: MetaColors.subtext(context),
               fontSize: 12,
               fontWeight: FontWeight.w800,
               letterSpacing: 1.2,
@@ -1014,14 +1014,14 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
+              Row(
                 children: [
                   Icon(Icons.insights_rounded, color: MetaColors.emerald, size: 20),
                   SizedBox(width: 8),
                   Text(
                     'Impacto do Robô no Mês',
                     style: TextStyle(
-                      color: MetaColors.textPrimary,
+                      color: MetaColors.text(context),
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
                     ),
@@ -1081,7 +1081,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
       decoration: BoxDecoration(
-        color: MetaColors.surfaceHighlight,
+        color: MetaColors.highlight(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
@@ -1094,8 +1094,8 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
             fit: BoxFit.scaleDown,
             child: Text(
               value,
-              style: const TextStyle(
-                color: MetaColors.textPrimary,
+              style: TextStyle(
+                color: MetaColors.text(context),
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -1107,8 +1107,8 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
             child: Text(
               label,
               maxLines: 1,
-              style: const TextStyle(
-                color: MetaColors.textSecondary,
+              style: TextStyle(
+                color: MetaColors.subtext(context),
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
@@ -1126,10 +1126,10 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'RADAR DO ROBÔ • ATENDIMENTOS',
               style: TextStyle(
-                color: MetaColors.textSecondary,
+                color: MetaColors.subtext(context),
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1.2,
@@ -1137,7 +1137,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
             ),
             IconButton(
               tooltip: 'Atualizar histórico',
-              icon: const Icon(Icons.refresh_rounded, size: 18, color: MetaColors.textSecondary),
+              icon: Icon(Icons.refresh_rounded, size: 18, color: MetaColors.subtext(context)),
               onPressed: _loadTelemetryAndLogs,
             ),
           ],
@@ -1148,12 +1148,12 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
             padding: const EdgeInsets.all(18),
             child: Row(
               children: [
-                Icon(Icons.info_outline_rounded, color: MetaColors.textSecondary.withValues(alpha: 0.7), size: 22),
+                Icon(Icons.info_outline_rounded, color: MetaColors.subtext(context).withValues(alpha: 0.7), size: 22),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Nenhum atendimento registrado ainda. Dispare uma mensagem de teste no botão acima ou peça para um aluno mandar "menu" no seu WhatsApp!',
-                    style: TextStyle(color: MetaColors.textSecondary, fontSize: 13, height: 1.4),
+                    style: TextStyle(color: MetaColors.subtext(context), fontSize: 13, height: 1.4),
                   ),
                 ),
               ],
@@ -1187,8 +1187,8 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                             const SizedBox(width: 6),
                             Text(
                               studentName,
-                              style: const TextStyle(
-                                color: MetaColors.textPrimary,
+                              style: TextStyle(
+                                color: MetaColors.text(context),
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
                               ),
@@ -1219,15 +1219,15 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: MetaColors.surfaceHighlight.withValues(alpha: 0.5),
+                        color: MetaColors.highlight(context).withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         '👤 "$msgIn"',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: MetaColors.textSecondary,
+                        style: TextStyle(
+                          color: MetaColors.subtext(context),
                           fontSize: 12,
                           fontStyle: FontStyle.italic,
                         ),
@@ -1238,8 +1238,8 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                       '🤖 $msgOut',
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: MetaColors.textPrimary,
+                      style: TextStyle(
+                        color: MetaColors.text(context),
                         fontSize: 12,
                         height: 1.35,
                       ),
