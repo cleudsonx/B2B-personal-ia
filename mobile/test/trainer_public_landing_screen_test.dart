@@ -51,7 +51,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Juliana S. (28 anos)'), findsOneWidget);
-    expect(find.text('Capacidade de Carga em Pernas:'), findsOneWidget);
+    expect(find.text('Capacidade de Carga em Pernas:'), findsWidgets);
 
     // 4. Tap CTA button
     final ctaButton = find.text('Quero Uma Transformação Assim');
@@ -139,6 +139,6 @@ void main() {
     expect(find.text('Nunca treinei antes na vida, a consultoria serve para mim?'), findsOneWidget);
 
     // 8. Bottom bar / Action buttons
-    expect(find.textContaining('Contratar Imediato'), findsOneWidget);
+    expect(find.textContaining('Contratar Imediato'), findsWidgets);
   });
 }

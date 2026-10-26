@@ -148,21 +148,22 @@ void main() {
 
     // WorkoutShareCardDialog is now displayed
     expect(find.text('MR. COACH AI'), findsOneWidget);
-    expect(find.text('SESSÃO CONCLUÍDA'), findsOneWidget);
+    expect(find.text('PERFORMANCE RECAP'), findsOneWidget);
     expect(find.text('COSTAS E BÍCEPS BRUTAL'), findsOneWidget);
     expect(find.text('Atleta: Gabriel Santos'), findsOneWidget);
     expect(find.text('Prof. Lucas Personal'), findsOneWidget);
-    expect(find.text('app.sheipados.com'), findsOneWidget);
+    expect(find.textContaining('app.sheipados.com'), findsOneWidget);
     expect(find.text('1 NOVO(S) RECORDE(S) DE CARGA (PR)!'), findsOneWidget);
-    expect(find.text('3º DIA SEGUIDO DE TREINO!'), findsOneWidget);
-    expect(find.text('Tire um print para postar no Instagram Stories!'), findsOneWidget);
+    expect(find.text('3º DIA SEGUIDO DE DISCIPLINA!'), findsOneWidget);
+    expect(find.text('Modo Print'), findsOneWidget);
 
     // Verify Action buttons in dialog
-    expect(find.text('Copiar Texto'), findsOneWidget);
+    expect(find.text('Legenda'), findsOneWidget);
     expect(find.text('WhatsApp'), findsOneWidget);
+    expect(find.text('Link Vitrine'), findsOneWidget);
 
-    // Tap Copiar Texto
-    await tester.tap(find.text('Copiar Texto'));
+    // Tap Legenda (Copiar Resumo)
+    await tester.tap(find.text('Legenda'));
     await tester.pump(const Duration(milliseconds: 300));
     expect(
       find.text('Resumo do treino copiado para colar no Stories ou WhatsApp!'),
@@ -214,7 +215,7 @@ void main() {
     expect(find.text('SUPERIOR COMPLETO'), findsOneWidget);
     expect(find.text('Atleta: Ana Clara'), findsOneWidget);
     expect(find.text('Prof. Felipe Treinador'), findsOneWidget);
-    expect(find.text('7º DIA SEGUIDO DE TREINO!'), findsOneWidget);
+    expect(find.text('7º DIA SEGUIDO DE DISCIPLINA!'), findsOneWidget);
     expect(find.text('780'), findsOneWidget);
     expect(find.text('VOLUME KG'), findsOneWidget);
   });

@@ -28,8 +28,8 @@ void main() {
     expect(find.text('Criar Minha Vitrine Grátis no Starter'), findsOneWidget);
 
     // 3. Verify Biomechanical Test Drive Section
-    expect(find.text('TEST-DRIVE DE IA EM TEMPO REAL • SEM CADASTRO'), findsOneWidget);
-    expect(find.text('MOTOR BIOMECÂNICO MR. COACH AI'), findsOneWidget);
+    expect(find.text('TEST-DRIVE DE IA EM TEMPO REAL • 0 CADASTRO • RESPOSTA EM 3S'), findsOneWidget);
+    expect(find.text('MOTOR BIOMECÂNICO CLÍNICO MR. COACH AI'), findsOneWidget);
     expect(find.text('Agachamento Livre'), findsOneWidget);
     expect(find.text('Supino Reto com Barra'), findsOneWidget);
     expect(find.text('DIAGNÓSTICO DO VETOR DE FORÇA'), findsOneWidget);
