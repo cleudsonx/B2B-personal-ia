@@ -247,41 +247,88 @@ if (path.startsWith('/science') || path == '/ai') {
 
 ---
 
-## 6. Plano de Execução em 3 Ondas (Roadmap Acelerado)
+## 6. Plano de Execução: Desenvolvimento Atômico em Blocos Enxutos (Squad Galaxy & Squad Lenovo)
+
+> **Padrão Oficial de Engenharia:** Conforme formalizado em `squad_mrcoach.md`, toda a implementação é executada em **pequenos blocos autocontidos (1 bloco por solicitação)**, preservando a cota de tokens das IAs, eliminando riscos de regressão e mantendo o repositório (`origin/main`) sincronizado com validações contínuas.
 
 ```mermaid
 flowchart LR
-    subgraph O1["⚡ Onda 1: Conversão Direta (Dias 1 a 7)"]
+    subgraph P1["Pilar 1: Motor do Treinador"]
         direction TB
-        O1A["1. Calculadora ROI (R$ pt-BR)\nem b2b_landing_screen.dart"]
-        O1B["2. Test-Drive Biomecânico Web\n(Sem Login + Ponte para /coaches)"]
-        O1C["3. Vitrine 2.0 (/p/username)\nSlider Antes/Depois + Pix Asaas"]
+        B11["Bloco 1.1: Hero One UI & Badges"]
+        B12["Bloco 1.2: Slider Antes & Depois"]
+        B13["Bloco 1.3: Checkout Híbrido Pix"]
+        B14["Bloco 1.4: Calculadora ROI R$"]
+        B11 --> B12 --> B13 --> B14
     end
 
-    subgraph O2["🔥 Onda 2: Motor Viral & SEO (Dias 8 a 14)"]
+    subgraph P2["Pilar 2: Experiência Aluno"]
         direction TB
-        O2A["4. Stories Card 1080x1920\ncom QR Code do Personal"]
-        O2B["5. Diretório /coaches 2.0\nFiltros Clínicos + CREF Verificado"]
-        O2C["6. Meta Science Hub (/science)\nCalculadora 1RM + OpenGraph SEO"]
+        B21["Bloco 2.1: Test-Drive Biomecânico"]
+        B22["Bloco 2.2: Matriz Planilha vs IA"]
+        B23["Bloco 2.3: Diretório Nacional 2.0"]
+        B21 --> B22 --> B23
     end
 
-    subgraph O3["🏛️ Onda 3: Shaipados HQ (Dias 15 a 21)"]
+    subgraph P3["Pilar 3: Máquina Viral"]
         direction TB
-        O3A["7. Seletor Multi-SaaS no HQ\n(/hq unificado ao AdminShell)"]
-        O3B["8. Dashboard de Funil & Afiliados\nTracking UTM + Payout Pix"]
-        O3C["9. Governança RBAC Níveis 1 a 4\nPolíticas RLS + Trilha de Auditoria"]
+        B31["Bloco 3.1: Stories Cards 9:16"]
+        B32["Bloco 3.2: Meta Science Hub"]
+        B31 --> B32
     end
 
-    O1 --> O2 --> O3
+    subgraph P4["Pilar 4: Shaipados HQ"]
+        direction TB
+        B41["Bloco 4.1: War Room Multi-SaaS"]
+        B42["Bloco 4.2: Dashboard Funil & RBAC"]
+        B41 --> B42
+    end
+
+    P1 --> P2 --> P3 --> P4
 ```
 
-### Detalhamento de Entregáveis por Onda
+### **Roteiro Detalhado em Blocos Atômicos**
 
-| Onda | Entregável Principal | Arquivos-Alvo no Monorepo | Impacto Esperado (KPI) |
-|---|---|---|---|
-| **Onda 1** | **Calculadora de Renda B2B + Test-Drive Biomecânico + Vitrine 2.0 (`/p/{user}`)** | `b2b_landing_screen.dart`, `trainer_public_landing_screen.dart`, `main.dart` | Aumento de **+40%** na conversão de visitantes em contas *Starter* e primeiras vendas diretas de consultoria via Pix. |
-| **Onda 2** | **Stories Share Card 9:16 com QR Code + Diretório `/coaches` + Science Hub** | `active_workout_screen.dart`, `public_trainer_directory_screen.dart`, `ai_news_screen.dart` | Geração de tráfego orgânico via Instagram Stories dos alunos (**K-Factor > 1.2**) e buscas orgânicas no Google. |
-| **Onda 3** | **War Room `/hq` Multi-Produto + Funil de Marketing + RBAC Níveis 1 a 4** | `admin_shell_screen.dart`, `admin_data_service.dart`, nova migration SQL RBAC | Visibilidade executiva 360º em tempo real e delegação segura de operações para Financeiro, Marketing e Suporte. |
+#### **PILAR 1: O Motor de Crescimento do Treinador (Flywheel B2B)**
+- [ ] **Bloco 1.1 — Vitrine Pública 2.0: Hero One UI, Badges Verificadas e Estatísticas**:
+  - *Arquivo principal:* `mobile/lib/features/landing/trainer_public_landing_screen.dart`
+  - *Entrega:* Visual Edge-to-Edge translúcido, foto/avatar do treinador com anel de status, badge oficial de CREF Verificado, bio persuasiva de consultoria e estatísticas em tempo real (alunos ativos, nota ⭐ de avaliações e tempo de carreira).
+- [ ] **Bloco 1.2 — Vitrine Pública 2.0: Slider Interativo Antes & Depois**:
+  - *Arquivo principal:* `mobile/lib/features/landing/trainer_public_landing_screen.dart`
+  - *Entrega:* Componente de comparação visual deslizante (*Before/After*) com fotos de evolução física de alunos, tags de tempo de acompanhamento (ex: 90 dias), métricas (ex: -12kg) e depoimento autenticado.
+- [ ] **Bloco 1.3 — Vitrine Pública 2.0: Checkout Híbrido de Alta Conversão (Pix Asaas + WhatsApp CRM)**:
+  - *Arquivo principal:* `mobile/lib/features/landing/trainer_public_landing_screen.dart`
+  - *Entrega:* Card de contratação dos planos de consultoria com botão primário Pix Copia e Cola (Split 95% Personal / 5% Plataforma) e botão secundário com mensagem formatada para fechar pelo WhatsApp.
+- [ ] **Bloco 1.4 — Landing B2B (`b2b_landing_screen.dart`): Calculadora Interativa de Renda & ROI em R$**:
+  - *Arquivo principal:* `mobile/lib/features/landing/b2b_landing_screen.dart`
+  - *Entrega:* Simulador interativo com slider de número de alunos e mensalidade média em `R$` (`CurrencyPtBr`), calculando renda bruta mensal e provando retorno >60x sobre o custo de assinatura do Mr. Coach.
+
+#### **PILAR 2: A Experiência do Aluno & Test-Drive Biomecânico (B2C)**
+- [ ] **Bloco 2.1 — Widget de Test-Drive Biomecânico Web Público**:
+  - *Arquivo principal:* `mobile/lib/features/landing/widgets/biomechanical_test_drive_widget.dart` / `b2b_landing_screen.dart`
+  - *Entrega:* Simulador público onde o visitante escolhe um exercício com dor (ex: ombro no supino reto) ou máquina ocupada e a IA sugere a adaptação biomecânica segura em <3s sem exigir login, convidando-o a contratar um personal credenciado.
+- [ ] **Bloco 2.2 — Matriz Comparativa Visual (Planilha PDF vs Mr. Coach AI)**:
+  - *Arquivo principal:* `mobile/lib/features/landing/b2b_landing_screen.dart`
+  - *Entrega:* Grid Bento comparativo destacando em verde e vermelho a diferença entre uma planilha PDF morta vs. acompanhamento inteligente com IA, feedback de dor e segurança.
+- [ ] **Bloco 2.3 — Diretório Nacional de Coaches 2.0 (`public_trainer_directory_screen.dart`)**:
+  - *Arquivo principal:* `mobile/lib/features/landing/public_trainer_directory_screen.dart`
+  - *Entrega:* Filtros dinâmicos por especialidade clínica/biomecânica (hipertrofia, emagrecimento, reabilitação lombar/ombro), localização e selo CREF, com botão direto para a vitrine `/p/{username}`.
+
+#### **PILAR 3: A Máquina Viral do Mr. Coach (K-Factor & SEO)**
+- [ ] **Bloco 3.1 — Gerador de Stories Share Cards 1080×1920 (Instagram/TikTok)**:
+  - *Arquivo principal:* `mobile/lib/features/workout/presentation/screens/active_workout_screen.dart` ou widget dedicado
+  - *Entrega:* Modal de celebração pós-treino gerando imagem vertical estética para Stories com Recorde Pessoal (PR) batido, fogo de ofensiva 🔥, QR Code para a vitrine do personal e branding Mr. Coach.
+- [ ] **Bloco 3.2 — Meta Science Hub & Calculadoras SEO (`ai_news_screen.dart` / `/science`)**:
+  - *Arquivo principal:* `mobile/lib/features/landing/ai_news_screen.dart`
+  - *Entrega:* Hub de ciência aplicada com calculadoras abertas de 1RM e volume muscular semanal, gerando tráfego orgânico via Google e OpenGraph previews.
+
+#### **PILAR 4: Shaipados Studio HQ — War Room Executivo Multi-SaaS (`/hq`)**
+- [ ] **Bloco 4.1 — Unificação do Shell Executivo `/hq` com Seletor Multi-SaaS**:
+  - *Arquivo principal:* `mobile/lib/features/admin/admin_shell_screen.dart` / `mobile/lib/main.dart`
+  - *Entrega:* Roteamento direto `/hq` com navegação para os produtos da Venture Builder, telemetria financeira em tempo real (MRR/ARR/Inadimplência) e proteção RBAC.
+- [ ] **Bloco 4.2 — Dashboard Executivo de Funil Público & Afiliados**:
+  - *Arquivo principal:* `mobile/lib/features/admin/tabs/public_funnel_tab.dart`
+  - *Entrega:* Monitoramento de cliques nos simuladores de ROI, conversão de vitrines públicas `/p/{user}` e comissões automáticas de afiliados.
 
 ---
 
