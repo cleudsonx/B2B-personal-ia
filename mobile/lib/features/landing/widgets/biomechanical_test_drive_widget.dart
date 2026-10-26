@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../core/widgets/meta_components.dart';
 
 class BiomechanicalScenario {
   final String complaint;
@@ -641,11 +640,11 @@ class _BiomechanicalTestDriveWidgetState extends State<BiomechanicalTestDriveWid
                     spacing: 12,
                     runSpacing: 10,
                     children: [
-                      const ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 420),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 420),
                         child: Text(
                           'Essa proteção acompanha seus alunos em cada série e avisa você no WhatsApp.',
-                          style: TextStyle(color: _muted, fontSize: 12),
+                          style: TextStyle(color: BiomechanicalTestDriveWidget._muted, fontSize: 12),
                         ),
                       ),
                       Wrap(

@@ -20,7 +20,6 @@ class _PublicTrainerDirectoryScreenState
   final _searchController = TextEditingController();
   List<Map<String, dynamic>> _trainers = [];
   bool _isLoading = true;
-  String? _errorMessage;
 
   String _selectedSpecialty = 'Todos';
   bool _onlyVerifiedCref = false;
@@ -158,7 +157,6 @@ class _PublicTrainerDirectoryScreenState
   Future<void> _loadTrainers() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
     });
     try {
       final response = await http

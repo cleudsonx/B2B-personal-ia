@@ -1273,7 +1273,7 @@ class _WorkoutShareCardDialogState extends State<WorkoutShareCardDialog> {
                                   child: Image.network(
                                     'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${Uri.encodeComponent(_landingUrl)}&bgcolor=141F18&color=25A875',
                                     fit: BoxFit.contain,
-                                    errorBuilder: (_, __, ___) => const Icon(
+                                    errorBuilder: (context, error, stackTrace) => const Icon(
                                       Icons.qr_code_2_rounded,
                                       color: MetaColors.emerald,
                                       size: 38,
