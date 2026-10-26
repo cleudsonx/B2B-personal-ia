@@ -304,9 +304,9 @@ flowchart LR
   - *Entrega:* Simulador interativo com sliders dinâmicos de alunos e ticket médio em `CurrencyPtBr` (`R$`), presets rápidos de mercado, cálculo em tempo real de horas poupadas (~94%), demonstração de ROI e CTA direto para cadastro de treinador (`/professor/cadastro`). *(Concluído)*
 
 #### **PILAR 2: A Experiência do Aluno & Test-Drive Biomecânico (B2C)**
-- [ ] **Bloco 2.1 — Widget de Test-Drive Biomecânico Web Público**:
+- [x] **Bloco 2.1 — Widget de Test-Drive Biomecânico Web Público**:
   - *Arquivo principal:* `mobile/lib/features/landing/widgets/biomechanical_test_drive_widget.dart` / `b2b_landing_screen.dart`
-  - *Entrega:* Simulador público onde o visitante escolhe um exercício com dor (ex: ombro no supino reto) ou máquina ocupada e a IA sugere a adaptação biomecânica segura em <3s sem exigir login, convidando-o a contratar um personal credenciado.
+  - *Entrega:* Componente modular de simulação instantânea (<100ms, 0 cadastro) cobrindo tanto dores articulares (ombro, lombar, joelho) quanto aparelhos ocupados no horário de pico, diagnóstico do vetor de força, sugestão de ajuste e exercício substituto com ponte para `/coaches`. *(Concluído)*
 - [ ] **Bloco 2.2 — Matriz Comparativa Visual (Planilha PDF vs Mr. Coach AI)**:
   - *Arquivo principal:* `mobile/lib/features/landing/b2b_landing_screen.dart`
   - *Entrega:* Grid Bento comparativo destacando em verde e vermelho a diferença entre uma planilha PDF morta vs. acompanhamento inteligente com IA, feedback de dor e segurança.
