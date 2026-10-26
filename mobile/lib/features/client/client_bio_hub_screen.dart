@@ -15,6 +15,8 @@ import 'widgets/warmup_sheet.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/widgets/one_ui_glass_components.dart';
 import '../../core/widgets/workout_guide_modal.dart';
+import '../../core/widgets/thematic_editorial_card.dart';
+import '../../core/widgets/thematic_watermarks.dart';
 import 'student_profile_screen.dart';
 
 /// Aba 4 do Aluno: 🧬 Bio-Hub
@@ -1275,6 +1277,9 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
 
     final isDark = ThemeController.instance.isEffectiveDark(context);
+    final readinessScore = _calculatedReadinessScore.clamp(0.0, 100.0);
+    final readinessInsight = _getReadinessInsight(readinessScore);
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -1284,24 +1289,39 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
         systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: MetaColors.bg(context),
-        body: Stack(
-          children: [
-            const AmbientGlowCanvas(),
-            NestedScrollView(
-              headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      top: topPadding + 16,
-                      left: 20,
-                      right: 20,
-                      bottom: 12,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildBioHubHeader(),
+            backgroundColor: MetaColors.bg(context),
+            body: Stack(
+              children: [
+                const AmbientGlowCanvas(),
+                NestedScrollView(
+                  headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          top: topPadding + 16,
+                          left: 20,
+                          right: 20,
+                          bottom: 12,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildBioHubHeader(),
+                            const SizedBox(height: 14),
+                            // Card Editorial One UI 7 Health: Telemetria & Prontidão
+                            ThematicEditorialCard(
+                              category: 'Telemetria & Prontidão Bio-Hub',
+                              title: readinessInsight,
+                              description: 'Análise integrada de sono, hidratação e estresse de carga para guiar seu treino.',
+                              palette: readinessScore >= 75
+                                  ? ThematicCardPalette.cardioCobalt
+                                  : (readinessScore >= 50 ? ThematicCardPalette.biomechanicsCyan : ThematicCardPalette.muscleMagenta),
+                              customWatermark: readinessScore >= 75
+                                  ? ThematicWatermarkType.cardioLoad
+                                  : (readinessScore >= 50 ? ThematicWatermarkType.biomechanics : ThematicWatermarkType.muscleFatigue),
+                              minHeight: 115,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            ),
                         const SizedBox(height: 14),
                         // Top 3 Activity Rings Summary Card (Apple Fitness+ / Whoop style)
                         _buildActivityRingsSummaryCard(),
@@ -1348,6 +1368,16 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
     );
   }
 
+  String _getReadinessInsight(double readiness) {
+    if (readiness >= 80) {
+      return 'Prontidão alta (${readiness.toInt()}%) — excelente janela para progredir carga hoje.';
+    } else if (readiness >= 60) {
+      return 'Prontidão moderada (${readiness.toInt()}%) — mantenha a cadência e hidratação.';
+    } else {
+      return 'Recuperação em atenção (${readiness.toInt()}%) — priorize técnica e mobilidade.';
+    }
+  }
+
   Widget _buildActivityRingsSummaryCard() {
     final readiness = _calculatedReadinessScore.clamp(0.0, 100.0);
     final prepProgress = (((_energyLevel / 5.0) * 0.6) +
@@ -1356,17 +1386,7 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
     final overloadProgress =
         _progressiveOverloads.isNotEmpty ? 1.0 : (_mobilityCompleted ? 0.7 : 0.35);
 
-    final String insightText;
-    if (readiness >= 80) {
-      insightText =
-          'Prontidão alta (${readiness.toInt()}%) — excelente janela para progredir carga hoje.';
-    } else if (readiness >= 60) {
-      insightText =
-          'Prontidão moderada (${readiness.toInt()}%) — mantenha a cadência e hidratação.';
-    } else {
-      insightText =
-          'Recuperação em atenção (${readiness.toInt()}%) — priorize técnica e mobilidade.';
-    }
+    final insightText = _getReadinessInsight(readiness);
 
     return GlassCard(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

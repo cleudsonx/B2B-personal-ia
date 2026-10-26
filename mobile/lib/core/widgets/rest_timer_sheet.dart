@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/pwa_installer.dart';
 import 'meta_components.dart';
+import 'thematic_editorial_card.dart';
+import 'thematic_watermarks.dart';
 
 /// BottomSheet imersivo e tátil de descanso entre séries (Padrão Ouro Mr. Coach AI).
 ///
@@ -541,6 +543,18 @@ class _RestTimerSheetState extends State<RestTimerSheet>
                     child: const Text('+30s', style: TextStyle(fontWeight: FontWeight.w800)),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+
+              // Card Editorial Fisiológico de Recuperação Miofascial (Padrão One UI 7 Health)
+              ThematicEditorialCard(
+                category: 'Fisiologia & Sobrecarga',
+                title: 'Recuperação de ATP-CP & Estresse Miofascial',
+                description: 'Intervalos entre 60s e 120s restabelecem até 90% da fosfocreatina nas fibras de contração rápida.',
+                palette: ThematicCardPalette.muscleMagenta,
+                customWatermark: ThematicWatermarkType.muscleFatigue,
+                minHeight: 110,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
               const SizedBox(height: 16),
 

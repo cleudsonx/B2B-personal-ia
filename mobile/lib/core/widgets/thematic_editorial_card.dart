@@ -120,8 +120,8 @@ enum ThematicCardPalette {
 /// - Minimalista Executivo (Meta Slate neutro)
 /// - Pastel Suave (Light Mode de alto contraste)
 class ThematicEditorialCard extends StatelessWidget {
-  final String category;
-  final String title;
+  final String? category;
+  final String? title;
   final String? description;
   final ThematicCardPalette palette;
   final ThematicWatermarkType? customWatermark;
@@ -130,12 +130,13 @@ class ThematicEditorialCard extends StatelessWidget {
   final double minHeight;
   final EdgeInsetsGeometry padding;
   final Widget? trailingBadge;
+  final Widget? customContent;
   final Widget? footerAction;
 
   const ThematicEditorialCard({
     super.key,
-    required this.category,
-    required this.title,
+    this.category,
+    this.title,
     this.description,
     required this.palette,
     this.customWatermark,
@@ -144,6 +145,7 @@ class ThematicEditorialCard extends StatelessWidget {
     this.minHeight = 148.0,
     this.padding = const EdgeInsets.all(20.0),
     this.trailingBadge,
+    this.customContent,
     this.footerAction,
   });
 
@@ -263,51 +265,60 @@ class ThematicEditorialCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         // Cabeçalho (Rótulo superior + Badge opcional)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
+                        if (category != null || trailingBadge != null)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              if (category != null)
+                                Text(
+                                  category!.toUpperCase(),
+                                  style: TextStyle(
+                                    color: subtextColor,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.8,
+                                  ),
+                                )
+                              else
+                                const SizedBox.shrink(),
+                              if (trailingBadge != null) trailingBadge!,
+                            ],
+                          ),
+
+                        if (customContent != null) ...[
+                          if (category != null || trailingBadge != null)
+                            const SizedBox(height: 12),
+                          customContent!,
+                        ] else ...[
+                          if (category != null) const SizedBox(height: 12),
+                          if (title != null)
                             Text(
-                              category.toUpperCase(),
+                              title!,
                               style: TextStyle(
-                                color: subtextColor,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.8,
+                                color: textColor,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.3,
+                                height: 1.25,
                               ),
                             ),
-                            if (trailingBadge != null) trailingBadge!,
+
+                          // Descrição contextual (se fornecida)
+                          if (description != null) ...[
+                            const SizedBox(height: 8),
+                            Padding(
+                              padding: const EdgeInsets.only(right: 64.0),
+                              child: Text(
+                                description!,
+                                style: TextStyle(
+                                  color: subtextColor,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ),
                           ],
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        // Título de Impacto
-                        Text(
-                          title,
-                          style: TextStyle(
-                            color: textColor,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.3,
-                            height: 1.25,
-                          ),
-                        ),
-
-                        // Descrição contextual (se fornecida)
-                        if (description != null) ...[
-                          const SizedBox(height: 8),
-                          Padding(
-                            padding: const EdgeInsets.only(right: 64.0),
-                            child: Text(
-                              description!,
-                              style: TextStyle(
-                                color: subtextColor,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                height: 1.35,
-                              ),
-                            ),
-                          ),
                         ],
 
                         // Ação de Rodapé opcional

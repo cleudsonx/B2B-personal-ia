@@ -13,6 +13,8 @@ import '../../core/theme/theme_controller.dart';
 import '../../core/widgets/one_ui_glass_components.dart';
 import '../../core/widgets/workout_guide_modal.dart';
 import '../../core/widgets/whats_new_modal.dart';
+import '../../core/widgets/thematic_editorial_card.dart';
+import '../../core/widgets/thematic_watermarks.dart';
 import '../../models/workout_plan_model.dart';
 import '../../services/student_notification_service.dart';
 import '../../core/widgets/ai_action_card.dart';
@@ -1757,230 +1759,313 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
 
   /// 1. Hero Spotlight Card - Copiloto de Salão em Tempo Real
   Widget _buildHeroSpotlightCard(BuildContext context, Color accentColor) {
-    final isDark = MetaColors.isDark(context);
-    final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final subtitleColor = isDark ? Colors.white.withValues(alpha: 0.8) : const Color(0xFF475569);
-    final iconBg = isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2E8F0);
-    final iconColor = isDark ? Colors.white70 : const Color(0xFF475569);
-    final chipBg = isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFF1F5F9);
-    final chipBorder = isDark ? Colors.white.withValues(alpha: 0.16) : const Color(0xFFCBD5E1);
-    final chipTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    return AnimatedBuilder(
+      animation: ThemeController.instance,
+      builder: (context, _) {
+        final isDark = MetaColors.isDark(context);
+        final mode = ThemeController.instance.cardThemeMode;
+        // O modo editorial 3D rico é ativo se for editorial3D E estiver em dark mode,
+        // ou se for explicitamente ativado mantendo harmonia com o tema
+        final useEditorialMode = mode == CardVisualThemeMode.editorial3D && isDark;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDark
-              ? [
-                  const Color(0xFF0F172A), // Dark Slate
-                  const Color(0xFF042F2E), // Deep Teal
-                ]
-              : [
-                  Colors.white,            // Pure White Flat Card
-                  const Color(0xFFF0FDF4), // Light Mint
-                ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? MetaColors.emerald.withValues(alpha: 0.35) : const Color(0xFFA7F3D0),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? MetaColors.emerald.withValues(alpha: 0.12)
-                : Colors.black.withValues(alpha: 0.04),
-            blurRadius: isDark ? 24 : 12,
-            offset: const Offset(0, 4),
+        final titleColor = useEditorialMode
+            ? Colors.white
+            : (isDark ? Colors.white : const Color(0xFF0F172A));
+        final subtitleColor = useEditorialMode
+            ? Colors.white.withValues(alpha: 0.9)
+            : (isDark ? Colors.white.withValues(alpha: 0.8) : const Color(0xFF475569));
+        final iconBg = useEditorialMode
+            ? Colors.white.withValues(alpha: 0.16)
+            : (isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2E8F0));
+        final iconColor = useEditorialMode
+            ? Colors.white
+            : (isDark ? Colors.white70 : const Color(0xFF475569));
+        final chipBg = useEditorialMode
+            ? Colors.white.withValues(alpha: 0.18)
+            : (isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFF1F5F9));
+        final chipBorder = useEditorialMode
+            ? Colors.white.withValues(alpha: 0.3)
+            : (isDark ? Colors.white.withValues(alpha: 0.16) : const Color(0xFFCBD5E1));
+        final chipTextColor = useEditorialMode
+            ? Colors.white
+            : (isDark ? Colors.white : const Color(0xFF0F172A));
+
+        return Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: useEditorialMode
+                ? (widget.isStudentView
+                    ? ThematicCardPalette.aiOrchid.editorialGradient
+                    : ThematicCardPalette.biomechanicsCyan.editorialGradient)
+                : LinearGradient(
+                    colors: isDark
+                        ? [
+                            const Color(0xFF0F172A), // Dark Slate
+                            const Color(0xFF042F2E), // Deep Teal
+                          ]
+                        : [
+                            Colors.white,            // Pure White Flat Card
+                            const Color(0xFFF0FDF4), // Light Mint
+                          ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: useEditorialMode
+                  ? Colors.white.withValues(alpha: 0.2)
+                  : (isDark ? MetaColors.emerald.withValues(alpha: 0.35) : const Color(0xFFA7F3D0)),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: useEditorialMode
+                    ? (widget.isStudentView
+                        ? const Color(0xFF7C3AED).withValues(alpha: 0.35)
+                        : const Color(0xFF0EA5E9).withValues(alpha: 0.35))
+                    : (isDark
+                        ? MetaColors.emerald.withValues(alpha: 0.12)
+                        : Colors.black.withValues(alpha: 0.04)),
+                blurRadius: isDark ? 24 : 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                decoration: BoxDecoration(
-                  color: MetaColors.emerald.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: MetaColors.emerald.withValues(alpha: 0.4),
+              // Marca d'água 3D volumétrica no modo editorial
+              if (useEditorialMode)
+                Positioned(
+                  top: -10,
+                  right: -8,
+                  child: ThematicWatermark(
+                    type: widget.isStudentView
+                        ? ThematicWatermarkType.aiCopilot
+                        : ThematicWatermarkType.biomechanics,
+                    size: 145,
+                    opacity: 0.85,
+                    baseColor: Colors.white,
                   ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.bolt_rounded,
-                      size: 13,
-                      color: MetaColors.emerald,
+
+              // Efeito especular de luz superior no topo do card
+              if (useEditorialMode)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 50,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.white.withValues(alpha: 0.18),
+                          Colors.white.withValues(alpha: 0.0),
+                        ],
+                      ),
                     ),
-                    const SizedBox(width: 5),
+                  ),
+                ),
+
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: useEditorialMode
+                                ? Colors.white.withValues(alpha: 0.2)
+                                : MetaColors.emerald.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: useEditorialMode
+                                  ? Colors.white.withValues(alpha: 0.4)
+                                  : MetaColors.emerald.withValues(alpha: 0.4),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.bolt_rounded,
+                                size: 13,
+                                color: useEditorialMode ? Colors.white : MetaColors.emerald,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                widget.isStudentView ? 'COPILOTO DE SALÃO • TEMPO REAL' : 'MR. COACH ENTERPRISE',
+                                style: TextStyle(
+                                  color: useEditorialMode ? Colors.white : MetaColors.emerald,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: iconBg,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            widget.isStudentView ? Icons.fitness_center_rounded : Icons.business_center_rounded,
+                            size: 16,
+                            color: iconColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
                     Text(
-                      widget.isStudentView ? 'COPILOTO DE SALÃO • TEMPO REAL' : 'MR. COACH ENTERPRISE',
-                      style: const TextStyle(
-                        color: MetaColors.emerald,
-                        fontSize: 10,
+                      widget.isStudentView
+                          ? 'Qual a dúvida da sua série agora?'
+                          : 'Inteligência Estratégica & Prescrição',
+                      style: TextStyle(
+                        color: titleColor,
+                        fontSize: 18,
                         fontWeight: FontWeight.w800,
-                        letterSpacing: 0.6,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      widget.isStudentView
+                          ? 'Aparelho ocupado, ajuste de postura para evitar dor ou dúvida de carga na série. Resposta direta em 5 segundos.'
+                          : 'Periodização de força, fisiologia de hipertrofia, precificação de planos e engajamento no WhatsApp.',
+                      style: TextStyle(
+                        color: subtitleColor,
+                        fontSize: 12.5,
+                        height: 1.4,
+                      ),
+                    ),
+                    if (widget.isStudentView && _studentExercises.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: _studentExercises.take(3).map((ex) {
+                          return InkWell(
+                            onTap: () => _sendPrompt(
+                              'Como executar $ex com postura perfeita e qual alternativa se estiver ocupado?',
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: chipBg,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: chipBorder,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.fitness_center_rounded,
+                                    size: 11.5,
+                                    color: useEditorialMode ? Colors.white : MetaColors.emerald,
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Flexible(
+                                    child: Text(
+                                      ex,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: chipTextColor,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    // Botão Funcional Útil de Salão (sem redundância de 3D)
+                    InkWell(
+                      onTap: () {
+                        if (widget.isStudentView) {
+                          _sendPrompt(
+                            'O aparelho que eu ia usar agora está ocupado na academia. Quais as melhores alternativas com halteres ou polia mantendo o mesmo estímulo muscular?',
+                          );
+                        } else {
+                          _sendPrompt(
+                            'Crie um script de WhatsApp humanizado e persuasivo para reengajar alunos ausentes há mais de 10 dias.',
+                          );
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: useEditorialMode ? Colors.white : MetaColors.emerald,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: useEditorialMode
+                                  ? Colors.black.withValues(alpha: 0.25)
+                                  : MetaColors.emerald.withValues(alpha: 0.4),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              widget.isStudentView ? Icons.swap_horiz_rounded : Icons.chat_rounded,
+                              size: 17,
+                              color: useEditorialMode ? const Color(0xFF6D28D9) : Colors.black,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              widget.isStudentView
+                                  ? 'Aparelho Ocupado? Trocar em 1 Toque'
+                                  : 'Gerar Script de WhatsApp para Alunos',
+                              style: TextStyle(
+                                color: useEditorialMode ? const Color(0xFF6D28D9) : Colors.black,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 12.5,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 14,
+                              color: useEditorialMode ? const Color(0xFF6D28D9) : Colors.black,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: iconBg,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  widget.isStudentView ? Icons.fitness_center_rounded : Icons.business_center_rounded,
-                  size: 16,
-                  color: iconColor,
-                ),
-              ),
             ],
           ),
-          const SizedBox(height: 14),
-          Text(
-            widget.isStudentView
-                ? 'Qual a dúvida da sua série agora?'
-                : 'Inteligência Estratégica & Prescrição',
-            style: TextStyle(
-              color: titleColor,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.3,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            widget.isStudentView
-                ? 'Aparelho ocupado, ajuste de postura para evitar dor ou dúvida de carga na série. Resposta direta em 5 segundos.'
-                : 'Periodização de força, fisiologia de hipertrofia, precificação de planos e engajamento no WhatsApp.',
-            style: TextStyle(
-              color: subtitleColor,
-              fontSize: 12.5,
-              height: 1.4,
-            ),
-          ),
-          if (widget.isStudentView && _studentExercises.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: _studentExercises.take(3).map((ex) {
-                return InkWell(
-                  onTap: () => _sendPrompt(
-                    'Como executar $ex com postura perfeita e qual alternativa se estiver ocupado?',
-                  ),
-                  borderRadius: BorderRadius.circular(10),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: chipBg,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: chipBorder,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.fitness_center_rounded,
-                          size: 11.5,
-                          color: MetaColors.emerald,
-                        ),
-                        const SizedBox(width: 5),
-                        Flexible(
-                          child: Text(
-                            ex,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: chipTextColor,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
-          const SizedBox(height: 16),
-          // Botão Funcional Útil de Salão (sem redundância de 3D)
-          InkWell(
-            onTap: () {
-              if (widget.isStudentView) {
-                _sendPrompt(
-                  'O aparelho que eu ia usar agora está ocupado na academia. Quais as melhores alternativas com halteres ou polia mantendo o mesmo estímulo muscular?',
-                );
-              } else {
-                _sendPrompt(
-                  'Crie um script de WhatsApp humanizado e persuasivo para reengajar alunos ausentes há mais de 10 dias.',
-                );
-              }
-            },
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: MetaColors.emerald,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: MetaColors.emerald.withValues(alpha: 0.4),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    widget.isStudentView ? Icons.swap_horiz_rounded : Icons.chat_rounded,
-                    size: 17,
-                    color: Colors.black,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    widget.isStudentView
-                        ? 'Aparelho Ocupado? Trocar em 1 Toque'
-                        : 'Gerar Script de WhatsApp para Alunos',
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12.5,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(
-                    Icons.arrow_forward_rounded,
-                    size: 14,
-                    color: Colors.black,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 

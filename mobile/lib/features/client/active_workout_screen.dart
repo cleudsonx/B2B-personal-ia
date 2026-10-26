@@ -1,4 +1,6 @@
 import '../../core/theme/theme_controller.dart';
+import '../../core/widgets/thematic_editorial_card.dart';
+import '../../core/widgets/thematic_watermarks.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
@@ -2309,76 +2311,31 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   const SizedBox(height: 14),
                 ],
 
-                // 4. CARD HERO: SEU TREINO DE HOJE (Padrão Ouro das Melhores Academias)
-                Container(
+                // 4. CARD HERO: SEU TREINO DE HOJE (Padrão Ouro das Melhores Academias - One UI 7 Health)
+                ThematicEditorialCard(
+                  category: 'DIVISÃO ${(_splitIdentifier ?? 'A').toUpperCase()} • PROGRAMADO',
+                  palette: ThematicCardPalette.biomechanicsCyan,
+                  customWatermark: ThematicWatermarkType.biomechanics,
                   padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        _cardBg.withValues(alpha: _isDark ? 0.55 : 0.78),
-                        (_isDark ? const Color(0xFF0F1E19) : const Color(0xFFE6F4EA))
-                            .withValues(alpha: _isDark ? 0.55 : 0.78),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                  trailingBadge: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: _isDark ? Colors.white.withValues(alpha: 0.12) : _highlight,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: _border),
                     ),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                      color: MetaColors.emerald.withValues(alpha: 0.35),
-                      width: 1.2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        blurRadius: 14,
-                        offset: const Offset(0, 4),
+                    child: Text(
+                      _elapsedLabel(),
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: _isDark ? Colors.white : _textSecondary,
                       ),
-                    ],
+                    ),
                   ),
-                  child: Column(
+                  customContent: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
-                            decoration: BoxDecoration(
-                              color: MetaColors.emerald.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: MetaColors.emerald.withValues(alpha: 0.35),
-                              ),
-                            ),
-                            child: Text(
-                              'DIVISÃO ${(_splitIdentifier ?? 'A').toUpperCase()} • PROGRAMADO',
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.5,
-                                color: MetaColors.emerald,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: _highlight,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: _border),
-                            ),
-                            child: Text(
-                              _elapsedLabel(),
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w700,
-                                color: _textSecondary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
@@ -2483,7 +2440,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                                 color: _textPrimary,
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w900,
-                                fontFeatures: [FontFeature.tabularFigures()],
+                                fontFeatures: const [FontFeature.tabularFigures()],
                               ),
                             ),
                           ),
