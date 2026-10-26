@@ -235,7 +235,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                   ),
                                   label: Text(
                                     user.isVip ? 'Desativar VIP' : 'Ativar VIP',
-                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber),
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber),
                                   ),
                                   style: OutlinedButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
@@ -402,7 +402,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                     ),
                                     Text(
                                       '${user.currentStudents} / ${user.maxStudents ?? 30} vagas',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: Color(0xFF818CF8),
                                         fontWeight: FontWeight.bold,
                                         fontSize: 12,
@@ -849,18 +849,18 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         return StatefulBuilder(
           builder: (context, setDlgState) {
             return AlertDialog(
-              backgroundColor: const Color(0xFF0F172A),
+              backgroundColor: MetaColors.isDark(context) ? const Color(0xFF0F172A) : Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
-                side: const BorderSide(color: Color(0xFF334155)),
+                side: BorderSide(color: MetaColors.isDark(context) ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
               ),
-              title: const Row(
+              title: Row(
                 children: [
                   Icon(Icons.workspace_premium_rounded, color: Colors.amber),
                   SizedBox(width: 8),
                   Text(
                     'Override de Plano & Cota',
-                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: MetaColors.isDark(context) ? Colors.white : const Color(0xFF0F172A), fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -879,13 +879,13 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                               .contains(selectedPlan)
                           ? selectedPlan
                           : 'Pro',
-                      dropdownColor: const Color(0xFF1E293B),
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      dropdownColor: MetaColors.isDark(context) ? const Color(0xFF1E293B) : Colors.white,
+                      style: TextStyle(color: MetaColors.isDark(context) ? Colors.white : const Color(0xFF0F172A), fontSize: 13),
                       decoration: InputDecoration(
                         labelText: 'Plano Comercial',
                         labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
                         filled: true,
-                        fillColor: const Color(0xFF1E293B),
+                        fillColor: MetaColors.isDark(context) ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       items: const [
@@ -946,7 +946,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                         labelText: 'Motivo / Anotações Internas',
                         labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
                         filled: true,
-                        fillColor: const Color(0xFF1E293B),
+                        fillColor: MetaColors.isDark(context) ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
@@ -1004,18 +1004,18 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         return StatefulBuilder(
           builder: (context, setDlgState) {
             return AlertDialog(
-              backgroundColor: const Color(0xFF0F172A),
+              backgroundColor: MetaColors.isDark(context) ? const Color(0xFF0F172A) : Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
-                side: const BorderSide(color: Color(0xFF334155)),
+                side: BorderSide(color: MetaColors.isDark(context) ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
               ),
-              title: const Row(
+              title: Row(
                 children: [
                   Icon(Icons.badge_rounded, color: Color(0xFF818CF8)),
                   SizedBox(width: 8),
                   Text(
                     'Validação de CREF',
-                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: MetaColors.isDark(context) ? Colors.white : const Color(0xFF0F172A), fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -1025,14 +1025,14 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 children: [
                   TextField(
                     controller: crefCtrl,
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    style: TextStyle(color: MetaColors.isDark(context) ? Colors.white : const Color(0xFF0F172A), fontSize: 13),
                     decoration: InputDecoration(
                       labelText: 'Número do Registro CREF',
                       hintText: 'Ex: 049281-G/SP',
                       hintStyle: const TextStyle(color: Color(0xFF64748B)),
                       labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
                       filled: true,
-                      fillColor: const Color(0xFF1E293B),
+                      fillColor: MetaColors.isDark(context) ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
@@ -1109,18 +1109,18 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             );
 
             return AlertDialog(
-              backgroundColor: const Color(0xFF0F172A),
+              backgroundColor: MetaColors.isDark(context) ? const Color(0xFF0F172A) : Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
-                side: const BorderSide(color: Color(0xFF334155)),
+                side: BorderSide(color: MetaColors.isDark(context) ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
               ),
-              title: const Row(
+              title: Row(
                 children: [
                   Icon(Icons.sync_alt_rounded, color: MetaColors.emerald),
                   SizedBox(width: 8),
                   Text(
                     'Reatribuir Aluno',
-                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: MetaColors.isDark(context) ? Colors.white : const Color(0xFF0F172A), fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -1137,18 +1137,18 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                     style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'Selecione o Novo Treinador:',
                     style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     initialValue: selectedTrainerId,
-                    dropdownColor: const Color(0xFF1E293B),
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    dropdownColor: MetaColors.isDark(context) ? const Color(0xFF1E293B) : Colors.white,
+                    style: TextStyle(color: MetaColors.isDark(context) ? Colors.white : const Color(0xFF0F172A), fontSize: 13),
                     decoration: InputDecoration(
                       filled: true,
-                      fillColor: const Color(0xFF1E293B),
+                      fillColor: MetaColors.isDark(context) ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     items: trainers.map((t) {
@@ -1216,12 +1216,12 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         return StatefulBuilder(
           builder: (context, setDlgState) {
             return AlertDialog(
-              backgroundColor: const Color(0xFF0F172A),
+              backgroundColor: MetaColors.isDark(context) ? const Color(0xFF0F172A) : Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
                 side: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
               ),
-              title: const Row(
+              title: Row(
                 children: [
                   Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 26),
                   SizedBox(width: 10),
@@ -1263,15 +1263,15 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                             children: [
                               Text(
                                 user.name,
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: MetaColors.isDark(context) ? Colors.white : const Color(0xFF0F172A),
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                 ),
                               ),
                               Text(
                                 user.email ?? user.phone ?? user.id,
-                                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
                               ),
                             ],
                           ),
@@ -1280,18 +1280,18 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'Esta ação é IRREVERSÍVEL. Todos os dados associados a esta conta serão removidos permanentemente:',
                     style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 12),
                   ),
                   const SizedBox(height: 8),
-                  const Text('• Perfil no banco de dados e credenciais de acesso', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
-                  const Text('• Fichas de treino, sessões gravadas e anamnese', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
-                  const Text('• Vínculos ativos e faturas pendentes', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                  Text('• Perfil no banco de dados e credenciais de acesso', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                  Text('• Fichas de treino, sessões gravadas e anamnese', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                  Text('• Vínculos ativos e faturas pendentes', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'Deseja mesmo prosseguir com a exclusão?',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12.5),
+                    style: TextStyle(color: MetaColors.isDark(context) ? Colors.white : const Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 12.5),
                   ),
                 ],
               ),
@@ -1631,7 +1631,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                                   const SizedBox(width: 8),
                                                   Text(
                                                     '${u.currentStudents}/${u.maxStudents} vagas',
-                                                    style: const TextStyle(
+                                                    style: TextStyle(
                                                       fontSize: 10,
                                                       fontWeight: FontWeight.w800,
                                                       color: Color(0xFF818CF8),
@@ -1653,7 +1653,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                                   const SizedBox(width: 8),
                                                   Text(
                                                     'Personal: ${u.trainerName}',
-                                                    style: const TextStyle(
+                                                    style: TextStyle(
                                                       fontSize: 10,
                                                       color: MetaColors.emerald,
                                                       fontWeight: FontWeight.w600,

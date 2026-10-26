@@ -133,7 +133,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF111827),
+        backgroundColor: MetaColors.isDark(context) ? const Color(0xFF111827) : Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: Color(0xFF1F2937), width: 1.2),
@@ -172,9 +172,9 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF090D16),
+                  color: MetaColors.isDark(context) ? const Color(0xFF090D16) : const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF1F2937)),
+                  border: Border.all(color: MetaColors.isDark(context) ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0)),
                 ),
                 child: Column(
                   children: [
@@ -254,14 +254,14 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF090D16),
+      backgroundColor: Colors.transparent,
       body: RefreshIndicator(
         onRefresh: () async {
           await _loadTransactions();
           await _loadRunwayData();
         },
         color: const Color(0xFF6366F1),
-        backgroundColor: const Color(0xFF111827),
+        backgroundColor: MetaColors.isDark(context) ? const Color(0xFF111827) : Colors.white,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 768 ? 16 : 24),
@@ -295,7 +295,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
 
         final titleBlock = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
+          children: [
             Row(
               children: [
                 Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF818CF8), size: 24),
@@ -304,7 +304,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
                   child: Text(
                     'Financeiro & Unit Economics',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: MetaColors.isDark(context) ? Colors.white : const Color(0xFF0F172A),
                       fontSize: 22,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0.3,
@@ -316,7 +316,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
             SizedBox(height: 6),
             Text(
               'Auditoria de transações Asaas/Pix, repasses, split 5% e modelagem preditiva de fluxo de caixa & runway',
-              style: TextStyle(color: Colors.white60, fontSize: 13, height: 1.3),
+              style: TextStyle(color: MetaColors.isDark(context) ? Colors.white60 : const Color(0xFF64748B), fontSize: 13, height: 1.3),
             ),
           ],
         );
@@ -358,7 +358,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
               label: const Text('Atualizar', style: TextStyle(color: Color(0xFF818CF8), fontSize: 13)),
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Color(0xFF1F2937)),
-                backgroundColor: const Color(0xFF111827),
+                backgroundColor: MetaColors.isDark(context) ? const Color(0xFF111827) : Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
@@ -397,9 +397,9 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
         return Container(
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: const Color(0xFF111827),
+            color: MetaColors.isDark(context) ? const Color(0xFF111827) : Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF1F2937)),
+            border: Border.all(color: MetaColors.isDark(context) ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0)),
           ),
           child: Row(
             children: [
@@ -517,9 +517,9 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF111827),
+            color: MetaColors.isDark(context) ? const Color(0xFF111827) : Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF1F2937)),
+            border: Border.all(color: MetaColors.isDark(context) ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0)),
           ),
           child: Column(
             children: [
@@ -544,7 +544,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
                               )
                             : null,
                         filled: true,
-                        fillColor: const Color(0xFF090D16),
+                        fillColor: MetaColors.isDark(context) ? const Color(0xFF090D16) : const Color(0xFFF1F5F9),
                         contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -588,12 +588,12 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
           Container(
             padding: const EdgeInsets.all(48),
             decoration: BoxDecoration(
-              color: const Color(0xFF111827),
+              color: MetaColors.isDark(context) ? const Color(0xFF111827) : Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF1F2937)),
+              border: Border.all(color: MetaColors.isDark(context) ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0)),
             ),
             child: Column(
-              children: const [
+              children: [
                 Icon(Icons.inbox_outlined, size: 48, color: Colors.white24),
                 SizedBox(height: 12),
                 Text(
@@ -716,7 +716,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: const Color(0xFF111827),
+            color: MetaColors.isDark(context) ? const Color(0xFF111827) : Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: const Color(0xFF1F2937), width: 1.2),
           ),
@@ -727,7 +727,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
-                    children: const [
+                    children: [
                       Icon(Icons.tune_rounded, color: Color(0xFF10B981), size: 20),
                       SizedBox(width: 8),
                       Text(
@@ -854,7 +854,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: const Color(0xFF111827),
+            color: MetaColors.isDark(context) ? const Color(0xFF111827) : Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: const Color(0xFF1F2937), width: 1.2),
           ),
@@ -863,7 +863,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
+                children: [
                   Text(
                     'Fluxo de Caixa Projetado Mês a Mês (Horizonte 12 Meses)',
                     style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
@@ -880,9 +880,9 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
                 child: DataTable(
                   horizontalMargin: 12,
                   columnSpacing: 20,
-                  headingRowColor: WidgetStateProperty.all(const Color(0xFF090D16)),
+                  headingRowColor: WidgetStateProperty.all(MetaColors.isDark(context) ? const Color(0xFF090D16) : const Color(0xFFF1F5F9)),
                   dataRowColor: WidgetStateProperty.resolveWith(
-                    (states) => const Color(0xFF111827),
+                    (states) => MetaColors.isDark(context) ? const Color(0xFF111827) : Colors.white,
                   ),
                   columns: const [
                     DataColumn(label: Text('Mês', style: TextStyle(color: Color(0xFF818CF8), fontWeight: FontWeight.bold, fontSize: 12))),
@@ -948,7 +948,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                children: const [
+                children: [
                   Icon(Icons.workspace_premium_rounded, color: Color(0xFFF59E0B), size: 20),
                   SizedBox(width: 8),
                   Text(
@@ -1006,7 +1006,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF111827),
+        color: MetaColors.isDark(context) ? const Color(0xFF111827) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFF1F2937), width: 1.2),
       ),
@@ -1093,7 +1093,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF111827),
+        color: MetaColors.isDark(context) ? const Color(0xFF111827) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFF1F2937)),
       ),
@@ -1112,11 +1112,11 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: Colors.white60, fontSize: 12, fontWeight: FontWeight.w500)),
+                Text(title, style: TextStyle(color: MetaColors.isDark(context) ? Colors.white60 : const Color(0xFF64748B), fontSize: 12, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 4),
-                Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+                Text(value, style: TextStyle(color: MetaColors.isDark(context) ? Colors.white : const Color(0xFF0F172A), fontSize: 18, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(color: Colors.white38, fontSize: 10)),
+                Text(subtitle, style: TextStyle(color: MetaColors.isDark(context) ? Colors.white38 : const Color(0xFF94A3B8), fontSize: 10)),
               ],
             ),
           ),
@@ -1138,7 +1138,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? chipColor.withValues(alpha: 0.2) : const Color(0xFF090D16),
+          color: isSelected ? chipColor.withValues(alpha: 0.2) : (MetaColors.isDark(context) ? const Color(0xFF090D16) : const Color(0xFFF1F5F9)),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected ? chipColor : const Color(0xFF1F2937),
@@ -1182,7 +1182,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF111827),
+          color: MetaColors.isDark(context) ? const Color(0xFF111827) : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: const Color(0xFF1F2937)),
         ),
@@ -1192,9 +1192,9 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF090D16),
+                color: MetaColors.isDark(context) ? const Color(0xFF090D16) : const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF1F2937)),
+                border: Border.all(color: MetaColors.isDark(context) ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0)),
               ),
               child: Icon(
                 tx.paymentMethod == 'pix' ? Icons.pix_rounded : Icons.credit_card_rounded,
@@ -1213,7 +1213,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
                     children: [
                       Text(
                         tx.trainerName,
-                        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: MetaColors.isDark(context) ? Colors.white : const Color(0xFF0F172A), fontSize: 14, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(width: 8),
                       Container(
@@ -1241,9 +1241,9 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF090D16),
+                          color: MetaColors.isDark(context) ? const Color(0xFF090D16) : const Color(0xFFF1F5F9),
                           borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: const Color(0xFF1F2937)),
+                          border: Border.all(color: MetaColors.isDark(context) ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0)),
                         ),
                         child: Text(
                           'Split 5%: ${_formatCurrency(tx.platformFeeReais)}',
@@ -1262,7 +1262,7 @@ class _AdminFinanceScreenState extends State<AdminFinanceScreen> {
               children: [
                 Text(
                   _formatCurrency(tx.amountReais),
-                  style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900),
+                  style: TextStyle(color: MetaColors.isDark(context) ? Colors.white : const Color(0xFF0F172A), fontSize: 15, fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 4),
                 Container(

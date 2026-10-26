@@ -58,18 +58,18 @@ class _AdminWhatsAppScreenState extends State<AdminWhatsAppScreen> {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF0F172A),
+          backgroundColor: MetaColors.isDark(ctx) ? const Color(0xFF0F172A) : Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: Color(0xFF334155)),
+            side: BorderSide(color: MetaColors.isDark(ctx) ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
           ),
           title: Text(
             confirmTitle,
-            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(color: MetaColors.isDark(ctx) ? Colors.white : const Color(0xFF0F172A), fontSize: 16, fontWeight: FontWeight.bold),
           ),
           content: Text(
             confirmMsg,
-            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+            style: TextStyle(color: MetaColors.isDark(ctx) ? const Color(0xFF94A3B8) : const Color(0xFF64748B), fontSize: 13),
           ),
           actions: [
             TextButton(

@@ -68,10 +68,10 @@ class _AdminAiUsageScreenState extends State<AdminAiUsageScreen> {
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF111827),
+          backgroundColor: MetaColors.isDark(ctx) ? const Color(0xFF111827) : Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: Color(0xFF1F2937)),
+            side: BorderSide(color: MetaColors.isDark(ctx) ? const Color(0xFF1F2937) : const Color(0xFFCBD5E1)),
           ),
           title: Row(
             children: [
@@ -80,7 +80,11 @@ class _AdminAiUsageScreenState extends State<AdminAiUsageScreen> {
               Expanded(
                 child: Text(
                   'Ajustar Cota IA: ${trainer.trainerName}',
-                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: MetaColors.isDark(ctx) ? Colors.white : const Color(0xFF0F172A),
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -95,23 +99,27 @@ class _AdminAiUsageScreenState extends State<AdminAiUsageScreen> {
                 style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 13),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Cota Mensal de Gerações:',
-                style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: MetaColors.isDark(ctx) ? Colors.white : const Color(0xFF0F172A),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: controller,
                 keyboardType: TextInputType.number,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: MetaColors.isDark(ctx) ? Colors.white : const Color(0xFF0F172A)),
                 decoration: InputDecoration(
                   hintText: 'Ex: 150 (ou -1 para Ilimitado)',
                   hintStyle: const TextStyle(color: Color(0xFF6B7280)),
                   filled: true,
-                  fillColor: const Color(0xFF1F2937),
+                  fillColor: MetaColors.isDark(ctx) ? const Color(0xFF1F2937) : const Color(0xFFF1F5F9),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: Color(0xFF374151)),
+                    borderSide: BorderSide(color: MetaColors.isDark(ctx) ? const Color(0xFF374151) : const Color(0xFFCBD5E1)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -179,18 +187,22 @@ class _AdminAiUsageScreenState extends State<AdminAiUsageScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF111827),
+        backgroundColor: MetaColors.isDark(ctx) ? const Color(0xFF111827) : Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0xFF1F2937)),
+          side: BorderSide(color: MetaColors.isDark(ctx) ? const Color(0xFF1F2937) : const Color(0xFFCBD5E1)),
         ),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.mark_chat_unread_rounded, color: Color(0xFF10B981), size: 22),
-            SizedBox(width: 10),
+            const Icon(Icons.mark_chat_unread_rounded, color: Color(0xFF10B981), size: 22),
+            const SizedBox(width: 10),
             Text(
               'Alerta de Cota via WhatsApp',
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: MetaColors.isDark(ctx) ? Colors.white : const Color(0xFF0F172A),
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
@@ -198,7 +210,10 @@ class _AdminAiUsageScreenState extends State<AdminAiUsageScreen> {
           'Deseja enviar um alerta proativo no WhatsApp de ${trainer.trainerName} informando que '
           'ele consumiu ${trainer.usagePercent.toStringAsFixed(0)}% da cota mensal (${trainer.usedGenerations}/${trainer.monthlyQuota} fichas) '
           'e orientando o upgrade de plano?',
-          style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 13),
+          style: TextStyle(
+            color: MetaColors.isDark(ctx) ? const Color(0xFF9CA3AF) : const Color(0xFF475569),
+            fontSize: 13,
+          ),
         ),
         actions: [
           TextButton(
