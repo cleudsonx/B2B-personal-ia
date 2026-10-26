@@ -43,7 +43,7 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: MetaColors.surface,
+      backgroundColor: MetaColors.card(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -64,24 +64,24 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                   width: 44,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: MetaColors.border,
+                    color: MetaColors.cardBorder(ctx),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Chave Pix para Saques 💳',
                 style: TextStyle(
-                  color: MetaColors.textPrimary,
+                  color: MetaColors.text(ctx),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 'Informe sua chave Pix para receber os repasses das mensalidades dos seus alunos.',
-                style: TextStyle(color: MetaColors.textSecondary, fontSize: 13),
+                style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 13),
               ),
               const SizedBox(height: 16),
 
@@ -89,16 +89,16 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  color: MetaColors.surfaceHighlight,
+                  color: MetaColors.highlight(ctx),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: MetaColors.border),
+                  border: Border.all(color: MetaColors.cardBorder(ctx)),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: selectedType,
-                    dropdownColor: MetaColors.surfaceHighlight,
+                    dropdownColor: MetaColors.card(ctx),
                     isExpanded: true,
-                    style: const TextStyle(color: MetaColors.textPrimary, fontSize: 14),
+                    style: TextStyle(color: MetaColors.text(ctx), fontSize: 14),
                     items: const [
                       DropdownMenuItem(value: 'cpf', child: Text('CPF')),
                       DropdownMenuItem(value: 'cnpj', child: Text('CNPJ')),
@@ -116,15 +116,15 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
 
               TextField(
                 controller: keyCtrl,
-                style: const TextStyle(color: MetaColors.textPrimary),
+                style: TextStyle(color: MetaColors.text(ctx)),
                 decoration: InputDecoration(
                   labelText: 'Chave Pix',
-                  labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                  labelStyle: TextStyle(color: MetaColors.subtext(ctx)),
                   filled: true,
-                  fillColor: MetaColors.surfaceHighlight,
+                  fillColor: MetaColors.highlight(ctx),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: MetaColors.border),
+                    borderSide: BorderSide(color: MetaColors.cardBorder(ctx)),
                   ),
                 ),
               ),
@@ -132,15 +132,15 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
 
               TextField(
                 controller: bankCtrl,
-                style: const TextStyle(color: MetaColors.textPrimary),
+                style: TextStyle(color: MetaColors.text(ctx)),
                 decoration: InputDecoration(
                   labelText: 'Nome do Banco (Opcional)',
-                  labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                  labelStyle: TextStyle(color: MetaColors.subtext(ctx)),
                   filled: true,
-                  fillColor: MetaColors.surfaceHighlight,
+                  fillColor: MetaColors.highlight(ctx),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: MetaColors.border),
+                    borderSide: BorderSide(color: MetaColors.cardBorder(ctx)),
                   ),
                 ),
               ),
@@ -186,7 +186,7 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: MetaColors.surface,
+      backgroundColor: MetaColors.card(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -207,35 +207,35 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                   width: 44,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: MetaColors.border,
+                    color: MetaColors.cardBorder(ctx),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Nova Cobrança de Aluno 🚀',
                 style: TextStyle(
-                  color: MetaColors.textPrimary,
+                  color: MetaColors.text(ctx),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 'Gere uma cobrança Pix transparente para seu aluno com split automático de 95% para você.',
-                style: TextStyle(color: MetaColors.textSecondary, fontSize: 13),
+                style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 13),
               ),
               const SizedBox(height: 16),
 
               TextField(
                 controller: nameCtrl,
-                style: const TextStyle(color: MetaColors.textPrimary),
+                style: TextStyle(color: MetaColors.text(ctx)),
                 decoration: InputDecoration(
                   labelText: 'Nome do Aluno',
-                  labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                  labelStyle: TextStyle(color: MetaColors.subtext(ctx)),
                   filled: true,
-                  fillColor: MetaColors.surfaceHighlight,
+                  fillColor: MetaColors.highlight(ctx),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                 ),
               ),
@@ -244,14 +244,14 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
               TextField(
                 controller: phoneCtrl,
                 keyboardType: TextInputType.phone,
-                style: const TextStyle(color: MetaColors.textPrimary),
+                style: TextStyle(color: MetaColors.text(ctx)),
                 decoration: InputDecoration(
                   labelText: 'WhatsApp do Aluno (com DDD)',
                   hintText: 'Ex: 11999998888',
                   hintStyle: const TextStyle(color: Colors.white24),
-                  labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                  labelStyle: TextStyle(color: MetaColors.subtext(ctx)),
                   filled: true,
-                  fillColor: MetaColors.surfaceHighlight,
+                  fillColor: MetaColors.highlight(ctx),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                 ),
               ),
@@ -259,12 +259,12 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
 
               TextField(
                 controller: titleCtrl,
-                style: const TextStyle(color: MetaColors.textPrimary),
+                style: TextStyle(color: MetaColors.text(ctx)),
                 decoration: InputDecoration(
                   labelText: 'Descrição / Plano',
-                  labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                  labelStyle: TextStyle(color: MetaColors.subtext(ctx)),
                   filled: true,
-                  fillColor: MetaColors.surfaceHighlight,
+                  fillColor: MetaColors.highlight(ctx),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                 ),
               ),
@@ -274,15 +274,15 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                 controller: amountCtrl,
                 keyboardType: TextInputType.number,
                 inputFormatters: const [CurrencyPtBrInputFormatter(includeSymbol: false)],
-                style: const TextStyle(color: MetaColors.textPrimary),
+                style: TextStyle(color: MetaColors.text(ctx)),
                 decoration: InputDecoration(
                   prefixText: 'R\$ ',
                   prefixStyle: const TextStyle(color: MetaColors.emerald, fontWeight: FontWeight.bold),
                   labelText: 'Valor da Cobrança',
                   hintText: '150,00',
-                  labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                  labelStyle: TextStyle(color: MetaColors.subtext(ctx)),
                   filled: true,
-                  fillColor: MetaColors.surfaceHighlight,
+                  fillColor: MetaColors.highlight(ctx),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                 ),
               ),
@@ -291,13 +291,13 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 activeThumbColor: MetaColors.emerald,
-                title: const Text(
+                title: Text(
                   'Enviar cobrança no WhatsApp do aluno',
-                  style: TextStyle(color: MetaColors.textPrimary, fontSize: 13),
+                  style: TextStyle(color: MetaColors.text(ctx), fontSize: 13),
                 ),
-                subtitle: const Text(
+                subtitle: Text(
                   'Dispara mensagem com o link de pagamento e código Pix',
-                  style: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                  style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 11),
                 ),
                 value: sendZap,
                 onChanged: (val) => setModalState(() => sendZap = val),
@@ -347,7 +347,7 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: MetaColors.surface,
+      backgroundColor: MetaColors.card(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -367,16 +367,16 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                 width: 44,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: MetaColors.border,
+                  color: MetaColors.cardBorder(ctx),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Solicitar Saque Pix 💸',
               style: TextStyle(
-                color: MetaColors.textPrimary,
+                color: MetaColors.text(ctx),
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -389,7 +389,7 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
             const SizedBox(height: 8),
             Text(
               'Chave destino: ${_summary?.pixKey ?? "Nenhuma"}',
-              style: const TextStyle(color: MetaColors.textSecondary, fontSize: 13),
+              style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 13),
             ),
             const SizedBox(height: 16),
 
@@ -397,14 +397,14 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
               controller: amountCtrl,
               keyboardType: TextInputType.number,
               inputFormatters: const [CurrencyPtBrInputFormatter(includeSymbol: false)],
-              style: const TextStyle(color: MetaColors.textPrimary),
+              style: TextStyle(color: MetaColors.text(ctx)),
               decoration: InputDecoration(
                 prefixText: 'R\$ ',
                 prefixStyle: const TextStyle(color: MetaColors.emerald, fontWeight: FontWeight.bold),
                 labelText: 'Valor a sacar',
-                labelStyle: const TextStyle(color: MetaColors.textSecondary),
+                labelStyle: TextStyle(color: MetaColors.subtext(ctx)),
                 filled: true,
-                fillColor: MetaColors.surfaceHighlight,
+                fillColor: MetaColors.highlight(ctx),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
               ),
             ),
@@ -440,21 +440,21 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: MetaColors.background,
+      backgroundColor: MetaColors.bg(context),
       appBar: AppBar(
-        backgroundColor: MetaColors.background,
+        backgroundColor: MetaColors.bg(context),
         elevation: 0,
-        title: const Text(
+        title: Text(
           'Carteira do Personal',
           style: TextStyle(
-            color: MetaColors.textPrimary,
+            color: MetaColors.text(context),
             fontWeight: FontWeight.bold,
             fontSize: 18,
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: MetaColors.textSecondary),
+            icon: Icon(Icons.refresh_rounded, color: MetaColors.subtext(context)),
             onPressed: _loadData,
           ),
         ],
@@ -479,10 +479,10 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text(
+                              Text(
                                 'Saldo Disponível',
                                 style: TextStyle(
-                                  color: MetaColors.textSecondary,
+                                  color: MetaColors.subtext(context),
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -514,8 +514,8 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                           const SizedBox(height: 8),
                           Text(
                             'R\$ ${(_summary?.balance ?? 0.0).toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              color: MetaColors.textPrimary,
+                            style: TextStyle(
+                              color: MetaColors.text(context),
                               fontSize: 32,
                               fontWeight: FontWeight.w900,
                               letterSpacing: -0.5,
@@ -524,14 +524,14 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                           const SizedBox(height: 12),
                           Row(
                             children: [
-                              const Icon(Icons.qr_code_rounded, size: 14, color: MetaColors.textSecondary),
+                              Icon(Icons.qr_code_rounded, size: 14, color: MetaColors.subtext(context)),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
                                   _summary?.pixKey != null
                                       ? 'Pix: ${_summary!.pixKey}'
                                       : 'Nenhuma chave cadastrada',
-                                  style: const TextStyle(color: MetaColors.textSecondary, fontSize: 12),
+                                  style: TextStyle(color: MetaColors.subtext(context), fontSize: 12),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -539,7 +539,7 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                                 onTap: _showPixKeyModal,
                                 child: Text(
                                   _summary?.pixKey != null ? 'Alterar' : 'Cadastrar',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: MetaColors.accentBlue,
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
@@ -586,14 +586,14 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   'A Receber (Pendente)',
-                                  style: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                                  style: TextStyle(color: MetaColors.subtext(context), fontSize: 11),
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
                                   'R\$ ${(_summary?.pendingBalance ?? 0.0).toStringAsFixed(2)}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: Colors.amberAccent,
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -610,14 +610,14 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   'Faturado no Mês',
-                                  style: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+                                  style: TextStyle(color: MetaColors.subtext(context), fontSize: 11),
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
                                   'R\$ ${(_summary?.totalBilledMonth ?? 0.0).toStringAsFixed(2)}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: MetaColors.emerald,
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -635,10 +635,10 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Cobranças de Alunos',
                           style: TextStyle(
-                            color: MetaColors.textPrimary,
+                            color: MetaColors.text(context),
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -661,17 +661,17 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                         padding: const EdgeInsets.all(32),
                         child: Column(
                           children: [
-                            const Icon(Icons.receipt_long_rounded, size: 40, color: MetaColors.textSecondary),
+                            Icon(Icons.receipt_long_rounded, size: 40, color: MetaColors.subtext(context)),
                             const SizedBox(height: 12),
-                            const Text(
+                            Text(
                               'Nenhuma cobrança emitida ainda',
-                              style: TextStyle(color: MetaColors.textPrimary, fontWeight: FontWeight.bold),
+                              style: TextStyle(color: MetaColors.text(context), fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 6),
-                            const Text(
+                            Text(
                               'Gere cobranças Pix para seus alunos e receba mensalidades com split transparente.',
                               textAlign: TextAlign.center,
-                              style: TextStyle(color: MetaColors.textSecondary, fontSize: 12),
+                              style: TextStyle(color: MetaColors.subtext(context), fontSize: 12),
                             ),
                             const SizedBox(height: 16),
                             SquircleButton(
@@ -719,15 +719,15 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                                         children: [
                                           Text(
                                             inv.studentName,
-                                            style: const TextStyle(
-                                              color: MetaColors.textPrimary,
+                                            style: TextStyle(
+                                              color: MetaColors.text(context),
                                               fontWeight: FontWeight.bold,
                                               fontSize: 14,
                                             ),
                                           ),
                                           Text(
                                             inv.title,
-                                            style: const TextStyle(color: MetaColors.textSecondary, fontSize: 12),
+                                            style: TextStyle(color: MetaColors.subtext(context), fontSize: 12),
                                           ),
                                         ],
                                       ),
@@ -737,8 +737,8 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                                       children: [
                                         Text(
                                           'R\$ ${inv.amount.toStringAsFixed(2)}',
-                                          style: const TextStyle(
-                                            color: MetaColors.textPrimary,
+                                          style: TextStyle(
+                                            color: MetaColors.text(context),
                                             fontWeight: FontWeight.w900,
                                             fontSize: 15,
                                           ),
