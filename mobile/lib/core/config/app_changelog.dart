@@ -40,34 +40,58 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     // ==========================================
-    // v1.11.0 - SEGURANÇA 2FA & CONEXÃO WHATSAPP
+    // v1.11.0 - CARDS EDITORIAIS ONE UI 7 & 2FA
     // ==========================================
     VersionRelease(
       version: '1.11.0',
-      buildNumber: 2026103068,
-      date: '24 de Outubro, 2026',
+      buildNumber: 2026103097,
+      date: '26 de Outubro, 2026',
       summary:
-          'Versão 1.11.0: Modernização Inteligente do 2FA Multi-Canal (WhatsApp, E-mail e Backup Codes de 10 dígitos), Dispositivo Confiável de 30 dias e Integração Estável com Evolution API v2.',
+          'Versão 1.11.0: Nova Experiência Editorial One UI 7 com Cards Temáticos Vivos, Marcas d\'Água 3D Vetoriais, Seletor de Estilo de Cards, Harmonização Visual Light/Dark e Segurança 2FA Multi-Canal.',
       highlights: [
-        // --- ADMIN / INFRAESTRUTURA ---
+        // --- ALUNO & TREINO ---
         ChangelogItem(
-          icon: Icons.admin_panel_settings_rounded,
-          title: 'Blindagem de Segurança do 2FA & Multi-Canal (WhatsApp, Email e Backup)',
+          icon: Icons.style_rounded,
+          title: 'Design Editorial One UI 7 com Cards Temáticos Vivos',
           description:
-              'Armazenamento de segredos com hash HMAC-SHA256, expiração atômica de OTPs, rate limiting de 45s e bloqueio preventivo após 5 tentativas.',
-          badge: 'SEGURANÇA & ACESSO',
-          targetRoles: ['admin'],
+              'Treino do Dia, BioHub, Cronômetro ATP-CP e Assistente IA com gradientes ricos, tipografia editorial moderna e marcas d\'água vetoriais 3D.',
+          badge: 'NOVO VISUAL',
+          targetRoles: ['student'],
         ),
         ChangelogItem(
-          icon: Icons.hub_rounded,
-          title: 'Conexão Otimizada da Evolution API & Persistência de Sessões',
+          icon: Icons.palette_rounded,
+          title: 'Seletor de Estilo de Cards (Editorial, Neumórfico e Minimalista)',
           description:
-              'Mapeamento de volumes persistentes na VPS, integração nativa com cache Redis e eliminação de timeouts em disparos assíncronos.',
-          badge: 'INFRAESTRUTURA',
-          targetRoles: ['admin'],
+              'Personalize a aparência dos cards do seu app. Escolha o visual que melhor combina com você direto nas configurações de Perfil.',
+          badge: 'CUSTOMIZAÇÃO',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.shield_rounded,
+          title: 'Autenticação Multifatorial (2FA) Inteligente',
+          description:
+              'Acesse sua conta com segurança reforçada. Caso não tenha aplicativo autenticador, receba o código via WhatsApp ou E-mail com 1 toque.',
+          badge: 'PROTEÇÃO',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.mark_chat_read_rounded,
+          title: 'Alertas e Mensagens de Treino em Tempo Real no WhatsApp',
+          description:
+              'Receba notificações de novas fichas, avisos de streak em risco e mensagens de apoio do seu treinador diretamente no seu WhatsApp.',
+          badge: 'COMUNICAÇÃO',
+          targetRoles: ['student'],
         ),
 
         // --- PROFESSOR / TREINADOR ---
+        ChangelogItem(
+          icon: Icons.auto_awesome_rounded,
+          title: 'Cockpit do Treinador com Dicas de Negócio & Saque Pix One UI 7',
+          description:
+              'Visual moderno e inspirador na Central de Negócios e no saldo da Carteira, com métricas de faturamento e dicas táticas de alta conversão.',
+          badge: 'NEGÓCIO & VENDAS',
+          targetRoles: ['trainer'],
+        ),
         ChangelogItem(
           icon: Icons.chat_rounded,
           title: 'Pareamento Direto do WhatsApp do Treinador por Código de 8 Dígitos',
@@ -85,22 +109,22 @@ class AppChangelog {
           targetRoles: ['trainer'],
         ),
 
-        // --- ALUNO & COMUM ---
+        // --- ADMIN / INFRAESTRUTURA ---
         ChangelogItem(
-          icon: Icons.shield_rounded,
-          title: 'Autenticação Multifatorial (2FA) Inteligente',
+          icon: Icons.admin_panel_settings_rounded,
+          title: 'Blindagem de Segurança do 2FA & Multi-Canal (WhatsApp, Email e Backup)',
           description:
-              'Acesse sua conta com segurança reforçada. Caso não tenha aplicativo autenticador, receba o código via WhatsApp ou E-mail com 1 toque.',
-          badge: 'PROTEÇÃO',
-          targetRoles: ['student', 'trainer', 'admin'],
+              'Armazenamento de segredos com hash HMAC-SHA256, expiração atômica de OTPs, rate limiting de 45s e bloqueio preventivo após 5 tentativas.',
+          badge: 'SEGURANÇA & ACESSO',
+          targetRoles: ['admin'],
         ),
         ChangelogItem(
-          icon: Icons.mark_chat_read_rounded,
-          title: 'Alertas e Mensagens de Treino em Tempo Real no WhatsApp',
+          icon: Icons.hub_rounded,
+          title: 'Conexão Otimizada da Evolution API & Persistência de Sessões',
           description:
-              'Receba notificações de novas fichas, avisos de streak em risco e mensagens de apoio do seu treinador diretamente no seu WhatsApp.',
-          badge: 'COMUNICAÇÃO',
-          targetRoles: ['student', 'trainer'],
+              'Mapeamento de volumes persistentes na VPS, integração nativa com cache Redis e eliminação de timeouts em disparos assíncronos.',
+          badge: 'INFRAESTRUTURA',
+          targetRoles: ['admin'],
         ),
       ],
     ),
