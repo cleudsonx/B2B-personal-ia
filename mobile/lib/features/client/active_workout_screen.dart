@@ -1365,7 +1365,16 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           padding: EdgeInsets.fromLTRB(24, topPadding + 14, 24, 24),
           child: _isLoadingWorkout
               ? const Center(
-                  child: CircularProgressIndicator(color: MetaColors.emerald),
+                  child: ShaipadosLoaderContainer(
+                    type: ShaipadosLoaderType.labShakerDna,
+                    isOverlay: false,
+                    customTitle: 'Shaipados Labs',
+                    loadingMessages: [
+                      'Sincronizando ficha e protocolos...',
+                      'Carregando vetores biomecânicos...',
+                      'Calibrando inteligência de treino...',
+                    ],
+                  ),
                 )
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,

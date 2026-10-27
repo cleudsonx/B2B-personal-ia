@@ -261,10 +261,26 @@ class _PwaUpdateWrapperState extends State<PwaUpdateWrapper> with WidgetsBinding
             const SizedBox(width: 8),
             ElevatedButton(
               onPressed: () {
-                PwaUpdateNotifier.instance.dismiss();
                 if (kIsWeb) {
-                  PwaInstaller.triggerPwaReload();
+                  PwaUpdateNotifier.instance.dismiss();
+                  showDialog<void>(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => const ShaipadosLoaderContainer(
+                      type: ShaipadosLoaderType.labShakerDna,
+                      customTitle: 'Atualizando Shaipados Labs',
+                      loadingMessages: [
+                        'Sintetizando nova versão no Labs...',
+                        'Carregando novos módulos e correções...',
+                        'Reiniciando o sistema...',
+                      ],
+                    ),
+                  );
+                  Future.delayed(const Duration(milliseconds: 600), () {
+                    PwaInstaller.triggerPwaReload();
+                  });
                 } else {
+                  PwaUpdateNotifier.instance.dismiss();
                   AppVersionFooter.showReleaseNotesModal(
                     context,
                     remoteReleaseData: PwaUpdateNotifier.instance.remoteData,
