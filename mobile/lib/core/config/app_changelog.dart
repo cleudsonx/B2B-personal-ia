@@ -56,7 +56,7 @@ class AppChangelog {
           description:
               'Novas animações fluidas para geração de periodização IA, sincronização offline de treinos e substituição inteligente de exercícios no Botão Anti-Fila.',
           badge: 'PERFORMANCE',
-          targetRoles: ['student', 'trainer'],
+          targetRoles: ['student'],
         ),
         ChangelogItem(
           icon: Icons.qr_code_rounded,
@@ -64,7 +64,7 @@ class AppChangelog {
           description:
               'Link curto oficial e padronizado em Stories 9:16, QR Codes e Bio do Instagram com carregamento instantâneo e checkout Pix Asaas.',
           badge: 'CRESCIMENTO',
-          targetRoles: ['student', 'trainer'],
+          targetRoles: ['student'],
         ),
 
         // --- PROFESSOR / TREINADOR ---
