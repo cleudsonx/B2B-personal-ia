@@ -2656,55 +2656,18 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
               ),
 
-            // Loading State Overlay
+            // Loading State Overlay com Suíte Shaipados Barbell Loader
             if (_isLoading)
-              Container(
-                color: Colors.black.withValues(alpha: 0.7),
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(28.0),
-                    decoration: BoxDecoration(
-                      color: _cardBg,
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(
-                        color: MetaColors.emerald.withValues(alpha: 0.4),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: MetaColors.emerald.withValues(alpha: 0.2),
-                          blurRadius: 28,
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            MetaColors.emerald,
-                          ),
-                          strokeWidth: 3,
-                        ),
-                        const SizedBox(height: 18),
-                        Text(
-                          'Adaptando exercício com IA...',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 15,
-                            color: _textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Buscando vetor biomecânico equivalente',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: _textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+              const Positioned.fill(
+                child: ShaipadosLoaderContainer(
+                  type: ShaipadosLoaderType.barbellPlates,
+                  customTitle: 'Adaptando Exercício...',
+                  loadingMessages: [
+                    'Montando a barra olímpica...',
+                    'Ajustando vetores e restrições articulares...',
+                    'Buscando variação com mesmo estímulo muscular...',
+                    'Variação aprovada! Pronto para o treino.',
+                  ],
                 ),
               ),
           ],

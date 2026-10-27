@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'meta_components.dart';
 
@@ -80,6 +80,22 @@ class _AIGenerationStepperState extends State<AIGenerationStepper>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Top Animation: Mr. Coach Evolution Canvas
+                Center(
+                  child: RepaintBoundary(
+                    child: SizedBox(
+                      height: 96,
+                      width: 220,
+                      child: CustomPaint(
+                        painter: MrCoachEvolutionPainter(
+                          progress: ((_currentStep + 1) / _steps.length).clamp(0.2, 1.0),
+                          isDark: MetaColors.isDark(context),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
                 Row(
                   children: [
                     AnimatedBuilder(

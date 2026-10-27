@@ -1551,28 +1551,18 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                   ),
                 ),
 
-              // 5. Overlay de Adaptação de Exercício (IA)
+              // 5. Overlay de Adaptação de Exercício (IA) com Shaipados Barbell Loader
               if (_isAdapting)
-                Positioned.fill(
-                  child: Container(
-                    color: Colors.black.withValues(alpha: 0.65),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const CircularProgressIndicator(color: MetaColors.emerald),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Adaptando exercício com IA...',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                const Positioned.fill(
+                  child: ShaipadosLoaderContainer(
+                    type: ShaipadosLoaderType.barbellPlates,
+                    customTitle: 'Adaptando Exercício...',
+                    loadingMessages: [
+                      'Montando a barra olímpica...',
+                      'Ajustando vetores e restrições articulares...',
+                      'Buscando variação com mesmo estímulo muscular...',
+                      'Variação aprovada! Pronto para o treino.',
+                    ],
                   ),
                 ),
             ],

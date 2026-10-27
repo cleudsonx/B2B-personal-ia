@@ -40,3 +40,4 @@ void main() {
     expect(find.byType(ReferralLandingScreen), findsOneWidget);
   });
 }
+
