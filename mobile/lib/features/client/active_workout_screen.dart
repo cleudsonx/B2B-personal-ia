@@ -1,6 +1,7 @@
 import '../../core/theme/theme_controller.dart';
 import '../../core/widgets/thematic_editorial_card.dart';
 import '../../core/widgets/thematic_watermarks.dart';
+import '../../core/widgets/card_style_selection_sheet.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
@@ -1050,6 +1051,13 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           subtitle: 'Alterna o tema de todo o aplicativo',
           color: const Color(0xFF8B5CF6),
           onTap: () => ThemeController.instance.toggleTheme(context),
+        ),
+        GlassAction(
+          icon: Icons.view_carousel_rounded,
+          label: 'Estilo dos Cards',
+          subtitle: ThemeController.instance.cardThemeMode.label,
+          color: const Color(0xFF0EA5E9),
+          onTap: () => CardStyleSelectionSheet.show(context),
         ),
         GlassAction(
           icon: Icons.fitness_center_rounded,

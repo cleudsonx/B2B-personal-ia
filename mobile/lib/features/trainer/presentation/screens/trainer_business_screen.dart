@@ -8,6 +8,7 @@ import '../../../../core/widgets/meta_components.dart';
 import '../../../../core/theme/theme_controller.dart';
 import '../../../../core/widgets/thematic_editorial_card.dart';
 import '../../../../core/widgets/thematic_watermarks.dart';
+import '../../../../core/widgets/card_style_selection_sheet.dart';
 import '../../../subscription/subscription_screen.dart';
 import 'whatsapp_connection_screen.dart';
 import 'trainer_profile_setup_screen.dart';
@@ -140,6 +141,12 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
       icon: Icons.palette_outlined,
       type: _ToolType.themeMode,
     ),
+    _BusinessToolItem(
+      title: 'Estilo dos Cards (One UI 7)',
+      subtitle: 'Editorial 3D, Minimalista ou Pastel Suave',
+      icon: Icons.view_carousel_outlined,
+      type: _ToolType.cardStyle,
+    ),
   ];
 
   void _showTipModal(_BusinessTip tip) {
@@ -247,6 +254,9 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
       case _ToolType.themeMode:
         _showThemeModal();
         break;
+      case _ToolType.cardStyle:
+        CardStyleSelectionSheet.show(context);
+        break;
     }
   }
 
@@ -336,6 +346,46 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                       ThemeController.instance.setThemeMode(ThemeMode.system);
                       Navigator.pop(ctx);
                     },
+                  ),
+                  const SizedBox(height: 16),
+                  Divider(color: MetaColors.cardBorder(ctx).withValues(alpha: 0.5)),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Estilo dos Cards',
+                            style: TextStyle(
+                              color: MetaColors.text(ctx),
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            ThemeController.instance.cardThemeMode.label,
+                            style: TextStyle(
+                              color: MetaColors.subtext(ctx),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                      TextButton.icon(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          CardStyleSelectionSheet.show(context);
+                        },
+                        icon: const Icon(Icons.tune_rounded, size: 16),
+                        label: const Text('Alterar'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: MetaColors.primary,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1569,6 +1619,7 @@ enum _ToolType {
   publicShowcase,
   whatsappIntegration,
   themeMode,
+  cardStyle,
 }
 
 class _BusinessTip {
