@@ -134,40 +134,48 @@
         isRefreshing = true;
         window._pwaHasPendingUpdate = false;
 
-        if (waitingWorker) {
-          try {
-            waitingWorker.postMessage({ type: 'SKIP_WAITING' });
-            waitingWorker.postMessage('skipWaiting');
-          } catch (_) {}
-        }
-
-        // Limpa TODOS os caches de assets para garantir que os arquivos novos baixem
-        if ('caches' in window) {
-          try {
-            const cacheKeys = await caches.keys();
-            await Promise.all(cacheKeys.map((key) => caches.delete(key)));
-          } catch (_) {}
-        }
-
-        // Desregistra service workers antigos para forçar o download limpo do novo bundle
-        if ('serviceWorker' in navigator) {
-          try {
-            const registrations = await navigator.serviceWorker.getRegistrations();
-            for (let reg of registrations) {
-              if (reg.waiting) {
-                try {
-                  reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-                  reg.waiting.postMessage('skipWaiting');
-                } catch (_) {}
-              }
-              await reg.unregister();
-            }
-          } catch (_) {}
-        }
-
-        setTimeout(() => {
+        // Failsafe: garante hard reload em no máximo 1200ms mesmo se o desregistro do SW travar
+        const failsafeTimer = setTimeout(() => {
           window.hardReloadApp();
-        }, 200);
+        }, 1200);
+
+        try {
+          if (waitingWorker) {
+            try {
+              waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+              waitingWorker.postMessage('skipWaiting');
+            } catch (_) {}
+          }
+
+          // Limpa TODOS os caches de assets para garantir que os arquivos novos baixem
+          if ('caches' in window) {
+            try {
+              const cacheKeys = await caches.keys();
+              await Promise.all(cacheKeys.map((key) => caches.delete(key)));
+            } catch (_) {}
+          }
+
+          // Desregistra service workers antigos para forçar o download limpo do novo bundle
+          if ('serviceWorker' in navigator) {
+            try {
+              const registrations = await navigator.serviceWorker.getRegistrations();
+              for (let reg of registrations) {
+                if (reg.waiting) {
+                  try {
+                    reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    reg.waiting.postMessage('skipWaiting');
+                  } catch (_) {}
+                }
+                await reg.unregister();
+              }
+            } catch (_) {}
+          }
+        } finally {
+          clearTimeout(failsafeTimer);
+          setTimeout(() => {
+            window.hardReloadApp();
+          }, 150);
+        }
       };
 
       if ('serviceWorker' in navigator) {

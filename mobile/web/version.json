@@ -1,7 +1,7 @@
 {
   "version": "1.11.1",
-  "build": 2026103101,
-  "updated_at": "2026-10-27T18:15:00.000000Z",
+  "build": 2026103103,
+  "updated_at": "2026-10-27T20:06:13.848028Z",
   "notes": "Versão 1.11.1: Live Student Pulse 3.0 com Telemetria Unificada (Robô WhatsApp & IA Gemini), Disparo WhatsApp 1-Clique In-App, Padronização Canônica das Vitrines (/p/:user) e Suíte de Loaders Shaipados Labs.",
   "changelog": {
     "student": [
@@ -14,11 +14,6 @@
         "title": "Vitrines Públicas Canônicas (/p/:username)",
         "description": "Link curto oficial e padronizado em Stories 9:16, QR Codes e Bio do Instagram com carregamento instantâneo e checkout Pix Asaas.",
         "badge": "CRESCIMENTO"
-      },
-      {
-        "title": "Autenticação Multifatorial (2FA) Inteligente",
-        "description": "Acesse sua conta com segurança reforçada. Caso não tenha aplicativo autenticador, receba o código via WhatsApp ou E-mail com 1 toque.",
-        "badge": "PROTEÇÃO"
       }
     ],
     "trainer": [
@@ -36,11 +31,6 @@
         "title": "Sincronização em Tempo Real da Conexão WhatsApp & Vitrine",
         "description": "Status ao vivo da conexão do robô e contador de interações nos painéis de Vitrine e Meu Perfil & Conta.",
         "badge": "INTEGRAÇÃO"
-      },
-      {
-        "title": "Pareamento Direto do WhatsApp do Treinador por Código de 8 Dígitos",
-        "description": "Conecte seu WhatsApp instantaneamente digitando o código de pareamento no celular, sem necessidade de escanear QR Code com a câmera.",
-        "badge": "WHATSAPP PRO"
       }
     ],
     "admin": [
@@ -48,11 +38,6 @@
         "title": "Roteamento Canônico e Fallbacks Seguros de Vitrine",
         "description": "Unificação de rotas /p/:user em produção com preservação transparente de links legados /prof/ e redirecionamento limpo para o diretório de coaches.",
         "badge": "ESTABILIDADE"
-      },
-      {
-        "title": "Blindagem de Segurança do 2FA & Multi-Canal (WhatsApp, Email e Backup)",
-        "description": "Armazenamento de segredos com hash HMAC-SHA256, expiração atômica de OTPs, rate limiting de 45s e bloqueio preventivo após 5 tentativas.",
-        "badge": "SEGURANÇA & ACESSO"
       }
     ]
   }

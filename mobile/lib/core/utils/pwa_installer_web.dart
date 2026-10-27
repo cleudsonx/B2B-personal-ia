@@ -56,10 +56,10 @@ bool isAndroidWeb() {
 external JSBoolean? _jsHasPendingUpdate;
 
 @JS('triggerPwaReload')
-external JSFunction? _jsTriggerPwaReload;
+external void _jsTriggerPwaReload();
 
 @JS('hardReloadApp')
-external JSFunction? _jsHardReloadApp;
+external void _jsHardReloadApp();
 
 @JS('_onPwaUpdateAvailable')
 external set _jsOnPwaUpdateAvailable(JSFunction? callback);
@@ -82,17 +82,13 @@ void onPwaUpdateAvailable(void Function() callback) {
 
 void triggerPwaReload() {
   try {
-    if (_jsTriggerPwaReload != null) {
-      _jsTriggerPwaReload!.callAsFunction();
-      return;
-    }
+    _jsTriggerPwaReload();
+    return;
   } catch (_) {}
 
   try {
-    if (_jsHardReloadApp != null) {
-      _jsHardReloadApp!.callAsFunction();
-      return;
-    }
+    _jsHardReloadApp();
+    return;
   } catch (_) {}
 }
 
