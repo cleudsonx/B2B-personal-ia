@@ -45,6 +45,29 @@ async def chat_with_assistant(
             temperature=request.temperature or 0.7,
             model_name=request.model
         )
+        try:
+            user_id = current_user.get("sub")
+            user_name = (
+                profile.get("full_name")
+                or profile.get("name")
+                or ("Treinador" if "trainer" in roles else "Aluno")
+            )
+            user_phone = profile.get("phone") or profile.get("whatsapp") or ""
+            est_tokens = max(60, (len(request.prompt or "") + len(reply or "")) // 4)
+            await supabase_service.log_whatsapp_interaction(
+                trainer_id=trainer_id,
+                student_id=user_id if "trainer" not in roles else None,
+                student_name=user_name,
+                student_phone=user_phone,
+                channel="in_app_ai",
+                message_in=(request.prompt or "")[:240],
+                message_out=(reply or "")[:500],
+                cost_type="ai_gemini",
+                tokens_used=est_tokens,
+            )
+        except Exception as log_err:
+            logger.debug(f"Aviso ao registrar telemetria do chat in-app: {log_err}")
+
         return AssistantChatResponse(
             text=reply,
             model=request.model or "gemini-2.5-flash"
@@ -65,4 +88,3 @@ async def generate_text(
 ):
     """Alias para compatibilidade direta com rotas /api/generate."""
     return await chat_with_assistant(request, current_user)
-

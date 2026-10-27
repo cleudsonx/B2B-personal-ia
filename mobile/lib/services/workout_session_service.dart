@@ -99,17 +99,51 @@ class SupabaseWorkoutSessionGateway implements WorkoutSessionGateway {
         .maybeSingle();
     final p = await _c
         .from('profiles')
-        .select('trainer_id')
+        .select('trainer_id, full_name, phone')
         .eq('id', clientId)
         .maybeSingle();
-    return {'workout_id': w?['id'], 'trainer_id': p?['trainer_id']};
+    return {
+      'workout_id': w?['id'],
+      'trainer_id': p?['trainer_id'],
+      'student_name': p?['full_name'],
+      'student_phone': p?['phone'],
+    };
   }
 
   @override
   Future<void> insertSession(Map<String, dynamic> payload) async {
+    final cleanPayload = Map<String, dynamic>.from(payload)
+      ..remove('student_name')
+      ..remove('student_phone');
     await _c
         .from('workout_sessions')
-        .upsert(payload, onConflict: 'id', ignoreDuplicates: true);
+        .upsert(cleanPayload, onConflict: 'id', ignoreDuplicates: true);
+
+    final trainerId = payload['trainer_id'];
+    final clientId = payload['client_id'];
+    if (trainerId != null && clientId != null) {
+      try {
+        final sName = (payload['student_name'] ?? 'Aluno').toString();
+        final splitName = (payload['split_name'] ?? payload['split_identifier'] ?? 'Treino').toString();
+        final completedEx = payload['completed_exercises'] ?? 0;
+        final totalEx = payload['total_exercises'] ?? 0;
+        await _c.from('student_pulse_events').insert({
+          'trainer_id': trainerId,
+          'student_id': clientId,
+          'event_type': 'workout_completed',
+          'severity': 'success',
+          'title': 'Treino Concluído: $splitName',
+          'description': '$sName finalizou $completedEx/$totalEx exercícios da sessão.',
+          'metadata': {
+            'student_name': sName,
+            'student_phone': payload['student_phone'] ?? '',
+            'split_name': splitName,
+            'session_id': payload['id'],
+          },
+          'viewed_by_trainer': false,
+        });
+      } catch (_) {}
+    }
   }
 }
 
@@ -126,6 +160,8 @@ class WorkoutSessionService {
       ...r.toJson(),
       'workout_id': ctx['workout_id'],
       'trainer_id': ctx['trainer_id'],
+      if (ctx['student_name'] != null) 'student_name': ctx['student_name'],
+      if (ctx['student_phone'] != null) 'student_phone': ctx['student_phone'],
     });
   }
 

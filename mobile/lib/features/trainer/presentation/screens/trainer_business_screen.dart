@@ -1,5 +1,9 @@
 // ignore_for_file: unused_element, unused_local_variable, unused_field, override_on_non_overriding_member, use_build_context_synchronously
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/config/app_config.dart';
 import '../../../../services/auth_service.dart';
 import 'package:flutter/services.dart';
 
@@ -33,6 +37,9 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
   bool _hasCref = false;
   bool _isLoadingProfile = true;
   String? _username;
+  String? _phone;
+  bool _isWhatsAppConnected = false;
+  int _robotInteractionsCount = 0;
 
   @override
   void initState() {
@@ -48,21 +55,87 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
         final specialties = profile['specialties'] as List<dynamic>?;
         final username = profile['username'] as String?;
         final cref = profile['professional_document'] as String?;
-        
-        setState(() {
-          _isProfileIncomplete = (bio == null || bio.trim().isEmpty) || 
-                                 (specialties == null || specialties.isEmpty) ||
-                                 (username == null || username.trim().isEmpty);
-          _username = username?.trim();
-          _hasCref = (cref != null && cref.trim().toUpperCase().startsWith('CREF'));
-          _isLoadingProfile = false;
-        });
+        final phone = (profile['public_whatsapp'] ?? profile['phone'] ?? profile['whatsapp']) as String?;
+
+        if (mounted) {
+          setState(() {
+            _isProfileIncomplete = (bio == null || bio.trim().isEmpty) ||
+                (specialties == null || specialties.isEmpty) ||
+                (username == null || username.trim().isEmpty);
+            _username = username?.trim();
+            _phone = phone?.trim();
+            _hasCref = (cref != null && cref.trim().toUpperCase().startsWith('CREF'));
+            _isLoadingProfile = false;
+          });
+        }
       } else {
-        setState(() => _isLoadingProfile = false);
+        if (mounted) setState(() => _isLoadingProfile = false);
       }
+      await _fetchWhatsAppAndAiStatus();
     } catch (e) {
-      if(mounted) setState(() => _isLoadingProfile = false);
+      if (mounted) setState(() => _isLoadingProfile = false);
     }
+  }
+
+  Future<void> _fetchWhatsAppAndAiStatus() async {
+    try {
+      final client = Supabase.instance.client;
+      final token = client.auth.currentSession?.accessToken;
+      final uid = client.auth.currentUser?.id;
+
+      bool connected = _isWhatsAppConnected;
+      int interactions = _robotInteractionsCount;
+
+      if (token != null) {
+        try {
+          final stRes = await http.get(
+            Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/status'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          ).timeout(const Duration(seconds: 6));
+          if (stRes.statusCode == 200) {
+            final data = jsonDecode(stRes.body);
+            final state = (data['state'] ?? data['status'] ?? data['instance']?['state'] ?? '').toString().toLowerCase();
+            connected = state == 'open' || state == 'connected' || data['connected'] == true;
+          }
+        } catch (_) {}
+
+        try {
+          final telRes = await http.get(
+            Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/telemetry'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          ).timeout(const Duration(seconds: 6));
+          if (telRes.statusCode == 200) {
+            final tData = jsonDecode(telRes.body);
+            interactions = int.tryParse((tData['total_interactions'] ?? 0).toString()) ?? 0;
+          }
+        } catch (_) {}
+      }
+
+      if (uid != null) {
+        try {
+          final logs = await client
+              .from('trainer_whatsapp_logs')
+              .select('id')
+              .eq('trainer_id', uid)
+              .limit(200);
+          final dbCount = (logs as List).length;
+          if (dbCount > interactions) interactions = dbCount;
+        } catch (_) {}
+      }
+
+      if (mounted) {
+        setState(() {
+          _isWhatsAppConnected = connected;
+          _robotInteractionsCount = interactions;
+        });
+      }
+    } catch (_) {}
   }
 
   // Dados dos cards de dicas ("Como")
@@ -118,8 +191,8 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
       type: _ToolType.subscription,
     ),
     _BusinessToolItem(
-      title: 'Consultor Ativo IA',
-      subtitle: 'Agente inteligente para responder alunos 24h por dia',
+      title: 'Consultor Ativo IA & WhatsApp',
+      subtitle: 'Cockpit 24h • Live Student Pulse 3.0, Robô e IA biomecânica',
       icon: Icons.smart_toy_outlined,
       type: _ToolType.aiAssistant,
     ),
@@ -131,7 +204,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
     ),
     _BusinessToolItem(
       title: 'Conexão WhatsApp',
-      subtitle: 'Configure envios automáticos para seus alunos',
+      subtitle: 'Pareamento oficial e automações de envio para alunos',
       icon: Icons.chat_outlined,
       type: _ToolType.whatsappIntegration,
     ),
@@ -243,13 +316,18 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const TrainerAiAssistantScreen()),
-        );
+        ).then((_) => _checkProfileStatus());
         break;
       case _ToolType.publicShowcase:
         _showPublicShowcaseModal();
         break;
       case _ToolType.whatsappIntegration:
-        _showWhatsAppIntegrationModal();
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => WhatsappConnectionScreen(initialPhone: _phone),
+          ),
+        ).then((_) => _checkProfileStatus());
         break;
       case _ToolType.themeMode:
         _showThemeModal();
@@ -1540,6 +1618,55 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
                   final item = _toolItems[index];
+                  String subtitleText = item.subtitle;
+                  Widget? trailingBadge;
+                  Color iconColor = MetaColors.subtext(context);
+
+                  if (item.type == _ToolType.aiAssistant) {
+                    iconColor = MetaColors.emerald;
+                    subtitleText = _robotInteractionsCount > 0
+                        ? 'Cockpit 24h • Live Pulse 3.0 e $_robotInteractionsCount interações do robô'
+                        : 'Cockpit 24h • Live Pulse 3.0, Triagem Custo Zero e IA';
+                    trailingBadge = Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: MetaColors.emerald.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.35)),
+                      ),
+                      child: Text(
+                        _robotInteractionsCount > 0 ? '$_robotInteractionsCount ATIVOS' : 'COCKPIT 24H',
+                        style: const TextStyle(
+                          color: MetaColors.emerald,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    );
+                  } else if (item.type == _ToolType.whatsappIntegration) {
+                    iconColor = _isWhatsAppConnected ? MetaColors.emerald : Colors.amber;
+                    subtitleText = _isWhatsAppConnected
+                        ? 'Online 24h • Disparos em 1 clique e robô automáticos ativos'
+                        : 'Toque para parear seu WhatsApp ou testar envios automáticos';
+                    final badgeColor = _isWhatsAppConnected ? MetaColors.emerald : Colors.amber;
+                    trailingBadge = Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: badgeColor.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: badgeColor.withValues(alpha: 0.35)),
+                      ),
+                      child: Text(
+                        _isWhatsAppConnected ? 'CONECTADO' : 'PAREAR',
+                        style: TextStyle(
+                          color: badgeColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    );
+                  }
+
                   return ListTile(
                     onTap: () => _handleToolTap(item),
                     contentPadding: const EdgeInsets.symmetric(
@@ -1548,7 +1675,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                     ),
                     leading: Icon(
                       item.icon,
-                      color: MetaColors.subtext(context),
+                      color: iconColor,
                       size: 26,
                     ),
                     title: Text(
@@ -1562,7 +1689,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                     subtitle: Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
-                        item.subtitle,
+                        subtitleText,
                         style: TextStyle(
                           color: MetaColors.subtext(context),
                           fontSize: 13,
@@ -1570,6 +1697,12 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                         ),
                       ),
                     ),
+                    trailing: trailingBadge ??
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: MetaColors.subtext(context).withValues(alpha: 0.6),
+                          size: 20,
+                        ),
                   );
                 },
                 childCount: _toolItems.length,

@@ -3,7 +3,6 @@ import '../../core/widgets/theme_toggle_button.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/ai_generation_stepper.dart';
@@ -15,6 +14,7 @@ import '../../models/workout_plan_model.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
+import '../../services/whatsapp_direct_service.dart';
 
 enum StudentDispatchMode { individual, multiple }
 
@@ -264,25 +264,27 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
   Future<void> _openWhatsAppReminder(Map<String, dynamic> student) async {
     final phone = student['phone'] as String? ?? '';
     final name = student['full_name'] as String? ?? 'Aluno';
+    final studentId = student['id']?.toString();
     final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
     final trainer = AuthService.currentUser;
     final trainerName =
         trainer?.userMetadata?['full_name'] as String? ?? 'Seu Treinador';
 
-    final message = Uri.encodeComponent(
-      'Olá $name! Aqui é o seu treinador $trainerName. '
-      'Estou pronto para montar sua periodização personalizada no Mr. Coach. '
-      'Acesse o link do convite para concluir seu cadastro e liberar seu treino!',
-    );
+    final rawMessage =
+        'Olá $name! Aqui é o seu treinador $trainerName. '
+        'Estou pronto para montar sua periodização personalizada no Mr. Coach. '
+        'Acesse o link do convite para concluir seu cadastro e liberar seu treino!';
 
     if (cleanPhone.isNotEmpty) {
-      final url = Uri.parse('https://wa.me/$cleanPhone?text=$message');
-      try {
-        if (await canLaunchUrl(url)) {
-          await launchUrl(url, mode: LaunchMode.externalApplication);
-          return;
-        }
-      } catch (_) {}
+      await WhatsAppDirectService.sendOneClick(
+        context: context,
+        studentId: studentId,
+        studentName: name,
+        phone: phone,
+        message: rawMessage,
+        actionType: 'invite_reminder',
+      );
+      return;
     }
 
     if (mounted) {

@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../core/widgets/theme_toggle_button.dart';
 import '../../core/widgets/app_version_footer.dart';
@@ -11,6 +14,7 @@ import '../../services/workout_service.dart';
 import '../subscription/subscription_screen.dart';
 import '../trainer/presentation/screens/trainer_profile_setup_screen.dart';
 import '../trainer/presentation/screens/trainer_ai_assistant_screen.dart';
+import '../trainer/presentation/screens/whatsapp_connection_screen.dart';
 import 'teacher_mfa_screen.dart';
 
 class AccountScreen extends StatefulWidget {
@@ -41,11 +45,69 @@ class _AccountScreenState extends State<AccountScreen> {
   int? _maxStudents = SubscriptionService.currentSubscription?.maxStudents;
   bool _loading = true;
   bool _isSwitchingRole = false;
+  bool _isWhatsAppConnected = false;
+  int _robotInteractionsCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadAccount();
+  }
+
+  Future<void> _fetchWhatsAppAndAiStatus() async {
+    final user = AuthService.currentUser;
+    if (user == null) return;
+    bool connected = false;
+    int totalInteractions = 0;
+
+    try {
+      final baseUrl = AppConfig.apiBaseUrl;
+      final session = Supabase.instance.client.auth.currentSession;
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (session != null) 'Authorization': 'Bearer ${session.accessToken}',
+      };
+
+      final statusResp = await http
+          .get(
+            Uri.parse('$baseUrl/whatsapp/status?trainer_id=${user.id}'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 4));
+      if (statusResp.statusCode == 200) {
+        final data = jsonDecode(statusResp.body) as Map<String, dynamic>;
+        final st = (data['status']?.toString() ?? '').toLowerCase();
+        connected = st == 'open' || st == 'connected';
+      }
+
+      final telResp = await http
+          .get(
+            Uri.parse('$baseUrl/whatsapp/telemetry?trainer_id=${user.id}'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 4));
+      if (telResp.statusCode == 200) {
+        final data = jsonDecode(telResp.body) as Map<String, dynamic>;
+        totalInteractions = (data['total_interactions'] as num?)?.toInt() ?? 0;
+      }
+    } catch (_) {}
+
+    try {
+      final logs = await Supabase.instance.client
+          .from('trainer_whatsapp_logs')
+          .select('id')
+          .eq('trainer_id', user.id);
+      if ((logs as List).length > totalInteractions) {
+        totalInteractions = logs.length;
+      }
+    } catch (_) {}
+
+    if (mounted) {
+      setState(() {
+        _isWhatsAppConnected = connected;
+        _robotInteractionsCount = totalInteractions;
+      });
+    }
   }
 
   Future<void> _loadAccount() async {
@@ -59,6 +121,7 @@ class _AccountScreenState extends State<AccountScreen> {
           : null;
 
       if (roles.contains('trainer')) {
+        _fetchWhatsAppAndAiStatus();
         try {
           final sub = await SubscriptionService.getMySubscription();
           if (mounted) {
@@ -523,9 +586,19 @@ class _AccountScreenState extends State<AccountScreen> {
 
         const SizedBox(height: 16),
 
-        // 4. Card de WhatsApp com Edição Rápida
+        // 4. Card de Conexão WhatsApp & Número com Edição Rápida
         MetaCard(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          onTap: isTrainer
+              ? () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => WhatsappConnectionScreen(initialPhone: _phone),
+                    ),
+                  ).then((_) => _loadAccount());
+                }
+              : _editPhoneNumber,
           child: Row(
             children: [
               Container(
@@ -541,13 +614,36 @@ class _AccountScreenState extends State<AccountScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'WhatsApp Cadastrado',
-                      style: TextStyle(
-                        color: MetaColors.subtext(context),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            isTrainer ? 'Conexão WhatsApp & Número' : 'WhatsApp Cadastrado',
+                            style: TextStyle(
+                              color: MetaColors.subtext(context),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        if (isTrainer)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: (_isWhatsAppConnected ? MetaColors.emerald : Colors.orangeAccent)
+                                  .withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              _isWhatsAppConnected ? 'CONECTADO 24H' : 'PAREAR ROBÔ',
+                              style: TextStyle(
+                                color: _isWhatsAppConnected ? MetaColors.emerald : Colors.orangeAccent,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 3),
                     Text(
@@ -558,6 +654,18 @@ class _AccountScreenState extends State<AccountScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    if (isTrainer) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        _isWhatsAppConnected
+                            ? 'Robô 24h ativo • Toque para pareamento e logs'
+                            : 'Toque para parear seu WhatsApp via QR ou Código',
+                        style: TextStyle(
+                          color: MetaColors.subtext(context),
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -568,6 +676,12 @@ class _AccountScreenState extends State<AccountScreen> {
                 color: MetaColors.emerald,
                 onPressed: _editPhoneNumber,
               ),
+              if (isTrainer)
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: MetaColors.emerald,
+                  size: 16,
+                ),
             ],
           ),
         ),
@@ -582,7 +696,7 @@ class _AccountScreenState extends State<AccountScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const TrainerAiAssistantScreen()),
-              );
+              ).then((_) => _loadAccount());
             },
             child: Row(
               children: [
@@ -599,17 +713,42 @@ class _AccountScreenState extends State<AccountScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Consultor Ativo IA & WhatsApp',
-                        style: TextStyle(
-                          color: MetaColors.text(context),
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Consultor Ativo IA & WhatsApp',
+                              style: TextStyle(
+                                color: MetaColors.text(context),
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: MetaColors.emerald.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              _robotInteractionsCount > 0
+                                  ? '$_robotInteractionsCount ATIVOS'
+                                  : 'LIVE PULSE 3.0',
+                              style: const TextStyle(
+                                color: MetaColors.emerald,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
                       Text(
-                        'Cockpit 24h • Triagem custo zero e telemetria',
+                        _robotInteractionsCount > 0
+                            ? 'Cockpit 24h • Live Pulse 3.0 e $_robotInteractionsCount interações de IA/Robô'
+                            : 'Cockpit 24h • Live Pulse 3.0, Triagem Custo Zero e IA',
                         style: TextStyle(
                           color: MetaColors.subtext(context),
                           fontSize: 12,
@@ -618,6 +757,7 @@ class _AccountScreenState extends State<AccountScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(width: 6),
                 const Icon(
                   Icons.arrow_forward_ios_rounded,
                   color: MetaColors.emerald,

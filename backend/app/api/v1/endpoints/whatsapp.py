@@ -345,14 +345,116 @@ async def simulate_whatsapp_message(
             }
 
     result = await process_whatsapp_question(trainer_id, student, req.question)
+    s_name = student.get("full_name") or "Aluno Exemplo"
+    s_id = student.get("id")
+    s_phone = student.get("phone") or ""
+    cost_t = "alert" if result.get("is_alert") else (result.get("cost_type") or "free")
+    tokens_u = int(result.get("tokens_used") or 0)
+    reply_text = result.get("reply") or ""
+
+    try:
+        await supabase_service.log_whatsapp_interaction(
+            trainer_id=trainer_id,
+            student_id=s_id if s_id and s_id != "simulated-student-1" else None,
+            student_name=s_name,
+            student_phone=s_phone,
+            channel="whatsapp_simulator",
+            message_in=req.question,
+            message_out=reply_text,
+            cost_type=cost_t,
+            tokens_used=tokens_u,
+        )
+    except Exception as e:
+        logger.debug("[WhatsApp Simulate] Falha ao registrar log de simulação: %s", e)
+
     return {
         "status": "success",
-        "student_name": student.get("full_name") or "Aluno Exemplo",
+        "student_name": s_name,
         "question": req.question,
-        "reply": result.get("reply") or "",
+        "reply": reply_text,
         "cost_type": result.get("cost_type") or "free",
-        "tokens_used": result.get("tokens_used") or 0,
+        "tokens_used": tokens_u,
         "is_alert": bool(result.get("is_alert")),
+    }
+
+
+class SendDirectMessageRequest(BaseModel):
+    phone: Optional[str] = None
+    message: str
+    student_id: Optional[str] = None
+    student_name: Optional[str] = "Aluno"
+    category: Optional[str] = "trainer_one_click"
+
+
+@router.post("/send-direct")
+async def send_direct_whatsapp_message(
+    req: SendDirectMessageRequest,
+    user: Dict[str, Any] = Depends(get_current_trainer),
+):
+    """
+    Disparo direto in-app com 1 clique (parabenizar ofensiva, incentivar aluno,
+    responder alerta do Live Student Pulse 3.0 ou lembrar convite) via WhatsApp API
+    sem precisar abrir o aplicativo externo do WhatsApp.
+    """
+    trainer_id = _trainer_id(user)
+    target_phone = (req.phone or "").strip()
+    student_name = (req.student_name or "Aluno").strip()
+
+    if not target_phone and req.student_id:
+        try:
+            st = await supabase_service.get_student_by_id(req.student_id)
+            if st:
+                st_dict = st.model_dump()
+                target_phone = (st_dict.get("phone") or "").strip()
+                student_name = st_dict.get("full_name") or student_name
+        except Exception:
+            pass
+
+    clean_phone = whatsapp_service._format_phone(target_phone)
+    if not clean_phone:
+        return {
+            "status": "fallback_wa",
+            "sent_via_api": False,
+            "reason": "missing_phone",
+            "phone": "",
+            "message": req.message,
+        }
+
+    res = await whatsapp_service.send_text_with_fallback(
+        number=clean_phone,
+        text=req.message,
+        trainer_id=trainer_id,
+    )
+    sent_ok = res.get("status") in ("sent", "success")
+
+    if sent_ok:
+        if req.student_id:
+            try:
+                await supabase_service.mark_student_contacted(req.student_id)
+            except Exception:
+                pass
+        try:
+            await supabase_service.log_whatsapp_interaction(
+                trainer_id=trainer_id,
+                student_id=req.student_id,
+                student_name=student_name,
+                student_phone=clean_phone,
+                channel=f"whatsapp_{req.category or 'one_click'}",
+                message_in=f"[Disparo 1-Clique In-App: {req.category or 'incentivo'}]",
+                message_out=req.message,
+                cost_type="free",
+                tokens_used=0,
+            )
+        except Exception as e:
+            logger.debug("[WhatsApp Direct] Falha ao registrar log: %s", e)
+
+    return {
+        "status": "sent" if sent_ok else "fallback_wa",
+        "sent_via_api": sent_ok,
+        "channel": res.get("channel") or "fallback",
+        "phone": clean_phone,
+        "student_name": student_name,
+        "message": req.message,
     }
 
 

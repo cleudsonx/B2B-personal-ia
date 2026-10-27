@@ -1922,13 +1922,22 @@ class SupabaseService:
                     query = query.eq("event_type", event_type)
                 res = await query.order("created_at", desc=True).limit(limit).execute()
 
-                for row in res.data:
+                seen_keys = set()
+                for row in (res.data or []):
                     dt = row.get("metadata") or {}
+                    ev_id = str(row["id"])
+                    seen_keys.add(ev_id)
+                    if dt.get("log_id"):
+                        seen_keys.add(str(dt.get("log_id")))
+                    if dt.get("session_id"):
+                        seen_keys.add(str(dt.get("session_id")))
+                    if dt.get("alert_id"):
+                        seen_keys.add(str(dt.get("alert_id")))
                     events.append(StudentPulseEventResponse(
-                        id=row["id"],
-                        student_id=row["student_id"],
+                        id=ev_id,
+                        student_id=str(row["student_id"]),
                         student_name=dt.get("student_name") or "Aluno",
-                        trainer_id=row["trainer_id"],
+                        trainer_id=str(row["trainer_id"]),
                         event_type=row["event_type"],
                         severity=row.get("severity") or "info",
                         title=row.get("title") or "Evento do Aluno",
@@ -1938,7 +1947,117 @@ class SupabaseService:
                         action_taken=row.get("action_taken"),
                         created_at=row.get("created_at") or datetime.now(timezone.utc).isoformat(),
                     ))
-                return events
+
+                # 2. Mescla interações do Robô & IA (trainer_whatsapp_logs) para contabilizar no Live Student Pulse 3.0
+                if event_type in (None, "ai_doubt", "pain_alert"):
+                    try:
+                        w_res = await client.table("trainer_whatsapp_logs")\
+                            .select("*")\
+                            .eq("trainer_id", t_uuid)\
+                            .order("created_at", desc=True)\
+                            .limit(limit)\
+                            .execute()
+                        for w_row in (w_res.data or []):
+                            w_id = str(w_row.get("id") or "")
+                            if not w_id or w_id in seen_keys:
+                                continue
+                            cost_t = str(w_row.get("cost_type") or "free")
+                            channel_str = str(w_row.get("channel") or "whatsapp")
+                            ev_type = "pain_alert" if cost_t == "alert" else "ai_doubt"
+                            if event_type and ev_type != event_type:
+                                continue
+                            seen_keys.add(w_id)
+                            s_name = w_row.get("student_name") or "Aluno"
+                            msg_in = (w_row.get("message_in") or "").strip()
+                            msg_out = (w_row.get("message_out") or "").strip()
+                            clean_out = msg_out.replace("*", "").replace("\n", " ").strip()
+                            if len(clean_out) > 130:
+                                clean_out = clean_out[:127] + "..."
+                            title_str = (
+                                f"🚨 Alerta no WhatsApp: {msg_in[:45]}"
+                                if ev_type == "pain_alert"
+                                else (
+                                    f"🧠 Dúvida IA ({s_name})"
+                                    if cost_t == "ai_gemini"
+                                    else f"🤖 Robô WhatsApp ({s_name})"
+                                )
+                            )
+                            desc_str = f'Perguntou: "{msg_in[:80]}" • Resposta: {clean_out}'
+                            events.append(StudentPulseEventResponse(
+                                id=w_id,
+                                student_id=str(w_row.get("student_id") or t_uuid),
+                                student_name=s_name,
+                                trainer_id=t_uuid,
+                                event_type=ev_type,
+                                severity="critical" if ev_type == "pain_alert" else "info",
+                                title=title_str,
+                                description=desc_str,
+                                metadata={
+                                    "student_name": s_name,
+                                    "student_phone": w_row.get("student_phone") or "",
+                                    "channel": channel_str,
+                                    "cost_type": cost_t,
+                                    "tokens_used": w_row.get("tokens_used") or 0,
+                                    "log_id": w_id,
+                                },
+                                viewed_by_trainer=False if ev_type == "pain_alert" else True,
+                                action_taken="auto_replied",
+                                created_at=w_row.get("created_at") or datetime.now(timezone.utc).isoformat(),
+                            ))
+                    except Exception as we:
+                        logger.debug(f"[StudentPulse] Aviso ao mesclar trainer_whatsapp_logs: {we}")
+
+                # 3. Mescla adaptation_logs ainda não espelhados
+                if event_type in (None, "pain_alert", "exercise_adapted"):
+                    try:
+                        a_res = await client.table("adaptation_logs")\
+                            .select("*")\
+                            .eq("trainer_id", t_uuid)\
+                            .order("created_at", desc=True)\
+                            .limit(25)\
+                            .execute()
+                        for a_row in (a_res.data or []):
+                            a_id = str(a_row.get("id") or "")
+                            if not a_id or a_id in seen_keys:
+                                continue
+                            adt = a_row.get("adaptation_details") or {}
+                            pain_loc = adt.get("pain_location")
+                            reason_str = str(a_row.get("reason") or "")
+                            is_pain = bool(pain_loc) or "dor" in reason_str.lower()
+                            ev_type = "pain_alert" if is_pain else "exercise_adapted"
+                            if event_type and ev_type != event_type:
+                                continue
+                            if unread_only and bool(a_row.get("viewed_by_trainer")):
+                                continue
+                            seen_keys.add(a_id)
+                            s_name = adt.get("student_name") or "Aluno"
+                            orig_ex = a_row.get("original_exercise") or "Exercício"
+                            adap_ex = a_row.get("adapted_exercise") or "Substituto"
+                            events.append(StudentPulseEventResponse(
+                                id=a_id,
+                                student_id=str(a_row.get("client_id") or t_uuid),
+                                student_name=s_name,
+                                trainer_id=t_uuid,
+                                event_type=ev_type,
+                                severity="critical" if is_pain else "warning",
+                                title=f"Alerta de Dor: {pain_loc}" if pain_loc else f"Adaptação: {orig_ex}",
+                                description=f"{s_name} trocou '{orig_ex}' por '{adap_ex}'. Motivo: {reason_str}",
+                                metadata={
+                                    "student_name": s_name,
+                                    "original_exercise": orig_ex,
+                                    "adapted_exercise": adap_ex,
+                                    "pain_location": pain_loc,
+                                    "alert_id": a_id,
+                                },
+                                viewed_by_trainer=bool(a_row.get("viewed_by_trainer")),
+                                action_taken=None,
+                                created_at=a_row.get("created_at") or datetime.now(timezone.utc).isoformat(),
+                            ))
+                    except Exception as ae:
+                        logger.debug(f"[StudentPulse] Aviso ao mesclar adaptation_logs: {ae}")
+
+                events.sort(key=lambda x: x.created_at or "", reverse=True)
+                return events[:limit]
             except Exception as e:
                 logger.error(f"Erro ao listar student_pulse_events no Supabase: {e}")
                 self._raise_if_production("listar eventos de student pulse", e)
@@ -2461,6 +2580,44 @@ class SupabaseService:
                 await client.table("trainer_whatsapp_logs").insert(log_entry).execute()
             except Exception as e:
                 logger.debug(f"[SupabaseService] Log em DB ignorado (tabela opcional): {e}")
+
+        # Espelha automaticamente a interação do Robô & IA no Live Student Pulse 3.0
+        try:
+            ev_type = "pain_alert" if cost_type == "alert" else "ai_doubt"
+            clean_out = (message_out or "").replace("*", "").replace("\n", " ").strip()
+            if len(clean_out) > 130:
+                clean_out = clean_out[:127] + "..."
+            title_str = (
+                f"🚨 Alerta no WhatsApp: {(message_in or '')[:45]}"
+                if ev_type == "pain_alert"
+                else (
+                    f"🧠 Consultoria IA ({student_name or 'Aluno'})"
+                    if cost_type == "ai_gemini"
+                    else f"🤖 Robô WhatsApp ({student_name or 'Aluno'})"
+                )
+            )
+            desc_str = f'Interação: "{(message_in or "")[:80]}" • Resposta: {clean_out}'
+            await self.create_student_pulse_event(
+                StudentPulseEventCreate(
+                    student_id=log_entry["student_id"] or log_entry["trainer_id"],
+                    student_name=student_name or "Aluno",
+                    trainer_id=log_entry["trainer_id"],
+                    event_type=ev_type,
+                    severity="critical" if ev_type == "pain_alert" else "info",
+                    title=title_str,
+                    description=desc_str,
+                    metadata={
+                        "student_name": student_name or "Aluno",
+                        "student_phone": student_phone or "",
+                        "channel": channel,
+                        "cost_type": cost_type,
+                        "tokens_used": tokens_used,
+                        "log_id": log_entry["id"],
+                    },
+                )
+            )
+        except Exception as pe:
+            logger.debug(f"[SupabaseService] Espelhamento no Student Pulse ignorado: {pe}")
 
         return log_entry
 

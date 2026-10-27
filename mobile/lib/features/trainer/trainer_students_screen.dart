@@ -12,6 +12,7 @@ import '../../core/theme/theme_controller.dart';
 import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
 import '../../services/subscription_service.dart';
+import '../../services/whatsapp_direct_service.dart';
 import '../../models/subscription_model.dart';
 import '../subscription/subscription_screen.dart';
 import 'anamnesis_screen.dart';
@@ -177,6 +178,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
   Future<void> _openWhatsApp(Map<String, dynamic> student, {String? customMessage}) async {
     final phone = student['phone'] as String? ?? '';
     final name = student['full_name'] as String? ?? 'Aluno';
+    final studentId = student['id']?.toString();
     final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
     final isPending = (student['status'] as String? ?? '').toLowerCase().contains('pendente');
     final user = AuthService.currentUser;
@@ -196,17 +198,37 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
         return;
       }
 
-      final finalNumber = cleanPhone.startsWith('55') ? cleanPhone : '55$cleanPhone';
+      if (isPending && inviteUrl != null && inviteUrl.isNotEmpty) {
+        final parsed = Uri.tryParse(inviteUrl);
+        final decodedText = parsed?.queryParameters['text'];
+        if (decodedText != null && decodedText.isNotEmpty) {
+          await WhatsAppDirectService.sendOneClick(
+            context: context,
+            studentId: studentId,
+            studentName: name,
+            phone: phone,
+            message: decodedText,
+            actionType: 'invite_reminder',
+          );
+          return;
+        }
+        if (parsed != null && await canLaunchUrl(parsed)) {
+          await launchUrl(parsed, mode: LaunchMode.externalApplication);
+          return;
+        }
+      }
+
       final message = customMessage ??
           'Olá $name! 💪 Aqui é o Prof. $trainerName. Como estão os treinos essa semana?';
-      final url = isPending
-          ? Uri.tryParse(inviteUrl!)
-          : Uri.parse('https://wa.me/$finalNumber?text=${Uri.encodeComponent(message)}');
-      if (url == null) return;
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-        return;
-      }
+      await WhatsAppDirectService.sendOneClick(
+        context: context,
+        studentId: studentId,
+        studentName: name,
+        phone: phone,
+        message: message,
+        actionType: customMessage != null ? 'trainer_incentive' : 'trainer_checkin',
+      );
+      return;
     }
 
     if (mounted) {

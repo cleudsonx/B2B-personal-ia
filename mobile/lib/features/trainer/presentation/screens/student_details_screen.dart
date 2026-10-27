@@ -5,7 +5,6 @@ import '../../../../services/body_metrics_service.dart';
 import '../../../../core/widgets/split_photo_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/widgets/meta_components.dart';
 import '../../../../core/widgets/exercise_media_sheet.dart';
 import '../../../../models/exercise_model.dart';
@@ -13,6 +12,7 @@ import '../../../../models/split_model.dart';
 import '../../../../models/workout_plan_model.dart';
 import '../../../../services/invite_service.dart';
 import '../../../../services/subscription_service.dart';
+import '../../../../services/whatsapp_direct_service.dart';
 import '../../../../models/subscription_model.dart';
 import '../../../../features/subscription/subscription_screen.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -306,39 +306,16 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
           'Olá, $name! Seu convite para acessar o Mr. Coach está pronto. '
           'Acesse pelo link abaixo para começar seus treinos:\n$inviteUrl\n\n'
           'Será um prazer acompanhar sua evolução!';
-      final encodedMsg = Uri.encodeComponent(messageText);
 
-      final nativeUri = Uri.parse('whatsapp://send?phone=$cleanPhone&text=$encodedMsg');
-      final webApiUri = Uri.parse('https://api.whatsapp.com/send?phone=$cleanPhone&text=$encodedMsg');
-      final waMeUri = Uri.parse('https://wa.me/$cleanPhone?text=$encodedMsg');
-
-      var launched = false;
-      try {
-        launched = await launchUrl(nativeUri, mode: LaunchMode.externalApplication);
-      } catch (_) {}
-
-      if (!launched) {
-        try {
-          launched = await launchUrl(webApiUri, mode: LaunchMode.externalApplication);
-        } catch (_) {}
-      }
-
-      if (!launched) {
-        try {
-          launched = await launchUrl(waMeUri, mode: LaunchMode.externalApplication);
-        } catch (_) {}
-      }
-
-      if (!launched && mounted) {
-        await Clipboard.setData(ClipboardData(text: '$messageText\n\n$inviteUrl'));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Link de convite copiado para a área de transferência! Cole na conversa com o aluno.'),
-            duration: Duration(seconds: 4),
-          ),
-        );
-      }
+      if (!mounted) return;
+      await WhatsAppDirectService.sendOneClick(
+        context: context,
+        studentId: student['id']?.toString(),
+        studentName: name,
+        phone: cleanPhone,
+        message: messageText,
+        actionType: 'invite_reminder',
+      );
     } catch (error) {
       debugPrint('Falha ao reenviar convite pelo WhatsApp: $error');
       if (mounted) {
@@ -3101,36 +3078,20 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                                   }
                                   return;
                                 }
-                                final encodedMsg = Uri.encodeComponent(text);
-                                final nativeUri = Uri.parse('whatsapp://send?phone=$cleanPhone&text=$encodedMsg');
-                                final webUri = Uri.parse('https://api.whatsapp.com/send?phone=$cleanPhone&text=$encodedMsg');
-                                final waMeUri = Uri.parse('https://wa.me/$cleanPhone?text=$encodedMsg');
-
-                                var launched = false;
-                                try {
-                                  launched = await launchUrl(nativeUri, mode: LaunchMode.externalApplication);
-                                } catch (_) {}
-                                if (!launched) {
-                                  try {
-                                    launched = await launchUrl(webUri, mode: LaunchMode.externalApplication);
-                                  } catch (_) {}
-                                }
-                                if (!launched) {
-                                  try {
-                                    launched = await launchUrl(waMeUri, mode: LaunchMode.externalApplication);
-                                  } catch (_) {}
-                                }
-                                if (!launched && mounted) {
-                                  await Clipboard.setData(ClipboardData(text: text));
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Mensagem copiada para a área de transferência!')),
-                                  );
-                                }
                                 if (sheetCtx.mounted) Navigator.pop(sheetCtx);
+                                if (!mounted) return;
+                                await WhatsAppDirectService.sendOneClick(
+                                  context: context,
+                                  studentId: student['id']?.toString(),
+                                  studentName: name,
+                                  phone: cleanPhone,
+                                  message: text,
+                                  actionType: 'trainer_incentive',
+                                );
                               },
-                              icon: const Icon(Icons.send_rounded, size: 18),
+                              icon: const Icon(Icons.bolt_rounded, size: 18),
                               label: const Text(
-                                'Enviar no WhatsApp',
+                                'Disparar 1-Clique no WhatsApp',
                                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
                               ),
                             ),

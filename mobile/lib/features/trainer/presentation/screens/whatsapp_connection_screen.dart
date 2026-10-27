@@ -91,6 +91,9 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
     if (!_isConnected && mounted) {
       await _loadTrainerPhone();
     }
+    if (mounted) {
+      await _loadTelemetryAndLogs();
+    }
   }
 
   Future<void> _checkConnectionStatus({bool silent = false}) async {
@@ -155,30 +158,62 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
   }
 
   Future<void> _loadTelemetryAndLogs() async {
+    if (mounted) setState(() => _loadingTelemetry = true);
     try {
       final token = Supabase.instance.client.auth.currentSession?.accessToken;
-      if (token == null) return;
-      if (mounted) setState(() => _loadingTelemetry = true);
+      if (token != null) {
+        final headers = {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        };
 
-      final headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      };
+        try {
+          final telemFuture = http
+              .get(Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/telemetry'), headers: headers)
+              .timeout(const Duration(seconds: 10));
+          final logsFuture = http
+              .get(Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/logs?limit=20'), headers: headers)
+              .timeout(const Duration(seconds: 10));
 
-      final telemFuture = http
-          .get(Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/telemetry'), headers: headers)
-          .timeout(const Duration(seconds: 12));
-      final logsFuture = http
-          .get(Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/logs?limit=15'), headers: headers)
-          .timeout(const Duration(seconds: 12));
-
-      final results = await Future.wait([telemFuture, logsFuture]);
-      if (results[0].statusCode == 200 && mounted) {
-        _telemetry = jsonDecode(results[0].body);
+          final results = await Future.wait([telemFuture, logsFuture]);
+          if (results[0].statusCode == 200 && mounted) {
+            _telemetry = jsonDecode(results[0].body);
+          }
+          if (results[1].statusCode == 200 && mounted) {
+            final logsData = jsonDecode(results[1].body);
+            _logs = logsData['logs'] ?? [];
+          }
+        } catch (_) {}
       }
-      if (results[1].statusCode == 200 && mounted) {
-        final logsData = jsonDecode(results[1].body);
-        _logs = logsData['logs'] ?? [];
+
+      // Consolida também diretamente do Supabase caso o backend esteja em cold-start
+      final client = Supabase.instance.client;
+      final uid = client.auth.currentUser?.id;
+      if (uid != null) {
+        final rows = await client
+            .from('trainer_whatsapp_logs')
+            .select('*')
+            .eq('trainer_id', uid)
+            .order('created_at', ascending: false)
+            .limit(40);
+        final dbLogs = (rows as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        if (dbLogs.length > _logs.length) {
+          _logs = dbLogs.take(20).toList();
+        }
+        final apiTotal = int.tryParse((_telemetry?['total_interactions'] ?? 0).toString()) ?? 0;
+        if (dbLogs.length > apiTotal) {
+          final uniqueStudents = dbLogs
+              .map((l) => (l['student_name'] ?? '').toString().trim())
+              .where((s) => s.isNotEmpty)
+              .toSet()
+              .length;
+          final hoursSaved = double.tryParse(((dbLogs.length * 4) / 60.0).toStringAsFixed(1)) ?? 0.0;
+          _telemetry = {
+            'total_interactions': dbLogs.length,
+            'unique_students': uniqueStudents,
+            'hours_saved': hoursSaved,
+          };
+        }
       }
     } catch (_) {
       // Ignora erro silencioso de telemetria
@@ -957,7 +992,11 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
           ),
         ],
 
-        const SizedBox(height: 40),
+        const SizedBox(height: 32),
+        _buildTelemetryCard(),
+        const SizedBox(height: 28),
+        _buildLogsSection(),
+        const SizedBox(height: 36),
         _buildAutomationsSection(),
       ],
     );

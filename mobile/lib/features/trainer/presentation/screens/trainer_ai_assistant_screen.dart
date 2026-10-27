@@ -11,6 +11,7 @@ import '../../../../core/widgets/meta_components.dart';
 import '../../../../core/utils/pwa_navigation_state.dart';
 import '../../../../models/subscription_model.dart';
 import '../../../../services/subscription_service.dart';
+import '../../../../services/whatsapp_direct_service.dart';
 import '../../../subscription/subscription_screen.dart';
 import 'whatsapp_connection_screen.dart';
 import '../../anamnesis_screen.dart';
@@ -85,10 +86,16 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
       ).timeout(const Duration(seconds: 15));
 
       if (res.statusCode == 200 && mounted) {
+        final simData = jsonDecode(res.body) as Map<String, dynamic>;
         setState(() {
-          _simulationResult = jsonDecode(res.body);
+          _simulationResult = simData;
           _isSimulating = false;
         });
+        // Sincroniza Live Student Pulse 3.0 e Telemetria imediatamente após a simulação
+        await Future.wait([
+          _fetchTelemetry(),
+          _fetchStudentPulse(),
+        ]);
       } else {
         if (mounted) {
           setState(() => _isSimulating = false);
@@ -160,24 +167,86 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
   }
 
   Future<void> _fetchTelemetry() async {
+    int apiTotal = 0;
+    Map<String, dynamic>? apiTelem;
     try {
       final token = Supabase.instance.client.auth.currentSession?.accessToken;
-      if (token == null) return;
+      if (token != null) {
+        final res = await http.get(
+          Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/telemetry'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ).timeout(const Duration(seconds: 8));
 
-      final res = await http.get(
-        Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/telemetry'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 8));
-
-      if (res.statusCode == 200 && mounted) {
-        setState(() {
-          _telemetry = jsonDecode(res.body);
-        });
+        if (res.statusCode == 200) {
+          apiTelem = jsonDecode(res.body) as Map<String, dynamic>;
+          apiTotal = int.tryParse((apiTelem['total_interactions'] ?? 0).toString()) ?? 0;
+        }
       }
     } catch (_) {}
+
+    // Consolida também diretamente do Supabase (trainer_whatsapp_logs + student_pulse_events ai_doubt)
+    // para garantir que todas as interações do Robô & IA apareçam mesmo em cold-start
+    try {
+      final client = Supabase.instance.client;
+      final uid = client.auth.currentUser?.id;
+      if (uid != null) {
+        final logsRows = await client
+            .from('trainer_whatsapp_logs')
+            .select('id, student_name, cost_type')
+            .eq('trainer_id', uid)
+            .limit(200);
+        final pulseRows = await client
+            .from('student_pulse_events')
+            .select('id, metadata')
+            .eq('trainer_id', uid)
+            .eq('event_type', 'ai_doubt')
+            .limit(200);
+
+        final seenIds = <String>{};
+        final studentNames = <String>{};
+        int freeCount = 0;
+
+        for (final raw in (logsRows as List)) {
+          final m = Map<String, dynamic>.from(raw as Map);
+          final id = (m['id'] ?? '').toString();
+          if (id.isNotEmpty) seenIds.add(id);
+          final sname = (m['student_name'] ?? '').toString().trim();
+          if (sname.isNotEmpty) studentNames.add(sname);
+          if ((m['cost_type'] ?? 'free') == 'free') freeCount++;
+        }
+        for (final raw in (pulseRows as List)) {
+          final m = Map<String, dynamic>.from(raw as Map);
+          final meta = (m['metadata'] as Map?) ?? {};
+          final logId = (meta['log_id'] ?? m['id'] ?? '').toString();
+          if (logId.isNotEmpty && !seenIds.contains(logId)) {
+            seenIds.add(logId);
+            final sname = (meta['student_name'] ?? '').toString().trim();
+            if (sname.isNotEmpty) studentNames.add(sname);
+            if ((meta['cost_type'] ?? 'free') == 'free') freeCount++;
+          }
+        }
+
+        final dbTotal = seenIds.length;
+        if (dbTotal > apiTotal) {
+          final hoursSaved = ((dbTotal * 4) / 60.0).toStringAsFixed(1);
+          apiTelem = {
+            'total_interactions': dbTotal,
+            'unique_students': studentNames.length,
+            'hours_saved': double.tryParse(hoursSaved) ?? 0.0,
+            'free_interactions_ratio': dbTotal > 0 ? (freeCount / dbTotal) : 1.0,
+          };
+        }
+      }
+    } catch (_) {}
+
+    if (apiTelem != null && mounted) {
+      setState(() {
+        _telemetry = apiTelem;
+      });
+    }
   }
 
   Future<void> _fetchProactiveRadar() async {
@@ -363,6 +432,25 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
       final session = Supabase.instance.client.auth.currentSession;
       final token = session?.accessToken;
       final trainerId = session?.user.id ?? 'current-trainer';
+      final List<Map<String, dynamic>> merged = [];
+      final seenKeys = <String>{};
+
+      void addEventIfNew(Map<String, dynamic> ev) {
+        final id = (ev['id'] ?? '').toString();
+        final meta = (ev['metadata'] as Map?) ?? {};
+        final logId = (meta['log_id'] ?? '').toString();
+        final alertId = (meta['alert_id'] ?? '').toString();
+        final sessionId = (meta['session_id'] ?? '').toString();
+        if (id.isNotEmpty && seenKeys.contains(id)) return;
+        if (logId.isNotEmpty && seenKeys.contains(logId)) return;
+        if (alertId.isNotEmpty && seenKeys.contains(alertId)) return;
+        if (sessionId.isNotEmpty && seenKeys.contains(sessionId)) return;
+        if (id.isNotEmpty) seenKeys.add(id);
+        if (logId.isNotEmpty) seenKeys.add(logId);
+        if (alertId.isNotEmpty) seenKeys.add(alertId);
+        if (sessionId.isNotEmpty) seenKeys.add(sessionId);
+        merged.add(ev);
+      }
 
       // 1. Tenta carregar do backend via API REST
       if (token != null) {
@@ -378,10 +466,8 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
 
           if (res.statusCode == 200) {
             final list = jsonDecode(res.body) as List<dynamic>;
-            if (mounted) {
-              setState(() {
-                _pulseEvents = list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-              });
+            for (final e in list) {
+              addEventIfNew(Map<String, dynamic>.from(e as Map));
             }
 
             final sumUri = Uri.parse('${AppConfig.apiBaseUrl}/pulse/trainer/$trainerId/summary');
@@ -393,25 +479,122 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
               },
             ).timeout(const Duration(seconds: 4));
             if (sumRes.statusCode == 200 && mounted) {
-              setState(() {
-                _pulseSummary = jsonDecode(sumRes.body) as Map<String, dynamic>;
-              });
+              _pulseSummary = jsonDecode(sumRes.body) as Map<String, dynamic>;
             }
-            return;
           }
         } catch (_) {}
       }
 
-      // 2. Fallback direto do Supabase se o backend REST oscilar
-      final rows = await Supabase.instance.client
-          .from('student_pulse_events')
-          .select('*')
-          .order('created_at', ascending: false)
-          .limit(30);
+      // 2. Consolida diretamente do Supabase (student_pulse_events + trainer_whatsapp_logs + adaptation_logs)
+      // garantindo que 100% das interações do Robô, IA e Usuários apareçam ao vivo
+      try {
+        final client = Supabase.instance.client;
+        final pulseRows = await client
+            .from('student_pulse_events')
+            .select('*')
+            .order('created_at', ascending: false)
+            .limit(40);
+        for (final raw in (pulseRows as List)) {
+          addEventIfNew(Map<String, dynamic>.from(raw as Map));
+        }
+      } catch (_) {}
+
+      try {
+        final client = Supabase.instance.client;
+        final wRows = await client
+            .from('trainer_whatsapp_logs')
+            .select('*')
+            .order('created_at', ascending: false)
+            .limit(40);
+        for (final raw in (wRows as List)) {
+          final w = Map<String, dynamic>.from(raw as Map);
+          final wId = (w['id'] ?? '').toString();
+          final costType = (w['cost_type'] ?? 'free').toString();
+          final sName = (w['student_name'] ?? 'Aluno').toString();
+          final msgIn = (w['message_in'] ?? '').toString().trim();
+          final msgOut = (w['message_out'] ?? '')
+              .toString()
+              .replaceAll('*', '')
+              .replaceAll('\n', ' ')
+              .trim();
+          final shortOut = msgOut.length > 130 ? '${msgOut.substring(0, 127)}...' : msgOut;
+          final isAlert = costType == 'alert';
+          addEventIfNew({
+            'id': wId,
+            'student_id': w['student_id'] ?? trainerId,
+            'student_name': sName,
+            'trainer_id': w['trainer_id'] ?? trainerId,
+            'event_type': isAlert ? 'pain_alert' : 'ai_doubt',
+            'severity': isAlert ? 'critical' : 'info',
+            'title': isAlert
+                ? '🚨 Alerta no WhatsApp: $msgIn'
+                : (costType == 'ai_gemini'
+                    ? '🧠 Consultoria IA ($sName)'
+                    : '🤖 Robô WhatsApp ($sName)'),
+            'description': 'Interação: "$msgIn" • Resposta: $shortOut',
+            'metadata': {
+              'student_name': sName,
+              'student_phone': w['student_phone'] ?? '',
+              'channel': w['channel'] ?? 'whatsapp',
+              'cost_type': costType,
+              'tokens_used': w['tokens_used'] ?? 0,
+              'log_id': wId,
+            },
+            'viewed_by_trainer': !isAlert,
+            'action_taken': 'auto_replied',
+            'created_at': w['created_at'],
+          });
+        }
+      } catch (_) {}
+
+      try {
+        final client = Supabase.instance.client;
+        final aRows = await client
+            .from('adaptation_logs')
+            .select('*')
+            .order('created_at', ascending: false)
+            .limit(25);
+        for (final raw in (aRows as List)) {
+          final a = Map<String, dynamic>.from(raw as Map);
+          final aId = (a['id'] ?? '').toString();
+          final details = (a['adaptation_details'] as Map?) ?? {};
+          final painLoc = details['pain_location']?.toString();
+          final reason = (a['reason'] ?? '').toString();
+          final isPain = (painLoc != null && painLoc.isNotEmpty) || reason.toLowerCase().contains('dor');
+          final sName = (details['student_name'] ?? 'Aluno').toString();
+          final origEx = (a['original_exercise'] ?? 'Exercício').toString();
+          final adapEx = (a['adapted_exercise'] ?? 'Substituto').toString();
+          addEventIfNew({
+            'id': aId,
+            'student_id': a['client_id'] ?? trainerId,
+            'student_name': sName,
+            'trainer_id': a['trainer_id'] ?? trainerId,
+            'event_type': isPain ? 'pain_alert' : 'exercise_adapted',
+            'severity': isPain ? 'critical' : 'warning',
+            'title': isPain ? 'Alerta de Dor: ${painLoc ?? origEx}' : 'Adaptação: $origEx',
+            'description': '$sName trocou "$origEx" por "$adapEx". Motivo: $reason',
+            'metadata': {
+              'student_name': sName,
+              'original_exercise': origEx,
+              'adapted_exercise': adapEx,
+              'pain_location': painLoc,
+              'alert_id': aId,
+            },
+            'viewed_by_trainer': a['viewed_by_trainer'] == true,
+            'created_at': a['created_at'],
+          });
+        }
+      } catch (_) {}
+
+      merged.sort((a, b) {
+        final ca = (a['created_at'] ?? '').toString();
+        final cb = (b['created_at'] ?? '').toString();
+        return cb.compareTo(ca);
+      });
 
       if (mounted) {
         setState(() {
-          _pulseEvents = (rows as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          _pulseEvents = merged;
         });
       }
     } catch (e) {
@@ -455,57 +638,37 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
 
   Future<void> _contactStudentFromPulse(Map<String, dynamic> event) async {
     final meta = (event['metadata'] as Map?) ?? {};
-    final studentName = event['student_name'] ?? meta['student_name'] ?? 'Aluno';
-    final firstName = studentName.toString().split(' ').first;
+    final studentName = (event['student_name'] ?? meta['student_name'] ?? 'Aluno').toString();
+    final firstName = studentName.split(' ').first;
     final eventType = event['event_type'] ?? 'info';
     final eventTitle = event['title'] ?? '';
-
-    String? phone = (meta['student_phone'] ?? meta['phone'])?.toString();
-    if (phone == null || phone.isEmpty) {
-      try {
-        final sid = event['student_id']?.toString();
-        if (sid != null && sid.isNotEmpty) {
-          final res = await Supabase.instance.client
-              .from('profiles')
-              .select('phone, whatsapp')
-              .eq('id', sid)
-              .maybeSingle();
-          if (res != null) {
-            phone = (res['whatsapp'] ?? res['phone'])?.toString();
-          }
-        }
-      } catch (_) {}
-    }
-
-    final cleanPhone = (phone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+    final studentId = event['student_id']?.toString();
+    final phone = (meta['student_phone'] ?? meta['phone'])?.toString();
 
     String message;
     if (eventType == 'pain_alert') {
       message = 'Olá $firstName! Vi aqui no alerta do Mr. Coach que você sentiu um desconforto/dor em: "$eventTitle". Como você está se sentindo agora? Vamos ajustar seu treino!';
     } else if (eventType == 'workout_completed') {
-      message = 'Parabéns pelo treino concluído hoje, $firstName! Vi a finalização aqui no Mr. Coach. Mantenha a constância!';
+      message = 'Parabéns pelo treino concluído hoje, $firstName! Vi a finalização aqui no Mr. Coach. Mantenha a constância! 🔥';
     } else if (eventType == 'exercise_adapted') {
       message = 'Olá $firstName! Vi que você fez uma adaptação de exercício hoje no app. Precisando de qualquer ajuste na ficha, conte comigo!';
     } else {
-      message = 'Olá $firstName! Sou seu treinador no Mr. Coach. Vi sua atividade recente e estou à disposição para qualquer dúvida biomecânica!';
+      message = 'Olá $firstName! Sou seu treinador no Mr. Coach. Vi sua interação recente com nosso assistente e estou à disposição para qualquer dúvida biomecânica!';
     }
 
-    if (cleanPhone.isNotEmpty) {
-      final uri = Uri.parse('https://wa.me/$cleanPhone?text=${Uri.encodeComponent(message)}');
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-      await _markPulseEventViewed(event['id']?.toString() ?? '', actionTaken: 'whatsapp_contacted');
-    } else {
-      await Clipboard.setData(ClipboardData(text: message));
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Aluno sem telefone cadastrado. Mensagem para $firstName copiada para a área de transferência!'),
-            backgroundColor: MetaColors.emerald,
-          ),
-        );
-        await _markPulseEventViewed(event['id']?.toString() ?? '', actionTaken: 'clipboard_copied');
-      }
-    }
+    await WhatsAppDirectService.sendOneClick(
+      context: context,
+      message: message,
+      phone: phone,
+      studentId: studentId,
+      studentName: studentName,
+      category: 'pulse_$eventType',
+    );
+    await _markPulseEventViewed(
+      event['id']?.toString() ?? '',
+      actionTaken: 'whatsapp_contacted_1click',
+    );
+    await _fetchTelemetry();
   }
 
   String _formatPulseTime(String? dateStr) {
@@ -1094,7 +1257,9 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
 
     final painCount = _pulseSummary?['pain_alerts_count'] ?? painAlerts.length;
     final workoutCount = _pulseSummary?['workouts_completed_today'] ?? workouts.length;
-    final totalCount = _pulseSummary?['total_events'] ?? _pulseEvents.length;
+    final robotAiCount = doubts.length > (_telemetry?['total_interactions'] ?? 0)
+        ? doubts.length
+        : (_telemetry?['total_interactions'] ?? doubts.length);
 
     List<Map<String, dynamic>> filteredEvents;
     if (_selectedPulseFilter == 'pain_alert') {
@@ -1176,7 +1341,7 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
                       ],
                     ),
                     Text(
-                      'Alertas clínicos, treinos feitos e trocas no salão',
+                      'Alertas clínicos, treinos, trocas e interações do Robô & IA',
                       style: TextStyle(
                         color: MetaColors.subtext(context),
                         fontSize: 11.5,
@@ -1263,10 +1428,10 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
               Expanded(
                 child: _buildPulseKpiBox(
                   context,
-                  label: 'Total',
-                  value: '$totalCount',
-                  color: MetaColors.subtext(context),
-                  icon: Icons.stream_rounded,
+                  label: 'Robô & IA',
+                  value: '$robotAiCount',
+                  color: const Color(0xFF6366F1),
+                  icon: Icons.smart_toy_rounded,
                 ),
               ),
             ],
@@ -1287,7 +1452,7 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
                 const SizedBox(width: 6),
                 _buildPulseFilterChip('exercise_adapted', '🔄 Trocas (${adaptations.length})'),
                 const SizedBox(width: 6),
-                _buildPulseFilterChip('ai_doubt', '💬 Dúvidas (${doubts.length})'),
+                _buildPulseFilterChip('ai_doubt', '🤖 Robô & IA (${doubts.length})'),
               ],
             ),
           ),
@@ -1440,10 +1605,11 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
       icon = Icons.swap_horiz_rounded;
       badgeLabel = '🔄 Aparelho Ocupado';
     } else if (eventType == 'ai_doubt') {
-      cardBorder = const Color(0xFF6366F1);
-      iconColor = const Color(0xFF6366F1);
-      icon = Icons.chat_bubble_outline_rounded;
-      badgeLabel = '💬 Dúvida Biomecânica';
+      final isAiGemini = meta['cost_type'] == 'ai_gemini';
+      cardBorder = isAiGemini ? const Color(0xFF6366F1) : MetaColors.emerald;
+      iconColor = isAiGemini ? const Color(0xFF6366F1) : MetaColors.emerald;
+      icon = isAiGemini ? Icons.psychology_rounded : Icons.smart_toy_rounded;
+      badgeLabel = isAiGemini ? '🧠 Consultoria IA' : '🤖 Robô WhatsApp';
     } else {
       cardBorder = MetaColors.cardBorder(context);
       iconColor = MetaColors.subtext(context);
@@ -1974,21 +2140,20 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
                       ),
                       InkWell(
                         onTap: () async {
-                          final messenger = ScaffoldMessenger.of(context);
                           Navigator.pop(ctx);
                           final msg = 'Fala $firstName! Passando para parabenizar sua dedicação impecável: você está com $streak dias seguidos de treino firme no Mr. Coach! 🔥 Orgulho demais da sua consistência, bora manter o foco!';
-                          if (phone.isNotEmpty) {
-                            final uri = Uri.parse('https://wa.me/$phone?text=${Uri.encodeComponent(msg)}');
-                            await launchUrl(uri, mode: LaunchMode.externalApplication);
-                          } else {
-                            await Clipboard.setData(ClipboardData(text: msg));
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Text('Aluno sem telefone cadastrado. Mensagem copiada para $firstName!'),
-                                backgroundColor: MetaColors.emerald,
-                              ),
-                            );
-                          }
+                          await WhatsAppDirectService.sendOneClick(
+                            context: context,
+                            message: msg,
+                            phone: phone,
+                            studentId: student['id']?.toString(),
+                            studentName: sname.toString(),
+                            category: 'congratulate_streak',
+                          );
+                          await Future.wait([
+                            _fetchTelemetry(),
+                            _fetchStudentPulse(),
+                          ]);
                         },
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
@@ -2000,10 +2165,10 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.chat_rounded, size: 12, color: Colors.black),
-                              SizedBox(width: 4),
+                              Icon(Icons.bolt_rounded, size: 13, color: Colors.black),
+                              SizedBox(width: 3),
                               Text(
-                                'Elogiar',
+                                'Elogiar 1-Clique',
                                 style: TextStyle(
                                   color: Colors.black,
                                   fontSize: 11,
@@ -2018,6 +2183,62 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
                   ),
                 );
               }),
+              if (topStreaks.length > 1) ...[
+                const SizedBox(height: 6),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: MetaColors.emerald,
+                      foregroundColor: Colors.black,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    icon: const Icon(Icons.electric_bolt_rounded, size: 18),
+                    label: Text(
+                      'Elogiar Todos os ${topStreaks.length} Campeões em 1 Clique',
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12.5),
+                    ),
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      for (final s in topStreaks) {
+                        final st = Map<String, dynamic>.from(s as Map);
+                        final sname = (st['full_name'] ?? 'Aluno').toString();
+                        final firstName = sname.split(' ').first;
+                        final streak = st['streak_days'] ?? 0;
+                        final phone = (st['phone'] ?? '').toString();
+                        final msg = 'Fala $firstName! Passando para parabenizar sua dedicação impecável: você está com $streak dias seguidos de treino firme no Mr. Coach! 🔥 Orgulho demais da sua consistência, bora manter o foco!';
+                        await WhatsAppDirectService.sendOneClick(
+                          context: context,
+                          message: msg,
+                          phone: phone,
+                          studentId: st['id']?.toString(),
+                          studentName: sname,
+                          category: 'congratulate_streak_batch',
+                          showFeedback: false,
+                          allowExternalFallback: false,
+                        );
+                      }
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: MetaColors.emerald,
+                            content: Text(
+                              '🎉 Parabéns enviados com 1 clique para ${topStreaks.length} alunos no WhatsApp!',
+                              style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                        );
+                      }
+                      await Future.wait([
+                        _fetchTelemetry(),
+                        _fetchStudentPulse(),
+                      ]);
+                    },
+                  ),
+                ),
+              ],
             ],
           ),
         );
