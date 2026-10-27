@@ -24,7 +24,6 @@ class CardStyleSelectionSheet extends StatelessWidget {
       listenable: ThemeController.instance,
       builder: (ctx, _) {
         final currentMode = ThemeController.instance.cardThemeMode;
-        final isDark = MetaColors.isDark(ctx);
 
         return Padding(
           padding: EdgeInsets.only(
