@@ -1483,11 +1483,10 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
                   itemBuilder: (context, index) {
                     final tip = _tips[index];
                     return SizedBox(
-                      width: 250,
+                      width: 230,
                       child: ThematicEditorialCard(
                         category: 'COMO ESCALAR',
                         title: tip.title,
-                        description: tip.description,
                         palette: tip.palette,
                         customWatermark: tip.watermark,
                         minHeight: 165,

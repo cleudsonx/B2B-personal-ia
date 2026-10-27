@@ -129,6 +129,8 @@ class ThematicEditorialCard extends StatelessWidget {
   final VoidCallback? onTap;
   final double minHeight;
   final EdgeInsetsGeometry padding;
+  final int? maxTitleLines;
+  final int? maxDescriptionLines;
   final Widget? trailingBadge;
   final Widget? customContent;
   final Widget? footerAction;
@@ -138,6 +140,8 @@ class ThematicEditorialCard extends StatelessWidget {
     this.category,
     this.title,
     this.description,
+    this.maxTitleLines,
+    this.maxDescriptionLines,
     required this.palette,
     this.customWatermark,
     this.overrideMode,
@@ -294,6 +298,8 @@ class ThematicEditorialCard extends StatelessWidget {
                           if (title != null)
                             Text(
                               title!,
+                              maxLines: maxTitleLines ?? 3,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: textColor,
                                 fontSize: 17,
@@ -310,6 +316,8 @@ class ThematicEditorialCard extends StatelessWidget {
                               padding: const EdgeInsets.only(right: 64.0),
                               child: Text(
                                 description!,
+                                maxLines: maxDescriptionLines ?? 3,
+                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   color: subtextColor,
                                   fontSize: 13,
