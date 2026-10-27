@@ -181,7 +181,7 @@ class _InteractiveTourGuideModalState extends State<InteractiveTourGuideModal> {
       icon: Icons.storefront_rounded,
       accentColor: Color(0xFF38BDF8),
       bulletPoints: [
-        'Link curto personalizado (app.sheipados.com/r/seunome) para a bio.',
+        'Link curto personalizado (shaipados.com/#/r/seunome) para a bio.',
         'Recebimento direto via Pix com 95% do valor creditado na sua carteira.',
         'Criação de campanhas e cupons de desconto (ex: VIP50, LAUNCH20).',
       ],

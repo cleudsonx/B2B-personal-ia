@@ -142,7 +142,7 @@ class _WorkoutTriumphModalState extends State<WorkoutTriumphModal> {
         '💥 RPE: $_selectedRpe/10 (${_getRpeLabel(_selectedRpe)})'
         '$prText$streakText\n'
         '💪 Personal Trainer: Prof. ${widget.trainerName}\n'
-        '📲 app.sheipados.com';
+        '📲 shaipados.com';
   }
 
   void _shareOnWhatsApp(BuildContext context) {
@@ -851,7 +851,7 @@ class _WorkoutShareCardDialogState extends State<WorkoutShareCardDialog> {
         .replaceAll(RegExp(r'_+'), '_');
   }
 
-  String get _landingUrl => 'https://app.sheipados.com/p/$_trainerSlug';
+  String get _landingUrl => 'https://shaipados.com/#/p/$_trainerSlug';
 
   void _copySummary(BuildContext context) {
     Clipboard.setData(ClipboardData(text: widget.summaryText));
@@ -1327,7 +1327,7 @@ class _WorkoutShareCardDialogState extends State<WorkoutShareCardDialog> {
                                         ),
                                       ),
                                       Text(
-                                        'app.sheipados.com/p/$_trainerSlug',
+                                        'shaipados.com/#/p/$_trainerSlug',
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(

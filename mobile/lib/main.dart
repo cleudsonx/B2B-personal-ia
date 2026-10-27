@@ -66,7 +66,8 @@ Future<void> main() async {
 }
 
 class B2BPersonalIaApp extends StatelessWidget {
-  const B2BPersonalIaApp({super.key});
+  final String? initialRouteOverride;
+  const B2BPersonalIaApp({super.key, this.initialRouteOverride});
 
   Widget _homeScreen() {
     if (kIsWeb) {
@@ -97,7 +98,16 @@ class B2BPersonalIaApp extends StatelessWidget {
   }
 
   Route<dynamic> _routeFor(RouteSettings settings) {
-    final name = settings.name ?? '/';
+    String name = settings.name ?? '/';
+    if (kIsWeb && (name == '/' || name.isEmpty)) {
+      final base = Uri.base;
+      if (base.fragment.isNotEmpty) {
+        final cleanFrag = base.fragment.startsWith('/') ? base.fragment : '/${base.fragment}';
+        name = cleanFrag;
+      } else if (base.path.isNotEmpty && base.path != '/') {
+        name = base.hasQuery ? '${base.path}?${base.query}' : base.path;
+      }
+    }
     final uri = Uri.parse(name);
     final segments = uri.pathSegments;
     final WidgetBuilder builder;
@@ -212,9 +222,10 @@ class B2BPersonalIaApp extends StatelessWidget {
               PointerDeviceKind.trackpad,
             },
           ),
+          initialRoute: initialRouteOverride,
           onGenerateRoute: _routeFor,
           onGenerateInitialRoutes: (initialRouteName) => [
-            _routeFor(RouteSettings(name: initialRouteName)),
+            _routeFor(RouteSettings(name: initialRouteOverride ?? initialRouteName)),
           ],
           builder: (context, child) {
             final isDark = Theme.of(context).brightness == Brightness.dark;

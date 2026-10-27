@@ -30,7 +30,7 @@ void main() {
       expect(partner.id, 'aff-test');
       expect(partner.partnerName, 'Parceiro Teste');
       expect(partner.slug, 'TESTPARTNER');
-      expect(partner.referralUrl, 'https://app.sheipados.com/r/TESTPARTNER');
+      expect(partner.referralUrl, 'https://shaipados.com/#/r/TESTPARTNER');
       expect(partner.partnerTypeLabel, 'Conselho / Entidade');
       expect(partner.commissionPercent, 10.0);
       expect(partner.conversionRate, 25.0);
@@ -289,7 +289,7 @@ void main() {
 
       // Verify canonical partners list & Payout buttons
       expect(find.text('CREF4/SP - Conselho Regional'), findsOneWidget);
-      expect(find.textContaining('https://app.sheipados.com/r/CREFSP'), findsOneWidget);
+      expect(find.textContaining('https://shaipados.com/#/r/CREFSP'), findsOneWidget);
       expect(find.text('Liquidar Pix'), findsWidgets);
 
       // Open Payout Dialog for CREFSP

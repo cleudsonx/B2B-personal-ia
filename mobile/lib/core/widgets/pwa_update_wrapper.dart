@@ -58,6 +58,10 @@ class PwaUpdateNotifier extends ChangeNotifier {
 class PwaUpdateWrapper extends StatefulWidget {
   final Widget child;
 
+  /// Controla a checagem automática via timer de version.json.
+  /// Pode ser desativado em testes automatizados para evitar timers pendentes.
+  static bool enableAutoCheck = true;
+
   const PwaUpdateWrapper({super.key, required this.child});
 
   @override
@@ -85,10 +89,12 @@ class _PwaUpdateWrapperState extends State<PwaUpdateWrapper> with WidgetsBinding
       });
     }
 
-    // Checagem inicial via version.json após 1.2 segundos (Web, iOS e Android)
-    Future.delayed(const Duration(milliseconds: 1200), _checkForUpdate);
-    // Checagem periódica a cada 2 minutos
-    _checkTimer = Timer.periodic(const Duration(minutes: 2), (_) => _checkForUpdate());
+    if (PwaUpdateWrapper.enableAutoCheck) {
+      // Checagem inicial via version.json após 1.2 segundos (Web, iOS e Android)
+      Future.delayed(const Duration(milliseconds: 1200), _checkForUpdate);
+      // Checagem periódica a cada 2 minutos
+      _checkTimer = Timer.periodic(const Duration(minutes: 2), (_) => _checkForUpdate());
+    }
   }
 
   @override

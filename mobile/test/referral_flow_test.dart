@@ -49,7 +49,7 @@ void main() {
     });
 
     test('ReferralService.initFromUri extracts ref query parameter correctly', () async {
-      final uri = Uri.parse('https://app.sheipados.com/?ref=RODRIGO-VIP');
+      final uri = Uri.parse('https://shaipados.com/?ref=RODRIGO-VIP');
       final partner = await ReferralService.initFromUri(uri);
       expect(partner, isNotNull);
       expect(partner!.slug, 'RODRIGO-VIP');

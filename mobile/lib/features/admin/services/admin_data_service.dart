@@ -6019,7 +6019,7 @@ class AdminAffiliatePartnerItem {
     this.payouts = const [],
   });
 
-  String get referralUrl => 'https://app.sheipados.com/r/$slug';
+  String get referralUrl => 'https://shaipados.com/#/r/$slug';
   double get conversionRate => clicksCount > 0 ? (conversionsCount / clicksCount * 100.0) : 0.0;
   String get formattedRevenue => 'R\$ ${totalRevenueGeneratedBrl.toStringAsFixed(2)}';
   String get formattedCommission => 'R\$ ${totalCommissionDueBrl.toStringAsFixed(2)}';

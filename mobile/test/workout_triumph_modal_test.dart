@@ -152,7 +152,7 @@ void main() {
     expect(find.text('COSTAS E BÍCEPS BRUTAL'), findsOneWidget);
     expect(find.text('Atleta: Gabriel Santos'), findsOneWidget);
     expect(find.text('Prof. Lucas Personal'), findsOneWidget);
-    expect(find.textContaining('app.sheipados.com'), findsOneWidget);
+    expect(find.textContaining('shaipados.com'), findsOneWidget);
     expect(find.text('1 NOVO(S) RECORDE(S) DE CARGA (PR)!'), findsOneWidget);
     expect(find.text('3º DIA SEGUIDO DE DISCIPLINA!'), findsOneWidget);
     expect(find.text('Modo Print'), findsOneWidget);

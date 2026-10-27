@@ -233,7 +233,7 @@ class SubscriptionService {
         'provider': provider,
         'trainer_id': user?.id ?? 'current-trainer',
         'trainer_name': user?.userMetadata?['full_name'] ?? 'Personal Trainer',
-        'trainer_email': user?.email ?? 'personal@sheipados.com',
+        'trainer_email': user?.email ?? 'personal@shaipados.com',
         if (cpfCnpj != null && cpfCnpj.trim().isNotEmpty) 'cpf_cnpj': cpfCnpj.trim(),
         if (couponCode != null && couponCode.trim().isNotEmpty) 'coupon_code': couponCode.trim(),
       });
