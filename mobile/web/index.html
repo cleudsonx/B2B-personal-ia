@@ -75,6 +75,59 @@
 </head>
 <body>
   <script>
+    const APP_CURRENT_BUILD = 2026103106;
+
+    // =========================================================================
+    // Blindagem Anti-Cache de Manifests e Fontes (Bypass Disk Cache & SW Stale)
+    // Garante que AssetManifest e FontManifest nunca sejam lidos de cache antigo
+    // =========================================================================
+    (function initAssetCacheGuard() {
+      try {
+        const originalFetch = window.fetch;
+        if (typeof originalFetch === 'function') {
+          window.fetch = function(input, init) {
+            try {
+              const url = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+              if (url) {
+                // Bloqueia qualquer tentativa residual de carregar fontes locais corrompidas em cache
+                if (url.includes('assets/google_fonts/')) {
+                  return Promise.resolve(new Response(null, { status: 404, statusText: 'Not Found' }));
+                }
+                // Força cache-busting por build nos manifests críticos do Flutter Web
+                if (
+                  url.includes('AssetManifest') ||
+                  url.includes('FontManifest') ||
+                  url.includes('version.json')
+                ) {
+                  const sep = url.includes('?') ? '&' : '?';
+                  const bustedUrl = url.includes('_b=') ? url : (url + sep + '_b=' + APP_CURRENT_BUILD);
+                  const nextInit = Object.assign({}, init || {}, { cache: 'no-store' });
+                  return originalFetch.call(this, bustedUrl, nextInit);
+                }
+              }
+            } catch (_) {}
+            return originalFetch.apply(this, arguments);
+          };
+        }
+
+        // Auto-expurgo de Service Worker e CacheStorage se o build mudou
+        const lastBuild = localStorage.getItem('shaipados_active_build_v2');
+        if (lastBuild !== String(APP_CURRENT_BUILD)) {
+          localStorage.setItem('shaipados_active_build_v2', String(APP_CURRENT_BUILD));
+          if ('caches' in window) {
+            caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))).catch(() => {});
+          }
+          if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.getRegistrations().then((regs) => {
+              Promise.all(regs.map((r) => r.unregister())).then(() => {
+                window.location.reload();
+              });
+            }).catch(() => {});
+          }
+        }
+      } catch (_) {}
+    })();
+
     // Gerenciador de Instalação PWA
     window.pwaDeferredPrompt = null;
     window.addEventListener('beforeinstallprompt', (e) => {
