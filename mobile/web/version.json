@@ -1,58 +1,58 @@
 {
-  "version": "1.11.0",
-  "build": 2026103068,
-  "updated_at": "2026-10-25T04:17:44.706228Z",
-  "notes": "Versão 1.11.0: Modernização Inteligente do 2FA Multi-Canal (WhatsApp, E-mail e Backup Codes de 10 dígitos), Dispositivo Confiável de 30 dias e Integração Estável com Evolution API v2.",
+  "version": "1.11.1",
+  "build": 2026103100,
+  "updated_at": "2026-10-27T18:15:00.000000Z",
+  "notes": "Versão 1.11.1: Live Student Pulse 3.0 com Telemetria Unificada (Robô WhatsApp & IA Gemini), Disparo WhatsApp 1-Clique In-App, Padronização Canônica das Vitrines (/p/:user) e Suíte de Loaders Shaipados Labs.",
   "changelog": {
     "student": [
+      {
+        "title": "Suíte de Loaders Shaipados Labs (60 FPS Nativo)",
+        "description": "Novas animações fluidas para geração de periodização IA, sincronização offline de treinos e substituição inteligente de exercícios no Botão Anti-Fila.",
+        "badge": "PERFORMANCE"
+      },
+      {
+        "title": "Vitrines Públicas Canônicas (/p/:username)",
+        "description": "Link curto oficial e padronizado em Stories 9:16, QR Codes e Bio do Instagram com carregamento instantâneo e checkout Pix Asaas.",
+        "badge": "CRESCIMENTO"
+      },
       {
         "title": "Autenticação Multifatorial (2FA) Inteligente",
         "description": "Acesse sua conta com segurança reforçada. Caso não tenha aplicativo autenticador, receba o código via WhatsApp ou E-mail com 1 toque.",
         "badge": "PROTEÇÃO"
-      },
-      {
-        "title": "Alertas e Mensagens de Treino em Tempo Real no WhatsApp",
-        "description": "Receba notificações de novas fichas, avisos de streak em risco e mensagens de apoio do seu treinador diretamente no seu WhatsApp.",
-        "badge": "COMUNICAÇÃO"
       }
     ],
     "trainer": [
       {
+        "title": "Live Student Pulse 3.0 com Robô WhatsApp & IA",
+        "description": "Monitoramento em tempo real unificando dúvidas respondidas pelo robô, trocas de exercício biomecânicas e consultas clínicas da IA.",
+        "badge": "TELEMETRIA PRO"
+      },
+      {
+        "title": "Ações Humanas no WhatsApp em 1 Clique In-App",
+        "description": "Parabenize ofensivas de alunos em lote e envie incentivos personalizados diretamente de dentro do aplicativo via API, sem precisar abrir o WhatsApp.",
+        "badge": "AUTOMAÇÃO"
+      },
+      {
+        "title": "Sincronização em Tempo Real da Conexão WhatsApp & Vitrine",
+        "description": "Status ao vivo da conexão do robô e contador de interações nos painéis de Vitrine e Meu Perfil & Conta.",
+        "badge": "INTEGRAÇÃO"
+      },
+      {
         "title": "Pareamento Direto do WhatsApp do Treinador por Código de 8 Dígitos",
         "description": "Conecte seu WhatsApp instantaneamente digitando o código de pareamento no celular, sem necessidade de escanear QR Code com a câmera.",
         "badge": "WHATSAPP PRO"
-      },
-      {
-        "title": "Acesso 2FA Sem Bloqueio com Dispositivo Confiável de 30 Dias",
-        "description": "Mantenha seu cockpit autenticado por 30 dias no seu dispositivo pessoal, com canais alternativos flexíveis para evitar qualquer perda de acesso.",
-        "badge": "PRATICIDADE"
-      },
-      {
-        "title": "Autenticação Multifatorial (2FA) Inteligente",
-        "description": "Acesse sua conta com segurança reforçada. Caso não tenha aplicativo autenticador, receba o código via WhatsApp ou E-mail com 1 toque.",
-        "badge": "PROTEÇÃO"
-      },
-      {
-        "title": "Alertas e Mensagens de Treino em Tempo Real no WhatsApp",
-        "description": "Receba notificações de novas fichas, avisos de streak em risco e mensagens de apoio do seu treinador diretamente no seu WhatsApp.",
-        "badge": "COMUNICAÇÃO"
       }
     ],
     "admin": [
       {
+        "title": "Roteamento Canônico e Fallbacks Seguros de Vitrine",
+        "description": "Unificação de rotas /p/:user em produção com preservação transparente de links legados /prof/ e redirecionamento limpo para o diretório de coaches.",
+        "badge": "ESTABILIDADE"
+      },
+      {
         "title": "Blindagem de Segurança do 2FA & Multi-Canal (WhatsApp, Email e Backup)",
         "description": "Armazenamento de segredos com hash HMAC-SHA256, expiração atômica de OTPs, rate limiting de 45s e bloqueio preventivo após 5 tentativas.",
         "badge": "SEGURANÇA & ACESSO"
-      },
-      {
-        "title": "Conexão Otimizada da Evolution API & Persistência de Sessões",
-        "description": "Mapeamento de volumes persistentes na VPS, integração nativa com cache Redis e eliminação de timeouts em disparos assíncronos.",
-        "badge": "INFRAESTRUTURA"
-      },
-      {
-        "title": "Autenticação Multifatorial (2FA) Inteligente",
-        "description": "Acesse sua conta com segurança reforçada. Caso não tenha aplicativo autenticador, receba o código via WhatsApp ou E-mail com 1 toque.",
-        "badge": "PROTEÇÃO"
       }
     ]
   }
