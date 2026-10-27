@@ -262,7 +262,6 @@ class _PwaUpdateWrapperState extends State<PwaUpdateWrapper> with WidgetsBinding
             ElevatedButton(
               onPressed: () {
                 if (kIsWeb) {
-                  PwaUpdateNotifier.instance.dismiss();
                   showDialog<void>(
                     context: context,
                     barrierDismissible: false,

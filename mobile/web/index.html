@@ -116,6 +116,18 @@
         window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: { worker: !!worker } }));
       }
 
+      // Função unificada de recarregamento forçado (limpa cache HTTP e recarrega)
+      window.hardReloadApp = function() {
+        try {
+          const currentUrl = new URL(window.location.href);
+          currentUrl.searchParams.set('_pwa_reload', Date.now());
+          window.location.href = currentUrl.toString();
+          window.location.reload();
+        } catch (_) {
+          window.location.reload();
+        }
+      };
+
       // Função unificada de recarregamento limpo de caches PWA (exposta para JS e Dart)
       window.triggerPwaReload = async function() {
         if (isRefreshing) return;
@@ -129,37 +141,33 @@
           } catch (_) {}
         }
 
-        // Limpa caches de assets e scripts para subir código novo sem afetar tokens de login
+        // Limpa TODOS os caches de assets para garantir que os arquivos novos baixem
         if ('caches' in window) {
           try {
             const cacheKeys = await caches.keys();
-            await Promise.all(
-              cacheKeys.map((key) => {
-                if (key.includes('flutter') || key.includes('app') || key.includes('shaipados') || key.includes('workbox')) {
-                  return caches.delete(key);
-                }
-                return Promise.resolve();
-              })
-            );
+            await Promise.all(cacheKeys.map((key) => caches.delete(key)));
           } catch (_) {}
         }
 
-        // Atualiza registros do service worker
+        // Desregistra service workers antigos para forçar o download limpo do novo bundle
         if ('serviceWorker' in navigator) {
           try {
             const registrations = await navigator.serviceWorker.getRegistrations();
             for (let reg of registrations) {
-              await reg.update();
+              if (reg.waiting) {
+                try {
+                  reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                  reg.waiting.postMessage('skipWaiting');
+                } catch (_) {}
+              }
+              await reg.unregister();
             }
           } catch (_) {}
         }
 
         setTimeout(() => {
-          // Força recarregamento limpo contornando o cache de disco do PWA
-          const currentUrl = new URL(window.location.href);
-          currentUrl.searchParams.set('_pwa_reload', Date.now());
-          window.location.replace(currentUrl.toString());
-        }, 300);
+          window.hardReloadApp();
+        }, 200);
       };
 
       if ('serviceWorker' in navigator) {

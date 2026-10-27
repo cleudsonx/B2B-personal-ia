@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -1081,7 +1082,26 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
                       child: ElevatedButton.icon(
                         onPressed: () {
                           Navigator.pop(context);
-                          PwaInstaller.triggerPwaReload();
+                          if (kIsWeb) {
+                            showDialog<void>(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (_) => const ShaipadosLoaderContainer(
+                                type: ShaipadosLoaderType.labShakerDna,
+                                customTitle: 'Atualizando Shaipados Labs',
+                                loadingMessages: [
+                                  'Sintetizando nova versão no Labs...',
+                                  'Carregando novos módulos e correções...',
+                                  'Reiniciando o sistema...',
+                                ],
+                              ),
+                            );
+                            Future.delayed(const Duration(milliseconds: 600), () {
+                              PwaInstaller.triggerPwaReload();
+                            });
+                          } else {
+                            PwaInstaller.triggerPwaReload();
+                          }
                         },
                         icon: const Icon(Icons.bolt_rounded, size: 20),
                         label: const Text(

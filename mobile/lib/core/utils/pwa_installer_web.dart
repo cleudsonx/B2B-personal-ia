@@ -52,17 +52,17 @@ bool isAndroidWeb() {
   }
 }
 
-@JS('window._pwaHasPendingUpdate')
+@JS('_pwaHasPendingUpdate')
 external JSBoolean? _jsHasPendingUpdate;
 
-@JS('window.triggerPwaReload')
+@JS('triggerPwaReload')
 external JSFunction? _jsTriggerPwaReload;
 
-@JS('window._onPwaUpdateAvailable')
-external set _jsOnPwaUpdateAvailable(JSFunction? callback);
+@JS('hardReloadApp')
+external JSFunction? _jsHardReloadApp;
 
-@JS('window.location.reload')
-external void _jsLocationReload();
+@JS('_onPwaUpdateAvailable')
+external set _jsOnPwaUpdateAvailable(JSFunction? callback);
 
 bool hasPendingUpdate() {
   try {
@@ -84,14 +84,16 @@ void triggerPwaReload() {
   try {
     if (_jsTriggerPwaReload != null) {
       _jsTriggerPwaReload!.callAsFunction();
-    } else {
-      _jsLocationReload();
+      return;
     }
-  } catch (_) {
-    try {
-      _jsLocationReload();
-    } catch (_) {}
-  }
+  } catch (_) {}
+
+  try {
+    if (_jsHardReloadApp != null) {
+      _jsHardReloadApp!.callAsFunction();
+      return;
+    }
+  } catch (_) {}
 }
 
 @JS('isWebBiometricsAvailable')
