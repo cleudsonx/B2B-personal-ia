@@ -126,7 +126,7 @@ class B2BPersonalIaApp extends StatelessWidget {
           );
     } else if (segments.length >= 2 && (segments[0] == 'p' || segments[0] == 'prof')) {
       builder = (_) => TrainerPublicLandingScreen(username: segments[1]);
-    } else if (uri.path == '/coaches' || uri.path == '/treinadores' || uri.path == '/prof') {
+    } else if (uri.path == '/coaches' || uri.path == '/treinadores' || uri.path == '/p' || uri.path == '/prof') {
       builder = (_) => const PublicTrainerDirectoryScreen();
     } else if (uri.path == '/science' || uri.path.startsWith('/science/')) {
       final tab = segments.length >= 2 ? segments[1] : '1rm';

@@ -835,7 +835,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                 const Icon(Icons.language_rounded, size: 15, color: MetaColors.emerald),
                 const SizedBox(width: 8),
                 const Text(
-                  'shaipados.com/#/prof/',
+                  'shaipados.com/#/p/',
                   style: TextStyle(
                     color: MetaColors.emerald,
                     fontSize: 13.5,
@@ -909,7 +909,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'https://shaipados.com/#/prof/${_usernameController.text.trim().toLowerCase()}',
+                      'https://shaipados.com/#/p/${_usernameController.text.trim().toLowerCase()}',
                       style: const TextStyle(
                         color: MetaColors.accentBlue,
                         fontSize: 12.5,
@@ -925,7 +925,7 @@ class _TrainerProfileSetupScreenState extends State<TrainerProfileSetupScreen> {
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                     onPressed: () {
-                      final url = 'https://shaipados.com/#/prof/${_usernameController.text.trim().toLowerCase()}';
+                      final url = 'https://shaipados.com/#/p/${_usernameController.text.trim().toLowerCase()}';
                       Clipboard.setData(ClipboardData(text: url));
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(

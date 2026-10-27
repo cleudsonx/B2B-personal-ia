@@ -178,7 +178,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
   }
 
   void _copyConsultancyLink() {
-    final link = 'https://mrcoach.shaipados.com/p/${widget.username}';
+    final link = 'https://shaipados.com/#/p/${widget.username}';
     Clipboard.setData(ClipboardData(text: link));
     HapticFeedback.lightImpact();
     if (!mounted) return;

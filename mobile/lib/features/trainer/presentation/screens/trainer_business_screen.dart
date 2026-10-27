@@ -980,7 +980,7 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
     final cleanUser = (_username != null && _username!.isNotEmpty)
         ? _username!.replaceFirst(RegExp(r'^@'), '')
         : 'mrcoach';
-    final showcaseUrl = 'https://shaipados.com/#/prof/${Uri.encodeComponent(cleanUser)}';
+    final showcaseUrl = 'https://shaipados.com/#/p/${Uri.encodeComponent(cleanUser)}';
     showModalBottomSheet(
       context: context,
       backgroundColor: MetaColors.card(context),
@@ -1296,8 +1296,8 @@ class _TrainerBusinessScreenState extends State<TrainerBusinessScreen> {
     final cleanUser = (_username != null && _username!.isNotEmpty)
         ? _username!.replaceFirst(RegExp(r'^@'), '')
         : 'mrcoach';
-    final displayUrl = 'shaipados.com/#/prof/$cleanUser';
-    final fullUrl = 'https://shaipados.com/#/prof/$cleanUser';
+    final displayUrl = 'shaipados.com/#/p/$cleanUser';
+    final fullUrl = 'https://shaipados.com/#/p/$cleanUser';
 
     return SliverToBoxAdapter(
       child: Padding(
