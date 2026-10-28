@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/theme_controller.dart';
 import '../../../../core/widgets/app_version_footer.dart';
 import '../../../../core/widgets/avatar_selector_sheet.dart';
 import '../../../../core/widgets/meta_components.dart';
 import '../../../../services/auth_service.dart';
+import '../../../../services/whatsapp_direct_service.dart';
 import '../../../../services/workout_service.dart';
 import 'trainer_profile_setup_screen.dart';
+
+enum _SocialRankingFilter { all, fire, risk }
 
 /// Aba 3 do Professor (Social / Atualizações)
 ///
@@ -31,6 +33,9 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
   Map<String, dynamic>? _trainerStatus;
   bool _isLoading = true;
   bool _loadFailed = false;
+  _SocialRankingFilter _rankingFilter = _SocialRankingFilter.all;
+  bool _isBatchCongratulating = false;
+  final Set<String> _congratulatedSessionIds = {};
 
   @override
   void initState() {
@@ -194,6 +199,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
     final currentMsg = _trainerStatus?['status_message'] as String? ?? '';
     final ctrl = TextEditingController(text: currentMsg);
     var isSaving = false;
+    var sendWaBroadcast = false;
 
     showModalBottomSheet(
       context: context,
@@ -236,7 +242,35 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                 'Publique um aviso, dica ou recado motivacional para todos os seus alunos visualizarem.',
                 style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 13),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildTemplateChip(
+                      ctx,
+                      '🔥 Desafio da Semana',
+                      '🔥 Desafio da Semana: Quem fechar 100% dos treinos entra no destaque de sexta!',
+                      ctrl,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildTemplateChip(
+                      ctx,
+                      '⏰ Aviso Feriado',
+                      '⏰ Horário Especial: Atenção ao cronograma diferenciado de feriado!',
+                      ctrl,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildTemplateChip(
+                      ctx,
+                      '💧 Dica de Hidratação',
+                      '💧 Dica do Coach: Aumentem 500ml de água hoje para acelerar a recuperação muscular.',
+                      ctrl,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
               TextField(
                 controller: ctrl,
                 maxLines: 3,
@@ -251,6 +285,51 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
                   ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // Switch de Disparo WhatsApp In-App via Robô
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: MetaColors.emerald.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.smart_toy_rounded, color: MetaColors.emerald, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Disparar no WhatsApp (In-App)',
+                            style: TextStyle(
+                              color: MetaColors.emerald,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'Envia via robô para alunos ativos sem abrir o app externo',
+                            style: TextStyle(
+                              color: MetaColors.subtext(ctx),
+                              fontSize: 10.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: sendWaBroadcast,
+                      activeTrackColor: MetaColors.emerald,
+                      onChanged: (val) {
+                        setModalState(() => sendWaBroadcast = val);
+                      },
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
@@ -295,6 +374,10 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                                 await WorkoutService.updateTrainerStatus(text);
                                 if (ctx.mounted) Navigator.pop(ctx);
                                 _loadAll();
+
+                                if (sendWaBroadcast && text.isNotEmpty) {
+                                  _broadcastStatusToStudents(text);
+                                }
                               } catch (e) {
                                 setModalState(() => isSaving = false);
                               }
@@ -322,6 +405,72 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildTemplateChip(
+    BuildContext ctx,
+    String label,
+    String templateText,
+    TextEditingController ctrl,
+  ) {
+    return InkWell(
+      onTap: () {
+        ctrl.text = templateText;
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: MetaColors.highlight(ctx),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: MetaColors.cardBorder(ctx)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: MetaColors.text(ctx),
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _broadcastStatusToStudents(String text) async {
+    if (_rankingStudents.isEmpty) return;
+    int sentCount = 0;
+    for (final st in _rankingStudents.take(15)) {
+      final phone = st['phone']?.toString();
+      final name = st['full_name']?.toString() ?? 'Aluno';
+      final firstName = name.split(' ').first;
+      final studentId = st['client_id']?.toString();
+      if (phone != null && phone.isNotEmpty) {
+        final res = await WhatsAppDirectService.sendOneClick(
+          context: context,
+          phone: phone,
+          studentId: studentId,
+          studentName: name,
+          message: 'Fala $firstName! Recado do seu treinador no Mr. Coach:\n\n"$text"',
+          category: 'trainer_mural_broadcast',
+          showFeedback: false,
+          allowExternalFallback: false,
+        );
+        if (res.sentInApp) sentCount++;
+      }
+    }
+    if (mounted && sentCount > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: MetaColors.emerald,
+          behavior: SnackBarBehavior.floating,
+          content: Text(
+            '📢 Recado disparado via Robô para $sentCount alunos no WhatsApp!',
+            style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w800),
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _updateTrainerProfilePhoto() async {
@@ -572,25 +721,15 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                     onPressed: () async {
                       final firstName = clientName.split(' ').first;
                       final msg = 'Fala $firstName! Vi aqui no Mr. Coach que você concluiu o Split $splitId ($splitName)! Parabéns pela dedicação e foco! 🔥💪';
-                      final encoded = Uri.encodeComponent(msg);
-
-                      final uri = cleanPhone.isNotEmpty
-                          ? Uri.parse('https://api.whatsapp.com/send?phone=$cleanPhone&text=$encoded')
-                          : Uri.parse('https://api.whatsapp.com/send?text=$encoded');
-
-                      try {
-                        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-                        if (!launched) {
-                          await launchUrl(uri, mode: LaunchMode.platformDefault);
-                        }
-                      } catch (_) {
-                        try {
-                          await launchUrl(uri, mode: LaunchMode.platformDefault);
-                        } catch (err) {
-                          debugPrint('Erro ao abrir WhatsApp: $err');
-                        }
-                      }
                       if (ctx.mounted) Navigator.pop(ctx);
+                      await WhatsAppDirectService.sendOneClick(
+                        context: context,
+                        phone: cleanPhone,
+                        studentId: session['client_id']?.toString(),
+                        studentName: clientName,
+                        message: msg,
+                        category: 'social_session_congrats',
+                      );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: MetaColors.emerald,
@@ -680,7 +819,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                   parent: BouncingScrollPhysics(),
                 ),
                 slivers: [
-                  // 1. Topo M3: Título da Aba "Atualizações" + Popover One UI
+                  // 1. Topo M3: Título da Aba "Comunidade" + Status Pill do Robô WA + Popover One UI
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.only(
@@ -692,14 +831,42 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Atualizações',
-                            style: TextStyle(
-                              color: MetaColors.text(context),
-                              fontSize: 26,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.5,
-                            ),
+                          Row(
+                            children: [
+                              Text(
+                                'Comunidade',
+                                style: TextStyle(
+                                  color: MetaColors.text(context),
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.5,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: MetaColors.emerald.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.35)),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.smart_toy_rounded, size: 12, color: MetaColors.emerald),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Robô WA Ativo',
+                                      style: TextStyle(
+                                        color: MetaColors.emerald,
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                           OneUiPopoverMenuButton(
                             showBadgeDot: true,
@@ -741,17 +908,22 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                     ),
                   ),
 
-                  // 2. Seção "Status": Título
+                  // 2. Card Editorial: Pulso da Turma (Últimos 7 dias)
+                  SliverToBoxAdapter(
+                    child: _buildCommunityPulseBanner(),
+                  ),
+
+                  // 3. Seção "Mural do Treinador"
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.only(
                         left: 20,
                         right: 20,
-                        top: 4,
+                        top: 8,
                         bottom: 8,
                       ),
                       child: Text(
-                        'Status do Treinador',
+                        'Mural do Treinador',
                         style: TextStyle(
                           color: MetaColors.text(context),
                           fontSize: 18,
@@ -762,113 +934,164 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                     ),
                   ),
 
-                  // Status do Treinador (Avatar para Trocar Foto + Recado Interativo para Editar Status)
+                  // Status do Treinador (Avatar para Trocar Foto + Recado Interativo + Ações Rápidas)
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       child: Container(
                         decoration: BoxDecoration(
                           color: MetaColors.card(context),
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(18),
                           border: Border.all(color: MetaColors.cardBorder(context)),
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                          child: Row(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Avatar do Treinador: Tocar para alterar foto de perfil
-                              InkWell(
-                                onTap: _updateTrainerProfilePhoto,
-                                borderRadius: BorderRadius.circular(32),
-                                child: Stack(
-                                  children: [
-                                    _buildAvatar(
-                                      photoUrl: trainerPhoto,
-                                      initials: trainerInitials,
-                                      radius: 28,
-                                    ),
-                                    Positioned(
-                                      bottom: 0,
-                                      right: 0,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(5),
-                                        decoration: BoxDecoration(
-                                          color: MetaColors.emerald,
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: MetaColors.card(context),
-                                            width: 2,
-                                          ),
-                                        ),
-                                        child: const Icon(
-                                          Icons.camera_alt_rounded,
-                                          size: 13,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 14),
-                              // Clique no texto e recado para editar o status
-                              Expanded(
-                                child: InkWell(
-                                  onTap: _openEditStatusModal,
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                              Row(
+                                children: [
+                                  // Avatar do Treinador: Tocar para alterar foto de perfil
+                                  InkWell(
+                                    onTap: _updateTrainerProfilePhoto,
+                                    borderRadius: BorderRadius.circular(32),
+                                    child: Stack(
                                       children: [
-                                        Row(
-                                          children: [
-                                            Text(
-                                              'Meu status',
-                                              style: TextStyle(
-                                                color: MetaColors.text(context),
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 16,
+                                        _buildAvatar(
+                                          photoUrl: trainerPhoto,
+                                          initials: trainerInitials,
+                                          radius: 26,
+                                        ),
+                                        Positioned(
+                                          bottom: 0,
+                                          right: 0,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(4),
+                                            decoration: BoxDecoration(
+                                              color: MetaColors.emerald,
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: MetaColors.card(context),
+                                                width: 2,
                                               ),
                                             ),
-                                            const SizedBox(width: 6),
-                                            const Icon(
-                                              Icons.edit_outlined,
-                                              size: 15,
-                                              color: MetaColors.emerald,
+                                            child: const Icon(
+                                              Icons.camera_alt_rounded,
+                                              size: 11,
+                                              color: Colors.white,
                                             ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          hasStatus
-                                              ? statusMessage
-                                              : 'Toque para publicar um aviso ou dica para seus alunos.',
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            color: hasStatus ? MetaColors.text(context) : MetaColors.subtext(context),
-                                            fontSize: 13,
-                                            fontWeight: hasStatus ? FontWeight.w500 : FontWeight.normal,
                                           ),
                                         ),
-                                        if (hasStatus && statusUpdatedAt != null) ...[
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            _formatRelativeTime(statusUpdatedAt),
-                                            style: const TextStyle(color: MetaColors.emerald, fontSize: 11),
-                                          ),
-                                        ],
                                       ],
                                     ),
                                   ),
-                                ),
+                                  const SizedBox(width: 12),
+                                  // Clique no texto e recado para editar o status
+                                  Expanded(
+                                    child: InkWell(
+                                      onTap: _openEditStatusModal,
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Text(
+                                                'Meu aviso atual',
+                                                style: TextStyle(
+                                                  color: MetaColors.text(context),
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 14.5,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              const Icon(
+                                                Icons.edit_outlined,
+                                                size: 14,
+                                                color: MetaColors.emerald,
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Text(
+                                            hasStatus
+                                                ? statusMessage
+                                                : 'Toque para publicar um aviso ou dica para seus alunos.',
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: hasStatus ? MetaColors.text(context) : MetaColors.subtext(context),
+                                              fontSize: 12.5,
+                                              fontWeight: hasStatus ? FontWeight.w500 : FontWeight.normal,
+                                            ),
+                                          ),
+                                          if (hasStatus && statusUpdatedAt != null) ...[
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              _formatRelativeTime(statusUpdatedAt),
+                                              style: const TextStyle(color: MetaColors.emerald, fontSize: 10.5),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.edit_outlined, size: 20),
-                                color: MetaColors.subtext(context),
-                                tooltip: 'Editar Status',
-                                onPressed: _openEditStatusModal,
+                              const SizedBox(height: 10),
+                              Divider(height: 1, color: MetaColors.cardBorder(context)),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: InkWell(
+                                      onTap: _openEditStatusModal,
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(vertical: 7),
+                                        decoration: BoxDecoration(
+                                          color: MetaColors.highlight(context),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            '✏️ Editar Aviso',
+                                            style: TextStyle(
+                                              color: MetaColors.text(context),
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: InkWell(
+                                      onTap: _openEditStatusModal,
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(vertical: 7),
+                                        decoration: BoxDecoration(
+                                          color: MetaColors.emerald.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.35)),
+                                        ),
+                                        child: const Center(
+                                          child: Text(
+                                            '🤖 Disparar no WhatsApp',
+                                            style: TextStyle(
+                                              color: MetaColors.emerald,
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -877,40 +1100,90 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                     ),
                   ),
 
-                  // 3. Seção "Atualizações Recentes" (Treinos Concluídos)
+                  // 4. Seção "Finalizaram hoje" (Treinos Concluídos) com Ação em Lote
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.only(
                         left: 20,
                         right: 20,
                         top: 20,
-                        bottom: 12,
+                        bottom: 10,
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Atualizações recentes',
-                            style: TextStyle(
-                              color: MetaColors.text(context),
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: -0.3,
-                            ),
+                          Row(
+                            children: [
+                              Text(
+                                'Finalizaram hoje',
+                                style: TextStyle(
+                                  color: MetaColors.text(context),
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              if (_recentSessions.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: MetaColors.emerald.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '${_recentSessions.length}',
+                                    style: const TextStyle(
+                                      color: MetaColors.emerald,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                           if (_recentSessions.isNotEmpty)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: MetaColors.emerald.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                '${_recentSessions.length} treinos',
-                                style: const TextStyle(
+                            InkWell(
+                              onTap: _isBatchCongratulating ? null : _congratulateAllToday,
+                              borderRadius: BorderRadius.circular(20),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
                                   color: MetaColors.emerald,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: MetaColors.emerald.withValues(alpha: 0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (_isBatchCongratulating)
+                                      const SizedBox(
+                                        width: 12,
+                                        height: 12,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    else
+                                      const Icon(Icons.bolt_rounded, size: 14, color: Colors.white),
+                                    const SizedBox(width: 4),
+                                    const Text(
+                                      'Parabenizar Todos',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -925,10 +1198,10 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                   ),
 
                   const SliverToBoxAdapter(
-                    child: SizedBox(height: 24),
+                    child: SizedBox(height: 20),
                   ),
 
-                  // 4. Seção "Consistência dos alunos": Cabeçalho
+                  // 5. Seção "Consistência & Retenção": Cabeçalho + Chips de Filtro
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -936,7 +1209,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Consistência dos alunos',
+                            'Consistência & Retenção',
                             style: TextStyle(
                               color: MetaColors.text(context),
                               fontSize: 18,
@@ -956,9 +1229,34 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                     ),
                   ),
 
-                  const SliverToBoxAdapter(
-                    child: SizedBox(height: 8),
+                  // Chips de Filtro (One UI)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 10, bottom: 8),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          children: [
+                            _buildFilterChip('🏆 Ranking Geral', _SocialRankingFilter.all),
+                            const SizedBox(width: 8),
+                            _buildFilterChip('🔥 Em Chamas (+7d)', _SocialRankingFilter.fire),
+                            const SizedBox(width: 8),
+                            _buildFilterChip('⚠️ Sumidos (+4d)', _SocialRankingFilter.risk, isRisk: true),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
+
+                  // Pódio Top 3 (Se houver pelo menos 3 alunos no filtro e não for 'risk')
+                  if (!_isLoading &&
+                      !_loadFailed &&
+                      _rankingFilter != _SocialRankingFilter.risk &&
+                      _getFilteredStudents().length >= 3)
+                    SliverToBoxAdapter(
+                      child: _buildPodiumTop3(_getFilteredStudents().take(3).toList()),
+                    ),
 
                   // Ranking Sliver com Fotos Reais
                   SliverPadding(
@@ -978,15 +1276,406 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
     );
   }
 
+  Widget _buildCommunityPulseBanner() {
+    final totalCompleted = _recentSessions.length;
+    final inStreakCount = _rankingStudents.where((s) {
+      final st = (s['current_streak'] as num?)?.toInt() ?? 0;
+      return st >= 3;
+    }).length;
+    final totalStudents = _rankingStudents.length;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              MetaColors.emerald.withValues(alpha: 0.18),
+              const Color(0xFF06B6D4).withValues(alpha: 0.08),
+            ],
+          ),
+          border: Border.all(
+            color: MetaColors.emerald.withValues(alpha: 0.28),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.bolt_rounded, size: 14, color: MetaColors.emerald),
+                const SizedBox(width: 4),
+                const Text(
+                  'PULSO DA TURMA • ÚLTIMOS 7 DIAS',
+                  style: TextStyle(
+                    color: MetaColors.emerald,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: MetaColors.emerald.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.smart_toy_rounded, size: 11, color: MetaColors.emerald),
+                      SizedBox(width: 4),
+                      Text(
+                        'Robô Conectado',
+                        style: TextStyle(
+                          color: MetaColors.emerald,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              inStreakCount > 0
+                  ? '$inStreakCount alunos mantendo ofensiva ativa hoje'
+                  : 'Acompanhe o engajamento e a disciplina dos seus alunos',
+              style: TextStyle(
+                color: MetaColors.text(context),
+                fontSize: 14.5,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMiniStat(
+                    title: 'Treinos hoje',
+                    value: '$totalCompleted',
+                    color: MetaColors.text(context),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildMiniStat(
+                    title: 'Em ofensiva',
+                    value: '$inStreakCount 🔥',
+                    color: MetaColors.emerald,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildMiniStat(
+                    title: 'Total alunos',
+                    value: '$totalStudents',
+                    color: const Color(0xFF06B6D4),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMiniStat({
+    required String title,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: MetaColors.card(context).withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: MetaColors.cardBorder(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: MetaColors.subtext(context),
+              fontSize: 10.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, _SocialRankingFilter filter, {bool isRisk = false}) {
+    final isSelected = _rankingFilter == filter;
+    final activeColor = isRisk ? const Color(0xFFF43F5E) : MetaColors.emerald;
+
+    return InkWell(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _rankingFilter = filter);
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? activeColor
+              : MetaColors.card(context),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? activeColor
+                : MetaColors.cardBorder(context),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : MetaColors.subtext(context),
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Map<String, dynamic>> _getFilteredStudents() {
+    switch (_rankingFilter) {
+      case _SocialRankingFilter.fire:
+        return _rankingStudents.where((s) {
+          final streak = (s['current_streak'] as num?)?.toInt() ?? 0;
+          return streak >= 7;
+        }).toList();
+      case _SocialRankingFilter.risk:
+        return _rankingStudents.where((s) {
+          final streak = (s['current_streak'] as num?)?.toInt() ?? 0;
+          final lastDate = DateTime.tryParse(s['last_activity_date']?.toString() ?? '');
+          if (lastDate == null) return true;
+          final days = DateTime.now().toUtc().difference(lastDate.toUtc()).inDays;
+          return streak == 0 || days >= 4;
+        }).toList();
+      case _SocialRankingFilter.all:
+        return _rankingStudents;
+    }
+  }
+
+  Widget _buildPodiumTop3(List<Map<String, dynamic>> top3) {
+    if (top3.length < 3) return const SizedBox.shrink();
+
+    final first = top3[0];
+    final second = top3[1];
+    final third = top3[2];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        decoration: BoxDecoration(
+          color: MetaColors.card(context),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: MetaColors.cardBorder(context)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            // 2nd Place (Left)
+            Expanded(
+              child: _buildPodiumColumn(
+                student: second,
+                rank: 2,
+                borderColor: const Color(0xFF94A3B8),
+                badgeColor: const Color(0xFFCBD5E1),
+                isFirst: false,
+              ),
+            ),
+            const SizedBox(width: 8),
+            // 1st Place (Center - Higher)
+            Expanded(
+              flex: 12,
+              child: _buildPodiumColumn(
+                student: first,
+                rank: 1,
+                borderColor: const Color(0xFFF59E0B),
+                badgeColor: const Color(0xFFF59E0B),
+                isFirst: true,
+              ),
+            ),
+            const SizedBox(width: 8),
+            // 3rd Place (Right)
+            Expanded(
+              child: _buildPodiumColumn(
+                student: third,
+                rank: 3,
+                borderColor: const Color(0xFFD97706),
+                badgeColor: const Color(0xFFB45309),
+                isFirst: false,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPodiumColumn({
+    required Map<String, dynamic> student,
+    required int rank,
+    required Color borderColor,
+    required Color badgeColor,
+    required bool isFirst,
+  }) {
+    final name = student['full_name']?.toString() ?? 'Aluno';
+    final firstName = name.trim().split(RegExp(r'\s+')).first;
+    final photoUrl = student['photo_url'] as String?;
+    final streak = (student['current_streak'] as num?)?.toInt() ?? 0;
+    final sessions = (student['sessions_in_window'] as num?)?.toInt() ?? 0;
+
+    final parts = name.trim().split(RegExp(r'\s+'));
+    final initials = parts.length >= 2
+        ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()
+        : (parts.isNotEmpty && parts[0].isNotEmpty ? parts[0][0].toUpperCase() : 'A');
+
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: isFirst ? 14 : 10, horizontal: 4),
+      decoration: BoxDecoration(
+        color: isFirst
+            ? const Color(0xFFF59E0B).withValues(alpha: 0.08)
+            : MetaColors.highlight(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isFirst
+              ? const Color(0xFFF59E0B).withValues(alpha: 0.3)
+              : MetaColors.cardBorder(context),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isFirst) ...[
+            const Text('👑', style: TextStyle(fontSize: 16)),
+            const SizedBox(height: 2),
+          ],
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              _buildAvatar(
+                photoUrl: photoUrl,
+                initials: initials,
+                radius: isFirst ? 26 : 22,
+                borderColor: borderColor,
+              ),
+              Positioned(
+                bottom: -2,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: badgeColor,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '#$rank',
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            firstName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: MetaColors.text(context),
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '🔥 ${streak}d',
+            style: const TextStyle(
+              color: Color(0xFFF59E0B),
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          Text(
+            '$sessions treinos',
+            style: TextStyle(
+              color: MetaColors.subtext(context),
+              fontSize: 9.5,
+            ),
+          ),
+          const SizedBox(height: 6),
+          InkWell(
+            onTap: () => _congratulateStudentStreak(student),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              decoration: BoxDecoration(
+                color: MetaColors.emerald.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.35)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('🤖', style: TextStyle(fontSize: 10)),
+                  SizedBox(width: 2),
+                  Text(
+                    'Parabenizar',
+                    style: TextStyle(
+                      color: MetaColors.emerald,
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRecentSessionsCarousel() {
     if (_isLoading) {
-      return SizedBox(
-        height: 105,
-        child: Center(
-          child: SizedBox(
-            width: 22,
-            height: 22,
-            child: CircularProgressIndicator(color: MetaColors.emerald, strokeWidth: 2),
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 14),
+        child: SizedBox(
+          height: 120,
+          child: ShaipadosLoaderContainer(
+            type: ShaipadosLoaderType.executiveShimmer,
+            isOverlay: false,
+            customTitle: 'Carregando atualizações...',
           ),
         ),
       );
@@ -1036,7 +1725,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
     }
 
     return SizedBox(
-      height: 115,
+      height: 145,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         scrollDirection: Axis.horizontal,
@@ -1049,83 +1738,137 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
           final photoUrl = session['photo_url'] as String?;
           final splitId = session['split_identifier'] as String? ?? 'A';
           final timeRelative = _formatRelativeTime(session['completed_at']);
+          final sessionId = session['id']?.toString() ?? clientName;
+          final isAlreadyCongratulated = _congratulatedSessionIds.contains(sessionId);
 
           final initials = firstName.isNotEmpty ? firstName[0].toUpperCase() : 'A';
 
-          return GestureDetector(
-            onTap: () => _openSessionDetailsModal(session),
+          return Container(
+            width: 90,
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+            decoration: BoxDecoration(
+              color: MetaColors.card(context),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: MetaColors.cardBorder(context)),
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Anel verde de status novo
-                    Container(
-                      width: 66,
-                      height: 66,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: MetaColors.emerald,
-                          width: 2.5,
-                        ),
-                      ),
-                    ),
-                    _buildAvatar(
-                      photoUrl: photoUrl,
-                      initials: initials,
-                      radius: 28,
-                    ),
-                    // Badge do Split
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                GestureDetector(
+                  onTap: () => _openSessionDetailsModal(session),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Anel verde de status
+                      Container(
+                        width: 58,
+                        height: 58,
                         decoration: BoxDecoration(
-                          color: MetaColors.emerald,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: MetaColors.bg(context), width: 1.5),
-                        ),
-                        child: Text(
-                          splitId,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: MetaColors.emerald,
+                            width: 2.5,
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                SizedBox(
-                  width: 72,
-                  child: Text(
-                    firstName,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: MetaColors.text(context),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
+                      _buildAvatar(
+                        photoUrl: photoUrl,
+                        initials: initials,
+                        radius: 24,
+                      ),
+                      // Badge do Split
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: MetaColors.emerald,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: MetaColors.card(context), width: 1.5),
+                          ),
+                          child: Text(
+                            splitId,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                SizedBox(
-                  width: 72,
-                  child: Text(
-                    timeRelative,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: MetaColors.emerald,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
+                const SizedBox(height: 6),
+                Text(
+                  firstName,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: MetaColors.text(context),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  timeRelative,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: MetaColors.subtext(context),
+                    fontSize: 9.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                // Botão Rápido 1-Clique In-App
+                InkWell(
+                  onTap: isAlreadyCongratulated
+                      ? null
+                      : () async {
+                          final phone = session['phone'] as String?;
+                          final splitName = session['split_name'] as String? ?? 'Treino';
+                          final clientId = session['client_id'] as String?;
+                          final msg = 'Fala $firstName! Vi aqui no Mr. Coach que você concluiu o Split $splitId ($splitName)! Parabéns pela dedicação e foco! 🔥💪';
+
+                          final res = await WhatsAppDirectService.sendOneClick(
+                            context: context,
+                            phone: phone,
+                            studentId: clientId,
+                            studentName: clientName,
+                            message: msg,
+                            category: 'social_session_congrats',
+                          );
+                          if (res.sentInApp && mounted) {
+                            setState(() {
+                              _congratulatedSessionIds.add(sessionId);
+                            });
+                          }
+                        },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isAlreadyCongratulated
+                          ? MetaColors.highlight(context)
+                          : MetaColors.emerald.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: isAlreadyCongratulated
+                          ? null
+                          : Border.all(color: MetaColors.emerald.withValues(alpha: 0.35)),
+                    ),
+                    child: Center(
+                      child: Text(
+                        isAlreadyCongratulated ? '✓ Enviado' : '🤖 👏 In-App',
+                        style: TextStyle(
+                          color: isAlreadyCongratulated ? MetaColors.subtext(context) : MetaColors.emerald,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -1137,60 +1880,19 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
     );
   }
 
-  Future<void> _congratulateStudentStreak(Map<String, dynamic> student) async {
-    HapticFeedback.lightImpact();
-    final clientId = student['client_id'] as String? ?? '';
-    final name = student['full_name']?.toString() ?? 'Aluno';
-    final firstName = name.trim().split(RegExp(r'\s+')).first;
-    final streak = (student['current_streak'] as num?)?.toInt() ?? 0;
-    final sessionsInWindow = (student['sessions_in_window'] as num?)?.toInt() ?? 0;
-    final phone = student['phone'] as String? ?? '';
-
-    String cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
-    if (cleanPhone.isNotEmpty && (cleanPhone.length == 10 || cleanPhone.length == 11)) {
-      cleanPhone = '55$cleanPhone';
-    }
-
-    final msg = streak > 0
-        ? 'Fala $firstName! Vi aqui no Mr. Coach que você bateu $streak ${streak == 1 ? "dia seguido" : "dias seguidos"} de treino 🔥 Parabéns pela disciplina! Vamos pra cima! 💪'
-        : 'Fala $firstName! Passando pelo ranking do Mr. Coach pra reconhecer seus $sessionsInWindow treinos concluídos! Bora manter o ritmo! 🔥💪';
-
-    final encoded = Uri.encodeComponent(msg);
-    final uri = cleanPhone.isNotEmpty
-        ? Uri.parse('https://api.whatsapp.com/send?phone=$cleanPhone&text=$encoded')
-        : Uri.parse('https://api.whatsapp.com/send?text=$encoded');
-
-    // Atualiza last_contacted_at no perfil do aluno para zerar alertas de sem contato
-    if (clientId.isNotEmpty) {
-      try {
-        await Supabase.instance.client
-            .from('profiles')
-            .update({'last_contacted_at': DateTime.now().toUtc().toIso8601String()})
-            .eq('id', clientId);
-        WorkoutService.studentsRefreshNotifier.value++;
-      } catch (_) {}
-    }
-
-    try {
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!launched) {
-        await launchUrl(uri, mode: LaunchMode.platformDefault);
-      }
-    } catch (_) {
-      try {
-        await launchUrl(uri, mode: LaunchMode.platformDefault);
-      } catch (err) {
-        debugPrint('Erro ao abrir WhatsApp no Ranking: $err');
-      }
-    }
-  }
-
   Widget _buildRankingSliver() {
     if (_isLoading) {
       return const SliverToBoxAdapter(
         child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Center(child: CircularProgressIndicator(color: MetaColors.emerald)),
+          padding: EdgeInsets.symmetric(horizontal: 14, vertical: 20),
+          child: SizedBox(
+            height: 180,
+            child: ShaipadosLoaderContainer(
+              type: ShaipadosLoaderType.executiveShimmer,
+              isOverlay: false,
+              customTitle: 'Sincronizando consistência...',
+            ),
+          ),
         ),
       );
     }
@@ -1215,27 +1917,45 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
         ),
       );
     }
-    if (_rankingStudents.isEmpty) {
+
+    final filtered = _getFilteredStudents();
+
+    if (filtered.isEmpty) {
       return SliverToBoxAdapter(
         child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Text(
-            'Ainda não há atividades registradas pelos alunos.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: MetaColors.subtext(context)),
+          padding: const EdgeInsets.all(24),
+          child: Center(
+            child: Text(
+              _rankingFilter == _SocialRankingFilter.risk
+                  ? '🎉 Parabéns! Nenhum aluno com risco de abandono ou sem treinar há mais de 4 dias.'
+                  : 'Ainda não há atividades registradas para este filtro.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: MetaColors.subtext(context), fontSize: 13),
+            ),
           ),
         ),
       );
     }
 
+    // Se o pódio estiver ativo (3 ou mais alunos e não for filtro de risco), começamos da 4ª posição (índice 3)
+    final bool hasPodium = _rankingFilter != _SocialRankingFilter.risk && filtered.length >= 3;
+    final displayList = hasPodium ? filtered.sublist(3) : filtered;
+    final int startIndexOffset = hasPodium ? 3 : 0;
+
+    if (displayList.isEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+
     return SliverList.separated(
-      itemCount: _rankingStudents.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 4),
+      itemCount: displayList.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 6),
       itemBuilder: (context, index) {
-        final student = _rankingStudents[index];
+        final student = displayList[index];
+        final actualRank = startIndexOffset + index + 1;
         final streak = (student['current_streak'] as num?)?.toInt() ?? 0;
         final recentSessions = (student['sessions_in_window'] as num?)?.toInt() ?? 0;
-        final badgeColor = _getBadgeColor(streak);
+        final isRisk = _rankingFilter == _SocialRankingFilter.risk || streak == 0;
+        final badgeColor = isRisk ? const Color(0xFFF43F5E) : _getBadgeColor(streak);
         final name = student['full_name']?.toString() ?? 'Aluno';
         final photoUrl = student['photo_url'] as String?;
 
@@ -1245,110 +1965,129 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
             : (parts.isNotEmpty && parts[0].isNotEmpty ? parts[0][0].toUpperCase() : 'A');
 
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 28,
-                child: Center(
-                  child: Text(
-                    '#${index + 1}',
-                    style: TextStyle(
-                      color: badgeColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            decoration: BoxDecoration(
+              color: MetaColors.card(context),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isRisk
+                    ? const Color(0xFFF43F5E).withValues(alpha: 0.25)
+                    : MetaColors.cardBorder(context),
+              ),
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 28,
+                  child: Center(
+                    child: Text(
+                      '#$actualRank',
+                      style: TextStyle(
+                        color: badgeColor,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              _buildAvatar(
-                photoUrl: photoUrl,
-                initials: initials,
-                radius: 22,
-                borderColor: streak >= 7 ? badgeColor.withValues(alpha: 0.6) : null,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: MetaColors.text(context),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
+                const SizedBox(width: 8),
+                _buildAvatar(
+                  photoUrl: photoUrl,
+                  initials: initials,
+                  radius: 20,
+                  borderColor: streak >= 7 ? badgeColor.withValues(alpha: 0.6) : null,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: MetaColors.text(context),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${_formatLastActivity(student['last_activity_date'])} · $recentSessions treinos em 100 dias',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: MetaColors.subtext(context),
-                        fontSize: 12.5,
+                      const SizedBox(height: 2),
+                      Text(
+                        isRisk
+                            ? '${_formatLastActivity(student['last_activity_date'])} · Sem treinar recente'
+                            : '${_formatLastActivity(student['last_activity_date'])} · $recentSessions treinos em 100d',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: isRisk ? const Color(0xFFF43F5E) : MetaColors.subtext(context),
+                          fontSize: 11.5,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: MetaColors.highlight(context),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.local_fire_department_rounded,
-                      color: Color(0xFFF97316),
-                      size: 15,
-                    ),
-                    const SizedBox(width: 3),
-                    Text(
-                      '${streak}d',
-                      style: TextStyle(
-                        color: badgeColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: MetaColors.highlight(context),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isRisk ? Icons.warning_amber_rounded : Icons.local_fire_department_rounded,
+                        color: isRisk ? const Color(0xFFF43F5E) : const Color(0xFFF97316),
+                        size: 13,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 2),
+                      Text(
+                        '${streak}d',
+                        style: TextStyle(
+                          color: badgeColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 6),
-              Tooltip(
-                message: 'Parabenizar no WhatsApp',
-                child: InkWell(
-                  onTap: () => _congratulateStudentStreak(student),
-                  borderRadius: BorderRadius.circular(12),
+                const SizedBox(width: 6),
+                InkWell(
+                  onTap: () => isRisk
+                      ? _rescueStudentNudge(student)
+                      : _congratulateStudentStreak(student),
+                  borderRadius: BorderRadius.circular(10),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                     decoration: BoxDecoration(
-                      color: MetaColors.emerald.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.38)),
+                      color: isRisk
+                          ? const Color(0xFFF43F5E).withValues(alpha: 0.14)
+                          : MetaColors.emerald.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isRisk
+                            ? const Color(0xFFF43F5E).withValues(alpha: 0.38)
+                            : MetaColors.emerald.withValues(alpha: 0.38),
+                      ),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('👏', style: TextStyle(fontSize: 12.5)),
-                        SizedBox(width: 4),
+                        Text(isRisk ? '🛟' : '🤖', style: const TextStyle(fontSize: 11)),
+                        const SizedBox(width: 3),
                         Text(
-                          'Parabenizar',
+                          isRisk ? 'Resgatar' : '1-Click',
                           style: TextStyle(
-                            color: MetaColors.emerald,
+                            color: isRisk ? const Color(0xFFF43F5E) : MetaColors.emerald,
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
                           ),
@@ -1357,11 +2096,116 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
     );
+  }
+
+  Future<void> _congratulateStudentStreak(Map<String, dynamic> student) async {
+    HapticFeedback.lightImpact();
+    final clientId = student['client_id'] as String? ?? '';
+    final name = student['full_name']?.toString() ?? 'Aluno';
+    final firstName = name.trim().split(RegExp(r'\s+')).first;
+    final streak = (student['current_streak'] as num?)?.toInt() ?? 0;
+    final sessionsInWindow = (student['sessions_in_window'] as num?)?.toInt() ?? 0;
+    final phone = student['phone'] as String? ?? '';
+
+    final msg = streak > 0
+        ? 'Fala $firstName! Vi aqui no Mr. Coach que você bateu $streak ${streak == 1 ? "dia seguido" : "dias seguidos"} de treino 🔥 Parabéns pela disciplina! Vamos pra cima! 💪'
+        : 'Fala $firstName! Passando pelo ranking do Mr. Coach pra reconhecer seus $sessionsInWindow treinos concluídos! Bora manter o ritmo! 🔥💪';
+
+    await WhatsAppDirectService.sendOneClick(
+      context: context,
+      phone: phone,
+      studentId: clientId,
+      studentName: name,
+      message: msg,
+      category: 'social_streak_congrats',
+    );
+  }
+
+  Future<void> _rescueStudentNudge(Map<String, dynamic> student) async {
+    HapticFeedback.lightImpact();
+    final clientId = student['client_id'] as String? ?? '';
+    final name = student['full_name']?.toString() ?? 'Aluno';
+    final firstName = name.trim().split(RegExp(r'\s+')).first;
+    final phone = student['phone'] as String? ?? '';
+
+    final msg = 'Fala $firstName! Senti sua falta nos treinos esses dias! Está tudo bem por aí? Me avisa se precisar ajustar a periodização ou o volume, estou aqui contigo! Bora retomar! 🔥💪';
+
+    await WhatsAppDirectService.sendOneClick(
+      context: context,
+      phone: phone,
+      studentId: clientId,
+      studentName: name,
+      message: msg,
+      category: 'social_rescue_nudge',
+    );
+  }
+
+  Future<void> _congratulateAllToday() async {
+    if (_recentSessions.isEmpty || _isBatchCongratulating) return;
+    setState(() => _isBatchCongratulating = true);
+    HapticFeedback.mediumImpact();
+
+    int successCount = 0;
+    for (final session in _recentSessions) {
+      final clientName = session['client_name'] as String? ?? 'Aluno';
+      final firstName = clientName.split(' ').first;
+      final splitId = session['split_identifier'] as String? ?? 'A';
+      final splitName = session['split_name'] as String? ?? 'Treino';
+      final phone = session['phone'] as String?;
+      final clientId = session['client_id'] as String?;
+      final sessionId = session['id']?.toString() ?? clientName;
+
+      final msg = 'Fala $firstName! Vi aqui no Mr. Coach que você concluiu o Split $splitId ($splitName) hoje! Parabéns pela dedicação e foco! 🔥💪';
+
+      final res = await WhatsAppDirectService.sendOneClick(
+        context: context,
+        phone: phone,
+        studentId: clientId,
+        studentName: clientName,
+        message: msg,
+        category: 'social_batch_today_congrats',
+        showFeedback: false,
+        allowExternalFallback: false,
+      );
+      if (res.sentInApp) {
+        successCount++;
+        _congratulatedSessionIds.add(sessionId);
+      }
+    }
+
+    if (mounted) {
+      setState(() => _isBatchCongratulating = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: MetaColors.emerald,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.black, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  successCount > 0
+                      ? '🚀 $successCount incentivos enviados no WhatsApp dos alunos com 1 clique!'
+                      : 'Incentivos disparados para os alunos de hoje!',
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 }

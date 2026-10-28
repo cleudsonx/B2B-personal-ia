@@ -40,6 +40,71 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     // ==========================================
+    // v1.11.3 - ABA SOCIAL & COMUNIDADE 2.0 (ROBÔ WA IN-APP)
+    // ==========================================
+    VersionRelease(
+      version: '1.11.3',
+      buildNumber: 2026103111,
+      date: '28 de Outubro, 2026',
+      summary:
+          'Versão 1.11.3: Modernização da Aba Social & Comunidade do Treinador com disparo In-App via Robô do WhatsApp em 1 clique e em lote, Mural com Broadcast, Pódio Editorial One UI 7, Filtros de Retenção e Loader Executive Shimmer.',
+      highlights: [
+        // --- PROFESSOR / TREINADOR ---
+        ChangelogItem(
+          icon: Icons.smart_toy_rounded,
+          title: 'Aba Social & Comunidade 2.0 com Robô In-App',
+          description:
+              'Incentivos e parabéns por treino ou ofensiva enviados 100% dentro do app pelo Robô WhatsApp em 1 clique e em lote, sem abrir links externos.',
+          badge: 'RETENÇÃO',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.emoji_events_rounded,
+          title: 'Pódio Editorial Top 3 & Filtros de Retenção',
+          description:
+              'Reconhecimento visual dos alunos mais dedicados com pódio One UI 7 e filtros estratégicos: Geral, Em Chamas (+7d) e Resgate Anti-Churn (+4d).',
+          badge: 'ENGAGEMENT',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.campaign_rounded,
+          title: 'Mural do Treinador com Broadcast via Robô',
+          description:
+              'Publique avisos e desafios com templates rápidos e opção de envio direto para a turma no WhatsApp com 1 toque.',
+          badge: 'COMUNICAÇÃO',
+          targetRoles: ['trainer'],
+        ),
+
+        // --- ALUNO & TREINO ---
+        ChangelogItem(
+          icon: Icons.speed_rounded,
+          title: 'Carrossel de Treinos com Anéis de Desempenho',
+          description:
+              'Feed visual mais elegante exibindo os splits finalizados no dia com badges de conclusão e carregamento com o novo Executive Shimmer.',
+          badge: 'DESIGN',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.local_fire_department_rounded,
+          title: 'Feedback de Conclusão e Ofensivas em Tempo Real',
+          description:
+              'Reconhecimento de consistência e incentivos personalizados do treinador sincronizados com rapidez no feed da comunidade.',
+          badge: 'COMUNIDADE',
+          targetRoles: ['student'],
+        ),
+
+        // --- ADMIN / INFRAESTRUTURA ---
+        ChangelogItem(
+          icon: Icons.hub_rounded,
+          title: 'Integração Unificada WhatsAppDirectService',
+          description:
+              'Rastreabilidade ponta a ponta dos disparos sociais integrando os registros de telemetria ao Live Student Pulse 3.0.',
+          badge: 'ESTABILIDADE',
+          targetRoles: ['admin'],
+        ),
+      ],
+    ),
+    // ==========================================
     // v1.11.2 - RECARREGAMENTO PWA 1-CLIQUE & FONTES OFICIAIS
     // ==========================================
     VersionRelease(

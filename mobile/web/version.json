@@ -1,47 +1,42 @@
 {
-  "version": "1.11.2",
-  "build": 2026103109,
-  "updated_at": "2026-10-28T12:42:45.486129Z",
-  "notes": "Versão 1.11.2: Acionamento instantâneo do botão Atualizar no banner PWA, sincronização determinística de caches, fontes Inter oficiais integradas offline e Suíte de Loaders Shaipados Labs.",
+  "version": "1.11.3",
+  "build": 2026103111,
+  "updated_at": "2026-10-28T17:10:00.565988Z",
+  "notes": "Versão 1.11.3: Modernização da Aba Social & Comunidade do Treinador com disparo In-App via Robô do WhatsApp em 1 clique e em lote, Mural com Broadcast, Pódio Editorial One UI 7, Filtros de Retenção e Loader Executive Shimmer.",
   "changelog": {
     "student": [
       {
-        "title": "Fontes Inter Oficiais Empacotadas Offline",
-        "description": "Pacote de tipografia Inter oficial integrado diretamente ao bundle da aplicação, eliminando falhas de carregamento em redes oscilantes.",
-        "badge": "CORREÇÃO"
+        "title": "Carrossel de Treinos com Anéis de Desempenho",
+        "description": "Feed visual mais elegante exibindo os splits finalizados no dia com badges de conclusão e carregamento com o novo Executive Shimmer.",
+        "badge": "DESIGN"
       },
       {
-        "title": "Suíte de Loaders Shaipados Labs (60 FPS Nativo)",
-        "description": "Novas animações fluidas para geração de periodização IA, sincronização offline de treinos e substituição inteligente de exercícios no Botão Anti-Fila.",
-        "badge": "PERFORMANCE"
-      },
-      {
-        "title": "Vitrines Públicas Canônicas (/p/:username)",
-        "description": "Link curto oficial e padronizado em Stories 9:16, QR Codes e Bio do Instagram com carregamento instantâneo e checkout Pix Asaas.",
-        "badge": "CRESCIMENTO"
+        "title": "Feedback de Conclusão e Ofensivas em Tempo Real",
+        "description": "Reconhecimento de consistência e incentivos personalizados do treinador sincronizados com rapidez no feed da comunidade.",
+        "badge": "COMUNIDADE"
       }
     ],
     "trainer": [
       {
-        "title": "Live Student Pulse 3.0 com Robô WhatsApp & IA",
-        "description": "Monitoramento em tempo real unificando dúvidas respondidas pelo robô, trocas de exercício biomecânicas e consultas clínicas da IA.",
-        "badge": "TELEMETRIA PRO"
+        "title": "Aba Social & Comunidade 2.0 com Robô In-App",
+        "description": "Incentivos e parabéns por treino ou ofensiva enviados 100% dentro do app pelo Robô WhatsApp em 1 clique e em lote, sem abrir links externos.",
+        "badge": "RETENÇÃO"
       },
       {
-        "title": "Ações Humanas no WhatsApp em 1 Clique In-App",
-        "description": "Parabenize ofensivas de alunos em lote e envie incentivos personalizados diretamente de dentro do aplicativo via API, sem precisar abrir o WhatsApp.",
-        "badge": "AUTOMAÇÃO"
+        "title": "Pódio Editorial Top 3 & Filtros de Retenção",
+        "description": "Reconhecimento visual dos alunos mais dedicados com pódio One UI 7 e filtros estratégicos: Geral, Em Chamas (+7d) e Resgate Anti-Churn (+4d).",
+        "badge": "ENGAGEMENT"
+      },
+      {
+        "title": "Mural do Treinador com Broadcast via Robô",
+        "description": "Publique avisos e desafios com templates rápidos e opção de envio direto para a turma no WhatsApp com 1 toque.",
+        "badge": "COMUNICAÇÃO"
       }
     ],
     "admin": [
       {
-        "title": "Atualização Instantânea PWA 1-Clique",
-        "description": "Ajuste no ciclo de vida e overlay do banner de novidades com recarregamento e limpeza determinística de cache HTTP e Service Worker.",
-        "badge": "ESTABILIDADE"
-      },
-      {
-        "title": "Roteamento Canônico e Fallbacks Seguros de Vitrine",
-        "description": "Unificação de rotas /p/:user em produção com preservação transparente de links legados /prof/ e redirecionamento limpo para o diretório de coaches.",
+        "title": "Integração Unificada WhatsAppDirectService",
+        "description": "Rastreabilidade ponta a ponta dos disparos sociais integrando os registros de telemetria ao Live Student Pulse 3.0.",
         "badge": "ESTABILIDADE"
       }
     ]
