@@ -2403,11 +2403,12 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
             ),
           ],
           const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton.icon(
-              onPressed: _isSendingDigest ? null : _sendWeeklyDigestToMyWhatsApp,
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 52),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isSendingDigest ? null : _sendWeeklyDigestToMyWhatsApp,
               style: ElevatedButton.styleFrom(
                 backgroundColor: MetaColors.emerald,
                 foregroundColor: Colors.white,
@@ -2430,6 +2431,7 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
                     : 'Enviar Resumo Executivo para o Meu WhatsApp',
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
               ),
+            ),
             ),
           ),
         ],

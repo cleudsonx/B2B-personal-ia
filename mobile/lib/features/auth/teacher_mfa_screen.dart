@@ -737,11 +737,11 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
                           Navigator.pop(ctx);
                         }
                         if (mounted) {
-                          messenger.showSnackBar(
-                            const SnackBar(
-                              content: Text('Autenticador desvinculado com sucesso!'),
-                              backgroundColor: MetaColors.emerald,
-                            ),
+                          AppToast.success(
+                            context,
+                            'Autenticador desvinculado com sucesso!',
+                            title: '2FA Desvinculado',
+                            icon: Icons.check_circle_rounded,
                           );
                           _prepare();
                         }
