@@ -139,6 +139,11 @@ class WhatsAppService:
 
     async def delete_instance(self, instance_name: str) -> dict:
         """Exclui a instância na Evolution API (limpando sessões antigas ou zumbis)."""
+        platform_inst = settings.EVOLUTION_INSTANCE or "mr_coach_instance"
+        if instance_name == platform_inst:
+            logger.warning("[WhatsApp] Tentativa bloqueada de exclusão da instância mestre da plataforma: %s", instance_name)
+            return {"status": "protected", "message": "Instância mestre da plataforma é blindada contra exclusão."}
+
         if self.provider == "mock":
             return {"status": "success", "mode": "mock"}
         async with httpx.AsyncClient(timeout=20) as client:

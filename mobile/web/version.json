@@ -1,8 +1,8 @@
 {
-  "version": "1.12.0",
-  "build": 2026103115,
-  "updated_at": "2026-10-28T19:44:07.818291Z",
-  "notes": "Modernizacao completa da Aba Conta, edicao de nome/foto do professor e unificacao da Central WhatsApp & Consultor IA",
+  "version": "1.12.1",
+  "build": 2026103116,
+  "updated_at": "2026-10-28T23:29:50.413188Z",
+  "notes": "Blindagem do Robo Geral 24h da plataforma e deteccao de fallback no WhatsApp",
   "changelog": {
     "student": [
       {

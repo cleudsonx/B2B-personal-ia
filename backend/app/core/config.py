@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     EVOLUTION_API_KEY: str = ""
     EVOLUTION_API_URL: str = "http://193.123.123.34:8080"
     EVOLUTION_INSTANCE: str = "mr_coach_instance"
+    PLATFORM_WHATSAPP_NUMBER: str = "5561991497852"
     # Segredo que a Evolution envia no header "apikey" do webhook (obrigatorio p/ ativar o Consultor IA)
     EVOLUTION_WEBHOOK_TOKEN: str = "mrcoach_evolution_webhook_sec_2026_tok"
     # URL publica do backend, usada para registrar o webhook na Evolution

@@ -48,6 +48,7 @@ class _AccountScreenState extends State<AccountScreen> {
   bool _loading = true;
   bool _isSwitchingRole = false;
   bool _isWhatsAppConnected = false;
+  bool _isPlatformBotConnected = false;
   int _robotInteractionsCount = 0;
 
   @override
@@ -60,6 +61,7 @@ class _AccountScreenState extends State<AccountScreen> {
     final user = AuthService.currentUser;
     if (user == null) return;
     bool connected = false;
+    bool platformBotConnected = false;
     int totalInteractions = 0;
 
     try {
@@ -79,7 +81,9 @@ class _AccountScreenState extends State<AccountScreen> {
       if (statusResp.statusCode == 200) {
         final data = jsonDecode(statusResp.body) as Map<String, dynamic>;
         final st = (data['status']?.toString() ?? data['state']?.toString() ?? '').toLowerCase();
-        connected = st == 'open' || st == 'connected';
+        final isConn = data['is_connected'] == true || data['trainer_connected'] == true;
+        connected = isConn || st == 'open' || st == 'connected';
+        platformBotConnected = data['platform_bot_connected'] == true || st == 'platform_active';
       }
 
       final telResp = await http
@@ -107,6 +111,7 @@ class _AccountScreenState extends State<AccountScreen> {
     if (mounted) {
       setState(() {
         _isWhatsAppConnected = connected;
+        _isPlatformBotConnected = platformBotConnected;
         _robotInteractionsCount = totalInteractions;
       });
     }
@@ -1069,7 +1074,19 @@ class _AccountScreenState extends State<AccountScreen> {
     }
 
     // Hub Unificado para o Professor (Elimina a duplicidade entre Conexão WhatsApp e Consultor IA)
-    final statusColor = _isWhatsAppConnected ? MetaColors.emerald : Colors.orangeAccent;
+    final bool isPersonalActive = _isWhatsAppConnected;
+    final bool isFallbackActive = !isPersonalActive && _isPlatformBotConnected;
+    final Color statusColor = isPersonalActive
+        ? MetaColors.emerald
+        : (isFallbackActive ? const Color(0xFF06B6D4) : Colors.orangeAccent);
+    final String badgeText = isPersonalActive
+        ? 'SEU NÚMERO ATIVO'
+        : (isFallbackActive ? 'ROBÔ GERAL 24H' : 'PAREAR ROBÔ');
+    final String subtitleText = isPersonalActive
+        ? 'Cockpit 24h • Seu WhatsApp conectado • $_robotInteractionsCount interações'
+        : (isFallbackActive
+            ? 'Alunos protegidos via Central Mr. Coach (61) 99149-7852'
+            : 'Cockpit 24h • Live Pulse 3.0 e Triagem Custo Zero');
 
     return MetaCard(
       padding: const EdgeInsets.all(16),
@@ -1082,10 +1099,10 @@ class _AccountScreenState extends State<AccountScreen> {
               Container(
                 padding: const EdgeInsets.all(9),
                 decoration: BoxDecoration(
-                  color: MetaColors.emerald.withValues(alpha: 0.12),
+                  color: statusColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.smart_toy_rounded, color: MetaColors.emerald, size: 22),
+                child: Icon(Icons.smart_toy_rounded, color: statusColor, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1114,7 +1131,7 @@ class _AccountScreenState extends State<AccountScreen> {
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
-                            _isWhatsAppConnected ? 'CONECTADO 24H' : 'PAREAR ROBÔ',
+                            badgeText,
                             style: TextStyle(
                               color: statusColor,
                               fontSize: 9.5,
@@ -1126,9 +1143,7 @@ class _AccountScreenState extends State<AccountScreen> {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      _robotInteractionsCount > 0
-                          ? 'Cockpit 24h • Live Pulse 3.0 • $_robotInteractionsCount interações'
-                          : 'Cockpit 24h • Live Pulse 3.0 e Triagem Custo Zero',
+                      subtitleText,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

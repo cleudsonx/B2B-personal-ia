@@ -26,6 +26,7 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
   String? _pairingCode;
   String? _pairedPhoneDisplay;
   bool _isConnected = false;
+  bool _isPlatformBotActive = false;
   bool _checkingStatus = true;
   bool _isSendingTest = false;
   bool _isDisconnecting = false;
@@ -122,14 +123,18 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
                 '')
             .toString()
             .toLowerCase();
-        final connected = rawStatus == 'open' ||
+        final connected = data['is_connected'] == true ||
+            data['trainer_connected'] == true ||
+            rawStatus == 'open' ||
             rawStatus == 'connected' ||
             data['connected'] == true;
+        final platformBotActive = data['platform_bot_connected'] == true;
 
         if (mounted) {
           final wasNotConnected = !_isConnected;
           setState(() {
             _isConnected = connected;
+            _isPlatformBotActive = platformBotActive;
             if (connected) {
               _pairingCode = null;
             }
@@ -394,6 +399,26 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
       }
 
       final data = jsonDecode(response.body);
+
+      if (data['status'] == 'platform_master_active') {
+        if (mounted) {
+          setState(() {
+            _isConnected = true;
+            _isPlatformBotActive = true;
+            _pairingCode = null;
+            _isLoading = false;
+          });
+          _stopPolling();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('🛡️ Número oficial da plataforma reconhecido! O Robô Geral já opera 24h na central.'),
+              backgroundColor: Color(0xFF06B6D4),
+            ),
+          );
+          _loadTelemetryAndLogs();
+        }
+        return;
+      }
 
       if (data['status'] == 'already_connected' || data['state'] == 'open') {
         if (mounted) {
@@ -809,6 +834,47 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         _buildStatusIndicator(),
+        if (_isPlatformBotActive) ...[
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF06B6D4).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFF06B6D4).withValues(alpha: 0.35)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.shield_rounded, color: Color(0xFF06B6D4), size: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Rede de Segurança Central Ativa',
+                        style: TextStyle(
+                          color: Color(0xFF06B6D4),
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Mesmo sem seu número pessoal pareado, o Robô Oficial Mr. Coach (61) 99149-7852 está 100% online cobrindo todos os seus alunos.',
+                        style: TextStyle(
+                          color: MetaColors.subtext(context),
+                          fontSize: 11.5,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 20),
         Container(
           padding: const EdgeInsets.all(20),

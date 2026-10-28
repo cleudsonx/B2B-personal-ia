@@ -45,6 +45,21 @@ async def connect_whatsapp(req: ConnectRequest, user: Dict[str, Any] = Depends(g
     """Conecta o WhatsApp do professor autenticado gerando código limpo e atualizado."""
     instance = instance_name_for(_trainer_id(user))
     number = whatsapp_service._format_phone(req.number or "") or None
+
+    # Prevenção de conflito de sessão no chip central da plataforma:
+    # Se o número informado for o número mestre do Mr. Coach (61991497852),
+    # ele já opera 24h na central na instância mr_coach_instance.
+    platform_clean = "".join(c for c in (settings.PLATFORM_WHATSAPP_NUMBER or "5561991497852") if c.isdigit())
+    if number and platform_clean and (number.endswith(platform_clean[-8:]) or platform_clean.endswith(number[-8:])):
+        return {
+            "instance_name": settings.EVOLUTION_INSTANCE or "mr_coach_instance",
+            "status": "platform_master_active",
+            "is_platform_master": True,
+            "message": "Este é o número oficial da Central Mr. Coach. Ele já está ativo 24h na plataforma e atende seus alunos automaticamente.",
+            "pairingCode": None,
+            "qr_code_base64": None,
+        }
+
     try:
         # 1. Se a instância já estiver aberta (conectada com sucesso), evita recriar
         try:
@@ -129,17 +144,71 @@ async def connect_whatsapp(req: ConnectRequest, user: Dict[str, Any] = Depends(g
 
 @router.get("/status")
 async def get_status(user: Dict[str, Any] = Depends(get_current_trainer)):
-    """Estado da conexão do WhatsApp do professor autenticado."""
-    instance = instance_name_for(_trainer_id(user))
+    """Estado da conexão do WhatsApp do professor autenticado com detecção de fallback no Robô Geral."""
+    trainer_id = _trainer_id(user)
+    instance = instance_name_for(trainer_id)
+    platform_inst = settings.EVOLUTION_INSTANCE or "mr_coach_instance"
+
+    trainer_state = "UNKNOWN"
+    trainer_connected = False
+
+    # 1. Verifica a instância pessoal do treinador
     try:
         data = await whatsapp_service.get_instance_state(instance)
-        return {"state": data.get("instance", {}).get("state", "UNKNOWN")}
+        inst_dict = data.get("instance") or {}
+        raw_state = (data.get("state") or inst_dict.get("state") or "").lower()
+        reason = inst_dict.get("disconnectionReasonCode")
+        if raw_state in ("open", "connected") and reason != 401:
+            trainer_state = "open"
+            trainer_connected = True
+        elif raw_state in ("connecting", "qrcode"):
+            trainer_state = "qrcode"
+        else:
+            trainer_state = raw_state or "close"
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
-            return {"state": "NOT_CREATED"}
-        raise HTTPException(status_code=502, detail="Erro ao consultar o WhatsApp.")
+            trainer_state = "NOT_CREATED"
+        else:
+            trainer_state = "close"
     except Exception:
-        raise HTTPException(status_code=502, detail="Erro ao consultar o WhatsApp.")
+        trainer_state = "close"
+
+    # 2. Verifica a instância oficial da Plataforma (fallback ativo)
+    platform_connected = False
+    try:
+        p_data = await whatsapp_service.get_instance_state(platform_inst)
+        p_raw = (p_data.get("state") or p_data.get("instance", {}).get("state") or "").lower()
+        p_reason = p_data.get("instance", {}).get("disconnectionReasonCode")
+        if p_raw in ("open", "connected") and p_reason != 401:
+            platform_connected = True
+        else:
+            open_inst = await whatsapp_service.find_any_open_instance()
+            if open_inst:
+                platform_connected = True
+    except Exception:
+        platform_connected = False
+
+    mode = "dedicated" if trainer_connected else ("platform_fallback" if platform_connected else "disconnected")
+
+    return {
+        "state": trainer_state if trainer_connected else ("platform_active" if platform_connected else trainer_state),
+        "status": "connected" if (trainer_connected or platform_connected) else "disconnected",
+        "is_connected": trainer_connected,
+        "trainer_connected": trainer_connected,
+        "platform_bot_connected": platform_connected,
+        "mode": mode,
+        "platform_number": "+55 (61) 99149-7852",
+        "instance": instance,
+        "message": (
+            "Seu número pessoal está conectado e atendendo via White-Label."
+            if trainer_connected
+            else (
+                "Seu número pessoal está desconectado, mas o Robô Oficial Mr. Coach (61) 99149-7852 está 100% ativo garantindo atendimento aos seus alunos."
+                if platform_connected
+                else "Nenhuma conexão ativa no momento. Gere um código de pareamento para conectar."
+            )
+        ),
+    }
 
 
 @router.delete("/disconnect")
