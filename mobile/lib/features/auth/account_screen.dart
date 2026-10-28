@@ -7,6 +7,7 @@ import '../../core/config/app_config.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../core/widgets/theme_toggle_button.dart';
 import '../../core/widgets/app_version_footer.dart';
+import '../../core/widgets/avatar_selector_sheet.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../services/auth_service.dart';
 import '../../services/subscription_service.dart';
@@ -43,6 +44,7 @@ class _AccountScreenState extends State<AccountScreen> {
   String? _totpFactorId;
   String? _activePlanName = SubscriptionService.currentSubscription?.planName;
   int? _maxStudents = SubscriptionService.currentSubscription?.maxStudents;
+  int _currentStudents = SubscriptionService.currentSubscription?.currentStudents ?? 0;
   bool _loading = true;
   bool _isSwitchingRole = false;
   bool _isWhatsAppConnected = false;
@@ -76,7 +78,7 @@ class _AccountScreenState extends State<AccountScreen> {
           .timeout(const Duration(seconds: 4));
       if (statusResp.statusCode == 200) {
         final data = jsonDecode(statusResp.body) as Map<String, dynamic>;
-        final st = (data['status']?.toString() ?? '').toLowerCase();
+        final st = (data['status']?.toString() ?? data['state']?.toString() ?? '').toLowerCase();
         connected = st == 'open' || st == 'connected';
       }
 
@@ -124,10 +126,22 @@ class _AccountScreenState extends State<AccountScreen> {
         _fetchWhatsAppAndAiStatus();
         try {
           final sub = await SubscriptionService.getMySubscription();
+          int studentCount = sub.currentStudents;
+          final uid = AuthService.currentUser?.id;
+          if (studentCount == 0 && uid != null) {
+            try {
+              final rows = await Supabase.instance.client
+                  .from('profiles')
+                  .select('id')
+                  .eq('trainer_id', uid);
+              studentCount = (rows as List).length;
+            } catch (_) {}
+          }
           if (mounted) {
             setState(() {
               _activePlanName = sub.planName;
               _maxStudents = sub.maxStudents;
+              _currentStudents = studentCount;
             });
           }
         } catch (_) {}
@@ -137,7 +151,9 @@ class _AccountScreenState extends State<AccountScreen> {
       setState(() {
         _roles = roles;
         _email = AuthService.currentUser?.email;
-        _fullName = profile?['full_name'] as String? ?? 'Usuário';
+        _fullName = profile?['full_name'] as String? ??
+            AuthService.currentUser?.userMetadata?['full_name'] as String? ??
+            'Usuário';
         _phone = (profile?['phone'] ??
             profile?['public_whatsapp'] ??
             profile?['whatsapp']) as String?;
@@ -149,6 +165,202 @@ class _AccountScreenState extends State<AccountScreen> {
       if (mounted) setState(() => _roles = [widget.currentRole]);
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _updateProfileAvatar() async {
+    final isTrainer = widget.currentRole == 'trainer';
+    final selected = await AvatarSelectorSheet.show(
+      context: context,
+      isTrainer: isTrainer,
+      currentUrl: _photoUrl,
+    );
+    if (selected != null && mounted) {
+      setState(() => _loading = true);
+      try {
+        final client = Supabase.instance.client;
+        final uid = client.auth.currentUser?.id;
+        if (uid != null) {
+          await client.from('profiles').update({
+            'photo_url': selected,
+            'avatar_url': selected,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          }).eq('id', uid);
+
+          await client.auth.updateUser(
+            UserAttributes(data: {
+              'photo_url': selected,
+              'avatar_url': selected,
+            }),
+          );
+        }
+        WorkoutService.studentsRefreshNotifier.value++;
+        if (mounted) {
+          setState(() {
+            _photoUrl = selected;
+            _loading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: MetaColors.emerald,
+              content: Text(
+                'Foto de perfil atualizada com sucesso!',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _loading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.red.shade900,
+              content: Text('Erro ao atualizar foto: $e'),
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _editFullName() async {
+    final nameController = TextEditingController(text: _fullName ?? '');
+    final formKey = GlobalKey<FormState>();
+    final isDark = MetaColors.isDark(context);
+
+    final updated = await showDialog<String?>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: MetaColors.card(dialogCtx),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: MetaColors.cardBorder(dialogCtx)),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: MetaColors.emerald.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.badge_outlined, color: MetaColors.emerald, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Editar Nome de Exibição',
+                style: TextStyle(
+                  color: MetaColors.text(dialogCtx),
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Este nome será exibido no seu perfil, na vitrine pública, nos treinos dos alunos e nas mensagens do WhatsApp.',
+                style: TextStyle(color: MetaColors.subtext(dialogCtx), fontSize: 13, height: 1.4),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: nameController,
+                textCapitalization: TextCapitalization.words,
+                style: TextStyle(color: MetaColors.text(dialogCtx)),
+                decoration: InputDecoration(
+                  labelText: 'Nome completo ou profissional',
+                  hintText: 'Ex: Prof. Rafael Silva',
+                  prefixIcon: const Icon(Icons.person_outline_rounded, size: 20),
+                  filled: true,
+                  fillColor: isDark ? MetaColors.surfaceHighlight : const Color(0xFFF1F5F9),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: MetaColors.cardBorder(dialogCtx)),
+                  ),
+                ),
+                validator: (val) {
+                  final text = (val ?? '').trim();
+                  if (text.isEmpty) return 'Informe o seu nome';
+                  if (text.length < 2) return 'Nome muito curto';
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, null),
+            child: Text('Cancelar', style: TextStyle(color: MetaColors.subtext(dialogCtx))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: MetaColors.emerald,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.pop(dialogCtx, nameController.text.trim());
+              }
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
+    );
+
+    if (updated != null && updated.isNotEmpty && updated != _fullName) {
+      setState(() => _loading = true);
+      try {
+        final client = Supabase.instance.client;
+        final uid = client.auth.currentUser?.id;
+        if (uid != null) {
+          await client.from('profiles').update({
+            'full_name': updated,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          }).eq('id', uid);
+
+          await client.auth.updateUser(
+            UserAttributes(data: {'full_name': updated}),
+          );
+        }
+        WorkoutService.studentsRefreshNotifier.value++;
+        if (mounted) {
+          setState(() {
+            _fullName = updated;
+            _loading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: MetaColors.emerald,
+              content: Text(
+                'Nome atualizado e sincronizado em todo o sistema!',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _loading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.red.shade900,
+              content: Text('Erro ao atualizar nome: $e'),
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -359,7 +571,7 @@ class _AccountScreenState extends State<AccountScreen> {
               'Conta',
               style: TextStyle(
                 color: MetaColors.text(context),
-                fontSize: 24,
+                fontSize: 26,
                 fontWeight: FontWeight.w700,
                 letterSpacing: -0.5,
               ),
@@ -369,50 +581,185 @@ class _AccountScreenState extends State<AccountScreen> {
         ),
         const SizedBox(height: 16),
 
-        // 1. Card de Perfil com Avatar: Foto/iniciais, nome completo, e-mail e badge da função
-        MetaCard(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          child: Row(
+        // 1. Hero Card de Identidade + Edição de Nome/Foto + CREF Integrado
+        _buildIdentityAndCrefCard(context, isTrainer: isTrainer, hasActiveCref: hasActiveCref),
+
+        if (isTrainer) ...[
+          const SizedBox(height: 14),
+          // 2. Card de Assinatura SaaS & Ocupação de Vagas
+          _buildSaaSPlanCard(context),
+        ],
+
+        const SizedBox(height: 14),
+
+        // 3. Hub Unificado: WhatsApp & Consultor IA 24h (Sem duplicidade!)
+        _buildUnifiedWhatsAppAndAiCard(context, isTrainer: isTrainer),
+
+        if (roles.contains('trainer')) ...[
+          const SizedBox(height: 14),
+          // 4. Card de Segurança (2FA)
+          _buildSecurityCard(context),
+        ],
+
+        if (_loading || _isSwitchingRole) ...[
+          const SizedBox(height: 14),
+          const SizedBox(
+            height: 76,
+            child: ShaipadosLoaderContainer(
+              type: ShaipadosLoaderType.executiveShimmer,
+              isOverlay: false,
+              customTitle: 'Sincronizando dados da conta...',
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 18),
+
+        // 5. Seção de Preferências do Sistema ("Usar como" e "Aparência")
+        _buildPreferencesCard(context, roles: roles),
+
+        const SizedBox(height: 20),
+
+        // 6. Ações de Sessão & Dispositivos
+        _buildSessionActions(context),
+
+        const AppVersionFooter(
+          padding: EdgeInsets.only(top: 14, bottom: 8),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIdentityAndCrefCard(
+    BuildContext context, {
+    required bool isTrainer,
+    required bool hasActiveCref,
+  }) {
+    final imgProvider = safeImageProvider(_photoUrl);
+
+    return MetaCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              CircleAvatar(
-                radius: 26,
-                backgroundColor: MetaColors.highlight(context),
-                backgroundImage: safeImageProvider(_photoUrl),
-                child: safeImageProvider(_photoUrl) == null
-                    ? Text(
-                        (_fullName != null && _fullName!.isNotEmpty)
-                            ? _fullName![0].toUpperCase()
-                            : 'U',
-                        style: const TextStyle(
-                          color: MetaColors.emerald,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
+              // Avatar Interativo com badge de câmera
+              GestureDetector(
+                onTap: _updateProfileAvatar,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(2.5),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: MetaColors.emerald.withValues(alpha: 0.45),
+                          width: 2,
                         ),
-                      )
-                    : null,
+                      ),
+                      child: CircleAvatar(
+                        radius: 28,
+                        backgroundColor: MetaColors.highlight(context),
+                        backgroundImage: imgProvider,
+                        child: imgProvider == null
+                            ? Text(
+                                (_fullName != null && _fullName!.isNotEmpty)
+                                    ? _fullName![0].toUpperCase()
+                                    : 'U',
+                                style: const TextStyle(
+                                  color: MetaColors.emerald,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 22,
+                                ),
+                              )
+                            : null,
+                      ),
+                    ),
+                    Positioned(
+                      bottom: -2,
+                      right: -2,
+                      child: Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          color: MetaColors.emerald,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: MetaColors.card(context), width: 2),
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_rounded,
+                          size: 11,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _fullName ?? 'Usuário',
-                      style: TextStyle(
-                        color: MetaColors.text(context),
-                        fontSize: 16.5,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: _editFullName,
+                            child: Text(
+                              _fullName ?? 'Usuário',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: MetaColors.text(context),
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        InkWell(
+                          onTap: _editFullName,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: MetaColors.emerald.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.edit_outlined, size: 13, color: MetaColors.emerald),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Nome',
+                                  style: TextStyle(
+                                    color: MetaColors.emerald,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text(
                       _email ?? 'Carregando...',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: MetaColors.subtext(context),
                         fontSize: 12.5,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 7),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
@@ -434,18 +781,15 @@ class _AccountScreenState extends State<AccountScreen> {
               ),
             ],
           ),
-        ),
-
-        if (isTrainer) ...[
-          const SizedBox(height: 16),
-
-          // 2. Selo de Registro Profissional (CREF): Indicador visual de CREF Ativo vs Pendente
-          MetaCard(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            child: Row(
+          if (isTrainer) ...[
+            const SizedBox(height: 14),
+            Divider(height: 1, color: MetaColors.cardBorder(context)),
+            const SizedBox(height: 12),
+            // Linha integrada de Registro Profissional (CREF) sem desalinhamento
+            Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(9),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: hasActiveCref
                         ? MetaColors.emerald.withValues(alpha: 0.12)
@@ -455,151 +799,285 @@ class _AccountScreenState extends State<AccountScreen> {
                   child: Icon(
                     Icons.verified_outlined,
                     color: hasActiveCref ? MetaColors.emerald : Colors.orangeAccent,
-                    size: 22,
+                    size: 20,
                   ),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Text(
-                            'Registro Profissional (CREF)',
-                            style: TextStyle(
-                              color: MetaColors.subtext(context),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                          Flexible(
+                            child: Text(
+                              'Registro Profissional (CREF)',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: MetaColors.subtext(context),
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                             decoration: BoxDecoration(
                               color: hasActiveCref
                                   ? MetaColors.emerald.withValues(alpha: 0.15)
                                   : Colors.orange.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(5),
                             ),
                             child: Text(
                               hasActiveCref ? 'ATIVO' : 'PENDENTE',
                               style: TextStyle(
                                 color: hasActiveCref ? MetaColors.emerald : Colors.orangeAccent,
-                                fontSize: 9.5,
+                                fontSize: 9,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 2),
                       Text(
-                        (_cref != null && _cref!.isNotEmpty) ? _cref! : 'CREF Pendente • Regularize seu perfil',
+                        (_cref != null && _cref!.isNotEmpty)
+                            ? _cref!
+                            : 'CREF Pendente • Regularize seu perfil',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: MetaColors.text(context),
-                          fontSize: 14,
+                          fontSize: 13.5,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
                 ),
-                TextButton(
-                  style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                  ),
-                  onPressed: () async {
+                const SizedBox(width: 8),
+                InkWell(
+                  onTap: () async {
                     await Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const TrainerProfileSetupScreen()),
                     );
                     await _loadAccount();
                   },
-                  child: Text(hasActiveCref ? 'Editar' : 'Regularizar'),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    height: 32,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: MetaColors.highlight(context),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: MetaColors.cardBorder(context)),
+                    ),
+                    child: Center(
+                      child: Text(
+                        hasActiveCref ? 'Editar' : 'Regularizar',
+                        style: TextStyle(
+                          color: MetaColors.emerald,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSaaSPlanCard(BuildContext context) {
+    final maxVagas = _maxStudents ?? 60;
+    final usedVagas = _currentStudents;
+    final ratio = maxVagas > 0 ? (usedVagas / maxVagas).clamp(0.0, 1.0) : 0.0;
+    final pct = (ratio * 100).round();
+
+    final Color barColor = ratio >= 0.9
+        ? const Color(0xFFF43F5E)
+        : (ratio >= 0.75 ? const Color(0xFFF59E0B) : MetaColors.emerald);
+
+    return MetaCard(
+      padding: const EdgeInsets.all(16),
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+        );
+        await _loadAccount();
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.workspace_premium_outlined, color: Colors.amber, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Plano SaaS & Capacidade',
+                      style: TextStyle(
+                        color: MetaColors.subtext(context),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _activePlanName != null
+                          ? 'Plano $_activePlanName'
+                          : (_loading ? 'Carregando plano...' : 'Plano Elite Coach'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: MetaColors.text(context),
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                height: 32,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: MetaColors.emerald.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.35)),
+                ),
+                child: const Center(
+                  child: Text(
+                    '💎 Upgrade',
+                    style: TextStyle(
+                      color: MetaColors.emerald,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-
-          const SizedBox(height: 16),
-
-          // 3. Card do Plano SaaS & Limite de Vagas
-          MetaCard(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(9),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.workspace_premium_outlined, color: Colors.amber, size: 22),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '$usedVagas de $maxVagas vagas ativas',
+                style: TextStyle(
+                  color: MetaColors.subtext(context),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Plano SaaS & Limite de Vagas',
-                        style: TextStyle(
-                          color: MetaColors.subtext(context),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        _activePlanName != null
-                            ? 'Plano $_activePlanName - ${_maxStudents ?? 60} vagas'
-                            : (_loading ? 'Carregando plano...' : 'Plano Elite Coach - 60 vagas'),
-                        style: TextStyle(
-                          color: MetaColors.text(context),
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
+              ),
+              Text(
+                '$pct% ocupado',
+                style: TextStyle(
+                  color: barColor,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
                 ),
-                TextButton(
-                  style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                  ),
-                  onPressed: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
-                    );
-                    await _loadAccount();
-                  },
-                  child: const Text('Upgrade'),
-                ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: ratio,
+              minHeight: 6,
+              backgroundColor: MetaColors.highlight(context),
+              valueColor: AlwaysStoppedAnimation<Color>(barColor),
             ),
           ),
         ],
+      ),
+    );
+  }
 
-        const SizedBox(height: 16),
-
-        // 4. Card de Conexão WhatsApp & Número com Edição Rápida
-        MetaCard(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          onTap: isTrainer
-              ? () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => WhatsappConnectionScreen(initialPhone: _phone),
+  Widget _buildUnifiedWhatsAppAndAiCard(BuildContext context, {required bool isTrainer}) {
+    if (!isTrainer) {
+      // Versão limpa para o Aluno
+      return MetaCard(
+        padding: const EdgeInsets.all(16),
+        onTap: _editPhoneNumber,
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: MetaColors.emerald.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.phone_android_rounded, color: MetaColors.emerald, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'WhatsApp Cadastrado',
+                    style: TextStyle(
+                      color: MetaColors.subtext(context),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
-                  ).then((_) => _loadAccount());
-                }
-              : _editPhoneNumber,
-          child: Row(
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    _formatPhone(_phone),
+                    style: TextStyle(
+                      color: MetaColors.text(context),
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.edit_outlined, size: 20),
+              tooltip: 'Atualizar telefone',
+              color: MetaColors.emerald,
+              onPressed: _editPhoneNumber,
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Hub Unificado para o Professor (Elimina a duplicidade entre Conexão WhatsApp e Consultor IA)
+    final statusColor = _isWhatsAppConnected ? MetaColors.emerald : Colors.orangeAccent;
+
+    return MetaCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Cabeçalho em 1 linha sem quebra tripla
+          Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(9),
@@ -607,9 +1085,9 @@ class _AccountScreenState extends State<AccountScreen> {
                   color: MetaColors.emerald.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.phone_android_rounded, color: MetaColors.emerald, size: 22),
+                child: const Icon(Icons.smart_toy_rounded, color: MetaColors.emerald, size: 22),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -618,298 +1096,485 @@ class _AccountScreenState extends State<AccountScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            isTrainer ? 'Conexão WhatsApp & Número' : 'WhatsApp Cadastrado',
+                            'WhatsApp & Consultor IA',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: MetaColors.subtext(context),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                              color: MetaColors.text(context),
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
-                        if (isTrainer)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: (_isWhatsAppConnected ? MetaColors.emerald : Colors.orangeAccent)
-                                  .withValues(alpha: 0.14),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              _isWhatsAppConnected ? 'CONECTADO 24H' : 'PAREAR ROBÔ',
-                              style: TextStyle(
-                                color: _isWhatsAppConnected ? MetaColors.emerald : Colors.orangeAccent,
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w800,
-                              ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: statusColor.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            _isWhatsAppConnected ? 'CONECTADO 24H' : 'PAREAR ROBÔ',
+                            style: TextStyle(
+                              color: statusColor,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      _formatPhone(_phone),
+                      _robotInteractionsCount > 0
+                          ? 'Cockpit 24h • Live Pulse 3.0 • $_robotInteractionsCount interações'
+                          : 'Cockpit 24h • Live Pulse 3.0 e Triagem Custo Zero',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: MetaColors.text(context),
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.bold,
+                        color: MetaColors.subtext(context),
+                        fontSize: 11.5,
                       ),
                     ),
-                    if (isTrainer) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        _isWhatsAppConnected
-                            ? 'Robô 24h ativo • Toque para pareamento e logs'
-                            : 'Toque para parear seu WhatsApp via QR ou Código',
-                        style: TextStyle(
-                          color: MetaColors.subtext(context),
-                          fontSize: 11.5,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.edit_outlined, size: 20),
-                tooltip: 'Atualizar telefone',
-                color: MetaColors.emerald,
-                onPressed: _editPhoneNumber,
-              ),
-              if (isTrainer)
-                const Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  color: MetaColors.emerald,
-                  size: 16,
-                ),
             ],
           ),
-        ),
+          const SizedBox(height: 12),
 
-        if (isTrainer) ...[
-          const SizedBox(height: 16),
-
-          // 5. Card do Consultor Ativo IA & WhatsApp (Cockpit One UI 7)
-          MetaCard(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const TrainerAiAssistantScreen()),
-              ).then((_) => _loadAccount());
-            },
+          // Faixa do Número Vinculado + Edição Rápida
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: MetaColors.highlight(context),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: MetaColors.cardBorder(context)),
+            ),
             child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(9),
-                  decoration: BoxDecoration(
-                    color: MetaColors.emerald.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.smart_toy_rounded, color: MetaColors.emerald, size: 22),
-                ),
-                const SizedBox(width: 14),
+                const Icon(Icons.phone_android_rounded, size: 16, color: MetaColors.emerald),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Consultor Ativo IA & WhatsApp',
-                              style: TextStyle(
-                                color: MetaColors.text(context),
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: MetaColors.emerald.withValues(alpha: 0.14),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              _robotInteractionsCount > 0
-                                  ? '$_robotInteractionsCount ATIVOS'
-                                  : 'LIVE PULSE 3.0',
-                              style: const TextStyle(
-                                color: MetaColors.emerald,
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        _robotInteractionsCount > 0
-                            ? 'Cockpit 24h • Live Pulse 3.0 e $_robotInteractionsCount interações de IA/Robô'
-                            : 'Cockpit 24h • Live Pulse 3.0, Triagem Custo Zero e IA',
-                        style: TextStyle(
-                          color: MetaColors.subtext(context),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    'Número: ${_formatPhone(_phone)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: MetaColors.text(context),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 6),
-                const Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  color: MetaColors.emerald,
-                  size: 18,
+                InkWell(
+                  onTap: _editPhoneNumber,
+                  borderRadius: BorderRadius.circular(6),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.edit_outlined, size: 14, color: MetaColors.emerald),
+                        SizedBox(width: 4),
+                        Text(
+                          'Alterar',
+                          style: TextStyle(
+                            color: MetaColors.emerald,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-        ],
+          const SizedBox(height: 10),
 
-        if (roles.contains('trainer')) ...[
-          const SizedBox(height: 16),
-          ListTile(
-            dense: true,
-            visualDensity: VisualDensity.compact,
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.security_outlined, size: 20),
-            title: const Text('Verificação em duas etapas'),
-            subtitle: Text(
-              _totpFactorId == null
-                  ? 'Configuração recomendada para segurança da consultoria'
-                  : 'Aplicativo autenticador ativo',
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const TeacherMfaScreen()),
-              );
-              await _loadAccount();
-            },
+          // Barra Dupla de Ações Simétricas (36px)
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => WhatsappConnectionScreen(initialPhone: _phone),
+                      ),
+                    ).then((_) => _loadAccount());
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    height: 36,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: MetaColors.highlight(context),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: MetaColors.cardBorder(context)),
+                    ),
+                    child: Center(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          _isWhatsAppConnected ? '🔗 Conexão & Logs' : '🔗 Parear WhatsApp',
+                          maxLines: 1,
+                          style: TextStyle(
+                            color: MetaColors.text(context),
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const TrainerAiAssistantScreen()),
+                    ).then((_) => _loadAccount());
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    height: 36,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: MetaColors.emerald.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.35)),
+                    ),
+                    child: const Center(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          '🤖 Abrir Cockpit IA',
+                          maxLines: 1,
+                          style: TextStyle(
+                            color: MetaColors.emerald,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
+      ),
+    );
+  }
 
-        if (_loading) const Padding(
-          padding: EdgeInsets.symmetric(vertical: 8),
-          child: LinearProgressIndicator(),
-        ),
+  Widget _buildSecurityCard(BuildContext context) {
+    final isProtected = _totpFactorId != null;
 
-        if (roles.length > 1) ...[
-          const SizedBox(height: 24),
+    return MetaCard(
+      padding: const EdgeInsets.all(16),
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const TeacherMfaScreen()),
+        );
+        await _loadAccount();
+      },
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(9),
+            decoration: BoxDecoration(
+              color: (isProtected ? MetaColors.emerald : Colors.orangeAccent)
+                  .withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              Icons.security_rounded,
+              color: isProtected ? MetaColors.emerald : Colors.orangeAccent,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Verificação em duas etapas',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: MetaColors.text(context),
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: (isProtected ? MetaColors.emerald : Colors.orangeAccent)
+                            .withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        isProtected ? 'PROTEGIDO' : 'RECOMENDADO',
+                        style: TextStyle(
+                          color: isProtected ? MetaColors.emerald : Colors.orangeAccent,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  isProtected
+                      ? 'Aplicativo autenticador TOTP ativo na sua conta'
+                      : 'Ative o autenticador para blindar sua consultoria',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: MetaColors.subtext(context),
+                    fontSize: 11.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          Icon(
+            Icons.chevron_right_rounded,
+            color: MetaColors.subtext(context),
+            size: 20,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPreferencesCard(BuildContext context, {required List<String> roles}) {
+    final activeRole = roles.contains(widget.currentRole) ? widget.currentRole : roles.first;
+
+    return MetaCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (roles.length > 1) ...[
+            Text(
+              'Usar como',
+              style: TextStyle(
+                color: MetaColors.text(context),
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: MetaColors.highlight(context),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: MetaColors.cardBorder(context)),
+              ),
+              child: Row(
+                children: [
+                  for (final role in roles)
+                    Expanded(
+                      child: _buildPillOption(
+                        context: context,
+                        isSelected: activeRole == role,
+                        label: role == 'admin'
+                            ? 'Admin ⚡'
+                            : (role == 'trainer' ? 'Treinador' : 'Aluno'),
+                        icon: role == 'admin'
+                            ? Icons.admin_panel_settings_rounded
+                            : (role == 'trainer' ? Icons.fitness_center_rounded : Icons.person_outline_rounded),
+                        onTap: () async {
+                          if (_isSwitchingRole || activeRole == role) return;
+                          final messenger = ScaffoldMessenger.of(context);
+                          setState(() => _isSwitchingRole = true);
+                          try {
+                            await widget.onRoleSelected(role);
+                          } catch (error) {
+                            if (mounted) {
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    error.toString().replaceFirst('Exception: ', ''),
+                                  ),
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (mounted) setState(() => _isSwitchingRole = false);
+                          }
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           Text(
-            'Usar como',
+            'Aparência',
             style: TextStyle(
               color: MetaColors.text(context),
-              fontSize: 15,
+              fontSize: 14,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 10),
-          SegmentedButton<String>(
-            segments: [
-              for (final role in roles)
-                ButtonSegment<String>(
-                  value: role,
-                  label: Text(
-                    role == 'admin'
-                        ? 'Admin ⚡'
-                        : (role == 'trainer' ? 'Treinador' : 'Aluno'),
-                  ),
-                  icon: Icon(
-                    role == 'admin'
-                        ? Icons.admin_panel_settings_rounded
-                        : (role == 'trainer' ? Icons.fitness_center : Icons.person_outline),
-                  ),
+          ListenableBuilder(
+            listenable: ThemeController.instance,
+            builder: (context, _) {
+              final currentMode = ThemeController.instance.themeMode;
+              return Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: MetaColors.highlight(context),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: MetaColors.cardBorder(context)),
                 ),
-            ],
-            selected: {
-              roles.contains(widget.currentRole) ? widget.currentRole : roles.first,
-            },
-            onSelectionChanged: (selection) async {
-              if (_isSwitchingRole) return;
-              final messenger = ScaffoldMessenger.of(context);
-              setState(() => _isSwitchingRole = true);
-              try {
-                await widget.onRoleSelected(selection.first);
-              } catch (error) {
-                if (mounted) {
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        error.toString().replaceFirst('Exception: ', ''),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildPillOption(
+                        context: context,
+                        isSelected: currentMode == ThemeMode.dark,
+                        label: 'Escuro',
+                        icon: Icons.dark_mode_rounded,
+                        onTap: () => ThemeController.instance.setThemeMode(ThemeMode.dark),
                       ),
                     ),
-                  );
-                }
-              } finally {
-                if (mounted) setState(() => _isSwitchingRole = false);
-              }
+                    Expanded(
+                      child: _buildPillOption(
+                        context: context,
+                        isSelected: currentMode == ThemeMode.light,
+                        label: 'Claro',
+                        icon: Icons.light_mode_rounded,
+                        onTap: () => ThemeController.instance.setThemeMode(ThemeMode.light),
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildPillOption(
+                        context: context,
+                        isSelected: currentMode == ThemeMode.system,
+                        label: 'Sistema',
+                        icon: Icons.brightness_auto_rounded,
+                        onTap: () => ThemeController.instance.setThemeMode(ThemeMode.system),
+                      ),
+                    ),
+                  ],
+                ),
+              );
             },
-            emptySelectionAllowed: false,
           ),
-          if (_isSwitchingRole) const LinearProgressIndicator(),
         ],
+      ),
+    );
+  }
 
-        const SizedBox(height: 24),
-        Text(
-          'Aparência',
-          style: TextStyle(
-            color: MetaColors.text(context),
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-          ),
+  Widget _buildPillOption({
+    required BuildContext context,
+    required bool isSelected,
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? MetaColors.emerald : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
         ),
-        const SizedBox(height: 10),
-        ListenableBuilder(
-          listenable: ThemeController.instance,
-          builder: (context, _) {
-            final currentMode = ThemeController.instance.themeMode;
-            return SegmentedButton<ThemeMode>(
-              segments: const [
-                ButtonSegment<ThemeMode>(
-                  value: ThemeMode.dark,
-                  label: Text('Escuro'),
-                  icon: Icon(Icons.dark_mode_rounded),
+        child: Center(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: 15,
+                  color: isSelected ? Colors.white : MetaColors.subtext(context),
                 ),
-                ButtonSegment<ThemeMode>(
-                  value: ThemeMode.light,
-                  label: Text('Claro'),
-                  icon: Icon(Icons.light_mode_rounded),
-                ),
-                ButtonSegment<ThemeMode>(
-                  value: ThemeMode.system,
-                  label: Text('Sistema'),
-                  icon: Icon(Icons.brightness_auto_rounded),
+                const SizedBox(width: 5),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : MetaColors.text(context),
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                  ),
                 ),
               ],
-              selected: {currentMode},
-              onSelectionChanged: (selection) {
-                if (selection.isNotEmpty) {
-                  ThemeController.instance.setThemeMode(selection.first);
-                }
-              },
-              emptySelectionAllowed: false,
-            );
-          },
+            ),
+          ),
         ),
+      ),
+    );
+  }
 
-        const SizedBox(height: 24),
-        OutlinedButton.icon(
-          onPressed: () => _signOut(false),
-          icon: const Icon(Icons.logout),
-          label: const Text('Sair neste aparelho'),
+  Widget _buildSessionActions(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InkWell(
+          onTap: () => _signOut(false),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            height: 44,
+            decoration: BoxDecoration(
+              color: MetaColors.card(context),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: MetaColors.cardBorder(context)),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.logout_rounded, size: 18, color: MetaColors.emerald),
+                SizedBox(width: 8),
+                Text(
+                  'Sair neste aparelho',
+                  style: TextStyle(
+                    color: MetaColors.emerald,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
         const SizedBox(height: 8),
         TextButton.icon(
           onPressed: () => _signOut(true),
-          icon: const Icon(Icons.phonelink_erase_outlined),
-          label: const Text('Sair de todos os dispositivos'),
-        ),
-        const AppVersionFooter(
-          padding: EdgeInsets.only(top: 14, bottom: 8),
+          icon: const Icon(Icons.phonelink_erase_outlined, size: 17),
+          label: const Text(
+            'Sair de todos os dispositivos',
+            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+          ),
         ),
       ],
     );

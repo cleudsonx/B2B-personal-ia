@@ -1,8 +1,8 @@
 {
-  "version": "1.11.6",
-  "build": 2026103114,
-  "updated_at": "2026-10-28T19:05:11.629562Z",
-  "notes": "Ajuste de alinhamento dos botoes do mural e eliminacao de badge truncado no card Pulso da Turma",
+  "version": "1.12.0",
+  "build": 2026103115,
+  "updated_at": "2026-10-28T19:44:07.818291Z",
+  "notes": "Modernizacao completa da Aba Conta, edicao de nome/foto do professor e unificacao da Central WhatsApp & Consultor IA",
   "changelog": {
     "student": [
       {
