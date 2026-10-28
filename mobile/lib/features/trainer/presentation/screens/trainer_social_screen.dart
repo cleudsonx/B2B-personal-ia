@@ -208,11 +208,11 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
     return avatarContent;
   }
 
-  void _openEditStatusModal() {
+  void _openEditStatusModal({bool initialSendWaBroadcast = false}) {
     final currentMsg = _trainerStatus?['status_message'] as String? ?? '';
     final ctrl = TextEditingController(text: currentMsg);
     var isSaving = false;
-    var sendWaBroadcast = false;
+    var sendWaBroadcast = initialSendWaBroadcast;
 
     showModalBottomSheet(
       context: context,
@@ -1058,21 +1058,26 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                                 children: [
                                   Expanded(
                                     child: InkWell(
-                                      onTap: _openEditStatusModal,
+                                      onTap: () => _openEditStatusModal(initialSendWaBroadcast: false),
                                       borderRadius: BorderRadius.circular(10),
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(vertical: 7),
+                                        height: 36,
+                                        padding: const EdgeInsets.symmetric(horizontal: 8),
                                         decoration: BoxDecoration(
                                           color: MetaColors.highlight(context),
                                           borderRadius: BorderRadius.circular(10),
                                         ),
                                         child: Center(
-                                          child: Text(
-                                            '✏️ Editar Aviso',
-                                            style: TextStyle(
-                                              color: MetaColors.text(context),
-                                              fontSize: 11.5,
-                                              fontWeight: FontWeight.w600,
+                                          child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Text(
+                                              '✏️ Editar Aviso',
+                                              maxLines: 1,
+                                              style: TextStyle(
+                                                color: MetaColors.text(context),
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -1082,22 +1087,27 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: InkWell(
-                                      onTap: _openEditStatusModal,
+                                      onTap: () => _openEditStatusModal(initialSendWaBroadcast: true),
                                       borderRadius: BorderRadius.circular(10),
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(vertical: 7),
+                                        height: 36,
+                                        padding: const EdgeInsets.symmetric(horizontal: 8),
                                         decoration: BoxDecoration(
                                           color: MetaColors.emerald.withValues(alpha: 0.15),
                                           borderRadius: BorderRadius.circular(10),
                                           border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.35)),
                                         ),
                                         child: const Center(
-                                          child: Text(
-                                            '🤖 Disparar no WhatsApp',
-                                            style: TextStyle(
-                                              color: MetaColors.emerald,
-                                              fontSize: 11.5,
-                                              fontWeight: FontWeight.bold,
+                                          child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Text(
+                                              '🤖 Disparar no WhatsApp',
+                                              maxLines: 1,
+                                              style: TextStyle(
+                                                color: MetaColors.emerald,
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -1318,40 +1328,17 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            const Row(
               children: [
-                const Icon(Icons.bolt_rounded, size: 14, color: MetaColors.emerald),
-                const SizedBox(width: 4),
-                const Text(
+                Icon(Icons.bolt_rounded, size: 14, color: MetaColors.emerald),
+                SizedBox(width: 4),
+                Text(
                   'PULSO DA TURMA • ÚLTIMOS 7 DIAS',
                   style: TextStyle(
                     color: MetaColors.emerald,
                     fontSize: 10.5,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.6,
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: MetaColors.emerald.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.smart_toy_rounded, size: 11, color: MetaColors.emerald),
-                      SizedBox(width: 4),
-                      Text(
-                        'Robô Conectado',
-                        style: TextStyle(
-                          color: MetaColors.emerald,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
                   ),
                 ),
               ],

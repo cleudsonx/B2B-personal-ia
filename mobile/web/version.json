@@ -1,8 +1,8 @@
 {
-  "version": "1.11.5",
-  "build": 2026103113,
-  "updated_at": "2026-10-28T18:09:32.676546Z",
-  "notes": "Correcao de sintaxe e estabilizacao do build web da Aba Social",
+  "version": "1.11.6",
+  "build": 2026103114,
+  "updated_at": "2026-10-28T19:05:11.629562Z",
+  "notes": "Ajuste de alinhamento dos botoes do mural e eliminacao de badge truncado no card Pulso da Turma",
   "changelog": {
     "student": [
       {
