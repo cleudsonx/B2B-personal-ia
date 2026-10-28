@@ -61,6 +61,9 @@ external void _jsTriggerPwaReload();
 @JS('hardReloadApp')
 external void _jsHardReloadApp();
 
+@JS('forceAppReload')
+external void _jsForceAppReload();
+
 @JS('_onPwaUpdateAvailable')
 external set _jsOnPwaUpdateAvailable(JSFunction? callback);
 
@@ -88,6 +91,11 @@ void triggerPwaReload() {
 
   try {
     _jsHardReloadApp();
+    return;
+  } catch (_) {}
+
+  try {
+    _jsForceAppReload();
     return;
   } catch (_) {}
 }

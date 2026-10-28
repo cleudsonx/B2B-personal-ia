@@ -1,6 +1,10 @@
+import 'package:flutter/widgets.dart';
 import 'app_changelog.dart';
 
 class AppConfig {
+  /// Chave global do navegador raiz para modais, overlays e contexto PWA
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   static String _customApiBaseUrl = '';
 
   static String get apiBaseUrl {

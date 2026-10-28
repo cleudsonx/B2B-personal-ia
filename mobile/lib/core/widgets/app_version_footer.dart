@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -1082,26 +1081,9 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
                       child: ElevatedButton.icon(
                         onPressed: () {
                           Navigator.pop(context);
-                          if (kIsWeb) {
-                            showDialog<void>(
-                              context: context,
-                              barrierDismissible: false,
-                              builder: (_) => const ShaipadosLoaderContainer(
-                                type: ShaipadosLoaderType.bioPulseEcg,
-                                customTitle: 'Atualizando Mr. Coach AI',
-                                loadingMessages: [
-                                  'Sincronizando nova versão e telemetria...',
-                                  'Carregando novos módulos e correções...',
-                                  'Reiniciando o sistema com segurança...',
-                                ],
-                              ),
-                            );
-                            Future.delayed(const Duration(milliseconds: 600), () {
-                              PwaInstaller.triggerPwaReload();
-                            });
-                          } else {
+                          Future.delayed(const Duration(milliseconds: 150), () {
                             PwaInstaller.triggerPwaReload();
-                          }
+                          });
                         },
                         icon: const Icon(Icons.bolt_rounded, size: 20),
                         label: const Text(

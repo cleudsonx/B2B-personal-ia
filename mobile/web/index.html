@@ -75,7 +75,7 @@
 </head>
 <body>
   <script>
-    const APP_CURRENT_BUILD = 2026103107;
+    const APP_CURRENT_BUILD = 2026103109;
 
     // =========================================================================
     // Blindagem Anti-Cache de Manifests e Fontes (Bypass Disk Cache & SW Stale)
@@ -89,10 +89,6 @@
             try {
               const url = typeof input === 'string' ? input : (input && input.url ? input.url : '');
               if (url) {
-                // Bloqueia qualquer tentativa residual de carregar fontes locais corrompidas em cache
-                if (url.includes('assets/google_fonts/')) {
-                  return Promise.resolve(new Response(null, { status: 404, statusText: 'Not Found' }));
-                }
                 // Força cache-busting por build nos manifests críticos do Flutter Web
                 if (
                   url.includes('AssetManifest') ||
@@ -170,27 +166,32 @@
       }
 
       // Função unificada de recarregamento forçado (limpa cache HTTP e recarrega)
-      window.hardReloadApp = function() {
+      window.hardReloadApp = globalThis.hardReloadApp = function() {
         try {
           const currentUrl = new URL(window.location.href);
           currentUrl.searchParams.set('_pwa_reload', Date.now());
-          window.location.href = currentUrl.toString();
-          window.location.reload();
+          window.location.replace(currentUrl.href);
         } catch (_) {
           window.location.reload();
         }
       };
 
+      window.forceAppReload = globalThis.forceAppReload = function() {
+        try {
+          window.location.reload();
+        } catch (_) {}
+      };
+
       // Função unificada de recarregamento limpo de caches PWA (exposta para JS e Dart)
-      window.triggerPwaReload = async function() {
+      window.triggerPwaReload = globalThis.triggerPwaReload = async function() {
         if (isRefreshing) return;
         isRefreshing = true;
         window._pwaHasPendingUpdate = false;
 
-        // Failsafe: garante hard reload em no máximo 1200ms mesmo se o desregistro do SW travar
+        // Failsafe: garante hard reload em no máximo 1000ms
         const failsafeTimer = setTimeout(() => {
           window.hardReloadApp();
-        }, 1200);
+        }, 1000);
 
         try {
           if (waitingWorker) {
@@ -227,7 +228,7 @@
           clearTimeout(failsafeTimer);
           setTimeout(() => {
             window.hardReloadApp();
-          }, 150);
+          }, 120);
         }
       };
 

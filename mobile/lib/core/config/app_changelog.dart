@@ -40,16 +40,24 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     // ==========================================
-    // v1.11.1 - LIVE STUDENT PULSE 3.0 & SHORTLINKS /P/
+    // v1.11.2 - RECARREGAMENTO PWA 1-CLIQUE & FONTES OFICIAIS
     // ==========================================
     VersionRelease(
-      version: '1.11.1',
-      buildNumber: 2026103107,
-      date: '27 de Outubro, 2026',
+      version: '1.11.2',
+      buildNumber: 2026103109,
+      date: '28 de Outubro, 2026',
       summary:
-          'Versão 1.11.1: Live Student Pulse 3.0 com Telemetria Unificada (Robô WhatsApp & IA Gemini), Disparo WhatsApp 1-Clique In-App, Padronização Canônica das Vitrines (/p/:user) e Suíte de Loaders Shaipados Labs.',
+          'Versão 1.11.2: Acionamento instantâneo do botão Atualizar no banner PWA, sincronização determinística de caches, fontes Inter oficiais integradas offline e Suíte de Loaders Shaipados Labs.',
       highlights: [
         // --- ALUNO & TREINO ---
+        ChangelogItem(
+          icon: Icons.text_fields_rounded,
+          title: 'Fontes Inter Oficiais Empacotadas Offline',
+          description:
+              'Pacote de tipografia Inter oficial integrado diretamente ao bundle da aplicação, eliminando falhas de carregamento em redes oscilantes.',
+          badge: 'CORREÇÃO',
+          targetRoles: ['student'],
+        ),
         ChangelogItem(
           icon: Icons.speed_rounded,
           title: 'Suíte de Loaders Shaipados Labs (60 FPS Nativo)',
@@ -84,16 +92,16 @@ class AppChangelog {
           badge: 'AUTOMAÇÃO',
           targetRoles: ['trainer'],
         ),
-        ChangelogItem(
-          icon: Icons.sync_alt_rounded,
-          title: 'Sincronização em Tempo Real da Conexão WhatsApp & Vitrine',
-          description:
-              'Status ao vivo da conexão do robô e contador de interações nos painéis de Vitrine e Meu Perfil & Conta.',
-          badge: 'INTEGRAÇÃO',
-          targetRoles: ['trainer'],
-        ),
 
         // --- ADMIN / INFRAESTRUTURA ---
+        ChangelogItem(
+          icon: Icons.sync_rounded,
+          title: 'Atualização Instantânea PWA 1-Clique',
+          description:
+              'Ajuste no ciclo de vida e overlay do banner de novidades com recarregamento e limpeza determinística de cache HTTP e Service Worker.',
+          badge: 'ESTABILIDADE',
+          targetRoles: ['admin'],
+        ),
         ChangelogItem(
           icon: Icons.alt_route_rounded,
           title: 'Roteamento Canônico e Fallbacks Seguros de Vitrine',

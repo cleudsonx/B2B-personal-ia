@@ -71,6 +71,7 @@ class PwaUpdateWrapper extends StatefulWidget {
 class _PwaUpdateWrapperState extends State<PwaUpdateWrapper> with WidgetsBindingObserver {
   Timer? _checkTimer;
   bool _isChecking = false;
+  bool _isReloading = false;
 
   @override
   void initState() {
@@ -158,7 +159,19 @@ class _PwaUpdateWrapperState extends State<PwaUpdateWrapper> with WidgetsBinding
         return Stack(
           children: [
             widget.child,
-            if (hasUpdate)
+            if (_isReloading)
+              const Positioned.fill(
+                child: ShaipadosLoaderContainer(
+                  type: ShaipadosLoaderType.bioPulseEcg,
+                  customTitle: 'Atualizando Mr. Coach AI',
+                  loadingMessages: [
+                    'Sincronizando nova versão e telemetria...',
+                    'Carregando novos módulos e correções...',
+                    'Reiniciando o sistema com segurança...',
+                  ],
+                ),
+              ),
+            if (hasUpdate && !_isReloading)
               Positioned(
                 top: 0,
                 left: 0,
@@ -223,10 +236,13 @@ class _PwaUpdateWrapperState extends State<PwaUpdateWrapper> with WidgetsBinding
             const SizedBox(width: 12),
             Expanded(
               child: InkWell(
-                onTap: () => AppVersionFooter.showReleaseNotesModal(
-                  context,
-                  remoteReleaseData: PwaUpdateNotifier.instance.remoteData,
-                ),
+                onTap: () {
+                  final navCtx = AppConfig.navigatorKey.currentContext ?? context;
+                  AppVersionFooter.showReleaseNotesModal(
+                    navCtx,
+                    remoteReleaseData: PwaUpdateNotifier.instance.remoteData,
+                  );
+                },
                 borderRadius: BorderRadius.circular(8),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -262,26 +278,18 @@ class _PwaUpdateWrapperState extends State<PwaUpdateWrapper> with WidgetsBinding
             ElevatedButton(
               onPressed: () {
                 if (kIsWeb) {
-                  showDialog<void>(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (_) => const ShaipadosLoaderContainer(
-                      type: ShaipadosLoaderType.bioPulseEcg,
-                      customTitle: 'Atualizando Mr. Coach AI',
-                      loadingMessages: [
-                        'Sincronizando nova versão e telemetria...',
-                        'Carregando novos módulos e correções...',
-                        'Reiniciando o sistema com segurança...',
-                      ],
-                    ),
-                  );
-                  Future.delayed(const Duration(milliseconds: 600), () {
+                  setState(() {
+                    _isReloading = true;
+                  });
+                  PwaUpdateNotifier.instance.dismiss();
+                  Future.delayed(const Duration(milliseconds: 300), () {
                     PwaInstaller.triggerPwaReload();
                   });
                 } else {
                   PwaUpdateNotifier.instance.dismiss();
+                  final navCtx = AppConfig.navigatorKey.currentContext ?? context;
                   AppVersionFooter.showReleaseNotesModal(
-                    context,
+                    navCtx,
                     remoteReleaseData: PwaUpdateNotifier.instance.remoteData,
                   );
                 }

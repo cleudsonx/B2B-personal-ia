@@ -209,6 +209,7 @@ class B2BPersonalIaApp extends StatelessWidget {
       listenable: ThemeController.instance,
       builder: (context, _) {
         return MaterialApp(
+          navigatorKey: AppConfig.navigatorKey,
           title: 'Mr. Coach',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,

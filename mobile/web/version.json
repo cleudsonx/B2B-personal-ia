@@ -1,10 +1,15 @@
 {
-  "version": "1.11.1",
-  "build": 2026103107,
-  "updated_at": "2026-10-28T11:58:21.404214Z",
-  "notes": "Loaders contextuais e correcao fontes Inter",
+  "version": "1.11.2",
+  "build": 2026103109,
+  "updated_at": "2026-10-28T12:42:45.486129Z",
+  "notes": "Versão 1.11.2: Acionamento instantâneo do botão Atualizar no banner PWA, sincronização determinística de caches, fontes Inter oficiais integradas offline e Suíte de Loaders Shaipados Labs.",
   "changelog": {
     "student": [
+      {
+        "title": "Fontes Inter Oficiais Empacotadas Offline",
+        "description": "Pacote de tipografia Inter oficial integrado diretamente ao bundle da aplicação, eliminando falhas de carregamento em redes oscilantes.",
+        "badge": "CORREÇÃO"
+      },
       {
         "title": "Suíte de Loaders Shaipados Labs (60 FPS Nativo)",
         "description": "Novas animações fluidas para geração de periodização IA, sincronização offline de treinos e substituição inteligente de exercícios no Botão Anti-Fila.",
@@ -26,14 +31,14 @@
         "title": "Ações Humanas no WhatsApp em 1 Clique In-App",
         "description": "Parabenize ofensivas de alunos em lote e envie incentivos personalizados diretamente de dentro do aplicativo via API, sem precisar abrir o WhatsApp.",
         "badge": "AUTOMAÇÃO"
-      },
-      {
-        "title": "Sincronização em Tempo Real da Conexão WhatsApp & Vitrine",
-        "description": "Status ao vivo da conexão do robô e contador de interações nos painéis de Vitrine e Meu Perfil & Conta.",
-        "badge": "INTEGRAÇÃO"
       }
     ],
     "admin": [
+      {
+        "title": "Atualização Instantânea PWA 1-Clique",
+        "description": "Ajuste no ciclo de vida e overlay do banner de novidades com recarregamento e limpeza determinística de cache HTTP e Service Worker.",
+        "badge": "ESTABILIDADE"
+      },
       {
         "title": "Roteamento Canônico e Fallbacks Seguros de Vitrine",
         "description": "Unificação de rotas /p/:user em produção com preservação transparente de links legados /prof/ e redirecionamento limpo para o diretório de coaches.",
