@@ -35,11 +35,15 @@ jobs:
           cd mobile
           flutter pub get
 
-      - name: Aceitar Licenças e Instalar NDK do Android
+      - name: Aceitar Licenças e Configurar NDK Android
         run: |
-          rm -rf "${ANDROID_SDK_ROOT}/.downloadIntermediates"
           yes | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" --licenses || true
-          "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
+          if [ ! -d "${ANDROID_SDK_ROOT}/ndk/27.0.12077973" ]; then
+            echo "Instalando NDK estável 27.0.12077973..."
+            "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;27.0.12077973"
+          else
+            echo "NDK 27.0.12077973 pre-instalado no runner com sucesso."
+          fi
 
       - name: Compilar APK Release
         run: |

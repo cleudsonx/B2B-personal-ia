@@ -1,8 +1,8 @@
 {
-  "version": "1.12.1",
-  "build": 2026103116,
-  "updated_at": "2026-10-28T23:29:50.413188Z",
-  "notes": "Blindagem do Robo Geral 24h da plataforma e deteccao de fallback no WhatsApp",
+  "version": "1.12.2",
+  "build": 2026103117,
+  "updated_at": "2026-10-28T23:45:48.418585Z",
+  "notes": "Correcao de compilacao do APK Release com NDK LTS 27 pre-instalado",
   "changelog": {
     "student": [
       {
