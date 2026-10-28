@@ -58,9 +58,22 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
       ]);
 
       if (!mounted) return;
+      final rawSessions = results[1] as List<Map<String, dynamic>>;
+      final seenClients = <String>{};
+      final uniqueSessions = <Map<String, dynamic>>[];
+      for (final s in rawSessions) {
+        final cid = s['client_id']?.toString() ?? s['client_name']?.toString() ?? '';
+        if (cid.isNotEmpty && !seenClients.contains(cid)) {
+          seenClients.add(cid);
+          uniqueSessions.add(s);
+        } else if (cid.isEmpty) {
+          uniqueSessions.add(s);
+        }
+      }
+
       setState(() {
         _rankingStudents = results[0] as List<Map<String, dynamic>>;
-        _recentSessions = results[1] as List<Map<String, dynamic>>;
+        _recentSessions = uniqueSessions;
         _trainerStatus = results[2] as Map<String, dynamic>?;
         _isLoading = false;
       });
@@ -1513,7 +1526,6 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
             const SizedBox(width: 8),
             // 1st Place (Center - Higher)
             Expanded(
-              flex: 12,
               child: _buildPodiumColumn(
                 student: first,
                 rank: 1,
@@ -1566,8 +1578,9 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isFirst
-              ? const Color(0xFFF59E0B).withValues(alpha: 0.3)
+              ? const Color(0xFFF59E0B).withValues(alpha: 0.35)
               : MetaColors.cardBorder(context),
+          width: isFirst ? 1.5 : 1.0,
         ),
       ),
       child: Column(
@@ -1576,8 +1589,11 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
           if (isFirst) ...[
             const Text('👑', style: TextStyle(fontSize: 16)),
             const SizedBox(height: 2),
+          ] else ...[
+            const SizedBox(height: 18),
           ],
           Stack(
+            clipBehavior: Clip.none,
             alignment: Alignment.center,
             children: [
               _buildAvatar(
@@ -1587,7 +1603,7 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
                 borderColor: borderColor,
               ),
               Positioned(
-                bottom: -2,
+                bottom: -4,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                   decoration: BoxDecoration(
@@ -1606,11 +1622,12 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text(
             firstName,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
             style: TextStyle(
               color: MetaColors.text(context),
               fontSize: 12,
@@ -1618,48 +1635,61 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
             ),
           ),
           const SizedBox(height: 2),
-          Text(
-            '🔥 ${streak}d',
-            style: const TextStyle(
-              color: Color(0xFFF59E0B),
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '🔥 ${streak}d',
+              style: const TextStyle(
+                color: Color(0xFFF59E0B),
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
-          Text(
-            '$sessions treinos',
-            style: TextStyle(
-              color: MetaColors.subtext(context),
-              fontSize: 9.5,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '$sessions treinos',
+              style: TextStyle(
+                color: MetaColors.subtext(context),
+                fontSize: 9.5,
+              ),
             ),
           ),
           const SizedBox(height: 6),
-          InkWell(
-            onTap: () => _congratulateStudentStreak(student),
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-              decoration: BoxDecoration(
-                color: MetaColors.emerald.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.35)),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('🤖', style: TextStyle(fontSize: 10)),
-                  SizedBox(width: 2),
-                  Text(
-                    'Parabenizar',
-                    style: TextStyle(
-                      color: MetaColors.emerald,
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.bold,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: InkWell(
+              onTap: () => _congratulateStudentStreak(student),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  color: MetaColors.emerald.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.35)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('🤖', style: TextStyle(fontSize: 10)),
+                    SizedBox(width: 2),
+                    Text(
+                      'Parabenizar',
+                      style: TextStyle(
+                        color: MetaColors.emerald,
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
           ),
         ],
       ),

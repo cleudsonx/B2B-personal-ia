@@ -1,8 +1,8 @@
 {
-  "version": "1.11.3",
-  "build": 2026103111,
-  "updated_at": "2026-10-28T17:10:00.565988Z",
-  "notes": "Versão 1.11.3: Modernização da Aba Social & Comunidade do Treinador com disparo In-App via Robô do WhatsApp em 1 clique e em lote, Mural com Broadcast, Pódio Editorial One UI 7, Filtros de Retenção e Loader Executive Shimmer.",
+  "version": "1.11.4",
+  "build": 2026103112,
+  "updated_at": "2026-10-28T17:54:35.598455Z",
+  "notes": "Correcao das proporcoes do Podio Top 3 e desduplicacao no Carrossel da Aba Social",
   "changelog": {
     "student": [
       {
