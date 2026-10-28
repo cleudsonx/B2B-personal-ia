@@ -1690,10 +1690,6 @@ class _TrainerSocialScreenState extends State<TrainerSocialScreen> {
         ],
       ),
     );
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildRecentSessionsCarousel() {

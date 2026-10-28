@@ -1,8 +1,8 @@
 {
-  "version": "1.11.4",
-  "build": 2026103112,
-  "updated_at": "2026-10-28T17:54:35.598455Z",
-  "notes": "Correcao das proporcoes do Podio Top 3 e desduplicacao no Carrossel da Aba Social",
+  "version": "1.11.5",
+  "build": 2026103113,
+  "updated_at": "2026-10-28T18:09:32.676546Z",
+  "notes": "Correcao de sintaxe e estabilizacao do build web da Aba Social",
   "changelog": {
     "student": [
       {
