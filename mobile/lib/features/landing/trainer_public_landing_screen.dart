@@ -251,7 +251,16 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
       return const Scaffold(
         backgroundColor: MetaColors.background,
         body: Center(
-          child: CircularProgressIndicator(color: MetaColors.emerald),
+          child: ShaipadosLoaderContainer(
+            type: ShaipadosLoaderType.executiveShimmer,
+            isOverlay: false,
+            customTitle: 'Carregando Vitrine',
+            loadingMessages: [
+              'Preparando vitrine pública One UI 7...',
+              'Carregando bio, certificações e planos...',
+              'Pronto para visualização instantânea...',
+            ],
+          ),
         ),
       );
     }

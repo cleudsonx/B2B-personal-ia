@@ -240,7 +240,16 @@ class _PublicTrainerDirectoryScreenState
             if (_isLoading)
               const SliverFillRemaining(
                 child: Center(
-                  child: CircularProgressIndicator(color: MetaColors.emerald),
+                  child: ShaipadosLoaderContainer(
+                    type: ShaipadosLoaderType.executiveShimmer,
+                    isOverlay: false,
+                    customTitle: 'Buscando Coaches',
+                    loadingMessages: [
+                      'Carregando diretório oficial de personais...',
+                      'Validando credenciais CREF ativas...',
+                      'Pronto para visualização instantânea...',
+                    ],
+                  ),
                 ),
               )
             else if (trainers.isEmpty)

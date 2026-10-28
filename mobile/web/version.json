@@ -1,8 +1,8 @@
 {
   "version": "1.11.1",
-  "build": 2026103106,
-  "updated_at": "2026-10-27T20:48:22.155615Z",
-  "notes": "Versão 1.11.1: Live Student Pulse 3.0 com Telemetria Unificada (Robô WhatsApp & IA Gemini), Disparo WhatsApp 1-Clique In-App, Padronização Canônica das Vitrines (/p/:user) e Suíte de Loaders Shaipados Labs.",
+  "build": 2026103107,
+  "updated_at": "2026-10-28T11:58:21.404214Z",
+  "notes": "Loaders contextuais e correcao fontes Inter",
   "changelog": {
     "student": [
       {

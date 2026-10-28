@@ -4,11 +4,20 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'meta_components.dart';
 
-/// Enum para facilitar a seleção do loader animado nativo
+/// Enum para seleção dos loaders nativos de alta performance do Mr. Coach / Shaipados Labs
 enum ShaipadosLoaderType {
-  mrCoachEvolution, // Conceito 1: Robô evoluindo (Iniciante -> Atlético -> Shaipado)
-  labShakerDna,     // Conceito 2: Coqueteleira de laboratório borbulhando com hélice de DNA
-  barbellPlates,    // Conceito 3: Barra olímpica encaixando anilhas com efeito elástico e envergando
+  // --- Novos Loaders da Combinação Contextual Aprovada ---
+  activityRings,    // Opção 1: Apple Fitness+ / Whoop (Abertura do Treino, Bio-Hub)
+  bioPulseEcg,      // Opção 2: One UI 7 / Live Pulse 3.0 (Conexão WhatsApp, PWA Update)
+  neuralAiOrb,      // Opção 3: Meta AI / Gemini Pro (Anamnese, Prescrição IA)
+  kineticHexCore,   // Opção 4: Biomecânica / Anti-Fila (Troca Inteligente de Exercício)
+  executiveShimmer, // Opção 5: Minimalista Editorial / Vitrines (/p/:user, Diretório)
+  chronoBar,        // Opção 6: Chrono-Bar Precision (Ações 1-clique, Checkout)
+
+  // --- Aliases Legados para Retrocompatibilidade Estrita ---
+  mrCoachEvolution,
+  labShakerDna,
+  barbellPlates,
 }
 
 /// Container com Glassmorphism, Tag Shaipados Labs, Mensagens Rotativas e Suporte Light/Dark
@@ -49,6 +58,21 @@ class _ShaipadosLoaderContainerState extends State<ShaipadosLoaderContainer>
 
   List<String> get _defaultMessages {
     switch (widget.type) {
+      case ShaipadosLoaderType.activityRings:
+        return const [
+          'Sincronizando séries, cargas e intervalos de descanso...',
+          'Carregando histórico de progressão e RPE...',
+          'Ajustando metas diárias do Bio-Hub...',
+          'Pronto para o próximo nível!',
+        ];
+      case ShaipadosLoaderType.bioPulseEcg:
+        return const [
+          'Conectando ao Live Student Pulse 3.0...',
+          'Verificando status do Robô WhatsApp e IA...',
+          'Sincronizando telemetria da consultoria...',
+          'Bio-sinais sincronizados com sucesso!',
+        ];
+      case ShaipadosLoaderType.neuralAiOrb:
       case ShaipadosLoaderType.mrCoachEvolution:
         return const [
           'Fase 1: Analisando perfil fisiológico e anamnese...',
@@ -56,19 +80,32 @@ class _ShaipadosLoaderContainerState extends State<ShaipadosLoaderContainer>
           'Fase 3: Calibrando hipertrofia, descanso e RPE...',
           'Fase 4: Finalizando periodização inteligente do Mr. Coach!',
         ];
+      case ShaipadosLoaderType.kineticHexCore:
+      case ShaipadosLoaderType.barbellPlates:
+        return const [
+          'Analisando vetor de força do exercício atual...',
+          'Filtrando equipamentos livres na academia...',
+          'Validando ativação muscular equivalente...',
+          'Variação biomecânica aprovada! Pronto para o treino.',
+        ];
+      case ShaipadosLoaderType.executiveShimmer:
+        return const [
+          'Preparando cards temáticos One UI 7...',
+          'Otimizando vitrine pública e planos...',
+          'Pronto para visualização instantânea...',
+        ];
+      case ShaipadosLoaderType.chronoBar:
+        return const [
+          'Disparando notificação in-app via API...',
+          'Validando transação segura no servidor...',
+          'Aplicando atualização sem interrupção...',
+        ];
       case ShaipadosLoaderType.labShakerDna:
         return const [
           'Sintetizando algoritmos no Shaipados Labs...',
           'Sincronizando protocolos biomecânicos...',
           'Calibrando banco de dados e inteligência de treino...',
           'Pronto para o próximo nível!',
-        ];
-      case ShaipadosLoaderType.barbellPlates:
-        return const [
-          'Montando a barra olímpica...',
-          'Ajustando vetores e restrições articulares...',
-          'Adicionando carga progressiva ao movimento...',
-          'Variação aprovada! Pronto para o treino.',
         ];
     }
   }
@@ -106,6 +143,48 @@ class _ShaipadosLoaderContainerState extends State<ShaipadosLoaderContainer>
 
   Widget _buildCustomPainter(double progress, bool isDark) {
     switch (widget.type) {
+      case ShaipadosLoaderType.activityRings:
+        return CustomPaint(
+          painter: ActivityRingsPainter(
+            progress: progress,
+            isDark: isDark,
+          ),
+        );
+      case ShaipadosLoaderType.bioPulseEcg:
+        return CustomPaint(
+          painter: BioPulseEcgPainter(
+            progress: progress,
+            isDark: isDark,
+          ),
+        );
+      case ShaipadosLoaderType.neuralAiOrb:
+        return CustomPaint(
+          painter: NeuralAiOrbPainter(
+            progress: progress,
+            isDark: isDark,
+          ),
+        );
+      case ShaipadosLoaderType.kineticHexCore:
+        return CustomPaint(
+          painter: KineticHexCorePainter(
+            progress: progress,
+            isDark: isDark,
+          ),
+        );
+      case ShaipadosLoaderType.executiveShimmer:
+        return CustomPaint(
+          painter: ExecutiveShimmerPainter(
+            progress: progress,
+            isDark: isDark,
+          ),
+        );
+      case ShaipadosLoaderType.chronoBar:
+        return CustomPaint(
+          painter: ChronoBarPainter(
+            progress: progress,
+            isDark: isDark,
+          ),
+        );
       case ShaipadosLoaderType.mrCoachEvolution:
         return CustomPaint(
           painter: MrCoachEvolutionPainter(
@@ -762,5 +841,598 @@ class BarbellPlatesPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant BarbellPlatesPainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.isDark != isDark;
+}
+
+// ============================================================================
+// OPÇÃO 1: ACTIVITY RINGS PRO (Apple Fitness+ / Whoop Concentric Rings)
+// ============================================================================
+class ActivityRingsPainter extends CustomPainter {
+  final double progress;
+  final bool isDark;
+
+  ActivityRingsPainter({
+    required this.progress,
+    required this.isDark,
+  });
+
+  static const Color emerald = Color(0xFF10B981);
+  static const Color sky = Color(0xFF38BDF8);
+  static const Color indigo = Color(0xFF6366F1);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final t = progress * 2 * math.pi;
+
+    final rings = [
+      _RingConfig(radius: 46, strokeWidth: 8.5, color: emerald, speed: 1.8, lenOffset: 0.0),
+      _RingConfig(radius: 33, strokeWidth: 7.5, color: sky, speed: -2.3, lenOffset: 1.0),
+      _RingConfig(radius: 21, strokeWidth: 6.5, color: indigo, speed: 2.9, lenOffset: 2.0),
+    ];
+
+    for (int i = 0; i < rings.length; i++) {
+      final ring = rings[i];
+      // Background ring track
+      final bgPaint = Paint()
+        ..color = ring.color.withValues(alpha: isDark ? 0.16 : 0.12)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = ring.strokeWidth;
+      canvas.drawCircle(Offset(cx, cy), ring.radius, bgPaint);
+
+      // Glowing active arc
+      final startAngle = (t * ring.speed) + ring.lenOffset;
+      final sweepAngle = (0.55 + 0.35 * math.sin(t * 1.5 + i)) * math.pi * 1.5;
+
+      final glowPaint = Paint()
+        ..color = ring.color.withValues(alpha: 0.35)
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = ring.strokeWidth + 4
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+      canvas.drawArc(
+        Rect.fromCircle(center: Offset(cx, cy), radius: ring.radius),
+        startAngle,
+        sweepAngle,
+        false,
+        glowPaint,
+      );
+
+      final arcPaint = Paint()
+        ..color = ring.color
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = ring.strokeWidth;
+      canvas.drawArc(
+        Rect.fromCircle(center: Offset(cx, cy), radius: ring.radius),
+        startAngle,
+        sweepAngle,
+        false,
+        arcPaint,
+      );
+    }
+
+    // Centro: Pulso Esmeralda
+    final pulseR = 5.0 + 2.0 * math.sin(t * 3);
+    final centerGlow = Paint()
+      ..color = emerald.withValues(alpha: 0.5)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+    canvas.drawCircle(Offset(cx, cy), pulseR + 3, centerGlow);
+
+    final centerPaint = Paint()..color = emerald;
+    canvas.drawCircle(Offset(cx, cy), pulseR, centerPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant ActivityRingsPainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.isDark != isDark;
+}
+
+class _RingConfig {
+  final double radius;
+  final double strokeWidth;
+  final Color color;
+  final double speed;
+  final double lenOffset;
+
+  const _RingConfig({
+    required this.radius,
+    required this.strokeWidth,
+    required this.color,
+    required this.speed,
+    required this.lenOffset,
+  });
+}
+
+// ============================================================================
+// OPÇÃO 2: BIO-PULSE ECG & SONAR (One UI 7 / Live Student Pulse 3.0)
+// ============================================================================
+class BioPulseEcgPainter extends CustomPainter {
+  final double progress;
+  final bool isDark;
+
+  BioPulseEcgPainter({
+    required this.progress,
+    required this.isDark,
+  });
+
+  static const Color emerald = Color(0xFF10B981);
+  static const Color sky = Color(0xFF38BDF8);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+
+    // 1. Ondas de Radar Sonar
+    for (int i = 0; i < 3; i++) {
+      final rippleProg = ((progress + (i * 0.33)) % 1.0);
+      final radius = 16.0 + (rippleProg * 42.0);
+      final alpha = (1.0 - rippleProg) * 0.40;
+      final ripplePaint = Paint()
+        ..color = emerald.withValues(alpha: alpha)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.8;
+      canvas.drawCircle(Offset(cx, cy), radius, ripplePaint);
+    }
+
+    // Moldura Circular
+    final framePaint = Paint()
+      ..color = (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.12)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    canvas.drawCircle(Offset(cx, cy), 54, framePaint);
+
+    // 2. Traçado Eletrocardiográfico (ECG de Alta Precisão)
+    final path = Path();
+    const double span = 46.0;
+    bool isFirst = true;
+
+    for (double x = -span; x <= span; x += 2.0) {
+      double y = 0;
+      if (x > -16 && x < -9) {
+        y = -5.0; // P-wave
+      } else if (x >= -9 && x < -3) {
+        y = 8.0; // Q-wave
+      } else if (x >= -3 && x < 3) {
+        y = -30.0 * math.cos((x / 3) * (math.pi / 2)); // R-peak
+      } else if (x >= 3 && x < 10) {
+        y = 15.0 * math.sin(((x - 3) / 7) * math.pi); // S-wave
+      } else if (x >= 15 && x < 26) {
+        y = -7.0 * math.sin(((x - 15) / 11) * math.pi); // T-wave
+      }
+
+      final px = cx + x;
+      final py = cy + y;
+      if (isFirst) {
+        path.moveTo(px, py);
+        isFirst = false;
+      } else {
+        path.lineTo(px, py);
+      }
+    }
+
+    final ecgGlow = Paint()
+      ..color = emerald.withValues(alpha: 0.45)
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = 5.5
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    canvas.drawPath(path, ecgGlow);
+
+    final ecgPaint = Paint()
+      ..color = emerald
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = 2.8;
+    canvas.drawPath(path, ecgPaint);
+
+    // 3. Scanner Dot percorrendo o batimento
+    final scanOffset = ((progress * 2.0) % 1.0);
+    final scanX = -span + (scanOffset * span * 2.0);
+    double scanY = 0;
+    if (scanX > -16 && scanX < -9) {
+      scanY = -5.0;
+    } else if (scanX >= -9 && scanX < -3) {
+      scanY = 8.0;
+    } else if (scanX >= -3 && scanX < 3) {
+      scanY = -30.0 * math.cos((scanX / 3) * (math.pi / 2));
+    } else if (scanX >= 3 && scanX < 10) {
+      scanY = 15.0 * math.sin(((scanX - 3) / 7) * math.pi);
+    } else if (scanX >= 15 && scanX < 26) {
+      scanY = -7.0 * math.sin(((scanX - 15) / 11) * math.pi);
+    }
+
+    final dotGlow = Paint()
+      ..color = sky.withValues(alpha: 0.6)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+    canvas.drawCircle(Offset(cx + scanX, cy + scanY), 5.5, dotGlow);
+
+    final dotPaint = Paint()..color = sky;
+    canvas.drawCircle(Offset(cx + scanX, cy + scanY), 3.8, dotPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant BioPulseEcgPainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.isDark != isDark;
+}
+
+// ============================================================================
+// OPÇÃO 3: NEURAL AI QUANTUM ORB (Meta AI / Gemini Pro)
+// ============================================================================
+class NeuralAiOrbPainter extends CustomPainter {
+  final double progress;
+  final bool isDark;
+
+  NeuralAiOrbPainter({
+    required this.progress,
+    required this.isDark,
+  });
+
+  static const Color emerald = Color(0xFF10B981);
+  static const Color sky = Color(0xFF38BDF8);
+  static const Color indigo = Color(0xFF818CF8);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final t = progress * 2 * math.pi;
+
+    // 1. Núcleo com Gradiente Radial Pulsante
+    final coreR = 34.0 + (4.0 * math.sin(t * 2));
+    final orbGradient = ui.Gradient.radial(
+      Offset(cx, cy),
+      coreR,
+      [
+        sky.withValues(alpha: 0.90),
+        emerald.withValues(alpha: 0.50),
+        indigo.withValues(alpha: 0.0),
+      ],
+      [0.0, 0.45, 1.0],
+    );
+
+    final corePaint = Paint()..shader = orbGradient;
+    canvas.drawCircle(Offset(cx, cy), coreR, corePaint);
+
+    // 2. 3 Órbitas Elípticas 3D
+    final orbits = [
+      _OrbitData(tilt: 0.40, color: emerald, speed: 2.1),
+      _OrbitData(tilt: 1.45, color: sky, speed: -1.8),
+      _OrbitData(tilt: 2.50, color: indigo, speed: 2.5),
+    ];
+
+    for (int i = 0; i < orbits.length; i++) {
+      final orb = orbits[i];
+      canvas.save();
+      canvas.translate(cx, cy);
+      canvas.rotate(orb.tilt + (t * 0.25));
+
+      final ellipseRect = Rect.fromCenter(
+        center: Offset.zero,
+        width: 104,
+        height: 38,
+      );
+
+      final trackPaint = Paint()
+        ..color = orb.color.withValues(alpha: 0.40)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6;
+      canvas.drawOval(ellipseRect, trackPaint);
+
+      // Partícula quântica orbitando
+      final angle = (t * orb.speed) + (i * 2.0);
+      final px = math.cos(angle) * 52;
+      final py = math.sin(angle) * 19;
+
+      final particleGlow = Paint()
+        ..color = orb.color.withValues(alpha: 0.55)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+      canvas.drawCircle(Offset(px, py), 5.0, particleGlow);
+
+      final particlePaint = Paint()..color = orb.color;
+      canvas.drawCircle(Offset(px, py), 3.5, particlePaint);
+
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant NeuralAiOrbPainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.isDark != isDark;
+}
+
+class _OrbitData {
+  final double tilt;
+  final Color color;
+  final double speed;
+
+  const _OrbitData({
+    required this.tilt,
+    required this.color,
+    required this.speed,
+  });
+}
+
+// ============================================================================
+// OPÇÃO 4: KINETIC HEX-CORE (Biomecânica / Botão Anti-Fila)
+// ============================================================================
+class KineticHexCorePainter extends CustomPainter {
+  final double progress;
+  final bool isDark;
+
+  KineticHexCorePainter({
+    required this.progress,
+    required this.isDark,
+  });
+
+  static const Color emerald = Color(0xFF10B981);
+  static const Color sky = Color(0xFF38BDF8);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final t = progress * 2 * math.pi;
+
+    canvas.save();
+    canvas.translate(cx, cy);
+
+    // Camada Externa: Hexágono Giratório Esmeralda
+    _drawHexagonLayer(
+      canvas: canvas,
+      radius: 48,
+      rotation: t * 0.6,
+      color: emerald,
+      strokeWidth: 2.8,
+    );
+
+    // Camada Interna: Hexágono Contra-Rotativo Ciano
+    _drawHexagonLayer(
+      canvas: canvas,
+      radius: 26,
+      rotation: -t * 0.9,
+      color: sky,
+      strokeWidth: 2.2,
+    );
+
+    // Núcleo Central de Tensão Biomecânica
+    final pulseR = 6.0 + (1.8 * math.sin(t * 4));
+    final coreGlow = Paint()
+      ..color = emerald.withValues(alpha: 0.5)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+    canvas.drawCircle(Offset.zero, pulseR + 3, coreGlow);
+
+    final corePaint = Paint()..color = emerald;
+    canvas.drawCircle(Offset.zero, pulseR, corePaint);
+
+    canvas.restore();
+  }
+
+  void _drawHexagonLayer({
+    required Canvas canvas,
+    required double radius,
+    required double rotation,
+    required Color color,
+    required double strokeWidth,
+  }) {
+    canvas.save();
+    canvas.rotate(rotation);
+
+    final path = Path();
+    final points = <Offset>[];
+    for (int i = 0; i < 6; i++) {
+      final a = (i * math.pi) / 3;
+      final p = Offset(math.cos(a) * radius, math.sin(a) * radius);
+      points.add(p);
+      if (i == 0) {
+        path.moveTo(p.dx, p.dy);
+      } else {
+        path.lineTo(p.dx, p.dy);
+      }
+    }
+    path.close();
+
+    final glowPaint = Paint()
+      ..color = color.withValues(alpha: 0.35)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth + 3
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+    canvas.drawPath(path, glowPaint);
+
+    final linePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
+    canvas.drawPath(path, linePaint);
+
+    // Vértices articulados
+    final vertexPaint = Paint()..color = color;
+    for (int i = 0; i < points.length; i += 2) {
+      canvas.drawCircle(points[i], 3.5, vertexPaint);
+    }
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant KineticHexCorePainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.isDark != isDark;
+}
+
+// ============================================================================
+// OPÇÃO 5: EXECUTIVE SHIMMER & HALO (Minimalista Editorial / Vitrines)
+// ============================================================================
+class ExecutiveShimmerPainter extends CustomPainter {
+  final double progress;
+  final bool isDark;
+
+  ExecutiveShimmerPainter({
+    required this.progress,
+    required this.isDark,
+  });
+
+  static const Color emerald = Color(0xFF10B981);
+  static const Color sky = Color(0xFF38BDF8);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final t = progress * 2 * math.pi;
+
+    // 1. Halo Superior Minimalista de Arcos Duplos
+    canvas.save();
+    canvas.translate(cx, cy - 26);
+
+    // Arco Externo Esmeralda
+    canvas.save();
+    canvas.rotate(t * 1.5);
+    final outerArcPaint = Paint()
+      ..color = emerald
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 3.2;
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset.zero, radius: 18),
+      0,
+      math.pi * 1.35,
+      false,
+      outerArcPaint,
+    );
+    canvas.restore();
+
+    // Arco Interno Ciano
+    canvas.save();
+    canvas.rotate(-t * 2.2);
+    final innerArcPaint = Paint()
+      ..color = sky
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 2.4;
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset.zero, radius: 11),
+      0,
+      math.pi * 1.1,
+      false,
+      innerArcPaint,
+    );
+    canvas.restore();
+
+    canvas.restore();
+
+    // 2. Barras de Shimmer Editorial abaixo
+    final baseY = cy + 4;
+    final rows = [
+      _ShimmerRow(y: baseY, width: 110, height: 12),
+      _ShimmerRow(y: baseY + 18, width: 84, height: 9),
+      _ShimmerRow(y: baseY + 32, width: 98, height: 9),
+    ];
+
+    final sweepX = cx - 60 + (progress * 160);
+
+    for (final r in rows) {
+      final rect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(cx - (r.width / 2), r.y, r.width, r.height),
+        const Radius.circular(5),
+      );
+
+      // Base bar
+      final basePaint = Paint()
+        ..color = (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.08);
+      canvas.drawRRect(rect, basePaint);
+
+      // Shimmer sweep highlight
+      final shimmerShader = ui.Gradient.linear(
+        Offset(sweepX - 25, r.y),
+        Offset(sweepX + 25, r.y),
+        [
+          emerald.withValues(alpha: 0.0),
+          emerald.withValues(alpha: 0.35),
+          emerald.withValues(alpha: 0.0),
+        ],
+        [0.0, 0.5, 1.0],
+      );
+      final shimmerPaint = Paint()..shader = shimmerShader;
+      canvas.drawRRect(rect, shimmerPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant ExecutiveShimmerPainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.isDark != isDark;
+}
+
+class _ShimmerRow {
+  final double y;
+  final double width;
+  final double height;
+
+  const _ShimmerRow({
+    required this.y,
+    required this.width,
+    required this.height,
+  });
+}
+
+// ============================================================================
+// OPÇÃO 6: CHRONO-BAR PRECISION (Ações 1-clique / Checkout Instantâneo)
+// ============================================================================
+class ChronoBarPainter extends CustomPainter {
+  final double progress;
+  final bool isDark;
+
+  ChronoBarPainter({
+    required this.progress,
+    required this.isDark,
+  });
+
+  static const Color emerald = Color(0xFF10B981);
+  static const Color sky = Color(0xFF38BDF8);
+  static const Color indigo = Color(0xFF6366F1);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final t = progress * 2 * math.pi;
+
+    const int bars = 9;
+    const double spacing = 11.0;
+    const double totalW = (bars - 1) * spacing;
+
+    for (int i = 0; i < bars; i++) {
+      final distFromCenter = (i - 4).abs();
+      final wave = math.sin((t * 2.5) - (distFromCenter * 0.65));
+      final barH = 16.0 + (1.0 - (distFromCenter * 0.13)) * 44.0 * (0.5 + (0.5 * wave));
+      final x = (cx - (totalW / 2)) + (i * spacing);
+      final y = cy - (barH / 2);
+
+      final Color barColor = distFromCenter <= 1
+          ? emerald
+          : (distFromCenter <= 2 ? sky : indigo);
+
+      final rrect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(x - 3.2, y, 6.4, barH),
+        const Radius.circular(3.5),
+      );
+
+      if (distFromCenter <= 1) {
+        final glow = Paint()
+          ..color = barColor.withValues(alpha: 0.35)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+        canvas.drawRRect(rrect, glow);
+      }
+
+      final paint = Paint()..color = barColor;
+      canvas.drawRRect(rrect, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant ChronoBarPainter oldDelegate) =>
       oldDelegate.progress != progress || oldDelegate.isDark != isDark;
 }

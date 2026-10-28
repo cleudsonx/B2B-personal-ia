@@ -99,6 +99,33 @@ void main() {
       expect(find.text('SHAIPADOS LABS • MR. COACH'), findsOneWidget);
     });
 
+    testWidgets('renders all 6 approved contextual loaders cleanly', (tester) async {
+      for (final type in [
+        ShaipadosLoaderType.activityRings,
+        ShaipadosLoaderType.bioPulseEcg,
+        ShaipadosLoaderType.neuralAiOrb,
+        ShaipadosLoaderType.kineticHexCore,
+        ShaipadosLoaderType.executiveShimmer,
+        ShaipadosLoaderType.chronoBar,
+      ]) {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: ThemeData.dark(),
+            home: Scaffold(
+              body: ShaipadosLoaderContainer(
+                type: type,
+                customTitle: 'Teste ${type.name}',
+              ),
+            ),
+          ),
+        );
+
+        expect(find.text('SHAIPADOS LABS • MR. COACH'), findsOneWidget);
+        expect(find.text('Teste ${type.name}'), findsOneWidget);
+        expect(find.byType(CustomPaint), findsWidgets);
+      }
+    });
+
     testWidgets('AIGenerationStepper renders MrCoachEvolutionPainter integrated smoothly', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(

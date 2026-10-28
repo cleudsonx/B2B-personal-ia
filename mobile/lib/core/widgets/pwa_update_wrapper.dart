@@ -266,12 +266,12 @@ class _PwaUpdateWrapperState extends State<PwaUpdateWrapper> with WidgetsBinding
                     context: context,
                     barrierDismissible: false,
                     builder: (_) => const ShaipadosLoaderContainer(
-                      type: ShaipadosLoaderType.labShakerDna,
-                      customTitle: 'Atualizando Shaipados Labs',
+                      type: ShaipadosLoaderType.bioPulseEcg,
+                      customTitle: 'Atualizando Mr. Coach AI',
                       loadingMessages: [
-                        'Sintetizando nova versão no Labs...',
+                        'Sincronizando nova versão e telemetria...',
                         'Carregando novos módulos e correções...',
-                        'Reiniciando o sistema...',
+                        'Reiniciando o sistema com segurança...',
                       ],
                     ),
                   );

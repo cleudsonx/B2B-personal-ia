@@ -44,7 +44,7 @@ class AppChangelog {
     // ==========================================
     VersionRelease(
       version: '1.11.1',
-      buildNumber: 2026103106,
+      buildNumber: 2026103107,
       date: '27 de Outubro, 2026',
       summary:
           'Versão 1.11.1: Live Student Pulse 3.0 com Telemetria Unificada (Robô WhatsApp & IA Gemini), Disparo WhatsApp 1-Clique In-App, Padronização Canônica das Vitrines (/p/:user) e Suíte de Loaders Shaipados Labs.',

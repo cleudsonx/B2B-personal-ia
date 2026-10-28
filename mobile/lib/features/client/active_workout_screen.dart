@@ -1366,13 +1366,13 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           child: _isLoadingWorkout
               ? const Center(
                   child: ShaipadosLoaderContainer(
-                    type: ShaipadosLoaderType.labShakerDna,
+                    type: ShaipadosLoaderType.activityRings,
                     isOverlay: false,
-                    customTitle: 'Shaipados Labs',
+                    customTitle: 'Calibrando Treino Ativo',
                     loadingMessages: [
-                      'Sincronizando ficha e protocolos...',
-                      'Carregando vetores biomecânicos...',
-                      'Calibrando inteligência de treino...',
+                      'Sincronizando séries, cargas e descanso...',
+                      'Carregando histórico de progressão e RPE...',
+                      'Ajustando metas do Bio-Hub em tempo real...',
                     ],
                   ),
                 )
@@ -2665,16 +2665,16 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
               ),
 
-            // Loading State Overlay com Suíte Shaipados Barbell Loader
+            // Loading State Overlay com Suíte Shaipados Kinetic Hex-Core (Biomecânica)
             if (_isLoading)
               const Positioned.fill(
                 child: ShaipadosLoaderContainer(
-                  type: ShaipadosLoaderType.barbellPlates,
+                  type: ShaipadosLoaderType.kineticHexCore,
                   customTitle: 'Adaptando Exercício...',
                   loadingMessages: [
-                    'Montando a barra olímpica...',
-                    'Ajustando vetores e restrições articulares...',
-                    'Buscando variação com mesmo estímulo muscular...',
+                    'Analisando vetor de força e curva de carga...',
+                    'Filtrando aparelhos livres com mesmo estímulo...',
+                    'Validando integridade articular e biomecânica...',
                     'Variação aprovada! Pronto para o treino.',
                   ],
                 ),

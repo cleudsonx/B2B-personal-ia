@@ -80,14 +80,14 @@ class _AIGenerationStepperState extends State<AIGenerationStepper>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Top Animation: Mr. Coach Evolution Canvas
+                // Top Animation: Neural AI Quantum Orb (Opção 3 Aprovada)
                 Center(
                   child: RepaintBoundary(
                     child: SizedBox(
                       height: 96,
                       width: 220,
                       child: CustomPaint(
-                        painter: MrCoachEvolutionPainter(
+                        painter: NeuralAiOrbPainter(
                           progress: ((_currentStep + 1) / _steps.length).clamp(0.2, 1.0),
                           isDark: MetaColors.isDark(context),
                         ),
