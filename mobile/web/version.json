@@ -1,8 +1,8 @@
 {
-  "version": "1.12.9",
-  "build": 2026103124,
-  "updated_at": "2026-10-29T12:21:01.027405Z",
-  "notes": "Seguranca Zero-Trust: blindagem contra escalacao de privilegio admin em contas WhatsApp OTP e validacao estrita de SuperAdmin",
+  "version": "1.12.10",
+  "build": 2026103125,
+  "updated_at": "2026-10-29T12:57:09.610500Z",
+  "notes": "Blindagem de jornada: confirmacao de perfil (Professor/Aluno) no acesso via WhatsApp e aluno somente com convite do personal",
   "changelog": {
     "student": [
       {

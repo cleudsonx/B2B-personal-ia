@@ -122,13 +122,63 @@ async def test_passwordless_blocks_name_hijack_and_admin_role_injection(mock_sup
                 "full_name": "Cleudson Treinador",  # Tentativa de colisão por nome
             },
         )
+        # 'admin' vira 'client' e, sem convite do professor, não cria conta solta
+        assert response.status_code == 403
+        assert len(created_calls) == 0
+
+        response = client.post(
+            "/api/v1/auth/otp/login-request",
+            json={
+                "phone": "11977776666",
+                "role": "trainer",
+                "full_name": "Cleudson Treinador",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
         assert data["is_new_user"] is True
         assert len(created_calls) == 1
         assert created_calls[0]["email"] == "wa_5511977776666@wa.mrcoach.internal"
-        assert created_calls[0]["role"] == "client"  # 'admin' rejeitado -> fallback seguro
+        assert created_calls[0]["role"] == "trainer"
+
+
+@pytest.mark.asyncio
+async def test_passwordless_student_requires_invite_and_links_pending_invite(mock_supabase):
+    """Aluno novo via WhatsApp: bloqueado sem convite; com convite pendente a conta nasce vinculada ao token."""
+    created_calls = []
+
+    async def fake_admin_create_user(**kwargs):
+        created_calls.append(kwargs)
+        return {"success": True, "user_id": "33333333-3333-3333-3333-333333333333",
+                "email": kwargs["email"], "role": kwargs["role"]}
+
+    with patch.object(supabase_service, "get_client", new=AsyncMock(return_value=mock_supabase)), \
+         patch.object(supabase_service, "admin_create_user", side_effect=fake_admin_create_user), \
+         patch.object(whatsapp_service, "send_text_with_fallback", new=AsyncMock(return_value={"status": "sent"})):
+
+        blocked = client.post(
+            "/api/v1/auth/otp/login-request",
+            json={"phone": "11955554444", "role": "client", "full_name": "Aluno Novo"},
+        )
+        assert blocked.status_code == 403
+        assert "convite" in blocked.json()["detail"].lower()
+        assert created_calls == []
+
+        mock_supabase._db["invite_tokens"] = [{
+            "token": "tok-123",
+            "trainer_id": "44444444-4444-4444-4444-444444444444",
+            "target_phone": "(11) 95555-4444",
+            "channel": "whatsapp",
+        }]
+        ok = client.post(
+            "/api/v1/auth/otp/login-request",
+            json={"phone": "11955554444", "role": "client", "full_name": "Aluno Novo"},
+        )
+        assert ok.status_code == 200
+        assert created_calls[0]["role"] == "client"
+        assert created_calls[0]["invite_token"] == "tok-123"
+
 
 
 def test_is_profile_admin_blocks_whatsapp_synthetic_and_substring_spoofing():

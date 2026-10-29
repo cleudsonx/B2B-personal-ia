@@ -157,6 +157,43 @@ async def _sanitize_synthetic_profile_if_needed(client: Any, profile: Dict[str, 
     return profile
 
 
+_STUDENT_NEEDS_INVITE_MESSAGE = (
+    "Não encontramos um convite do seu personal para este WhatsApp. "
+    "Peça o link de convite ao seu professor ou escolha um profissional na Vitrine. "
+    "Se você é Personal Trainer, selecione 'Sou Personal / Professor'."
+)
+
+
+def _normalize_requested_role(raw_role: Optional[str]) -> str:
+    """Somente 'trainer' ou 'client' são aceitos; qualquer outro valor (inclusive 'admin') vira 'client'."""
+    return "trainer" if (raw_role or "").strip().lower() == "trainer" else "client"
+
+
+async def _find_pending_whatsapp_invite(client: Any, clean_phone: str) -> Optional[Dict[str, Any]]:
+    """
+    Procura convite de aluno pendente (canal WhatsApp, não usado, não expirado)
+    emitido por um professor para este número (compara DDD + 8 últimos dígitos).
+    """
+    try:
+        res = (
+            await client.table("invite_tokens")
+            .select("token, trainer_id, target_phone, channel, used_at, expires_at")
+            .eq("channel", "whatsapp")
+            .is_("used_at", "null")
+            .gt("expires_at", datetime.now(timezone.utc).isoformat())
+            .order("created_at", desc=True)
+            .limit(50)
+            .execute()
+        )
+    except Exception as e:
+        logger.warning(f"[Passwordless] Erro ao consultar convites pendentes: {e}")
+        return None
+    for row in (res.data or []) if res else []:
+        if _phone_matches_profile_row(clean_phone, {"phone": row.get("target_phone")}):
+            return row
+    return None
+
+
 def _phone_matches_profile_row(clean_phone_55: str, row: Dict[str, Any]) -> bool:
     """
     Compara DDD + últimos 8 dígitos (compatível com números de 8 ou 9 dígitos locais),
@@ -1098,6 +1135,13 @@ async def request_passwordless_login(req: PasswordlessLoginRequest):
 
     is_new = profile is None
 
+    # Trava de jornada: aluno novo só entra com convite de professor (WhatsApp) pendente para este número.
+    pending_invite: Optional[Dict[str, Any]] = None
+    if profile is None and _normalize_requested_role(req.role) == "client":
+        pending_invite = await _find_pending_whatsapp_invite(client, clean_phone)
+        if not pending_invite:
+            raise HTTPException(status_code=403, detail=_STUDENT_NEEDS_INVITE_MESSAGE)
+
     if profile:
         profile = await _sanitize_synthetic_profile_if_needed(client, profile)
         user_id = profile["id"]
@@ -1114,7 +1158,7 @@ async def request_passwordless_login(req: PasswordlessLoginRequest):
     else:
         # Garante que o usuário existe no Supabase Auth com domínio sintético isolado e sem privilégios admin
         temp_pw = f"MrCoach_Wa_{uuid.uuid4().hex[:12]}_{now.strftime('%M%S')}"
-        role = "trainer" if (req.role or "").strip().lower() == "trainer" else "client"
+        role = _normalize_requested_role(req.role)
         full_name = req.full_name.strip() if req.full_name and req.full_name.strip() else ("Professor" if role == "trainer" else "Aluno")
         user_name = full_name
         try:
@@ -1124,6 +1168,7 @@ async def request_passwordless_login(req: PasswordlessLoginRequest):
                 full_name=full_name,
                 role=role,
                 phone=clean_phone,
+                invite_token=(pending_invite or {}).get("token"),
                 provisioned_by_backend=True,
             )
             user_id = created.get("user_id")
@@ -1344,8 +1389,14 @@ async def verify_passwordless_login(req: PasswordlessVerifyRequest):
     else:
         # Usuário novo: cria direto via Supabase Admin API com domínio sintético isolado (NUNCA admin)
         user_email = synthetic_email
-        role = "trainer" if (req.role or "").strip().lower() == "trainer" else "client"
+        role = _normalize_requested_role(req.role)
         full_name = req.full_name.strip() if req.full_name and req.full_name.strip() else ("Professor" if role == "trainer" else "Aluno")
+
+        pending_invite: Optional[Dict[str, Any]] = None
+        if role == "client":
+            pending_invite = await _find_pending_whatsapp_invite(client, clean_phone)
+            if not pending_invite:
+                raise HTTPException(status_code=403, detail=_STUDENT_NEEDS_INVITE_MESSAGE)
 
         created = await supabase_service.admin_create_user(
             email=user_email,
@@ -1353,6 +1404,7 @@ async def verify_passwordless_login(req: PasswordlessVerifyRequest):
             full_name=full_name,
             role=role,
             phone=clean_phone,
+            invite_token=(pending_invite or {}).get("token"),
             provisioned_by_backend=True,
         )
         new_uid = created["user_id"]

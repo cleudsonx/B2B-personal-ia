@@ -558,12 +558,76 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
 
                   if (!codeSent) ...[
+                    // Confirmação explícita do perfil (evita cadastro no perfil errado)
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: MetaColors.highlight(context),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _buildRoleTab(
+                              title: 'Sou Personal / Professor',
+                              icon: Icons.sports_gymnastics,
+                              isSelected: _selectedRole == 'trainer',
+                              activeColor: MetaColors.emerald,
+                              onTap: () {
+                                _onRoleChanged('trainer');
+                                setSheetState(() => currentError = null);
+                              },
+                            ),
+                          ),
+                          Expanded(
+                            child: _buildRoleTab(
+                              title: 'Sou Aluno',
+                              icon: Icons.fitness_center_rounded,
+                              isSelected: _selectedRole == 'client',
+                              activeColor: MetaColors.accentBlue,
+                              onTap: () {
+                                _onRoleChanged('client');
+                                setSheetState(() => currentError = null);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      _selectedRole == 'trainer'
+                          ? 'Você está criando ou acessando uma conta PROFISSIONAL de Personal Trainer.'
+                          : 'Aluno entra com o WhatsApp que seu personal convidou. Ainda não tem personal? Escolha um na Vitrine.',
+                      style: TextStyle(color: subColor, fontSize: 12, height: 1.35),
+                    ),
+                    if (_selectedRole == 'client') ...[
+                      const SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            Navigator.pushNamed(context, '/prof');
+                          },
+                          icon: const Icon(Icons.search_rounded, size: 16, color: MetaColors.accentBlue),
+                          label: const Text(
+                            'Encontrar um Personal na Vitrine',
+                            style: TextStyle(color: MetaColors.accentBlue, fontSize: 12.5, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+
                     // Nome (opcional para novo aluno)
                     TextField(
                       controller: nameCtrl,
                       style: TextStyle(color: textColor, fontSize: 14),
                       decoration: InputDecoration(
-                        labelText: 'Seu nome (opcional se já tiver conta)',
+                        labelText: _selectedRole == 'trainer'
+                            ? 'Seu nome (opcional se já tiver conta)'
+                            : 'Seu nome (opcional)',
                         labelStyle: TextStyle(color: subColor, fontSize: 13),
                         prefixIcon: Icon(Icons.person_outline_rounded, color: subColor, size: 20),
                         filled: true,
@@ -1480,9 +1544,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           ),
                           icon: const Icon(Icons.chat_bubble_rounded, size: 20, color: Color(0xFF25D366)),
-                          label: const Text(
-                            'Entrar ou Cadastrar via WhatsApp (Sem Senha)',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                          label: Text(
+                            isTrainer
+                                ? 'Entrar ou Criar Conta de Professor via WhatsApp'
+                                : 'Entrar na Área do Aluno via WhatsApp',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
                           ),
                         ),
                       ),
