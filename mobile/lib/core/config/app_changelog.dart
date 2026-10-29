@@ -43,8 +43,8 @@ class AppChangelog {
     // v1.11.3 - ABA SOCIAL & COMUNIDADE 2.0 (ROBÔ WA IN-APP)
     // ==========================================
     VersionRelease(
-      version: '1.12.7',
-      buildNumber: 2026103122,
+      version: '1.12.8',
+      buildNumber: 2026103123,
       date: '28 de Outubro, 2026',
       summary:
           'Versão 1.11.3: Modernização da Aba Social & Comunidade do Treinador com disparo In-App via Robô do WhatsApp em 1 clique e em lote, Mural com Broadcast, Pódio Editorial One UI 7, Filtros de Retenção e Loader Executive Shimmer.',

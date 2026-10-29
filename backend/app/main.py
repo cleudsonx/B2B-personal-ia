@@ -1,6 +1,7 @@
 import logging
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.core.config import settings
@@ -23,11 +24,18 @@ app = FastAPI(
 async def unhandled_errors_as_json(request: Request, call_next):
     try:
         return await call_next(request)
+    except (HTTPException, StarletteHTTPException) as http_exc:
+        return JSONResponse(
+            status_code=http_exc.status_code,
+            content={"detail": http_exc.detail},
+            headers=getattr(http_exc, "headers", None),
+        )
+    except RuntimeError as exc:
+        logger.exception("Erro 503 em %s %s: %s", request.method, request.url.path, exc)
+        return JSONResponse(status_code=503, content={"detail": str(exc)})
     except Exception as exc:
-        logger.exception("Erro não tratado em %s %s", request.method, request.url.path)
-        if isinstance(exc, RuntimeError):
-            return JSONResponse(status_code=503, content={"detail": str(exc)})
-        return JSONResponse(status_code=500, content={"detail": "Erro interno do servidor."})
+        logger.exception("Erro não tratado em %s %s: %s", request.method, request.url.path, exc)
+        return JSONResponse(status_code=500, content={"detail": f"Erro interno do servidor: {str(exc)}"})
 
 # CORS configuration (conforme padrão W3C/OWASP: se allow_origins contém "*", allow_credentials deve ser False)
 cors_origins = settings.cors_origins_list

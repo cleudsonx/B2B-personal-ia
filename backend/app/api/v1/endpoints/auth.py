@@ -974,38 +974,122 @@ async def request_passwordless_login(req: PasswordlessLoginRequest):
             if wait > 0:
                 raise HTTPException(status_code=429, detail=f"Aguarde {int(wait) + 1}s para solicitar um novo código.")
 
-    # Busca perfil existente pelo telefone
+    # Busca perfil existente pelo telefone (compara últimos 8 dígitos para ignorar pontuação e formato com/sem 9)
     profile = None
+    last8_phone = clean_phone[-8:]
     try:
         p_res = (
             await client.table("profiles")
-            .select("id, full_name, role, phone, public_whatsapp")
-            .or_(f"phone.ilike.%{short_phone}%,public_whatsapp.ilike.%{short_phone}%")
+            .select("id, full_name, role, phone, public_whatsapp, email")
+            .or_(f"phone.ilike.%{last8_phone}%,public_whatsapp.ilike.%{last8_phone}%")
             .limit(1)
             .execute()
         )
         if p_res and p_res.data:
             profile = p_res.data[0]
     except Exception as e:
-        logger.warning(f"[Passwordless] Erro ao buscar profile: {e}")
+        logger.warning(f"[Passwordless] Erro ao buscar profile por telefone: {e}")
 
+    # Fallback 2: busca por e-mail ou nome se informado
+    if not profile and req.full_name:
+        cand = req.full_name.strip()
+        if "@" in cand:
+            try:
+                e_res = (
+                    await client.table("profiles")
+                    .select("id, full_name, role, phone, public_whatsapp, email")
+                    .ilike("email", cand)
+                    .limit(1)
+                    .execute()
+                )
+                if e_res and e_res.data:
+                    profile = e_res.data[0]
+            except Exception:
+                pass
+        elif len(cand) >= 3:
+            try:
+                n_res = (
+                    await client.table("profiles")
+                    .select("id, full_name, role, phone, public_whatsapp, email")
+                    .ilike("full_name", f"%{cand}%")
+                    .limit(1)
+                    .execute()
+                )
+                if n_res and n_res.data:
+                    profile = n_res.data[0]
+            except Exception:
+                pass
+
+    synthetic_email = f"wa_{clean_phone}@mrcoach.app"
     is_new = profile is None
-    user_name = (profile.get("full_name") if profile else None) or req.full_name or "Atleta"
-    user_id = profile.get("id") if profile else None
+
+    if profile:
+        user_id = profile["id"]
+        user_name = profile.get("full_name") or req.full_name or "Atleta"
+        # Vincula o WhatsApp ao perfil se ainda não estiver configurado
+        try:
+            if not profile.get("phone") or not profile.get("public_whatsapp"):
+                await client.table("profiles").update({
+                    "phone": clean_phone,
+                    "public_whatsapp": clean_phone,
+                }).eq("id", user_id).execute()
+        except Exception:
+            pass
+    else:
+        # Garante que o usuário existe no Supabase Auth para ter user_id válido para o OTP
+        temp_pw = f"MrCoach_Wa_{uuid.uuid4().hex[:12]}_{now.strftime('%M%S')}"
+        role = "trainer" if (req.role or "").strip().lower() == "trainer" else "client"
+        full_name = req.full_name.strip() if req.full_name and req.full_name.strip() else ("Professor" if role == "trainer" else "Aluno")
+        user_name = full_name
+        try:
+            created = await supabase_service.admin_create_user(
+                email=synthetic_email,
+                password=temp_pw,
+                full_name=full_name,
+                role=role,
+                phone=clean_phone,
+            )
+            user_id = created.get("user_id")
+        except Exception as e_create:
+            logger.info(f"[Passwordless] Usuário com email sintético já existe ou erro: {e_create}")
+            try:
+                p_exist = (
+                    await client.table("profiles")
+                    .select("id, full_name, role")
+                    .eq("email", synthetic_email)
+                    .limit(1)
+                    .execute()
+                )
+                if p_exist and p_exist.data:
+                    user_id = p_exist.data[0]["id"]
+                    user_name = p_exist.data[0].get("full_name") or full_name
+            except Exception:
+                user_id = None
 
     # Gera OTP
     otp_code = mfa.generate_otp()
     expires_at = (now + timedelta(minutes=10)).isoformat()
+    logger.info(f"[Passwordless OTP] Código gerado para {clean_phone}: {otp_code}")
 
-    await client.table("auth_recovery_otps").insert({
+    insert_payload = {
         "identifier": clean_phone,
         "channel": "whatsapp",
         "otp_code": mfa.hash_secret(otp_code, "mfa-otp"),
-        "user_id": user_id,
         "purpose": "passwordless_login",
         "attempts": 0,
         "expires_at": expires_at,
-    }).execute()
+    }
+    if user_id:
+        insert_payload["user_id"] = user_id
+
+    try:
+        await client.table("auth_recovery_otps").insert(insert_payload).execute()
+    except Exception as e_insert:
+        logger.error(f"[Passwordless] Falha ao persistir OTP no Supabase: {e_insert}")
+        raise HTTPException(
+            status_code=500,
+            detail="Falha ao registrar código de segurança. Tente novamente em instantes.",
+        )
 
     # Dispara mensagem via WhatsApp
     msg_text = (
@@ -1015,14 +1099,19 @@ async def request_passwordless_login(req: PasswordlessLoginRequest):
         f"Ele é válido por 10 minutos. Nunca compartilhe este código com ninguém."
     )
     try:
-        await whatsapp_service.send_text_with_fallback(
+        wa_res = await whatsapp_service.send_text_with_fallback(
             number=clean_phone,
             text=msg_text,
             trainer_id=None,
         )
+        if isinstance(wa_res, dict) and wa_res.get("status") == "failed":
+            logger.warning(f"[Passwordless] WhatsApp gateway reportou: {wa_res.get('reason')}")
     except Exception as e:
         logger.error(f"[Passwordless] Erro ao disparar WhatsApp: {e}")
-        raise HTTPException(status_code=500, detail="Não foi possível enviar o código via WhatsApp. Tente novamente.")
+        raise HTTPException(
+            status_code=500,
+            detail="Não foi possível enviar a mensagem no WhatsApp. Verifique se o número está correto.",
+        )
 
     # Máscara do telefone (ex: +55 (61) 9****-7852)
     ddi_ddd = clean_phone[:4]
@@ -1091,18 +1180,64 @@ async def verify_passwordless_login(req: PasswordlessVerifyRequest):
 
     # Busca perfil
     profile = None
+    last8_phone = clean_phone[-8:]
     try:
         p_res = (
             await client.table("profiles")
-            .select("id, full_name, role, phone, public_whatsapp")
-            .or_(f"phone.ilike.%{short_phone}%,public_whatsapp.ilike.%{short_phone}%")
+            .select("id, full_name, role, phone, public_whatsapp, email")
+            .or_(f"phone.ilike.%{last8_phone}%,public_whatsapp.ilike.%{last8_phone}%")
             .limit(1)
             .execute()
         )
         if p_res and p_res.data:
             profile = p_res.data[0]
     except Exception as e:
-        logger.warning(f"[Passwordless] Erro ao buscar profile existente: {e}")
+        logger.warning(f"[Passwordless] Erro ao buscar profile existente por telefone: {e}")
+
+    if not profile and req.full_name:
+        cand = req.full_name.strip()
+        if "@" in cand:
+            try:
+                e_res = (
+                    await client.table("profiles")
+                    .select("id, full_name, role, phone, public_whatsapp, email")
+                    .ilike("email", cand)
+                    .limit(1)
+                    .execute()
+                )
+                if e_res and e_res.data:
+                    profile = e_res.data[0]
+            except Exception:
+                pass
+        elif len(cand) >= 3:
+            try:
+                n_res = (
+                    await client.table("profiles")
+                    .select("id, full_name, role, phone, public_whatsapp, email")
+                    .ilike("full_name", f"%{cand}%")
+                    .limit(1)
+                    .execute()
+                )
+                if n_res and n_res.data:
+                    profile = n_res.data[0]
+            except Exception:
+                pass
+
+    if not profile:
+        # Tenta buscar pelo email sintético
+        synthetic_email = f"wa_{clean_phone}@mrcoach.app"
+        try:
+            p_exist = (
+                await client.table("profiles")
+                .select("id, full_name, role, phone, public_whatsapp, email")
+                .eq("email", synthetic_email)
+                .limit(1)
+                .execute()
+            )
+            if p_exist and p_exist.data:
+                profile = p_exist.data[0]
+        except Exception:
+            pass
 
     # Gera credencial temporária de alta segurança para login
     temp_pw = f"MrCoach_Wa_{uuid.uuid4().hex[:12]}_{now.strftime('%M%S')}"
