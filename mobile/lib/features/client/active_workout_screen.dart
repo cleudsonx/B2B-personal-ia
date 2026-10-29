@@ -1405,29 +1405,41 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     const Spacer(),
                     if (!_hasTrainerLinked) ...[
                       ExplorerTrialBanner(
-onLinked: _loadActiveWorkout,
+                        onLinked: _loadActiveWorkout,
                       ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Modo Degustação Ativo',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: _textPrimary,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                        ),
+                      const SizedBox(height: 12),
+                    ],
+                    Icon(
+                      Icons.fitness_center_rounded,
+                      size: 56,
+                      color: _textSecondary,
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Nenhuma ficha ativa',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: _textPrimary,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
                       ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Você está experimentando a plataforma Mr. Coach! Para ter treinos personalizados e periodização prescrita por um personal, conecte-se a um professor.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: _textSecondary,
-                          fontSize: 14,
-                          height: 1.4,
-                        ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      !_hasTrainerLinked
+                          ? 'Você está no modo degustação. Conecte-se a um Personal Trainer na Vitrine para prescrever seus treinos.'
+                          : 'Quando seu professor liberar sua ficha, ela aparece aqui. '
+                            'Enquanto isso, aguarde o contato dele para conversar sobre a consultoria. '
+                            'Se você está sem conexão, conecte-se e atualize.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: _textSecondary,
+                        fontSize: 14,
+                        height: 1.4,
                       ),
-                      const SizedBox(height: 24),
+                    ),
+                    const SizedBox(height: 24),
+                    if (!_hasTrainerLinked) ...[
                       SquircleButton(
                         label: 'Conectar Personal Trainer',
                         icon: Icons.handshake_rounded,
@@ -1438,48 +1450,13 @@ onLinked: _loadActiveWorkout,
                         ),
                       ),
                       const SizedBox(height: 12),
-                      SquircleButton(
-                        label: 'Atualizar Ficha',
-                        icon: Icons.refresh_rounded,
-                        isPrimary: false,
-                        onPressed: _loadActiveWorkout,
-                      ),
-                    ] else ...[
-                      Icon(
-                        Icons.fitness_center_rounded,
-                        size: 56,
-                        color: _textSecondary,
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Nenhuma ficha ativa',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: _textPrimary,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Quando seu professor liberar sua ficha, ela aparece aqui. '
-                        'Enquanto isso, aguarde o contato dele para conversar sobre a consultoria. '
-                        'Se você está sem conexão, conecte-se e atualize.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: _textSecondary,
-                          fontSize: 14,
-                          height: 1.4,
-                        ),
-                      ),
-                      const SizedBox(height: 28),
-                      SquircleButton(
-                        label: 'Atualizar',
-                        icon: Icons.refresh_rounded,
-                        isPrimary: true,
-                        onPressed: _loadActiveWorkout,
-                      ),
                     ],
+                    SquircleButton(
+                      label: 'Atualizar',
+                      icon: Icons.refresh_rounded,
+                      isPrimary: _hasTrainerLinked,
+                      onPressed: _loadActiveWorkout,
+                    ),
                     const Spacer(),
                   ],
                 ),
