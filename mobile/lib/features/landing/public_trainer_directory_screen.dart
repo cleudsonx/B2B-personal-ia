@@ -367,20 +367,47 @@ class _PublicTrainerDirectoryScreenState
                     ),
                   ),
                   const Spacer(),
-                  TextButton.icon(
-                    onPressed: () =>
-                        Navigator.pushNamed(context, '/professor/cadastro'),
-                    icon: const Icon(Icons.add_circle_outline_rounded,
-                        color: MetaColors.emerald, size: 17),
-                    label: const Text(
-                      'Sou Treinador',
-                      style: TextStyle(
-                        color: MetaColors.emerald,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                  if (isDesktop) ...[
+                    TextButton.icon(
+                      onPressed: () => Navigator.pushNamed(context, '/aluno/entrar'),
+                      icon: const Icon(Icons.fitness_center_rounded, color: Color(0xFF06B6D4), size: 16),
+                      label: const Text(
+                        'Já sou Aluno (Abrir Treino)',
+                        style: TextStyle(
+                          color: Color(0xFF06B6D4),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      onPressed: () => Navigator.pushNamed(context, '/professor/entrar'),
+                      icon: const Icon(Icons.sports_gymnastics_rounded, size: 16),
+                      label: const Text(
+                        'Sou Personal (Aparecer Aqui)',
+                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: MetaColors.emerald,
+                        foregroundColor: Colors.black,
+                        minimumSize: const Size(0, 36),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ] else ...[
+                    IconButton(
+                      tooltip: 'Área do Aluno',
+                      onPressed: () => Navigator.pushNamed(context, '/aluno/entrar'),
+                      icon: const Icon(Icons.fitness_center_rounded, color: Color(0xFF06B6D4)),
+                    ),
+                    IconButton(
+                      tooltip: 'Área do Treinador',
+                      onPressed: () => Navigator.pushNamed(context, '/professor/entrar'),
+                      icon: const Icon(Icons.sports_gymnastics_rounded, color: MetaColors.emerald),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 14),
@@ -401,6 +428,75 @@ class _PublicTrainerDirectoryScreenState
                   color: isDark ? const Color(0xFF9AA9A1) : const Color(0xFF64748B),
                   fontSize: 14,
                   height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Guia Rápido do Aluno (3 Passos Claros)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF131D17) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: isDark ? const Color(0xFF26382C) : const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(color: const Color(0xFF06B6D4).withValues(alpha: 0.15), shape: BoxShape.circle),
+                            child: const Text('1', style: TextStyle(color: Color(0xFF06B6D4), fontWeight: FontWeight.bold, fontSize: 11)),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Filtre pelo seu objetivo (abaixo)',
+                              style: TextStyle(color: isDark ? Colors.white70 : const Color(0xFF334155), fontSize: 11.5, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(color: const Color(0xFF06B6D4).withValues(alpha: 0.15), shape: BoxShape.circle),
+                            child: const Text('2', style: TextStyle(color: Color(0xFF06B6D4), fontWeight: FontWeight.bold, fontSize: 11)),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Contrate ou chame no WhatsApp',
+                              style: TextStyle(color: isDark ? Colors.white70 : const Color(0xFF334155), fontSize: 11.5, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(color: MetaColors.emerald.withValues(alpha: 0.15), shape: BoxShape.circle),
+                            child: const Text('3', style: TextStyle(color: MetaColors.emerald, fontWeight: FontWeight.bold, fontSize: 11)),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Acesse sem senha (via código)',
+                              style: TextStyle(color: isDark ? Colors.white70 : const Color(0xFF334155), fontSize: 11.5, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 18),

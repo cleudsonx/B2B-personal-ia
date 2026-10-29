@@ -21,8 +21,10 @@ class B2BLandingScreen extends StatelessWidget {
         bottom: false,
         child: CustomScrollView(
           slivers: [
+            SliverToBoxAdapter(child: _buildStudentNoticeBanner(context, wide)),
             SliverToBoxAdapter(child: _buildHeader(context, wide)),
             SliverToBoxAdapter(child: _buildHero(context, wide)),
+            SliverToBoxAdapter(child: _FeaturesAndStarterSection(wide: wide)),
             SliverToBoxAdapter(child: _RoiCalculatorSection(wide: wide)),
             SliverToBoxAdapter(child: BiomechanicalTestDriveWidget(wide: wide)),
             SliverToBoxAdapter(child: _ConsultancyComparisonSection(wide: wide)),
@@ -30,6 +32,53 @@ class B2BLandingScreen extends StatelessWidget {
             SliverToBoxAdapter(child: _buildWorkflow(context, wide)),
             SliverToBoxAdapter(child: _buildFooter(context)),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStudentNoticeBanner(BuildContext context, bool wide) {
+    const cyan = Color(0xFF06B6D4);
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFF081820),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1160),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline_rounded, color: cyan, size: 18),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  wide
+                      ? 'Você é aluno procurando uma consultoria online ou querendo acessar seu treino?'
+                      : 'É aluno procurando consultoria ou treino?',
+                  style: const TextStyle(color: Color(0xFFE2E8F0), fontSize: 12.5, fontWeight: FontWeight.w600),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pushNamed(context, '/prof'),
+                style: TextButton.styleFrom(
+                  foregroundColor: cyan,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  visualDensity: VisualDensity.compact,
+                ),
+                child: const Text('Buscar Personal →', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              ),
+              const SizedBox(width: 4),
+              TextButton(
+                onPressed: () => Navigator.pushNamed(context, '/aluno/entrar'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white70,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  visualDensity: VisualDensity.compact,
+                ),
+                child: const Text('Área do Aluno', style: TextStyle(fontSize: 12)),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -79,21 +128,38 @@ class B2BLandingScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              if (wide)
+              if (wide) ...[
                 TextButton(
                   onPressed: () => Navigator.pushNamed(context, '/ai'),
-                  style: TextButton.styleFrom(foregroundColor: Colors.white),
-                  child: const Text('Mr. Coach IA'),
+                  style: TextButton.styleFrom(foregroundColor: Colors.white70),
+                  child: const Text('Science Lab & Calculadoras', style: TextStyle(fontSize: 13)),
                 ),
-              if (wide)
                 TextButton.icon(
                   onPressed: () => Navigator.pushNamed(context, '/prof'),
-                  style: TextButton.styleFrom(foregroundColor: Colors.white),
+                  style: TextButton.styleFrom(foregroundColor: const Color(0xFF06B6D4)),
                   icon: const Icon(Icons.search_rounded, size: 17),
-                  label: const Text('Encontrar treinador'),
+                  label: const Text('Encontrar Personal', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                 ),
-              const SizedBox(width: 8),
-              _PlatformAccessButton(compact: !wide),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  onPressed: () => Navigator.pushNamed(context, '/professor/entrar'),
+                  icon: const Icon(Icons.rocket_launch_rounded, size: 16),
+                  label: const Text('Começar Grátis (5 Alunos)'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _green,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(0, 40),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ] else ...[
+                IconButton(
+                  tooltip: 'Encontrar Personal',
+                  onPressed: () => Navigator.pushNamed(context, '/prof'),
+                  icon: const Icon(Icons.search_rounded, color: Color(0xFF06B6D4)),
+                ),
+                _PlatformAccessButton(compact: true),
+              ],
             ],
           ),
         ),
@@ -133,28 +199,43 @@ class B2BLandingScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'PLATAFORMA PARA PERSONAL TRAINERS E ALUNOS',
-          style: TextStyle(
-            color: _green,
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.2,
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: _green.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: _green.withValues(alpha: 0.35)),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.sports_gymnastics_rounded, size: 14, color: _green),
+              SizedBox(width: 6),
+              Text(
+                'MR. COACH PRO • PLATAFORMA OFICIAL PARA PERSONAL TRAINERS',
+                style: TextStyle(
+                  color: _green,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.1,
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 18),
         Text(
-          'Mais clareza na rotina. Mais espaço para acompanhar pessoas.',
+          'Prescreva em 30 segundos com IA. Escale sua consultoria online.',
           style: TextStyle(
             color: Colors.white,
-            fontSize: wide ? 54 : 39,
+            fontSize: wide ? 52 : 36,
             fontWeight: FontWeight.w900,
-            height: 1.04,
+            height: 1.06,
           ),
         ),
         const SizedBox(height: 18),
         const Text(
-          'O Mr. Coach conecta organização de alunos, prescrição de treinos e acompanhamento em uma experiência compartilhada entre treinador e aluno.',
+          'Diga adeus às planilhas lentas e mensagens perdidas no WhatsApp. Tenha prescrição biomecânica inteligente, robô de atendimento 24h e sua vitrine pública com checkout Pix e Cartão.',
           style: TextStyle(color: _muted, fontSize: 16, height: 1.65),
         ),
         const SizedBox(height: 26),
@@ -163,26 +244,27 @@ class B2BLandingScreen extends StatelessWidget {
           runSpacing: 12,
           children: [
             FilledButton.icon(
-              onPressed: () => Navigator.pushNamed(context, '/home'),
-              icon: const Icon(Icons.login_rounded, size: 18),
-              label: const Text('Acessar plataforma'),
+              onPressed: () => Navigator.pushNamed(context, '/professor/entrar'),
+              icon: const Icon(Icons.rocket_launch_rounded, size: 18),
+              label: const Text('Começar Grátis (Até 5 Alunos • Sem Cartão)'),
               style: FilledButton.styleFrom(
                 backgroundColor: _green,
                 foregroundColor: Colors.white,
-                minimumSize: const Size(0, 48),
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                minimumSize: const Size(0, 50),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
             ),
             OutlinedButton.icon(
-              onPressed: () => Navigator.pushNamed(context, '/prof'),
-              icon: const Icon(Icons.search_rounded, size: 18),
-              label: const Text('Encontrar treinador'),
+              onPressed: () => Navigator.pushNamed(context, '/professor/entrar'),
+              icon: const Icon(Icons.login_rounded, size: 18),
+              label: const Text('Já sou Personal (Entrar)'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,
-                minimumSize: const Size(0, 48),
+                minimumSize: const Size(0, 50),
+                padding: const EdgeInsets.symmetric(horizontal: 18),
                 side: const BorderSide(color: Color(0xFF35443B)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
             ),
           ],
@@ -1354,3 +1436,238 @@ class _ComparisonCardData {
   });
 }
 
+
+// =============================================================================
+// SEÇÃO DE RECURSOS PRO & PLANO STARTER GRÁTIS ATÉ 5 ALUNOS
+// =============================================================================
+
+class _FeaturesAndStarterSection extends StatelessWidget {
+  final bool wide;
+
+  const _FeaturesAndStarterSection({required this.wide});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFF0F1713),
+      padding: EdgeInsets.symmetric(horizontal: 22, vertical: wide ? 64 : 44),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1160),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: B2BLandingScreen._green.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: B2BLandingScreen._green.withValues(alpha: 0.35)),
+                ),
+                child: const Text(
+                  'MOTOR BIOMECÂNICO & AUTOMAÇÃO',
+                  style: TextStyle(
+                    color: B2BLandingScreen._green,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Por que os maiores personais estão migrando para o Mr. Coach?',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: wide ? 32 : 24,
+                  fontWeight: FontWeight.w900,
+                  height: 1.18,
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // GRID DE CARDS DE DESTAQUE
+              wide
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: _buildCard(Icons.flash_on_rounded, 'Prescrição com IA em 30s', 'Diga adeus às planilhas lentas. Nossa IA lê as metas do aluno e monta divisões completas, séries, repetições e intervalos científicos.')),
+                        const SizedBox(width: 20),
+                        Expanded(child: _buildCard(Icons.warning_amber_rounded, 'Botão Aparelho Ocupado', 'Se o leg press estiver lotado no horário de pico, o aluno toca no botão e a IA sugere na hora uma variação biomecânica equivalente.')),
+                        const SizedBox(width: 20),
+                        Expanded(child: _buildCard(Icons.shield_rounded, 'Blindagem de Lesões', 'O aluno tem hérnia ou dor no ombro? A anamnese filtra e bloqueia automaticamente qualquer exercício contraindicado.')),
+                      ],
+                    )
+                  : Column(
+                      children: [
+                        _buildCard(Icons.flash_on_rounded, 'Prescrição com IA em 30s', 'Diga adeus às planilhas lentas. Nossa IA lê as metas do aluno e monta divisões completas, séries, repetições e intervalos científicos.'),
+                        const SizedBox(height: 16),
+                        _buildCard(Icons.warning_amber_rounded, 'Botão Aparelho Ocupado', 'Se o leg press estiver lotado no horário de pico, o aluno toca no botão e a IA sugere na hora uma variação biomecânica equivalente.'),
+                        const SizedBox(height: 16),
+                        _buildCard(Icons.shield_rounded, 'Blindagem de Lesões', 'O aluno tem hérnia ou dor no ombro? A anamnese filtra e bloqueia automaticamente qualquer exercício contraindicado.'),
+                      ],
+                    ),
+
+              const SizedBox(height: 48),
+
+              // BANNER DO PLANO STARTER GRÁTIS
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(28),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF14241B), Color(0xFF0F1A14)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: B2BLandingScreen._green.withValues(alpha: 0.5), width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: B2BLandingScreen._green.withValues(alpha: 0.1),
+                      blurRadius: 32,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: wide
+                    ? Row(
+                        children: [
+                          Expanded(
+                            flex: 7,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Text(
+                                      'Plano Starter Grátis',
+                                      style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: B2BLandingScreen._green,
+                                        borderRadius: BorderRadius.circular(999),
+                                      ),
+                                      child: const Text(
+                                        'R\$ 0 / MÊS',
+                                        style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 11),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Até 5 alunos ativos para você testar na prática com sua consultoria sem pagar nada e sem cadastrar cartão de crédito.',
+                                  style: TextStyle(color: Color(0xFF9AA9A1), fontSize: 14, height: 1.5),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 24),
+                          Expanded(
+                            flex: 4,
+                            child: FilledButton.icon(
+                              onPressed: () => Navigator.pushNamed(context, '/professor/entrar'),
+                              icon: const Icon(Icons.rocket_launch_rounded, size: 18),
+                              label: const Text('Ativar Plano Grátis Agora'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: B2BLandingScreen._green,
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size(0, 52),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Plano Starter Grátis',
+                                style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: B2BLandingScreen._green,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: const Text(
+                                  'R\$ 0 / MÊS',
+                                  style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 10),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Até 5 alunos ativos para você testar na prática com sua consultoria sem pagar nada e sem cartão.',
+                            style: TextStyle(color: Color(0xFF9AA9A1), fontSize: 13, height: 1.5),
+                          ),
+                          const SizedBox(height: 20),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: () => Navigator.pushNamed(context, '/professor/entrar'),
+                              icon: const Icon(Icons.rocket_launch_rounded, size: 18),
+                              label: const Text('Ativar Plano Grátis Agora'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: B2BLandingScreen._green,
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size(0, 50),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCard(IconData icon, String title, String desc) {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: const Color(0xFF131D18),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF28382E)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: B2BLandingScreen._green.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: B2BLandingScreen._green, size: 22),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            desc,
+            style: const TextStyle(color: Color(0xFF9AA9A1), fontSize: 13, height: 1.5),
+          ),
+        ],
+      ),
+    );
+  }
+}

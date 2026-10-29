@@ -18,11 +18,13 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
     } else if (destination == 'ai') {
       Navigator.pushNamed(context, '/ai');
     } else if (destination == 'entry') {
-      Navigator.pushNamed(context, '/home');
+      Navigator.pushNamed(context, '/login');
     } else if (destination == 'directory') {
       Navigator.pushNamed(context, '/prof');
-    } else if (destination == 'register') {
-      Navigator.pushNamed(context, '/register');
+    } else if (destination == 'trainer_entry') {
+      Navigator.pushNamed(context, '/professor/entrar');
+    } else if (destination == 'student_entry') {
+      Navigator.pushNamed(context, '/aluno/entrar');
     } else if (destination.startsWith('http')) {
       launchUrl(Uri.parse(destination), mode: LaunchMode.externalApplication);
     }
@@ -159,21 +161,47 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                           ),
                           Row(
                             children: [
-                              if (isDesktop)
-                                SquircleButton(
-                                  label: 'Mr. Coach IA',
-                                  icon: Icons.auto_awesome,
-                                  isPrimary: true,
-                                  height: 42,
-                                  borderRadius: 12,
-                                  onPressed: () => _navigateToDestination(context, 'ai'),
-                                )
-                              else
-                                IconButton(
-                                  tooltip: 'Mr. Coach IA',
-                                  onPressed: () => _navigateToDestination(context, 'ai'),
-                                  icon: const Icon(Icons.auto_awesome, color: MetaColors.emerald),
+                              if (isDesktop) ...[
+                                TextButton(
+                                  onPressed: () => _navigateToDestination(context, 'mrcoach'),
+                                  style: TextButton.styleFrom(foregroundColor: MetaColors.emerald),
+                                  child: const Text('Para Professores', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                                 ),
+                                const SizedBox(width: 4),
+                                TextButton(
+                                  onPressed: () => _navigateToDestination(context, 'directory'),
+                                  style: TextButton.styleFrom(foregroundColor: const Color(0xFF06B6D4)),
+                                  child: const Text('Encontrar Personal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                ),
+                                const SizedBox(width: 4),
+                                TextButton(
+                                  onPressed: () => _navigateToDestination(context, 'ai'),
+                                  style: TextButton.styleFrom(foregroundColor: Colors.white70),
+                                  child: const Text('Science Lab & Calculadoras', style: TextStyle(fontSize: 13)),
+                                ),
+                                const SizedBox(width: 8),
+                                SquircleButton(
+                                  label: 'Entrar',
+                                  icon: Icons.login_rounded,
+                                  isPrimary: false,
+                                  height: 38,
+                                  borderRadius: 10,
+                                  backgroundColor: MetaColors.surfaceHighlight,
+                                  foregroundColor: Colors.white,
+                                  onPressed: () => _navigateToDestination(context, 'entry'),
+                                ),
+                              ] else ...[
+                                IconButton(
+                                  tooltip: 'Encontrar Personal',
+                                  onPressed: () => _navigateToDestination(context, 'directory'),
+                                  icon: const Icon(Icons.search_rounded, color: Color(0xFF06B6D4)),
+                                ),
+                                IconButton(
+                                  tooltip: 'Entrar',
+                                  onPressed: () => _navigateToDestination(context, 'entry'),
+                                  icon: const Icon(Icons.login_rounded, color: MetaColors.emerald),
+                                ),
+                              ],
                             ],
                           ),
                         ],
@@ -265,36 +293,25 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
 
                           const SizedBox(height: 48),
 
-                          Wrap(
-                            alignment: WrapAlignment.center,
-                            spacing: 16,
-                            runSpacing: 14,
-                            children: [
-                              SquircleButton(
-                                label: 'Explorar Mr. Coach B2B',
-                                icon: Icons.arrow_forward_rounded,
-                                isPrimary: true,
-                                height: 56,
-                                borderRadius: 14,
-                                onPressed: () => _navigateToDestination(context, 'mrcoach'),
-                              ),
-                              SquircleButton(
-                                label: 'Encontrar treinador',
-                                icon: Icons.search_rounded,
-                                isPrimary: false,
-                                height: 56,
-                                borderRadius: 14,
-                                onPressed: () => _navigateToDestination(context, 'directory'),
-                              ),
-                              SquircleButton(
-                                label: 'Acessar plataforma',
-                                icon: Icons.login_rounded,
-                                isPrimary: false,
-                                height: 56,
-                                borderRadius: 14,
-                                onPressed: () => _navigateToDestination(context, 'entry'),
-                              ),
-                            ],
+                          // BIFURCAÇÃO DUPLA DE PERSONA (Zero Dúvida em 3 Segundos)
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 1060),
+                            child: isDesktop
+                                ? Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(child: _buildTrainerPersonaCard(context)),
+                                      const SizedBox(width: 24),
+                                      Expanded(child: _buildStudentPersonaCard(context)),
+                                    ],
+                                  )
+                                : Column(
+                                    children: [
+                                      _buildTrainerPersonaCard(context),
+                                      const SizedBox(height: 20),
+                                      _buildStudentPersonaCard(context),
+                                    ],
+                                  ),
                           ).animate().fadeIn(delay: 550.ms).slideY(begin: 0.1, end: 0),
                         ],
                       ),
@@ -494,16 +511,34 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
                 ),
                 const SizedBox(height: 28),
 
-                SizedBox(
-                  width: double.infinity,
-                  child: SquircleButton(
-                    label: 'Ver Demonstração do Mr. Coach →',
-                    icon: Icons.open_in_new_rounded,
-                    isPrimary: true,
-                    height: 52,
-                    borderRadius: 14,
-                    onPressed: () => Navigator.pushNamed(context, '/demo'),
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 6,
+                      child: SquircleButton(
+                        label: 'Conhecer Mr. Coach Pro →',
+                        icon: Icons.sports_gymnastics_rounded,
+                        isPrimary: true,
+                        height: 50,
+                        borderRadius: 14,
+                        onPressed: () => _navigateToDestination(context, 'mrcoach'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 4,
+                      child: SquircleButton(
+                        label: 'Ver App Aluno',
+                        icon: Icons.fitness_center_rounded,
+                        isPrimary: false,
+                        height: 50,
+                        borderRadius: 14,
+                        backgroundColor: MetaColors.surfaceHighlight,
+                        foregroundColor: Colors.white,
+                        onPressed: () => Navigator.pushNamed(context, '/demo'),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 24),
 
@@ -695,6 +730,215 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+  Widget _buildTrainerPersonaCard(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1A14),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.5), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: MetaColors.emerald.withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: MetaColors.emerald,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Text(
+                  'SOU PERSONAL / PROFESSOR',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ),
+              const Icon(Icons.sports_gymnastics_rounded, color: MetaColors.emerald, size: 24),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Escale sua Consultoria com IA & Robô WhatsApp 24h',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              height: 1.25,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Monte periodizações completas em 30 segundos, receba via Pix/Cartão na sua Vitrine Pública e deixe a IA atender seus alunos.',
+            style: TextStyle(color: MetaColors.textSecondary, fontSize: 13, height: 1.5),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              _buildFeatureBadge('Grátis até 5 alunos', MetaColors.emerald),
+              _buildFeatureBadge('Blindagem Articular', MetaColors.emerald),
+              _buildFeatureBadge('Checkout Pix Integrado', MetaColors.emerald),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: SquircleButton(
+                  label: 'Ver Plataforma Pro →',
+                  isPrimary: true,
+                  height: 46,
+                  borderRadius: 12,
+                  onPressed: () => _navigateToDestination(context, 'mrcoach'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SquircleButton(
+                  label: 'Criar Conta / Entrar',
+                  isPrimary: false,
+                  height: 46,
+                  borderRadius: 12,
+                  backgroundColor: MetaColors.surfaceHighlight,
+                  foregroundColor: Colors.white,
+                  onPressed: () => _navigateToDestination(context, 'trainer_entry'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStudentPersonaCard(BuildContext context) {
+    const cyan = Color(0xFF06B6D4);
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0B171D),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: cyan.withValues(alpha: 0.5), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: cyan.withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: cyan,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Text(
+                  'SOU ALUNO / BUSCO CONSULTORIA',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ),
+              const Icon(Icons.fitness_center_rounded, color: cyan, size: 24),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Encontre seu Personal Online ou Acesse seu Treino',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              height: 1.25,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Contrate um Personal certificado pelo CREF para seu objetivo ou acesse diretamente o treino prescrito pelo seu treinador.',
+            style: TextStyle(color: MetaColors.textSecondary, fontSize: 13, height: 1.5),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              _buildFeatureBadge('CREF Verificado', cyan),
+              _buildFeatureBadge('Botão Aparelho Ocupado', cyan),
+              _buildFeatureBadge('Acesso sem Senha', cyan),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: SquircleButton(
+                  label: 'Procurar Personal →',
+                  isPrimary: true,
+                  height: 46,
+                  borderRadius: 12,
+                  backgroundColor: cyan,
+                  foregroundColor: Colors.black,
+                  onPressed: () => _navigateToDestination(context, 'directory'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SquircleButton(
+                  label: 'Abrir meu Treino',
+                  isPrimary: false,
+                  height: 46,
+                  borderRadius: 12,
+                  backgroundColor: MetaColors.surfaceHighlight,
+                  foregroundColor: Colors.white,
+                  onPressed: () => _navigateToDestination(context, 'student_entry'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureBadge(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        '✓ $label',
+        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
       ),
     );
   }

@@ -318,6 +318,21 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
             backgroundColor: MetaColors.bg(context),
             systemOverlayStyle: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
             actions: [
+              TextButton.icon(
+                onPressed: () => Navigator.pushNamed(context, '/aluno/entrar'),
+                icon: const Icon(Icons.fitness_center_rounded, size: 15, color: Color(0xFF06B6D4)),
+                label: const Text(
+                  'Já sou Aluno',
+                  style: TextStyle(color: Color(0xFF06B6D4), fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+                style: TextButton.styleFrom(
+                  backgroundColor: (isDark ? Colors.black : Colors.white).withValues(alpha: 0.65),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+              const SizedBox(width: 6),
               IconButton(
                 tooltip: 'Compartilhar Vitrine',
                 icon: Container(
