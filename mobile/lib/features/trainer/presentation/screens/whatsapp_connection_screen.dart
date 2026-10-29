@@ -33,6 +33,8 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
   bool _loadingTelemetry = false;
   Map<String, dynamic>? _telemetry;
   List<dynamic> _logs = [];
+  String _logFilter = 'all'; // 'all', 'students', 'tests'
+  bool _expandedLogs = false;
   Timer? _statusPollingTimer;
 
   @override
@@ -1237,21 +1239,501 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
     );
   }
 
+  bool _isTestLog(Map<String, dynamic> log) {
+    final name = (log['student_name'] ?? '').toString().toLowerCase();
+    final msgIn = (log['message_in'] ?? '').toString().toLowerCase();
+    final msgOut = (log['message_out'] ?? '').toString().toLowerCase();
+    return name.contains('teste') ||
+        msgIn.contains('disparo manual') ||
+        msgIn.contains('teste de operação') ||
+        msgOut.contains('teste de operação') ||
+        msgIn.startsWith('[disparo');
+  }
+
+  String _formatRelativeTime(dynamic rawCreatedAt) {
+    if (rawCreatedAt == null) return '';
+    try {
+      final dt = DateTime.parse(rawCreatedAt.toString()).toLocal();
+      final now = DateTime.now();
+      final diff = now.difference(dt);
+
+      if (diff.inMinutes < 1) return 'Agora';
+      if (diff.inMinutes < 60) return 'Há ${diff.inMinutes}m';
+      if (diff.inHours < 24 && dt.day == now.day) {
+        final hour = dt.hour.toString().padLeft(2, '0');
+        final min = dt.minute.toString().padLeft(2, '0');
+        return '$hour:$min';
+      }
+      if (diff.inDays < 2) return 'Ontem';
+      final day = dt.day.toString().padLeft(2, '0');
+      final month = dt.month.toString().padLeft(2, '0');
+      return '$day/$month';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  void _showLogDetailSheet(BuildContext context, Map<String, dynamic> log) {
+    final studentName = log['student_name'] ?? 'Aluno';
+    final channel = log['channel'] ?? 'whatsapp';
+    final msgIn = (log['message_in'] ?? '').toString().trim();
+    final msgOut = (log['message_out'] ?? '').toString().trim();
+    final isFree = log['cost_type'] == 'free';
+    final isTest = _isTestLog(log);
+    final relativeTime = _formatRelativeTime(log['created_at']);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(ctx).padding.bottom + 20),
+        decoration: BoxDecoration(
+          color: MetaColors.card(context),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border.all(color: MetaColors.cardBorder(context)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: MetaColors.subtext(context).withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: (channel == 'whatsapp' ? MetaColors.emerald : MetaColors.accentBlue)
+                        .withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    channel == 'whatsapp' ? Icons.chat_rounded : Icons.phone_android_rounded,
+                    size: 18,
+                    color: channel == 'whatsapp' ? MetaColors.emerald : MetaColors.accentBlue,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              studentName,
+                              style: TextStyle(
+                                color: MetaColors.text(context),
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          if (isTest) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'TESTE',
+                                style: TextStyle(
+                                  color: Colors.amber,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (relativeTime.isNotEmpty)
+                        Text(
+                          relativeTime,
+                          style: TextStyle(
+                            color: MetaColors.subtext(context),
+                            fontSize: 11.5,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isFree
+                        ? MetaColors.emerald.withValues(alpha: 0.15)
+                        : MetaColors.accentBlue.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    isFree ? 'CUSTO ZERO' : 'GEMINI IA',
+                    style: TextStyle(
+                      color: isFree ? MetaColors.emerald : MetaColors.accentBlue,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'MENSAGEM DO ALUNO',
+              style: TextStyle(
+                color: MetaColors.subtext(context),
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.8,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: MetaColors.highlight(context),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: MetaColors.cardBorder(context)),
+              ),
+              child: SelectableText(
+                msgIn.isNotEmpty ? msgIn : '(Sem texto recebido)',
+                style: TextStyle(
+                  color: MetaColors.text(context),
+                  fontSize: 13.5,
+                  height: 1.4,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'RESPOSTA DO ROBÔ',
+              style: TextStyle(
+                color: MetaColors.subtext(context),
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.8,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: MetaColors.highlight(context),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: MetaColors.cardBorder(context)),
+              ),
+              child: SelectableText(
+                msgOut.isNotEmpty ? msgOut : '(Sem resposta gerada)',
+                style: TextStyle(
+                  color: MetaColors.text(context),
+                  fontSize: 13.5,
+                  height: 1.4,
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: MetaColors.cardBorder(context)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                child: Text('Fechar', style: TextStyle(color: MetaColors.text(context))),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required int count,
+    required bool isSelected,
+    required VoidCallback onTap,
+    IconData? icon,
+  }) {
+    final activeColor = MetaColors.emerald;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? activeColor.withValues(alpha: 0.16)
+              : MetaColors.highlight(context),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: isSelected
+                ? activeColor.withValues(alpha: 0.6)
+                : MetaColors.cardBorder(context),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: 13,
+                color: isSelected ? activeColor : MetaColors.subtext(context),
+              ),
+              const SizedBox(width: 5),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? activeColor : MetaColors.subtext(context),
+                fontSize: 11.5,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? activeColor.withValues(alpha: 0.25)
+                    : MetaColors.cardBorder(context).withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  color: isSelected ? activeColor : MetaColors.subtext(context),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactLogCard(Map<String, dynamic> log) {
+    final studentName = log['student_name'] ?? 'Aluno';
+    final channel = log['channel'] ?? 'whatsapp';
+    final msgIn = (log['message_in'] ?? '').toString().trim();
+    final msgOut = (log['message_out'] ?? '').toString().trim();
+    final isFree = log['cost_type'] == 'free';
+    final isTest = _isTestLog(log);
+    final relativeTime = _formatRelativeTime(log['created_at']);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: MetaCard(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        onTap: () => _showLogDetailSheet(context, log),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Topo: Canal + Nome + Badge Teste + Horário + Custo
+            Row(
+              children: [
+                Icon(
+                  channel == 'whatsapp' ? Icons.chat_rounded : Icons.phone_android_rounded,
+                  size: 13,
+                  color: channel == 'whatsapp' ? MetaColors.emerald : MetaColors.accentBlue,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          studentName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: MetaColors.text(context),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ),
+                      if (isTest) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'TESTE',
+                            style: TextStyle(
+                              color: Colors.amber,
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (relativeTime.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          '• $relativeTime',
+                          style: TextStyle(
+                            color: MetaColors.subtext(context),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isFree
+                        ? MetaColors.emerald.withValues(alpha: 0.14)
+                        : MetaColors.accentBlue.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    isFree ? 'CUSTO ZERO' : 'GEMINI IA',
+                    style: TextStyle(
+                      color: isFree ? MetaColors.emerald : MetaColors.accentBlue,
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            // Diálogo compacto em linha única
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              decoration: BoxDecoration(
+                color: MetaColors.highlight(context).withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                children: [
+                  const Text('👤 ', style: TextStyle(fontSize: 10.5)),
+                  Expanded(
+                    child: Text(
+                      msgIn.isNotEmpty ? '"$msgIn"' : '(sem texto)',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: MetaColors.subtext(context),
+                        fontSize: 11.5,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 5),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('🤖 ', style: TextStyle(fontSize: 10.5)),
+                Expanded(
+                  child: Text(
+                    msgOut.isNotEmpty ? msgOut : '(sem resposta)',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: MetaColors.text(context),
+                      fontSize: 11.5,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 16,
+                  color: MetaColors.subtext(context).withValues(alpha: 0.5),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildLogsSection() {
+    final allLogs = _logs.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    final studentLogs = allLogs.where((l) => !_isTestLog(l)).toList();
+    final testLogs = allLogs.where((l) => _isTestLog(l)).toList();
+
+    List<Map<String, dynamic>> displayedLogs;
+    if (_logFilter == 'students') {
+      displayedLogs = studentLogs;
+    } else if (_logFilter == 'tests') {
+      displayedLogs = testLogs;
+    } else {
+      displayedLogs = allLogs;
+    }
+
+    final hasMore = displayedLogs.length > 3;
+    final visibleLogs = _expandedLogs ? displayedLogs : displayedLogs.take(3).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Cabeçalho da Seção com Totalizador e Refresh
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'RADAR DO ROBÔ • ATENDIMENTOS',
-              style: TextStyle(
-                color: MetaColors.subtext(context),
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.2,
-              ),
+            Row(
+              children: [
+                Text(
+                  'RADAR DO ROBÔ • ATENDIMENTOS',
+                  style: TextStyle(
+                    color: MetaColors.subtext(context),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                if (allLogs.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: MetaColors.emerald.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '${allLogs.length}',
+                      style: const TextStyle(
+                        color: MetaColors.emerald,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
             IconButton(
               tooltip: 'Atualizar histórico',
@@ -1260,8 +1742,44 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 10),
-        if (_logs.isEmpty)
+        const SizedBox(height: 8),
+
+        // Filtros Rápidos (Todos / Alunos / Testes)
+        if (allLogs.isNotEmpty) ...[
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildFilterChip(
+                  label: 'Todos',
+                  count: allLogs.length,
+                  isSelected: _logFilter == 'all',
+                  onTap: () => setState(() => _logFilter = 'all'),
+                ),
+                const SizedBox(width: 8),
+                _buildFilterChip(
+                  label: 'Alunos',
+                  count: studentLogs.length,
+                  icon: Icons.person_rounded,
+                  isSelected: _logFilter == 'students',
+                  onTap: () => setState(() => _logFilter = 'students'),
+                ),
+                const SizedBox(width: 8),
+                _buildFilterChip(
+                  label: 'Testes',
+                  count: testLogs.length,
+                  icon: Icons.science_outlined,
+                  isSelected: _logFilter == 'tests',
+                  onTap: () => setState(() => _logFilter = 'tests'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // Estado Vazio
+        if (allLogs.isEmpty)
           MetaCard(
             padding: const EdgeInsets.all(18),
             child: Row(
@@ -1277,96 +1795,71 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
               ],
             ),
           )
-        else
-          ..._logs.map((log) {
-            final studentName = log['student_name'] ?? 'Aluno';
-            final channel = log['channel'] ?? 'whatsapp';
-            final msgIn = log['message_in'] ?? '';
-            final msgOut = log['message_out'] ?? '';
-            final isFree = log['cost_type'] == 'free';
+        else if (displayedLogs.isEmpty)
+          MetaCard(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(Icons.filter_list_off_rounded, color: MetaColors.subtext(context), size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Nenhum registro para o filtro "${_logFilter == 'students' ? 'Alunos' : 'Testes'}".',
+                    style: TextStyle(color: MetaColors.subtext(context), fontSize: 12.5),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => setState(() => _logFilter = 'all'),
+                  child: const Text('Ver todos'),
+                ),
+              ],
+            ),
+          )
+        else ...[
+          // Lista Compacta (Max 3 inicial)
+          ...visibleLogs.map(_buildCompactLogCard),
 
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              child: MetaCard(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              channel == 'whatsapp' ? Icons.chat_rounded : Icons.phone_android_rounded,
-                              size: 14,
-                              color: channel == 'whatsapp' ? MetaColors.emerald : MetaColors.accentBlue,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              studentName,
-                              style: TextStyle(
-                                color: MetaColors.text(context),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: isFree
-                                ? MetaColors.emerald.withValues(alpha: 0.15)
-                                : MetaColors.accentBlue.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            isFree ? 'CUSTO ZERO' : 'GEMINI IA',
-                            style: TextStyle(
-                              color: isFree ? MetaColors.emerald : MetaColors.accentBlue,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: MetaColors.highlight(context).withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(8),
+          // Botão Expandir / Recolher
+          if (hasMore) ...[
+            const SizedBox(height: 4),
+            InkWell(
+              onTap: () => setState(() => _expandedLogs = !_expandedLogs),
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 9),
+                decoration: BoxDecoration(
+                  color: MetaColors.highlight(context),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: MetaColors.cardBorder(context)),
+                ),
+                child: Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _expandedLogs ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                        size: 18,
+                        color: MetaColors.emerald,
                       ),
-                      child: Text(
-                        '👤 "$msgIn"',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: MetaColors.subtext(context),
+                      const SizedBox(width: 6),
+                      Text(
+                        _expandedLogs
+                            ? 'Recolher histórico (mostrar 3 mais recentes)'
+                            : 'Ver todos os ${displayedLogs.length} atendimentos',
+                        style: const TextStyle(
+                          color: MetaColors.emerald,
                           fontSize: 12,
-                          fontStyle: FontStyle.italic,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '🤖 $msgOut',
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: MetaColors.text(context),
-                        fontSize: 12,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            );
-          }),
+            ),
+          ],
+        ],
       ],
     );
   }

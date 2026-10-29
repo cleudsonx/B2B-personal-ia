@@ -52,4 +52,23 @@ void main() {
     final darkTitleWidget = tester.widget<Text>(darkTitleFinder);
     expect(darkTitleWidget.style?.color, equals(MetaColors.textPrimary));
   });
+
+  testWidgets('WhatsappConnectionScreen shows RADAR DO ROBÔ header and empty state message cleanly', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: WhatsappConnectionScreen(
+          key: ValueKey('radar-empty'),
+          initialPhone: '11999998888',
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('RADAR DO ROBÔ • ATENDIMENTOS'), findsOneWidget);
+    expect(find.textContaining('Nenhum atendimento registrado ainda'), findsOneWidget);
+  });
 }
