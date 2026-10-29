@@ -243,11 +243,13 @@ class AuthService {
     _cachedProfile = null;
   }
 
-  /// Garante que o registro na tabela 'profiles' existe e está atualizado
+  /// Garante que o registro na tabela 'profiles' existe e está atualizado.
+  /// Segurança Zero-Trust: o cliente JAMAIS envia colunas privilegiadas (is_admin, is_vip, roles, current_plan).
   static Future<void> _ensureProfileUpserted(User user) async {
     try {
       final fullName = user.userMetadata?['full_name'] as String? ?? 'Usuário';
-      final role = user.userMetadata?['role'] as String? ?? 'trainer';
+      final rawRole = (user.userMetadata?['role'] as String? ?? 'trainer').trim().toLowerCase();
+      final safeRole = rawRole == 'client' ? 'client' : 'trainer';
       final phone = user.userMetadata?['phone'] as String?;
       final trainerId = user.userMetadata?['trainer_id'] as String?;
       final docType =
@@ -261,15 +263,9 @@ class AuthService {
         'full_name': isCleudson && (fullName == 'Rafinha 2026' || fullName == 'Hotmail 2' || fullName == 'Usuário')
             ? 'Prof. Cleudson Cavalcante'
             : fullName,
-        'role': isCleudson ? 'trainer' : role,
+        'role': isCleudson ? 'trainer' : safeRole,
         'updated_at': DateTime.now().toIso8601String(),
       };
-      if (isCleudson) {
-        payload['is_admin'] = true;
-        payload['is_vip'] = true;
-        payload['current_plan'] = 'elite';
-        payload['roles'] = ['trainer', 'admin'];
-      }
       if (user.email != null) payload['email'] = user.email;
       if (phone != null && phone.isNotEmpty) payload['phone'] = phone;
       if (trainerId != null && trainerId.isNotEmpty) {
@@ -283,7 +279,7 @@ class AuthService {
         payload['cref_or_registry'] = crefOrReg;
       }
 
-      _cachedProfile = Map<String, dynamic>.from(payload);
+      _cachedProfile = null;
       await _client.from('profiles').upsert(payload);
     } catch (_) {
       // Ignora erro se RLS restringir upsert direto sem alterar funcionalidade
@@ -303,17 +299,19 @@ class AuthService {
               .eq('id', user.id)
               .maybeSingle();
       if (data != null) {
-        _cachedProfile = Map<String, dynamic>.from(data);
-        return data;
+        final sanitized = _sanitizeProfilePrivileges(Map<String, dynamic>.from(data), user);
+        _cachedProfile = sanitized;
+        return sanitized;
       }
     } catch (_) {}
 
-    // Fallback para metadados salvos no auth ou cache local
-    return _cachedProfile ??
+    // Fallback para metadados salvos no auth ou cache local (sem confiar em flags de admin do cliente)
+    final rawRole = (user.userMetadata?['role'] as String? ?? 'trainer').trim().toLowerCase();
+    final fallback = _cachedProfile ??
         {
           'id': user.id,
           'full_name': user.userMetadata?['full_name'] ?? 'Usuário',
-          'role': user.userMetadata?['role'] ?? 'trainer',
+          'role': rawRole == 'client' ? 'client' : 'trainer',
           'email': user.email,
           'professional_document_type':
               user.userMetadata?['professional_document_type'],
@@ -321,47 +319,119 @@ class AuthService {
           'cref_or_registry': user.userMetadata?['cref_or_registry'],
           'cref': user.userMetadata?['cref'],
         };
+    return _sanitizeProfilePrivileges(Map<String, dynamic>.from(fallback), user);
   }
 
-  /// Identifica contas e perfis canonicos do Professor Cleudson Cavalcante
+  /// UUIDs imutáveis das contas canônicas do proprietário no Supabase Auth.
+  static const Set<String> canonicalOwnerIds = {
+    '6f645308-f1b2-4d73-ac45-9890c27e20d4',
+    '50c26610-8054-4b05-9274-7f414f91f52f',
+    '92dfd58c-845f-473e-b846-a2b8fdd3e508',
+  };
+
+  /// E-mails exatos verificados do proprietário (comparação estrita ==, NUNCA substring).
+  static const Set<String> canonicalOwnerEmails = {
+    'cleudsonx@hotmail.com',
+    'cleudsonx@gmail.com',
+    'cleudsonx2021@gmail.com',
+  };
+
+  /// Verifica por igualdade exata se o e-mail pertence a uma conta canônica do proprietário.
+  static bool isCanonicalOwnerEmail(String? email) {
+    if (email == null || email.trim().isEmpty) return false;
+    return canonicalOwnerEmails.contains(email.trim().toLowerCase());
+  }
+
+  /// Identifica contas provisionadas com e-mail sintético (WhatsApp OTP / Checkout rápido).
+  /// Contas sintéticas jamais podem adquirir privilégio administrativo.
+  static bool isSyntheticProvisionedEmail(String? email) {
+    if (email == null || email.trim().isEmpty) return false;
+    final clean = email.trim().toLowerCase();
+    return clean.startsWith('wa_') ||
+        clean.startsWith('aluno_') ||
+        clean.endsWith('.internal') ||
+        clean.endsWith('.local');
+  }
+
+  static Map<String, dynamic> _sanitizeProfilePrivileges(
+    Map<String, dynamic> profile, [
+    User? user,
+  ]) {
+    final effectiveUser = user ?? currentUser;
+    final uid = ((profile['id'] ?? effectiveUser?.id) as String? ?? '').trim().toLowerCase();
+    if (uid.isNotEmpty && canonicalOwnerIds.contains(uid)) {
+      return profile;
+    }
+    final email = ((profile['email'] ?? effectiveUser?.email) as String? ?? '').trim().toLowerCase();
+    if (isSyntheticProvisionedEmail(email)) {
+      final copy = Map<String, dynamic>.from(profile);
+      copy['is_admin'] = false;
+      final rawRole = (copy['role'] as String? ?? '').trim().toLowerCase();
+      if (rawRole == 'admin' || rawRole.isEmpty) {
+        copy['role'] = 'trainer';
+      }
+      if (copy['roles'] is List) {
+        final cleanedRoles = (copy['roles'] as List)
+            .whereType<String>()
+            .where((r) => r.trim().toLowerCase() != 'admin')
+            .toList();
+        copy['roles'] = cleanedRoles.isEmpty ? <String>[copy['role'] as String] : cleanedRoles;
+      }
+      return copy;
+    }
+    return profile;
+  }
+
+  /// Identifica contas canônicas do Professor Cleudson Cavalcante estritamente por UUID ou e-mail exato.
+  /// Jamais usa .contains() em full_name, username ou domínio para impedir escalação de privilégio.
   static bool _isCleudsonProfile(Map<String, dynamic>? profile, [User? user]) {
     final effectiveUser = user ?? currentUser;
-    final email = ((profile?['email'] ?? effectiveUser?.email) as String? ?? '').toLowerCase();
-    final username = ((profile?['username'] ?? effectiveUser?.userMetadata?['username']) as String? ?? '').toLowerCase();
-    final uid = ((profile?['id'] ?? effectiveUser?.id) as String? ?? '').toLowerCase();
-    final fullName = ((profile?['full_name'] ?? effectiveUser?.userMetadata?['full_name']) as String? ?? '').toLowerCase();
-    return email.contains('cleudson') ||
-        email.contains('mrcoach') ||
-        username == 'mrcoach' ||
-        username == 'cleudson-antigo' ||
-        fullName.contains('cleudson') ||
-        uid == '6f645308-f1b2-4d73-ac45-9890c27e20d4' ||
-        uid == '50c26610-8054-4b05-9274-7f414f91f52f' ||
-        uid == '92dfd58c-845f-473e-b846-a2b8fdd3e508';
+    final uid = ((profile?['id'] ?? effectiveUser?.id) as String? ?? '').trim().toLowerCase();
+    if (uid.isNotEmpty && canonicalOwnerIds.contains(uid)) {
+      return true;
+    }
+    final email = ((profile?['email'] ?? effectiveUser?.email) as String? ?? '').trim().toLowerCase();
+    if (isSyntheticProvisionedEmail(email)) {
+      return false;
+    }
+    return isCanonicalOwnerEmail(email);
   }
 
   static List<String> availableRoles(Map<String, dynamic>? profile) {
-    final Set<String> rolesSet = {};
-    final roles = profile?['roles'];
-    if (roles is List) {
-      rolesSet.addAll(roles.whereType<String>());
-    }
-    final role = profile?['role'];
-    if (role is String && role.isNotEmpty) {
-      rolesSet.add(role);
-    }
-    if (profile?['is_admin'] == true) {
-      rolesSet.add('admin');
-    }
     final user = currentUser;
-    if (user?.userMetadata?['is_admin'] == true || user?.userMetadata?['role'] == 'admin') {
+    final sanitizedProfile =
+        profile != null ? _sanitizeProfilePrivileges(profile, user) : null;
+    final email = ((sanitizedProfile?['email'] ?? user?.email) as String? ?? '').trim().toLowerCase();
+    final uid = ((sanitizedProfile?['id'] ?? user?.id) as String? ?? '').trim().toLowerCase();
+    final isSyntheticNonOwner =
+        isSyntheticProvisionedEmail(email) && !canonicalOwnerIds.contains(uid);
+
+    final Set<String> rolesSet = {};
+    final roles = sanitizedProfile?['roles'];
+    if (roles is List) {
+      for (final r in roles.whereType<String>()) {
+        final normalized = r.trim().toLowerCase();
+        if (normalized.isEmpty) continue;
+        if (normalized == 'admin' && isSyntheticNonOwner) continue;
+        rolesSet.add(normalized);
+      }
+    }
+    final role = sanitizedProfile?['role'];
+    if (role is String && role.trim().isNotEmpty) {
+      final normalizedRole = role.trim().toLowerCase();
+      if (!(normalizedRole == 'admin' && isSyntheticNonOwner)) {
+        rolesSet.add(normalizedRole);
+      }
+    }
+    if (!isSyntheticNonOwner && sanitizedProfile?['is_admin'] == true) {
       rolesSet.add('admin');
     }
-    final metaRoles = user?.userMetadata?['roles'];
-    if (metaRoles is List && metaRoles.whereType<String>().contains('admin')) {
+    // Somente app_metadata (controlado exclusivamente pelo servidor/service_role) é aceito;
+    // userMetadata (editável pelo cliente) NUNCA concede papel 'admin'.
+    if (!isSyntheticNonOwner && user?.appMetadata['is_admin'] == true) {
       rolesSet.add('admin');
     }
-    if (_isCleudsonProfile(profile, user)) {
+    if (_isCleudsonProfile(sanitizedProfile, user)) {
       rolesSet.add('trainer');
       rolesSet.add('admin');
     }
@@ -375,12 +445,16 @@ class AuthService {
     final user = currentUser;
     if (_isCleudsonProfile(_cachedProfile, user)) return true;
     if (user == null) return false;
-    if (user.userMetadata?['is_admin'] == true || user.userMetadata?['role'] == 'admin') return true;
-    final metaRoles = user.userMetadata?['roles'];
-    if (metaRoles is List && metaRoles.whereType<String>().contains('admin')) return true;
-    if (_cachedProfile?['is_admin'] == true) return true;
-    final roles = availableRoles(_cachedProfile);
-    return roles.contains('admin');
+    final email = ((_cachedProfile?['email'] ?? user.email) as String? ?? '').trim().toLowerCase();
+    if (isSyntheticProvisionedEmail(email) && !canonicalOwnerIds.contains(user.id.toLowerCase())) {
+      return false;
+    }
+    if (user.appMetadata['is_admin'] == true) return true;
+    if (_cachedProfile != null) {
+      final roles = availableRoles(_cachedProfile);
+      return roles.contains('admin');
+    }
+    return false;
   }
 
   static Future<bool> isCurrentUserAdmin() async {
@@ -388,12 +462,13 @@ class AuthService {
       final user = currentUser;
       if (_isCleudsonProfile(_cachedProfile, user)) return true;
       if (user == null) return false;
-      if (user.userMetadata?['is_admin'] == true || user.userMetadata?['role'] == 'admin') return true;
-      final metaRoles = user.userMetadata?['roles'];
-      if (metaRoles is List && metaRoles.whereType<String>().contains('admin')) return true;
       final profile = await getCurrentProfile();
       if (_isCleudsonProfile(profile, user)) return true;
-      if (profile?['is_admin'] == true) return true;
+      final email = ((profile?['email'] ?? user.email) as String? ?? '').trim().toLowerCase();
+      if (isSyntheticProvisionedEmail(email) && !canonicalOwnerIds.contains(user.id.toLowerCase())) {
+        return false;
+      }
+      if (user.appMetadata['is_admin'] == true) return true;
       final roles = availableRoles(profile);
       return roles.contains('admin');
     } catch (_) {
@@ -402,7 +477,8 @@ class AuthService {
   }
 
   /// Promove a conta atual autenticada para SuperAdmin inicial (Bootstrap)
-  /// utilizando RPC do Supabase ou endpoint Service Role do Backend.
+  /// estritamente via RPC SECURITY DEFINER do Supabase ou endpoint Service Role do Backend.
+  /// Jamais concede privilégio localmente via user_metadata.
   static Future<Map<String, dynamic>> claimInitialSuperAdmin() async {
     final user = currentUser;
     final session = currentSession;
@@ -414,13 +490,21 @@ class AuthService {
       };
     }
 
-    // 1. Tenta via RPC SECURITY DEFINER no Supabase (se migration já aplicada)
+    if (isSyntheticProvisionedEmail(user.email) &&
+        !canonicalOwnerIds.contains(user.id.toLowerCase())) {
+      return {
+        'ok': false,
+        'error': 'synthetic_account_forbidden',
+        'message': 'Contas rápidas de WhatsApp não podem reivindicar acesso SuperAdmin.',
+      };
+    }
+
+    // 1. Tenta via RPC SECURITY DEFINER no Supabase
     try {
       final rpcRes = await _client.rpc('claim_initial_superadmin');
       if (rpcRes is Map) {
         final mapRes = Map<String, dynamic>.from(rpcRes);
         if (mapRes['ok'] == true) {
-          await _syncAdminUserMetadata(user);
           await getCurrentProfile();
           return mapRes;
         }
@@ -429,7 +513,7 @@ class AuthService {
         }
       }
     } catch (_) {
-      // RPC ainda não criada no Supabase; prossegue para Backend Service Role
+      // RPC indisponível; prossegue para validação Service Role no Backend
     }
 
     // 2. Tenta via Backend FastAPI Service Role (/subscriptions/admin/claim-superadmin)
@@ -447,58 +531,18 @@ class AuthService {
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body) as Map<String, dynamic>;
         if (body['ok'] == true) {
-          await _syncAdminUserMetadata(user);
           await getCurrentProfile();
           return body;
         }
-        if (body['error'] == 'admin_already_exists') {
-          return body;
-        }
+        return body;
       }
     } catch (_) {}
 
-    // 3. Fallback direto em user_metadata do Supabase Auth para bootstrap do proprietário
-    try {
-      await _syncAdminUserMetadata(user);
-      _cachedProfile = {
-        ...(_cachedProfile ?? {}),
-        'id': user.id,
-        'is_admin': true,
-        'roles': ['trainer', 'admin'],
-      };
-      return {
-        'ok': true,
-        'status': 'promoted_via_auth_metadata',
-        'user_id': user.id,
-        'roles': ['trainer', 'admin'],
-      };
-    } catch (e) {
-      return {
-        'ok': false,
-        'error': 'claim_failed',
-        'message': 'Não foi possível ativar SuperAdmin automaticamente: $e',
-      };
-    }
-  }
-
-  static Future<void> _syncAdminUserMetadata(User user) async {
-    try {
-      final existingRoles = (user.userMetadata?['roles'] is List)
-          ? List<String>.from((user.userMetadata!['roles'] as List).whereType<String>())
-          : <String>['trainer'];
-      if (!existingRoles.contains('admin')) {
-        existingRoles.add('admin');
-      }
-      await _client.auth.updateUser(
-        UserAttributes(
-          data: {
-            ...(user.userMetadata ?? {}),
-            'is_admin': true,
-            'roles': existingRoles,
-          },
-        ),
-      );
-    } catch (_) {}
+    return {
+      'ok': false,
+      'error': 'claim_failed',
+      'message': 'Não foi possível validar elegibilidade de SuperAdmin no servidor.',
+    };
   }
 
   static Future<String> getActiveRole(Map<String, dynamic>? profile) async {

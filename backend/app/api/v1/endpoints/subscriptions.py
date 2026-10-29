@@ -2660,25 +2660,43 @@ CANONICAL_SUPERADMIN_IDS = {
     "92dfd58c-845f-473e-b846-a2b8fdd3e508",  # Prof. Cleudson Cavalcante (cleudsonx@hotmail.com)
 }
 
+CANONICAL_SUPERADMIN_EMAILS = {
+    "cleudsonx@hotmail.com",
+    "cleudsonx@gmail.com",
+    "cleudsonx2021@gmail.com",
+}
+
+
+def _is_synthetic_provisioned_email(email: str) -> bool:
+    clean = (email or "").strip().lower()
+    if not clean:
+        return False
+    return (
+        clean.startswith("wa_")
+        or clean.startswith("aluno_")
+        or clean.endswith(".internal")
+        or clean.endswith(".local")
+    )
+
 
 def _is_profile_admin(profile: Optional[Dict[str, Any]]) -> bool:
     if not profile:
         return False
-    if str(profile.get("id") or "") in CANONICAL_SUPERADMIN_IDS:
+    uid = str(profile.get("id") or "").strip().lower()
+    if uid in CANONICAL_SUPERADMIN_IDS:
         return True
-    if str(profile.get("username") or "").lower() in ("mrcoach", "cleudson-antigo"):
-        return True
-    email = str(profile.get("email") or "").lower()
-    if "cleudson" in email or "mrcoach" in email:
-        return True
-    if not profile:
+    email = str(profile.get("email") or "").strip().lower()
+    # Contas sintéticas (WhatsApp OTP / Checkout rápido) JAMAIS recebem privilégio administrativo
+    if _is_synthetic_provisioned_email(email):
         return False
+    if email and email in CANONICAL_SUPERADMIN_EMAILS:
+        return True
     if profile.get("is_admin") is True:
         return True
-    if str(profile.get("role") or "").lower() == "admin":
+    if str(profile.get("role") or "").strip().lower() == "admin":
         return True
     roles = profile.get("roles")
-    if isinstance(roles, list) and any(str(r).lower() == "admin" for r in roles):
+    if isinstance(roles, list) and any(str(r).strip().lower() == "admin" for r in roles):
         return True
     return False
 
@@ -2732,6 +2750,14 @@ async def claim_initial_superadmin_endpoint(
         raise HTTPException(status_code=503, detail="Não foi possível consultar perfis no Supabase.") from exc
 
     caller_profile = next((p for p in all_profiles if str(p.get("id")) == str(user_id)), None)
+    caller_email = str((caller_profile or {}).get("email") or current_user.get("email") or "").strip().lower()
+    if str(user_id).lower() not in CANONICAL_SUPERADMIN_IDS and _is_synthetic_provisioned_email(caller_email):
+        return {
+            "ok": False,
+            "error": "synthetic_account_forbidden",
+            "message": "Contas rápidas provisionadas via WhatsApp/Checkout não podem reivindicar perfil SuperAdmin.",
+        }
+
     if _is_profile_admin(caller_profile):
         return {
             "ok": True,
@@ -3065,11 +3091,13 @@ async def admin_inspect_database_table(
 
 
 @router.post("/admin/sync-canonical-superadmins")
-async def sync_canonical_superadmins_endpoint():
+async def sync_canonical_superadmins_endpoint(
+    _admin: Dict[str, Any] = Depends(_require_superadmin_user),
+):
     """
-    Garante via Service Role que os perfis canônicos do proprietário
-    (Prof. Cleudson Cavalcante: @mrcoach e @cleudson-antigo) possuam
-    a role 'admin' persistida em public.profiles no Supabase.
+    Garante via Service Role que exclusivamente os UUIDs canônicos do proprietário
+    possuam a role 'admin' persistida em public.profiles, e revoga eventuais
+    escalações acidentais em contas sintéticas (wa_* / aluno_*).
     """
     client = await supabase_service.get_client()
     if not client:
@@ -3105,7 +3133,32 @@ async def sync_canonical_superadmins_endpoint():
         except Exception as exc:
             logger.warning("[sync-canonical-superadmins] Erro ao sincronizar %s: %s", target_id, exc)
 
+    revoked_synthetic = []
+    try:
+        all_res = await client.table("profiles").select("id, email, role, roles, is_admin").execute()
+        for row in (all_res.data or []):
+            rid = str(row.get("id") or "").strip().lower()
+            remail = str(row.get("email") or "").strip().lower()
+            if rid in CANONICAL_SUPERADMIN_IDS or not _is_synthetic_provisioned_email(remail):
+                continue
+            r_roles = [str(x).strip().lower() for x in (row.get("roles") or [row.get("role") or "client"]) if x]
+            if row.get("is_admin") is True or "admin" in r_roles or str(row.get("role") or "").lower() == "admin":
+                cleaned_roles = [x for x in r_roles if x != "admin"]
+                clean_primary = "trainer" if "trainer" in cleaned_roles else "client"
+                if not cleaned_roles:
+                    cleaned_roles = [clean_primary]
+                await client.table("profiles").update({
+                    "role": clean_primary,
+                    "roles": cleaned_roles,
+                    "is_admin": False,
+                    "is_vip": False,
+                }).eq("id", row["id"]).execute()
+                revoked_synthetic.append(row["id"])
+    except Exception as exc:
+        logger.warning("[sync-canonical-superadmins] Erro ao auditar contas sintéticas: %s", exc)
+
     return {
         "ok": True,
         "canonical_superadmins": promoted_ids,
+        "revoked_synthetic_admins": revoked_synthetic,
     }

@@ -137,10 +137,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     final initialEmailLower = (widget.initialEmail ?? '').toLowerCase();
     final typedEmailLower = _emailCtrl.text.trim().toLowerCase();
-    final isCleudsonEmail = initialEmailLower.contains('cleudson') ||
-        initialEmailLower.contains('mrcoach') ||
-        typedEmailLower.contains('cleudson') ||
-        typedEmailLower.contains('mrcoach');
+    final isCleudsonEmail = AuthService.isCanonicalOwnerEmail(initialEmailLower) ||
+        AuthService.isCanonicalOwnerEmail(typedEmailLower);
     final isInviteRegistration = widget.inviteToken != null;
     final isUninvitedStudent = widget.initialRole == 'client' && !isInviteRegistration && !isCleudsonEmail;
 

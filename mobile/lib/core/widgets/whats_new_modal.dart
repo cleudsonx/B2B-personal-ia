@@ -90,8 +90,9 @@ class _WhatsNewModalState extends State<WhatsNewModal> {
     } else {
       try {
         final profile = await AuthService.getCurrentProfile();
+        final roles = AuthService.availableRoles(profile);
         final rawRole = profile?['role']?.toString().toLowerCase();
-        if (rawRole == 'admin' || profile?['is_admin'] == true) {
+        if (roles.contains('admin')) {
           _userRole = 'admin';
         } else if (rawRole == 'trainer' || rawRole == 'coach' || rawRole == 'personal') {
           _userRole = 'trainer';

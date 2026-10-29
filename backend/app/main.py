@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, HTTPException
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -9,13 +10,60 @@ from app.api.v1.router import api_router
 
 logger = logging.getLogger(__name__)
 
+
+async def _scrub_polluted_synthetic_admins() -> None:
+    """
+    Em produção, revoga automaticamente qualquer privilégio administrativo acidental
+    em contas sintéticas (wa_* / aluno_* / *.internal) não pertencentes aos UUIDs canônicos.
+    """
+    if settings.ENVIRONMENT.lower() != "production":
+        return
+    try:
+        from app.services.supabase_service import supabase_service
+        from app.api.v1.endpoints.subscriptions import (
+            CANONICAL_SUPERADMIN_IDS,
+            _is_synthetic_provisioned_email,
+        )
+
+        client = await supabase_service.get_client()
+        if not client:
+            return
+        res = await client.table("profiles").select("id, email, role, roles, is_admin").eq("is_admin", True).execute()
+        for row in (res.data or []):
+            rid = str(row.get("id") or "").strip().lower()
+            remail = str(row.get("email") or "").strip().lower()
+            if rid in CANONICAL_SUPERADMIN_IDS or not _is_synthetic_provisioned_email(remail):
+                continue
+            r_roles = [str(x).strip().lower() for x in (row.get("roles") or [row.get("role") or "client"]) if x]
+            cleaned_roles = [x for x in r_roles if x != "admin"]
+            clean_primary = "trainer" if "trainer" in cleaned_roles else "client"
+            if not cleaned_roles:
+                cleaned_roles = [clean_primary]
+            await client.table("profiles").update({
+                "role": clean_primary,
+                "roles": cleaned_roles,
+                "is_admin": False,
+                "is_vip": False,
+            }).eq("id", row["id"]).execute()
+            logger.warning("[Security] Privilégio admin revogado automaticamente da conta sintética %s (%s)", rid, remail)
+    except Exception as exc:
+        logger.warning("[Security] Auditoria de contas sintéticas no startup ignorada: %s", exc)
+
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    await _scrub_polluted_synthetic_admins()
+    yield
+
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version="1.0.0",
     description="Motor de Inteligência Artificial para Prescrição e Adaptação Biomecânica de Treinos (B2B Personal IA)",
     openapi_url="/api/v1/openapi.json",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=_lifespan,
 )
 
 
@@ -35,7 +83,9 @@ async def unhandled_errors_as_json(request: Request, call_next):
         return JSONResponse(status_code=503, content={"detail": str(exc)})
     except Exception as exc:
         logger.exception("Erro não tratado em %s %s: %s", request.method, request.url.path, exc)
-        return JSONResponse(status_code=500, content={"detail": f"Erro interno do servidor: {str(exc)}"})
+        is_prod = settings.ENVIRONMENT.lower() == "production"
+        detail = "Erro interno do servidor." if is_prod else f"Erro interno do servidor: {str(exc)}"
+        return JSONResponse(status_code=500, content={"detail": detail})
 
 # CORS configuration (conforme padrão W3C/OWASP: se allow_origins contém "*", allow_credentials deve ser False)
 cors_origins = settings.cors_origins_list

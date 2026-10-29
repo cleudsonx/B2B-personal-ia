@@ -2323,11 +2323,17 @@ class SupabaseService:
         professional_document_type: Optional[str] = None,
         professional_document: Optional[str] = None,
         photo_url: Optional[str] = None,
+        provisioned_by_backend: bool = False,
     ) -> Dict[str, Any]:
         """
         Cria um usuário diretamente via Supabase Admin API com email_confirm=True,
         evitando falhas de envio de e-mail de confirmação SMTP e garantindo login imediato.
+        Bloqueia criação direta de role 'admin' por fluxos públicos/provisionamento automático.
         """
+        role = (role or "trainer").strip().lower()
+        if role not in ("trainer", "client"):
+            raise ValueError("Papel inválido em admin_create_user. Somente 'trainer' ou 'client' são permitidos.")
+
         client = await self.get_client()
         user_metadata: Dict[str, Any] = {
             "full_name": full_name,
@@ -2349,12 +2355,15 @@ class SupabaseService:
         if not client or not hasattr(client, "auth") or not hasattr(client.auth, "admin"):
             raise RuntimeError("Admin API do Supabase indisponível para criar usuário.")
         try:
-            admin_res = await client.auth.admin.create_user({
+            create_payload: Dict[str, Any] = {
                 "email": email,
                 "password": password,
                 "email_confirm": True,
                 "user_metadata": user_metadata,
-            })
+            }
+            if provisioned_by_backend:
+                create_payload["app_metadata"] = {"provisioned_by_backend": "true"}
+            admin_res = await client.auth.admin.create_user(create_payload)
             if admin_res and hasattr(admin_res, "user") and admin_res.user:
                 user_id = admin_res.user.id
         except Exception as e:
@@ -2372,7 +2381,10 @@ class SupabaseService:
                 profile_payload = {
                     "id": user_id,
                     "full_name": full_name,
+                    "email": email,
                     "role": role,
+                    "roles": [role],
+                    "is_admin": False,
                     "updated_at": datetime.now(timezone.utc).isoformat(),
                 }
                 if phone:

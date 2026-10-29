@@ -100,6 +100,84 @@ from app.api.deps import get_current_user
 from fastapi import Depends
 from typing import Dict, Any
 
+_CANONICAL_OWNER_IDS = {
+    "6f645308-f1b2-4d73-ac45-9890c27e20d4",
+    "50c26610-8054-4b05-9274-7f414f91f52f",
+    "92dfd58c-845f-473e-b846-a2b8fdd3e508",
+}
+
+
+def _is_synthetic_provisioned_email(email: Optional[str]) -> bool:
+    clean = (email or "").strip().lower()
+    if not clean:
+        return False
+    return (
+        clean.startswith("wa_")
+        or clean.startswith("aluno_")
+        or clean.endswith(".internal")
+        or clean.endswith(".local")
+    )
+
+
+async def _sanitize_synthetic_profile_if_needed(client: Any, profile: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Garante que contas sintéticas (WhatsApp OTP / Checkout rápido) não canônicas
+    jamais retenham ou retornem privilégios administrativos acidentais.
+    """
+    uid = str(profile.get("id") or "").strip().lower()
+    email = str(profile.get("email") or "").strip().lower()
+    if not uid or uid in _CANONICAL_OWNER_IDS or not _is_synthetic_provisioned_email(email):
+        return profile
+
+    raw_roles = [str(r).strip().lower() for r in (profile.get("roles") or [profile.get("role") or "client"]) if r]
+    has_admin = (
+        profile.get("is_admin") is True
+        or str(profile.get("role") or "").strip().lower() == "admin"
+        or "admin" in raw_roles
+    )
+    if has_admin:
+        cleaned_roles = [r for r in raw_roles if r != "admin"]
+        clean_primary = "trainer" if "trainer" in cleaned_roles else "client"
+        if not cleaned_roles:
+            cleaned_roles = [clean_primary]
+        profile["role"] = clean_primary
+        profile["roles"] = cleaned_roles
+        profile["is_admin"] = False
+        profile["is_vip"] = False
+        if client:
+            try:
+                await client.table("profiles").update({
+                    "role": clean_primary,
+                    "roles": cleaned_roles,
+                    "is_admin": False,
+                    "is_vip": False,
+                }).eq("id", profile["id"]).execute()
+            except Exception as e:
+                logger.warning(f"[Security] Não foi possível revogar is_admin de conta sintética {uid}: {e}")
+    return profile
+
+
+def _phone_matches_profile_row(clean_phone_55: str, row: Dict[str, Any]) -> bool:
+    """
+    Compara DDD + últimos 8 dígitos (compatível com números de 8 ou 9 dígitos locais),
+    evitando colisões entre DDDs diferentes.
+    """
+    local_target = clean_phone_55[2:] if clean_phone_55.startswith("55") and len(clean_phone_55) >= 12 else clean_phone_55
+    if len(local_target) < 10:
+        return False
+    target_ddd = local_target[:2]
+    target_last8 = local_target[-8:]
+
+    for field in ("phone", "public_whatsapp"):
+        raw_val = re.sub(r"\D", "", str(row.get(field) or ""))
+        if not raw_val:
+            continue
+        local_val = raw_val[2:] if raw_val.startswith("55") and len(raw_val) >= 12 else raw_val
+        if len(local_val) >= 10 and local_val[:2] == target_ddd and local_val[-8:] == target_last8:
+            return True
+    return False
+
+
 @router.get("/me")
 async def get_my_profile(current_user: Dict[str, Any] = Depends(get_current_user)):
     """
@@ -112,7 +190,9 @@ async def get_my_profile(current_user: Dict[str, Any] = Depends(get_current_user
     profile = await supabase_service.get_user_profile(user_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Perfil não encontrado.")
-        
+
+    client = await supabase_service.get_client()
+    profile = await _sanitize_synthetic_profile_if_needed(client, profile)
     return profile
 
 
@@ -974,56 +1054,52 @@ async def request_passwordless_login(req: PasswordlessLoginRequest):
             if wait > 0:
                 raise HTTPException(status_code=429, detail=f"Aguarde {int(wait) + 1}s para solicitar um novo código.")
 
-    # Busca perfil existente pelo telefone (compara últimos 8 dígitos para ignorar pontuação e formato com/sem 9)
+    # Busca perfil existente EXCLUSIVAMENTE pelo telefone verificado (DDD + últimos 8 dígitos)
+    # ou pelo e-mail sintético exato vinculado a este número.
+    # NUNCA busca por full_name nem e-mail arbitrário informado no campo de nome (previne Account Takeover).
     profile = None
     last8_phone = clean_phone[-8:]
     try:
         p_res = (
             await client.table("profiles")
-            .select("id, full_name, role, phone, public_whatsapp, email")
+            .select("id, full_name, role, roles, is_admin, phone, public_whatsapp, email")
             .or_(f"phone.ilike.%{last8_phone}%,public_whatsapp.ilike.%{last8_phone}%")
-            .limit(1)
+            .limit(10)
             .execute()
         )
         if p_res and p_res.data:
-            profile = p_res.data[0]
+            for row_cand in p_res.data:
+                if _phone_matches_profile_row(clean_phone, row_cand):
+                    profile = row_cand
+                    break
     except Exception as e:
         logger.warning(f"[Passwordless] Erro ao buscar profile por telefone: {e}")
 
-    # Fallback 2: busca por e-mail ou nome se informado
-    if not profile and req.full_name:
-        cand = req.full_name.strip()
-        if "@" in cand:
-            try:
-                e_res = (
-                    await client.table("profiles")
-                    .select("id, full_name, role, phone, public_whatsapp, email")
-                    .ilike("email", cand)
-                    .limit(1)
-                    .execute()
-                )
-                if e_res and e_res.data:
-                    profile = e_res.data[0]
-            except Exception:
-                pass
-        elif len(cand) >= 3:
-            try:
-                n_res = (
-                    await client.table("profiles")
-                    .select("id, full_name, role, phone, public_whatsapp, email")
-                    .ilike("full_name", f"%{cand}%")
-                    .limit(1)
-                    .execute()
-                )
-                if n_res and n_res.data:
-                    profile = n_res.data[0]
-            except Exception:
-                pass
+    synthetic_email = f"wa_{clean_phone}@wa.mrcoach.internal"
+    legacy_synthetic_email = f"wa_{clean_phone}@mrcoach.app"
 
-    synthetic_email = f"wa_{clean_phone}@mrcoach.app"
+    if not profile:
+        try:
+            p_syn = (
+                await client.table("profiles")
+                .select("id, full_name, role, roles, is_admin, phone, public_whatsapp, email")
+                .or_(f"email.eq.{synthetic_email},email.eq.{legacy_synthetic_email}")
+                .limit(5)
+                .execute()
+            )
+            if p_syn and p_syn.data:
+                for row_cand in p_syn.data:
+                    cand_em = str(row_cand.get("email") or "").strip().lower()
+                    if cand_em in (synthetic_email.lower(), legacy_synthetic_email.lower()):
+                        profile = row_cand
+                        break
+        except Exception:
+            pass
+
     is_new = profile is None
 
     if profile:
+        profile = await _sanitize_synthetic_profile_if_needed(client, profile)
         user_id = profile["id"]
         user_name = profile.get("full_name") or req.full_name or "Atleta"
         # Vincula o WhatsApp ao perfil se ainda não estiver configurado
@@ -1036,7 +1112,7 @@ async def request_passwordless_login(req: PasswordlessLoginRequest):
         except Exception:
             pass
     else:
-        # Garante que o usuário existe no Supabase Auth para ter user_id válido para o OTP
+        # Garante que o usuário existe no Supabase Auth com domínio sintético isolado e sem privilégios admin
         temp_pw = f"MrCoach_Wa_{uuid.uuid4().hex[:12]}_{now.strftime('%M%S')}"
         role = "trainer" if (req.role or "").strip().lower() == "trainer" else "client"
         full_name = req.full_name.strip() if req.full_name and req.full_name.strip() else ("Professor" if role == "trainer" else "Aluno")
@@ -1048,21 +1124,27 @@ async def request_passwordless_login(req: PasswordlessLoginRequest):
                 full_name=full_name,
                 role=role,
                 phone=clean_phone,
+                provisioned_by_backend=True,
             )
             user_id = created.get("user_id")
         except Exception as e_create:
             logger.info(f"[Passwordless] Usuário com email sintético já existe ou erro: {e_create}")
+            user_id = None
             try:
                 p_exist = (
                     await client.table("profiles")
                     .select("id, full_name, role")
-                    .eq("email", synthetic_email)
-                    .limit(1)
+                    .or_(f"email.eq.{synthetic_email},email.eq.{legacy_synthetic_email}")
+                    .limit(5)
                     .execute()
                 )
                 if p_exist and p_exist.data:
-                    user_id = p_exist.data[0]["id"]
-                    user_name = p_exist.data[0].get("full_name") or full_name
+                    for row_cand in p_exist.data:
+                        cand_em = str(row_cand.get("email") or synthetic_email).strip().lower()
+                        if cand_em in (synthetic_email.lower(), legacy_synthetic_email.lower()):
+                            user_id = row_cand["id"]
+                            user_name = row_cand.get("full_name") or full_name
+                            break
             except Exception:
                 user_id = None
 
@@ -1178,64 +1260,45 @@ async def verify_passwordless_login(req: PasswordlessVerifyRequest):
     # Consome OTP
     await client.table("auth_recovery_otps").update({"used_at": now_iso}).eq("id", row["id"]).execute()
 
-    # Busca perfil
+    # Busca perfil EXCLUSIVAMENTE pelo telefone verificado (DDD + últimos 8 dígitos) ou e-mail sintético do número.
+    # NUNCA associa perfil existente via full_name para impedir sequestro de conta (Account Takeover).
     profile = None
     last8_phone = clean_phone[-8:]
     try:
         p_res = (
             await client.table("profiles")
-            .select("id, full_name, role, phone, public_whatsapp, email")
+            .select("id, full_name, role, roles, is_admin, phone, public_whatsapp, email")
             .or_(f"phone.ilike.%{last8_phone}%,public_whatsapp.ilike.%{last8_phone}%")
-            .limit(1)
+            .limit(10)
             .execute()
         )
         if p_res and p_res.data:
-            profile = p_res.data[0]
+            for row_cand in p_res.data:
+                if _phone_matches_profile_row(clean_phone, row_cand):
+                    profile = row_cand
+                    break
     except Exception as e:
         logger.warning(f"[Passwordless] Erro ao buscar profile existente por telefone: {e}")
 
-    if not profile and req.full_name:
-        cand = req.full_name.strip()
-        if "@" in cand:
-            try:
-                e_res = (
-                    await client.table("profiles")
-                    .select("id, full_name, role, phone, public_whatsapp, email")
-                    .ilike("email", cand)
-                    .limit(1)
-                    .execute()
-                )
-                if e_res and e_res.data:
-                    profile = e_res.data[0]
-            except Exception:
-                pass
-        elif len(cand) >= 3:
-            try:
-                n_res = (
-                    await client.table("profiles")
-                    .select("id, full_name, role, phone, public_whatsapp, email")
-                    .ilike("full_name", f"%{cand}%")
-                    .limit(1)
-                    .execute()
-                )
-                if n_res and n_res.data:
-                    profile = n_res.data[0]
-            except Exception:
-                pass
+    synthetic_email = f"wa_{clean_phone}@wa.mrcoach.internal"
+    legacy_synthetic_email = f"wa_{clean_phone}@mrcoach.app"
 
     if not profile:
-        # Tenta buscar pelo email sintético
-        synthetic_email = f"wa_{clean_phone}@mrcoach.app"
+        # Tenta buscar pelo email sintético atual ou legado vinculado exatamente a este telefone
         try:
             p_exist = (
                 await client.table("profiles")
-                .select("id, full_name, role, phone, public_whatsapp, email")
-                .eq("email", synthetic_email)
-                .limit(1)
+                .select("id, full_name, role, roles, is_admin, phone, public_whatsapp, email")
+                .or_(f"email.eq.{synthetic_email},email.eq.{legacy_synthetic_email}")
+                .limit(5)
                 .execute()
             )
             if p_exist and p_exist.data:
-                profile = p_exist.data[0]
+                for row_cand in p_exist.data:
+                    cand_em = str(row_cand.get("email") or "").strip().lower()
+                    if cand_em in (synthetic_email.lower(), legacy_synthetic_email.lower()):
+                        profile = row_cand
+                        break
         except Exception:
             pass
 
@@ -1243,9 +1306,11 @@ async def verify_passwordless_login(req: PasswordlessVerifyRequest):
     temp_pw = f"MrCoach_Wa_{uuid.uuid4().hex[:12]}_{now.strftime('%M%S')}"
 
     if profile:
+        profile = await _sanitize_synthetic_profile_if_needed(client, profile)
         user_id = profile["id"]
         full_name = profile.get("full_name") or "Usuário"
-        role = profile.get("role") or "client"
+        raw_role = str(profile.get("role") or "client").strip().lower()
+        role = raw_role if raw_role in ("trainer", "client") else "trainer"
 
         # Obtém e-mail do usuário no Supabase Auth
         user_email = None
@@ -1257,7 +1322,7 @@ async def verify_passwordless_login(req: PasswordlessVerifyRequest):
             logger.warning(f"[Passwordless] Falha ao recuperar e-mail: {e}")
 
         if not user_email:
-            user_email = f"wa_{clean_phone}@mrcoach.app"
+            user_email = profile.get("email") or synthetic_email
             try:
                 await client.auth.admin.update_user_by_id(user_id, {"email": user_email, "email_confirm": True})
             except Exception:
@@ -1277,8 +1342,8 @@ async def verify_passwordless_login(req: PasswordlessVerifyRequest):
             is_new_user=False,
         )
     else:
-        # Usuário novo: cria direto via Supabase Admin API
-        user_email = f"wa_{clean_phone}@mrcoach.app"
+        # Usuário novo: cria direto via Supabase Admin API com domínio sintético isolado (NUNCA admin)
+        user_email = synthetic_email
         role = "trainer" if (req.role or "").strip().lower() == "trainer" else "client"
         full_name = req.full_name.strip() if req.full_name and req.full_name.strip() else ("Professor" if role == "trainer" else "Aluno")
 
@@ -1288,6 +1353,7 @@ async def verify_passwordless_login(req: PasswordlessVerifyRequest):
             full_name=full_name,
             role=role,
             phone=clean_phone,
+            provisioned_by_backend=True,
         )
         new_uid = created["user_id"]
 

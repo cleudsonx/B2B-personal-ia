@@ -56,12 +56,12 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     final initialEmailLower = (widget.initialEmail ?? '').toLowerCase();
-    final isInitialCleudson = initialEmailLower.contains('cleudson') || initialEmailLower.contains('mrcoach');
+    final isInitialCleudson = AuthService.isCanonicalOwnerEmail(initialEmailLower);
     _selectedRole = isInitialCleudson ? 'trainer' : widget.initialRole;
     _emailCtrl = TextEditingController(text: widget.initialEmail ?? '');
     _emailCtrl.addListener(() {
       final text = _emailCtrl.text.trim().toLowerCase();
-      if ((text.contains('cleudson') || text.contains('mrcoach')) && _selectedRole != 'trainer') {
+      if (AuthService.isCanonicalOwnerEmail(text) && _selectedRole != 'trainer') {
         setState(() => _selectedRole = 'trainer');
       }
     });
@@ -92,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _cachedUserPhoto = lastUser['photo']?.isNotEmpty == true ? lastUser['photo'] : null;
         _cachedUserEmail = lastUser['email']!;
         final emailLower = _cachedUserEmail.toLowerCase();
-        final isCleudsonEmail = emailLower.contains('cleudson') || emailLower.contains('mrcoach');
+        final isCleudsonEmail = AuthService.isCanonicalOwnerEmail(emailLower);
         _selectedRole = isCleudsonEmail ? 'trainer' : (lastUser['role'] ?? _selectedRole);
         _emailCtrl.text = _cachedUserEmail;
       });
@@ -143,8 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     var profile = await AuthService.getCurrentProfile();
     final isCleudson = AuthService.isCurrentUserAdminSync() ||
-        (profile?['email']?.toString().toLowerCase().contains('cleudson') ?? false) ||
-        (profile?['username']?.toString().toLowerCase().contains('mrcoach') ?? false);
+        AuthService.isCanonicalOwnerEmail(profile?['email']?.toString());
     if (widget.invitedStudentId != null && !isCleudson) {
       final user = AuthService.currentUser;
       final isInvitedStudent =

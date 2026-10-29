@@ -714,8 +714,8 @@ class ConsultancyPlanService:
                     direct_auth_email = student_profile.get("email") or direct_auth_email
                     direct_auth_token = temp_pwd
                 else:
-                    # Cria conta do aluno no Supabase Auth com acesso liberado imediato
-                    target_email = direct_auth_email or f"aluno_{clean_phone or secrets.token_hex(4)}@mrcoach.app"
+                    # Cria conta do aluno no Supabase Auth com acesso liberado imediato (domínio sintético isolado)
+                    target_email = direct_auth_email or f"aluno_{clean_phone or secrets.token_hex(4)}@aluno.mrcoach.internal"
                     created_u = await supabase_service.admin_create_user(
                         email=target_email,
                         password=temp_pwd,
@@ -723,6 +723,7 @@ class ConsultancyPlanService:
                         role="client",
                         phone=clean_phone or None,
                         trainer_id=trainer_id,
+                        provisioned_by_backend=True,
                     )
                     direct_auth_email = target_email
                     direct_auth_token = temp_pwd

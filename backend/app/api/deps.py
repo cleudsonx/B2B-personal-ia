@@ -8,6 +8,25 @@ from app.core.config import settings
 from app.services.mfa_security import has_recent_mfa
 
 
+_CANONICAL_OWNER_IDS = {
+    "6f645308-f1b2-4d73-ac45-9890c27e20d4",
+    "50c26610-8054-4b05-9274-7f414f91f52f",
+    "92dfd58c-845f-473e-b846-a2b8fdd3e508",
+}
+
+
+def _is_synthetic_provisioned_email(email: str) -> bool:
+    clean = (email or "").strip().lower()
+    if not clean:
+        return False
+    return (
+        clean.startswith("wa_")
+        or clean.startswith("aluno_")
+        or clean.endswith(".internal")
+        or clean.endswith(".local")
+    )
+
+
 async def get_current_user(payload: Dict[str, Any] = Depends(get_current_user_payload)) -> Dict[str, Any]:
     user_id = payload.get("sub")
     if settings.ENVIRONMENT.lower() != "production" and user_id == "dev-user-0000-0000-000000000001":
@@ -45,6 +64,28 @@ async def get_current_user(payload: Dict[str, Any] = Depends(get_current_user_pa
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessão revogada.")
         if token_time <= revoked_time:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessão revogada. Entre novamente.")
+
+    # Blindagem contra escalação acidental em contas sintéticas (WhatsApp OTP / Checkout rápido)
+    jwt_email = str(payload.get("email") or "").strip().lower()
+    if str(user_id).lower() not in _CANONICAL_OWNER_IDS and _is_synthetic_provisioned_email(jwt_email):
+        raw_roles = [str(r).strip().lower() for r in (profile.get("roles") or [profile.get("role") or "client"]) if r]
+        if "admin" in raw_roles or str(profile.get("role") or "").strip().lower() == "admin":
+            cleaned_roles = [r for r in raw_roles if r != "admin"]
+            clean_primary = "trainer" if "trainer" in cleaned_roles else "client"
+            if not cleaned_roles:
+                cleaned_roles = [clean_primary]
+            profile["role"] = clean_primary
+            profile["roles"] = cleaned_roles
+            profile["is_admin"] = False
+            try:
+                await client.table("profiles").update({
+                    "role": clean_primary,
+                    "roles": cleaned_roles,
+                    "is_admin": False,
+                    "is_vip": False,
+                }).eq("id", user_id).execute()
+            except Exception:
+                pass
 
     roles = profile.get("roles") or [profile.get("role")]
     payload["profile"] = profile

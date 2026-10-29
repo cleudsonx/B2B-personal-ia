@@ -221,8 +221,9 @@ class _ReleaseNotesModalContentState extends State<_ReleaseNotesModalContent> {
   Future<void> _loadUserRole() async {
     try {
       final profile = await AuthService.getCurrentProfile();
+      final roles = AuthService.availableRoles(profile);
       final resolved = _normalizeRole(
-        profile?['is_admin'] == true ? 'admin' : profile?['role']?.toString(),
+        roles.contains('admin') ? 'admin' : profile?['role']?.toString(),
       );
       if (mounted) {
         setState(() {
