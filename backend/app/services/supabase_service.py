@@ -2637,11 +2637,50 @@ class SupabaseService:
         return [l for l in mem if l.get("trainer_id") == valid_tid][:limit]
 
     async def get_whatsapp_telemetry(self, trainer_id: str) -> Dict[str, Any]:
-        """Calcula telemetria consolidada do robô."""
+        """Calcula telemetria consolidada do robô sem limite artificial de 200 atendimentos."""
         valid_tid = to_valid_uuid_str(trainer_id)
-        logs = await self.get_whatsapp_logs(valid_tid, limit=200)
-        total_interactions = len(logs)
-        unique_students = len(set(l.get("student_name") for l in logs if l.get("student_name")))
+        client = await self.get_client()
+
+        total_interactions = 0
+        unique_students = 0
+        free_ratio = 1.0
+
+        if client and is_valid_uuid(valid_tid):
+            try:
+                # 1. Contagem exata total acumulada no banco (sem teto artificial)
+                count_res = await client.table("trainer_whatsapp_logs")\
+                    .select("id", count="exact")\
+                    .eq("trainer_id", valid_tid)\
+                    .limit(1)\
+                    .execute()
+                if count_res and count_res.count is not None:
+                    total_interactions = count_res.count
+
+                # 2. Amostragem representativa para alunos únicos e taxa de custo
+                sample_res = await client.table("trainer_whatsapp_logs")\
+                    .select("student_name, cost_type")\
+                    .eq("trainer_id", valid_tid)\
+                    .order("created_at", desc=True)\
+                    .limit(500)\
+                    .execute()
+
+                sample_data = sample_res.data or []
+                if sample_data:
+                    unique_students = len(set(l.get("student_name") for l in sample_data if l.get("student_name")))
+                    free_ratio = sum(1 for l in sample_data if l.get("cost_type") == "free") / len(sample_data)
+                    if total_interactions == 0:
+                        total_interactions = len(sample_data)
+            except Exception as e:
+                logger.warning(f"[SupabaseService] Erro ao calcular telemetria agregada: {e}")
+
+        # Fallback memória se DB falhar ou zerado
+        if total_interactions == 0:
+            mem = getattr(self, "_mem_whatsapp_logs", [])
+            trainer_mem = [l for l in mem if l.get("trainer_id") == valid_tid]
+            total_interactions = len(trainer_mem)
+            unique_students = len(set(l.get("student_name") for l in trainer_mem if l.get("student_name")))
+            free_ratio = 1.0 if not trainer_mem else sum(1 for l in trainer_mem if l.get("cost_type") == "free") / len(trainer_mem)
+
         minutes_saved = total_interactions * 4
         hours_saved = round(minutes_saved / 60, 1)
 
@@ -2649,7 +2688,7 @@ class SupabaseService:
             "total_interactions": total_interactions,
             "unique_students": unique_students,
             "hours_saved": hours_saved,
-            "free_interactions_ratio": 1.0 if not logs else sum(1 for l in logs if l.get("cost_type") == "free") / len(logs),
+            "free_interactions_ratio": free_ratio,
         }
 
     async def get_student_latest_biohub(self, client_id: str) -> Dict[str, Any]:
