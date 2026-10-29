@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../../../core/widgets/meta_components.dart';
 import '../../../../core/widgets/thematic_editorial_card.dart';
 import '../../../../core/widgets/thematic_watermarks.dart';
+import '../../../../core/services/biometric_auth_service.dart';
 import '../../../../services/wallet_service.dart';
 import '../../../../services/auth_service.dart';
 import '../../../auth/teacher_mfa_screen.dart';
@@ -156,6 +157,27 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                 isPrimary: true,
                 onPressed: () async {
                   if (keyCtrl.text.trim().isEmpty) return;
+
+                  // Step-Up Biométrico para segurança da Chave Pix
+                  final hasBiometrics = await BiometricAuthService.isBiometricsAvailable();
+                  if (hasBiometrics) {
+                    final bioRes = await BiometricAuthService.authenticate(
+                      localizedReason: 'Confirme com sua biometria ou Face ID para alterar sua Chave Pix',
+                    );
+                    if (!bioRes.success) {
+                      if (ctx.mounted) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          SnackBar(
+                            content: Text(bioRes.errorMessage ?? 'Autenticação biométrica não concluída.'),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
+                      return;
+                    }
+                  }
+
+                  if (!ctx.mounted) return;
                   Navigator.pop(ctx);
                   final updated = await WalletService.updatePixKey(
                     pixKey: keyCtrl.text.trim(),
@@ -422,13 +444,32 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                 final val = CurrencyPtBrFormatter.parse(amountCtrl.text);
                 if (val <= 0) return;
 
+                // Step-Up Biométrico: Autorização de movimentação financeira com Face ID / Biometria
+                final hasBiometrics = await BiometricAuthService.isBiometricsAvailable();
+                if (hasBiometrics) {
+                  final bioRes = await BiometricAuthService.authenticate(
+                    localizedReason: 'Autorize a retirada de ${CurrencyPtBrFormatter.format(val)} com sua biometria',
+                  );
+                  if (!bioRes.success) {
+                    if (ctx.mounted) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        SnackBar(
+                          content: Text(bioRes.errorMessage ?? 'Autenticação biométrica não concluída.'),
+                          backgroundColor: Colors.redAccent,
+                        ),
+                      );
+                    }
+                    return;
+                  }
+                }
+
                 // Step-Up Security: Exige validação 2FA antes de movimentar fundos se configurado
                 final isSatisfied = await AuthService.isCurrentSessionMfaSatisfied();
                 if (!isSatisfied) {
                   final profile = await AuthService.getCurrentProfile();
                   final mfaEnrolled = profile?['mfa_enabled'] == true ||
                       (profile?['mfa_verified_at'] != null && (profile?['mfa_factors'] as List?)?.isNotEmpty == true);
-                  if (mfaEnrolled && context.mounted) {
+                  if (mfaEnrolled && mounted) {
                     final verified = await Navigator.push<bool>(
                       context,
                       MaterialPageRoute(

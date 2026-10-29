@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/services/biometric_auth_service.dart';
 
 import '../../core/widgets/meta_components.dart';
@@ -345,18 +344,27 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleBiometricAuth() async {
-    final targetEmail = _cachedUserEmail.isNotEmpty ? _cachedUserEmail : _emailCtrl.text.trim();
+    String targetEmail = _cachedUserEmail.isNotEmpty ? _cachedUserEmail : _emailCtrl.text.trim();
     if (targetEmail.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: MetaColors.highlight(context),
-          content: Text(
-            'Por favor, informe seu e-mail para autenticar com biometria.',
-            style: TextStyle(color: MetaColors.text(context)),
+      final lastUser = await AuthService.getLastAuthenticatedUser();
+      if (lastUser != null && (lastUser['email']?.isNotEmpty ?? false)) {
+        targetEmail = lastUser['email']!;
+      }
+    }
+
+    if (targetEmail.isEmpty && AuthService.currentUser == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: MetaColors.highlight(context),
+            content: Text(
+              'Para entrar em 1 toque, acesse primeiro via WhatsApp ou e-mail neste aparelho.',
+              style: TextStyle(color: MetaColors.text(context)),
+            ),
           ),
-        ),
-      );
+        );
+      }
       return;
     }
 
@@ -364,7 +372,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final authResult = await BiometricAuthService.authenticate(
-        localizedReason: 'Autentique-se com biometria para acessar sua conta',
+        localizedReason: 'Autentique-se com biometria ou Face ID para acessar sua conta',
       );
 
       if (!authResult.success) {
@@ -396,6 +404,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final savedSecret = await AuthService.getOneTouchSecret(targetEmail);
       if (savedSecret != null && savedSecret.isNotEmpty) {
         _passwordCtrl.text = savedSecret;
+        _emailCtrl.text = targetEmail;
         await _handleSignIn();
         return;
       }
@@ -406,14 +415,14 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // 4. Biometria validada, mas precisa do primeiro login com senha para salvar o 1 toque:
+      // 4. Biometria validada, mas precisa do primeiro login para vincular o 1 toque:
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             behavior: SnackBarBehavior.floating,
             backgroundColor: MetaColors.highlight(context),
             content: Text(
-              'Biometria confirmada! Digite sua senha uma vez para ativar o retorno com 1 toque neste aparelho.',
+              'Biometria confirmada! Entre com sua senha ou via WhatsApp uma vez para ativar o retorno com 1 toque.',
               style: TextStyle(color: MetaColors.text(context)),
             ),
           ),
@@ -426,7 +435,7 @@ class _LoginScreenState extends State<LoginScreen> {
             behavior: SnackBarBehavior.floating,
             backgroundColor: MetaColors.highlight(context),
             content: Text(
-              'Falha no leitor biométrico. Por favor, use sua senha.',
+              'Falha no leitor biométrico. Por favor, use sua senha ou WhatsApp.',
               style: TextStyle(color: MetaColors.text(context)),
             ),
           ),
@@ -436,44 +445,6 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
-    }
-  }
-
-  Future<void> _handleGoogleSignIn() async {
-    setState(() => _isLoading = true);
-    try {
-      await AuthService.signInWithOAuth(OAuthProvider.google);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.red.shade800,
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _handleAppleSignIn() async {
-    setState(() => _isLoading = true);
-    try {
-      await AuthService.signInWithOAuth(OAuthProvider.apple);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.red.shade800,
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -1477,23 +1448,22 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 24),
                       ],
 
-                      // Botões Modernos de Login Social e WhatsApp Passwordless SaaS
+                      // Acesso de Alta Segurança & Zero Fricção (Biometria / Face ID & WhatsApp OTP)
                       SizedBox(
                         width: double.infinity,
-                        height: 48,
+                        height: 50,
                         child: ElevatedButton.icon(
-                          onPressed: _isLoading ? null : _showWhatsAppPasswordlessSheet,
+                          onPressed: _isLoading ? null : _handleBiometricAuth,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF25D366).withValues(alpha: 0.15),
-                            foregroundColor: const Color(0xFF25D366),
+                            backgroundColor: MetaColors.emerald,
+                            foregroundColor: Colors.white,
                             elevation: 0,
-                            side: const BorderSide(color: Color(0xFF25D366), width: 1.2),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           ),
-                          icon: const Icon(Icons.chat_bubble_rounded, size: 20, color: Color(0xFF25D366)),
+                          icon: const Icon(Icons.fingerprint_rounded, size: 22),
                           label: const Text(
-                            'Entrar com WhatsApp (Sem Senha)',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                            'Entrar com Face ID / Biometria (1 Toque)',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                           ),
                         ),
                       ),
@@ -1503,41 +1473,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: double.infinity,
                         height: 48,
                         child: OutlinedButton.icon(
-                          onPressed: _isLoading ? null : _handleGoogleSignIn,
+                          onPressed: _isLoading ? null : _showWhatsAppPasswordlessSheet,
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: MetaColors.text(context),
-                            side: BorderSide(color: MetaColors.cardBorder(context), width: 1.2),
-                            backgroundColor: MetaColors.highlight(context),
+                            foregroundColor: const Color(0xFF25D366),
+                            side: const BorderSide(color: Color(0xFF25D366), width: 1.2),
+                            backgroundColor: const Color(0xFF25D366).withValues(alpha: 0.08),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           ),
-                          icon: const Icon(Icons.g_mobiledata_rounded, size: 26, color: Colors.redAccent),
+                          icon: const Icon(Icons.chat_bubble_rounded, size: 20, color: Color(0xFF25D366)),
                           label: const Text(
-                            'Continuar com Google',
+                            'Entrar ou Cadastrar via WhatsApp (Sem Senha)',
                             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
                           ),
                         ),
                       ),
-                      if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS || kIsWeb) ...[
-                        const SizedBox(height: 10),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: OutlinedButton.icon(
-                            onPressed: _isLoading ? null : _handleAppleSignIn,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: MetaColors.text(context),
-                              side: BorderSide(color: MetaColors.cardBorder(context), width: 1.2),
-                              backgroundColor: MetaColors.highlight(context),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            ),
-                            icon: Icon(Icons.apple_rounded, size: 22, color: MetaColors.text(context)),
-                            label: const Text(
-                              'Continuar com Apple',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
-                            ),
-                          ),
-                        ),
-                      ],
                       const SizedBox(height: 18),
 
                       // Divisor Elegante
@@ -1547,7 +1496,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             child: Text(
-                              'ou entrar com e-mail',
+                              'ou entrar com e-mail e senha',
                               style: TextStyle(
                                 color: MetaColors.subtext(context),
                                 fontSize: 11.5,
@@ -1723,19 +1672,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         isLoading: _isLoading,
                         onPressed: _handleSignIn,
                       ),
-                      const SizedBox(height: 12),
-
-                      if (widget.invitedStudentId == null) ...[
-                        SquircleButton(
-                          label: kIsWeb ? 'Retornar com biometria (1 toque)' : 'Entrar com biometria',
-                          icon: Icons.fingerprint,
-                          isPrimary: false,
-                          backgroundColor: MetaColors.highlight(context),
-                          foregroundColor: MetaColors.text(context),
-                          onPressed: _handleBiometricAuth,
-                        ),
-                        const SizedBox(height: 24),
-                      ],
+                      const SizedBox(height: 16),
 
                       // Botão Modo Tour / Conhecer a Plataforma sem Barreiras
                       Center(

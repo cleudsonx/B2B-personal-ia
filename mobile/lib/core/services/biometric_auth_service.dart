@@ -57,13 +57,12 @@ class BiometricAuthService {
         if (webSuccess) {
           return BiometricAuthResult.ok();
         }
-
-        // Se WebAuthn não estiver ativo no dispositivo (ou for cancelado),
-        // em PWA móvel permite confirmação de retorno seguro
-        return BiometricAuthResult.ok();
+        return BiometricAuthResult.fail(
+          'Autenticação biométrica cancelada ou não reconhecida.',
+        );
       } catch (e) {
         return BiometricAuthResult.fail(
-          'Não foi possível concluir a biometria no navegador. Digite sua senha.',
+          'Não foi possível concluir a biometria no navegador. Digite sua senha ou entre via WhatsApp.',
         );
       }
     }
