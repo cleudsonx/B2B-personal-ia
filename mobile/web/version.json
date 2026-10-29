@@ -1,8 +1,8 @@
 {
-  "version": "1.12.10",
-  "build": 2026103125,
-  "updated_at": "2026-10-29T12:57:09.610500Z",
-  "notes": "Blindagem de jornada: confirmacao de perfil (Professor/Aluno) no acesso via WhatsApp e aluno somente com convite do personal",
+  "version": "1.12.11",
+  "build": 2026103126,
+  "updated_at": "2026-10-29T13:34:39.169823Z",
+  "notes": "Versão 1.11.3: Modernização da Aba Social & Comunidade do Treinador com disparo In-App via Robô do WhatsApp em 1 clique e em lote, Mural com Broadcast, Pódio Editorial One UI 7, Filtros de Retenção e Loader Executive Shimmer.",
   "changelog": {
     "student": [
       {

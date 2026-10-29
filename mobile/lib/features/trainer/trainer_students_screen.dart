@@ -15,6 +15,7 @@ import '../../services/subscription_service.dart';
 import '../../services/whatsapp_direct_service.dart';
 import '../../models/subscription_model.dart';
 import '../subscription/subscription_screen.dart';
+import '../landing/public_trainer_directory_screen.dart';
 import 'anamnesis_screen.dart';
 import 'presentation/screens/trainer_profile_setup_screen.dart';
 
@@ -1397,6 +1398,154 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     if (mounted) await _loadStudentsFromDb();
   }
 
+  void _showMistakenRoleSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomCtx) {
+        final isDark = Theme.of(bottomCtx).brightness == Brightness.dark;
+        final bg = isDark ? const Color(0xFF16181C) : Colors.white;
+        final textColor = isDark ? Colors.white : const Color(0xFF111827);
+        final subtextColor =
+            isDark ? Colors.grey[400]! : const Color(0xFF6B7280);
+
+        return Container(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.black12,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: MetaColors.accentBlue.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.help_outline_rounded,
+                      color: MetaColors.accentBlue,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Entrou por engano como Treinador?',
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Você está na área de gestão do Personal Trainer.',
+                          style: TextStyle(color: subtextColor, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color:
+                      isDark ? const Color(0xFF1E222A) : const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Se você é um aluno e quer encontrar um personal ou iniciar seus treinos:',
+                  style: TextStyle(color: textColor, fontSize: 13, height: 1.4),
+                ),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(bottomCtx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const PublicTrainerDirectoryScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.storefront_rounded, size: 18),
+                label: const Text(
+                  'Conhecer e Escolher um Personal Trainer',
+                  style:
+                      TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: MetaColors.accentBlue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(bottomCtx);
+                  await AuthService.signOut();
+                  if (mounted) {
+                    Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      '/',
+                      (route) => false,
+                    );
+                  }
+                },
+                icon: const Icon(Icons.logout_rounded, size: 18),
+                label: const Text(
+                  'Sair da Conta de Professor',
+                  style:
+                      TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor:
+                      isDark ? Colors.grey[300] : const Color(0xFF374151),
+                  side: BorderSide(
+                    color: isDark ? Colors.white24 : Colors.black12,
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.paddingOf(context).top;
@@ -1881,6 +2030,44 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                          height: 1.4,
                                        ),
                                      ),
+                                     if (_students.isEmpty) ...[
+                                       const SizedBox(height: 22),
+                                       InkWell(
+                                         onTap: _showMistakenRoleSheet,
+                                         borderRadius: BorderRadius.circular(14),
+                                         child: Container(
+                                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                           decoration: BoxDecoration(
+                                             color: MetaColors.card(context),
+                                             borderRadius: BorderRadius.circular(14),
+                                             border: Border.all(
+                                               color: MetaColors.cardBorder(context).withOpacity(0.5),
+                                             ),
+                                           ),
+                                           child: Row(
+                                             mainAxisSize: MainAxisSize.min,
+                                             children: [
+                                               const Icon(
+                                                 Icons.help_outline_rounded,
+                                                 size: 16,
+                                                 color: MetaColors.accentBlue,
+                                               ),
+                                               const SizedBox(width: 8),
+                                               Flexible(
+                                                 child: Text(
+                                                   'Entrou por engano? Sou aluno procurando personal',
+                                                   style: TextStyle(
+                                                     color: MetaColors.accentBlue,
+                                                     fontSize: 12.5,
+                                                     fontWeight: FontWeight.w600,
+                                                   ),
+                                                 ),
+                                               ),
+                                             ],
+                                           ),
+                                         ),
+                                       ),
+                                     ],
                                    ],
                                  ),
                                ),
