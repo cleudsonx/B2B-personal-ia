@@ -1189,4 +1189,68 @@ class AuthService {
     }
     return error.toString();
   }
+
+  /// Login Social com OAuth (Google ou Apple)
+  static Future<bool> signInWithOAuth(OAuthProvider provider, {String? redirectTo}) async {
+    try {
+      final res = await _client.auth.signInWithOAuth(
+        provider,
+        redirectTo: redirectTo ?? (kIsWeb ? null : 'io.supabase.mrcoach://login-callback/'),
+      );
+      return res;
+    } catch (e) {
+      debugPrint('[AuthService] Erro no signInWithOAuth: $e');
+      throw Exception('Falha ao autenticar com ${provider.name}: ${_formatAuthError(e)}');
+    }
+  }
+
+  /// Solicita código OTP de 6 dígitos via WhatsApp
+  static Future<Map<String, dynamic>> requestPasswordlessOtp({
+    required String phone,
+    String role = 'client',
+    String? fullName,
+  }) async {
+    final url = Uri.parse('${AppConfig.apiBaseUrl}/auth/otp/login-request');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'phone': phone,
+        'role': role,
+        'full_name': fullName,
+      }),
+    );
+    final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    if (response.statusCode >= 400) {
+      throw Exception(data['detail'] ?? 'Erro ao solicitar código via WhatsApp');
+    }
+    return data;
+  }
+
+  /// Valida o código OTP e autentica na sessão Supabase
+  static Future<AuthResponse> verifyPasswordlessOtp({
+    required String phone,
+    required String code,
+    String role = 'client',
+    String? fullName,
+  }) async {
+    final url = Uri.parse('${AppConfig.apiBaseUrl}/auth/otp/login-verify');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'phone': phone,
+        'code': code,
+        'role': role,
+        'full_name': fullName,
+      }),
+    );
+    final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    if (response.statusCode >= 400) {
+      throw Exception(data['detail'] ?? 'Código de acesso incorreto ou expirado');
+    }
+    final email = data['email'] as String;
+    final token = data['auth_token'] as String;
+    return await signIn(email: email, password: token);
+  }
 }

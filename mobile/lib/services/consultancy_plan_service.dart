@@ -105,6 +105,9 @@ class PublicCheckoutResult {
   final String message;
   final String trainerName;
   final String planName;
+  final String? authEmail;
+  final String? authToken;
+  final String? accessUrl;
 
   PublicCheckoutResult({
     required this.invoiceId,
@@ -119,6 +122,9 @@ class PublicCheckoutResult {
     required this.message,
     required this.trainerName,
     required this.planName,
+    this.authEmail,
+    this.authToken,
+    this.accessUrl,
   });
 
   double get amount => amountCents / 100.0;
@@ -139,6 +145,9 @@ class PublicCheckoutResult {
       message: json['message'] as String? ?? 'Cobrança gerada com sucesso!',
       trainerName: json['trainer_name'] as String? ?? 'Personal Trainer',
       planName: json['plan_name'] as String? ?? 'Consultoria',
+      authEmail: json['auth_email'] as String?,
+      authToken: json['auth_token'] as String?,
+      accessUrl: json['access_url'] as String?,
     );
   }
 }

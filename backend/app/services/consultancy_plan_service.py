@@ -491,9 +491,10 @@ class ConsultancyPlanService:
 
         # Se o pagamento foi aprovado instantaneamente (Cartão de Crédito),
         # dispara imediatamente o ciclo financeiro, vínculo de aluno e boas-vindas:
+        auth_info: Dict[str, Any] = {}
         if status_result == "paid":
             try:
-                await cls.process_student_payment_confirmation(
+                auth_info = await cls.process_student_payment_confirmation(
                     invoice_id=invoice_id,
                     payment_method=req.payment_method.lower(),
                 )
@@ -514,6 +515,9 @@ class ConsultancyPlanService:
             message=f"Cobrança para o plano '{plan.name}' gerada com sucesso!",
             trainer_name=trainer_name,
             plan_name=plan.name,
+            auth_email=auth_info.get("auth_email"),
+            auth_token=auth_info.get("auth_token"),
+            access_url=auth_info.get("access_url"),
         )
 
     @classmethod
@@ -697,7 +701,39 @@ class ConsultancyPlanService:
             except Exception as e:
                 logger.warning(f"[PaymentConfirmation] Erro não impeditivo ao enviar WhatsApp para o aluno: {e}")
 
-        # 8. Notifica o Treinador no WhatsApp
+        # 8. Autenticação Instantânea SaaS (Zero Password Barrier para Aluno Pós-Pagamento)
+        direct_auth_email: Optional[str] = student_email.strip().lower() if student_email else None
+        direct_auth_token: Optional[str] = None
+
+        if client:
+            temp_pwd = f"MrCoach_Pwa_{secrets.token_hex(8)}"
+            try:
+                if student_profile:
+                    # Atualiza credencial temporária para login direto
+                    await supabase_service.admin_update_user_password(student_profile["id"], temp_pwd)
+                    direct_auth_email = student_profile.get("email") or direct_auth_email
+                    direct_auth_token = temp_pwd
+                else:
+                    # Cria conta do aluno no Supabase Auth com acesso liberado imediato
+                    target_email = direct_auth_email or f"aluno_{clean_phone or secrets.token_hex(4)}@mrcoach.app"
+                    created_u = await supabase_service.admin_create_user(
+                        email=target_email,
+                        password=temp_pwd,
+                        full_name=student_name,
+                        role="client",
+                        phone=clean_phone or None,
+                        trainer_id=trainer_id,
+                    )
+                    direct_auth_email = target_email
+                    direct_auth_token = temp_pwd
+                    # Vincula student_id na fatura
+                    await client.table("student_invoices").update({
+                        "student_id": created_u["user_id"],
+                    }).eq("id", invoice_id).execute()
+            except Exception as e:
+                logger.warning(f"[PaymentConfirmation] Não foi possível provisionar login direto: {e}")
+
+        # 9. Notifica o Treinador no WhatsApp
         if trainer_phone:
             val_formatado = f"R$ {net_cents / 100:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
             wa_trainer_text = (
@@ -726,6 +762,8 @@ class ConsultancyPlanService:
             "net_amount_cents": net_cents,
             "access_url": access_url,
             "token": invite_token,
+            "auth_email": direct_auth_email,
+            "auth_token": direct_auth_token,
         }
 
 

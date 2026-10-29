@@ -4,6 +4,8 @@ import '../../../../core/widgets/meta_components.dart';
 import '../../../../core/widgets/thematic_editorial_card.dart';
 import '../../../../core/widgets/thematic_watermarks.dart';
 import '../../../../services/wallet_service.dart';
+import '../../../../services/auth_service.dart';
+import '../../../auth/teacher_mfa_screen.dart';
 import '../../../../core/utils/currency_pt_br_formatter.dart';
 
 class TrainerWalletScreen extends StatefulWidget {
@@ -420,6 +422,26 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                 final val = CurrencyPtBrFormatter.parse(amountCtrl.text);
                 if (val <= 0) return;
 
+                // Step-Up Security: Exige validação 2FA antes de movimentar fundos se configurado
+                final isSatisfied = await AuthService.isCurrentSessionMfaSatisfied();
+                if (!isSatisfied) {
+                  final profile = await AuthService.getCurrentProfile();
+                  final mfaEnrolled = profile?['mfa_enabled'] == true ||
+                      (profile?['mfa_verified_at'] != null && (profile?['mfa_factors'] as List?)?.isNotEmpty == true);
+                  if (mfaEnrolled && context.mounted) {
+                    final verified = await Navigator.push<bool>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const TeacherMfaScreen(
+                          allowEnrollment: false,
+                        ),
+                      ),
+                    );
+                    if (verified != true) return;
+                  }
+                }
+
+                if (!ctx.mounted) return;
                 Navigator.pop(ctx);
                 final res = await WalletService.requestWithdrawal((val * 100).toInt());
                 if (mounted) {

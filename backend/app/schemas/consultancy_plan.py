@@ -76,4 +76,7 @@ class PublicCheckoutResponse(BaseModel):
     message: str
     trainer_name: str
     plan_name: str
+    auth_email: Optional[str] = None
+    auth_token: Optional[str] = None
+    access_url: Optional[str] = None
 

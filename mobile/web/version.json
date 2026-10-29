@@ -1,8 +1,8 @@
 {
-  "version": "1.12.3",
-  "build": 2026103118,
-  "updated_at": "2026-10-29T01:09:09.156852Z",
-  "notes": "Desbloqueio de telemetria sem teto de 200 e layout responsivo de Acoes Rapidas Executivas",
+  "version": "1.12.4",
+  "build": 2026103119,
+  "updated_at": "2026-10-29T02:16:23.132588Z",
+  "notes": "Versão 1.11.3: Modernização da Aba Social & Comunidade do Treinador com disparo In-App via Robô do WhatsApp em 1 clique e em lote, Mural com Broadcast, Pódio Editorial One UI 7, Filtros de Retenção e Loader Executive Shimmer.",
   "changelog": {
     "student": [
       {

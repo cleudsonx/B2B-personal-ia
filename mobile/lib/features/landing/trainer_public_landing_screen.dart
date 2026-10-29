@@ -11,7 +11,9 @@ import '../../core/utils/currency_pt_br_formatter.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/theme_toggle_button.dart';
 import '../../services/consultancy_plan_service.dart';
+import '../../services/auth_service.dart';
 import '../auth/login_screen.dart';
+import '../client/welcome_onboarding_screen.dart';
 
 class TrainerPublicLandingScreen extends StatefulWidget {
   final String username;
@@ -2989,12 +2991,28 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
 
           const SizedBox(height: 12),
 
-          // Botão 2: Concluir e Acessar o App
+          // Botão 2: Concluir e Acessar o App (Auto-Login Instantâneo Zero Barreira)
           SizedBox(
             width: double.infinity,
             height: 52,
             child: OutlinedButton.icon(
-              onPressed: () {
+              onPressed: () async {
+                final authEmail = _checkoutResult?.authEmail;
+                final authToken = _checkoutResult?.authToken;
+                if (authEmail != null && authToken != null) {
+                  try {
+                    await AuthService.signIn(email: authEmail, password: authToken);
+                    if (mounted) {
+                      Navigator.pop(context); // Fechar modal
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const WelcomeOnboardingScreen()),
+                      );
+                      return;
+                    }
+                  } catch (_) {}
+                }
+                if (!mounted) return;
                 Navigator.pop(context); // Fechar modal
                 Navigator.push(
                   context,

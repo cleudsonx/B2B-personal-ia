@@ -96,7 +96,10 @@ class _AuthGateState extends State<AuthGate> {
     try {
       var profile = await AuthService.getCurrentProfile();
       final roles = AuthService.availableRoles(profile);
+      final mfaEnrolled = profile?['mfa_enabled'] == true ||
+          (profile?['mfa_verified_at'] != null && (profile?['mfa_factors'] as List?)?.isNotEmpty == true);
       if (roles.contains('trainer') &&
+          mfaEnrolled &&
           !await AuthService.isCurrentSessionMfaSatisfied()) {
         if (!mounted) return;
         final verified = await Navigator.push<bool>(

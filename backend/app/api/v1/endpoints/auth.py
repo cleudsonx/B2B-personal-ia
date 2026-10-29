@@ -897,3 +897,272 @@ async def update_contact_channel(
         logger.error(f"[Channel Update] Erro ao atualizar e-mail: {e}")
         raise HTTPException(status_code=400, detail="Não foi possível alterar o e-mail.")
     return {"success": True, "message": "E-mail atualizado com sucesso via validação cruzada!"}
+
+
+# ---------------------------------------------------------------------------
+# Passwordless Auth SaaS via WhatsApp (Login Instantâneo sem Senha)
+# ---------------------------------------------------------------------------
+
+class PasswordlessLoginRequest(BaseModel):
+    phone: str = Field(..., description="Telefone com DDD (ex: 61999998888)")
+    role: Optional[str] = Field("client", description="'client' ou 'trainer'")
+    full_name: Optional[str] = None
+
+
+class PasswordlessLoginResponse(BaseModel):
+    success: bool
+    message: str
+    masked_phone: str
+    is_new_user: bool
+
+
+class PasswordlessVerifyRequest(BaseModel):
+    phone: str = Field(..., description="Telefone com DDD")
+    code: str = Field(..., min_length=6, max_length=6, description="Código de 6 dígitos")
+    role: Optional[str] = "client"
+    full_name: Optional[str] = None
+
+
+class PasswordlessVerifyResponse(BaseModel):
+    success: bool
+    message: str
+    email: str
+    auth_token: str
+    user_id: str
+    role: str
+    full_name: str
+    is_new_user: bool
+
+
+@router.post("/otp/login-request", response_model=PasswordlessLoginResponse)
+async def request_passwordless_login(req: PasswordlessLoginRequest):
+    """
+    Inicia o fluxo Passwordless SaaS via WhatsApp:
+    Gera OTP de 6 dígitos e despacha via WhatsApp (Robô Central ou Instância ativa).
+    Não exige senha prévia.
+    """
+    client = await supabase_service.get_client()
+    if not client:
+        raise HTTPException(status_code=503, detail="Serviço de autenticação temporariamente indisponível.")
+
+    raw_phone = re.sub(r"\D", "", req.phone or "")
+    if len(raw_phone) < 10:
+        raise HTTPException(status_code=400, detail="Número de WhatsApp inválido. Informe DDD + 9 dígitos.")
+
+    clean_phone = raw_phone if raw_phone.startswith("55") else f"55{raw_phone}"
+    short_phone = clean_phone[2:] if clean_phone.startswith("55") else clean_phone
+
+    # Rate limiting: máximo 5 tentativas por hora por telefone
+    now = datetime.now(timezone.utc)
+    hour_ago = (now - timedelta(hours=1)).isoformat()
+    recent = await (
+        client.table("auth_recovery_otps")
+        .select("created_at")
+        .eq("identifier", clean_phone)
+        .eq("purpose", "passwordless_login")
+        .gt("created_at", hour_ago)
+        .order("created_at", desc=True)
+        .execute()
+    )
+    recent_rows = (recent.data if recent else None) or []
+    if len(recent_rows) >= 5:
+        raise HTTPException(status_code=429, detail="Limite de solicitações atingido para este número. Tente em 1 hora.")
+    if recent_rows:
+        last = mfa.parse_ts(recent_rows[0].get("created_at"))
+        if last:
+            wait = 45 - (now - last).total_seconds()
+            if wait > 0:
+                raise HTTPException(status_code=429, detail=f"Aguarde {int(wait) + 1}s para solicitar um novo código.")
+
+    # Busca perfil existente pelo telefone
+    profile = None
+    try:
+        p_res = (
+            await client.table("profiles")
+            .select("id, full_name, role, phone, public_whatsapp")
+            .or_(f"phone.ilike.%{short_phone}%,public_whatsapp.ilike.%{short_phone}%")
+            .limit(1)
+            .execute()
+        )
+        if p_res and p_res.data:
+            profile = p_res.data[0]
+    except Exception as e:
+        logger.warning(f"[Passwordless] Erro ao buscar profile: {e}")
+
+    is_new = profile is None
+    user_name = (profile.get("full_name") if profile else None) or req.full_name or "Atleta"
+    user_id = profile.get("id") if profile else None
+
+    # Gera OTP
+    otp_code = mfa.generate_otp()
+    expires_at = (now + timedelta(minutes=10)).isoformat()
+
+    await client.table("auth_recovery_otps").insert({
+        "identifier": clean_phone,
+        "channel": "whatsapp",
+        "otp_code": mfa.hash_secret(otp_code, "mfa-otp"),
+        "user_id": user_id,
+        "purpose": "passwordless_login",
+        "attempts": 0,
+        "expires_at": expires_at,
+    }).execute()
+
+    # Dispara mensagem via WhatsApp
+    msg_text = (
+        f"Olá, {user_name}! 👋\n\n"
+        f"Seu código de acesso ao *Mr. Coach* é:\n\n"
+        f"🔐 *{otp_code}*\n\n"
+        f"Ele é válido por 10 minutos. Nunca compartilhe este código com ninguém."
+    )
+    try:
+        await whatsapp_service.send_text_with_fallback(
+            number=clean_phone,
+            text=msg_text,
+            trainer_id=None,
+        )
+    except Exception as e:
+        logger.error(f"[Passwordless] Erro ao disparar WhatsApp: {e}")
+        raise HTTPException(status_code=500, detail="Não foi possível enviar o código via WhatsApp. Tente novamente.")
+
+    # Máscara do telefone (ex: +55 (61) 9****-7852)
+    ddi_ddd = clean_phone[:4]
+    last4 = clean_phone[-4:]
+    masked = f"+{ddi_ddd[:2]} ({ddi_ddd[2:]}) 9****-{last4}"
+
+    return PasswordlessLoginResponse(
+        success=True,
+        message="Código de acesso enviado com sucesso via WhatsApp!",
+        masked_phone=masked,
+        is_new_user=is_new,
+    )
+
+
+@router.post("/otp/login-verify", response_model=PasswordlessVerifyResponse)
+async def verify_passwordless_login(req: PasswordlessVerifyRequest):
+    """
+    Valida o OTP do WhatsApp e autentica o usuário sem senha:
+    - Se existente: gera sessão / credencial segura de uso único para login transparente.
+    - Se novo: cria a conta no Supabase Auth e profile instantaneamente.
+    """
+    client = await supabase_service.get_client()
+    if not client:
+        raise HTTPException(status_code=503, detail="Serviço de autenticação temporariamente indisponível.")
+
+    raw_phone = re.sub(r"\D", "", req.phone or "")
+    clean_phone = raw_phone if raw_phone.startswith("55") else f"55{raw_phone}"
+    short_phone = clean_phone[2:] if clean_phone.startswith("55") else clean_phone
+
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+
+    # Busca o OTP mais recente
+    res = await (
+        client.table("auth_recovery_otps")
+        .select("id, otp_code, attempts, user_id")
+        .eq("identifier", clean_phone)
+        .eq("purpose", "passwordless_login")
+        .is_("used_at", "null")
+        .gt("expires_at", now_iso)
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    row = res.data[0] if (res and res.data) else None
+    if not row:
+        raise HTTPException(status_code=400, detail="Código expirado ou não encontrado. Solicite um novo código.")
+
+    attempts = int(row.get("attempts") or 0)
+    if attempts >= 5:
+        raise HTTPException(status_code=429, detail="Muitas tentativas incorretas. Solicite um novo código.")
+
+    if not mfa.verify_secret(req.code.strip(), "mfa-otp", row.get("otp_code")):
+        attempts += 1
+        patch = {"attempts": attempts}
+        if attempts >= 5:
+            patch["used_at"] = now_iso
+        await client.table("auth_recovery_otps").update(patch).eq("id", row["id"]).execute()
+        remaining = 5 - attempts
+        if remaining <= 0:
+            raise HTTPException(status_code=429, detail="Muitas tentativas incorretas. Solicite um novo código.")
+        raise HTTPException(status_code=400, detail=f"Código incorreto. Restam {remaining} tentativa(s).")
+
+    # Consome OTP
+    await client.table("auth_recovery_otps").update({"used_at": now_iso}).eq("id", row["id"]).execute()
+
+    # Busca perfil
+    profile = None
+    try:
+        p_res = (
+            await client.table("profiles")
+            .select("id, full_name, role, phone, public_whatsapp")
+            .or_(f"phone.ilike.%{short_phone}%,public_whatsapp.ilike.%{short_phone}%")
+            .limit(1)
+            .execute()
+        )
+        if p_res and p_res.data:
+            profile = p_res.data[0]
+    except Exception as e:
+        logger.warning(f"[Passwordless] Erro ao buscar profile existente: {e}")
+
+    # Gera credencial temporária de alta segurança para login
+    temp_pw = f"MrCoach_Wa_{uuid.uuid4().hex[:12]}_{now.strftime('%M%S')}"
+
+    if profile:
+        user_id = profile["id"]
+        full_name = profile.get("full_name") or "Usuário"
+        role = profile.get("role") or "client"
+
+        # Obtém e-mail do usuário no Supabase Auth
+        user_email = None
+        try:
+            admin_u = await client.auth.admin.get_user_by_id(user_id)
+            if admin_u and getattr(admin_u, "user", None):
+                user_email = admin_u.user.email
+        except Exception as e:
+            logger.warning(f"[Passwordless] Falha ao recuperar e-mail: {e}")
+
+        if not user_email:
+            user_email = f"wa_{clean_phone}@mrcoach.app"
+            try:
+                await client.auth.admin.update_user_by_id(user_id, {"email": user_email, "email_confirm": True})
+            except Exception:
+                pass
+
+        # Atualiza a senha no Supabase Auth para a credencial temporária
+        await supabase_service.admin_update_user_password(user_id, temp_pw)
+
+        return PasswordlessVerifyResponse(
+            success=True,
+            message="Autenticado com sucesso via WhatsApp!",
+            email=user_email,
+            auth_token=temp_pw,
+            user_id=user_id,
+            role=role,
+            full_name=full_name,
+            is_new_user=False,
+        )
+    else:
+        # Usuário novo: cria direto via Supabase Admin API
+        user_email = f"wa_{clean_phone}@mrcoach.app"
+        role = "trainer" if (req.role or "").strip().lower() == "trainer" else "client"
+        full_name = req.full_name.strip() if req.full_name and req.full_name.strip() else ("Professor" if role == "trainer" else "Aluno")
+
+        created = await supabase_service.admin_create_user(
+            email=user_email,
+            password=temp_pw,
+            full_name=full_name,
+            role=role,
+            phone=clean_phone,
+        )
+        new_uid = created["user_id"]
+
+        return PasswordlessVerifyResponse(
+            success=True,
+            message="Conta criada e autenticada com sucesso via WhatsApp!",
+            email=user_email,
+            auth_token=temp_pw,
+            user_id=new_uid,
+            role=role,
+            full_name=full_name,
+            is_new_user=True,
+        )

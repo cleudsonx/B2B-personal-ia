@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/services/biometric_auth_service.dart';
 
 import '../../core/widgets/meta_components.dart';
@@ -260,7 +261,10 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     }
     await AuthService.setActiveRole(_selectedRole);
+    final mfaEnrolled = profile?['mfa_enabled'] == true ||
+        (profile?['mfa_verified_at'] != null && (profile?['mfa_factors'] as List?)?.isNotEmpty == true);
     if (roles.contains('trainer') &&
+        mfaEnrolled &&
         !await AuthService.isCurrentSessionMfaSatisfied()) {
       if (!mounted) return;
       final verified = await Navigator.push<bool>(
@@ -433,6 +437,357 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isLoading = true);
+    try {
+      await AuthService.signInWithOAuth(OAuthProvider.google);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red.shade800,
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handleAppleSignIn() async {
+    setState(() => _isLoading = true);
+    try {
+      await AuthService.signInWithOAuth(OAuthProvider.apple);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red.shade800,
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showWhatsAppPasswordlessSheet() {
+    final phoneCtrl = TextEditingController();
+    final nameCtrl = TextEditingController();
+    final otpCtrl = TextEditingController();
+    bool codeSent = false;
+    bool isSubmitting = false;
+    String maskedPhone = '';
+    String? currentError;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          final isDark = MetaColors.isDark(context);
+          final bg = isDark ? const Color(0xFF13171F) : Colors.white;
+          final border = Border.all(color: isDark ? const Color(0xFF232B39) : const Color(0xFFE2E8F0));
+          final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+          final subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                border: border,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Drag handle
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Header com ícone WhatsApp
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF25D366).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.chat_bubble_rounded,
+                          color: Color(0xFF25D366),
+                          size: 26,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              codeSent ? 'Digite o Código de 6 Dígitos' : 'Acesso Rápido WhatsApp',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900,
+                                color: textColor,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              codeSent
+                                  ? 'Enviado para $maskedPhone'
+                                  : 'Receba um código de 6 dígitos no WhatsApp sem senha.',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                color: subColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  if (currentError != null) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                      ),
+                      child: Text(
+                        currentError!,
+                        style: const TextStyle(color: Colors.redAccent, fontSize: 12.5),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+
+                  if (!codeSent) ...[
+                    // Nome (opcional para novo aluno)
+                    TextField(
+                      controller: nameCtrl,
+                      style: TextStyle(color: textColor, fontSize: 14),
+                      decoration: InputDecoration(
+                        labelText: 'Seu nome (opcional se já tiver conta)',
+                        labelStyle: TextStyle(color: subColor, fontSize: 13),
+                        prefixIcon: Icon(Icons.person_outline_rounded, color: subColor, size: 20),
+                        filled: true,
+                        fillColor: MetaColors.highlight(context),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // WhatsApp com máscara
+                    TextField(
+                      controller: phoneCtrl,
+                      keyboardType: TextInputType.phone,
+                      style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.bold),
+                      decoration: InputDecoration(
+                        labelText: 'Número do WhatsApp (com DDD)',
+                        hintText: '61 99999-9999',
+                        labelStyle: TextStyle(color: subColor, fontSize: 13),
+                        prefixIcon: const Icon(Icons.phone_android_rounded, color: Color(0xFF25D366), size: 20),
+                        filled: true,
+                        fillColor: MetaColors.highlight(context),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    SizedBox(
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        onPressed: isSubmitting
+                            ? null
+                            : () async {
+                                final rawP = phoneCtrl.text.replaceAll(RegExp(r'\D'), '').trim();
+                                if (rawP.length < 10) {
+                                  setSheetState(() => currentError = 'Digite seu número com DDD (mínimo 10 dígitos).');
+                                  return;
+                                }
+                                setSheetState(() {
+                                  isSubmitting = true;
+                                  currentError = null;
+                                });
+                                try {
+                                  final res = await AuthService.requestPasswordlessOtp(
+                                    phone: rawP,
+                                    role: _selectedRole,
+                                    fullName: nameCtrl.text.trim().isNotEmpty ? nameCtrl.text.trim() : null,
+                                  );
+                                  setSheetState(() {
+                                    codeSent = true;
+                                    isSubmitting = false;
+                                    maskedPhone = res['masked_phone'] ?? rawP;
+                                  });
+                                } catch (e) {
+                                  setSheetState(() {
+                                    isSubmitting = false;
+                                    currentError = e.toString().replaceAll('Exception: ', '');
+                                  });
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF25D366),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        icon: isSubmitting
+                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : const Icon(Icons.send_rounded, size: 18),
+                        label: Text(
+                          isSubmitting ? 'Enviando Código...' : 'Enviar Código via WhatsApp',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    // Campo Código 6 Dígitos
+                    TextField(
+                      controller: otpCtrl,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      maxLength: 6,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 24,
+                        letterSpacing: 10,
+                        fontWeight: FontWeight.w900,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: '000000',
+                        counterText: '',
+                        filled: true,
+                        fillColor: MetaColors.highlight(context),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      onChanged: (val) {
+                        if (val.length == 6 && !isSubmitting) {
+                          // Auto submeter ao digitar os 6 dígitos
+                          _submitOtpVerification(
+                            phoneCtrl.text.replaceAll(RegExp(r'\D'), '').trim(),
+                            val,
+                            nameCtrl.text.trim(),
+                            ctx,
+                            setSheetState,
+                            (err) => setSheetState(() => currentError = err),
+                          );
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 20),
+
+                    SizedBox(
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: isSubmitting
+                            ? null
+                            : () => _submitOtpVerification(
+                                  phoneCtrl.text.replaceAll(RegExp(r'\D'), '').trim(),
+                                  otpCtrl.text.trim(),
+                                  nameCtrl.text.trim(),
+                                  ctx,
+                                  setSheetState,
+                                  (err) => setSheetState(() => currentError = err),
+                                ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: MetaColors.emerald,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: Text(
+                          isSubmitting ? 'Autenticando...' : 'Confirmar e Acessar',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    Center(
+                      child: TextButton(
+                        onPressed: isSubmitting ? null : () => setSheetState(() => codeSent = false),
+                        child: Text(
+                          'Alterar número de telefone',
+                          style: TextStyle(color: subColor, fontSize: 13),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _submitOtpVerification(
+    String cleanPhone,
+    String code,
+    String fullName,
+    BuildContext sheetCtx,
+    StateSetter setSheetState,
+    void Function(String) onError,
+  ) async {
+    if (code.length != 6) {
+      onError('Digite os 6 dígitos recebidos no WhatsApp.');
+      return;
+    }
+    setSheetState(() => _isLoading = true);
+    try {
+      await AuthService.verifyPasswordlessOtp(
+        phone: cleanPhone,
+        code: code,
+        role: _selectedRole,
+        fullName: fullName.isNotEmpty ? fullName : null,
+      );
+      if (sheetCtx.mounted) {
+        Navigator.pop(sheetCtx); // Fechar bottom sheet
+      }
+      await _continueAfterAuthentication();
+    } catch (e) {
+      onError(e.toString().replaceAll('Exception: ', ''));
+    } finally {
+      setSheetState(() => _isLoading = false);
+    }
+  }
+
+  void _enterDemoTourMode() {
+    // Redireciona diretamente para o AuthGate em modo Convidado / Navegação livre
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const AuthGate(skipBiometric: true)),
+      (_) => false,
+    );
   }
 
   void _navigateToDashboard() {
@@ -1122,6 +1477,89 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 24),
                       ],
 
+                      // Botões Modernos de Login Social e WhatsApp Passwordless SaaS
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          onPressed: _isLoading ? null : _showWhatsAppPasswordlessSheet,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF25D366).withValues(alpha: 0.15),
+                            foregroundColor: const Color(0xFF25D366),
+                            elevation: 0,
+                            side: const BorderSide(color: Color(0xFF25D366), width: 1.2),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          icon: const Icon(Icons.chat_bubble_rounded, size: 20, color: Color(0xFF25D366)),
+                          label: const Text(
+                            'Entrar com WhatsApp (Sem Senha)',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: OutlinedButton.icon(
+                          onPressed: _isLoading ? null : _handleGoogleSignIn,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: MetaColors.text(context),
+                            side: BorderSide(color: MetaColors.cardBorder(context), width: 1.2),
+                            backgroundColor: MetaColors.highlight(context),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          icon: const Icon(Icons.g_mobiledata_rounded, size: 26, color: Colors.redAccent),
+                          label: const Text(
+                            'Continuar com Google',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                          ),
+                        ),
+                      ),
+                      if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS || kIsWeb) ...[
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: OutlinedButton.icon(
+                            onPressed: _isLoading ? null : _handleAppleSignIn,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: MetaColors.text(context),
+                              side: BorderSide(color: MetaColors.cardBorder(context), width: 1.2),
+                              backgroundColor: MetaColors.highlight(context),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            icon: Icon(Icons.apple_rounded, size: 22, color: MetaColors.text(context)),
+                            label: const Text(
+                              'Continuar com Apple',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 18),
+
+                      // Divisor Elegante
+                      Row(
+                        children: [
+                          Expanded(child: Divider(color: MetaColors.cardBorder(context), height: 1)),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              'ou entrar com e-mail',
+                              style: TextStyle(
+                                color: MetaColors.subtext(context),
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          Expanded(child: Divider(color: MetaColors.cardBorder(context), height: 1)),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+
                       // Email Input
                       TextFormField(
                         controller: _emailCtrl,
@@ -1298,6 +1736,23 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 24),
                       ],
+
+                      // Botão Modo Tour / Conhecer a Plataforma sem Barreiras
+                      Center(
+                        child: TextButton.icon(
+                          onPressed: _enterDemoTourMode,
+                          icon: const Icon(Icons.explore_outlined, size: 18, color: MetaColors.emerald),
+                          label: const Text(
+                            'Experimentar sem cadastro (Modo Tour)',
+                            style: TextStyle(
+                              color: MetaColors.emerald,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
 
                       // Register Link
                       if (widget.invitedStudentId == null)
