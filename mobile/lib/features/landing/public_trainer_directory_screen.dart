@@ -323,91 +323,104 @@ class _PublicTrainerDirectoryScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  IconButton(
-                    onPressed: () {
-                      if (Navigator.canPop(context)) {
-                        Navigator.pop(context);
-                      } else {
-                        Navigator.pushNamed(context, '/');
-                      }
-                    },
-                    icon: Icon(Icons.arrow_back_rounded,
-                        color: isDark ? Colors.white : const Color(0xFF0F172A)),
-                    tooltip: 'Voltar',
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: MetaColors.emerald.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                        color: MetaColors.emerald.withValues(alpha: 0.35),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          if (Navigator.canPop(context)) {
+                            Navigator.pop(context);
+                          } else {
+                            Navigator.pushNamed(context, '/');
+                          }
+                        },
+                        icon: Icon(Icons.arrow_back_rounded,
+                            color: isDark ? Colors.white : const Color(0xFF0F172A)),
+                        tooltip: 'Voltar',
                       ),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.verified_rounded,
-                            color: MetaColors.emerald, size: 14),
-                        SizedBox(width: 6),
-                        Text(
-                          'DIRETÓRIO OFICIAL • CREF REGISTRADO',
-                          style: TextStyle(
-                            color: MetaColors.emerald,
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.7,
+                      const SizedBox(width: 8),
+                      Container(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: MetaColors.emerald.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: MetaColors.emerald.withValues(alpha: 0.35),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  const Spacer(),
-                  if (isDesktop) ...[
-                    TextButton.icon(
-                      onPressed: () => Navigator.pushNamed(context, '/aluno/entrar'),
-                      icon: const Icon(Icons.fitness_center_rounded, color: Color(0xFF06B6D4), size: 16),
-                      label: const Text(
-                        'Já sou Aluno (Abrir Treino)',
-                        style: TextStyle(
-                          color: Color(0xFF06B6D4),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.verified_rounded,
+                                color: MetaColors.emerald, size: 14),
+                            SizedBox(width: 6),
+                            Text(
+                              'DIRETÓRIO OFICIAL • CREF REGISTRADO',
+                              style: TextStyle(
+                                color: MetaColors.emerald,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.7,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton.icon(
-                      onPressed: () => Navigator.pushNamed(context, '/professor/entrar'),
-                      icon: const Icon(Icons.sports_gymnastics_rounded, size: 16),
-                      label: const Text(
-                        'Sou Personal (Aparecer Aqui)',
-                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
-                      ),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: MetaColors.emerald,
-                        foregroundColor: Colors.black,
-                        minimumSize: const Size(0, 36),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
-                  ] else ...[
-                    IconButton(
-                      tooltip: 'Área do Aluno',
-                      onPressed: () => Navigator.pushNamed(context, '/aluno/entrar'),
-                      icon: const Icon(Icons.fitness_center_rounded, color: Color(0xFF06B6D4)),
-                    ),
-                    IconButton(
-                      tooltip: 'Área do Treinador',
-                      onPressed: () => Navigator.pushNamed(context, '/professor/entrar'),
-                      icon: const Icon(Icons.sports_gymnastics_rounded, color: MetaColors.emerald),
-                    ),
-                  ],
+                    ],
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isDesktop) ...[
+                        TextButton.icon(
+                          onPressed: () => Navigator.pushNamed(context, '/aluno/entrar'),
+                          icon: const Icon(Icons.fitness_center_rounded, color: Color(0xFF06B6D4), size: 16),
+                          label: const Text(
+                            'Já sou Aluno',
+                            style: TextStyle(
+                              color: Color(0xFF06B6D4),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.icon(
+                          onPressed: () => Navigator.pushNamed(context, '/professor/entrar'),
+                          icon: const Icon(Icons.sports_gymnastics_rounded, size: 16),
+                          label: const Text(
+                            'Sou Personal',
+                            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                          ),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: MetaColors.emerald,
+                            foregroundColor: Colors.black,
+                            minimumSize: const Size(0, 36),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                      ] else ...[
+                        IconButton(
+                          tooltip: 'Área do Aluno',
+                          onPressed: () => Navigator.pushNamed(context, '/aluno/entrar'),
+                          icon: const Icon(Icons.fitness_center_rounded, color: Color(0xFF06B6D4)),
+                        ),
+                        IconButton(
+                          tooltip: 'Área do Treinador',
+                          onPressed: () => Navigator.pushNamed(context, '/professor/entrar'),
+                          icon: const Icon(Icons.sports_gymnastics_rounded, color: MetaColors.emerald),
+                        ),
+                      ],
+                    ],
+                  ),
                 ],
               ),
               const SizedBox(height: 14),

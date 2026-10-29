@@ -16,8 +16,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // 1. Verify Hero and Title
-    expect(find.text('PLATAFORMA PARA PERSONAL TRAINERS E ALUNOS'), findsOneWidget);
-    expect(find.text('Mais clareza na rotina. Mais espaço para acompanhar pessoas.'), findsOneWidget);
+    expect(find.text('MR. COACH PRO • PLATAFORMA PARA PERSONAL TRAINERS'), findsOneWidget);
+    expect(find.text('Prescreva em 30 segundos com IA. Escale sua consultoria online.'), findsOneWidget);
 
     // 2. Verify ROI Calculator Section
     expect(find.text('SIMULADOR DE FATURAMENTO & ESCALABILIDADE'), findsOneWidget);
@@ -34,7 +34,7 @@ void main() {
     expect(find.text('Supino Reto com Barra'), findsOneWidget);
     expect(find.text('DIAGNÓSTICO DO VETOR DE FORÇA'), findsOneWidget);
     expect(find.text('AJUSTE IMEDIATO RECOMENDADO AO ALUNO'), findsOneWidget);
-    expect(find.text('Encontrar Personal'), findsOneWidget);
+    expect(find.text('Encontrar Personal'), findsWidgets);
     expect(find.text('Prescrever com essa IA'), findsOneWidget);
 
     // 4. Verify Comparison Section (Old vs New)

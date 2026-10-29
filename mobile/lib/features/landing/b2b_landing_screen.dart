@@ -211,13 +211,16 @@ class B2BLandingScreen extends StatelessWidget {
             children: [
               Icon(Icons.sports_gymnastics_rounded, size: 14, color: _green),
               SizedBox(width: 6),
-              Text(
-                'MR. COACH PRO • PLATAFORMA OFICIAL PARA PERSONAL TRAINERS',
-                style: TextStyle(
-                  color: _green,
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.1,
+              Flexible(
+                child: Text(
+                  'MR. COACH PRO • PLATAFORMA PARA PERSONAL TRAINERS',
+                  style: TextStyle(
+                    color: _green,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.1,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
