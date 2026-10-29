@@ -1,3 +1,4 @@
+import '../../core/widgets/connect_trainer_sheet.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1105,6 +1106,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
             trainerPhotoUrl: _trainerPhotoUrl,
             hasWhatsApp: _trainerPhone != null && _trainerPhone!.trim().isNotEmpty,
             onWhatsAppTap: _contactTrainerWhatsApp,
+            onConnectTap: () => ConnectTrainerSheet.show(context, onLinked: _loadTrainerInfo),
           ),
           const SizedBox(height: 14),
 

@@ -358,6 +358,7 @@ class TrainerCompactPill extends StatelessWidget {
   final String? trainerPhotoUrl;
   final bool hasWhatsApp;
   final VoidCallback? onWhatsAppTap;
+  final VoidCallback? onConnectTap;
 
   const TrainerCompactPill({
     super.key,
@@ -367,6 +368,7 @@ class TrainerCompactPill extends StatelessWidget {
     this.trainerPhotoUrl,
     this.hasWhatsApp = false,
     this.onWhatsAppTap,
+    this.onConnectTap,
   });
 
   @override
@@ -377,18 +379,21 @@ class TrainerCompactPill extends StatelessWidget {
     }
 
     final hasTrainer = trainerName != null && trainerName!.trim().isNotEmpty;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: MetaColors.card(context),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: hasTrainer
-              ? emerald.withValues(alpha: 0.30)
-              : MetaColors.cardBorder(context),
+    return InkWell(
+      onTap: hasTrainer ? null : onConnectTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: MetaColors.card(context),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: hasTrainer
+                ? emerald.withValues(alpha: 0.30)
+                : const Color(0xFFF59E0B).withValues(alpha: 0.35),
+          ),
         ),
-      ),
-      child: Row(
+        child: Row(
         children: [
           Container(
             width: 42,
@@ -526,9 +531,48 @@ class TrainerCompactPill extends StatelessWidget {
               ),
             ),
           ],
+          if (!hasTrainer && onConnectTap != null) ...[
+            const SizedBox(width: 8),
+            Material(
+              color: emerald,
+              borderRadius: BorderRadius.circular(12),
+              child: InkWell(
+                onTap: onConnectTap,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.add_link_rounded,
+                        size: 15,
+                        color: Colors.white,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'Conectar',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
-    );
+    ));
   }
 }
 

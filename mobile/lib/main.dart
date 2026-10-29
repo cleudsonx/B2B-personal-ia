@@ -1,3 +1,4 @@
+import 'core/widgets/connect_trainer_sheet.dart';
 import 'services/referral_service.dart';
 import 'features/referral/screens/referral_landing_screen.dart';
 import 'features/landing/shaipados_studio_screen.dart';
@@ -260,6 +261,8 @@ class MainShellScreen extends StatefulWidget {
 class _MainShellScreenState extends State<MainShellScreen> {
   late int _currentIndex;
   late String _activeRole;
+  bool _isExplorerStudent = false;
+  DateTime? _lastExplorerNotificationTime;
 
   @override
   void initState() {
@@ -267,6 +270,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
     _currentIndex = widget.initialIndex;
     _activeRole = widget.activeRole;
     if (!_isTrainer) {
+      _checkExplorerStatus();
       if (widget.initialIndex == 0) {
         _restoreStudentTab();
       }
@@ -279,6 +283,60 @@ class _MainShellScreenState extends State<MainShellScreen> {
         );
       }
     });
+  }
+
+  Future<void> _checkExplorerStatus() async {
+    if (_isTrainer) return;
+    try {
+      final trainer = await AuthService.getTrainerForStudent();
+      if (mounted) {
+        setState(() {
+          _isExplorerStudent = (trainer == null);
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _notifyExplorerOnTabChange() {
+    if (!_isExplorerStudent) return;
+    final now = DateTime.now();
+    if (_lastExplorerNotificationTime == null ||
+        now.difference(_lastExplorerNotificationTime!).inMinutes >= 3) {
+      _lastExplorerNotificationTime = now;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: const Color(0xFF1E293B),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          duration: const Duration(seconds: 4),
+          content: const Row(
+            children: [
+              Text('🧪', style: TextStyle(fontSize: 18)),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Modo Degustação: Toque para escolher seu Personal.',
+                  style: TextStyle(color: Colors.white, fontSize: 12.5),
+                ),
+              ),
+            ],
+          ),
+          action: SnackBarAction(
+            label: 'Conectar',
+            textColor: MetaColors.emerald,
+            onPressed: () {
+              ConnectTrainerSheet.show(
+                context,
+                onLinked: () {
+                  _checkExplorerStatus();
+                },
+              );
+            },
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _restoreStudentTab() async {
@@ -534,7 +592,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
                           child: InkWell(
                             onTap: () {
                               setState(() => _currentIndex = idx);
-                              if (!_isTrainer) PwaNavigationState.saveStudentTab(idx);
+                              if (!_isTrainer) {
+                                PwaNavigationState.saveStudentTab(idx);
+                                _notifyExplorerOnTabChange();
+                              }
                             },
                             borderRadius: BorderRadius.circular(12),
                             child: AnimatedContainer(
@@ -847,7 +908,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
             selectedIndex: _currentIndex,
             onDestinationSelected: (idx) {
               setState(() => _currentIndex = idx);
-              if (!_isTrainer) PwaNavigationState.saveStudentTab(idx);
+              if (!_isTrainer) {
+                PwaNavigationState.saveStudentTab(idx);
+                _notifyExplorerOnTabChange();
+              }
             },
             items: navItems
                 .map(
