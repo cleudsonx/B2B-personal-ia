@@ -30,10 +30,11 @@ WHERE id IN (
     '50c26610-8054-4b05-9274-7f414f91f52f',
     '92dfd58c-845f-473e-b846-a2b8fdd3e508'
 )
-   OR email ILIKE '%cleudson%'
-   OR email ILIKE '%mrcoach%'
-   OR username IN ('mrcoach', 'cleudson-antigo')
-   OR full_name ILIKE '%Cleudson%';
+OR lower(COALESCE(email, '')) IN (
+    'cleudsonx@hotmail.com',
+    'cleudsonx@gmail.com',
+    'cleudsonx2021@gmail.com'
+);
 
 -- 2. Update auth.users metadata for all Cleudson accounts to prevent re-downgrading
 UPDATE auth.users
@@ -55,10 +56,11 @@ WHERE id IN (
     '50c26610-8054-4b05-9274-7f414f91f52f',
     '92dfd58c-845f-473e-b846-a2b8fdd3e508'
 )
-   OR email ILIKE '%cleudson%'
-   OR email ILIKE '%mrcoach%'
-   OR (raw_user_meta_data->>'username') IN ('mrcoach', 'cleudson-antigo')
-   OR (raw_user_meta_data->>'full_name') ILIKE '%Cleudson%';
+OR lower(COALESCE(email, '')) IN (
+    'cleudsonx@hotmail.com',
+    'cleudsonx@gmail.com',
+    'cleudsonx2021@gmail.com'
+);
 
 -- 3. Enhance public.current_user_is_admin() to include canonical Cleudson emails and UUIDs
 CREATE OR REPLACE FUNCTION public.current_user_is_admin()
@@ -91,13 +93,13 @@ BEGIN
         COALESCE(p.is_admin, FALSE) = TRUE
         OR p.role = 'admin'
         OR ('admin' = ANY(COALESCE(p.roles, ARRAY[]::TEXT[])))
-        OR p.email ILIKE '%cleudson%'
-        OR p.email ILIKE '%mrcoach%'
-        OR p.username IN ('mrcoach', 'cleudson-antigo')
     )
     INTO v_is_admin
     FROM public.profiles p
-    WHERE p.id = v_uid;
+    WHERE p.id = v_uid
+      AND lower(COALESCE(p.email, '')) NOT LIKE 'wa_%'
+      AND lower(COALESCE(p.email, '')) NOT LIKE 'aluno_%'
+      AND lower(COALESCE(p.email, '')) NOT LIKE '%.internal';
 
     RETURN COALESCE(v_is_admin, FALSE);
 END;
