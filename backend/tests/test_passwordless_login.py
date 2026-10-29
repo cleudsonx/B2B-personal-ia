@@ -242,3 +242,21 @@ async def test_admin_create_user_rejects_admin_role():
             full_name="Attacker",
             role="admin",
         )
+
+
+@pytest.mark.asyncio
+async def test_canonical_owner_recognized_in_get_current_trainer():
+    from app.api.deps import get_current_trainer
+
+    # Perfil canônico com roles normalizadas para trainer
+    user_payload = {
+        "sub": "92dfd58c-845f-473e-b846-a2b8fdd3e508",
+        "email": "cleudsonx@hotmail.com",
+        "profile": {
+            "id": "92dfd58c-845f-473e-b846-a2b8fdd3e508",
+            "role": "client",  # Mesmo se registrado temporariamente como aluno
+            "roles": ["client", "trainer"],
+        },
+    }
+    trainer_user = await get_current_trainer(user_payload)
+    assert trainer_user["sub"] == "92dfd58c-845f-473e-b846-a2b8fdd3e508"

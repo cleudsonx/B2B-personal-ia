@@ -393,9 +393,22 @@ class _WhatsappConnectionScreenState extends State<WhatsappConnectionScreen> {
           .timeout(const Duration(seconds: 30));
 
       if (response.statusCode != 200) {
-        throw Exception(response.statusCode == 503
-            ? 'Integração WhatsApp ainda não está ativa no servidor.'
-            : 'Não foi possível gerar o código (erro ${response.statusCode}).');
+        String errorMsg;
+        try {
+          final errBody = jsonDecode(utf8.decode(response.bodyBytes));
+          if (errBody is Map && errBody['detail'] != null) {
+            errorMsg = errBody['detail'].toString();
+          } else if (response.statusCode == 503) {
+            errorMsg = 'Integração WhatsApp ainda não está ativa no servidor.';
+          } else {
+            errorMsg = 'Não foi possível gerar o código (erro ${response.statusCode}).';
+          }
+        } catch (_) {
+          errorMsg = response.statusCode == 503
+              ? 'Integração WhatsApp ainda não está ativa no servidor.'
+              : 'Não foi possível gerar o código (erro ${response.statusCode}).';
+        }
+        throw Exception(errorMsg);
       }
 
       final data = jsonDecode(response.body);

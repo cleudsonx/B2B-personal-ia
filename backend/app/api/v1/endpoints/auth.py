@@ -1377,6 +1377,12 @@ async def verify_passwordless_login(req: PasswordlessVerifyRequest):
         # Atualiza a senha no Supabase Auth para a credencial temporária
         await supabase_service.admin_update_user_password(user_id, temp_pw)
 
+        # Atualiza mfa_verified_at pois acabou de validar o OTP do WhatsApp com sucesso
+        try:
+            await client.table("profiles").update({"mfa_verified_at": now_iso}).eq("id", user_id).execute()
+        except Exception as e:
+            logger.warning(f"[Passwordless] Falha ao registrar mfa_verified_at: {e}")
+
         return PasswordlessVerifyResponse(
             success=True,
             message="Autenticado com sucesso via WhatsApp!",
@@ -1407,6 +1413,10 @@ async def verify_passwordless_login(req: PasswordlessVerifyRequest):
             provisioned_by_backend=True,
         )
         new_uid = created["user_id"]
+        try:
+            await client.table("profiles").update({"mfa_verified_at": now_iso}).eq("id", new_uid).execute()
+        except Exception:
+            pass
 
         return PasswordlessVerifyResponse(
             success=True,
