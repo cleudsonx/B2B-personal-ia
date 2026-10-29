@@ -27,3 +27,4 @@ void main() {
     expect(find.text('Iniciar Calibração Biomecânica (3 min)'), findsOneWidget);
   });
 }
+

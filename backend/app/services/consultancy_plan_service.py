@@ -22,6 +22,7 @@ from app.schemas.consultancy_plan import (
     ConsultancyPlanResponse,
     PublicCheckoutRequest,
     PublicCheckoutResponse,
+    InvoiceStatusResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -767,4 +768,103 @@ class ConsultancyPlanService:
             "auth_token": direct_auth_token,
         }
 
+    @classmethod
+    async def get_invoice_status(
+        cls,
+        invoice_id: str,
+        simulate_paid: bool = False,
+    ) -> Optional[InvoiceStatusResponse]:
+        """
+        Consulta o status atual de uma fatura de aluno (student_invoices).
+        Permite consulta em tempo real (polling) pelo app ou verificação manual.
+        """
+        client = await supabase_service.get_client()
+        invoice = None
+
+        if client and is_valid_uuid(invoice_id):
+            try:
+                res = await client.table("student_invoices").select("*").eq("id", invoice_id).maybe_single().execute()
+                invoice = res.data if res else None
+            except Exception as e:
+                logger.error(f"[InvoiceStatus] Erro ao buscar fatura {invoice_id} no Supabase: {e}")
+
+        if not invoice and invoice_id in cls._mem_invoices:
+            invoice = cls._mem_invoices[invoice_id]
+
+        if not invoice:
+            return None
+
+        status = invoice.get("status", "pending")
+        auth_data: Dict[str, Any] = {}
+
+        # Simulação ou processamento se solicitado em ambiente seguro
+        if status != "paid" and simulate_paid and getattr(settings, "ENVIRONMENT", "").lower() != "production":
+            logger.info(f"[InvoiceStatus] Simulação de pagamento aprovado para fatura {invoice_id}")
+            auth_data = await cls.process_student_payment_confirmation(
+                invoice_id=invoice_id,
+                payment_method=invoice.get("payment_method") or "pix",
+            )
+            if client and is_valid_uuid(invoice_id):
+                try:
+                    res = await client.table("student_invoices").select("*").eq("id", invoice_id).maybe_single().execute()
+                    if res and res.data:
+                        invoice = res.data
+                except Exception:
+                    pass
+            status = invoice.get("status", "paid")
+
+        # Se ainda pendente e houver gateway Asaas ativo, consulta status direto no gateway
+        if status != "paid":
+            asaas_key = getattr(settings, "ASAAS_API_KEY", "")
+            if asaas_key:
+                try:
+                    base_url = resolve_asaas_base_url(asaas_key, getattr(settings, "ASAAS_API_URL", ""))
+                    headers = {"access_token": asaas_key}
+                    with httpx.Client(timeout=10.0) as http_client:
+                        r = http_client.get(f"{base_url}/payments", headers=headers, params={"externalReference": invoice_id})
+                        if r.status_code == 200:
+                            data = r.json().get("data", [])
+                            if data and data[0].get("status") in ("CONFIRMED", "RECEIVED"):
+                                auth_data = await cls.process_student_payment_confirmation(
+                                    invoice_id=invoice_id,
+                                    payment_method=data[0].get("billingType", "PIX").lower(),
+                                    provider_payment_id=data[0].get("id"),
+                                )
+                                status = "paid"
+                except Exception as gw_err:
+                    logger.warning(f"[InvoiceStatus] Erro ao consultar Asaas para {invoice_id}: {gw_err}")
+
+        trainer_id = invoice.get("trainer_id")
+        trainer_name = "Personal Trainer"
+        if client and is_valid_uuid(trainer_id):
+            try:
+                t_res = await client.table("profiles").select("full_name").eq("id", trainer_id).maybe_single().execute()
+                if t_res and t_res.data:
+                    trainer_name = t_res.data.get("full_name") or trainer_name
+            except Exception:
+                pass
+
+        plan_id = invoice.get("plan_id")
+        plan_name = invoice.get("title") or "Consultoria Personal"
+        if plan_id:
+            try:
+                p = await cls.get_plan_by_id(plan_id)
+                if p:
+                    plan_name = p.name
+            except Exception:
+                pass
+
+        return InvoiceStatusResponse(
+            invoice_id=invoice_id,
+            status=status,
+            is_paid=(status == "paid"),
+            paid_at=invoice.get("paid_at"),
+            trainer_id=trainer_id,
+            trainer_name=trainer_name,
+            plan_name=plan_name,
+            amount_cents=invoice.get("amount_cents", 0),
+            auth_email=auth_data.get("auth_email"),
+            auth_token=auth_data.get("auth_token"),
+            access_url=auth_data.get("access_url"),
+        )
 

@@ -292,6 +292,31 @@ class ConsultancyPlanService {
     throw Exception(errorMsg);
   }
 
+
+  /// Consulta o status de pagamento de uma fatura de checkout (Pix/Cartão)
+  static Future<Map<String, dynamic>> checkInvoiceStatus(
+    String invoiceId, {
+    bool simulatePaid = false,
+  }) async {
+    final uri = Uri.parse(
+      '${AppConfig.apiBaseUrl}/public/invoices/$invoiceId/status${simulatePaid ? "?simulate_paid=true" : ""}',
+    );
+    final res = await http.get(
+      uri,
+      headers: {'Accept': 'application/json'},
+    ).timeout(const Duration(seconds: 15));
+
+    if (res.statusCode == 200) {
+      return jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+    }
+    String errorMsg = 'Falha ao consultar fatura.';
+    try {
+      final err = jsonDecode(utf8.decode(res.bodyBytes));
+      if (err['detail'] != null) errorMsg = err['detail'].toString();
+    } catch (_) {}
+    throw Exception(errorMsg);
+  }
+
   /// Templates padrão caso a internet esteja offline ou início rápido
   static List<ConsultancyPlan> getDefaultTemplates() => _defaultTemplates();
 

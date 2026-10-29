@@ -80,3 +80,16 @@ class PublicCheckoutResponse(BaseModel):
     auth_token: Optional[str] = None
     access_url: Optional[str] = None
 
+class InvoiceStatusResponse(BaseModel):
+    invoice_id: str
+    status: str
+    is_paid: bool
+    paid_at: Optional[str] = None
+    trainer_id: Optional[str] = None
+    trainer_name: Optional[str] = None
+    plan_name: Optional[str] = None
+    amount_cents: int = 0
+    auth_email: Optional[str] = None
+    auth_token: Optional[str] = None
+    access_url: Optional[str] = None
+

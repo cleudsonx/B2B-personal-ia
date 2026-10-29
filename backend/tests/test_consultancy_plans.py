@@ -176,3 +176,49 @@ def test_public_checkout_credit_card():
     assert res["amount_cents"] == 39000
     assert res["net_amount_cents"] == 37050  # 95%
     assert res["platform_fee_cents"] == 1950  # 5%
+
+
+def test_get_invoice_status_and_simulation():
+    """Consulta pública do status da fatura com suporte a polling e verificação de aprovação."""
+    # 1. Cria plano
+    r_plan = client.post("/api/v1/trainers/consultancy-plans", json={
+        "name": "Consultoria Status Teste",
+        "price_cents": 20000,
+        "billing_period": "monthly",
+        "is_active": True,
+    })
+    plan_id = r_plan.json()["id"]
+
+    # 2. Gera checkout Pix
+    r_check = client.post("/api/v1/public/trainers/mrcoach/checkout", json={
+        "plan_id": plan_id,
+        "student_name": "Gabriel Souza",
+        "student_email": "gabriel.souza@teste.com",
+        "student_phone": "(11) 96666-5555",
+        "payment_method": "PIX",
+    })
+    assert r_check.status_code == 201
+    inv_id = r_check.json()["invoice_id"]
+
+    # 3. Consulta status pendente
+    r_status = client.get(f"/api/v1/public/invoices/{inv_id}/status")
+    assert r_status.status_code == 200
+    st_data = r_status.json()
+    assert st_data["invoice_id"] == inv_id
+    assert st_data["status"] == "pending"
+    assert st_data["is_paid"] is False
+
+    # 4. Simula aprovação em ambiente de testes
+    r_paid = client.get(f"/api/v1/public/invoices/{inv_id}/status?simulate_paid=true")
+    assert r_paid.status_code == 200
+    paid_data = r_paid.json()
+    assert paid_data["status"] == "paid"
+    assert paid_data["is_paid"] is True
+    assert paid_data["amount_cents"] == 20000
+
+
+def test_invoice_status_not_found():
+    """Fatura inexistente retorna 404 amigável."""
+    r = client.get("/api/v1/public/invoices/00000000-0000-0000-0000-000000000000/status")
+    assert r.status_code == 404
+

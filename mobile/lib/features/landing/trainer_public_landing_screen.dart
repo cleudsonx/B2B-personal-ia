@@ -1,4 +1,5 @@
 // ignore_for_file: use_build_context_synchronously
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -2158,11 +2159,47 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
 
   String _paymentMethod = 'PIX';
   bool _isSubmitting = false;
+  bool _isCheckingPix = false;
+  Timer? _pixPollTimer;
   PublicCheckoutResult? _checkoutResult;
   String? _checkoutError;
 
   @override
+  void initState() {
+    super.initState();
+    _prefillLoggedInStudentData();
+  }
+
+  Future<void> _prefillLoggedInStudentData() async {
+    final user = AuthService.currentUser;
+    if (user == null) return;
+    try {
+      final profile = await AuthService.getCurrentProfile();
+      if (!mounted) return;
+      setState(() {
+        if (_nameCtrl.text.isEmpty) {
+          final fullName = profile?['full_name'] as String? ?? user.userMetadata?['full_name'] as String? ?? '';
+          if (fullName.isNotEmpty) _nameCtrl.text = fullName;
+        }
+        if (_emailCtrl.text.isEmpty) {
+          final email = user.email ?? profile?['email'] as String? ?? '';
+          if (email.isNotEmpty && !email.endsWith('@mrcoach.internal')) {
+            _emailCtrl.text = email;
+          }
+        }
+        if (_phoneCtrl.text.isEmpty) {
+          final phone = profile?['phone'] as String? ?? user.phone ?? user.userMetadata?['phone'] as String? ?? '';
+          if (phone.isNotEmpty) {
+            _phoneCtrl.text = phone;
+          }
+        }
+      });
+    } catch (_) {}
+  }
+
+  @override
   void dispose() {
+    _pixPollTimer?.cancel();
     _nameCtrl.dispose();
     _emailCtrl.dispose();
     _phoneCtrl.dispose();
@@ -2247,6 +2284,9 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
           _checkoutResult = res;
           _isSubmitting = false;
         });
+        if (res.paymentMethod == 'PIX' && res.invoiceId.isNotEmpty) {
+          _startPixPolling(res.invoiceId);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -2256,6 +2296,106 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
         });
       }
     }
+  }
+
+  void _startPixPolling(String invoiceId) {
+    _pixPollTimer?.cancel();
+    _pixPollTimer = Timer.periodic(const Duration(seconds: 4), (timer) async {
+      if (!mounted || _checkoutResult == null) {
+        timer.cancel();
+        return;
+      }
+      try {
+        final res = await ConsultancyPlanService.checkInvoiceStatus(invoiceId);
+        if (res['is_paid'] == true && mounted) {
+          timer.cancel();
+          _onPaymentConfirmed(res);
+        }
+      } catch (_) {}
+    });
+  }
+
+  Future<void> _manualCheckPix(String invoiceId) async {
+    setState(() => _isCheckingPix = true);
+    try {
+      final res = await ConsultancyPlanService.checkInvoiceStatus(invoiceId);
+      if (!mounted) return;
+      setState(() => _isCheckingPix = false);
+      if (res['is_paid'] == true) {
+        _pixPollTimer?.cancel();
+        _onPaymentConfirmed(res);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Aguardando confirmação bancária do Pix... Se já pagou, pode levar até 30 segundos.'),
+            backgroundColor: Colors.orangeAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isCheckingPix = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _onPaymentConfirmed([Map<String, dynamic>? statusData]) async {
+    // Se o aluno já estiver logado, recarrega o perfil para atualizar o vínculo com o personal
+    if (AuthService.currentUser != null) {
+      await AuthService.getCurrentProfile();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('🎉 Pagamento aprovado! Seu vínculo com ${widget.trainerName} está ativo.'),
+          backgroundColor: MetaColors.emerald,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      Navigator.pop(context); // Fecha modal
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const WelcomeOnboardingScreen()),
+        (route) => false,
+      );
+      return;
+    }
+
+    // Se aluno novo ou não logado: realiza login transparente se houver credenciais
+    final authEmail = statusData?['auth_email'] ?? _checkoutResult?.authEmail;
+    final authToken = statusData?['auth_token'] ?? _checkoutResult?.authToken;
+    if (authEmail != null && authToken != null) {
+      try {
+        await AuthService.signIn(email: authEmail, password: authToken);
+        if (!mounted) return;
+        Navigator.pop(context);
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const WelcomeOnboardingScreen()),
+          (route) => false,
+        );
+        return;
+      } catch (_) {}
+    }
+
+    if (!mounted) return;
+    Navigator.pop(context);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LoginScreen(
+          initialRole: 'client',
+          initialEmail: _emailCtrl.text.trim(),
+        ),
+      ),
+    );
   }
 
   void _copyPixCode(String code) {
@@ -3011,34 +3151,7 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
             width: double.infinity,
             height: 52,
             child: OutlinedButton.icon(
-              onPressed: () async {
-                final authEmail = _checkoutResult?.authEmail;
-                final authToken = _checkoutResult?.authToken;
-                if (authEmail != null && authToken != null) {
-                  try {
-                    await AuthService.signIn(email: authEmail, password: authToken);
-                    if (mounted) {
-                      Navigator.pop(context); // Fechar modal
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => const WelcomeOnboardingScreen()),
-                      );
-                      return;
-                    }
-                  } catch (_) {}
-                }
-                if (!mounted) return;
-                Navigator.pop(context); // Fechar modal
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => LoginScreen(
-                      initialRole: 'client',
-                      initialEmail: _emailCtrl.text.trim(),
-                    ),
-                  ),
-                );
-              },
+              onPressed: () => _onPaymentConfirmed(),
               style: OutlinedButton.styleFrom(
                 foregroundColor: MetaColors.emerald,
                 side: const BorderSide(color: MetaColors.emerald, width: 1.5),
@@ -3319,6 +3432,33 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
           ).animate().fadeIn(duration: 400.ms, delay: 340.ms),
 
           const SizedBox(height: 20),
+
+          // Botão de verificação de aprovação do Pix
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton.icon(
+              onPressed: _isCheckingPix ? null : () => _manualCheckPix(res.invoiceId),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: MetaColors.emerald,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              icon: _isCheckingPix
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.verified_rounded, size: 20),
+              label: Text(
+                _isCheckingPix ? 'Verificando Aprovação...' : 'Já realizei o Pix (Verificar Aprovação)',
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ).animate().fadeIn(duration: 400.ms, delay: 380.ms),
+          const SizedBox(height: 12),
 
           // Botão WhatsApp se disponível
           if (widget.trainerWhatsapp != null && widget.trainerWhatsapp!.trim().isNotEmpty) ...[

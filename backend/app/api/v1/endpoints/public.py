@@ -240,6 +240,7 @@ from app.schemas.consultancy_plan import (
     ConsultancyPlanResponse,
     PublicCheckoutRequest,
     PublicCheckoutResponse,
+    InvoiceStatusResponse,
 )
 from app.services.consultancy_plan_service import ConsultancyPlanService
 
@@ -296,3 +297,20 @@ async def public_trainer_checkout(username: str, req: PublicCheckoutRequest):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao processar checkout: {str(e)}")
+
+
+@router.get(
+    "/invoices/{invoice_id}/status",
+    response_model=InvoiceStatusResponse,
+    summary="Verificar status do pagamento da fatura",
+    description="Permite que o aluno consulte em tempo real a aprovação do Pix ou Cartão."
+)
+async def get_public_invoice_status(
+    invoice_id: str,
+    simulate_paid: bool = Query(default=False, description="Simula aprovação para testes"),
+):
+    status_res = await ConsultancyPlanService.get_invoice_status(invoice_id, simulate_paid=simulate_paid)
+    if not status_res:
+        raise HTTPException(status_code=404, detail="Fatura não encontrada.")
+    return status_res
+
