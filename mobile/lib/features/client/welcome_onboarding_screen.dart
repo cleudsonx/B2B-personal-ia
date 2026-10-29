@@ -8,6 +8,7 @@ import '../../services/auth_service.dart';
 import '../../services/body_metrics_service.dart';
 import '../../services/student_profile_service.dart';
 import '../../services/workout_service.dart';
+import '../landing/public_trainer_directory_screen.dart';
 
 class WelcomeOnboardingScreen extends StatefulWidget {
   final String? studentName;
@@ -426,16 +427,125 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
     super.dispose();
   }
 
+  void _showRedeemInviteDialog() {
+    final codeCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (dlgCtx) => AlertDialog(
+        backgroundColor: MetaColors.card(dlgCtx),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.link_rounded, color: MetaColors.emerald, size: 22),
+            const SizedBox(width: 8),
+            Text(
+              'Vincular Treinador',
+              style: TextStyle(
+                color: MetaColors.text(dlgCtx),
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Cole o link de convite recebido pelo WhatsApp ou digite o código de token do seu personal:',
+              style: TextStyle(
+                color: MetaColors.subtext(dlgCtx),
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: codeCtrl,
+              style: TextStyle(color: MetaColors.text(dlgCtx), fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'https://mrcoach.app/i/... ou token',
+                hintStyle: TextStyle(
+                  color: MetaColors.subtext(dlgCtx).withOpacity(0.5),
+                ),
+                filled: true,
+                fillColor: MetaColors.bg(dlgCtx),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: MetaColors.cardBorder(dlgCtx)),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dlgCtx),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: MetaColors.subtext(dlgCtx)),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final raw = codeCtrl.text.trim();
+              if (raw.isEmpty) return;
+              Navigator.pop(dlgCtx);
+              final token =
+                  raw.contains('/') ? raw.split('/').last.split('?').first : raw;
+              await _linkWithInviteToken(token);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: MetaColors.emerald,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text(
+              'Vincular',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _linkWithInviteToken(String token) async {
+    setState(() => _isLoadingTrainerInfo = true);
+    try {
+      await AuthService.consumeInviteToken(token);
+      await _loadTrainerInfo();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: MetaColors.emerald,
+            content: Text(
+              'Vínculo com $_resolvedTrainerName ativado com sucesso!',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.redAccent,
+            content: Text('Código inválido ou expirado: $e'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingTrainerInfo = false);
+    }
+  }
+
   Future<void> _submitAnamnesis() async {
     if (AuthService.currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Entre na sua conta para salvar sua avaliação.')),
-      );
-      return;
-    }
-    if (_trainerId == null || _trainerId!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vincule-se a um treinador antes de enviar sua avaliação.')),
       );
       return;
     }
@@ -691,180 +801,314 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
 
           const SizedBox(height: 28),
 
-          // Card do Personal Trainer com Check
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: MetaColors.card(context),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: MetaColors.cardBorder(context)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 54,
-                  height: 54,
-                  decoration: BoxDecoration(
-                    color: MetaColors.highlight(context),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: MetaColors.emerald.withValues(alpha: 0.4),
-                      width: 1.5,
+          // Card do Personal Trainer ou Hub do Aluno Explorador
+          if (_trainerId != null && _trainerId!.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: MetaColors.card(context),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: MetaColors.cardBorder(context)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 54,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: MetaColors.highlight(context),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: MetaColors.emerald.withValues(alpha: 0.4),
+                        width: 1.5,
+                      ),
                     ),
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      if (_resolvedTrainerAvatarUrl != null &&
-                          _resolvedTrainerAvatarUrl!.trim().isNotEmpty) ...[
-                        ClipOval(
-                          child: _resolvedTrainerAvatarUrl!.trim().startsWith('assets/')
-                              ? Image.asset(
-                                  _resolvedTrainerAvatarUrl!.trim(),
-                                  width: 54,
-                                  height: 54,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) => Center(
-                                    child: Text(
-                                      _getTrainerInitials(),
-                                      style: TextStyle(
-                                        color: MetaColors.text(context),
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 18,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        if (_resolvedTrainerAvatarUrl != null &&
+                            _resolvedTrainerAvatarUrl!.trim().isNotEmpty) ...[
+                          ClipOval(
+                            child: _resolvedTrainerAvatarUrl!.trim().startsWith('assets/')
+                                ? Image.asset(
+                                    _resolvedTrainerAvatarUrl!.trim(),
+                                    width: 54,
+                                    height: 54,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => Center(
+                                      child: Text(
+                                        _getTrainerInitials(),
+                                        style: TextStyle(
+                                          color: MetaColors.text(context),
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 18,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : Image.network(
+                                    _resolvedTrainerAvatarUrl!.trim(),
+                                    width: 54,
+                                    height: 54,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => Center(
+                                      child: Text(
+                                        _getTrainerInitials(),
+                                        style: TextStyle(
+                                          color: MetaColors.text(context),
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 18,
+                                        ),
                                       ),
                                     ),
                                   ),
-                                )
-                              : Image.network(
-                                  _resolvedTrainerAvatarUrl!.trim(),
-                                  width: 54,
-                                  height: 54,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) => Center(
-                                    child: Text(
-                                      _getTrainerInitials(),
-                                      style: TextStyle(
-                                        color: MetaColors.text(context),
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 18,
-                                      ),
+                          ),
+                        ] else ...[
+                          Center(
+                            child: Text(
+                              _getTrainerInitials(),
+                              style: TextStyle(
+                                color: MetaColors.text(context),
+                                fontWeight: FontWeight.w900,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ),
+                        ],
+                        Positioned(
+                          right: 2,
+                          bottom: 2,
+                          child: Container(
+                            width: 13,
+                            height: 13,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: MetaColors.card(context), width: 2),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                _resolvedTrainerName,
+                                style: TextStyle(
+                                  fontSize: 15.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: MetaColors.text(context),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            const Icon(
+                              Icons.verified_rounded,
+                              size: 16,
+                              color: Color(0xFF38BDF8),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '$_resolvedTrainerRegistry • Personal Trainer',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: MetaColors.emerald,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Aguardando sua avaliação para liberar sua periodização.',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: MetaColors.subtext(context),
+                          ),
+                        ),
+                        if (_isLoadingTrainerInfo) ...[
+                          const SizedBox(height: 8),
+                          const LinearProgressIndicator(color: MetaColors.emerald),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            // HUB DO ALUNO EXPLORADOR
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: MetaColors.card(context),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: MetaColors.accentBlue.withValues(alpha: 0.35),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: MetaColors.accentBlue.withValues(alpha: 0.06),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: MetaColors.accentBlue.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.travel_explore_rounded,
+                          color: MetaColors.accentBlue,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  'Aluno Explorador',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: MetaColors.text(context),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: MetaColors.accentBlue
+                                        .withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text(
+                                    'DEGUSTAÇÃO',
+                                    style: TextStyle(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: MetaColors.accentBlue,
+                                      letterSpacing: 0.5,
                                     ),
                                   ),
                                 ),
-                        ),
-                      ] else ...[
-                        Center(
-                          child: Text(
-                            _getTrainerInitials(),
-                            style: TextStyle(
-                              color: MetaColors.text(context),
-                              fontWeight: FontWeight.w900,
-                              fontSize: 18,
+                              ],
                             ),
-                          ),
-                        ),
-                      ],
-                      Positioned(
-                        right: 2,
-                        bottom: 2,
-                        child: Container(
-                          width: 13,
-                          height: 13,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: MetaColors.card(context), width: 2),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              _resolvedTrainerName,
+                            const SizedBox(height: 2),
+                            Text(
+                              'Você ainda não possui um treinador conectado.',
                               style: TextStyle(
-                                fontSize: 15.5,
-                                fontWeight: FontWeight.w800,
-                                color: MetaColors.text(context),
+                                fontSize: 12,
+                                color: MetaColors.subtext(context),
                               ),
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          const SizedBox(width: 5),
-                          const Icon(
-                            Icons.verified_rounded,
-                            size: 16,
-                            color: Color(0xFF38BDF8),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '$_resolvedTrainerRegistry • Personal Trainer',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: MetaColors.emerald,
-                          fontWeight: FontWeight.w600,
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Aguardando sua avaliação para liberar sua periodização.',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: MetaColors.subtext(context),
-                        ),
-                      ),
-                      if (_isLoadingTrainerInfo) ...[
-                        const SizedBox(height: 8),
-                        const LinearProgressIndicator(color: MetaColors.emerald),
-                      ] else if (_trainerId == null || _trainerId!.isEmpty) ...[
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Não encontramos o vínculo com seu treinador. Peça um novo convite antes de iniciar.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.redAccent,
-                          ),
-                        ),
-                        if (AuthService.isCurrentUserAdminSync()) ...[
-                          const SizedBox(height: 10),
-                          ElevatedButton.icon(
-                            onPressed: () async {
-                              await AuthService.setActiveRole('trainer');
-                              if (context.mounted) {
-                                Navigator.pushReplacementNamed(context, '/trainer');
-                              }
-                            },
-                            icon: const Icon(Icons.sports_gymnastics, size: 16),
-                            label: const Text('Entrar como Treinador / Admin'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: MetaColors.emerald,
-                              foregroundColor: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ],
                     ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 14),
+                  Text(
+                    'Você pode fazer sua avaliação biomecânica agora para calibrar seu treino experimental com IA, ou escolher um Personal Trainer credenciado na nossa Vitrine pública.',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: MetaColors.subtext(context),
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const PublicTrainerDirectoryScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.storefront_rounded, size: 16),
+                    label: const Text(
+                      'Conhecer e Escolher Personal Trainer',
+                      style:
+                          TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: MetaColors.accentBlue,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 42),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: _showRedeemInviteDialog,
+                      icon: const Icon(Icons.link_rounded, size: 15),
+                      label: const Text(
+                        'Já tem um convite do seu personal? Inserir código',
+                        style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: MetaColors.emerald,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                      ),
+                    ),
+                  ),
+                  if (AuthService.isCurrentUserAdminSync()) ...[
+                    const SizedBox(height: 4),
+                    Center(
+                      child: TextButton.icon(
+                        onPressed: () async {
+                          await AuthService.setActiveRole('trainer');
+                          if (context.mounted) {
+                            Navigator.pushReplacementNamed(
+                                context, '/trainer');
+                          }
+                        },
+                        icon: const Icon(Icons.sports_gymnastics, size: 15),
+                        label: const Text(
+                          'Alternar para Perfil de Professor / Admin',
+                          style: TextStyle(fontSize: 11.5),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
+          ],
 
           const Spacer(),
 
-          // Botão Iniciar Avaliação One UI 7
+          // Botão Iniciar Avaliação One UI 7 (Habilitado para todos!)
           InkWell(
-            onTap: _isLoadingTrainerInfo || _trainerId == null || _trainerId!.isEmpty
+            onTap: _isLoadingTrainerInfo
                 ? null
                 : () {
                     HapticFeedback.mediumImpact();
@@ -875,7 +1119,7 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 18),
               decoration: BoxDecoration(
-                color: _isLoadingTrainerInfo || _trainerId == null || _trainerId!.isEmpty
+                color: _isLoadingTrainerInfo
                     ? MetaColors.highlight(context)
                     : MetaColors.emerald,
                 borderRadius: BorderRadius.circular(18),
@@ -884,9 +1128,11 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Iniciar Avaliação (3 min)',
+                    _trainerId == null || _trainerId!.isEmpty
+                        ? 'Iniciar Calibração Biomecânica (3 min)'
+                        : 'Iniciar Avaliação (3 min)',
                     style: TextStyle(
-                      color: _isLoadingTrainerInfo || _trainerId == null || _trainerId!.isEmpty
+                      color: _isLoadingTrainerInfo
                           ? MetaColors.subtext(context)
                           : Colors.black,
                       fontSize: 15.5,
@@ -896,7 +1142,7 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                   const SizedBox(width: 8),
                   Icon(
                     Icons.arrow_forward_rounded,
-                    color: _isLoadingTrainerInfo || _trainerId == null || _trainerId!.isEmpty
+                    color: _isLoadingTrainerInfo
                         ? MetaColors.subtext(context)
                         : Colors.black,
                     size: 18,
@@ -2003,7 +2249,9 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
           ),
           const SizedBox(height: 24),
           Text(
-            'Avaliação Concluída!',
+            _trainerId == null || _trainerId!.isEmpty
+                ? 'Calibração Concluída!'
+                : 'Avaliação Concluída!',
             style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w900,
@@ -2013,7 +2261,9 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Seus dados biomédicos e preferências foram salvos e transmitidos com segurança para o $_resolvedTrainerName.',
+            _trainerId == null || _trainerId!.isEmpty
+                ? 'Seus dados biomédicos e objetivos foram salvos com sucesso. Quando você contratar um Personal Trainer na Vitrine, ele receberá sua ficha completa pronta para prescrição.'
+                : 'Seus dados biomédicos e preferências foram salvos e transmitidos com segurança para o $_resolvedTrainerName.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
@@ -2031,15 +2281,19 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
             ),
             child: Row(
               children: [
-                const Icon(
-                  Icons.mark_chat_read_rounded,
+                Icon(
+                  _trainerId == null || _trainerId!.isEmpty
+                      ? Icons.verified_user_rounded
+                      : Icons.mark_chat_read_rounded,
                   color: MetaColors.emerald,
                   size: 24,
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Text(
-                    'Seu treinador foi alertado em tempo real e já pode prescrever sua periodização personalizada.',
+                    _trainerId == null || _trainerId!.isEmpty
+                        ? 'Você já pode experimentar a plataforma ou escolher um Personal credenciado na nossa Vitrine.'
+                        : 'Seu treinador foi alertado em tempo real e já pode prescrever sua periodização personalizada.',
                     style: TextStyle(
                       fontSize: 12.5,
                       color: MetaColors.text(context),
@@ -2056,7 +2310,33 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
             subtitle: 'Adicione à tela inicial para abrir seus treinos na academia sem barras de navegador, com suporte offline e alertas instantâneos.',
             margin: EdgeInsets.only(top: 20),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
+          if (_trainerId == null || _trainerId!.isEmpty) ...[
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const PublicTrainerDirectoryScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.storefront_rounded, size: 18),
+              label: const Text(
+                'Escolher Meu Personal na Vitrine',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: MetaColors.accentBlue,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           InkWell(
             onTap: () {
               HapticFeedback.mediumImpact();
@@ -2067,7 +2347,12 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 18),
               decoration: BoxDecoration(
-                color: MetaColors.emerald,
+                color: _trainerId == null || _trainerId!.isEmpty
+                    ? MetaColors.card(context)
+                    : MetaColors.emerald,
+                border: _trainerId == null || _trainerId!.isEmpty
+                    ? Border.all(color: MetaColors.cardBorder(context))
+                    : null,
                 borderRadius: BorderRadius.circular(18),
               ),
               child: Row(
@@ -2076,15 +2361,25 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
                   Text(
                     widget.isReviewMode
                         ? 'Concluir e Voltar ao Perfil'
-                        : 'Entrar no Espaço de Treino',
-                    style: const TextStyle(
-                      color: Colors.black,
+                        : (_trainerId == null || _trainerId!.isEmpty
+                            ? 'Entrar no Espaço de Treino (Degustação)'
+                            : 'Entrar no Espaço de Treino'),
+                    style: TextStyle(
+                      color: _trainerId == null || _trainerId!.isEmpty
+                          ? MetaColors.text(context)
+                          : Colors.black,
                       fontSize: 15.5,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Icon(Icons.arrow_forward_rounded, color: Colors.black, size: 18),
+                  Icon(
+                    Icons.arrow_forward_rounded,
+                    color: _trainerId == null || _trainerId!.isEmpty
+                        ? MetaColors.text(context)
+                        : Colors.black,
+                    size: 18,
+                  ),
                 ],
               ),
             ),

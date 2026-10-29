@@ -122,9 +122,17 @@ async def test_passwordless_blocks_name_hijack_and_admin_role_injection(mock_sup
                 "full_name": "Cleudson Treinador",  # Tentativa de colisão por nome
             },
         )
-        # 'admin' vira 'client' e, sem convite do professor, não cria conta solta
-        assert response.status_code == 403
-        assert len(created_calls) == 0
+        # 'admin' é neutralizado para 'client' (Zero-Trust: jamais cria admin)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["is_new_user"] is True
+        assert len(created_calls) == 1
+        assert created_calls[0]["email"] == "wa_5511977776666@wa.mrcoach.internal"
+        assert created_calls[0]["role"] == "client"  # 'admin' rejeitado -> fallback seguro 'client'
+
+        # Limpa para a próxima chamada
+        created_calls.clear()
 
         response = client.post(
             "/api/v1/auth/otp/login-request",
@@ -144,8 +152,8 @@ async def test_passwordless_blocks_name_hijack_and_admin_role_injection(mock_sup
 
 
 @pytest.mark.asyncio
-async def test_passwordless_student_requires_invite_and_links_pending_invite(mock_supabase):
-    """Aluno novo via WhatsApp: bloqueado sem convite; com convite pendente a conta nasce vinculada ao token."""
+async def test_passwordless_student_explorer_and_pending_invite(mock_supabase):
+    """Aluno novo via WhatsApp: sem convite nasce Aluno Explorador livre; com convite vincula ao token."""
     created_calls = []
 
     async def fake_admin_create_user(**kwargs):
@@ -157,14 +165,19 @@ async def test_passwordless_student_requires_invite_and_links_pending_invite(moc
          patch.object(supabase_service, "admin_create_user", side_effect=fake_admin_create_user), \
          patch.object(whatsapp_service, "send_text_with_fallback", new=AsyncMock(return_value={"status": "sent"})):
 
-        blocked = client.post(
+        # 1. Aluno sem convite: entra livre como Aluno Explorador (invite_token=None)
+        explorer = client.post(
             "/api/v1/auth/otp/login-request",
             json={"phone": "11955554444", "role": "client", "full_name": "Aluno Novo"},
         )
-        assert blocked.status_code == 403
-        assert "convite" in blocked.json()["detail"].lower()
-        assert created_calls == []
+        assert explorer.status_code == 200
+        assert explorer.json()["success"] is True
+        assert len(created_calls) == 1
+        assert created_calls[0]["role"] == "client"
+        assert created_calls[0]["invite_token"] is None
 
+        # 2. Aluno com convite pendente: vinculado ao token do professor
+        created_calls.clear()
         mock_supabase._db["invite_tokens"] = [{
             "token": "tok-123",
             "trainer_id": "44444444-4444-4444-4444-444444444444",

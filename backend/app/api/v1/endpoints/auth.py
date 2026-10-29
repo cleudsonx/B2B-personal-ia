@@ -1135,12 +1135,13 @@ async def request_passwordless_login(req: PasswordlessLoginRequest):
 
     is_new = profile is None
 
-    # Trava de jornada: aluno novo só entra com convite de professor (WhatsApp) pendente para este número.
+    # Jornada do Aluno:
+    # Se houver convite pendente emitido por um professor para este WhatsApp, vincula ao criar.
+    # Se NÃO houver convite, o aluno é acolhido como "Aluno Explorador" (role: client, trainer_id: null),
+    # podendo navegar livremente, degustar a IA biomecânica e escolher um personal na Vitrine.
     pending_invite: Optional[Dict[str, Any]] = None
     if profile is None and _normalize_requested_role(req.role) == "client":
         pending_invite = await _find_pending_whatsapp_invite(client, clean_phone)
-        if not pending_invite:
-            raise HTTPException(status_code=403, detail=_STUDENT_NEEDS_INVITE_MESSAGE)
 
     if profile:
         profile = await _sanitize_synthetic_profile_if_needed(client, profile)
@@ -1395,8 +1396,6 @@ async def verify_passwordless_login(req: PasswordlessVerifyRequest):
         pending_invite: Optional[Dict[str, Any]] = None
         if role == "client":
             pending_invite = await _find_pending_whatsapp_invite(client, clean_phone)
-            if not pending_invite:
-                raise HTTPException(status_code=403, detail=_STUDENT_NEEDS_INVITE_MESSAGE)
 
         created = await supabase_service.admin_create_user(
             email=user_email,

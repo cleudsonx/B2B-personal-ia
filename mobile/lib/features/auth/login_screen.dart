@@ -598,7 +598,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Text(
                       _selectedRole == 'trainer'
                           ? 'Você está criando ou acessando uma conta PROFISSIONAL de Personal Trainer.'
-                          : 'Aluno entra com o WhatsApp que seu personal convidou. Ainda não tem personal? Escolha um na Vitrine.',
+                          : 'Acesse seus treinos e acompanhamento. Se for seu primeiro acesso, você poderá experimentar a IA biomecânica e escolher um personal na Vitrine.',
                       style: TextStyle(color: subColor, fontSize: 12, height: 1.35),
                     ),
                     if (_selectedRole == 'client') ...[
