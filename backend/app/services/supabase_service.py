@@ -2205,6 +2205,18 @@ class SupabaseService:
                     ai_used = await self.get_monthly_ai_generations_used(trainer_id)
                     max_ai = plan.get("max_ai_generations_per_month", -1)
 
+                    # Verifica se o perfil do treinador é SuperAdmin, VIP ou possui limite customizado
+                    try:
+                        p_res = await client.table("profiles").select("current_plan, max_students, is_vip, is_admin").eq("id", t_uuid).maybe_single().execute()
+                        prof_data = p_res.data if p_res else {}
+                        if prof_data:
+                            if prof_data.get("is_vip") or prof_data.get("is_admin"):
+                                max_st = max(max_st, prof_data.get("max_students") or 999, 999)
+                            elif prof_data.get("max_students"):
+                                max_st = max(max_st, prof_data.get("max_students"))
+                    except Exception as e_prof:
+                        logger.warning(f"[get_trainer_subscription] Aviso ao ler perfil VIP: {e_prof}")
+
                     return MySubscriptionResponse(
                         plan_id=sub.get("plan_id", "pro"),
                         plan_name=plan.get("name", "Personal Pro"),
@@ -2224,7 +2236,8 @@ class SupabaseService:
                 logger.error(f"Erro ao buscar assinatura no Supabase: {e}")
                 self._raise_if_production("buscar assinatura", e)
 
-        # O fallback de produção respeita o menor plano até existir assinatura persistida.
+        # O fallback de produção respeita o menor plano até existir assinatura persistida,
+        # MAS se o perfil for VIP ou SuperAdmin, garante acesso Studio Scale / VIP 999 vagas.
         curr_students = await self.count_trainer_occupied_slots(trainer_id)
         ai_used = await self.get_monthly_ai_generations_used(trainer_id)
         default_is_production = self._is_production()
@@ -2232,6 +2245,18 @@ class SupabaseService:
         default_plan_name = "Starter Trial" if default_is_production else "Personal Pro"
         default_max_students = 3 if default_is_production else 30
         default_max_ai = 10 if default_is_production else -1
+
+        if client and is_valid_uuid(t_uuid):
+            try:
+                p_res = await client.table("profiles").select("current_plan, max_students, is_vip, is_admin").eq("id", t_uuid).maybe_single().execute()
+                prof_data = p_res.data if p_res else {}
+                if prof_data and (prof_data.get("is_vip") or prof_data.get("is_admin")):
+                    default_plan_id = "studio"
+                    default_plan_name = "Studio Scale"
+                    default_max_students = prof_data.get("max_students") or 999
+                    default_max_ai = -1
+            except Exception as e_fb:
+                logger.warning(f"[get_trainer_subscription] Falha ao verificar perfil fallback VIP: {e_fb}")
         default_sub = MySubscriptionResponse(
             plan_id=default_plan_id,
             plan_name=default_plan_name,
