@@ -1179,7 +1179,7 @@ async def request_passwordless_login(req: PasswordlessLoginRequest):
             try:
                 p_exist = (
                     await client.table("profiles")
-                    .select("id, full_name, role")
+                    .select("id, full_name, role, email, phone")
                     .or_(f"email.eq.{synthetic_email},email.eq.{legacy_synthetic_email}")
                     .limit(5)
                     .execute()
@@ -1193,6 +1193,36 @@ async def request_passwordless_login(req: PasswordlessLoginRequest):
                             break
             except Exception:
                 user_id = None
+
+            # Fallback robusto: se não encontrou no profiles, busca diretamente no auth.users via admin API
+            if not user_id and hasattr(client, "auth") and hasattr(client.auth, "admin"):
+                try:
+                    all_users = await client.auth.admin.list_users()
+                    for u in (all_users or []):
+                        cand_em = str(getattr(u, "email", "") or "").strip().lower()
+                        if cand_em in (synthetic_email.lower(), legacy_synthetic_email.lower()):
+                            user_id = getattr(u, "id", None)
+                            u_meta = getattr(u, "user_metadata", {}) or {}
+                            user_name = u_meta.get("full_name") or user_name
+                            break
+                except Exception as e_admin:
+                    logger.warning(f"[Passwordless] Erro ao buscar em auth.admin.list_users: {e_admin}")
+
+        # Sincroniza o profile para garantir que o usuário e seus contatos existam no banco
+        if user_id:
+            try:
+                await client.table("profiles").upsert({
+                    "id": user_id,
+                    "full_name": user_name,
+                    "email": synthetic_email,
+                    "phone": clean_phone,
+                    "public_whatsapp": clean_phone,
+                    "role": role,
+                    "roles": [role],
+                    "is_admin": False,
+                }).execute()
+            except Exception as e_upsert_prof:
+                logger.warning(f"[Passwordless] Falha ao upsertar profile para user_id {user_id}: {e_upsert_prof}")
 
     # Gera OTP
     otp_code = mfa.generate_otp()

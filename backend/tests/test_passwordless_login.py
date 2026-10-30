@@ -260,3 +260,31 @@ async def test_canonical_owner_recognized_in_get_current_trainer():
     }
     trainer_user = await get_current_trainer(user_payload)
     assert trainer_user["sub"] == "92dfd58c-845f-473e-b846-a2b8fdd3e508"
+
+
+@pytest.mark.asyncio
+async def test_passwordless_recovers_user_id_if_already_in_auth_users(mock_supabase):
+    """
+    Garante que se admin_create_user falhar com 'já cadastrado', o fluxo recupere
+    o user_id de auth.users e insira o OTP em auth_recovery_otps com sucesso.
+    """
+    mock_supabase.auth.admin.create_user.side_effect = Exception("A user with this email address has already been registered")
+    mock_user = MagicMock()
+    mock_user.id = "55555555-5555-5555-5555-555555555555"
+    mock_user.email = "wa_5561994010443@wa.mrcoach.internal"
+    mock_user.user_metadata = {"full_name": "Emily Cavalcante"}
+    mock_supabase.auth.admin.list_users = AsyncMock(return_value=[mock_user])
+
+    with patch.object(supabase_service, "get_client", new=AsyncMock(return_value=mock_supabase)), \
+         patch.object(whatsapp_service, "send_text_with_fallback", new=AsyncMock(return_value={"status": "sent"})):
+
+        response = client.post(
+            "/api/v1/auth/otp/login-request",
+            json={"phone": "61994010443", "role": "client", "full_name": "Emily Cavalcante"},
+        )
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+        # Verifica que o OTP foi gravado com o user_id recuperado
+        otps = mock_supabase._db["auth_recovery_otps"]
+        assert len(otps) > 0
+        assert otps[-1]["user_id"] == "55555555-5555-5555-5555-555555555555"

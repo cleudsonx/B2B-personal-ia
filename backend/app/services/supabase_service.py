@@ -2370,8 +2370,20 @@ class SupabaseService:
             err_str = str(e).lower()
             logger.error(f"Erro no admin.create_user do Supabase: {e}")
             if "already registered" in err_str or "unique" in err_str or "duplicate" in err_str:
-                raise ValueError("Este e-mail já está cadastrado no sistema.") from e
-            raise
+                # Se for provisionamento pelo backend, recupera o usuário existente em vez de falhar
+                if provisioned_by_backend and hasattr(client, "auth") and hasattr(client.auth, "admin"):
+                    try:
+                        all_users = await client.auth.admin.list_users()
+                        for u in (all_users or []):
+                            if u.email and u.email.strip().lower() == email.strip().lower():
+                                user_id = u.id
+                                break
+                    except Exception as e_list:
+                        logger.warning(f"[admin_create_user] Falha ao recuperar usuário existente: {e_list}")
+                if not user_id:
+                    raise ValueError("Este e-mail já está cadastrado no sistema.") from e
+            else:
+                raise
 
         if not user_id:
             raise RuntimeError("O Supabase não retornou o usuário criado.")
