@@ -11,3 +11,4 @@ ALTER TABLE public.auth_recovery_otps
     ALTER COLUMN user_id DROP NOT NULL;
 
 COMMIT;
+
