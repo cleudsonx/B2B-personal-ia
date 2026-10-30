@@ -142,10 +142,19 @@ class _AccountScreenState extends State<AccountScreen> {
               studentCount = (rows as List).length;
             } catch (_) {}
           }
+          int effectiveMaxStudents = sub.maxStudents;
+          final profMax = (profile?['max_students'] as num?)?.toInt();
+          final isVipOrAdmin = profile?['is_vip'] == true || profile?['is_admin'] == true;
+          if (profMax != null && profMax > 0) {
+            effectiveMaxStudents = profMax;
+          } else if (isVipOrAdmin && effectiveMaxStudents < 999) {
+            effectiveMaxStudents = 999;
+          }
+
           if (mounted) {
             setState(() {
-              _activePlanName = sub.planName;
-              _maxStudents = sub.maxStudents;
+              _activePlanName = profile?['current_plan'] as String? ?? sub.planName;
+              _maxStudents = effectiveMaxStudents;
               _currentStudents = studentCount;
             });
           }

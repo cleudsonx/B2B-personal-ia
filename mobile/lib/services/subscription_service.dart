@@ -17,6 +17,15 @@ class SubscriptionService {
   static MySubscriptionModel? _currentSubscriptionCache;
   static MySubscriptionModel? get currentSubscription => _currentSubscriptionCache;
 
+  /// Invalida o cache local em memória e em disco para forçar recarga imediata
+  static void invalidateCache() {
+    _currentSubscriptionCache = null;
+    activeSubscriptionNotifier.value = null;
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.remove(_kSubscriptionStorageKey);
+    }).catchError((_) {});
+  }
+
   static Map<String, String> get _headers {
     final headers = {
       'Content-Type': 'application/json',
@@ -98,6 +107,28 @@ class SubscriptionService {
       if (response.statusCode == 200) {
         final payload = jsonDecode(utf8.decode(response.bodyBytes))
             as Map<String, dynamic>;
+
+        // Respeita overrides de cota e plano do perfil salvos no Supabase (God Mode / VIP)
+        try {
+          final pRes = await Supabase.instance.client
+              .from('profiles')
+              .select('max_students, is_vip, is_admin, current_plan')
+              .eq('id', trainerId)
+              .maybeSingle();
+          if (pRes != null) {
+            final adminMax = (pRes['max_students'] as num?)?.toInt();
+            final isVip = pRes['is_vip'] == true || pRes['is_admin'] == true;
+            if (adminMax != null && adminMax > 0) {
+              payload['max_students'] = adminMax;
+            } else if (isVip && ((payload['max_students'] as num?)?.toInt() ?? 0) < 999) {
+              payload['max_students'] = 999;
+            }
+            if (pRes['current_plan'] != null && (pRes['current_plan'] as String).isNotEmpty) {
+              payload['plan_name'] = pRes['current_plan'];
+            }
+          }
+        } catch (_) {}
+
         final model = MySubscriptionModel.fromJson(payload);
         _currentSubscriptionCache = model;
         activeSubscriptionNotifier.value = model;
@@ -119,23 +150,45 @@ class SubscriptionService {
 
       if (subRes != null) {
         final planData = subRes['plans'] as Map<String, dynamic>? ?? {};
-        final planId = subRes['plan_id']?.toString() ?? 'elite';
-        final planName = planData['name']?.toString() ??
+        final planId = subRes['plan_id']?.toString() ?? 'studio';
+        String planName = planData['name']?.toString() ??
             (planId == 'elite'
                 ? 'Elite Coach'
                 : (planId == 'studio'
                     ? 'Studio Scale'
                     : (planId == 'starter' ? 'Starter Trial' : 'Personal Pro')));
-        final maxStudents = (planData['max_students'] as num?)?.toInt() ??
+        int maxStudents = (planData['max_students'] as num?)?.toInt() ??
             (planId == 'elite' ? 60 : (planId == 'studio' ? 100 : (planId == 'starter' ? 3 : 30)));
+
+        // Respeita cota definida no Admin (God Mode) e status VIP/Admin do perfil
+        try {
+          final prof = await supabase
+              .from('profiles')
+              .select('max_students, is_vip, is_admin, current_plan')
+              .eq('id', trainerId)
+              .maybeSingle();
+          if (prof != null) {
+            final adminMax = (prof['max_students'] as num?)?.toInt();
+            final isVip = prof['is_vip'] == true || prof['is_admin'] == true;
+            if (adminMax != null && adminMax > 0) {
+              maxStudents = adminMax;
+            } else if (isVip && maxStudents < 999) {
+              maxStudents = 999;
+            }
+            if (prof['current_plan'] != null && (prof['current_plan'] as String).isNotEmpty) {
+              planName = prof['current_plan'] as String;
+            }
+          }
+        } catch (e) {
+          debugPrint('[SubscriptionService] Falha ao ler cota no perfil: $e');
+        }
 
         int currentStudents = 0;
         try {
           final countRes = await supabase
               .from('profiles')
               .select('id')
-              .eq('trainer_id', trainerId)
-              .eq('role', 'client');
+              .eq('trainer_id', trainerId);
           currentStudents = (countRes as List).length;
         } catch (_) {}
 

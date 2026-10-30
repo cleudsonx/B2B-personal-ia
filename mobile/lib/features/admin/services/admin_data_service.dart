@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/config/app_config.dart';
 import '../../../services/auth_service.dart';
+import '../../../services/subscription_service.dart';
 
 /// Modelo de métricas consolidadas do Mission Control
 class AdminMetricsOverview {
@@ -1413,6 +1414,19 @@ class AdminDataService {
     bool isVip = false,
     String? adminNotes,
   }) async {
+    SubscriptionService.invalidateCache();
+    final planId = planName.toLowerCase().contains('studio')
+        ? 'studio'
+        : (planName.toLowerCase().contains('elite')
+            ? 'elite'
+            : (planName.toLowerCase().contains('pro') ? 'pro' : 'starter'));
+    try {
+      await _client.from('subscriptions').update({
+        'plan_id': planId,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('trainer_id', userId);
+    } catch (_) {}
+
     return _updateUserProfileEverywhere(userId, {
       'current_plan': planName,
       'max_students': maxStudents,

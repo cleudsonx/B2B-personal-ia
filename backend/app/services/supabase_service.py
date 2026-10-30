@@ -2205,11 +2205,14 @@ class SupabaseService:
                     ai_used = await self.get_monthly_ai_generations_used(trainer_id)
                     max_ai = plan.get("max_ai_generations_per_month", -1)
 
+                    resolved_plan_name = plan.get("name", "Personal Pro")
                     # Verifica se o perfil do treinador é SuperAdmin, VIP ou possui limite customizado
                     try:
                         p_res = await client.table("profiles").select("current_plan, max_students, is_vip, is_admin").eq("id", t_uuid).maybe_single().execute()
                         prof_data = p_res.data if p_res else {}
                         if prof_data:
+                            if prof_data.get("current_plan"):
+                                resolved_plan_name = prof_data.get("current_plan")
                             if prof_data.get("is_vip") or prof_data.get("is_admin"):
                                 max_st = max(max_st, prof_data.get("max_students") or 999, 999)
                             elif prof_data.get("max_students"):
@@ -2219,7 +2222,7 @@ class SupabaseService:
 
                     return MySubscriptionResponse(
                         plan_id=sub.get("plan_id", "pro"),
-                        plan_name=plan.get("name", "Personal Pro"),
+                        plan_name=resolved_plan_name,
                         status=sub.get("status", "active"),
                         billing_interval=sub.get("billing_interval", "monthly"),
                         current_students=current_students,
