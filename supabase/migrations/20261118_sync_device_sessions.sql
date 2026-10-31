@@ -98,3 +98,4 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.sync_my_device_sessions() TO authenticated;
+
