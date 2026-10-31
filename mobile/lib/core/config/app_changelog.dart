@@ -40,6 +40,25 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     // ==========================================
+    // v1.12.20 - RASTREAMENTO & SEGURANÇA DE DISPOSITIVOS
+    // ==========================================
+    VersionRelease(
+      version: '1.12.20',
+      buildNumber: 2026103135,
+      date: '30 de Outubro, 2026',
+      summary:
+          'Versão 1.12.20: Rastreamento anti-fraude em tempo real com sincronização direta do Supabase, gestão de sessões simultâneas e Kill-Switch remoto.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.devices_rounded,
+          title: 'Aparelhos Conectados em Tempo Real',
+          description:
+              'Visualização e gestão instantânea de todos os celulares e computadores com acesso ativo à conta do treinador.',
+          badge: 'SEGURANÇA',
+        ),
+      ],
+    ),
+    // ==========================================
     // v1.11.3 - ABA SOCIAL & COMUNIDADE 2.0 (ROBÔ WA IN-APP)
     // ==========================================
     VersionRelease(

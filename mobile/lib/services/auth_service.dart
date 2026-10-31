@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/config/app_config.dart';
+import 'device_session_service.dart';
 import 'invite_service.dart';
 
 class AuthService {
@@ -66,6 +67,7 @@ class AuthService {
         );
         if (response.user != null) {
           await _ensureProfileUpserted(response.user!);
+          DeviceSessionService.registerCurrentSession();
         }
         return response;
       } catch (e) {

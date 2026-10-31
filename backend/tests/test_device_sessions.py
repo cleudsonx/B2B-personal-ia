@@ -60,3 +60,4 @@ def test_register_device_session_and_list(fake_trainer_user, monkeypatch):
         assert data["allowed_concurrent_devices"] == 10  # VIP / Admin
 
     app.dependency_overrides.clear()
+

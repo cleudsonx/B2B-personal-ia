@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/widgets/meta_components.dart';
 import '../../services/auth_service.dart';
+import '../../services/device_session_service.dart';
 import '../trainer/presentation/screens/trainer_onboarding_screen.dart';
 import '../trainer/presentation/screens/trainer_main_layout.dart';
 import '../admin/admin_shell_screen.dart';
@@ -45,6 +46,9 @@ class _AuthGateState extends State<AuthGate> {
       _goToLogin();
       return;
     }
+
+    // Registra ou atualiza a sessão deste dispositivo de forma assíncrona
+    DeviceSessionService.registerCurrentSession();
 
     // 2. Tentar biometria se estiver em dispositivo móvel (iOS/Android)
     bool biometricSuccess = true;

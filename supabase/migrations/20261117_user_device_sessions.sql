@@ -64,3 +64,4 @@ CREATE POLICY "SuperAdmins have full access on user_device_sessions"
     );
 
 COMMIT;
+

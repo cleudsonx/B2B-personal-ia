@@ -23,6 +23,9 @@ class _ConnectedDevicesScreenState extends State<ConnectedDevicesScreen> {
 
   Future<void> _loadSessions() async {
     setState(() => _isLoading = true);
+    // 1. Garante que este aparelho seja registrado imediatamente
+    await DeviceSessionService.registerCurrentSession();
+    // 2. Busca todos os aparelhos ativos
     final overview = await DeviceSessionService.fetchSessions();
     if (mounted) {
       setState(() {
@@ -585,3 +588,4 @@ class _ConnectedDevicesScreenState extends State<ConnectedDevicesScreen> {
     );
   }
 }
+
