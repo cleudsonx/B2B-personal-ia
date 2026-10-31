@@ -10,12 +10,14 @@ import '../../core/widgets/app_version_footer.dart';
 import '../../core/widgets/avatar_selector_sheet.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../services/auth_service.dart';
+import '../../services/device_session_service.dart';
 import '../../services/subscription_service.dart';
 import '../../services/workout_service.dart';
 import '../subscription/subscription_screen.dart';
 import '../trainer/presentation/screens/trainer_profile_setup_screen.dart';
 import '../trainer/presentation/screens/trainer_ai_assistant_screen.dart';
 import '../trainer/presentation/screens/whatsapp_connection_screen.dart';
+import 'connected_devices_screen.dart';
 import 'teacher_mfa_screen.dart';
 
 class AccountScreen extends StatefulWidget {
@@ -129,6 +131,7 @@ class _AccountScreenState extends State<AccountScreen> {
 
       if (roles.contains('trainer')) {
         _fetchWhatsAppAndAiStatus();
+        DeviceSessionService.registerCurrentSession();
         try {
           final sub = await SubscriptionService.getMySubscription();
           int studentCount = sub.currentStudents;
@@ -613,6 +616,9 @@ class _AccountScreenState extends State<AccountScreen> {
           const SizedBox(height: 14),
           // 4. Card de Segurança (2FA)
           _buildSecurityCard(context),
+          const SizedBox(height: 14),
+          // 5. Aparelhos Conectados & Segurança de Sessões
+          _buildConnectedDevicesCard(context),
         ],
 
         if (_loading || _isSwitchingRole) ...[
@@ -1369,6 +1375,91 @@ class _AccountScreenState extends State<AccountScreen> {
                   isProtected
                       ? 'Aplicativo autenticador TOTP ativo na sua conta'
                       : 'Ative o autenticador para blindar sua consultoria',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: MetaColors.subtext(context),
+                    fontSize: 11.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          Icon(
+            Icons.chevron_right_rounded,
+            color: MetaColors.subtext(context),
+            size: 20,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConnectedDevicesCard(BuildContext context) {
+    return MetaCard(
+      padding: const EdgeInsets.all(16),
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ConnectedDevicesScreen()),
+        );
+        await _loadAccount();
+      },
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(9),
+            decoration: BoxDecoration(
+              color: const Color(0xFF38BDF8).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.devices_rounded,
+              color: Color(0xFF38BDF8),
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Aparelhos Conectados',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: MetaColors.text(context),
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Text(
+                        'MULTI-ACESSO',
+                        style: TextStyle(
+                          color: Color(0xFF10B981),
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Monitore celulares e computadores ativos na sua conta',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(

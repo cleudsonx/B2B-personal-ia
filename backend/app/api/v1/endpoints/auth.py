@@ -1,8 +1,9 @@
 import logging
 import uuid
+import asyncio
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any, List
-from fastapi import APIRouter, HTTPException, Depends, status, Security
+from fastapi import APIRouter, HTTPException, Depends, status, Security, Request
 from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from app.services.supabase_service import supabase_service
@@ -248,6 +249,267 @@ async def revoke_all_sessions(current_user: Dict[str, Any] = Depends(get_current
     if not result or not result.data:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Falha ao revogar as sessões da conta.")
     return {"success": True, "revoked_at": result.data[0].get("session_revoked_at")}
+
+
+# ==============================================================================
+# GESTÃO ANTI-FRAUDE DE SESSÕES & DISPOSITIVOS SIMULTÂNEOS
+# ==============================================================================
+
+class RegisterDeviceSessionRequest(BaseModel):
+    device_id: str
+    device_name: str
+    platform: str = "web"
+    app_version: Optional[str] = None
+    location_hint: Optional[str] = None
+
+class DeviceSessionItem(BaseModel):
+    id: str
+    device_id: str
+    device_name: str
+    platform: str
+    ip_address: Optional[str] = None
+    location: Optional[str] = None
+    last_active_at: str
+    created_at: str
+    is_current: bool = False
+    is_revoked: bool = False
+
+class DeviceSessionsListResponse(BaseModel):
+    sessions: List[DeviceSessionItem]
+    allowed_concurrent_devices: int
+    active_devices_count: int
+    is_limit_exceeded: bool = False
+    warning_message: Optional[str] = None
+
+class RevokeDeviceSessionRequest(BaseModel):
+    session_id: Optional[str] = None
+    device_id: Optional[str] = None
+
+class RevokeOtherDeviceSessionsRequest(BaseModel):
+    current_device_id: str
+
+
+def _get_allowed_concurrent_devices(profile: Dict[str, Any]) -> int:
+    """Calcula o teto de dispositivos simultâneos com base no perfil e plano."""
+    if profile.get("is_admin") or "admin" in (profile.get("roles") or []) or profile.get("is_vip"):
+        return 10
+    plan = str(profile.get("current_plan") or "").lower()
+    if "studio" in plan:
+        return 5
+    if "elite" in plan:
+        return 3
+    return 2  # Padrão: 2 dispositivos (1 celular + 1 computador)
+
+
+@router.post("/device-session/register")
+async def register_device_session(
+    req: RegisterDeviceSessionRequest,
+    request: Request,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Registra ou atualiza o heartbeat de um dispositivo conectado.
+    Detecta novos acessos e dispara alerta proativo anti-fraude via WhatsApp.
+    """
+    user_id = current_user.get("sub") or current_user.get("id")
+    client = await supabase_service.get_client()
+    if not user_id or client is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Cliente indisponível.")
+
+    forwarded = request.headers.get("x-forwarded-for")
+    client_ip = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "127.0.0.1")
+    user_agent = request.headers.get("user-agent", "App Client")
+
+    profile = current_user.get("profile") or {}
+    phone = profile.get("phone") or profile.get("public_whatsapp") or ""
+    default_loc = "Brasília, DF" if "61" in phone else ("São Paulo, SP" if "11" in phone else "Brasil")
+    location = req.location_hint or default_loc
+
+    is_new_device = False
+    try:
+        existing = await client.table("user_device_sessions")\
+            .select("id")\
+            .eq("user_id", user_id)\
+            .eq("device_id", req.device_id)\
+            .maybe_single()\
+            .execute()
+        if not existing or not existing.data:
+            is_new_device = True
+    except Exception as e:
+        logger.warning("[device-session] Erro ao verificar sessão existente: %s", e)
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    try:
+        await client.table("user_device_sessions").upsert({
+            "user_id": user_id,
+            "device_id": req.device_id,
+            "device_name": req.device_name,
+            "platform": req.platform,
+            "ip_address": client_ip,
+            "location": location,
+            "user_agent": user_agent,
+            "last_active_at": now_iso,
+            "is_revoked": False,
+            "revoked_at": None,
+        }, on_conflict="user_id,device_id").execute()
+    except Exception as e:
+        logger.error("[device-session] Falha ao registrar sessão: %s", e)
+
+    if is_new_device and phone:
+        try:
+            alert_msg = (
+                "🚨 *Alerta de Segurança Mr. Coach*\n\n"
+                "Um novo dispositivo foi conectado à sua conta:\n"
+                f"📱 *{req.device_name}* ({req.platform})\n"
+                f"🌐 Localização estimada: {location}\n"
+                f"🕒 Horário: {datetime.now(timezone.utc).strftime('%d/%m/%Y às %H:%M UTC')}\n\n"
+                "Se foi você, não se preocupe! Caso não reconheça este acesso, acesse o app em *Conta > Segurança* para desconectar este aparelho imediatamente."
+            )
+            from app.services.whatsapp_service import whatsapp_service
+            asyncio.create_task(
+                whatsapp_service.send_text_with_fallback(
+                    number=phone,
+                    text=alert_msg,
+                    trainer_id=user_id,
+                )
+            )
+        except Exception as e:
+            logger.warning("[device-session] Falha ao disparar alerta WhatsApp: %s", e)
+
+    allowed = _get_allowed_concurrent_devices(profile)
+    active_count = 1
+    try:
+        count_res = await client.table("user_device_sessions")\
+            .select("id")\
+            .eq("user_id", user_id)\
+            .eq("is_revoked", False)\
+            .execute()
+        active_count = len(count_res.data or [1])
+    except Exception:
+        pass
+
+    limit_exceeded = active_count > allowed
+    warning = None
+    if limit_exceeded:
+        warning = f"Atenção: Você possui {active_count} dispositivos ativos conectados (limite do seu plano: {allowed}). Desconecte aparelhos antigos para evitar fraudes."
+
+    return {
+        "ok": True,
+        "is_new_device": is_new_device,
+        "device_id": req.device_id,
+        "active_devices_count": active_count,
+        "allowed_concurrent_devices": allowed,
+        "is_limit_exceeded": limit_exceeded,
+        "warning_message": warning,
+    }
+
+
+@router.get("/device-sessions", response_model=DeviceSessionsListResponse)
+async def list_device_sessions(
+    current_device_id: Optional[str] = None,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """Lista todos os dispositivos e sessões conectados do usuário atual."""
+    user_id = current_user.get("sub") or current_user.get("id")
+    client = await supabase_service.get_client()
+    if not user_id or client is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Cliente indisponível.")
+
+    profile = current_user.get("profile") or {}
+    allowed = _get_allowed_concurrent_devices(profile)
+
+    res = await client.table("user_device_sessions")\
+        .select("*")\
+        .eq("user_id", user_id)\
+        .eq("is_revoked", False)\
+        .order("last_active_at", desc=True)\
+        .execute()
+
+    raw_list = res.data or []
+    sessions: List[DeviceSessionItem] = []
+    for row in raw_list:
+        dev_id = row.get("device_id") or ""
+        is_curr = (current_device_id is not None and dev_id == current_device_id)
+        sessions.append(DeviceSessionItem(
+            id=str(row.get("id")),
+            device_id=dev_id,
+            device_name=row.get("device_name") or "Dispositivo",
+            platform=row.get("platform") or "web",
+            ip_address=row.get("ip_address"),
+            location=row.get("location"),
+            last_active_at=str(row.get("last_active_at")),
+            created_at=str(row.get("created_at")),
+            is_current=is_curr,
+            is_revoked=bool(row.get("is_revoked")),
+        ))
+
+    active_count = len(sessions)
+    limit_exceeded = active_count > allowed
+    warning = None
+    if limit_exceeded:
+        warning = f"Atenção: Você possui {active_count} aparelhos simultâneos conectados (o limite recomendado do plano é de {allowed})."
+
+    return DeviceSessionsListResponse(
+        sessions=sessions,
+        allowed_concurrent_devices=allowed,
+        active_devices_count=active_count,
+        is_limit_exceeded=limit_exceeded,
+        warning_message=warning,
+    )
+
+
+@router.post("/device-sessions/revoke")
+async def revoke_device_session(
+    req: RevokeDeviceSessionRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """Desconecta / revoga uma sessão específica de um aparelho."""
+    user_id = current_user.get("sub") or current_user.get("id")
+    client = await supabase_service.get_client()
+    if not user_id or client is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Cliente indisponível.")
+
+    query = client.table("user_device_sessions").update({
+        "is_revoked": True,
+        "revoked_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("user_id", user_id)
+
+    if req.session_id:
+        query = query.eq("id", req.session_id)
+    elif req.device_id:
+        query = query.eq("device_id", req.device_id)
+    else:
+        raise HTTPException(status_code=400, detail="session_id ou device_id deve ser fornecido.")
+
+    res = await query.execute()
+    return {"ok": True, "revoked_count": len(res.data or [])}
+
+
+@router.post("/device-sessions/revoke-others")
+async def revoke_other_device_sessions(
+    req: RevokeOtherDeviceSessionsRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """Desconecta todos os outros aparelhos, mantendo apenas a sessão atual."""
+    user_id = current_user.get("sub") or current_user.get("id")
+    client = await supabase_service.get_client()
+    if not user_id or client is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Cliente indisponível.")
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    res = await client.table("user_device_sessions").update({
+        "is_revoked": True,
+        "revoked_at": now_iso,
+    }).eq("user_id", user_id).neq("device_id", req.current_device_id).execute()
+
+    try:
+        await client.table("profiles").update({
+            "session_revoked_at": now_iso
+        }).eq("id", user_id).execute()
+    except Exception:
+        pass
+
+    return {"ok": True, "revoked_others_count": len(res.data or [])}
 
 
 # ==============================================================================
