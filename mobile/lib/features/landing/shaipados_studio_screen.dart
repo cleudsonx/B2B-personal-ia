@@ -737,7 +737,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1A14),
+        color: const Color(0xFF131B2E),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.5), width: 1.5),
         boxShadow: [
@@ -834,7 +834,7 @@ class _ShaipadosStudioScreenState extends State<ShaipadosStudioScreen> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF0B171D),
+        color: const Color(0xFF131B2E),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: cyan.withValues(alpha: 0.5), width: 1.5),
         boxShadow: [

@@ -1263,7 +1263,7 @@ class _WorkoutShareCardDialogState extends State<WorkoutShareCardDialog> {
                                   height: 58,
                                   padding: const EdgeInsets.all(4),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF141F18),
+                                    color: const Color(0xFF131B2E),
                                     borderRadius: BorderRadius.circular(10),
                                     border: Border.all(
                                       color: MetaColors.emerald
@@ -1271,7 +1271,7 @@ class _WorkoutShareCardDialogState extends State<WorkoutShareCardDialog> {
                                     ),
                                   ),
                                   child: Image.network(
-                                    'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${Uri.encodeComponent(_landingUrl)}&bgcolor=141F18&color=25A875',
+                                    'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${Uri.encodeComponent(_landingUrl)}&bgcolor=131B2E&color=25A875',
                                     fit: BoxFit.contain,
                                     errorBuilder: (context, error, stackTrace) => const Icon(
                                       Icons.qr_code_2_rounded,
@@ -1311,7 +1311,7 @@ class _WorkoutShareCardDialogState extends State<WorkoutShareCardDialog> {
                                         Text(
                                           'CREF ${widget.trainerCref}',
                                           style: const TextStyle(
-                                            color: Color(0xFF8DA396),
+                                            color: Color(0xFF94A3B8),
                                             fontSize: 9.5,
                                             fontWeight: FontWeight.w600,
                                           ),
@@ -1519,7 +1519,7 @@ class _WorkoutShareCardDialogState extends State<WorkoutShareCardDialog> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
         decoration: BoxDecoration(
-          color: const Color(0xFF121B15),
+          color: const Color(0xFF131B2E),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: Colors.white.withValues(alpha: 0.08),

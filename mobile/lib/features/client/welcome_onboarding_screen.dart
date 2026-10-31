@@ -467,7 +467,7 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
               decoration: InputDecoration(
                 hintText: 'https://mrcoach.app/i/... ou token',
                 hintStyle: TextStyle(
-                  color: MetaColors.subtext(dlgCtx).withOpacity(0.5),
+                  color: MetaColors.subtext(dlgCtx).withValues(alpha: 0.5),
                 ),
                 filled: true,
                 fillColor: MetaColors.bg(dlgCtx),

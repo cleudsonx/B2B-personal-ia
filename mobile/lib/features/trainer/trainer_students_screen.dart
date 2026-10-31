@@ -1437,7 +1437,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: MetaColors.accentBlue.withOpacity(0.12),
+                      color: MetaColors.accentBlue.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
@@ -2041,7 +2041,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                              color: MetaColors.card(context),
                                              borderRadius: BorderRadius.circular(14),
                                              border: Border.all(
-                                               color: MetaColors.cardBorder(context).withOpacity(0.5),
+                                               color: MetaColors.cardBorder(context).withValues(alpha: 0.5),
                                              ),
                                            ),
                                            child: Row(

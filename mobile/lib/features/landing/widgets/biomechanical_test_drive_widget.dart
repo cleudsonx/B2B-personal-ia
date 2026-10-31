@@ -644,7 +644,7 @@ class _BiomechanicalTestDriveWidgetState extends State<BiomechanicalTestDriveWid
                         constraints: const BoxConstraints(maxWidth: 420),
                         child: const Text(
                           'Essa proteção acompanha seus alunos em cada série e avisa você no WhatsApp.',
-                          style: TextStyle(color: Color(0xFF9AA9A1), fontSize: 12),
+                          style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
                         ),
                       ),
                       Wrap(

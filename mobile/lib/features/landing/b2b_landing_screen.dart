@@ -716,7 +716,7 @@ class _RoiCalculatorSectionState extends State<_RoiCalculatorSection> {
 
     return Container(
       width: double.infinity,
-      color: const Color(0xFF0F1612),
+      color: const Color(0xFF090D16),
       padding: EdgeInsets.symmetric(horizontal: 22, vertical: widget.wide ? 72 : 48),
       child: Center(
         child: ConstrainedBox(
@@ -820,7 +820,7 @@ class _RoiCalculatorSectionState extends State<_RoiCalculatorSection> {
       decoration: BoxDecoration(
         color: B2BLandingScreen._panel,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF2E3E33)),
+        border: Border.all(color: const Color(0x1FFFFFFF)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -856,7 +856,7 @@ class _RoiCalculatorSectionState extends State<_RoiCalculatorSection> {
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
               activeTrackColor: B2BLandingScreen._green,
-              inactiveTrackColor: const Color(0xFF26362B),
+              inactiveTrackColor: const Color(0xFF334155),
               thumbColor: Colors.white,
               overlayColor: B2BLandingScreen._green.withValues(alpha: 0.2),
             ),
@@ -900,7 +900,7 @@ class _RoiCalculatorSectionState extends State<_RoiCalculatorSection> {
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
               activeTrackColor: B2BLandingScreen._green,
-              inactiveTrackColor: const Color(0xFF26362B),
+              inactiveTrackColor: const Color(0xFF334155),
               thumbColor: Colors.white,
               overlayColor: B2BLandingScreen._green.withValues(alpha: 0.2),
             ),
@@ -941,16 +941,16 @@ class _RoiCalculatorSectionState extends State<_RoiCalculatorSection> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? B2BLandingScreen._green : const Color(0xFF1F2B23),
+          color: isSelected ? B2BLandingScreen._green : const Color(0xFF1E293B),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? B2BLandingScreen._green : const Color(0xFF334539),
+            color: isSelected ? B2BLandingScreen._green : const Color(0x1FFFFFFF),
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : const Color(0xFFB4C5BC),
+            color: isSelected ? Colors.white : const Color(0xFF94A3B8),
             fontSize: 11.5,
             fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
           ),
@@ -969,7 +969,7 @@ class _RoiCalculatorSectionState extends State<_RoiCalculatorSection> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF141F18),
+        color: const Color(0xFF131B2E),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: B2BLandingScreen._green.withValues(alpha: 0.35)),
         boxShadow: [
@@ -1023,7 +1023,7 @@ class _RoiCalculatorSectionState extends State<_RoiCalculatorSection> {
           ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 18),
-            child: Divider(color: Color(0xFF28392F)),
+            child: Divider(color: Color(0x1FFFFFFF)),
           ),
           _buildRoiRow(
             icon: Icons.access_time_filled_rounded,
@@ -1092,7 +1092,7 @@ class _RoiCalculatorSectionState extends State<_RoiCalculatorSection> {
         Container(
           padding: const EdgeInsets.all(7),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E2E24),
+            color: const Color(0xFF1E293B),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Icon(icon, color: B2BLandingScreen._green, size: 17),
@@ -1114,7 +1114,7 @@ class _RoiCalculatorSectionState extends State<_RoiCalculatorSection> {
               const SizedBox(height: 1),
               Text(
                 sub,
-                style: const TextStyle(color: Color(0xFF7A8B81), fontSize: 11.5),
+                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5),
               ),
             ],
           ),
@@ -1181,7 +1181,7 @@ class _ConsultancyComparisonSection extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      color: const Color(0xFF0F1612),
+      color: const Color(0xFF090D16),
       padding: EdgeInsets.symmetric(horizontal: 22, vertical: wide ? 74 : 50),
       child: Center(
         child: ConstrainedBox(
@@ -1275,7 +1275,7 @@ class _ConsultancyComparisonSection extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF142018),
+                  color: const Color(0xFF131B2E),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: B2BLandingScreen._green.withValues(alpha: 0.35)),
                 ),
@@ -1294,7 +1294,7 @@ class _ConsultancyComparisonSection extends StatelessWidget {
                       child: Text(
                         'Estatística Comprovada: Alunos acompanhados pelo ecossistema Mr. Coach treinam 3.4x mais dias seguidos e renovam 85% mais planos do que em consultorias de planilha estática.',
                         style: TextStyle(
-                          color: Color(0xFFE2F3E9),
+                          color: Color(0xFFF8FAFC),
                           fontSize: 13.5,
                           fontWeight: FontWeight.w600,
                           height: 1.45,
@@ -1317,7 +1317,7 @@ class _ConsultancyComparisonSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: B2BLandingScreen._panel,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF2C3C31)),
+        border: Border.all(color: const Color(0x1FFFFFFF)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1327,7 +1327,7 @@ class _ConsultancyComparisonSection extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(9),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E2D23),
+                  color: const Color(0xFF1E293B),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(data.icon, color: B2BLandingScreen._green, size: 20),
@@ -1387,9 +1387,9 @@ class _ConsultancyComparisonSection extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFF122218),
+              color: const Color(0xFF131B2E),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFF2E533B)),
+              border: Border.all(color: const Color(0x1FFFFFFF)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1414,7 +1414,7 @@ class _ConsultancyComparisonSection extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   data.aiWay,
-                  style: const TextStyle(color: Color(0xFFC7E4D3), fontSize: 12.5, height: 1.45),
+                  style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12.5, height: 1.45),
                 ),
               ],
             ),
@@ -1453,7 +1453,7 @@ class _FeaturesAndStarterSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      color: const Color(0xFF0F1713),
+      color: const Color(0xFF090D16),
       padding: EdgeInsets.symmetric(horizontal: 22, vertical: wide ? 64 : 44),
       child: Center(
         child: ConstrainedBox(
@@ -1520,7 +1520,7 @@ class _FeaturesAndStarterSection extends StatelessWidget {
                 padding: const EdgeInsets.all(28),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF14241B), Color(0xFF0F1A14)],
+                    colors: [Color(0xFF131B2E), Color(0xFF090D16)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -1644,9 +1644,9 @@ class _FeaturesAndStarterSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: const Color(0xFF131D18),
+        color: const Color(0xFF131B2E),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF28382E)),
+        border: Border.all(color: const Color(0x1FFFFFFF)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

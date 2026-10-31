@@ -215,9 +215,9 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0F2618) : const Color(0xFFECFDF5),
+        color: isDark ? const Color(0x2610B981) : const Color(0xFFECFDF5),
         border: Border.all(
-          color: isDark ? const Color(0xFF1B4D30) : const Color(0xFFA7F3D0),
+          color: isDark ? const Color(0x3310B981) : const Color(0xFFA7F3D0),
           width: 1.2,
         ),
         borderRadius: BorderRadius.circular(50),
@@ -820,9 +820,9 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                   icon: const Icon(Icons.chat_outlined, size: 16),
                   label: const Text('Tirar Dúvidas no WhatsApp'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: isDark ? const Color(0xFFB4C8BE) : const Color(0xFF334155),
+                    foregroundColor: isDark ? const Color(0xFF94A3B8) : const Color(0xFF334155),
                     side: BorderSide(
-                      color: isDark ? const Color(0xFF2C4033) : const Color(0xFFCBD5E1),
+                      color: isDark ? const Color(0x1FFFFFFF) : const Color(0xFFCBD5E1),
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -954,10 +954,10 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF141F18) : Colors.white,
+        color: isDark ? const Color(0xFF131B2E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark ? const Color(0xFF26392D) : const Color(0xFFE2E8F0),
+          color: isDark ? const Color(0x1FFFFFFF) : const Color(0xFFE2E8F0),
           width: 1.2,
         ),
         boxShadow: [
@@ -978,7 +978,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
               icon: Icons.workspace_premium_rounded,
             ),
           ),
-          SizedBox(height: 30, child: VerticalDivider(color: isDark ? const Color(0xFF2C4033) : const Color(0xFFE2E8F0))),
+          SizedBox(height: 30, child: VerticalDivider(color: isDark ? const Color(0x1FFFFFFF) : const Color(0xFFE2E8F0))),
           Expanded(
             child: _StatBadge(
               number: studentsStr,
@@ -987,7 +987,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
               icon: Icons.people_alt_rounded,
             ),
           ),
-          SizedBox(height: 30, child: VerticalDivider(color: isDark ? const Color(0xFF2C4033) : const Color(0xFFE2E8F0))),
+          SizedBox(height: 30, child: VerticalDivider(color: isDark ? const Color(0x1FFFFFFF) : const Color(0xFFE2E8F0))),
           const Expanded(
             child: _StatBadge(
               number: '5.0',
@@ -1055,9 +1055,9 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF131D17) : Colors.white,
+        color: isDark ? const Color(0xFF131B2E) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isDark ? const Color(0xFF26382D) : const Color(0xFFE2E8F0)),
+        border: Border.all(color: isDark ? const Color(0x1FFFFFFF) : const Color(0xFFE2E8F0)),
         boxShadow: isDark ? null : [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -1113,9 +1113,9 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF101914) : Colors.white,
+        color: isDark ? const Color(0xFF131B2E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? const Color(0xFF223528) : const Color(0xFFE2E8F0)),
+        border: Border.all(color: isDark ? const Color(0x1FFFFFFF) : const Color(0xFFE2E8F0)),
         boxShadow: isDark ? null : [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -1166,7 +1166,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
             child: Text(
               text,
               style: TextStyle(
-                color: isDark ? const Color(0xFFCFDBD2) : const Color(0xFF334155),
+                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF334155),
                 fontSize: 13,
                 height: 1.35,
               ),
@@ -1267,9 +1267,9 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF131D17) : Colors.white,
+        color: isDark ? const Color(0xFF131B2E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? const Color(0xFF25392D) : const Color(0xFFE2E8F0)),
+        border: Border.all(color: isDark ? const Color(0x1FFFFFFF) : const Color(0xFFE2E8F0)),
         boxShadow: isDark ? null : [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -1383,10 +1383,10 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: isDark ? const Color(0xFF121B15) : Colors.white,
+        color: isDark ? const Color(0xFF131B2E) : Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
-          side: BorderSide(color: isDark ? const Color(0xFF24352A) : const Color(0xFFE2E8F0)),
+          side: BorderSide(color: isDark ? const Color(0x1FFFFFFF) : const Color(0xFFE2E8F0)),
         ),
         clipBehavior: Clip.antiAlias,
         child: Theme(
@@ -1523,7 +1523,7 @@ class _BeforeAfterCaseViewerState extends State<BeforeAfterCaseViewer> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF141F18) : Colors.white,
+        color: isDark ? const Color(0xFF131B2E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark ? MetaColors.emerald.withValues(alpha: 0.25) : const Color(0xFFE2E8F0),
@@ -1593,12 +1593,12 @@ class _BeforeAfterCaseViewerState extends State<BeforeAfterCaseViewer> {
                     decoration: BoxDecoration(
                       color: _selectedCaseIndex == i
                           ? (isDark ? MetaColors.emerald : MetaColors.lightEmerald)
-                          : (isDark ? const Color(0xFF1C2B22) : const Color(0xFFF1F5F9)),
+                          : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: _selectedCaseIndex == i
                             ? (isDark ? MetaColors.emerald : MetaColors.lightEmerald)
-                            : (isDark ? const Color(0xFF2C3E33) : const Color(0xFFCBD5E1)),
+                            : (isDark ? const Color(0x1FFFFFFF) : const Color(0xFFCBD5E1)),
                       ),
                     ),
                     child: Text(
@@ -1650,9 +1650,9 @@ class _BeforeAfterCaseViewerState extends State<BeforeAfterCaseViewer> {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF0F1713) : const Color(0xFFF8FAFC),
+              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: isDark ? const Color(0xFF26362C) : const Color(0xFFE2E8F0)),
+              border: Border.all(color: isDark ? const Color(0x1FFFFFFF) : const Color(0xFFE2E8F0)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1676,7 +1676,7 @@ class _BeforeAfterCaseViewerState extends State<BeforeAfterCaseViewer> {
                       Text(
                         currentCase.biomechanicalNote,
                         style: const TextStyle(
-                          color: Color(0xFFB4C8BE),
+                          color: Color(0xFF94A3B8),
                           fontSize: 12,
                           height: 1.4,
                         ),
@@ -1860,7 +1860,7 @@ class _BeforeAfterSplitCardState extends State<_BeforeAfterSplitCard> {
                             child: Container(
                               width: totalWidth,
                               height: 190,
-                              color: isDark ? const Color(0xFF0D2517) : const Color(0xFFECFDF5),
+                              color: isDark ? const Color(0xFF131B2E) : const Color(0xFFECFDF5),
                               padding: const EdgeInsets.all(16),
                               child: Align(
                                 alignment: Alignment.centerRight,
@@ -1964,7 +1964,7 @@ class _BeforeAfterSplitCardState extends State<_BeforeAfterSplitCard> {
                           width: 36,
                           height: 36,
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF0B140F) : Colors.white,
+                            color: isDark ? const Color(0xFF090D16) : Colors.white,
                             shape: BoxShape.circle,
                             border: Border.all(color: MetaColors.emerald, width: 2),
                             boxShadow: [
@@ -2036,12 +2036,12 @@ class _BeforeAfterSplitCardState extends State<_BeforeAfterSplitCard> {
         decoration: BoxDecoration(
           color: isSelected
               ? MetaColors.emerald.withValues(alpha: 0.2)
-              : (isDark ? const Color(0xFF1E2922) : const Color(0xFFF1F5F9)),
+              : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected
                 ? MetaColors.emerald
-                : (isDark ? const Color(0xFF2C3E33) : const Color(0xFFE2E8F0)),
+                : (isDark ? const Color(0x1FFFFFFF) : const Color(0xFFE2E8F0)),
             width: 1,
           ),
         ),

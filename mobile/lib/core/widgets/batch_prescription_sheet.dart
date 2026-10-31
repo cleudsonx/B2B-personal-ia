@@ -742,7 +742,7 @@ class _BatchPrescriptionModalSheetState
                       return ListView.separated(
                         shrinkWrap: true,
                         itemCount: filteredEntries.length,
-                        separatorBuilder: (_, __) => Divider(
+                        separatorBuilder: (_, _) => Divider(
                           height: 1,
                           color: border.withValues(alpha: 0.4),
                         ),
