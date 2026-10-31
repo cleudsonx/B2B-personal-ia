@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Allow: /#/b2b
+Allow: /#/prof
+Allow: /#/coaches
+Allow: /#/professor/cadastro
+Allow: /#/aluno/entrar
+
+Sitemap: https://shaipados.com/sitemap.xml
