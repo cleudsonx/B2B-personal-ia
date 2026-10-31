@@ -226,7 +226,7 @@ class _PublicTrainerDirectoryScreenState
     final isDark = MetaColors.isDark(context);
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0B100D) : const Color(0xFFF8FAFC),
+      backgroundColor: isDark ? const Color(0xFF090D16) : const Color(0xFFF8FAFC),
       body: SafeArea(
         bottom: false,
         child: CustomScrollView(

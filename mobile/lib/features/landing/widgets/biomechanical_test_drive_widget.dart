@@ -47,8 +47,8 @@ class _BiomechanicalTestDriveWidgetState extends State<BiomechanicalTestDriveWid
   int _selectedExerciseIndex = 0;
   int _selectedScenarioIndex = 0;
 
-  static const _green = Color(0xFF25A875);
-  static const _muted = Color(0xFF9AA9A1);
+  static const _green = Color(0xFF10B981);
+  static const _muted = Color(0xFF94A3B8);
 
   static const List<TestDriveCase> _cases = [
     TestDriveCase(
@@ -220,7 +220,7 @@ class _BiomechanicalTestDriveWidgetState extends State<BiomechanicalTestDriveWid
 
     return Container(
       width: double.infinity,
-      color: const Color(0xFF0B100D),
+      color: const Color(0xFF090D16),
       padding: EdgeInsets.symmetric(horizontal: 22, vertical: widget.wide ? 76 : 52),
       child: Center(
         child: ConstrainedBox(
@@ -328,10 +328,10 @@ class _BiomechanicalTestDriveWidgetState extends State<BiomechanicalTestDriveWid
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? _green : const Color(0xFF141F18),
+          color: isSelected ? _green : const Color(0xFF131B2E),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected ? _green : const Color(0xFF2C3E32),
+            color: isSelected ? _green : const Color(0xFF334155),
           ),
         ),
         child: Row(
@@ -369,11 +369,11 @@ class _BiomechanicalTestDriveWidgetState extends State<BiomechanicalTestDriveWid
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? (isBusy ? const Color(0xFF0C2A38) : const Color(0xFF172C20))
-              : const Color(0xFF131A16),
+              ? (isBusy ? const Color(0xFF0C2A38) : const Color(0x2610B981))
+              : const Color(0xFF131B2E),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? tagColor : const Color(0xFF2A382F),
+            color: isSelected ? tagColor : const Color(0xFF334155),
             width: isSelected ? 1.5 : 1.0,
           ),
         ),
@@ -391,7 +391,7 @@ class _BiomechanicalTestDriveWidgetState extends State<BiomechanicalTestDriveWid
             Text(
               scenario.complaint,
               style: TextStyle(
-                color: isSelected ? Colors.white : const Color(0xFFA5B4AB),
+                color: isSelected ? Colors.white : const Color(0xFF94A3B8),
                 fontSize: 12.5,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
               ),
@@ -408,10 +408,10 @@ class _BiomechanicalTestDriveWidgetState extends State<BiomechanicalTestDriveWid
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFF111A15),
+        color: const Color(0xFF131B2E),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isBusy ? const Color(0xFF0369A1).withValues(alpha: 0.4) : const Color(0xFF2B3C30),
+          color: isBusy ? const Color(0xFF0369A1).withValues(alpha: 0.4) : const Color(0xFF334155),
           width: 1.2,
         ),
         boxShadow: const [
@@ -425,9 +425,9 @@ class _BiomechanicalTestDriveWidgetState extends State<BiomechanicalTestDriveWid
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             decoration: BoxDecoration(
-              color: isBusy ? const Color(0xFF0A2230) : const Color(0xFF17241D),
+              color: isBusy ? const Color(0xFF0A2230) : const Color(0xFF1E293B),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              border: Border(bottom: BorderSide(color: isBusy ? const Color(0xFF075985) : const Color(0xFF25362B))),
+              border: Border(bottom: BorderSide(color: isBusy ? const Color(0xFF075985) : const Color(0xFF334155))),
             ),
             child: Row(
               children: [
@@ -510,16 +510,16 @@ class _BiomechanicalTestDriveWidgetState extends State<BiomechanicalTestDriveWid
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E2D22),
+                        color: const Color(0xFF1E293B),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFF374D3D)),
+                        border: Border.all(color: const Color(0xFF334155)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
                             'ALVO ANATÔMICO',
-                            style: TextStyle(color: Color(0xFF8BA093), fontSize: 9.5, fontWeight: FontWeight.w800),
+                            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 9.5, fontWeight: FontWeight.w800),
                           ),
                           const SizedBox(height: 3),
                           Text(
@@ -533,7 +533,7 @@ class _BiomechanicalTestDriveWidgetState extends State<BiomechanicalTestDriveWid
                 ),
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Divider(color: Color(0xFF243329)),
+                  child: Divider(color: Color(0x1FFFFFFF)),
                 ),
                 // Instant correction
                 Row(
@@ -605,7 +605,7 @@ class _BiomechanicalTestDriveWidgetState extends State<BiomechanicalTestDriveWid
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF18261E),
+                    color: const Color(0x2610B981),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: _green.withValues(alpha: 0.25)),
                   ),
@@ -617,7 +617,7 @@ class _BiomechanicalTestDriveWidgetState extends State<BiomechanicalTestDriveWid
                         child: Text(
                           'Benefício biomecânico: ${scenario.safetyGain}',
                           style: const TextStyle(
-                            color: Color(0xFFB4CDBF),
+                            color: Color(0xFFD1FAE5),
                             fontSize: 12.5,
                             fontWeight: FontWeight.w600,
                           ),
@@ -631,7 +631,7 @@ class _BiomechanicalTestDriveWidgetState extends State<BiomechanicalTestDriveWid
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0F1713),
+                    color: const Color(0xFF090D16),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Wrap(
@@ -657,7 +657,7 @@ class _BiomechanicalTestDriveWidgetState extends State<BiomechanicalTestDriveWid
                             label: const Text('Encontrar Personal'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.white,
-                              side: const BorderSide(color: Color(0xFF35443B)),
+                              side: const BorderSide(color: Color(0xFF334155)),
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             ),

@@ -7,16 +7,16 @@ import 'widgets/biomechanical_test_drive_widget.dart';
 class B2BLandingScreen extends StatelessWidget {
   const B2BLandingScreen({super.key});
 
-  static const _ink = Color(0xFF111A17);
-  static const _muted = Color(0xFF9AA9A1);
-  static const _green = Color(0xFF25A875);
-  static const _panel = Color(0xFF17211C);
+  static const _ink = Color(0xFF090D16);
+  static const _muted = Color(0xFF94A3B8);
+  static const _green = Color(0xFF10B981);
+  static const _panel = Color(0xFF131B2E);
 
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width > 760;
     return Scaffold(
-      backgroundColor: const Color(0xFF0B100D),
+      backgroundColor: const Color(0xFF090D16),
       body: SafeArea(
         bottom: false,
         child: CustomScrollView(
@@ -266,7 +266,7 @@ class B2BLandingScreen extends StatelessWidget {
                 foregroundColor: Colors.white,
                 minimumSize: const Size(0, 50),
                 padding: const EdgeInsets.symmetric(horizontal: 18),
-                side: const BorderSide(color: Color(0xFF35443B)),
+                side: const BorderSide(color: Color(0xFF334155)),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
             ),
@@ -397,9 +397,9 @@ class B2BLandingScreen extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0B100D) : const Color(0xFFF1F5F9),
+        color: isDark ? const Color(0xFF090D16) : const Color(0xFFF1F5F9),
         border: Border(
-          top: BorderSide(color: isDark ? const Color(0xFF27332B) : const Color(0xFFCBD5E1)),
+          top: BorderSide(color: isDark ? const Color(0x1FFFFFFF) : const Color(0xFFCBD5E1)),
         ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
@@ -541,7 +541,7 @@ class _WorkflowPreview extends StatelessWidget {
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: B2BLandingScreen._panel,
-        border: Border.all(color: const Color(0xFF35443B)),
+        border: Border.all(color: const Color(0xFF334155)),
         borderRadius: BorderRadius.circular(7),
       ),
       child: Column(
@@ -556,9 +556,9 @@ class _WorkflowPreview extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           _PreviewRow(icon: Icons.groups_2_outlined, title: 'Alunos', detail: 'Perfis e acompanhamento'),
-          const Divider(color: Color(0xFF344038), height: 24),
+          const Divider(color: Color(0x1FFFFFFF), height: 24),
           _PreviewRow(icon: Icons.edit_note_rounded, title: 'Prescrições', detail: 'Treinos organizados por aluno'),
-          const Divider(color: Color(0xFF344038), height: 24),
+          const Divider(color: Color(0x1FFFFFFF), height: 24),
           _PreviewRow(icon: Icons.link_rounded, title: 'Acesso do aluno', detail: 'Convite com vínculo ao treinador'),
         ],
       ),
@@ -618,7 +618,7 @@ class _AudienceColumn extends StatelessWidget {
               const SizedBox(height: 7),
               Text(title, style: const TextStyle(color: B2BLandingScreen._ink, fontSize: 20, fontWeight: FontWeight.w900)),
               const SizedBox(height: 8),
-              Text(description, style: const TextStyle(color: Color(0xFF657168), fontSize: 14, height: 1.55)),
+              Text(description, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14, height: 1.55)),
             ],
           ),
         ),
@@ -838,7 +838,7 @@ class _RoiCalculatorSectionState extends State<_RoiCalculatorSection> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0B100D),
+                  color: const Color(0xFF131B2E),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: B2BLandingScreen._green.withValues(alpha: 0.4)),
                 ),
@@ -882,7 +882,7 @@ class _RoiCalculatorSectionState extends State<_RoiCalculatorSection> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0B100D),
+                  color: const Color(0xFF131B2E),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: B2BLandingScreen._green.withValues(alpha: 0.4)),
                 ),
@@ -1565,7 +1565,7 @@ class _FeaturesAndStarterSection extends StatelessWidget {
                                 const SizedBox(height: 8),
                                 const Text(
                                   'Até 5 alunos ativos para você testar na prática com sua consultoria sem pagar nada e sem cadastrar cartão de crédito.',
-                                  style: TextStyle(color: Color(0xFF9AA9A1), fontSize: 14, height: 1.5),
+                                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14, height: 1.5),
                                 ),
                               ],
                             ),
@@ -1613,7 +1613,7 @@ class _FeaturesAndStarterSection extends StatelessWidget {
                           const SizedBox(height: 8),
                           const Text(
                             'Até 5 alunos ativos para você testar na prática com sua consultoria sem pagar nada e sem cartão.',
-                            style: TextStyle(color: Color(0xFF9AA9A1), fontSize: 13, height: 1.5),
+                            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13, height: 1.5),
                           ),
                           const SizedBox(height: 20),
                           SizedBox(
@@ -1667,7 +1667,7 @@ class _FeaturesAndStarterSection extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             desc,
-            style: const TextStyle(color: Color(0xFF9AA9A1), fontSize: 13, height: 1.5),
+            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13, height: 1.5),
           ),
         ],
       ),
