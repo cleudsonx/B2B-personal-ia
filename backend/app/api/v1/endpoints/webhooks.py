@@ -136,7 +136,7 @@ async def asaas_webhook(request: Request, background_tasks: BackgroundTasks):
 
     # 3. Processamento de Fatura de Aluno
     if is_student_invoice:
-        if event in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"):
+        if event in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED", "PAYMENT_RECEIVED_IN_CASH", "PAYMENT_DUNNING_RECEIVED"):
             billing_type = payment_obj.get("billingType") or "PIX"
             payment_id = payment_obj.get("id")
             result = await ConsultancyPlanService.process_student_payment_confirmation(
@@ -151,20 +151,22 @@ async def asaas_webhook(request: Request, background_tasks: BackgroundTasks):
                 "invoice_id": ext_ref,
                 "result": result,
             }
-        elif event in ("PAYMENT_REFUNDED", "PAYMENT_DELETED"):
-            if client and is_valid_uuid(ext_ref):
-                try:
-                    await client.table("student_invoices").update({"status": "canceled"}).eq("id", ext_ref).execute()
-                except Exception as e:
-                    logger.error(f"[Webhook/Asaas] Erro ao cancelar fatura {ext_ref}: {e}")
+        elif event in ("PAYMENT_REFUNDED", "PAYMENT_DELETED", "PAYMENT_CHARGEBACK_REQUESTED"):
+            refund_res = await ConsultancyPlanService.process_student_payment_cancellation_or_refund(
+                invoice_id=ext_ref,
+                event=event,
+            )
             return {
                 "processed": True,
                 "type": "student_invoice",
                 "event": event,
                 "invoice_id": ext_ref,
                 "status": "canceled",
+                "result": refund_res,
             }
         elif event in ("PAYMENT_OVERDUE",):
+            if ext_ref in ConsultancyPlanService._mem_invoices:
+                ConsultancyPlanService._mem_invoices[ext_ref]["status"] = "overdue"
             if client and is_valid_uuid(ext_ref):
                 try:
                     await client.table("student_invoices").update({"status": "overdue"}).eq("id", ext_ref).execute()
@@ -186,8 +188,24 @@ async def asaas_webhook(request: Request, background_tasks: BackgroundTasks):
                 "status": "ignored",
             }
 
-    # 4. Caso não seja fatura de aluno, pode ser uma assinatura SaaS do Treinador:
-    # Processa via PaymentProviderService para garantir compatibilidade total
+    # 4. Caso não seja fatura de aluno, trata como assinatura SaaS do Treinador:
+    # Delega ao fluxo durável com lease e ativação atômica no Supabase quando houver sessão/evento válido
+    has_event_id = bool(payload.get("id") or payment_obj.get("id"))
+    if has_event_id and ext_ref:
+        session_meta = (
+            await supabase_service.get_checkout_session(ext_ref)
+            or PaymentProviderService._PENDING_ORDERS.get(ext_ref)
+        )
+        if session_meta:
+            from app.api.v1.endpoints.subscriptions import webhook_asaas as durable_webhook_asaas
+            sub_res = await durable_webhook_asaas(payload, request)
+            return {
+                "processed": True,
+                "type": "trainer_subscription",
+                "event": event,
+                "result": sub_res,
+            }
+
     sub_res = PaymentProviderService.process_webhook("asaas", payload)
     return {
         "processed": True,

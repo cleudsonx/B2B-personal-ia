@@ -215,3 +215,193 @@ async def test_asaas_webhook_cancellation():
     assert data["type"] == "student_invoice"
     assert data["status"] == "canceled"
 
+
+
+def test_asaas_customer_lookup_prevents_empty_cpfcnpj_collision():
+    """
+    Garante que _asaas_get_or_create_customer jamais consulta ?cpfCnpj= vazio
+    (que retornaria o 1o cliente da conta Asaas) e não sobrescreve cliente de outro CPF.
+    """
+    from app.services.payment_service import PaymentProviderService
+
+    called_urls = []
+
+    class FakeResp:
+        def __init__(self, status_code, data):
+            self.status_code = status_code
+            self._data = data
+
+        def json(self):
+            return self._data
+
+    class FakeHttpClient:
+        def get(self, url, headers=None):
+            called_urls.append(url)
+            if "email=colisao@teste.com" in url:
+                # Simula cliente existente com OUTRO CPF
+                return FakeResp(200, {"data": [{"id": "cus_other", "cpfCnpj": "11122233344", "mobilePhone": "61999999999"}]})
+            return FakeResp(200, {"data": []})
+
+        def post(self, url, headers=None, json=None):
+            called_urls.append(f"POST:{url}")
+            return FakeResp(200, {"id": "cus_new_safe"})
+
+    cust_id = PaymentProviderService._asaas_get_or_create_customer(
+        FakeHttpClient(),
+        "https://api.asaas.com/v3",
+        {"access_token": "test"},
+        name="Novo Aluno",
+        email="colisao@teste.com",
+        cpf_cnpj="52998224725",
+        phone="61988887777",
+    )
+    assert cust_id == "cus_new_safe"
+    # Não deve ter atualizado cus_other pois o CPF pertencia a outra pessoa
+    assert not any("POST:https://api.asaas.com/v3/customers/cus_other" in u for u in called_urls)
+
+    # Sem CPF informado: nunca deve chamar ?cpfCnpj= vazio
+    called_urls.clear()
+    PaymentProviderService._asaas_get_or_create_customer(
+        FakeHttpClient(),
+        "https://api.asaas.com/v3",
+        {"access_token": "test"},
+        name="Aluno Sem CPF",
+        email="semcpf@teste.com",
+        cpf_cnpj=None,
+        phone="61988887777",
+    )
+    assert not any("cpfCnpj=" in u for u in called_urls)
+
+
+def test_production_pix_requires_valid_cpf_and_blocks_synthetic_pix(monkeypatch):
+    """Em produção, checkout Pix sem CPF válido retorna erro 400 claro e nunca emite Pix fictício."""
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(settings, "ASAAS_API_KEY", "$aact_prod_fake_key")
+
+    plan_res = client.post(
+        "/api/v1/trainers/consultancy-plans",
+        json={"name": "Plano Pix Prod", "price_cents": 8000, "billing_period": "monthly"},
+    )
+    plan_id = plan_res.json()["id"]
+
+    async def mock_count_slots(*args, **kwargs):
+        return 1
+
+    monkeypatch.setattr(supabase_service, "count_trainer_occupied_slots", mock_count_slots)
+
+    # Tentativa sem CPF em produção -> deve bloquear com 400
+    res_no_cpf = client.post(
+        "/api/v1/public/trainers/mrcoach/checkout",
+        json={
+            "plan_id": plan_id,
+            "student_name": "Aluno Prod",
+            "student_email": "alunoprod@teste.com",
+            "student_phone": "61988887777",
+            "payment_method": "PIX",
+        },
+    )
+    assert res_no_cpf.status_code == 400
+    assert "CPF" in res_no_cpf.json()["detail"]
+
+
+def test_credit_card_checkout_followed_by_asaas_webhooks_is_strictly_idempotent(monkeypatch):
+    """
+    Quando o cartão é aprovado no checkout e o Asaas envia posteriormente
+    PAYMENT_CONFIRMED e PAYMENT_RECEIVED, o webhook reconhece como already_paid
+    sem duplicar notificações ou saldo.
+    """
+    plan_res = client.post(
+        "/api/v1/trainers/consultancy-plans",
+        json={"name": "Plano Card Idempotente", "price_cents": 15000, "billing_period": "monthly"},
+    )
+    plan_id = plan_res.json()["id"]
+
+    async def mock_count_slots(*args, **kwargs):
+        return 1
+
+    monkeypatch.setattr(supabase_service, "count_trainer_occupied_slots", mock_count_slots)
+
+    sent_messages = []
+
+    async def mock_send_wa(number, text, trainer_id=None):
+        sent_messages.append({"number": number, "text": text})
+        return {"status": "sent"}
+
+    monkeypatch.setattr(whatsapp_service, "send_text_with_fallback", mock_send_wa)
+
+    checkout_res = client.post(
+        "/api/v1/public/trainers/mrcoach/checkout",
+        json={
+            "plan_id": plan_id,
+            "student_name": "Beatriz Rocha",
+            "student_email": "beatriz@teste.com",
+            "student_phone": "61988881111",
+            "payment_method": "CREDIT_CARD",
+            "credit_card": {
+                "holder_name": "BEATRIZ ROCHA",
+                "number": "4111111111111111",
+                "expiry_month": "12",
+                "expiry_year": "2029",
+                "ccv": "123",
+                "holder_cpf": "52998224725",
+            },
+        },
+    )
+    assert checkout_res.status_code == 201
+    inv_id = checkout_res.json()["invoice_id"]
+    assert checkout_res.json()["status"] == "paid"
+    initial_msg_count = len(sent_messages)
+
+    # Webhook posterior PAYMENT_CONFIRMED do Asaas para a mesma fatura paga no cartão
+    wh_res = client.post(
+        "/api/v1/webhooks/asaas",
+        json={
+            "event": "PAYMENT_CONFIRMED",
+            "payment": {"id": "pay_card_999", "externalReference": inv_id, "billingType": "CREDIT_CARD"},
+        },
+    )
+    assert wh_res.status_code == 200
+    assert wh_res.json()["result"]["status"] == "already_paid"
+    assert len(sent_messages) == initial_msg_count
+
+
+def test_unified_webhooks_asaas_activates_trainer_saas_subscription():
+    """
+    Se o painel Asaas apontar para /api/v1/webhooks/asaas, eventos de assinatura
+    SaaS do treinador com checkout_session válido ativam a assinatura no banco.
+    """
+    trainer_id = "6f645308-f1b2-4d73-ac45-9890c27e20d4"
+    session_id = "sess_asaas_unified_001"
+    supabase_service._mem_checkout_sessions[session_id] = {
+        "session_id": session_id,
+        "trainer_id": trainer_id,
+        "plan_id": "pro",
+        "billing_interval": "monthly",
+        "payment_method": "pix",
+        "provider": "asaas",
+        "status": "pending",
+        "paid": False,
+    }
+
+    wh_res = client.post(
+        "/api/v1/webhooks/asaas",
+        json={
+            "id": "evt_unified_saas_001",
+            "event": "PAYMENT_RECEIVED",
+            "payment": {
+                "id": "pay_unified_saas_001",
+                "externalReference": session_id,
+                "status": "RECEIVED",
+                "billingType": "PIX",
+                "value": 89.0,
+            },
+        },
+    )
+    assert wh_res.status_code == 200
+    data = wh_res.json()
+    assert data["processed"] is True
+    assert data["type"] == "trainer_subscription"
+    assert supabase_service._mem_checkout_sessions[session_id]["paid"] is True
+    assert supabase_service._mem_subscriptions[trainer_id]["status"] == "active"

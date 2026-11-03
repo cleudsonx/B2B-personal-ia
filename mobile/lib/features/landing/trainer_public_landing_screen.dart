@@ -2544,14 +2544,18 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
             ),
             const SizedBox(height: 12),
 
-            // CPF
+            // CPF (obrigatório para emissão do QR Code Pix no Banco Central / Asaas e Cartão)
             TextFormField(
               controller: _cpfCtrl,
               keyboardType: TextInputType.number,
               style: TextStyle(color: textColor),
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(14),
+              ],
               decoration: InputDecoration(
-                labelText: 'CPF (para nota e cadastro)',
-                hintText: '000.000.000-00',
+                labelText: 'CPF (obrigatório para emissão do Pix / Banco Central)',
+                hintText: 'Somente números (11 dígitos)',
                 labelStyle: TextStyle(color: subtextColor),
                 hintStyle: TextStyle(color: hintColor),
                 filled: true,
@@ -2561,9 +2565,17 @@ class _PublicCheckoutModalState extends State<_PublicCheckoutModal> {
                 enabledBorder: inputBorder,
               ),
               validator: (v) {
-                if (_paymentMethod == 'PIX') return null;
+                final clean = (v ?? '').replaceAll(RegExp(r'\D'), '');
+                if (_paymentMethod == 'PIX') {
+                  if (clean.length != 11 && clean.length != 14) {
+                    return 'Informe um CPF válido (11 dígitos) para gerar o Pix';
+                  }
+                  if (RegExp(r'^(\d)\1+\$').hasMatch(clean)) {
+                    return 'CPF inválido';
+                  }
+                  return null;
+                }
                 if (_cardCpfCtrl.text.trim().isEmpty) {
-                  final clean = (v ?? '').replaceAll(RegExp(r'\D'), '');
                   if (clean.length < 11) return 'Informe o CPF';
                 }
                 return null;

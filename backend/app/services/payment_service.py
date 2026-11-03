@@ -149,27 +149,45 @@ class PaymentProviderService:
         headers: Dict[str, str],
         name: str,
         email: str,
-        cpf_cnpj: str,
+        cpf_cnpj: Optional[str],
         phone: Optional[str],
     ) -> str:
         """
         Localiza o cliente no Asaas pelo CPF/CNPJ (ou e-mail) e garante que o cadastro
         tenha o documento preenchido — requisito do Asaas para emitir Pix e cobrar cartão.
+        Evita query ?cpfCnpj= vazia que retornaria o primeiro cliente arbitrário da conta Asaas.
         """
+        clean_doc = only_digits(cpf_cnpj or "")
+        clean_email = (email or "").strip().lower()
         customer = None
-        for query in (f"cpfCnpj={cpf_cnpj}", f"email={email}"):
-            res = client.get(f"{base_url}/customers?{query}", headers=headers)
+
+        # 1. Busca prioritária por CPF/CNPJ somente quando documento válido (11 ou 14 dígitos) está presente
+        if clean_doc and len(clean_doc) in (11, 14):
+            res = client.get(f"{base_url}/customers?cpfCnpj={clean_doc}", headers=headers)
             if res.status_code == 200 and res.json().get("data"):
                 customer = res.json()["data"][0]
-                break
 
-        payload: Dict[str, Any] = {"name": name, "email": email, "cpfCnpj": cpf_cnpj}
+        # 2. Fallback por e-mail somente se não houver colisão de CPF com outro titular
+        if not customer and clean_email:
+            res = client.get(f"{base_url}/customers?email={clean_email}", headers=headers)
+            if res.status_code == 200 and res.json().get("data"):
+                candidate = res.json()["data"][0]
+                existing_doc = only_digits(candidate.get("cpfCnpj") or "")
+                if not existing_doc or not clean_doc or existing_doc == clean_doc:
+                    customer = candidate
+
+        payload: Dict[str, Any] = {"name": name, "email": clean_email}
+        if clean_doc:
+            payload["cpfCnpj"] = clean_doc
         if phone:
             payload["mobilePhone"] = phone
 
         if customer:
             cust_id = customer["id"]
-            if (customer.get("cpfCnpj") or "") != cpf_cnpj or (phone and not customer.get("mobilePhone")):
+            existing_doc = only_digits(customer.get("cpfCnpj") or "")
+            needs_doc_update = bool(clean_doc and existing_doc != clean_doc)
+            needs_phone_update = bool(phone and not customer.get("mobilePhone"))
+            if needs_doc_update or needs_phone_update:
                 upd = client.post(f"{base_url}/customers/{cust_id}", headers=headers, json=payload)
                 if upd.status_code not in (200, 201):
                     raise ValueError(cls._asaas_error_message(upd, "Não foi possível atualizar seus dados de cobrança."))
@@ -512,7 +530,14 @@ class PaymentProviderService:
         Processa eventos dos webhooks para ativação, renovação e cancelamento automático de assinaturas.
         """
         provider_clean = (provider or "universal").lower().strip()
-        logger.info(f"[PaymentService] Processando webhook do provedor '{provider_clean}': {payload}")
+        safe_evt = payload.get("event") or payload.get("type") or payload.get("action") or "UNKNOWN"
+        safe_pay = payload.get("payment") if isinstance(payload.get("payment"), dict) else {}
+        safe_ref = safe_pay.get("externalReference") or payload.get("externalReference") or payload.get("order_nsu") or ""
+        safe_pid = safe_pay.get("id") or payload.get("id") or ""
+        logger.info(
+            f"[PaymentService] Processando webhook provider='{provider_clean}' event='{safe_evt}' "
+            f"payment_id='{safe_pid}' externalReference='{safe_ref}'"
+        )
 
         event_name = "UNKNOWN"
         subscription_status = "pending"
@@ -529,15 +554,15 @@ class PaymentProviderService:
                 trainer_id = order_meta.get("trainer_id", trainer_id)
                 plan_id = order_meta.get("plan_id", plan_id)
                 billing_interval = order_meta.get("billing_interval", billing_interval)
-                if event_name in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"):
+                if event_name in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED", "PAYMENT_RECEIVED_IN_CASH", "PAYMENT_DUNNING_RECEIVED"):
                     order_meta["paid"] = True
                     order_meta["status"] = "active"
 
-            if event_name in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"):
+            if event_name in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED", "PAYMENT_RECEIVED_IN_CASH", "PAYMENT_DUNNING_RECEIVED"):
                 subscription_status = "active"
-            elif event_name in ("PAYMENT_OVERDUE", "SUBSCRIPTION_INACTIVATED"):
+            elif event_name in ("PAYMENT_OVERDUE", "SUBSCRIPTION_INACTIVATED", "PAYMENT_CHARGEBACK_REQUESTED"):
                 subscription_status = "past_due"
-            elif event_name in ("SUBSCRIPTION_DELETED", "PAYMENT_DELETED"):
+            elif event_name in ("SUBSCRIPTION_DELETED", "PAYMENT_DELETED", "PAYMENT_REFUNDED"):
                 subscription_status = "canceled"
 
         elif provider_clean == "mercadopago":

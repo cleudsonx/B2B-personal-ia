@@ -348,12 +348,20 @@ class ConsultancyPlanService:
 
         # 3. Integração com Gateway Asaas (Pix transparente com QR Code)
         asaas_key = getattr(settings, "ASAAS_API_KEY", "")
+        is_production = getattr(settings, "ENVIRONMENT", "").lower() == "production"
         pix_code = None
         pix_qr_base64 = None
+        asaas_payment_id = None
         checkout_url = f"https://sandbox.asaas.com/c/{invoice_id[:8]}"
         status_result = "pending"
 
         if req.payment_method == "PIX":
+            clean_student_cpf = normalize_cpf_cnpj(req.student_cpf or "")
+            if is_production and not asaas_key:
+                raise ValueError("Gateway de pagamento Pix temporariamente indisponível. Tente novamente em instantes.")
+            if is_production and not clean_student_cpf:
+                raise ValueError("Informe um CPF válido (11 dígitos) para emissão do QR Code Pix pelo Banco Central.")
+
             if asaas_key:
                 base_url = resolve_asaas_base_url(asaas_key, getattr(settings, "ASAAS_API_URL", ""))
                 headers = {"access_token": asaas_key, "Content-Type": "application/json"}
@@ -364,7 +372,7 @@ class ConsultancyPlanService:
                             http_client, base_url, headers,
                             name=req.student_name,
                             email=req.student_email,
-                            cpf_cnpj=normalize_cpf_cnpj(req.student_cpf or ""),
+                            cpf_cnpj=clean_student_cpf,
                             phone=normalize_br_phone(req.student_phone),
                         )
                         # Gera cobrança Pix
@@ -379,19 +387,38 @@ class ConsultancyPlanService:
                         pay_res = http_client.post(f"{base_url}/payments", headers=headers, json=pay_payload)
                         if pay_res.status_code in (200, 201):
                             p_data = pay_res.json()
-                            asaas_id = p_data.get("id")
+                            asaas_payment_id = p_data.get("id")
                             checkout_url = p_data.get("invoiceUrl") or checkout_url
-                            qr_res = http_client.get(f"{base_url}/payments/{asaas_id}/pixQrCode", headers=headers)
+                            qr_res = http_client.get(f"{base_url}/payments/{asaas_payment_id}/pixQrCode", headers=headers)
                             if qr_res.status_code == 200:
                                 qr_d = qr_res.json()
                                 pix_code = qr_d.get("payload")
                                 pix_qr_base64 = qr_d.get("encodedImage")
+                            elif is_production:
+                                raise ValueError(
+                                    PaymentProviderService._asaas_error_message(
+                                        qr_res,
+                                        "Não foi possível obter o QR Code Pix junto ao Banco Central. Verifique o CPF informado.",
+                                    )
+                                )
+                        elif is_production:
+                            raise ValueError(
+                                PaymentProviderService._asaas_error_message(
+                                    pay_res,
+                                    "Não foi possível gerar a cobrança Pix. Verifique os dados informados.",
+                                )
+                            )
+                except ValueError:
+                    raise
                 except Exception as e:
                     logger.warning(f"[Checkout] Falha ao comunicar com Asaas em tempo real: {e}")
+                    if is_production:
+                        raise ValueError("Instabilidade temporária ao gerar o QR Code Pix. Tente novamente em instantes.")
 
-            # Fallback seguro para simulação ou sandbox sem chave
+            # Fallback seguro apenas para ambiente de desenvolvimento/testes
             if not pix_code:
-                # Código Pix EMV padrão simulado para testes rápidos
+                if is_production:
+                    raise ValueError("Não foi possível gerar o código Pix oficial. Verifique o CPF informado e tente novamente.")
                 pix_code = (
                     f"00020126580014br.gov.bcb.pix0136{invoice_id}"
                     f"52040000530398654{amount_cents/100:06.2f}5802BR5925{trainer_name[:25]}"
@@ -409,7 +436,11 @@ class ConsultancyPlanService:
             if len(req.credit_card.ccv.strip()) < 3:
                 raise ValueError("Código de segurança (CVV) inválido.")
 
+            clean_holder_cpf = normalize_cpf_cnpj(req.credit_card.holder_cpf or req.student_cpf or "")
+
             if asaas_key:
+                if is_production and not clean_holder_cpf:
+                    raise ValueError("Informe um CPF válido do titular do cartão de crédito.")
                 base_url = resolve_asaas_base_url(asaas_key, getattr(settings, "ASAAS_API_URL", ""))
                 headers = {"access_token": asaas_key, "Content-Type": "application/json"}
                 try:
@@ -418,7 +449,7 @@ class ConsultancyPlanService:
                             http_client, base_url, headers,
                             name=req.student_name,
                             email=req.student_email,
-                            cpf_cnpj=normalize_cpf_cnpj(req.credit_card.holder_cpf or req.student_cpf or ""),
+                            cpf_cnpj=clean_holder_cpf,
                             phone=normalize_br_phone(req.student_phone),
                         )
                         card_payload = {
@@ -438,7 +469,7 @@ class ConsultancyPlanService:
                             "creditCardHolderInfo": {
                                 "name": req.credit_card.holder_name.strip(),
                                 "email": req.student_email.strip().lower(),
-                                "cpfCnpj": normalize_cpf_cnpj(req.credit_card.holder_cpf or req.student_cpf or ""),
+                                "cpfCnpj": clean_holder_cpf,
                                 "postalCode": re.sub(r"\D", "", req.credit_card.postal_code or "70000000"),
                                 "addressNumber": req.credit_card.address_number or "1",
                                 "phone": normalize_br_phone(req.student_phone),
@@ -447,29 +478,35 @@ class ConsultancyPlanService:
                         card_res = http_client.post(f"{base_url}/payments", headers=headers, json=card_payload)
                         if card_res.status_code in (200, 201):
                             c_data = card_res.json()
-                            status_result = "paid" if c_data.get("status") in ("CONFIRMED", "RECEIVED") else "pending"
+                            asaas_payment_id = c_data.get("id")
+                            status_result = (
+                                "paid"
+                                if c_data.get("status") in ("CONFIRMED", "RECEIVED", "RECEIVED_IN_CASH", "DUNNING_RECEIVED")
+                                else "pending"
+                            )
                             checkout_url = c_data.get("invoiceUrl") or checkout_url
                         else:
                             err_msg = PaymentProviderService._asaas_error_message(card_res, "Cartão de crédito não autorizado.")
-                            if getattr(settings, "ENVIRONMENT", "").lower() == "production":
+                            if is_production:
                                 raise ValueError(err_msg)
                             else:
                                 logger.info(f"[Checkout] Asaas sandbox ({err_msg}); aprovando para testes.")
-                                status_result = "paid" 
+                                status_result = "paid"
                 except ValueError:
                     raise
                 except Exception as e:
                     logger.warning(f"[Checkout] Falha ao transacionar cartão no Asaas: {e}")
-                    if getattr(settings, "ENVIRONMENT", "").lower() == "production":
+                    if is_production:
                         raise ValueError("Instabilidade temporária na operadora de cartão. Tente novamente ou utilize o Pix.")
                     status_result = "paid"  # Fallback seguro apenas para ambiente de desenvolvimento/testes
             else:
-                if getattr(settings, "ENVIRONMENT", "").lower() == "production":
+                if is_production:
                     raise ValueError("Pagamento via cartão temporariamente indisponível. Utilize o Pix.")
                 # Simulação aprovada apenas em ambiente dev/sandbox sem credencial
                 status_result = "paid"
 
-        # 4. Registra na tabela `student_invoices`
+        # 4. Registra na tabela `student_invoices` inicialmente como 'pending'
+        # para que process_student_payment_confirmation faça a transição atômica única -> 'paid'
         inv_record = {
             "id": invoice_id,
             "trainer_id": trainer_id,
@@ -483,20 +520,23 @@ class ConsultancyPlanService:
             "platform_fee_cents": fee_cents,
             "net_amount_cents": net_cents,
             "due_date": due_date_str,
-            "status": status_result,
+            "status": "pending",
             "payment_method": req.payment_method.lower(),
-            "paid_at": datetime.now(timezone.utc).isoformat() if status_result == "paid" else None,
+            "paid_at": None,
             "payment_link": checkout_url,
             "pix_copy_paste": pix_code,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
-        cls._mem_invoices[invoice_id] = inv_record
-
         if client:
             try:
                 await client.table("student_invoices").insert(inv_record).execute()
             except Exception as e:
                 logger.error(f"[Checkout] Erro ao gravar fatura no Supabase: {e}")
+
+        mem_record = dict(inv_record)
+        if asaas_payment_id:
+            mem_record["asaas_id"] = asaas_payment_id
+        cls._mem_invoices[invoice_id] = mem_record
 
         # Se o pagamento foi aprovado instantaneamente (Cartão de Crédito),
         # dispara imediatamente o ciclo financeiro, vínculo de aluno e boas-vindas:
@@ -506,6 +546,7 @@ class ConsultancyPlanService:
                 auth_info = await cls.process_student_payment_confirmation(
                     invoice_id=invoice_id,
                     payment_method=req.payment_method.lower(),
+                    provider_payment_id=asaas_payment_id,
                 )
             except Exception as e:
                 logger.warning(f"[Checkout] Falha ao processar ciclo de confirmação imediato: {e}")
@@ -569,8 +610,9 @@ class ConsultancyPlanService:
             logger.warning(f"[PaymentConfirmation] Fatura {invoice_id} não encontrada.")
             return {"status": "not_found", "invoice_id": invoice_id}
 
-        # 2. Idempotência estrita
-        if invoice.get("status") == "paid" and invoice.get("processed_at"):
+        # 2. Idempotência estrita (tanto em memória quanto no Supabase onde status='paid')
+        mem_inv = cls._mem_invoices.get(invoice_id)
+        if invoice.get("status") == "paid" or (mem_inv and mem_inv.get("status") == "paid"):
             logger.info(f"[PaymentConfirmation] Fatura {invoice_id} já processada anteriormente. Ignorando duplicata.")
             return {"status": "already_paid", "invoice_id": invoice_id}
 
@@ -582,17 +624,21 @@ class ConsultancyPlanService:
         amount_cents = invoice.get("amount_cents", 0)
         net_cents = invoice.get("net_amount_cents") or int(round(amount_cents * 0.95))
 
-        # 3. Marca fatura como paga
+        # 3. Marca fatura como paga em memória e no Supabase
+        paid_at_iso = invoice.get("paid_at") or now_iso
         invoice["status"] = "paid"
-        invoice["paid_at"] = invoice.get("paid_at") or now_iso
+        invoice["paid_at"] = paid_at_iso
         invoice["processed_at"] = now_iso
         invoice["payment_method"] = payment_method.lower()
+        if provider_payment_id:
+            invoice["asaas_id"] = provider_payment_id
+        cls._mem_invoices[invoice_id] = invoice
 
         if client and is_valid_uuid(invoice_id):
             try:
                 await client.table("student_invoices").update({
                     "status": "paid",
-                    "paid_at": invoice["paid_at"],
+                    "paid_at": paid_at_iso,
                     "payment_method": payment_method.lower(),
                 }).eq("id", invoice_id).execute()
             except Exception as e:
@@ -778,6 +824,75 @@ class ConsultancyPlanService:
         }
 
     @classmethod
+    async def process_student_payment_cancellation_or_refund(
+        cls,
+        invoice_id: str,
+        event: str = "PAYMENT_REFUNDED",
+    ) -> Dict[str, Any]:
+        """
+        Processa de forma idempotente o cancelamento, exclusão ou estorno (refund/chargeback)
+        de uma fatura de aluno. Caso a fatura já tivesse sido paga e creditada na carteira
+        do treinador, realiza o estorno proporcional do saldo líquido (net_amount_cents).
+        """
+        now_iso = datetime.now(timezone.utc).isoformat()
+        client = await supabase_service.get_client()
+        invoice = None
+
+        if client and is_valid_uuid(invoice_id):
+            try:
+                res = await client.table("student_invoices").select("*").eq("id", invoice_id).maybe_single().execute()
+                invoice = res.data if res else None
+            except Exception as e:
+                logger.error(f"[PaymentRefund] Erro ao consultar fatura {invoice_id}: {e}")
+
+        if not invoice and invoice_id in cls._mem_invoices:
+            invoice = cls._mem_invoices[invoice_id]
+
+        prev_status = (invoice or {}).get("status", "pending")
+        was_paid = prev_status == "paid"
+
+        if invoice:
+            invoice["status"] = "canceled"
+            cls._mem_invoices[invoice_id] = invoice
+
+        if client and is_valid_uuid(invoice_id):
+            try:
+                await client.table("student_invoices").update({"status": "canceled"}).eq("id", invoice_id).execute()
+            except Exception as e:
+                logger.error(f"[PaymentRefund] Erro ao cancelar fatura {invoice_id} no Supabase: {e}")
+
+        # Se estava paga e sofreu estorno/chargeback, reverte o crédito líquido da carteira do personal
+        reversed_cents = 0
+        if was_paid and invoice and event in ("PAYMENT_REFUNDED", "PAYMENT_CHARGEBACK_REQUESTED"):
+            trainer_id = invoice.get("trainer_id")
+            amount_cents = invoice.get("amount_cents", 0)
+            net_cents = invoice.get("net_amount_cents") or int(round(amount_cents * 0.95))
+            reversed_cents = net_cents
+            if client and is_valid_uuid(trainer_id):
+                try:
+                    w_res = await client.table("trainer_wallets").select("balance_cents").eq("trainer_id", trainer_id).maybe_single().execute()
+                    current_bal = w_res.data.get("balance_cents", 0) if w_res and w_res.data else 0
+                    new_bal = max(0, current_bal - net_cents)
+                    await client.table("trainer_wallets").upsert({
+                        "trainer_id": trainer_id,
+                        "balance_cents": new_bal,
+                        "updated_at": now_iso,
+                    }).execute()
+                    logger.warning(
+                        f"[PaymentRefund] Estorno de R$ {net_cents/100:.2f} aplicado na carteira do treinador {trainer_id} "
+                        f"devido a '{event}' na fatura {invoice_id}."
+                    )
+                except Exception as e:
+                    logger.error(f"[PaymentRefund] Erro ao estornar carteira do treinador {trainer_id}: {e}")
+
+        return {
+            "status": "canceled",
+            "invoice_id": invoice_id,
+            "was_paid": was_paid,
+            "reversed_cents": reversed_cents,
+        }
+
+    @classmethod
     async def get_invoice_status(
         cls,
         invoice_id: str,
@@ -833,7 +948,7 @@ class ConsultancyPlanService:
                         r = http_client.get(f"{base_url}/payments", headers=headers, params={"externalReference": invoice_id})
                         if r.status_code == 200:
                             data = r.json().get("data", [])
-                            if data and data[0].get("status") in ("CONFIRMED", "RECEIVED"):
+                            if data and data[0].get("status") in ("CONFIRMED", "RECEIVED", "RECEIVED_IN_CASH", "DUNNING_RECEIVED"):
                                 auth_data = await cls.process_student_payment_confirmation(
                                     invoice_id=invoice_id,
                                     payment_method=data[0].get("billingType", "PIX").lower(),
