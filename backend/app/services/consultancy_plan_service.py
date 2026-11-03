@@ -322,9 +322,13 @@ class ConsultancyPlanService:
         trainer_name = trainer.get("full_name") or "Personal Trainer"
 
         # Validação estrita da cota de alunos do plano SaaS do Treinador
-        occupied = await supabase_service.count_trainer_occupied_slots(trainer_id)
-        sub = await supabase_service.get_trainer_subscription(trainer_id)
-        max_allowed = sub.max_students
+        try:
+            occupied = await supabase_service.count_trainer_occupied_slots(trainer_id)
+            sub = await supabase_service.get_trainer_subscription(trainer_id)
+            max_allowed = sub.max_students
+        except Exception as q_err:
+            logger.warning(f"[Checkout] Falha ao consultar cota do treinador {trainer_id}: {q_err}")
+            occupied, max_allowed = 0, 999
         if occupied >= max_allowed:
             raise ValueError(
                 f"As vagas para novos alunos da consultoria de {trainer_name} estão temporariamente esgotadas. "
@@ -456,9 +460,13 @@ class ConsultancyPlanService:
                     raise
                 except Exception as e:
                     logger.warning(f"[Checkout] Falha ao transacionar cartão no Asaas: {e}")
-                    status_result = "paid"  # Fallback seguro para simulação de desenvolvimento
+                    if getattr(settings, "ENVIRONMENT", "").lower() == "production":
+                        raise ValueError("Instabilidade temporária na operadora de cartão. Tente novamente ou utilize o Pix.")
+                    status_result = "paid"  # Fallback seguro apenas para ambiente de desenvolvimento/testes
             else:
-                # Simulação aprovada em ambiente dev/sandbox sem credencial
+                if getattr(settings, "ENVIRONMENT", "").lower() == "production":
+                    raise ValueError("Pagamento via cartão temporariamente indisponível. Utilize o Pix.")
+                # Simulação aprovada apenas em ambiente dev/sandbox sem credencial
                 status_result = "paid"
 
         # 4. Registra na tabela `student_invoices`
@@ -634,7 +642,8 @@ class ConsultancyPlanService:
                 logger.warning(f"[PaymentConfirmation] Erro ao buscar profile do aluno: {e}")
 
         invite_token = None
-        access_url = "https://shaipados-labs.web.app"
+        frontend_base = (getattr(settings, "APP_FRONTEND_URL", "") or "https://shaipados.com").rstrip("/")
+        access_url = frontend_base
 
         if student_profile:
             # Aluno já possui cadastro: vincula ao treinador e ativa
@@ -681,7 +690,7 @@ class ConsultancyPlanService:
                 except Exception as e:
                     logger.warning(f"[PaymentConfirmation] Erro ao criar invite_token: {e}")
 
-            access_url = f"https://shaipados-labs.web.app/#/invite/{invite_token}"
+            access_url = f"{frontend_base}/#/invite/{invite_token}"
             wa_student_text = (
                 f"Olá, *{first_name}*! 🎉\n\n"
                 f"O seu pagamento da consultoria com o Personal *{trainer_name}* foi confirmado com sucesso!\n\n"
@@ -744,7 +753,7 @@ class ConsultancyPlanService:
                 f"O pagamento de *{student_name}* para a sua consultoria foi confirmado com sucesso! 🎉\n\n"
                 f"💰 Valor líquido creditado na carteira: *{val_formatado}*\n"
                 f"📲 O link de boas-vindas e ficha inicial já foi enviado no WhatsApp do aluno.\n\n"
-                f"Acompanhe pelo seu painel: https://shaipados-labs.web.app"
+                f"Acompanhe pelo seu painel: {frontend_base}"
             )
             try:
                 await whatsapp_service.send_text_with_fallback(

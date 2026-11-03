@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
+import logging
 from pydantic import BaseModel
 from typing import List, Optional, Any
 import base64
@@ -10,7 +11,11 @@ import time
 
 _PUBLIC_TRAINER_CACHE: dict[str, tuple[float, Any]] = {}
 _PUBLIC_PLANS_CACHE: dict[str, tuple[float, Any]] = {}
+logger = logging.getLogger(__name__)
+
+_PUBLIC_DIRECTORY_CACHE: dict[int, tuple[float, Any]] = {}
 _PUBLIC_CACHE_TTL = 30  # 30 segundos de cache em memória
+_AVATAR_UPLOAD_HISTORY: dict[str, list[float]] = {}
 
 
 router = APIRouter()
@@ -30,6 +35,10 @@ class TrainerPublicProfile(BaseModel):
     username: Optional[str] = None
     cref: Optional[str] = None
     accepts_new_students: bool = True
+    city_state: Optional[str] = None
+    starting_price: Optional[float] = None
+    students_count: Optional[int] = None
+    rating: Optional[float] = None
 
 
 @router.get("/trainers", response_model=List[TrainerPublicProfile], summary="Listar vitrines públicas de treinadores")
@@ -39,6 +48,14 @@ async def list_public_trainers(
     """Lista vitrines configuradas e validadas, sem dados pessoais de contato."""
     if limit < 1 or limit > 50:
         raise HTTPException(status_code=422, detail="O limite deve ficar entre 1 e 50.")
+
+    now_ts = time.time()
+    is_prod = getattr(settings, "ENVIRONMENT", "").lower() == "production"
+    if is_prod and limit in _PUBLIC_DIRECTORY_CACHE:
+        cached_ts, cached_list = _PUBLIC_DIRECTORY_CACHE[limit]
+        if now_ts - cached_ts < _PUBLIC_CACHE_TTL:
+            return cached_list
+
     client = await supabase_service.get_client()
     if not client:
         raise HTTPException(status_code=503, detail="Catálogo temporariamente indisponível.")
@@ -57,6 +74,26 @@ async def list_public_trainers(
             .execute()
         )
         profiles = response.data or []
+
+        min_price_by_trainer: dict[str, float] = {}
+        try:
+            plans_res = await (
+                client.table("trainer_consultancy_plans")
+                .select("trainer_id, price_cents, is_active")
+                .eq("is_active", True)
+                .limit(500)
+                .execute()
+            )
+            for p_row in (plans_res.data or []):
+                t_id = str(p_row.get("trainer_id") or "")
+                p_cents = p_row.get("price_cents")
+                if t_id and isinstance(p_cents, (int, float)) and p_cents > 0:
+                    price_reais = round(float(p_cents) / 100.0, 2)
+                    if t_id not in min_price_by_trainer or price_reais < min_price_by_trainer[t_id]:
+                        min_price_by_trainer[t_id] = price_reais
+        except Exception as plan_err:
+            logger.debug(f"[Public] Planos não consultados no diretório: {plan_err}")
+
         public_profiles = []
         for profile in profiles:
             username = (profile.get("username") or "").strip()
@@ -65,9 +102,10 @@ async def list_public_trainers(
             public_cref = document if document.upper().startswith("CREF") else ""
             if not profile.get("public_directory_enabled") or not username or not bio or not public_cref:
                 continue
+            prof_id = str(profile["id"])
             public_profiles.append(
                 TrainerPublicProfile(
-                    id=str(profile["id"]),
+                    id=prof_id,
                     full_name=profile.get("full_name") or "Treinador",
                     username=username,
                     bio=bio,
@@ -75,9 +113,14 @@ async def list_public_trainers(
                     public_whatsapp=profile.get("public_whatsapp"),
                     photo_url=profile.get("photo_url") or profile.get("avatar_url"),
                     cref=public_cref,
+                    city_state=profile.get("city_state"),
+                    starting_price=min_price_by_trainer.get(prof_id),
                 )
             )
-        return public_profiles[:limit]
+        result = public_profiles[:limit]
+        if is_prod:
+            _PUBLIC_DIRECTORY_CACHE[limit] = (now_ts, result)
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail="Erro ao carregar catálogo público.") from e
 
@@ -186,13 +229,31 @@ class AvatarUploadResponse(BaseModel):
     avatar_url: str
 
 
+def _detect_valid_image_signature(data: bytes) -> Optional[tuple[str, str]]:
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return ("png", "image/png")
+    if data.startswith(b"\xff\xd8\xff"):
+        return ("jpg", "image/jpeg")
+    if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return ("webp", "image/webp")
+    return None
+
+
 @router.post("/upload-avatar", response_model=AvatarUploadResponse, summary="Upload de avatar/foto para armazenamento público")
-async def upload_avatar_endpoint(payload: AvatarUploadRequest):
+async def upload_avatar_endpoint(payload: AvatarUploadRequest, request: Request = None):
     """
     Recebe uma imagem codificada em base64 (câmera ou galeria) e armazena com segurança
     no bucket de avatares do Supabase com URL pública acessível.
     """
     try:
+        client_ip = (request.client.host if request and request.client else "unknown") or "unknown"
+        now_ts = time.time()
+        history = [ts for ts in _AVATAR_UPLOAD_HISTORY.get(client_ip, []) if now_ts - ts < 60.0]
+        if len(history) >= 8:
+            raise HTTPException(status_code=429, detail="Limite de uploads excedido. Aguarde 1 minuto.")
+        history.append(now_ts)
+        _AVATAR_UPLOAD_HISTORY[client_ip] = history
+
         raw_b64 = payload.image_base64
         if "," in raw_b64:
             raw_b64 = raw_b64.split(",", 1)[1]
@@ -200,15 +261,13 @@ async def upload_avatar_endpoint(payload: AvatarUploadRequest):
         image_bytes = base64.b64decode(raw_b64)
         if len(image_bytes) == 0:
             raise HTTPException(status_code=400, detail="Imagem vazia.")
-        if len(image_bytes) > 10 * 1024 * 1024:
-            raise HTTPException(status_code=400, detail="A imagem não pode ultrapassar 10MB.")
+        if len(image_bytes) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="A imagem não pode ultrapassar 5MB.")
 
-        ext = "jpg"
-        content_type = payload.content_type or "image/jpeg"
-        if "png" in content_type.lower():
-            ext = "png"
-        elif "webp" in content_type.lower():
-            ext = "webp"
+        detected = _detect_valid_image_signature(image_bytes)
+        if not detected:
+            raise HTTPException(status_code=400, detail="Formato de imagem inválido. Envie apenas PNG, JPEG ou WebP.")
+        ext, content_type = detected
 
         user_prefix = payload.user_id if payload.user_id and is_valid_uuid(payload.user_id) else "user"
         file_name = f"uploads/{user_prefix}_{uuid.uuid4().hex[:12]}.{ext}"

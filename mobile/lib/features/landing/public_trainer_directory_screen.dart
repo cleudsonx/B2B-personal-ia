@@ -796,7 +796,8 @@ class _TrainerCard extends StatelessWidget {
 
     final fullName = trainer['full_name'] as String? ?? 'Treinador Credenciado';
     final username = trainer['username'] as String? ?? trainer['id']?.toString() ?? '';
-    final cref = trainer['cref'] as String? ?? '000000-G/BR';
+    final rawCref = (trainer['cref'] as String? ?? '000000-G/BR').trim();
+    final cref = rawCref.toUpperCase().startsWith('CREF') ? rawCref.substring(4).trim() : rawCref;
     final cityState = trainer['city_state'] as String? ?? 'Atendimento Nacional Online';
     final bio = trainer['bio'] as String? ?? 'Especialista em periodização e ajuste biomecânico individualizado.';
     final rating = (trainer['rating'] as num?)?.toDouble() ?? 4.96;

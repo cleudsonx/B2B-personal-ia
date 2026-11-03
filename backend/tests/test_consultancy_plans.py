@@ -222,3 +222,37 @@ def test_invoice_status_not_found():
     r = client.get("/api/v1/public/invoices/00000000-0000-0000-0000-000000000000/status")
     assert r.status_code == 404
 
+
+
+
+def test_production_credit_card_requires_gateway(monkeypatch):
+    """Em produção, checkout de cartão sem gateway configurado nunca aprova gratuitamente."""
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(settings, "ASAAS_API_KEY", "")
+
+    r_plan = client.post("/api/v1/trainers/consultancy-plans", json={
+        "name": "Plano Prod Guard",
+        "price_cents": 25000,
+        "billing_period": "monthly",
+        "is_active": True,
+    })
+    plan_id = r_plan.json()["id"]
+
+    r_check = client.post("/api/v1/public/trainers/mrcoach/checkout", json={
+        "plan_id": plan_id,
+        "student_name": "Teste Prod",
+        "student_email": "prod@teste.com",
+        "student_phone": "(11) 98888-1111",
+        "payment_method": "CREDIT_CARD",
+        "credit_card": {
+            "holder_name": "Teste Prod",
+            "number": "4111111111111111",
+            "expiry_month": "12",
+            "expiry_year": "2029",
+            "ccv": "123",
+            "holder_cpf": "12345678901",
+        }
+    })
+    assert r_check.status_code == 400
+    assert "Pix" in r_check.json()["detail"]

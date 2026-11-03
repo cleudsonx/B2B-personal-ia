@@ -1309,7 +1309,7 @@ class _WorkoutShareCardDialogState extends State<WorkoutShareCardDialog> {
                                       if (widget.trainerCref != null &&
                                           widget.trainerCref!.isNotEmpty)
                                         Text(
-                                          'CREF ${widget.trainerCref}',
+                                          widget.trainerCref!.trim().toUpperCase().startsWith('CREF') ? widget.trainerCref!.trim() : 'CREF ${widget.trainerCref!.trim()}',
                                           style: const TextStyle(
                                             color: Color(0xFF94A3B8),
                                             fontSize: 9.5,

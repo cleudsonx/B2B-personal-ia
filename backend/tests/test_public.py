@@ -100,3 +100,16 @@ async def test_unpublished_trainer_profile_is_not_public_by_direct_url():
             await get_public_trainer_profile("sem-vitrine")
 
     assert error.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_upload_avatar_rejects_non_image_payload():
+    import base64
+    from app.api.v1.endpoints.public import upload_avatar_endpoint, AvatarUploadRequest
+
+    malicious_b64 = base64.b64encode(b"<script>alert('xss')</script>").decode()
+    req = AvatarUploadRequest(image_base64=malicious_b64, content_type="image/png")
+    with pytest.raises(HTTPException) as exc:
+        await upload_avatar_endpoint(req)
+    assert exc.value.status_code == 400
+    assert "Formato de imagem inválido" in exc.value.detail

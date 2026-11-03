@@ -125,7 +125,7 @@ async def test_asaas_webhook_student_payment_lifecycle(monkeypatch):
     student_msg = next((m for m in sent_messages if "61988887777" in m["number"]), None)
     assert student_msg is not None
     assert "confirmado com sucesso" in student_msg["text"]
-    assert "shaipados-labs.web.app" in student_msg["text"]
+    assert ("shaipados.com" in student_msg["text"] or "shaipados-labs.web.app" in student_msg["text"]) and "/#/invite/" in student_msg["text"]
 
     # 6. Teste de Idempotência: Envio duplicado
     sent_count_before = len(sent_messages)

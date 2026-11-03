@@ -208,7 +208,8 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
   }
 
   Widget _buildCrefBadge() {
-    final cref = (_trainerData?['cref'] as String?)?.trim();
+    final rawCref = (_trainerData?['cref'] as String?)?.trim();
+    final cref = (rawCref != null && rawCref.toUpperCase().startsWith('CREF')) ? rawCref.substring(4).trim() : rawCref;
     final hasCref = cref != null && cref.isNotEmpty;
     final isDark = MetaColors.isDark(context);
 

@@ -478,7 +478,7 @@ class TrainerCompactPill extends StatelessWidget {
                 ),
                 if (trainerCref != null && trainerCref!.trim().isNotEmpty)
                   Text(
-                    'CREF $trainerCref',
+                    trainerCref!.trim().toUpperCase().startsWith('CREF') ? trainerCref!.trim() : 'CREF ${trainerCref!.trim()}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
