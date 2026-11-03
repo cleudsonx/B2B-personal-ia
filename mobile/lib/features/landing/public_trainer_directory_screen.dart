@@ -166,7 +166,41 @@ class _PublicTrainerDirectoryScreenState
         throw Exception('API indisponível.');
       }
       final data = jsonDecode(response.body) as List<dynamic>;
-      final list = data.cast<Map<String, dynamic>>();
+      final list = data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+
+      // Sincroniza o menor valor real dos planos de consultoria ativos de cada personal
+      await Future.wait(list.map((trainer) async {
+        if (trainer['starting_price'] != null) return;
+        final username = (trainer['username'] ?? trainer['id'] ?? '').toString().trim();
+        if (username.isEmpty) return;
+        try {
+          final pRes = await http
+              .get(Uri.parse('${AppConfig.apiBaseUrl}/public/trainers/$username/plans'))
+              .timeout(const Duration(seconds: 5));
+          if (pRes.statusCode == 200) {
+            final pList = jsonDecode(pRes.body) as List<dynamic>;
+            double? minPrice;
+            String? minPeriod;
+            for (final rawPlan in pList) {
+              if (rawPlan is Map) {
+                final isActive = rawPlan['is_active'] != false;
+                final cents = (rawPlan['price_cents'] as num?)?.toDouble();
+                if (isActive && cents != null && cents > 0) {
+                  final reais = cents / 100.0;
+                  if (minPrice == null || reais < minPrice) {
+                    minPrice = reais;
+                    minPeriod = rawPlan['billing_period']?.toString();
+                  }
+                }
+              }
+            }
+            if (minPrice != null) {
+              trainer['starting_price'] = minPrice;
+              trainer['starting_billing_period'] = minPeriod;
+            }
+          }
+        } catch (_) {}
+      }));
 
       if (!mounted) return;
       setState(() {
@@ -802,7 +836,8 @@ class _TrainerCard extends StatelessWidget {
     final bio = trainer['bio'] as String? ?? 'Especialista em periodização e ajuste biomecânico individualizado.';
     final rating = (trainer['rating'] as num?)?.toDouble() ?? 4.96;
     final studentsCount = (trainer['students_count'] as num?)?.toInt() ?? 40;
-    final startingPrice = (trainer['starting_price'] as num?)?.toDouble() ?? 250.0;
+    final startingPrice = (trainer['starting_price'] as num?)?.toDouble() ?? 80.0;
+    final startingPeriod = (trainer['starting_billing_period'] as String? ?? '').toLowerCase();
     final photo = trainer['photo_url'] as String?;
     final specialties = (trainer['specialties'] as List<dynamic>? ?? [])
         .map((e) => e.toString())
@@ -1029,7 +1064,8 @@ class _TrainerCard extends StatelessWidget {
                                     fontSize: 12.5,
                                   ),
                                 ),
-                                const TextSpan(text: '/mês'),
+                                if (startingPeriod == 'monthly')
+                                  const TextSpan(text: '/mês'),
                               ],
                             ),
                           ),

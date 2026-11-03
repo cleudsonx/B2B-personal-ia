@@ -198,6 +198,15 @@ async def get_public_trainer_profile(username: str):
         except Exception as q_err:
             logger.warning(f"[Public] Falha ao checar vagas do treinador {clean_key}: {q_err}")
 
+        starting_price = None
+        try:
+            active_plans = await ConsultancyPlanService.list_trainer_plans(str(data.get("id")), only_active=True)
+            prices = [round(p.price_cents / 100.0, 2) for p in active_plans if p.price_cents and p.price_cents > 0]
+            if prices:
+                starting_price = min(prices)
+        except Exception:
+            pass
+
         prof = TrainerPublicProfile(
             id=data.get("id"),
             full_name=data.get("full_name") or "Treinador",
@@ -208,6 +217,8 @@ async def get_public_trainer_profile(username: str):
             username=data.get("username"),
             cref=public_cref,
             accepts_new_students=accepts_new_students,
+            city_state=data.get("city_state"),
+            starting_price=starting_price,
         )
         _PUBLIC_TRAINER_CACHE[clean_key] = (now_ts, prof)
         if prof.id:
