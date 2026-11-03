@@ -13,7 +13,8 @@ import hmac
 import logging
 import time
 from collections import defaultdict
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+from pydantic import BaseModel, Field
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
 from google.genai import types
@@ -29,6 +30,19 @@ router = APIRouter()
 DAILY_LIMIT_PER_STUDENT = 15
 MAX_QUESTION_CHARS = 500
 AI_MODELS = ["gemini-2.5-flash-lite", "gemini-2.5-flash"]
+
+
+class WhatsAppButtonPayload(BaseModel):
+    id: str = Field(..., max_length=256)
+    title: str = Field(..., max_length=20)
+
+
+class AgentWhatsAppOutput(BaseModel):
+    reply: str
+    interaction_type: str = "text"  # "text" ou "reply_buttons"
+    buttons: Optional[List[WhatsAppButtonPayload]] = None
+    cost_type: str = "free"
+    tokens_used: int = 0
 
 # Contador em memória (suficiente para 1 instância; migrar p/ Redis/Supabase depois).
 _usage: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"day": 0, "count": 0})
@@ -256,6 +270,266 @@ def is_phase2_ai_allowed(sub: Any) -> bool:
 APP_URL = "https://shaipados-labs.web.app"
 
 
+async def handle_deterministic_button(
+    digits: str,
+    button_id: str,
+    trainer_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Executa ações determinísticas O(1) sem custo de LLM disparadas por botões interativos
+    (ou atalhos numéricos no fallback da Evolution API).
+    Suporta:
+    1. confirm_swap|workout_id|exercise_name: Registra adaptação pontual da sessão em adaptation_logs
+       e notifica o personal trainer em student_pulse_events SEM modificar a ficha permanente.
+    2. rpe_log|workout_id|rpe_value: Registra a percepção de esforço pós-treino em student_pulse_events.
+    3. fin_pix|invoice_id: Busca e devolve o código Pix Copia e Cola instantâneo de student_invoices.
+    4. menu_act|action: Executa ações rápidas de menu (treino, streak, biohub).
+    """
+    clean_digits = "".join(c for c in (digits or "") if c.isdigit())
+    student = None
+    if trainer_id:
+        student = await _find_student_by_phone(clean_digits, trainer_id)
+    if not student:
+        student = await _find_student_by_phone_global(clean_digits)
+        if student and not trainer_id:
+            trainer_id = student.get("trainer_id")
+
+    nome = (student.get("full_name") or "Aluno").split()[0] if student else "Aluno"
+    parts = (button_id or "").split("|")
+    action_type = parts[0] if parts else ""
+
+    # 1. Substituição de Exercício em 1 Toque (confirm_swap)
+    # REGRA INVIOLÁVEL: NUNCA altera a ficha permanente do mesociclo em 'workouts'.
+    # Registra exclusivamente como 'Adaptação da Sessão de Hoje' em adaptation_logs e student_pulse_events.
+    if action_type == "confirm_swap":
+        workout_id = parts[1] if len(parts) > 1 else "active"
+        exercise_name = parts[2] if len(parts) > 2 else "Exercício Adaptado"
+
+        if student:
+            client = await supabase_service.get_client()
+            if client:
+                try:
+                    await client.table("adaptation_logs").insert({
+                        "client_id": student["id"],
+                        "trainer_id": trainer_id or student.get("trainer_id"),
+                        "original_exercise": "Substituição Solicitada",
+                        "adapted_exercise": exercise_name,
+                        "reason": "Adaptação da Sessão de Hoje (WhatsApp 1-Toque)",
+                        "adaptation_details": {
+                            "source": "whatsapp_interactive",
+                            "workout_id": workout_id,
+                            "session_adaptation": True,
+                            "exercise": exercise_name,
+                        },
+                        "viewed_by_trainer": False,
+                    }).execute()
+                except Exception as e_ad:
+                    logger.warning("[WhatsApp Button] Erro ao registrar adaptation_logs: %s", e_ad)
+
+                try:
+                    await client.table("student_pulse_events").insert({
+                        "student_id": student["id"],
+                        "trainer_id": trainer_id or student.get("trainer_id"),
+                        "event_type": "exercise_swap_session",
+                        "event_data": {
+                            "workout_id": workout_id,
+                            "exercise": exercise_name,
+                            "source": "whatsapp_button",
+                        },
+                    }).execute()
+                except Exception as e_pulse:
+                    logger.debug("[WhatsApp Button] Erro ao registrar student_pulse_events: %s", e_pulse)
+
+        return {
+            "reply": (
+                f"✅ *Adaptação Registrada, {nome}!*\n\n"
+                f"Para a sua sessão de hoje, você realizará *{exercise_name}*.\n\n"
+                f"O seu professor foi avisado no radar do Mr. Coach. Sua ficha oficial do mesociclo segue intacta. "
+                f"Excelente treino! 💪"
+            ),
+            "cost_type": "free",
+            "tokens_used": 0,
+        }
+
+    # 2. Registro de Percepção Subjetiva de Esforço (rpe_log)
+    if action_type == "rpe_log":
+        workout_id = parts[1] if len(parts) > 1 else "active"
+        rpe_val = parts[2] if len(parts) > 2 else "8"
+
+        if student:
+            client = await supabase_service.get_client()
+            if client:
+                try:
+                    await client.table("student_pulse_events").insert({
+                        "student_id": student["id"],
+                        "trainer_id": trainer_id or student.get("trainer_id"),
+                        "event_type": "rpe_feedback",
+                        "event_data": {
+                            "workout_id": workout_id,
+                            "rpe": rpe_val,
+                            "source": "whatsapp_button",
+                        },
+                    }).execute()
+                except Exception as e_pulse:
+                    logger.debug("[WhatsApp Button] Erro ao registrar RPE em pulse: %s", e_pulse)
+
+        return {
+            "reply": (
+                f"🔥 *Esforço Registrado (RPE {rpe_val})!*\n\n"
+                f"Sensacional, {nome}! Sua percepção de esforço foi computada no radar do seu treinador.\n\n"
+                f"Agora hidrate-se e descanse bem para a recuperação muscular! 💪"
+            ),
+            "cost_type": "free",
+            "tokens_used": 0,
+        }
+
+    # 3. Fluxo Financeiro: Código Pix Instantâneo (fin_pix)
+    if action_type == "fin_pix":
+        invoice_id = parts[1] if len(parts) > 1 else ""
+        pix_code = None
+        amount_val = None
+
+        client = await supabase_service.get_client()
+        if client and invoice_id:
+            try:
+                inv_res = await client.table("student_invoices").select("*").eq("id", invoice_id).maybe_single().execute()
+                if inv_res and inv_res.data:
+                    inv = inv_res.data
+                    pix_code = inv.get("pix_copy_paste") or inv.get("pix_code")
+                    amount_val = inv.get("amount")
+            except Exception as e_inv:
+                logger.warning("[WhatsApp Button] Erro ao buscar fatura %s: %s", invoice_id, e_inv)
+
+        if not pix_code:
+            from app.services.consultancy_plan_service import ConsultancyPlanService
+            mem_inv = ConsultancyPlanService._mem_invoices.get(invoice_id)
+            if mem_inv:
+                pix_code = mem_inv.get("pix_copy_paste")
+                amount_val = mem_inv.get("amount")
+
+        if pix_code:
+            val_txt = f" de R$ {float(amount_val):.2f}" if amount_val else ""
+            return {
+                "reply": (
+                    f"💠 *Código Pix Copia e Cola — Mr. Coach*\n\n"
+                    f"Aqui está o código Pix da sua mensalidade{val_txt}:\n\n"
+                    f"```{pix_code}```\n\n"
+                    f"Copie a chave acima e efetue o pagamento no aplicativo do seu banco. "
+                    f"Assim que compensado, seu acesso é renovado em segundos! ⚡"
+                ),
+                "cost_type": "free",
+                "tokens_used": 0,
+            }
+        else:
+            return {
+                "reply": (
+                    f"💠 *Pagamento via Pix — Mr. Coach*\n\n"
+                    f"{nome}, você pode gerar seu Pix atualizado ou pagar diretamente no app:\n"
+                    f"{APP_URL}\n\n"
+                    f"Qualquer dúvida, fale diretamente com seu professor! 💪"
+                ),
+                "cost_type": "free",
+                "tokens_used": 0,
+            }
+
+    # 3.1 Fluxo Financeiro: Link Cartão de Crédito / Checkout (fin_link)
+    if action_type == "fin_link":
+        invoice_id = parts[1] if len(parts) > 1 else ""
+        pay_url = None
+        amount_val = None
+
+        client = await supabase_service.get_client()
+        if client and invoice_id:
+            try:
+                inv_res = await client.table("student_invoices").select("*").eq("id", invoice_id).maybe_single().execute()
+                if inv_res and inv_res.data:
+                    inv = inv_res.data
+                    pay_url = inv.get("invoice_url") or inv.get("payment_url") or inv.get("bank_slip_url")
+                    amount_val = inv.get("amount")
+            except Exception as e_inv:
+                logger.warning("[WhatsApp Button] Erro ao buscar link de pagamento %s: %s", invoice_id, e_inv)
+
+        if not pay_url:
+            from app.services.consultancy_plan_service import ConsultancyPlanService
+            mem_inv = ConsultancyPlanService._mem_invoices.get(invoice_id)
+            if mem_inv:
+                pay_url = mem_inv.get("invoice_url") or mem_inv.get("payment_url")
+                amount_val = mem_inv.get("amount")
+
+        target_url = pay_url or f"{APP_URL}"
+        val_txt = f" (R$ {float(amount_val):.2f})" if amount_val else ""
+        return {
+            "reply": (
+                f"💳 *Pagamento com Cartão de Crédito — Mr. Coach*\n\n"
+                f"{nome}, você pode pagar ou parcelar sua mensalidade{val_txt} com total segurança pelo link oficial:\n\n"
+                f"🔗 {target_url}\n\n"
+                f"Assim que a operadora aprovar, seu acesso aos treinos e suporte com seu personal é renovado automaticamente! 🚀"
+            ),
+            "cost_type": "free",
+            "tokens_used": 0,
+        }
+
+    # 3.2 Fluxo Financeiro: Consulta de Pagamento Realizado (fin_paid)
+    if action_type == "fin_paid":
+        invoice_id = parts[1] if len(parts) > 1 else ""
+        inv_status = "pending"
+
+        client = await supabase_service.get_client()
+        if client and invoice_id:
+            try:
+                inv_res = await client.table("student_invoices").select("status").eq("id", invoice_id).maybe_single().execute()
+                if inv_res and inv_res.data:
+                    inv_status = str(inv_res.data.get("status") or "pending").lower()
+            except Exception as e_inv:
+                logger.warning("[WhatsApp Button] Erro ao verificar status da fatura %s: %s", invoice_id, e_inv)
+
+        if inv_status in ("paid", "received", "confirmed"):
+            return {
+                "reply": (
+                    f"✅ *Pagamento já Confirmado, {nome}!*\n\n"
+                    f"Seu pagamento foi compensado com sucesso pelo banco. Sua consultoria e treinos estão 100% ativos!\n\n"
+                    f"Acesse o app e continue firme na consistência: {APP_URL} 💪"
+                ),
+                "cost_type": "free",
+                "tokens_used": 0,
+            }
+        else:
+            return {
+                "reply": (
+                    f"⏳ *Processamento Bancário em Andamento, {nome}!*\n\n"
+                    f"Pagamentos via Pix são compensados em até 5 minutos. Pagamentos via Cartão ou Boleto podem levar alguns instantes para a operadora confirmar.\n\n"
+                    f"Assim que o gateway confirmar a transação, seu acesso será atualizado automaticamente e você receberá uma confirmação aqui! ⚡"
+                ),
+                "cost_type": "free",
+                "tokens_used": 0,
+            }
+
+    # 4. Ações de Menu Rápido (menu_act)
+    if action_type == "menu_act":
+        sub_act = parts[1] if len(parts) > 1 else ""
+        if sub_act in ("workout", "workout_today", "treino") and student:
+            return await process_whatsapp_question(trainer_id or "", student, "1")
+        elif sub_act in ("streak", "ofensiva") and student:
+            return await process_whatsapp_question(trainer_id or "", student, "2")
+        elif sub_act in ("bio", "biohub", "medidas") and student:
+            return await process_whatsapp_question(trainer_id or "", student, "5")
+        elif sub_act in ("note", "note_trainer", "recado") and student:
+            return await process_whatsapp_question(trainer_id or "", student, "4")
+        elif sub_act in ("app", "link") and student:
+            return await process_whatsapp_question(trainer_id or "", student, "3")
+
+    # Fallback seguro e contextual para botões desconhecidos (NUNCA responde com treino indevido!)
+    return {
+        "reply": (
+            f"Opção recebida com sucesso, {nome}! 💪\n\n"
+            f"Se precisar consultar seu treino, ver sua ofensiva ou tirar dúvidas de postura e exercícios, "
+            f"é só mandar uma mensagem ou digitar *menu* a qualquer momento!"
+        ),
+        "cost_type": "free",
+        "tokens_used": 0,
+    }
+
+
 async def process_whatsapp_question(
     trainer_id: str,
     student: Dict[str, Any],
@@ -280,19 +554,19 @@ async def process_whatsapp_question(
             "tokens_used": 0,
         }
 
-    # 2. Saudações e Mensagens de Abertura (Triagem de Custo Zero)
+    # 2. Saudações e Mensagens de Abertura (Triagem de Custo Zero com Botões Interativos)
     if _is_greeting(cmd):
         return {
             "reply": (
                 f"Olá, {nome}! 💪 Sou o assistente automático do seu treinador no Mr. Coach.\n\n"
-                "Digite uma opção:\n"
-                "*1* - Ver meu treino ativo\n"
-                "*2* - Ver minha ofensiva (Streak 🔥)\n"
-                "*3* - Link do App\n"
-                "*4* - Deixar recado para o professor\n"
-                "*5* - Meu Bio-Hub (Peso, IMC e Meta)\n\n"
-                "Ou envie sua dúvida sobre execução, postura ou substituição de exercício!"
+                "Escolha uma opção rápida abaixo ou envie sua dúvida sobre execução, postura ou substituição de exercício!"
             ),
+            "interaction_type": "reply_buttons",
+            "buttons": [
+                {"id": "menu_act|workout", "title": "Ver Treino 📋"},
+                {"id": "menu_act|streak", "title": "Streak 🔥"},
+                {"id": "menu_act|bio", "title": "Bio-Hub 🧬"},
+            ],
             "cost_type": "free",
             "tokens_used": 0,
         }
@@ -553,11 +827,25 @@ async def process_whatsapp_question(
         candidate_models=AI_MODELS, contents=contents, config=config, per_model_timeout=14.0
     )
     reply_text = response.text.strip()
-    return {
+    
+    # Se a pergunta for sobre substituição de exercício, gera botões de confirmação em 1 toque
+    swap_triggers = ("trocar", "substitu", "ocupad", "outro exercicio", "outra opcao", "alternativa")
+    buttons = None
+    if any(t in cmd for t in swap_triggers):
+        buttons = [
+            {"id": "confirm_swap|active|Halteres", "title": "Trocar p/ Halteres"},
+            {"id": "confirm_swap|active|Articulado", "title": "Trocar p/ Articulado"},
+        ]
+
+    res_dict: Dict[str, Any] = {
         "reply": reply_text,
         "cost_type": "ai_gemini_voice" if audio_bytes else "ai_gemini",
         "tokens_used": len(reply_text.split()),
     }
+    if buttons:
+        res_dict["interaction_type"] = "reply_buttons"
+        res_dict["buttons"] = buttons
+    return res_dict
 
 
 async def _answer(
@@ -610,8 +898,17 @@ async def _answer(
         cost = result.get("cost_type") or "free"
         tokens = result.get("tokens_used") or 0
 
-        # Envia a resposta de volta pela mesma instância de entrada
-        await whatsapp_service.send_text_message(instance, number, text_to_send)
+        # Envia a resposta de volta (com botões nativos ou graceful degradation se houver botões)
+        buttons = result.get("buttons")
+        if buttons:
+            await whatsapp_service.send_interactive_with_fallback(
+                number=number,
+                text=text_to_send,
+                buttons=buttons,
+                trainer_id=trainer_id,
+            )
+        else:
+            await whatsapp_service.send_text_message(instance, number, text_to_send)
         try:
             await supabase_service.log_whatsapp_interaction(
                 trainer_id=trainer_id,
@@ -669,3 +966,96 @@ async def evolution_webhook(request: Request, background: BackgroundTasks):
         media_info,
     )
     return {"status": "accepted"}
+
+
+async def process_meta_cloud_event(entry_payload: Dict[str, Any]) -> None:
+    """
+    Processador de eventos em background da Meta Cloud API oficial.
+    Suporta:
+    - Mensagens de texto com IA e menu de custo zero.
+    - Botões interativos nativos (quick reply) com execução determinística O(1).
+    - Idempotência rigorosa garantida via wamid em processed_webhook_events.
+    """
+    changes = entry_payload.get("changes") or []
+    for change in changes:
+        value = change.get("value") or {}
+        messages = value.get("messages") or []
+        for msg in messages:
+            msg_id = msg.get("id")
+            from_num = msg.get("from")
+            if not msg_id or not from_num:
+                continue
+
+            # Idempotência estrita: evita reprocessamento de retentativas da Meta
+            if await supabase_service.is_event_processed(msg_id):
+                logger.info("[Meta Cloud Webhook] Evento %s já consolidado previamente.", msg_id)
+                continue
+
+            msg_type = msg.get("type")
+            digits = "".join(c for c in from_num if c.isdigit())
+
+            # 1. Clique em Botão Interativo (Quick Reply / Interactive Button)
+            if msg_type == "interactive":
+                btn_reply = msg.get("interactive", {}).get("button_reply") or {}
+                button_id = btn_reply.get("id") or ""
+                button_title = btn_reply.get("title") or ""
+                logger.info("[Meta Cloud Webhook] Botão interativo acionado por %s: %s ('%s')", from_num, button_id, button_title)
+
+                handler_res = await handle_deterministic_button(digits, button_id)
+                reply_text = handler_res.get("reply") or "Opção registrada com sucesso!"
+
+                await whatsapp_service.send_text_with_fallback(number=digits, text=reply_text)
+                await supabase_service.record_processed_event(
+                    event_id=msg_id,
+                    provider="meta_cloud",
+                    event_type="interactive_button_click",
+                    payload={"from": from_num, "button_id": button_id},
+                )
+
+            # 2. Mensagem de Texto Livre
+            elif msg_type == "text":
+                text_body = msg.get("text", {}).get("body", "").strip()
+                if not text_body:
+                    continue
+
+                student = await _find_student_by_phone_global(digits)
+                trainer_id = student.get("trainer_id") if student else None
+
+                if not student or not trainer_id:
+                    logger.info("[Meta Cloud Webhook] Mensagem de número não cadastrado: %s", digits)
+                    await supabase_service.record_processed_event(
+                        event_id=msg_id,
+                        provider="meta_cloud",
+                        event_type="text_unregistered",
+                        payload={"from": from_num},
+                    )
+                    continue
+
+                ai_res = await process_whatsapp_question(
+                    trainer_id=trainer_id,
+                    student=student,
+                    question=text_body,
+                )
+                reply_text = ai_res.get("reply") or ""
+                buttons = ai_res.get("buttons")
+
+                if buttons:
+                    await whatsapp_service.send_interactive_with_fallback(
+                        number=digits,
+                        text=reply_text,
+                        buttons=buttons,
+                        trainer_id=trainer_id,
+                    )
+                else:
+                    await whatsapp_service.send_text_with_fallback(
+                        number=digits,
+                        text=reply_text,
+                        trainer_id=trainer_id,
+                    )
+
+                await supabase_service.record_processed_event(
+                    event_id=msg_id,
+                    provider="meta_cloud",
+                    event_type="text_processed",
+                    payload={"from": from_num, "text": text_body[:100]},
+                )

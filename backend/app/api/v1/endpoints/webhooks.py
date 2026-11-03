@@ -87,6 +87,58 @@ async def anamnesis_webhook(request: Request, background_tasks: BackgroundTasks)
     return {"status": "ignored", "reason": "No meaningful restriction changes."}
 
 
+async def send_anti_churn_overdue_whatsapp(invoice_id: str, client_db: Any = None):
+    """Dispara mensagem proativa amigável via WhatsApp com botão interativo para gerar Pix Copia e Cola instantâneo."""
+    try:
+        from app.services.whatsapp_service import whatsapp_service
+        phone = None
+        student_name = "Aluno"
+        amount = 0.0
+        trainer_id = None
+
+        if client_db and is_valid_uuid(invoice_id):
+            res = await client_db.table("student_invoices").select("*").eq("id", invoice_id).maybe_single().execute()
+            if res and res.data:
+                inv = res.data
+                amount = float(inv.get("amount") or 0.0)
+                trainer_id = inv.get("trainer_id")
+                student_id = inv.get("student_id") or inv.get("client_id")
+                if student_id:
+                    st_res = await client_db.table("profiles").select("full_name, phone").eq("id", student_id).maybe_single().execute()
+                    if st_res and st_res.data:
+                        student_name = st_res.data.get("full_name") or student_name
+                        phone = st_res.data.get("phone")
+
+        if not phone:
+            mem_inv = ConsultancyPlanService._mem_invoices.get(invoice_id)
+            if mem_inv:
+                amount = float(mem_inv.get("amount") or 0.0)
+                phone = mem_inv.get("customer_phone")
+                student_name = mem_inv.get("customer_name") or student_name
+
+        if phone:
+            first_name = (student_name or "Aluno").split()[0]
+            val_txt = f" no valor de R$ {amount:.2f}" if amount > 0 else ""
+            msg = (
+                f"👋 *Olá, {first_name}! Tudo bem?*\n\n"
+                f"Passando para avisar que a fatura da sua consultoria{val_txt} venceu.\n\n"
+                f"Para manter seu acesso ao app, seus treinos atualizados e acompanhamento sem interrupções, "
+                f"clique no botão abaixo para gerar o Pix Copia e Cola instantâneo: 👇"
+            )
+            buttons = [
+                {"id": f"fin_pix|{invoice_id}", "title": "💠 Gerar Pix Agora"},
+            ]
+            await whatsapp_service.send_interactive_with_fallback(
+                number=phone,
+                text=msg,
+                buttons=buttons,
+                trainer_id=trainer_id,
+            )
+            logger.info(f"[Anti-Churn/Asaas] Notificação WhatsApp enviada para {phone} (fatura: {invoice_id})")
+    except Exception as e:
+        logger.warning(f"[Anti-Churn/Asaas] Falha ao enviar notificação WhatsApp de fatura vencida: {e}")
+
+
 @router.post("/asaas", status_code=status.HTTP_200_OK, summary="Webhook Oficial Asaas (Consultorias e Assinaturas)")
 async def asaas_webhook(request: Request, background_tasks: BackgroundTasks):
     """
@@ -172,6 +224,10 @@ async def asaas_webhook(request: Request, background_tasks: BackgroundTasks):
                     await client.table("student_invoices").update({"status": "overdue"}).eq("id", ext_ref).execute()
                 except Exception as e:
                     logger.error(f"[Webhook/Asaas] Erro ao marcar fatura {ext_ref} como vencida: {e}")
+
+            # Disparo proativo Anti-Churn com botão interativo Pix 1-Toque
+            background_tasks.add_task(send_anti_churn_overdue_whatsapp, ext_ref, client)
+
             return {
                 "processed": True,
                 "type": "student_invoice",

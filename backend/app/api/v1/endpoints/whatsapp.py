@@ -2,7 +2,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
@@ -1210,10 +1210,12 @@ async def verify_meta_webhook(
 
 
 @router.post("/meta-webhook", summary="Receber Mensagens e Status da Meta Cloud API")
-async def receive_meta_webhook(request: Request):
+async def receive_meta_webhook(request: Request, background_tasks: BackgroundTasks):
     """
     Recebe eventos de mensagens, status de entrega e leitura da Meta Cloud API.
     Processa payloads no formato padrão oficial do WhatsApp Business Graph API.
+    Responde instantaneamente 200 OK (<200ms) para satisfazer os SLAs da Meta
+    enquanto delega o processamento da IA e ações determinísticas em background.
     """
     try:
         body = await request.json()
@@ -1221,31 +1223,10 @@ async def receive_meta_webhook(request: Request):
         return {"status": "ignored", "reason": "invalid_json"}
 
     entry_list = body.get("entry") or []
+    from app.api.v1.endpoints.whatsapp_ai import process_meta_cloud_event
+
     for entry in entry_list:
-        changes = entry.get("changes") or []
-        for change in changes:
-            value = change.get("value") or {}
-            messages = value.get("messages") or []
-            contacts = value.get("contacts") or []
-
-            contact_name = "Aluno"
-            if contacts and isinstance(contacts, list):
-                contact_name = contacts[0].get("profile", {}).get("name", "Aluno")
-
-            for msg in messages:
-                msg_type = msg.get("type")
-                from_num = msg.get("from")
-                msg_id = msg.get("id")
-
-                if msg_type == "text" and from_num:
-                    text_body = msg.get("text", {}).get("body", "").strip()
-                    logger.info(
-                        "[Meta Cloud API Webhook] Mensagem recebida de %s (%s): %s [ID: %s]",
-                        contact_name,
-                        from_num,
-                        text_body,
-                        msg_id,
-                    )
+        background_tasks.add_task(process_meta_cloud_event, entry)
 
     # Meta requer confirmação 200 OK rápida para não retransmitir o evento
     return {"status": "EVENT_RECEIVED"}

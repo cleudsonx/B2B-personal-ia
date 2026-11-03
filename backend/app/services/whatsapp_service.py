@@ -297,6 +297,91 @@ class WhatsAppService:
                 "provider_response": res_data,
             }
 
+    async def send_meta_cloud_interactive(
+        self,
+        number: str,
+        body_text: str,
+        buttons: list,
+        header_text: Optional[str] = None,
+        footer_text: Optional[str] = None,
+    ) -> dict:
+        """
+        Envia mensagem interativa nativa com botões de resposta rápida (Quick Reply)
+        via Meta Cloud API (WhatsApp Business Graph API).
+        Regras Meta:
+        - 1 a 3 botões do tipo 'reply'.
+        - Título do botão limitado a 20 caracteres (truncamento automático de segurança).
+        - ID do botão com até 256 caracteres.
+        """
+        clean_number = self._format_phone(number)
+        if not clean_number:
+            return {"status": "skipped", "reason": "invalid_phone"}
+
+        sanitized_buttons = []
+        for btn in (buttons or [])[:3]:
+            btn_id = str(btn.get("id") or "")[:256]
+            btn_title = str(btn.get("title") or "").strip()[:20]  # Limite estrito de 20 chars
+            if btn_id and btn_title:
+                sanitized_buttons.append({
+                    "type": "reply",
+                    "reply": {
+                        "id": btn_id,
+                        "title": btn_title,
+                    },
+                })
+
+        if not sanitized_buttons:
+            # Sem botões válidos, envia como texto padrão
+            return await self.send_meta_cloud_message(clean_number, text=body_text)
+
+        if self.provider == "mock" or not self.meta_token or not self.meta_phone_id:
+            logger.info("[Meta Cloud API] Modo mock interativo para %s com %d botões", clean_number, len(sanitized_buttons))
+            return {
+                "status": "success",
+                "provider": "meta_cloud",
+                "mode": "mock",
+                "interactive": True,
+                "buttons_count": len(sanitized_buttons),
+                "messages": [{"id": f"wamid.mock.interactive.{clean_number}"}],
+            }
+
+        interactive_payload: dict = {
+            "type": "button",
+            "body": {"text": body_text},
+            "action": {"buttons": sanitized_buttons},
+        }
+        if header_text:
+            interactive_payload["header"] = {"type": "text", "text": header_text[:60]}
+        if footer_text:
+            interactive_payload["footer"] = {"text": footer_text[:60]}
+
+        payload: dict = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": clean_number,
+            "type": "interactive",
+            "interactive": interactive_payload,
+        }
+
+        url = f"https://graph.facebook.com/{self.meta_version}/{self.meta_phone_id}/messages"
+        headers = {
+            "Authorization": f"Bearer {self.meta_token}",
+            "Content-Type": "application/json",
+        }
+
+        async with httpx.AsyncClient(timeout=20) as client:
+            r = await client.post(url, headers=headers, json=payload)
+            if r.status_code >= 400:
+                logger.error("[Meta Cloud API] Erro %s ao enviar mensagem interativa: %s", r.status_code, r.text)
+                r.raise_for_status()
+            res_data = r.json()
+            return {
+                "status": "sent",
+                "provider": "meta_cloud",
+                "interactive": True,
+                "provider_response": res_data,
+            }
+
     async def check_meta_cloud_health(self) -> dict:
         """Verifica a saúde e permissões da conexão Meta Cloud API."""
         if not self.meta_token or not self.meta_phone_id:
@@ -450,6 +535,73 @@ class WhatsAppService:
             logger.warning("[WhatsApp] Falha no envio de contingência: %s", e3)
 
         return {"status": "failed", "reason": "Nenhuma instância conectada disponível", "phone": target_number}
+
+    async def send_interactive_with_fallback(
+        self,
+        number: str,
+        text: str,
+        buttons: list,
+        trainer_id: Optional[str] = None,
+        header_text: Optional[str] = None,
+        footer_text: Optional[str] = None,
+    ) -> dict:
+        """
+        Envia mensagem interativa com arquitetura dual-channel resiliente:
+        1. Tenta envio com botões nativos (Quick Reply) via Meta Cloud API Oficial.
+        2. Em caso de indisponibilidade ou envio via Evolution API (Baileys), degrada
+           graciosamente formatando os botões como atalhos numerados no rodapé da mensagem.
+        """
+        target_number = self._format_phone(number)
+        if not target_number:
+            return {"status": "skipped", "reason": "invalid_phone"}
+
+        # Canal Primário: Meta Cloud API Oficial com botões nativos
+        if (
+            self.provider in ("meta", "meta_cloud")
+            or (self.meta_token and self.meta_phone_id)
+        ):
+            try:
+                res = await self.send_meta_cloud_interactive(
+                    number=target_number,
+                    body_text=text,
+                    buttons=buttons,
+                    header_text=header_text,
+                    footer_text=footer_text,
+                )
+                if res.get("status") in ("sent", "success"):
+                    logger.info("[WhatsApp Interactive] Botões nativos enviados via Meta Cloud para %s", target_number)
+                    return {
+                        "status": "sent",
+                        "channel": "meta_cloud_interactive",
+                        "provider_response": res,
+                    }
+            except Exception as e_meta:
+                logger.warning(
+                    "[WhatsApp Interactive] Falha no envio interativo Meta Cloud (%s). Aplicando graceful degradation para texto.",
+                    e_meta,
+                )
+
+        # Canal Secundário / Fallback: Graceful degradation com atalhos numéricos
+        degraded_text = text
+        if buttons:
+            btn_lines = []
+            for idx, b in enumerate(buttons[:3], start=1):
+                title = (b.get("title") or "").strip()
+                if title:
+                    btn_lines.append(f"*{idx}* - {title}")
+            if btn_lines:
+                degraded_text += "\n\n*Responda com o número:*\n" + "\n".join(btn_lines)
+
+        if footer_text and footer_text not in degraded_text:
+            degraded_text += f"\n\n_{footer_text}_"
+
+        fallback_res = await self.send_text_with_fallback(
+            number=target_number,
+            text=degraded_text,
+            trainer_id=trainer_id,
+        )
+        fallback_res["interactive_degraded"] = True
+        return fallback_res
 
     async def notify_new_workout(
         self,
