@@ -139,7 +139,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _continueAfterAuthentication() async {
     if (widget.inviteToken != null && widget.inviteToken!.isNotEmpty) {
-      await AuthService.consumeInviteToken(widget.inviteToken!);
+      try {
+        await AuthService.consumeInviteToken(widget.inviteToken!);
+      } catch (e) {
+        debugPrint('[LoginScreen] Convite já consumido ou aviso na reconciliação: $e');
+      }
     }
     var profile = await AuthService.getCurrentProfile();
     final isCleudson = AuthService.isCurrentUserAdminSync() ||
@@ -674,6 +678,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     phone: rawP,
                                     role: _selectedRole,
                                     fullName: nameCtrl.text.trim().isNotEmpty ? nameCtrl.text.trim() : null,
+                                    inviteToken: widget.inviteToken,
                                   );
                                   setSheetState(() {
                                     codeSent = true;
@@ -803,6 +808,7 @@ class _LoginScreenState extends State<LoginScreen> {
         code: code,
         role: _selectedRole,
         fullName: fullName.isNotEmpty ? fullName : null,
+        inviteToken: widget.inviteToken,
       );
       if (sheetCtx.mounted) {
         Navigator.pop(sheetCtx); // Fechar bottom sheet

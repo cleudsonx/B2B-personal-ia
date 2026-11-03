@@ -112,6 +112,24 @@ class AuthService {
     String? inviteToken,
   }) async {
     try {
+    if (inviteToken != null && inviteToken.isNotEmpty) {
+      try {
+        await _registerViaBackend(
+          email: email,
+          password: password,
+          fullName: fullName,
+          role: role,
+          phone: phone,
+          trainerId: trainerId,
+          inviteToken: inviteToken,
+          professionalDocumentType: professionalDocumentType,
+          professionalDocument: professionalDocument,
+        );
+        return await signIn(email: email, password: password);
+      } catch (directErr) {
+        debugPrint('[AuthService] Fallback para signUp padrão após register-direct: $directErr');
+      }
+    }
       final response = await _client.auth.signUp(
         email: email.trim(),
         password: password,
@@ -149,7 +167,8 @@ class AuthService {
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('confirmation email') ||
           errStr.contains('unexpected_failure') ||
-          errStr.contains('statuscode: 500')) {
+          errStr.contains('statuscode: 500') ||
+          (inviteToken != null && inviteToken.isNotEmpty)) {
         try {
           await _registerViaBackend(
             email: email,
@@ -1252,6 +1271,7 @@ class AuthService {
 
   /// Solicita código OTP de 6 dígitos via WhatsApp
   static Future<Map<String, dynamic>> requestPasswordlessOtp({
+    String? inviteToken,
     required String phone,
     String role = 'client',
     String? fullName,
@@ -1264,6 +1284,7 @@ class AuthService {
         'phone': phone,
         'role': role,
         'full_name': fullName,
+        if (inviteToken != null && inviteToken.isNotEmpty) 'invite_token': inviteToken,
       }),
     );
     final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
@@ -1275,6 +1296,7 @@ class AuthService {
 
   /// Valida o código OTP e autentica na sessão Supabase
   static Future<AuthResponse> verifyPasswordlessOtp({
+    String? inviteToken,
     required String phone,
     required String code,
     String role = 'client',
@@ -1289,6 +1311,7 @@ class AuthService {
         'code': code,
         'role': role,
         'full_name': fullName,
+        if (inviteToken != null && inviteToken.isNotEmpty) 'invite_token': inviteToken,
       }),
     );
     final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;

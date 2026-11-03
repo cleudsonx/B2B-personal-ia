@@ -564,6 +564,7 @@ async def invite_student(
             full_name=payload.full_name,
             objective=payload.objective or "Hipertrofia Muscular",
             injuries_or_restrictions=payload.injuries_or_restrictions or "Nenhuma restrição relatada.",
+            channel="whatsapp" if (payload.phone and payload.send_whatsapp and not payload.send_email) else "email",
         )
     except Exception as e:
         if "23505" in str(e) or "já está cadastrado com este telefone" in str(e).lower():

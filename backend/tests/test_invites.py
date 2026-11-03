@@ -285,3 +285,69 @@ async def test_supabase_service_create_student_invite_reuses_pending():
     # Garante que atualizou o canal para whatsapp sem chamar RPC de inserção
     mock_client.table.return_value.update.assert_called()
 
+
+@pytest.mark.asyncio
+async def test_register_direct_smart_merge_degustacao_with_divergent_invite_email(monkeypatch):
+    """
+    Garante que o cadastro via convite (register-direct) aceita match por telefone mesmo quando
+    o e-mail difere do convite, e unifica (Smart Identity Merge) a conta existente da Degustação.
+    """
+    from app.api.v1.endpoints import auth as auth_endpoints
+
+    invite_query = MagicMock()
+    invite_query.execute = AsyncMock(return_value=MagicMock(data={
+        "target_email": "sempreonlinedf@gmail.com",
+        "target_phone": "(61) 99111-2222",
+        "channel": "email",
+        "used_at": None,
+        "expires_at": "2099-01-01T00:00:00+00:00",
+    }))
+
+    explorer_query = MagicMock()
+    explorer_query.execute = AsyncMock(return_value=MagicMock(data=[{
+        "id": "rafael-explorer-uid",
+        "email": "wa_5561991112222@wa.mrcoach.internal",
+        "phone": "5561991112222",
+        "public_whatsapp": "5561991112222",
+        "trainer_id": None,
+        "role": "client",
+        "roles": ["client"],
+    }]))
+
+    mock_client = MagicMock()
+
+    def table_router(name):
+        t = MagicMock()
+        if name == "invite_tokens":
+            t.select.return_value.eq.return_value.maybe_single.return_value = invite_query
+        elif name == "profiles":
+            t.select.return_value.or_.return_value.limit.return_value = explorer_query
+            t.update.return_value.eq.return_value.execute = AsyncMock(return_value=MagicMock())
+        return t
+
+    mock_client.table.side_effect = table_router
+    mock_client.auth.admin.update_user_by_id = AsyncMock(return_value=MagicMock())
+    mock_client.rpc.return_value.execute = AsyncMock(return_value=MagicMock(data={"status": "consumed"}))
+
+    monkeypatch.setattr(auth_endpoints.supabase_service, "get_client", AsyncMock(return_value=mock_client))
+    create_user = AsyncMock()
+    monkeypatch.setattr(auth_endpoints.supabase_service, "admin_create_user", create_user)
+
+    res = await auth_endpoints.register_user_direct(auth_endpoints.DirectRegisterRequest(
+        email="sempreonlinedf@gmail.com",
+        password="NewSecurePassword123!",
+        full_name="Prof. Rafael",
+        role="client",
+        phone="61991112222",
+        invite_token="tok-rafael-vip",
+    ))
+
+    assert res.success is True
+    assert res.user_id == "rafael-explorer-uid"
+    assert res.email == "sempreonlinedf@gmail.com"
+    create_user.assert_not_awaited()
+    mock_client.rpc.assert_called_once_with("consume_student_invite", {
+        "p_token": "tok-rafael-vip",
+        "p_student_id": "rafael-explorer-uid",
+    })
+

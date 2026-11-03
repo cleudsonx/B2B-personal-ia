@@ -288,3 +288,89 @@ async def test_passwordless_recovers_user_id_if_already_in_auth_users(mock_supab
         otps = mock_supabase._db["auth_recovery_otps"]
         assert len(otps) > 0
         assert otps[-1]["user_id"] == "55555555-5555-5555-5555-555555555555"
+
+
+@pytest.mark.asyncio
+async def test_rafael_degustacao_then_invite_unification_via_whatsapp_otp(mock_supabase):
+    """
+    Cenário Rafael (sempreonlinedf@gmail.com):
+    1. Aluno entra na Degustação sem professor prévio (trainer_id=None, e-mail sintético wa_5561991112222@wa.mrcoach.internal).
+    2. Professor envia convite com o mesmo telefone (61 99111-2222), porém informando o e-mail sempreonlinedf@gmail.com (mesmo com channel='email').
+    3. Aluno acessa pelo WhatsApp OTP com o mesmo número: a conta existente da degustação deve:
+       - Consumir automaticamente o convite pendente (vinculando ao treinador);
+       - Promover o e-mail sintético para sempreonlinedf@gmail.com sem atrito nem erro de e-mail divergente.
+    """
+    from datetime import datetime, timezone, timedelta
+    from app.services import mfa_security as mfa
+
+    rafael_id = "77777777-7777-7777-7777-777777777777"
+    trainer_id = "11111111-1111-1111-1111-111111111111"
+
+    mock_supabase._db["profiles"].append({
+        "id": rafael_id,
+        "full_name": "Aluno",
+        "role": "client",
+        "roles": ["client"],
+        "is_admin": False,
+        "phone": "5561991112222",
+        "public_whatsapp": "5561991112222",
+        "email": "wa_5561991112222@wa.mrcoach.internal",
+        "trainer_id": None,  # Modo Degustação (sem professor prévio)
+    })
+    mock_supabase._db["invite_tokens"] = [{
+        "id": "inv-rafael-1",
+        "token": "tok-rafael-vip",
+        "trainer_id": trainer_id,
+        "target_email": "sempreonlinedf@gmail.com",
+        "target_phone": "(61) 99111-2222",
+        "target_name": "Prof. Rafael",
+        "channel": "email",  # Mesmo quando criado com channel='email' pelo painel
+        "used_at": None,
+        "expires_at": (datetime.now(timezone.utc) + timedelta(hours=48)).isoformat(),
+    }]
+    mock_supabase._db["auth_recovery_otps"].append({
+        "id": "otp-rafael-1",
+        "identifier": "5561991112222",
+        "channel": "whatsapp",
+        "otp_code": mfa.hash_secret("123456", "mfa-otp"),
+        "purpose": "passwordless_login",
+        "attempts": 0,
+        "used_at": None,
+        "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat(),
+        "user_id": rafael_id,
+    })
+
+    mock_admin_user = MagicMock()
+    mock_admin_user.user.email = "wa_5561991112222@wa.mrcoach.internal"
+    mock_supabase.auth.admin.get_user_by_id = AsyncMock(return_value=mock_admin_user)
+    mock_supabase.auth.admin.update_user_by_id = AsyncMock(return_value=MagicMock())
+    mock_supabase.rpc.return_value.execute = AsyncMock(return_value=MagicMock(data={
+        "status": "consumed",
+        "trainer_id": trainer_id,
+        "trainer_name": "Cleudson Treinador",
+        "target_email": "sempreonlinedf@gmail.com",
+        "target_phone": "(61) 99111-2222",
+        "channel": "email",
+    }))
+
+    with patch.object(supabase_service, "get_client", new=AsyncMock(return_value=mock_supabase)), \
+         patch.object(supabase_service, "admin_update_user_password", new=AsyncMock(return_value=True)):
+
+        res = client.post(
+            "/api/v1/auth/otp/login-verify",
+            json={"phone": "61991112222", "code": "123456", "role": "client"},
+        )
+        assert res.status_code == 200
+        body = res.json()
+        assert body["success"] is True
+        assert body["user_id"] == rafael_id
+        assert body["email"] == "sempreonlinedf@gmail.com"
+        assert body["full_name"] == "Prof. Rafael"
+        mock_supabase.rpc.assert_called_once_with("consume_student_invite", {
+            "p_token": "tok-rafael-vip",
+            "p_student_id": rafael_id,
+        })
+        mock_supabase.auth.admin.update_user_by_id.assert_awaited_once_with(
+            rafael_id,
+            {"email": "sempreonlinedf@gmail.com", "email_confirm": True},
+        )

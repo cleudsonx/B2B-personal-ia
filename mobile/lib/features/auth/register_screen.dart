@@ -370,13 +370,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   TextFormField(
                     controller: _emailCtrl,
                     keyboardType: TextInputType.emailAddress,
-                    readOnly: isInviteRegistration && widget.initialEmail != null,
+                    readOnly: isInviteRegistration &&
+                        widget.initialEmail != null &&
+                        (widget.initialPhone == null || widget.initialPhone!.trim().isEmpty),
                     style: const TextStyle(color: MetaColors.textPrimary),
                     decoration: InputDecoration(
                       labelText: 'Email',
                       labelStyle: const TextStyle(color: MetaColors.textSecondary),
                       helperText: isInviteRegistration && widget.initialEmail != null
-                          ? 'Vinculado a este convite'
+                          ? (widget.initialPhone != null && widget.initialPhone!.trim().isNotEmpty
+                              ? 'Sugerido no convite (você pode ajustar se já usa outro e-mail)'
+                              : 'Vinculado a este convite')
                           : null,
                       prefixIcon: const Icon(
                         Icons.email_outlined,
@@ -403,8 +407,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               .hasMatch(value.trim())) {
                         return 'Informe um email válido.';
                       }
+                      final hasPhoneMatch = widget.initialPhone != null &&
+                          widget.initialPhone!.trim().isNotEmpty &&
+                          _normalizePhone(_phoneCtrl.text) == _normalizePhone(widget.initialPhone);
                       if (widget.inviteToken != null &&
                           widget.initialEmail != null &&
+                          !hasPhoneMatch &&
                           value.trim().toLowerCase() != widget.initialEmail!.trim().toLowerCase()) {
                         return 'Use o e-mail indicado no convite';
                       }

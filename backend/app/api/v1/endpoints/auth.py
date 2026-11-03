@@ -61,20 +61,97 @@ async def register_user_direct(req: DirectRegisterRequest):
             expires_at = invite.get("expires_at")
             if expires_at and datetime.fromisoformat(expires_at.replace("Z", "+00:00")) <= datetime.now(timezone.utc):
                 raise ValueError("Convite não encontrado, expirado ou já utilizado.")
-            if invite.get("channel") == "email":
-                if (req.email or "").strip().lower() != (invite.get("target_email") or "").strip().lower():
-                    raise ValueError("Este convite foi destinado a outro e-mail.")
-            elif invite.get("channel") == "whatsapp":
-                invited_phone = re.sub(r"\D", "", invite.get("target_phone") or "")
-                registered_phone = re.sub(r"\D", "", req.phone or "")
-                if invited_phone.startswith("55") and len(invited_phone) > 11:
-                    invited_phone = invited_phone[2:]
-                if registered_phone.startswith("55") and len(registered_phone) > 11:
-                    registered_phone = registered_phone[2:]
-                if not registered_phone or invited_phone != registered_phone:
-                    raise ValueError("Este convite foi destinado a outro telefone.")
-            else:
+            if invite.get("channel") not in ("email", "whatsapp"):
                 raise ValueError("Canal de convite inválido.")
+
+            req_email_clean = (req.email or "").strip().lower()
+            inv_email_clean = (invite.get("target_email") or "").strip().lower()
+            email_matches = bool(req_email_clean and inv_email_clean and req_email_clean == inv_email_clean)
+
+            invited_phone = re.sub(r"\D", "", invite.get("target_phone") or "")
+            registered_phone = re.sub(r"\D", "", req.phone or "")
+            if invited_phone.startswith("55") and len(invited_phone) > 11:
+                invited_phone = invited_phone[2:]
+            if registered_phone.startswith("55") and len(registered_phone) > 11:
+                registered_phone = registered_phone[2:]
+
+            phone_matches = False
+            if invited_phone and registered_phone:
+                if invited_phone == registered_phone:
+                    phone_matches = True
+                elif (
+                    len(invited_phone) >= 10
+                    and len(registered_phone) >= 10
+                    and invited_phone[:2] == registered_phone[:2]
+                    and invited_phone[-8:] == registered_phone[-8:]
+                ):
+                    phone_matches = True
+
+            if not (email_matches or phone_matches):
+                if invite.get("channel") == "whatsapp":
+                    raise ValueError("Este convite foi destinado a outro telefone.")
+                raise ValueError("Este convite foi destinado a outro e-mail.")
+
+            # Smart Identity Merge: se o aluno já havia entrado na Degustação (trainer_id IS NULL)
+            # com este mesmo telefone e e-mail sintético, promove a conta existente em vez de duplicar
+            if registered_phone and len(registered_phone) >= 10:
+                try:
+                    last8 = registered_phone[-8:]
+                    explorer_res = (
+                        await client.table("profiles")
+                        .select("id, email, phone, public_whatsapp, trainer_id, role, roles")
+                        .or_(f"phone.ilike.%{last8}%,public_whatsapp.ilike.%{last8}%")
+                        .limit(10)
+                        .execute()
+                    )
+                    explorer_profile = None
+                    for cand in (explorer_res.data or []) if explorer_res else []:
+                        if (
+                            cand.get("trainer_id") is None
+                            and _phone_matches_profile_row(f"55{registered_phone}", cand)
+                            and _is_synthetic_provisioned_email(cand.get("email"))
+                        ):
+                            explorer_profile = cand
+                            break
+
+                    if explorer_profile:
+                        existing_uid = explorer_profile["id"]
+                        await client.auth.admin.update_user_by_id(
+                            existing_uid,
+                            {
+                                "email": req_email_clean,
+                                "password": req.password,
+                                "email_confirm": True,
+                                "user_metadata": {
+                                    "full_name": req.full_name,
+                                    "role": "client",
+                                    "phone": req.phone,
+                                    "invite_token": req.invite_token,
+                                },
+                            },
+                        )
+                        await client.table("profiles").update({
+                            "full_name": req.full_name,
+                            "email": req_email_clean,
+                            "phone": req.phone,
+                            "updated_at": datetime.now(timezone.utc).isoformat(),
+                        }).eq("id", existing_uid).execute()
+                        try:
+                            await client.rpc("consume_student_invite", {
+                                "p_token": req.invite_token.strip(),
+                                "p_student_id": existing_uid,
+                            }).execute()
+                        except Exception as rpc_err:
+                            logger.warning(f"[register-direct] Aviso ao consumir convite no merge da degustação: {rpc_err}")
+                        return DirectRegisterResponse(
+                            success=True,
+                            user_id=existing_uid,
+                            email=req_email_clean,
+                            role="client",
+                            message="Conta da degustação unificada e vinculada ao seu Personal Trainer com sucesso.",
+                        )
+                except Exception as merge_err:
+                    logger.warning(f"[register-direct] Fallback para criação padrão após tentativa de merge: {merge_err}")
 
         res = await supabase_service.admin_create_user(
             email=str(req.email),
@@ -170,18 +247,39 @@ def _normalize_requested_role(raw_role: Optional[str]) -> str:
     return "trainer" if (raw_role or "").strip().lower() == "trainer" else "client"
 
 
-async def _find_pending_whatsapp_invite(client: Any, clean_phone: str) -> Optional[Dict[str, Any]]:
+async def _find_pending_whatsapp_invite(
+    client: Any,
+    clean_phone: str,
+    explicit_token: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
     """
-    Procura convite de aluno pendente (canal WhatsApp, não usado, não expirado)
-    emitido por um professor para este número (compara DDD + 8 últimos dígitos).
+    Procura convite de aluno pendente (não usado e não expirado, em qualquer canal
+    'whatsapp' ou 'email') emitido por um professor para este número (DDD + 8 últimos dígitos)
+    ou pelo token explícito do convite.
     """
+    now_iso = datetime.now(timezone.utc).isoformat()
+    if explicit_token and explicit_token.strip():
+        try:
+            tok_res = (
+                await client.table("invite_tokens")
+                .select("token, trainer_id, target_phone, target_email, target_name, channel, used_at, expires_at")
+                .eq("token", explicit_token.strip())
+                .is_("used_at", "null")
+                .gt("expires_at", now_iso)
+                .limit(1)
+                .execute()
+            )
+            if tok_res and tok_res.data:
+                return tok_res.data[0]
+        except Exception as e:
+            logger.warning(f"[Passwordless] Erro ao consultar convite por token explícito: {e}")
+
     try:
         res = (
             await client.table("invite_tokens")
-            .select("token, trainer_id, target_phone, channel, used_at, expires_at")
-            .eq("channel", "whatsapp")
+            .select("token, trainer_id, target_phone, target_email, target_name, channel, used_at, expires_at")
             .is_("used_at", "null")
-            .gt("expires_at", datetime.now(timezone.utc).isoformat())
+            .gt("expires_at", now_iso)
             .order("created_at", desc=True)
             .limit(50)
             .execute()
@@ -193,6 +291,92 @@ async def _find_pending_whatsapp_invite(client: Any, clean_phone: str) -> Option
         if _phone_matches_profile_row(clean_phone, {"phone": row.get("target_phone")}):
             return row
     return None
+
+
+async def _reconcile_pending_invite_for_student(
+    client: Any,
+    user_id: str,
+    clean_phone: str,
+    current_email: Optional[str],
+    profile: Optional[Dict[str, Any]] = None,
+    explicit_token: Optional[str] = None,
+) -> tuple[Optional[str], Optional[Dict[str, Any]]]:
+    """
+    Unifica automaticamente um Aluno em Modo Degustação (trainer_id IS NULL) com um convite
+    pendente para seu WhatsApp (mesmo que o convite tenha sido emitido com e-mail divergente,
+    ex: sempreonlinedf@gmail.com).
+    Retorna (resolved_email, consumed_invite_dict).
+    """
+    resolved_email = current_email
+    if profile and profile.get("trainer_id"):
+        return resolved_email, None
+
+    pending_invite = await _find_pending_whatsapp_invite(
+        client, clean_phone, explicit_token=explicit_token
+    )
+    if not pending_invite or not pending_invite.get("token"):
+        return resolved_email, None
+
+    inv_trainer_id = str(pending_invite.get("trainer_id") or "").strip()
+    if inv_trainer_id and inv_trainer_id == str(user_id).strip():
+        return resolved_email, None
+
+    inv_token = str(pending_invite["token"]).strip()
+    target_email = str(pending_invite.get("target_email") or "").strip().lower()
+    target_name = str(pending_invite.get("target_name") or "").strip()
+
+    # 1. Consome o convite via RPC transacional (ou fallback direto em ambiente de teste/mock)
+    try:
+        rpc_call = client.rpc("consume_student_invite", {
+            "p_token": inv_token,
+            "p_student_id": user_id,
+        })
+        if hasattr(rpc_call, "execute"):
+            maybe_coro = rpc_call.execute()
+            if asyncio.iscoroutine(maybe_coro):
+                await maybe_coro
+    except Exception as e_rpc:
+        logger.warning(f"[SmartMerge] Fallback após RPC consume_student_invite para {user_id}: {e_rpc}")
+        if inv_trainer_id:
+            try:
+                raw_roles = list((profile or {}).get("roles") or [(profile or {}).get("role") or "client"])
+                if "client" not in raw_roles:
+                    raw_roles.append("client")
+                upd_payload: Dict[str, Any] = {
+                    "trainer_id": inv_trainer_id,
+                    "roles": raw_roles,
+                }
+                if target_name and ((profile or {}).get("full_name") in (None, "", "Aluno", "Usuário", "Atleta")):
+                    upd_payload["full_name"] = target_name
+                await client.table("profiles").update(upd_payload).eq("id", user_id).execute()
+            except Exception:
+                pass
+
+    # 2. Se a conta da degustação tinha e-mail sintético (wa_...@wa.mrcoach.internal)
+    # e o convite do professor trouxe o e-mail real do aluno (ex: sempreonlinedf@gmail.com),
+    # promove o e-mail da conta de forma transparente!
+    if (
+        target_email
+        and "@" in target_email
+        and not _is_synthetic_provisioned_email(target_email)
+        and _is_synthetic_provisioned_email(current_email)
+    ):
+        try:
+            if hasattr(client, "auth") and hasattr(client.auth, "admin"):
+                upd_call = client.auth.admin.update_user_by_id(
+                    user_id,
+                    {"email": target_email, "email_confirm": True},
+                )
+                if asyncio.iscoroutine(upd_call):
+                    await upd_call
+                    resolved_email = target_email
+                    await client.table("profiles").update({"email": target_email}).eq("id", user_id).execute()
+        except Exception as e_email:
+            logger.info(
+                f"[SmartMerge] Mantendo e-mail de login {current_email} (target_email {target_email} não promovido no Auth: {e_email})"
+            )
+
+    return resolved_email, pending_invite
 
 
 def _phone_matches_profile_row(clean_phone_55: str, row: Dict[str, Any]) -> bool:
@@ -1286,6 +1470,7 @@ class PasswordlessLoginRequest(BaseModel):
     phone: str = Field(..., description="Telefone com DDD (ex: 61999998888)")
     role: Optional[str] = Field("client", description="'client' ou 'trainer'")
     full_name: Optional[str] = None
+    invite_token: Optional[str] = None
 
 
 class PasswordlessLoginResponse(BaseModel):
@@ -1300,6 +1485,7 @@ class PasswordlessVerifyRequest(BaseModel):
     code: str = Field(..., min_length=6, max_length=6, description="Código de 6 dígitos")
     role: Optional[str] = "client"
     full_name: Optional[str] = None
+    invite_token: Optional[str] = None
 
 
 class PasswordlessVerifyResponse(BaseModel):
@@ -1361,7 +1547,7 @@ async def request_passwordless_login(req: PasswordlessLoginRequest):
     try:
         p_res = (
             await client.table("profiles")
-            .select("id, full_name, role, roles, is_admin, phone, public_whatsapp, email")
+            .select("id, full_name, role, roles, is_admin, phone, public_whatsapp, email, trainer_id")
             .or_(f"phone.ilike.%{last8_phone}%,public_whatsapp.ilike.%{last8_phone}%")
             .limit(10)
             .execute()
@@ -1381,7 +1567,7 @@ async def request_passwordless_login(req: PasswordlessLoginRequest):
         try:
             p_syn = (
                 await client.table("profiles")
-                .select("id, full_name, role, roles, is_admin, phone, public_whatsapp, email")
+                .select("id, full_name, role, roles, is_admin, phone, public_whatsapp, email, trainer_id")
                 .or_(f"email.eq.{synthetic_email},email.eq.{legacy_synthetic_email}")
                 .limit(5)
                 .execute()
@@ -1398,17 +1584,25 @@ async def request_passwordless_login(req: PasswordlessLoginRequest):
     is_new = profile is None
 
     # Jornada do Aluno:
-    # Se houver convite pendente emitido por um professor para este WhatsApp, vincula ao criar.
-    # Se NÃO houver convite, o aluno é acolhido como "Aluno Explorador" (role: client, trainer_id: null),
-    # podendo navegar livremente, degustar a IA biomecânica e escolher um personal na Vitrine.
+    # Se houver convite pendente emitido por um professor para este WhatsApp (ou token explícito),
+    # localiza-o tanto para alunos novos quanto para alunos que entraram antes na Degustação (trainer_id: null).
+    # Se NÃO houver convite, o aluno é acolhido como "Aluno Explorador" (role: client, trainer_id: null).
     pending_invite: Optional[Dict[str, Any]] = None
-    if profile is None and _normalize_requested_role(req.role) == "client":
-        pending_invite = await _find_pending_whatsapp_invite(client, clean_phone)
+    if profile is None or not profile.get("trainer_id"):
+        pending_invite = await _find_pending_whatsapp_invite(
+            client, clean_phone, explicit_token=req.invite_token
+        )
 
     if profile:
         profile = await _sanitize_synthetic_profile_if_needed(client, profile)
         user_id = profile["id"]
         user_name = profile.get("full_name") or req.full_name or "Atleta"
+        if (
+            pending_invite
+            and pending_invite.get("target_name")
+            and user_name in ("Aluno", "Atleta", "Usuário")
+        ):
+            user_name = str(pending_invite["target_name"]).strip()
         # Vincula o WhatsApp ao perfil se ainda não estiver configurado
         try:
             if not profile.get("phone") or not profile.get("public_whatsapp"):
@@ -1423,6 +1617,8 @@ async def request_passwordless_login(req: PasswordlessLoginRequest):
         temp_pw = f"MrCoach_Wa_{uuid.uuid4().hex[:12]}_{now.strftime('%M%S')}"
         role = _normalize_requested_role(req.role)
         full_name = req.full_name.strip() if req.full_name and req.full_name.strip() else ("Professor" if role == "trainer" else "Aluno")
+        if pending_invite and pending_invite.get("target_name") and full_name in ("Aluno", "Usuário"):
+            full_name = str(pending_invite["target_name"]).strip()
         user_name = full_name
         try:
             created = await supabase_service.admin_create_user(
@@ -1605,7 +1801,7 @@ async def verify_passwordless_login(req: PasswordlessVerifyRequest):
     try:
         p_res = (
             await client.table("profiles")
-            .select("id, full_name, role, roles, is_admin, phone, public_whatsapp, email")
+            .select("id, full_name, role, roles, is_admin, phone, public_whatsapp, email, trainer_id")
             .or_(f"phone.ilike.%{last8_phone}%,public_whatsapp.ilike.%{last8_phone}%")
             .limit(10)
             .execute()
@@ -1626,7 +1822,7 @@ async def verify_passwordless_login(req: PasswordlessVerifyRequest):
         try:
             p_exist = (
                 await client.table("profiles")
-                .select("id, full_name, role, roles, is_admin, phone, public_whatsapp, email")
+                .select("id, full_name, role, roles, is_admin, phone, public_whatsapp, email, trainer_id")
                 .or_(f"email.eq.{synthetic_email},email.eq.{legacy_synthetic_email}")
                 .limit(5)
                 .execute()
@@ -1666,6 +1862,26 @@ async def verify_passwordless_login(req: PasswordlessVerifyRequest):
             except Exception:
                 pass
 
+        # Smart Identity Unification:
+        # Se o usuário entrou previamente na Degustação (trainer_id IS NULL) e há um convite pendente
+        # para o seu WhatsApp (mesmo com e-mail divergente, ex: sempreonlinedf@gmail.com),
+        # consome o convite automaticamente, vincula o trainer_id e promove o e-mail sintético!
+        if not profile.get("trainer_id"):
+            user_email, consumed_invite = await _reconcile_pending_invite_for_student(
+                client=client,
+                user_id=user_id,
+                clean_phone=clean_phone,
+                current_email=user_email,
+                profile=profile,
+                explicit_token=req.invite_token,
+            )
+            if consumed_invite:
+                inv_name = str(consumed_invite.get("target_name") or "").strip()
+                if inv_name and full_name in ("Usuário", "Aluno", "Atleta", "Professor"):
+                    full_name = inv_name
+                if _normalize_requested_role(req.role) == "client":
+                    role = "client"
+
         # Atualiza a senha no Supabase Auth para a credencial temporária
         await supabase_service.admin_update_user_password(user_id, temp_pw)
 
@@ -1693,7 +1909,11 @@ async def verify_passwordless_login(req: PasswordlessVerifyRequest):
 
         pending_invite: Optional[Dict[str, Any]] = None
         if role == "client":
-            pending_invite = await _find_pending_whatsapp_invite(client, clean_phone)
+            pending_invite = await _find_pending_whatsapp_invite(
+                client, clean_phone, explicit_token=req.invite_token
+            )
+            if pending_invite and pending_invite.get("target_name") and full_name in ("Aluno", "Usuário"):
+                full_name = str(pending_invite["target_name"]).strip()
 
         created = await supabase_service.admin_create_user(
             email=user_email,
@@ -1705,6 +1925,15 @@ async def verify_passwordless_login(req: PasswordlessVerifyRequest):
             provisioned_by_backend=True,
         )
         new_uid = created["user_id"]
+        if pending_invite:
+            user_email, _ = await _reconcile_pending_invite_for_student(
+                client=client,
+                user_id=new_uid,
+                clean_phone=clean_phone,
+                current_email=user_email,
+                profile=None,
+                explicit_token=pending_invite.get("token"),
+            )
         try:
             await client.table("profiles").update({"mfa_verified_at": now_iso}).eq("id", new_uid).execute()
         except Exception:

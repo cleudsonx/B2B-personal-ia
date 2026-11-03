@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/widgets/meta_components.dart';
+import '../../services/auth_service.dart';
 import '../../services/invite_service.dart';
+import '../auth/login_screen.dart';
 import '../auth/register_screen.dart';
+import '../client/welcome_onboarding_screen.dart';
 
 class InviteLandingScreen extends StatefulWidget {
   final String trainerSlug;
@@ -155,6 +158,38 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
     setState(() => _isConsuming = true);
 
     try {
+      final hasActiveSession = AuthService.currentSession != null;
+      if (hasActiveSession) {
+        try {
+          await AuthService.consumeInviteToken(widget.token);
+          await AuthService.setActiveRole('client');
+          final profile = await AuthService.getCurrentProfile();
+          if (!mounted) return;
+          final resolvedName = (_targetName?.trim().isNotEmpty == true)
+              ? _targetName!.trim()
+              : (profile?['full_name'] as String?)?.trim().isNotEmpty == true
+                  ? (profile!['full_name'] as String).trim()
+                  : 'Aluno';
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (_) => WelcomeOnboardingScreen(
+                studentName: resolvedName,
+                trainerName: _trainerName,
+                trainerId: _trainerId,
+                trainerAvatarUrl: _trainerAvatarUrl,
+              ),
+            ),
+            (route) => false,
+          );
+          return;
+        } catch (e) {
+          // Se a sessão atual pertencer ao próprio professor que emitiu o convite ou exigir troca de conta,
+          // encaminha de forma fluida para o cadastro/login do convite.
+          debugPrint('[InviteLanding] Fallback para tela de cadastro após tentativa 1-Click: $e');
+        }
+      }
+
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -176,6 +211,22 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
         setState(() => _isConsuming = false);
       }
     }
+  }
+
+  void _openExistingAccountLogin() {
+    if (_hasValidationError || _isConsuming) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LoginScreen(
+          initialRole: 'client',
+          initialEmail: _targetEmail,
+          inviteToken: widget.token,
+          invitedTrainerId: _trainerId,
+          invitedTrainerName: _trainerName,
+        ),
+      ),
+    );
   }
 
 
@@ -352,14 +403,38 @@ class _InviteLandingScreenState extends State<InviteLandingScreen> {
                       ),
                       const SizedBox(height: 32),
 
-                      // Botão CTA
+                      // Botão CTA Principal (1-Click se já estiver na degustação/logado)
                       SizedBox(
                         width: double.infinity,
                         child: SquircleButton(
-                          label: _isConsuming ? 'Abrindo cadastro...' : 'Aceitar convite',
+                          label: _isConsuming
+                              ? 'Vinculando seu perfil...'
+                              : (AuthService.currentSession != null
+                                  ? 'Aceitar e vincular agora'
+                                  : 'Aceitar convite'),
                           icon: _isConsuming ? Icons.hourglass_top_rounded : Icons.check_circle_outline,
                           isPrimary: true,
                           onPressed: _isConsuming ? () {} : _acceptInvite,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: TextButton.icon(
+                          onPressed: _isConsuming ? null : _openExistingAccountLogin,
+                          icon: const Icon(
+                            Icons.chat_bubble_outline_rounded,
+                            size: 16,
+                            color: MetaColors.emerald,
+                          ),
+                          label: const Text(
+                            'Já entrei na Degustação / Entrar com WhatsApp',
+                            style: TextStyle(
+                              color: MetaColors.textSecondary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
                     ],

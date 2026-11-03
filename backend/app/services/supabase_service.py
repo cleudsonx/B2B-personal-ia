@@ -971,11 +971,11 @@ class SupabaseService:
                         "channel": channel,
                         "expires_at": expires_at_dt,
                     }
-                    if full_name and not inv.get("target_name"):
+                    if full_name:
                         upd["target_name"] = full_name.strip()
-                    if phone and not inv.get("target_phone"):
+                    if phone:
                         upd["target_phone"] = phone.strip()
-                    if normalized_email and not inv.get("target_email"):
+                    if normalized_email:
                         upd["target_email"] = normalized_email
 
                     await client.table("invite_tokens").update(upd).eq("id", inv["id"]).execute()

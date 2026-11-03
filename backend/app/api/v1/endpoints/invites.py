@@ -314,6 +314,39 @@ async def consume_invite(
     target_phone = consumed.get("target_phone")
     channel = consumed.get("channel") or ("whatsapp" if target_phone and not target_email else "email")
 
+    # Se a conta do aluno foi criada via Degustação com e-mail sintético (wa_... / aluno_... / .internal)
+    # e o convite possui um e-mail real (ex: sempreonlinedf@gmail.com), promove o e-mail no Supabase Auth
+    curr_email = str(current_user.get("email") or "").strip().lower()
+    clean_target_email = str(target_email or "").strip().lower()
+    if (
+        clean_target_email
+        and "@" in clean_target_email
+        and not (
+            clean_target_email.startswith("wa_")
+            or clean_target_email.startswith("aluno_")
+            or clean_target_email.endswith(".internal")
+            or clean_target_email.endswith(".local")
+        )
+        and (
+            not curr_email
+            or curr_email.startswith("wa_")
+            or curr_email.startswith("aluno_")
+            or curr_email.endswith(".internal")
+            or curr_email.endswith(".local")
+        )
+    ):
+        try:
+            if hasattr(client, "auth") and hasattr(client.auth, "admin"):
+                upd_coro = client.auth.admin.update_user_by_id(
+                    student_id,
+                    {"email": clean_target_email, "email_confirm": True},
+                )
+                import asyncio as _aio
+                if _aio.iscoroutine(upd_coro):
+                    await upd_coro
+        except Exception as e_prom:
+            logger.info(f"[Invites] Mantendo e-mail original no Auth para {student_id} ({e_prom})")
+
     await log_audit_event(
         event_type="invite_consumed",
         token=token,
