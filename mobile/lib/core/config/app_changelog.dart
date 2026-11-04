@@ -43,16 +43,32 @@ class AppChangelog {
     // v1.13.0 - MR. COACH AI 3.0 (COPILOTO DO ALUNO) & BIO-HUB 3.0
     // ==========================================
     VersionRelease(
-      version: '1.13.0',
-      buildNumber: 2026110406,
+      version: '1.13.1',
+      buildNumber: 2026110408,
       date: '4 de Novembro, 2026',
       summary:
-          'Versão 1.13.0: Mr. Coach AI 3.0 na aba do Aluno com Cockpit Contextual de Salão, Swap em 1 Toque (adaptation_logs), Micro-Card Biomecânico 3D em 5s, Guardrail Clínico Zero-Token, Espelho Omnichannel WhatsApp e Bio-Hub 3.0 com Top PRs Compactos.',
+          'Versão 1.13.1: Mr. Coach AI Aluno Zen 3.1 com rolagem ultra fluida, auto-hide da barra de navegação e Dynamic Island no topo, aposentadoria de redundâncias da versão anterior, 2 cápsulas slim (Senti Dor e Carga & RIR) e acordeão inteligente no Cockpit.',
       highlights: [
         // --- ALUNO & TREINO ---
         ChangelogItem(
+          icon: Icons.auto_awesome_rounded,
+          title: 'Mr. Coach AI Zen 3.1 — Rolagem Fluida & Auto-Hide Imersivo',
+          description:
+              'Ao rolar a tela do treino, o menu inferior e barras secundárias se recolhem suavemente em um Mini-Composer e Dynamic Island, reaparecendo instantaneamente ao rolar para cima ou tocar para digitar.',
+          badge: 'NOVO',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.cleaning_services_rounded,
+          title: 'Fim das Redundâncias & Cápsulas Slim 2-em-1',
+          description:
+              'Aposentamos a grade 2x2 e botões duplicados da versão anterior. Agora você tem acesso direto a "Senti Dor" e "Carga & RIR" em cápsulas compactas de alta precisão.',
+          badge: 'MELHORIA',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
           icon: Icons.swap_horiz_rounded,
-          title: 'Mr. Coach AI 3.0 — Cockpit de Salão & Swap em 1 Toque',
+          title: 'Cockpit de Salão com Acordeão Inteligente & Swap em 1 Toque',
           description:
               'Veja os exercícios da sua série logo ao abrir a aba, consulte execução 3D em 5 segundos ou troque aparelhos ocupados em 1 toque sem alterar sua ficha oficial.',
           badge: 'NOVO',

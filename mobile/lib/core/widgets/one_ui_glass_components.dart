@@ -391,3 +391,28 @@ class OneUiGlassSheet {
   }
 }
 
+/// Controlador reativo que gerencia a visibilidade do Dock flutuante
+/// e barras secundárias durante a rolagem imersiva do aluno.
+class StudentChromeVisibility {
+  StudentChromeVisibility._();
+
+  /// `true` quando a navegação flutuante está visível, `false` quando recolhida (scroll down)
+  static final ValueNotifier<bool> isNavVisible = ValueNotifier<bool>(true);
+
+  static void hide() {
+    if (isNavVisible.value) {
+      isNavVisible.value = false;
+    }
+  }
+
+  static void show() {
+    if (!isNavVisible.value) {
+      isNavVisible.value = true;
+    }
+  }
+
+  static void reset() {
+    isNavVisible.value = true;
+  }
+}
+

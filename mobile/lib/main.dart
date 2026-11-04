@@ -37,6 +37,7 @@ import 'core/widgets/theme_toggle_button.dart';
 import 'core/widgets/pwa_update_wrapper.dart';
 import 'core/widgets/app_version_footer.dart';
 import 'core/widgets/meta_components.dart';
+import 'core/widgets/one_ui_glass_components.dart';
 import 'core/utils/pwa_navigation_state.dart';
 
 import 'package:flutter/services.dart';
@@ -904,25 +905,41 @@ class _MainShellScreenState extends State<MainShellScreen> {
           // Edge-to-Edge real: cada aba do aluno gerencia o próprio cabeçalho
           // (sem barra fixa superior duplicada).
           body: IndexedStack(index: _currentIndex, children: screens),
-          bottomNavigationBar: OneUiFloatingNavBar(
-            selectedIndex: _currentIndex,
-            onDestinationSelected: (idx) {
-              setState(() => _currentIndex = idx);
-              if (!_isTrainer) {
-                PwaNavigationState.saveStudentTab(idx);
-                _notifyExplorerOnTabChange();
-              }
+          bottomNavigationBar: ValueListenableBuilder<bool>(
+            valueListenable: StudentChromeVisibility.isNavVisible,
+            builder: (context, isVisible, child) {
+              return AnimatedSlide(
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeOutCubic,
+                offset: isVisible ? Offset.zero : const Offset(0, 1.4),
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 240),
+                  opacity: isVisible ? 1.0 : 0.0,
+                  child: child,
+                ),
+              );
             },
-            items: navItems
-                .map(
-                  (item) => OneUiNavItem(
-                    icon: item.icon,
-                    selectedIcon: item.activeIcon,
-                    label: item.label,
-                    activeColor: item.activeColor,
-                  ),
-                )
-                .toList(),
+            child: OneUiFloatingNavBar(
+              selectedIndex: _currentIndex,
+              onDestinationSelected: (idx) {
+                StudentChromeVisibility.reset();
+                setState(() => _currentIndex = idx);
+                if (!_isTrainer) {
+                  PwaNavigationState.saveStudentTab(idx);
+                  _notifyExplorerOnTabChange();
+                }
+              },
+              items: navItems
+                  .map(
+                    (item) => OneUiNavItem(
+                      icon: item.icon,
+                      selectedIcon: item.activeIcon,
+                      label: item.label,
+                      activeColor: item.activeColor,
+                    ),
+                  )
+                  .toList(),
+            ),
           ),
         ),
       );

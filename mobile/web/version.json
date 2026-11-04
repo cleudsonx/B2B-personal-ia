@@ -1,12 +1,22 @@
 {
-  "version": "1.13.0",
-  "build": 2026110406,
-  "updated_at": "2026-11-04T11:20:05.856526Z",
-  "notes": "Versão 1.13.0: Mr. Coach AI 3.0 na aba do Aluno com Cockpit Contextual de Salão, Swap em 1 Toque (adaptation_logs), Micro-Card Biomecânico 3D em 5s, Guardrail Clínico Zero-Token, Espelho Omnichannel WhatsApp e Bio-Hub 3.0 com Top PRs Compactos.",
+  "version": "1.13.1",
+  "build": 2026110408,
+  "updated_at": "2026-11-04T16:23:12.552900Z",
+  "notes": "Versão 1.13.1: Mr. Coach AI Aluno Zen 3.1 com rolagem ultra fluida, auto-hide da barra de navegação e Dynamic Island no topo, aposentadoria de redundâncias da versão anterior, 2 cápsulas slim (Senti Dor e Carga & RIR) e acordeão inteligente no Cockpit.",
   "changelog": {
     "student": [
       {
-        "title": "Mr. Coach AI 3.0 — Cockpit de Salão & Swap em 1 Toque",
+        "title": "Mr. Coach AI Zen 3.1 — Rolagem Fluida & Auto-Hide Imersivo",
+        "description": "Ao rolar a tela do treino, o menu inferior e barras secundárias se recolhem suavemente em um Mini-Composer e Dynamic Island, reaparecendo instantaneamente ao rolar para cima ou tocar para digitar.",
+        "badge": "NOVO"
+      },
+      {
+        "title": "Fim das Redundâncias & Cápsulas Slim 2-em-1",
+        "description": "Aposentamos a grade 2x2 e botões duplicados da versão anterior. Agora você tem acesso direto a \"Senti Dor\" e \"Carga & RIR\" em cápsulas compactas de alta precisão.",
+        "badge": "MELHORIA"
+      },
+      {
+        "title": "Cockpit de Salão com Acordeão Inteligente & Swap em 1 Toque",
         "description": "Veja os exercícios da sua série logo ao abrir a aba, consulte execução 3D em 5 segundos ou troque aparelhos ocupados em 1 toque sem alterar sua ficha oficial.",
         "badge": "NOVO"
       },
