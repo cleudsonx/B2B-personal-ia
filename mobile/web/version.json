@@ -1,8 +1,8 @@
 {
-  "version": "1.13.1",
-  "build": 2026110408,
-  "updated_at": "2026-11-04T16:23:12.552900Z",
-  "notes": "Versão 1.13.1: Mr. Coach AI Aluno Zen 3.1 com rolagem ultra fluida, auto-hide da barra de navegação e Dynamic Island no topo, aposentadoria de redundâncias da versão anterior, 2 cápsulas slim (Senti Dor e Carga & RIR) e acordeão inteligente no Cockpit.",
+  "version": "1.13.2",
+  "build": 2026110409,
+  "updated_at": "2026-11-04T22:54:00.000000Z",
+  "notes": "Versão 1.13.2: Modernização da Aba Treino e tela Iniciar Treino de Hoje (Zen 3.2). Eliminação da duplicação entre Bento e Hero (ganho de 115px), ofensiva no Smart Header, Dynamic Island no scroll da lista, Smart Action Thumb-Bar (conclusão de séries com 1 toque no polegar) e Smart Overload no topo.",
   "changelog": {
     "student": [
       {

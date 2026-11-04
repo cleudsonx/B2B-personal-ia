@@ -40,6 +40,79 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     // ==========================================
+    // v1.13.2 - ABA TREINO & FOCUS COCKPIT 3.2 (ALUNO)
+    // ==========================================
+    VersionRelease(
+      version: '1.13.2',
+      buildNumber: 2026110409,
+      date: '4 de Novembro, 2026',
+      summary:
+          'Versão 1.13.2: Modernização da Aba Treino e tela Iniciar Treino de Hoje (Zen 3.2). Eliminação da duplicação entre Bento e Hero (ganho de 115px), ofensiva no Smart Header, Dynamic Island no scroll da lista, Smart Action Thumb-Bar (conclusão de séries com 1 toque no polegar) e Smart Overload no topo.',
+      highlights: [
+        // --- ALUNO & TREINO ---
+        ChangelogItem(
+          icon: Icons.fitness_center_rounded,
+          title: 'Aba Treino Zen 3.2 — Hero Cockpit sem Redundâncias',
+          description:
+              'Ofensiva unificada no Smart Header, eliminação do Bento duplicado com ganho de 115px verticais acima da dobra e aquecimento guiado integrado no topo do Hero card.',
+          badge: 'NOVO',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.layers_outlined,
+          title: 'Dynamic Island & Auto-Hide na Lista de Exercícios',
+          description:
+              'Ao rolar os exercícios, a barra inferior recolhe suavemente e o topo vira a Dynamic Island com progresso e botão de continuar rápido.',
+          badge: 'NOVO',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.touch_app_rounded,
+          title: 'Iniciar Treino de Hoje — Smart Action Thumb-Bar',
+          description:
+              'Botão inferior ergonômico no polegar para concluir séries sucessivas com 1 toque, alternando automaticamente para "Próximo Exercício" ao finalizar todas as séries.',
+          badge: 'NOVO',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.auto_awesome_rounded,
+          title: 'Smart Overload IA no Topo das Séries',
+          description:
+              'Sugestão inteligente de progressão de carga reposicionada logo acima da tabela de séries, com aplicação em 1 toque, spotlight na série ativa e notas colapsáveis.',
+          badge: 'NOVO',
+          targetRoles: ['student'],
+        ),
+
+        // --- PROFESSOR / TREINADOR ---
+        ChangelogItem(
+          icon: Icons.insights_rounded,
+          title: 'Telemetria de Cargas & Recordes Pessoais do Aluno em Tempo Real',
+          description:
+              'Visualização imediata das cargas executadas e PRs alcançados durante os treinos dos alunos sem necessidade de sincronização manual.',
+          badge: 'CONSULTORIA',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.shield_rounded,
+          title: 'Preservação de Integridade da Ficha Prescrita',
+          description:
+              'O aluno executa substituições biomecânicas pontuais no salão sem alterar o mesociclo original desenhado pelo personal.',
+          badge: 'RETENÇÃO',
+          targetRoles: ['trainer'],
+        ),
+
+        // --- ADMIN / INFRAESTRUTURA ---
+        ChangelogItem(
+          icon: Icons.verified_rounded,
+          title: 'Build Stamp 2026110409 & Suíte de Testes Zen 3.2',
+          description:
+              'Incremento contínuo de build PWA com cache-busting rigoroso e suíte automatizada de testes do Focus Mode e Smart Action Thumb-Bar.',
+          badge: 'ESTABILIDADE',
+          targetRoles: ['admin'],
+        ),
+      ],
+    ),
+    // ==========================================
     // v1.13.0 - MR. COACH AI 3.0 (COPILOTO DO ALUNO) & BIO-HUB 3.0
     // ==========================================
     VersionRelease(

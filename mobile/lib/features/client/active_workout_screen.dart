@@ -8,6 +8,7 @@ import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'student_profile_screen.dart';
@@ -84,6 +85,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
   // Cache de miniaturas de alta resolução (Padrão Hevy / Strong)
   final Map<String, String?> _exerciseThumbnails = {};
+  bool _isImmersiveCollapsed = false;
+  Map<String, double> _cachedLastWeights = {};
 
   @override
   void initState() {
@@ -93,6 +96,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       if (mounted && _startedAt != null) setState(() {});
     });
     _loadActiveWorkout();
+        _loadCachedWeights();
     _initRealtimeWorkoutListener();
     StudentNotificationService.instance.refreshNotifications();
     OfflineSyncService.instance.initAutoSync();
@@ -100,11 +104,60 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
 
   @override
   void dispose() {
+    StudentChromeVisibility.reset();
     _workoutRealtimeChannel?.unsubscribe();
     _ticker?.cancel();
     OfflineSyncService.instance.dispose();
     super.dispose();
   }
+  void _onScrollNotification(ScrollNotification notification) {
+    if (notification is ScrollUpdateNotification) {
+      final delta = notification.scrollDelta ?? 0.0;
+      final pixels = notification.metrics.pixels;
+      if (delta > 4.0 && pixels > 28.0) {
+        if (!_isImmersiveCollapsed) {
+          setState(() => _isImmersiveCollapsed = true);
+          StudentChromeVisibility.hide();
+        }
+      } else if (delta < -4.0 || pixels <= 16.0) {
+        if (_isImmersiveCollapsed) {
+          setState(() => _isImmersiveCollapsed = false);
+          StudentChromeVisibility.show();
+        }
+      }
+    } else if (notification is UserScrollNotification) {
+      if (notification.direction == ScrollDirection.reverse &&
+          notification.metrics.pixels > 28.0) {
+        if (!_isImmersiveCollapsed) {
+          setState(() => _isImmersiveCollapsed = true);
+          StudentChromeVisibility.hide();
+        }
+      } else if (notification.direction == ScrollDirection.forward ||
+          notification.metrics.pixels <= 16.0) {
+        if (_isImmersiveCollapsed) {
+          setState(() => _isImmersiveCollapsed = false);
+          StudentChromeVisibility.show();
+        }
+      }
+    }
+  }
+
+  Future<void> _loadCachedWeights() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final uid = AuthService.currentUser?.id ?? 'guest';
+      final map = <String, double>{};
+      for (final ex in _exercises) {
+        final key = 'pwa_last_weight_${uid}_${ex.name.toLowerCase().trim()}';
+        final val = prefs.getDouble(key);
+        if (val != null && val > 0) {
+          map[ex.name] = val;
+        }
+      }
+      if (mounted) setState(() => _cachedLastWeights = map);
+    } catch (_) {}
+  }
+
 
 
   void _initRealtimeWorkoutListener() {
@@ -342,6 +395,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     } catch (_) {}
 
     _loadExerciseThumbnails();
+    _loadCachedWeights();
   }
 
   Future<void> _restoreSavedDraftForCurrentSplit() async {
@@ -1153,6 +1207,102 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     );
   }
 
+
+  Widget _buildDynamicIslandPill(double topPadding) {
+    final done = _completedExerciseIndices.length;
+    final total = _exercises.length;
+    final pct = total == 0 ? 0 : ((done / total) * 100).round();
+    final splitTitle = _splitIdentifier != null ? 'Split $_splitIdentifier' : 'Treino';
+
+    return Container(
+      margin: EdgeInsets.only(top: topPadding + 6, left: 16, right: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      decoration: BoxDecoration(
+        color: _cardBg.withValues(alpha: _isDark ? 0.90 : 0.96),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: MetaColors.emerald.withValues(alpha: 0.4),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: _isDark ? 0.35 : 0.12),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(
+              color: MetaColors.emerald,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() => _isImmersiveCollapsed = false);
+                StudentChromeVisibility.show();
+              },
+              behavior: HitTestBehavior.opaque,
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      '$splitTitle • $done/$total ($pct%)',
+                      style: TextStyle(
+                        color: _textPrimary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (currentStreak != null && currentStreak! > 0) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      '• 🔥 ${currentStreak}d',
+                      style: const TextStyle(
+                        color: Colors.amber,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          SquircleButton(
+            label: (done > 0 && done == total) ? 'Finalizar' : 'Continuar',
+            icon: (done > 0 && done == total)
+                ? Icons.check_circle_rounded
+                : Icons.play_arrow_rounded,
+            isPrimary: true,
+            height: 32,
+            borderRadius: 999,
+            backgroundColor: MetaColors.emerald,
+            foregroundColor: Colors.black,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            onPressed: () {
+              if (done > 0 && done == total) {
+                _finishWorkout();
+              } else {
+                _startFocusMode();
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStudentHeader() {
     return Row(
       children: [
@@ -1163,14 +1313,49 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Meu Treino',
-                  style: TextStyle(
-                    color: _textPrimary,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.6,
-                  ),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        'Meu Treino',
+                        style: TextStyle(
+                          color: _textPrimary,
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.6,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (currentStreak != null && currentStreak! > 0) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.amber.withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('🔥', style: TextStyle(fontSize: 12)),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$currentStreak dias',
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.amber,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 1),
                 Row(
@@ -1224,133 +1409,6 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           onTap: _openMoreMenu,
         ),
       ],
-    );
-  }
-
-  // Bento de telemetria: Ofensiva + Progresso da Sessão
-  Widget _buildTelemetryBento() {
-    final done = _completedExerciseIndices.length;
-    final total = _exercises.length;
-    final ratio = total == 0 ? 0.0 : done / total;
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            width: 118,
-            child: GlassCard(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'OFENSIVA',
-                    style: TextStyle(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.8,
-                      color: _textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      const Text('\u{1F525}', style: TextStyle(fontSize: 20)),
-                      const SizedBox(width: 6),
-                      Text(
-                        currentStreak == null ? '\u2014' : '$currentStreak',
-                        semanticsLabel: currentStreak == null
-                            ? 'Sequência indisponível'
-                            : '$currentStreak dias',
-                        style: TextStyle(
-                          fontSize: 26,
-                          height: 1,
-                          fontWeight: FontWeight.w900,
-                          color: _textPrimary,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
-                      ),
-                      const SizedBox(width: 3),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 2),
-                        child: Text('dias',
-                            style: TextStyle(fontSize: 11, color: _textSecondary)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: GlassCard(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'PROGRESSO',
-                        style: TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.8,
-                          color: _textSecondary,
-                        ),
-                      ),
-                      Text(
-                        '${(ratio * 100).round()}%',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: MetaColors.emeraldText(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(
-                          text: '$done',
-                          style: TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w900,
-                            color: _textPrimary,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
-                        ),
-                        TextSpan(
-                          text: ' / $total exerc\u00EDcios',
-                          style: TextStyle(fontSize: 12, color: _textSecondary),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: LinearProgressIndicator(
-                      value: ratio,
-                      minHeight: 6,
-                      backgroundColor: _highlight,
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                          MetaColors.emerald),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1731,80 +1789,102 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     ),
                   ],
                 ),
+                if (_cachedLastWeights.containsKey(item.name)) ...[
+                  const SizedBox(height: 3),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                    decoration: BoxDecoration(
+                      color: _highlight,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: _border),
+                    ),
+                    child: Text(
+                      'Última: ${_cachedLastWeights[item.name]!.toStringAsFixed(1)} kg',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: _textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
           const SizedBox(width: 10),
 
-          // 3. Ação Rápida de Conclusão / Ir Treinar
-          InkWell(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              if (isPartial) {
-                _startFocusMode(initialIndex: index);
-                return;
-              }
-              final nextCompleted = !isCompleted;
-              setState(() {
-                if (isCompleted) {
-                  _completedExerciseIndices.remove(index);
-                } else {
-                  _completedExerciseIndices.add(index);
-                  _partialSetsByExercise.remove(index);
-                }
-              });
-              _syncManualExerciseToggleToDraft(index, nextCompleted);
-            },
-            borderRadius: BorderRadius.circular(12),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: isCompleted
-                    ? MetaColors.emerald
-                    : (isPartial
-                        ? const Color(0xFFF59E0B).withValues(alpha: 0.16)
-                        : _highlight),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isCompleted
-                      ? MetaColors.emerald
-                      : (isPartial
-                          ? const Color(0xFFF59E0B).withValues(alpha: 0.6)
-                          : _border),
-                  width: 1.0,
+          // 3. Ação Rápida: Abrir e Botão Circular de Check
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Abrir ›',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                  color: isPartial ? const Color(0xFFF59E0B) : _textSecondary,
                 ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    isCompleted
-                        ? Icons.check_circle_rounded
-                        : (isPartial
-                            ? Icons.timelapse_rounded
-                            : Icons.play_arrow_rounded),
-                    size: 16,
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  final nextCompleted = !isCompleted;
+                  setState(() {
+                    if (isCompleted) {
+                      _completedExerciseIndices.remove(index);
+                    } else {
+                      _completedExerciseIndices.add(index);
+                      _partialSetsByExercise.remove(index);
+                    }
+                  });
+                  _syncManualExerciseToggleToDraft(index, nextCompleted);
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
                     color: isCompleted
-                        ? Colors.black
-                        : (isPartial ? const Color(0xFFF59E0B) : MetaColors.emerald),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    isCompleted
-                        ? 'Feito'
-                        : (isPartial ? 'Continuar ($partialSets/$setsCount)' : 'Treinar'),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
+                        ? MetaColors.emerald
+                        : (isPartial
+                            ? const Color(0xFFF59E0B).withValues(alpha: 0.16)
+                            : _highlight),
+                    shape: BoxShape.circle,
+                    border: Border.all(
                       color: isCompleted
-                          ? Colors.black
-                          : (isPartial ? const Color(0xFFF59E0B) : MetaColors.emerald),
+                          ? MetaColors.emerald
+                          : (isPartial
+                              ? const Color(0xFFF59E0B).withValues(alpha: 0.6)
+                              : _border),
+                      width: 1.5,
                     ),
                   ),
-                ],
+                  child: Center(
+                    child: isCompleted
+                        ? const Icon(
+                            Icons.check_rounded,
+                            color: Colors.black,
+                            size: 19,
+                          )
+                        : (isPartial
+                            ? Text(
+                                '$partialSets/$setsCount',
+                                style: const TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFFF59E0B),
+                                ),
+                              )
+                            : Icon(
+                                Icons.check_rounded,
+                                color: _textSecondary.withValues(alpha: 0.35),
+                                size: 17,
+                              )),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -2308,8 +2388,13 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         body: Stack(
           children: [
             const AmbientGlowCanvas(),
-            ListView(
-              physics: const BouncingScrollPhysics(),
+            NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                _onScrollNotification(notification);
+                return false;
+              },
+              child: ListView(
+                physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.only(
                 top: topPadding + 14,
                 bottom: bottomPadding + 140, // Espaço seguro para o OneUiFloatingNavBar nunca cobrir os cards
@@ -2337,12 +2422,8 @@ onLinked: _loadActiveWorkout,
                   },
                   padding: const EdgeInsets.only(bottom: 12),
                 ),
-                // 1. Cabeçalho Edge-to-Edge unificado
+                // 1. Cabeçalho Edge-to-Edge unificado (com cápsula de ofensiva integrada)
                 _buildStudentHeader(),
-                const SizedBox(height: 16),
-
-                // 2. Bento de telemetria translúcido
-                _buildTelemetryBento(),
                 const SizedBox(height: 16),
 
                 // 3. Seletor de divisões em cápsula translúcida (One UI)
@@ -2364,21 +2445,69 @@ onLinked: _loadActiveWorkout,
                   palette: ThematicCardPalette.biomechanicsCyan,
                   customWatermark: ThematicWatermarkType.biomechanics,
                   padding: const EdgeInsets.all(18),
-                  trailingBadge: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: _isDark ? Colors.white.withValues(alpha: 0.12) : _highlight,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: _border),
-                    ),
-                    child: Text(
-                      _elapsedLabel(),
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: _isDark ? Colors.white : _textSecondary,
+                  trailingBadge: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      InkWell(
+                        borderRadius: BorderRadius.circular(999),
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          WarmupSheet.show(
+                            context,
+                            initialFocus: _splitName ?? 'Geral',
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: Colors.amber.withValues(alpha: 0.35),
+                              width: 1,
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('🔥', style: TextStyle(fontSize: 12)),
+                              SizedBox(width: 4),
+                              Text(
+                                'Aquecer 3m',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.amber,
+                                ),
+                              ),
+                              SizedBox(width: 2),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                color: Colors.amber,
+                                size: 14,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _isDark ? Colors.white.withValues(alpha: 0.12) : _highlight,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: _border),
+                        ),
+                        child: Text(
+                          _elapsedLabel(),
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: _isDark ? Colors.white : _textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   customContent: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2493,49 +2622,7 @@ onLinked: _loadActiveWorkout,
                           ),
                         ],
                       ),
-                      const SizedBox(height: 14),
-                      InkWell(
-                        borderRadius: BorderRadius.circular(14),
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          WarmupSheet.show(
-                            context,
-                            initialFocus: _splitName ?? 'Geral',
-                          );
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.amber.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: Colors.amber.withValues(alpha: 0.35),
-                              width: 1,
-                            ),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text('🔥', style: TextStyle(fontSize: 16)),
-                              SizedBox(width: 8),
-                              Text(
-                                'Aquecimento Articular Guiado (3 min)',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.amber,
-                                ),
-                              ),
-                              SizedBox(width: 6),
-                              Icon(
-                                Icons.chevron_right_rounded,
-                                color: Colors.amber,
-                                size: 18,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+
                       const SizedBox(height: 12),
                       SquircleButton(
                         label: (_completedExerciseIndices.isEmpty &&
@@ -2675,6 +2762,27 @@ onLinked: _loadActiveWorkout,
                   ),
                 ),
               ],
+            ),
+          ),
+
+            // Dynamic Island Pill no topo durante o scroll
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: AnimatedSlide(
+                duration: const Duration(milliseconds: 240),
+                curve: Curves.easeOutCubic,
+                offset: _isImmersiveCollapsed ? Offset.zero : const Offset(0, -1.2),
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  opacity: _isImmersiveCollapsed ? 1.0 : 0.0,
+                  child: IgnorePointer(
+                    ignoring: !_isImmersiveCollapsed,
+                    child: _buildDynamicIslandPill(topPadding),
+                  ),
+                ),
+              ),
             ),
 
             // Botão de Finalizar Flutuante (Rodapé) - Exibido apenas quando todos os exercícios forem concluídos (100%)

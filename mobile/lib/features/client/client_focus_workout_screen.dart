@@ -92,6 +92,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
   int _lastReportedRpe = 8;
   final Set<int> _dismissedOverloadIndices = {};
   int _newPrCount = 0;
+  final Set<int> _expandedNotes = {};
 
   static String _weightKey(String clientId, String exerciseName) =>
       'pwa_last_weight_${clientId}_${exerciseName.toLowerCase().trim()}';
@@ -1204,18 +1205,37 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    widget.splitIdentifier.isNotEmpty
-                                        ? '${widget.splitIdentifier} · EXERCÍCIO ${_currentPage + 1}/$totalEx'
-                                        : 'EXERCÍCIO ${_currentPage + 1}/$totalEx',
-                                    style: TextStyle(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.5,
-                                      color: textSecondary,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                  Row(
+                                    children: [
+                                      Text(
+                                        widget.splitIdentifier.isNotEmpty
+                                            ? '${widget.splitIdentifier} · EXERCÍCIO ${_currentPage + 1}/$totalEx'
+                                            : 'EXERCÍCIO ${_currentPage + 1}/$totalEx',
+                                        style: TextStyle(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 0.5,
+                                          color: textSecondary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      if (_currentPage + 1 < totalEx) ...[
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            '• Próximo: ${_currentExercises[_currentPage + 1].name}',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                              color: textSecondary.withValues(alpha: 0.75),
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
@@ -1232,7 +1252,39 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 8),
+                            // Volume Total Live
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: MetaColors.emerald.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: MetaColors.emerald.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.bolt_rounded,
+                                    size: 13,
+                                    color: MetaColors.emerald,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    '${_calculateTotalVolumeLoadKg().toStringAsFixed(0)} kg',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w900,
+                                      color: MetaColors.emeraldText(context),
+                                      fontFeatures: const [FontFeature.tabularFigures()],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 6),
                             // Cronômetro da Sessão
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
@@ -1325,7 +1377,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                     ),
                   ),
 
-                  // 3. Bottom Controls (Thumb Zone)
+                  // 3. Bottom Controls (Thumb Zone - Option A: Smart Action Thumb-Bar)
                   Container(
                     padding: EdgeInsets.only(
                       left: 18,
@@ -1339,57 +1391,103 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                         top: BorderSide(color: border, width: 0.8),
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        if (_currentPage > 0) ...[
-                          Expanded(
-                            flex: 1,
-                            child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 15),
-                                side: BorderSide(color: border),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                    child: Builder(
+                      builder: (context) {
+                        final currentSets = _exerciseSets[_currentPage] ?? [];
+                        int activeSetIndex = -1;
+                        for (int i = 0; i < currentSets.length; i++) {
+                          if (!currentSets[i].isCompleted) {
+                            activeSetIndex = i;
+                            break;
+                          }
+                        }
+                        final bool hasPendingSet = activeSetIndex != -1;
+
+                        return Row(
+                          children: [
+                            if (_currentPage > 0) ...[
+                              OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 14),
+                                  side: BorderSide(color: border),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  _pageController.previousPage(
+                                    duration: const Duration(milliseconds: 280),
+                                    curve: Curves.easeOutCubic,
+                                  );
+                                },
+                                child: Icon(
+                                  Icons.arrow_back_rounded,
+                                  color: textPrimary,
+                                  size: 20,
                                 ),
                               ),
-                              onPressed: () {
-                                _pageController.previousPage(
-                                  duration: const Duration(milliseconds: 280),
-                                  curve: Curves.easeOutCubic,
-                                );
-                              },
-                              child: Icon(
-                                Icons.arrow_back_rounded,
-                                color: textPrimary,
-                                size: 20,
-                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            Expanded(
+                              child: hasPendingSet
+                                  ? SquircleButton(
+                                      label: 'Concluir Série #${activeSetIndex + 1} (${currentSets[activeSetIndex].weightKg.toStringAsFixed(1)} kg × ${currentSets[activeSetIndex].reps})',
+                                      icon: Icons.check_circle_outline_rounded,
+                                      isPrimary: true,
+                                      backgroundColor: MetaColors.emerald,
+                                      foregroundColor: Colors.black,
+                                      onPressed: () => _onSetChecked(_currentPage, activeSetIndex),
+                                    )
+                                  : (_currentPage < totalEx - 1
+                                      ? SquircleButton(
+                                          label: 'Próximo Exercício',
+                                          icon: Icons.arrow_forward_rounded,
+                                          isPrimary: true,
+                                          onPressed: () {
+                                            _pageController.nextPage(
+                                              duration: const Duration(milliseconds: 280),
+                                              curve: Curves.easeOutCubic,
+                                            );
+                                          },
+                                        )
+                                      : SquircleButton(
+                                          label: 'Finalizar Treino',
+                                          icon: Icons.check_circle_rounded,
+                                          isPrimary: true,
+                                          backgroundColor: MetaColors.emerald,
+                                          foregroundColor: Colors.black,
+                                          onPressed: _finishWorkout,
+                                        )),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                        ],
-                        Expanded(
-                          flex: 3,
-                          child: _currentPage < totalEx - 1
-                              ? SquircleButton(
-                                  label: 'Próximo Exercício',
-                                  icon: Icons.arrow_forward_rounded,
-                                  isPrimary: true,
+                            if (hasPendingSet && _currentPage < totalEx - 1) ...[
+                              const SizedBox(width: 8),
+                              Tooltip(
+                                message: 'Pular para o próximo exercício',
+                                child: OutlinedButton(
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 12),
+                                    side: BorderSide(color: border),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
                                   onPressed: () {
-                                    _pageController.nextPage(
-                                      duration: const Duration(milliseconds: 280),
-                                      curve: Curves.easeOutCubic,
-                                    );
-                                  },
-                                )
-                              : SquircleButton(
-                                  label: 'Finalizar Treino',
-                                  icon: Icons.check_circle_rounded,
-                                  isPrimary: true,
-                                  backgroundColor: MetaColors.emerald,
-                                  onPressed: _finishWorkout,
+                                  _pageController.nextPage(
+                                    duration: const Duration(milliseconds: 280),
+                                    curve: Curves.easeOutCubic,
+                                  );
+                                },
+                                child: Icon(
+                                    Icons.skip_next_rounded,
+                                    color: textPrimary,
+                                    size: 20,
+                                  ),
                                 ),
-                        ),
-                      ],
+                              ),
+                            ],
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -1568,6 +1666,100 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSmartOverloadBanner(int exerciseIndex, OverloadSuggestion suggestion) {
+    final textPrimary = MetaColors.text(context);
+    final textSecondary = MetaColors.subtext(context);
+    final isDark = MetaColors.isDark(context);
+
+    final isWeightStrategy = suggestion.strategy == OverloadStrategy.weight;
+    final badgeColor = isWeightStrategy
+        ? MetaColors.emerald
+        : (suggestion.strategy == OverloadStrategy.reps
+            ? const Color(0xFF60A5FA)
+            : Colors.amber);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF111E2E) : const Color(0xFFEDFDF5),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: badgeColor.withValues(alpha: 0.45),
+          width: 1.2,
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.auto_awesome_rounded,
+            size: 15,
+            color: MetaColors.emerald,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'IA SOBRECARGA',
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                        color: badgeColor,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      '• ${suggestion.badge}',
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w800,
+                        color: textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  'Sugerido: ${suggestion.suggestedWeightKg.toStringAsFixed(suggestion.suggestedWeightKg.truncateToDouble() == suggestion.suggestedWeightKg ? 0 : 1)} kg × ${suggestion.suggestedReps} reps',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    color: textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          SquircleButton(
+            label: 'Aplicar',
+            isPrimary: true,
+            height: 28,
+            borderRadius: 10,
+            backgroundColor: MetaColors.emerald,
+            foregroundColor: Colors.black,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            onPressed: () => _applyOverloadSuggestion(exerciseIndex, suggestion),
+          ),
+          const SizedBox(width: 2),
+          InkWell(
+            onTap: () => setState(() => _dismissedOverloadIndices.add(exerciseIndex)),
+            borderRadius: BorderRadius.circular(10),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(Icons.close_rounded, size: 14, color: textSecondary),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1953,33 +2145,58 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
 
               if (ex.notes.isNotEmpty) ...[
                 const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: MetaColors.highlight(context),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: border),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.lightbulb_outline_rounded,
-                        size: 15,
-                        color: MetaColors.emeraldText(context),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _cleanExerciseNotes(ex.notes),
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            color: textSecondary,
-                            height: 1.35,
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      if (_expandedNotes.contains(index)) {
+                        _expandedNotes.remove(index);
+                      } else {
+                        _expandedNotes.add(index);
+                      }
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: MetaColors.highlight(context),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: border),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.lightbulb_outline_rounded,
+                          size: 15,
+                          color: MetaColors.emeraldText(context),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _cleanExerciseNotes(ex.notes),
+                            maxLines: _expandedNotes.contains(index) ? null : 1,
+                            overflow: _expandedNotes.contains(index)
+                                ? TextOverflow.visible
+                                : TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: textSecondary,
+                              height: 1.35,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 4),
+                        Text(
+                          _expandedNotes.contains(index) ? 'Menos ▴' : 'Ver ▾',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: MetaColors.emeraldText(context),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -1987,6 +2204,29 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
           ),
         ),
         const SizedBox(height: 14),
+
+        // Sugestão de Sobrecarga Progressiva Inteligente (IA Overload - Smart Banner Compacto 1-Toque no Topo)
+        if (!_dismissedOverloadIndices.contains(index)) ...[
+          Builder(
+            builder: (context) {
+              final currentWeight =
+                  sets.isNotEmpty ? sets.first.weightKg : prevWeight;
+              final currentReps =
+                  sets.isNotEmpty ? sets.first.reps : _parseDefaultReps(ex.reps);
+
+              final suggestion = ProgressiveOverloadEngine.computeSuggestion(
+                exerciseName: ex.name,
+                targetMuscleGroup: ex.targetMuscleGroup,
+                currentWeight: currentWeight,
+                currentReps: currentReps,
+                previousWeight: prevWeight > 0 ? prevWeight : null,
+                lastRpe: _lastReportedRpe,
+              );
+
+              return _buildSmartOverloadBanner(index, suggestion);
+            },
+          ),
+        ],
 
         // Cabeçalho da Tabela de Séries
         Padding(
@@ -2068,13 +2308,13 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
                 color: isDone
                     ? MetaColors.emerald.withValues(alpha: 0.35)
                     : (isActive ? MetaColors.emerald : border),
-                width: isActive ? 1.5 : 1.0,
+                width: isActive ? 1.6 : 1.0,
               ),
               boxShadow: isActive
                   ? [
                       BoxShadow(
-                        color: MetaColors.emerald.withValues(alpha: 0.08),
-                        blurRadius: 8,
+                        color: MetaColors.emerald.withValues(alpha: 0.12),
+                        blurRadius: 10,
                         offset: const Offset(0, 2),
                       ),
                     ]
@@ -2082,12 +2322,30 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
             ),
             child: Row(
               children: [
-                // Número da série
+                // Número da série (com badge ATUAL na série ativa)
                 SizedBox(
-                  width: 32,
+                  width: 36,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      if (isActive)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: MetaColors.emerald.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'ATUAL',
+                            style: TextStyle(
+                              fontSize: 7.5,
+                              fontWeight: FontWeight.w900,
+                              color: MetaColors.emeraldText(context),
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
                       Text(
                         '#${sIdx + 1}',
                         style: TextStyle(
@@ -2312,32 +2570,7 @@ class _ClientFocusWorkoutScreenState extends State<ClientFocusWorkoutScreen> {
           ),
         ),
 
-        // Sugestão de Sobrecarga Progressiva Inteligente (IA Overload)
-        if (!_dismissedOverloadIndices.contains(index)) ...[
-          Builder(
-            builder: (context) {
-              final currentWeight =
-                  sets.isNotEmpty ? sets.first.weightKg : prevWeight;
-              final currentReps =
-                  sets.isNotEmpty ? sets.first.reps : _parseDefaultReps(ex.reps);
 
-              final suggestion = ProgressiveOverloadEngine.computeSuggestion(
-                exerciseName: ex.name,
-                targetMuscleGroup: ex.targetMuscleGroup,
-                currentWeight: currentWeight,
-                currentReps: currentReps,
-                previousWeight: prevWeight > 0 ? prevWeight : null,
-                lastRpe: _lastReportedRpe,
-              );
-
-              return AiOverloadCard(
-                suggestion: suggestion,
-                onApply: () => _applyOverloadSuggestion(index, suggestion),
-                onDismiss: () => setState(() => _dismissedOverloadIndices.add(index)),
-              );
-            },
-          ),
-        ],
       ],
     );
   }
