@@ -1184,7 +1184,6 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
               ? 'Já adaptado hoje para: $currentAdapted'
               : 'Toque para ver 2 opções equivalentes livres de fila',
           onTap: () {
-            Navigator.of(context, rootNavigator: true).pop();
             _triggerExerciseSwapFlow(exName);
           },
         );
@@ -1242,7 +1241,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
           subtitle: _swappedExercises.isNotEmpty
               ? _swappedExercises.entries.map((e) => '${e.key} → ${e.value}').join(', ')
               : 'Nenhuma adaptação necessária até o momento.',
-          onTap: () => Navigator.of(context, rootNavigator: true).pop(),
+          onTap: () {},
         ),
         GlassAction(
           icon: Icons.chat_bubble_rounded,
@@ -1250,7 +1249,6 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
           label: 'Falar com o Robô Oficial no WhatsApp',
           subtitle: 'Troque exercícios, registre RPE e consulte ficha pelo WhatsApp',
           onTap: () {
-            Navigator.of(context, rootNavigator: true).pop();
             _openTrainerWhatsApp(customMessage: 'Oi Mr. Coach! Gostaria de consultar meu treino de hoje.');
           },
         ),

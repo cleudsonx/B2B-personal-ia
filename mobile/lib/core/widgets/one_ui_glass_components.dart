@@ -342,38 +342,41 @@ class OneUiGlassSheet {
                       if (header != null) ...[header, const SizedBox(height: 8)],
                       ...actions.map((a) {
                         final c = a.color ?? MetaColors.emerald;
-                        return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                          leading: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: c.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(12),
+                        return Material(
+                          color: Colors.transparent,
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                            leading: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: c.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(a.icon, color: c, size: 21),
                             ),
-                            child: Icon(a.icon, color: c, size: 21),
-                          ),
-                          title: Text(
-                            a.label,
-                            style: TextStyle(
-                              color: MetaColors.text(ctx),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14.5,
+                            title: Text(
+                              a.label,
+                              style: TextStyle(
+                                color: MetaColors.text(ctx),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14.5,
+                              ),
                             ),
-                          ),
-                          subtitle: a.subtitle == null
-                              ? null
-                              : Text(
-                                  a.subtitle!,
-                                  style: TextStyle(
-                                    color: MetaColors.subtext(ctx),
-                                    fontSize: 12,
+                            subtitle: a.subtitle == null
+                                ? null
+                                : Text(
+                                    a.subtitle!,
+                                    style: TextStyle(
+                                      color: MetaColors.subtext(ctx),
+                                      fontSize: 12,
+                                    ),
                                   ),
-                                ),
-                          onTap: () {
-                            Navigator.pop(ctx);
-                            a.onTap();
-                          },
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              a.onTap();
+                            },
+                          ),
                         );
                       }),
                     ],
