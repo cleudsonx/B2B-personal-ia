@@ -45,10 +45,11 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
   List<Map<String, dynamic>> _anamnesisHistory = [];
   bool _isLoadingAnamnesisHistory = true;
 
-  // Pré-Treino State
+  // Pré-Treino & Prontidão State
   int _energyLevel = 4; // 1 a 5
-  int _waterIntakeMl = 500; // ml
+  int _waterIntakeMl = 1750; // ml
   bool _mobilityCompleted = false;
+  String _selectedSleepCategory = '7h - 8h';
 
   // Pós-Treino State
   double _rpeScore = 8.0; // 1 a 10 (Escala Borg)
@@ -80,15 +81,13 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
   double get _calculatedReadinessScore {
     double sleepScore = 0;
     if (_sleepHours >= 7 && _sleepHours <= 9) {
-      sleepScore = 50;
+      sleepScore = 45;
     } else if (_sleepHours >= 6) {
-      sleepScore = 38;
-    } else if (_sleepHours >= 5) {
-      sleepScore = 25;
+      sleepScore = 35;
     } else if (_sleepHours > 9) {
-      sleepScore = 42;
+      sleepScore = 40;
     } else {
-      sleepScore = 15;
+      sleepScore = 20;
     }
 
     double domsScore = 0;
@@ -100,8 +99,8 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
       domsScore = 10;
     }
 
-    double waterScore = (_waterIntakeMl / 500.0) * 10.0;
-    if (waterScore > 10) waterScore = 10;
+    double waterScore = (_waterIntakeMl / 2500.0) * 15.0;
+    if (waterScore > 15) waterScore = 15;
 
     final total = sleepScore + domsScore + waterScore;
     return total.clamp(20.0, 100.0);
@@ -496,6 +495,21 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
         ),
       );
     }
+  }
+
+  Future<void> _autoSaveRecoverySilent() async {
+    final score = _calculatedReadinessScore;
+    try {
+      await WorkoutService.saveDailyRecovery(
+        sleepHours: _sleepHours,
+        domsLevel: _domsLevel,
+        waterIntakeMl: _waterIntakeMl,
+        readinessScore: score,
+      );
+      if (mounted) {
+        setState(() => _recoverySaved = true);
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadEvolutionPhotos() async {
@@ -1336,15 +1350,15 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                           segments: const [
                             GlassSegment(
                               icon: Icons.bolt_rounded,
-                              label: 'Sessão',
+                              label: 'Hoje',
                             ),
                             GlassSegment(
-                              icon: Icons.show_chart_rounded,
-                              label: 'Cargas & Fotos',
+                              icon: Icons.accessibility_new_rounded,
+                              label: 'Meu Corpo',
                             ),
                             GlassSegment(
-                              icon: Icons.battery_charging_full_rounded,
-                              label: 'Recovery',
+                              icon: Icons.emoji_events_rounded,
+                              label: 'Força',
                             ),
                           ],
                         ),
@@ -1356,7 +1370,7 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
               body: TabBarView(
                 controller: _tabController,
                 children: [
-                  _buildSessionTab(bottomPadding),
+                  _buildHojeTab(bottomPadding),
                   _buildProgressTab(bottomPadding),
                   _buildRecoveryTab(bottomPadding),
                 ],
@@ -1522,9 +1536,43 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
 
 
   // -------------------------------------------------------------
-  // ABA 1: SESSÃO (PRÉ & PÓS-TREINO)
+  // ABA 1: ⚡ HOJE (PRONTIDÃO & PULSO EM 5 SEGUNDOS)
   // -------------------------------------------------------------
-  Widget _buildSessionTab(double bottomPadding) {
+  Widget _buildHojeTab(double bottomPadding) {
+    final readiness = _calculatedReadinessScore;
+    final readinessInt = readiness.toInt();
+
+    // Determinação do status e badge da prontidão
+    final String readinessBadge;
+    final String readinessTitle;
+    final String readinessDesc;
+    final Color orbColor;
+
+    if (readiness >= 75) {
+      readinessBadge = 'JANELA IDEAL DE FORÇA 🚀';
+      readinessTitle = 'Seu corpo está 100% recuperado!';
+      readinessDesc = 'Excelente dia para buscar carga máxima ou manter cadência alta. Articulações descansadas e SNC pronto.';
+      orbColor = MetaColors.emerald;
+    } else if (readiness >= 50) {
+      readinessBadge = 'RECUPERAÇÃO MODERADA 🟡';
+      readinessTitle = 'Energia suficiente para treinar';
+      readinessDesc = 'Priorize cadência controlada e bom aquecimento articular. Ajuste as cargas conforme a percepção da primeira série.';
+      orbColor = const Color(0xFFF59E0B);
+    } else {
+      readinessBadge = 'FOCO EM RECUPERAÇÃO 🛌';
+      readinessTitle = 'Atenção aos sinais de fadiga';
+      readinessDesc = 'Seu corpo pede hidratação e sono reparador. Vale focar em mobilidade, treino técnico ou descanso ativo.';
+      orbColor = const Color(0xFFEF4444);
+    }
+
+    final sleepLabel = _sleepHours >= 8.0
+        ? '8h+ (Reparador)'
+        : (_sleepHours >= 7.0 ? '7h - 8h (Ideal)' : 'Menos de 6h');
+
+    final muscleLabel = _domsLevel == 'none'
+        ? '100% Recuperado'
+        : (_domsLevel == 'mild' ? 'Dor Leve' : 'Fadiga / Dor Articular');
+
     return ListView(
       physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.only(
@@ -1534,16 +1582,128 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
         bottom: bottomPadding + 32,
       ),
       children: [
-        // 1. Bloco PRÉ-TREINO
-        _buildSectionHeader(
-          icon: Icons.play_circle_fill_rounded,
-          title: 'Pré-Treino • Preparação Rápida',
-          tag: 'ANTES DE COMEÇAR',
-          tagColor: MetaColors.accentBlue,
+        // 1. HERO BIO-BATTERY ORB
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                orbColor.withValues(alpha: 0.16),
+                MetaColors.surface.withValues(alpha: 0.95),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: orbColor.withValues(alpha: 0.35),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: orbColor.withValues(alpha: 0.08),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Circular Orb Indicator
+              Container(
+                width: 78,
+                height: 78,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.black.withValues(alpha: 0.45),
+                  border: Border.all(
+                    color: orbColor,
+                    width: 3.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: orbColor.withValues(alpha: 0.25),
+                      blurRadius: 12,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '$readinessInt%',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    Text(
+                      readiness >= 75
+                          ? 'PRONTO'
+                          : (readiness >= 50 ? 'MODERADO' : 'BAIXO'),
+                      style: TextStyle(
+                        color: orbColor,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Contextual Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: orbColor.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        readinessBadge,
+                        style: TextStyle(
+                          color: orbColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      readinessTitle,
+                      style: const TextStyle(
+                        color: MetaColors.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      readinessDesc,
+                      style: const TextStyle(
+                        color: MetaColors.textSecondary,
+                        fontSize: 11.5,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
 
-        // Card Check-in de Disposição & Água
+        const SizedBox(height: 16),
+
+        // 2. MICRO CHECK-IN 1-TOQUE (AUTO-SALVO)
         MetaCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1552,67 +1712,178 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'Nível de Disposição Física',
+                    'Calibrar Prontidão de Hoje',
                     style: TextStyle(
                       color: MetaColors.textPrimary,
                       fontWeight: FontWeight.bold,
-                      fontSize: 15,
+                      fontSize: 14,
                     ),
                   ),
-                  Text(
-                    '$_energyLevel/5',
-                    style: const TextStyle(
-                      color: MetaColors.emerald,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: MetaColors.emerald.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'Auto-Salvo ✓',
+                      style: TextStyle(
+                        color: MetaColors.emerald,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
+
+              // SONO
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: List.generate(5, (index) {
-                  final level = index + 1;
-                  final isSelected = _energyLevel >= level;
-                  return GestureDetector(
-                    onTap: () => setState(() => _energyLevel = level),
-                    child: Container(
-                      width: 52,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? MetaColors.emerald.withValues(alpha: 0.2)
-                            : MetaColors.surfaceHighlight,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isSelected ? MetaColors.emerald : MetaColors.border,
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Center(
-                        child: Icon(
-                          Icons.bolt_rounded,
-                          color: isSelected ? MetaColors.emerald : MetaColors.textSecondary,
-                          size: 22,
-                        ),
-                      ),
+                children: [
+                  const Text(
+                    '🌙 Como dormiu esta noite?',
+                    style: TextStyle(
+                      color: MetaColors.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
-                  );
-                }),
+                  ),
+                  Text(
+                    sleepLabel,
+                    style: const TextStyle(
+                      color: MetaColors.textPrimary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 18),
-              const Divider(color: MetaColors.border, height: 1),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildCheckinChip(
+                      label: '😴 < 6h',
+                      isSelected: _sleepHours < 6.0,
+                      onTap: () {
+                        setState(() {
+                          _sleepHours = 5.5;
+                          _selectedSleepCategory = '< 6h';
+                        });
+                        _autoSaveRecoverySilent();
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildCheckinChip(
+                      label: '⚡ 7h - 8h',
+                      isSelected: _sleepHours >= 6.0 && _sleepHours <= 8.0,
+                      onTap: () {
+                        setState(() {
+                          _sleepHours = 7.5;
+                          _selectedSleepCategory = '7h - 8h';
+                        });
+                        _autoSaveRecoverySilent();
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildCheckinChip(
+                      label: '🛌 8h+',
+                      isSelected: _sleepHours > 8.0,
+                      onTap: () {
+                        setState(() {
+                          _sleepHours = 8.5;
+                          _selectedSleepCategory = '8h+';
+                        });
+                        _autoSaveRecoverySilent();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+
               const SizedBox(height: 16),
 
-              // Hidratação Pré
+              // SENSAÇÃO MUSCULAR
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    '💪 Sensação Muscular / Articular',
+                    style: TextStyle(
+                      color: MetaColors.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    muscleLabel,
+                    style: TextStyle(
+                      color: _domsLevel == 'none'
+                          ? MetaColors.emerald
+                          : (_domsLevel == 'mild' ? const Color(0xFFF59E0B) : const Color(0xFFEF4444)),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildCheckinChip(
+                      label: '🟢 100% Novo',
+                      isSelected: _domsLevel == 'none',
+                      onTap: () {
+                        setState(() => _domsLevel = 'none');
+                        _autoSaveRecoverySilent();
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildCheckinChip(
+                      label: '🟡 Dor Leve',
+                      isSelected: _domsLevel == 'mild',
+                      onTap: () {
+                        setState(() => _domsLevel = 'mild');
+                        _autoSaveRecoverySilent();
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildCheckinChip(
+                      label: '🔴 Fadigado',
+                      isSelected: _domsLevel == 'severe',
+                      onTap: () {
+                        setState(() => _domsLevel = 'severe');
+                        _autoSaveRecoverySilent();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+              const Divider(color: MetaColors.border, height: 1),
+              const SizedBox(height: 14),
+
+              // HIDRATAÇÃO RÁPIDA
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
                       color: MetaColors.accentBlue.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
                       Icons.water_drop_rounded,
@@ -1626,38 +1897,179 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Hidratação Pré-Treino',
+                          'Hidratação do Dia',
                           style: TextStyle(
                             color: MetaColors.textPrimary,
-                            fontSize: 14,
                             fontWeight: FontWeight.bold,
+                            fontSize: 13,
                           ),
                         ),
                         Text(
-                          'Meta: 500ml • Ingeridos: ${_waterIntakeMl}ml',
+                          '${_waterIntakeMl}ml de 2.500ml consumidos',
                           style: const TextStyle(
-                            color: MetaColors.textSecondary,
+                            color: MetaColors.accentBlue,
                             fontSize: 12,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.add_circle, color: MetaColors.accentBlue, size: 28),
-                    onPressed: () {
+                  InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () {
                       setState(() => _waterIntakeMl += 250);
+                      _autoSaveRecoverySilent();
                     },
-                    tooltip: '+250ml',
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: MetaColors.accentBlue.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: MetaColors.accentBlue.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: const Text(
+                        '+ 250ml',
+                        style: TextStyle(
+                          color: MetaColors.accentBlue,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
             ],
           ),
         ),
-        const SizedBox(height: 14),
 
-        // Aquecimento Guiado
+        const SizedBox(height: 16),
+
+        // 3. SELO DO TREINADOR & RECIPROCIDADE
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: MetaColors.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: MetaColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: MetaColors.emerald.withValues(alpha: 0.2),
+                    backgroundImage: _trainerPhotoUrl.isNotEmpty
+                        ? NetworkImage(_trainerPhotoUrl)
+                        : null,
+                    child: _trainerPhotoUrl.isEmpty
+                        ? Text(
+                            _trainerName.isNotEmpty
+                                ? _trainerName.substring(0, 1).toUpperCase()
+                                : 'P',
+                            style: const TextStyle(
+                              color: MetaColors.emerald,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'Prof. $_trainerName',
+                              style: const TextStyle(
+                                color: MetaColors.textPrimary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: MetaColors.emerald.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                '✓ Sincronizado Zap',
+                                style: TextStyle(
+                                  color: MetaColors.emerald,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          _trainerCref.isNotEmpty ? 'CREF: $_trainerCref' : 'Treinador Responsável',
+                          style: const TextStyle(
+                            color: MetaColors.textSecondary,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_trainerPhone.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.chat_bubble_outline_rounded, color: MetaColors.emerald, size: 20),
+                      onPressed: _contactTrainerWhatsApp,
+                      tooltip: 'Falar no WhatsApp',
+                    ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: MetaColors.surfaceHighlight,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  readiness >= 75
+                      ? '"Olá! Vi que sua prontidão está em ${readinessInt}%. Hoje é dia de foco total e você pode progredir carga nos compostos. Bom treino!"'
+                      : '"Olá! Prontidão em ${readinessInt}%. Mantenha boa hidratação e faça o aquecimento com calma antes de iniciar as séries."',
+                  style: const TextStyle(
+                    color: MetaColors.textSecondary,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // 4. CTA DIRETO PARA O TREINO DO DIA
+        SquircleButton(
+          label: '⚡ INICIAR TREINO COM PRONTIDÃO ($readinessInt%)',
+          icon: Icons.bolt_rounded,
+          isPrimary: true,
+          backgroundColor: MetaColors.emerald,
+          foregroundColor: Colors.black,
+          onPressed: widget.onNavigateToWorkout ?? () => Navigator.pop(context),
+        ),
+
+        const SizedBox(height: 24),
+
+        // 5. AQUECIMENTO ESPECÍFICO GUIADO (MANTIDO)
         MetaCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1671,7 +2083,7 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                     style: TextStyle(
                       color: MetaColors.textPrimary,
                       fontWeight: FontWeight.bold,
-                      fontSize: 15,
+                      fontSize: 14,
                     ),
                   ),
                   const Spacer(),
@@ -1686,12 +2098,12 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                     ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               const Text(
                 'Mobilidade articular direcionada para os grupos musculares da sua ficha ativa de hoje.',
-                style: TextStyle(color: MetaColors.textSecondary, fontSize: 13, height: 1.4),
+                style: TextStyle(color: MetaColors.textSecondary, fontSize: 12, height: 1.35),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               SquircleButton(
                 label: _mobilityCompleted ? 'Refazer Aquecimento' : 'Iniciar Timer de Mobilidade (3 min)',
                 icon: Icons.play_arrow_rounded,
@@ -1702,41 +2114,16 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                   final completed = await WarmupSheet.show(context);
                   if (completed == true && mounted) {
                     setState(() => _mobilityCompleted = true);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        behavior: SnackBarBehavior.floating,
-                        backgroundColor: MetaColors.emerald,
-                        content: Row(
-                          children: const [
-                            Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                            SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                'Aquecimento concluído! Articulações preparadas para o treino.',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
                   }
                 },
-              ),
-              const SizedBox(height: 10),
-              SquircleButton(
-                label: 'Ir para a Ficha de Treino',
-                icon: Icons.fitness_center_rounded,
-                isPrimary: true,
-                onPressed: widget.onNavigateToWorkout ?? () => Navigator.pop(context),
               ),
             ],
           ),
         ),
 
-        const SizedBox(height: 28),
+        const SizedBox(height: 24),
 
-        // 2. Bloco PÓS-TREINO
+        // 6. BLOCO PÓS-TREINO • REGISTRO DE ESFORÇO & RPE BORG (MANTIDO)
         _buildSectionHeader(
           icon: Icons.check_circle_outline_rounded,
           title: 'Pós-Treino • Registro de Esforço',
@@ -1757,7 +2144,7 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                     style: TextStyle(
                       color: MetaColors.textPrimary,
                       fontWeight: FontWeight.bold,
-                      fontSize: 15,
+                      fontSize: 14,
                     ),
                   ),
                   Container(
@@ -1771,7 +2158,7 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                       style: TextStyle(
                         color: _getRpeColor(_rpeScore),
                         fontWeight: FontWeight.w800,
-                        fontSize: 14,
+                        fontSize: 13,
                       ),
                     ),
                   ),
@@ -1782,11 +2169,11 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                 _getRpeLabel(_rpeScore),
                 style: TextStyle(
                   color: _getRpeColor(_rpeScore),
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               SliderTheme(
                 data: SliderTheme.of(context).copyWith(
                   activeTrackColor: _getRpeColor(_rpeScore),
@@ -1803,23 +2190,22 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                   onChanged: (val) => setState(() => _rpeScore = val),
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               const Divider(color: MetaColors.border, height: 1),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
 
-              // Registro de Dor ou Desconforto Articular
               const Text(
                 'Sentiu dor articular ou desconforto?',
                 style: TextStyle(
                   color: MetaColors.textPrimary,
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 4),
               const Text(
                 'Isso gera um aviso automático para o seu personal ajustar sua periodização.',
-                style: TextStyle(color: MetaColors.textSecondary, fontSize: 12),
+                style: TextStyle(color: MetaColors.textSecondary, fontSize: 11),
               ),
               const SizedBox(height: 10),
               Wrap(
@@ -1874,7 +2260,7 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                 }).toList(),
               ),
 
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
               SquircleButton(
                 label: _postWorkoutSaved ? 'Registro Atualizado ✓' : 'Salvar Registro do Treino',
                 icon: Icons.save_alt_rounded,
@@ -1886,6 +2272,40 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCheckinChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? MetaColors.emerald.withValues(alpha: 0.18)
+              : MetaColors.surfaceHighlight,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? MetaColors.emerald : MetaColors.border,
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? MetaColors.emerald : MetaColors.textSecondary,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
