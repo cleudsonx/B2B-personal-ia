@@ -82,28 +82,41 @@ void main(List<String> args) {
   final todayPrefix = '$year$month$day'; // ex: 20261017
 
   int gitCommitCount = 0;
+  int todayCommitCount = 0;
   try {
     final res = Process.runSync('git', ['rev-list', '--count', 'HEAD'], workingDirectory: mobileDir.path);
     if (res.exitCode == 0) {
       gitCommitCount = int.tryParse(res.stdout.toString().trim()) ?? 0;
     }
+    final todayRes = Process.runSync(
+      'git',
+      ['rev-list', '--count', '--since=$year-$month-${day}T00:00:00Z', 'HEAD'],
+      workingDirectory: mobileDir.path,
+    );
+    if (todayRes.exitCode == 0) {
+      todayCommitCount = int.tryParse(todayRes.stdout.toString().trim()) ?? 0;
+    }
   } catch (_) {}
 
   int newBuildNumber;
   final currentBuildStr = currentBuild.toString();
+  final dailySeq = (todayCommitCount + 1).clamp(1, 98);
+  final todayDynamicCandidate = int.parse('$todayPrefix${dailySeq.toString().padLeft(2, '0')}');
 
   if (currentBuildStr.length == 10 && currentBuildStr.startsWith(todayPrefix)) {
     newBuildNumber = currentBuild + 1;
+    if (todayDynamicCandidate > newBuildNumber) {
+      newBuildNumber = todayDynamicCandidate;
+    }
   } else {
-    final candidate = int.parse('${todayPrefix}01');
-    if (candidate > currentBuild) {
-      newBuildNumber = candidate;
+    if (todayDynamicCandidate > currentBuild) {
+      newBuildNumber = todayDynamicCandidate;
     } else {
       newBuildNumber = currentBuild + 1;
     }
   }
 
-  // Garante incremento automático mesmo quando o CI roda sem commitar pubspec.yaml de volta:
+  // Fallback adicional caso gitCommitCount supere qualquer marca anterior
   if (gitCommitCount > 0) {
     final commitBasedBuild = 2026102600 + gitCommitCount;
     if (commitBasedBuild > newBuildNumber) {

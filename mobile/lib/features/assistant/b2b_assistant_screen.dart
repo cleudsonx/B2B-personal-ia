@@ -1191,6 +1191,224 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
     );
   }
 
+  Map<String, dynamic> _getLocalBiomechCues(String exName) {
+    final lower = exName.toLowerCase();
+    if (lower.contains('supino') && (lower.contains('inclinado') || lower.contains('45'))) {
+      return {
+        'muscle': 'Peitoral Superior (Clavicular)',
+        'cues': [
+          '1️⃣ Banco entre 30° e 45° (acima disso o deltoide anterior domina).',
+          '2️⃣ Escápulas retraídas e punhos firmes alinhados sobre os cotovelos.',
+          '3️⃣ Desça em 2s controlando o alongamento e pare em RIR 1 (1 rep na reserva).',
+        ],
+      };
+    } else if (lower.contains('supino')) {
+      return {
+        'muscle': 'Peitoral Médio & Tríceps',
+        'cues': [
+          '1️⃣ Escápulas retraídas e deprimidas ("guarde os ombros no bolso de trás").',
+          '2️⃣ Cotovelos a ~45° do tronco (nunca 90° abertos para proteger o manguito).',
+          '3️⃣ Desça controlando em 2s até a linha inferior do peitoral (RIR 1-2).',
+        ],
+      };
+    } else if (lower.contains('desenvolvimento') || lower.contains('ombro') || lower.contains('elevação')) {
+      return {
+        'muscle': 'Deltoide Anterior & Lateral',
+        'cues': [
+          '1️⃣ Trabalhe no plano escapular (~30° à frente da linha dos ombros).',
+          '2️⃣ Contraia abdômen e glúteos para blindar a lombar sem hiperextensão.',
+          '3️⃣ Controle a fase excêntrica em 2s sem jogar os trapézios para as orelhas.',
+        ],
+      };
+    } else if (lower.contains('puxada') || lower.contains('remada') || lower.contains('pulldown')) {
+      return {
+        'muscle': 'Latíssimo do Dorso & Romboides',
+        'cues': [
+          '1️⃣ Inicie o movimento deprimindo as escápulas antes de flexionar o cotovelo.',
+          '2️⃣ Traga os cotovelos em direção ao quadril ("pense nos cotovelos, não nas mãos").',
+          '3️⃣ Segure 1s no pico de contração e alongue controlado sem perder a postura.',
+        ],
+      };
+    } else if (lower.contains('agachamento') || lower.contains('leg')) {
+      return {
+        'muscle': 'Quadríceps & Glúteo Máximo',
+        'cues': [
+          '1️⃣ Pés firmes em tripé (calcanhar colado o tempo todo na plataforma/solo).',
+          '2️⃣ Joelhos alinhados na direção da ponta dos pés durante toda a descida.',
+          '3️⃣ Bracing abdominal ativo (360°) e subida potente mantendo RIR 1-2.',
+        ],
+      };
+    } else if (lower.contains('tríceps') || lower.contains('triceps')) {
+      return {
+        'muscle': 'Tríceps Braquial',
+        'cues': [
+          '1️⃣ Cole os cotovelos nas costelas — apenas o antebraço se move.',
+          '2️⃣ Estenda completamente no final segurando 1s de contração máxima.',
+          '3️⃣ Controle a subida do cabo sem deixar os ombros subirem.',
+        ],
+      };
+    }
+    return {
+      'muscle': 'Fibras Primárias & Estabilizadores',
+      'cues': [
+        '1️⃣ Ajuste banco/apoio alinhando o eixo do aparelho à sua articulação.',
+        '2️⃣ Estabilize escápulas e core antes de iniciar a primeira repetição.',
+        '3️⃣ Cadência 2s na descida, 1s na subida e encerre com 1-2 reps na reserva (RIR 1-2).',
+      ],
+    };
+  }
+
+  void _triggerBiomechMicroCard(String exName) {
+    final info = _getLocalBiomechCues(exName);
+    final muscle = info['muscle'] as String;
+    final cues = (info['cues'] as List<String>).join('\n');
+
+    setState(() {
+      _messages.add(
+        _ChatMessage(
+          text: 'Checklist 3D rápido de **$exName**',
+          isUser: true,
+        ),
+      );
+      _messages.add(
+        _ChatMessage(
+          text: '🧬 **Raio-X Biomecânico em 5 Segundos • $exName**\n'
+              '🎯 **Alvo Primário:** $muscle\n\n'
+              '$cues',
+          isUser: false,
+          detectedExercise: exName,
+          actionCardTitle: 'Ações Rápidas da Série',
+          actionCardIcon: Icons.biotech_rounded,
+          actionItems: [
+            AiActionCardItem(
+              label: 'Abrir Loop 3D em Tela Cheia',
+              icon: Icons.play_circle_fill_rounded,
+              isPrimary: true,
+              onTap: () => ExerciseMediaSheet.show(
+                context,
+                exerciseName: exName,
+              ),
+            ),
+            AiActionCardItem(
+              label: 'Aparelho Ocupado? Trocar $exName',
+              icon: Icons.swap_horiz_rounded,
+              color: const Color(0xFFF59E0B),
+              onTap: () => _triggerExerciseSwapFlow(exName),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  void _showBiomechSelectorModal() {
+    final exercises = _todaySplitExercises.isNotEmpty
+        ? _todaySplitExercises.map((e) => e.name).toList()
+        : (_studentExercises.isNotEmpty
+            ? _studentExercises
+            : [
+                'Supino Reto com Barra',
+                'Supino Inclinado com Halteres',
+                'Puxada Alta (Lat Pulldown)',
+                'Leg Press 45°',
+                'Desenvolvimento com Halteres',
+                'Tríceps Corda Polia',
+              ]);
+
+    OneUiGlassSheet.show(
+      context,
+      header: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: MetaColors.emerald.withValues(alpha: 0.18),
+              shape: BoxShape.circle,
+              border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.4)),
+            ),
+            child: const Icon(Icons.biotech_rounded, color: MetaColors.emerald, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Execução em 3 Passos (Loop 3D)',
+                  style: TextStyle(
+                    color: MetaColors.text(context),
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Toque no exercício para ver escápulas, pegada e RIR em 5s',
+                  style: TextStyle(
+                    color: MetaColors.subtext(context),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: exercises.map((exName) {
+        final effectiveName = _swappedExercises[exName] ?? exName;
+        return GlassAction(
+          icon: Icons.play_circle_fill_rounded,
+          color: MetaColors.emerald,
+          label: effectiveName,
+          subtitle: 'Checklist em 5 segundos + Animação 3D',
+          onTap: () => _triggerBiomechMicroCard(effectiveName),
+        );
+      }).toList(),
+    );
+  }
+
+  void _triggerLoadAndRirGuide() {
+    setState(() {
+      _messages.add(
+        _ChatMessage(
+          text: 'Como ajustar minha carga, RIR e descanso nesta série?',
+          isUser: true,
+        ),
+      );
+      _messages.add(
+        _ChatMessage(
+          text: '🏋️‍♂️ **Bússola Rápida de Carga & RIR (5 Segundos)**\n\n'
+              '• **Zona Ideal (RIR 1 a 2):** Termine a série sentindo que só conseguiria fazer **mais 1 ou 2 repetições** com postura perfeita.\n'
+              '• **Hora de Subir Carga (+2,5kg a +5%):** Se passou do topo da faixa de repetições sobrando 3+ reps fáceis.\n'
+              '• **Descanso Inteligente:** 90s a 120s nos compostos pesados (Supino, Agachamento, Remada) e 60s nos isoladores.',
+          isUser: false,
+          actionCardTitle: 'Ferramentas de Carga',
+          actionCardIcon: Icons.fitness_center_rounded,
+          actionItems: [
+            AiActionCardItem(
+              label: 'Abrir Meu Treino & Cronômetro',
+              icon: Icons.bolt_rounded,
+              isPrimary: true,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ActiveWorkoutScreen()),
+              ),
+            ),
+            if (_isTrainerPro)
+              AiActionCardItem(
+                label: 'Perguntar Ajuste Fino à IA',
+                icon: Icons.auto_awesome_rounded,
+                color: const Color(0xFF8B5CF6),
+                onTap: () => _sendPrompt(
+                  'Me ajude a calcular a progressão ideal de carga na minha série atual mantendo RIR 1-2.',
+                ),
+              ),
+          ],
+        ),
+      );
+    });
+  }
+
   void _openWhatsAppSyncSheet() {
     OneUiGlassSheet.show(
       context,
@@ -1812,6 +2030,80 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                 ],
               );
             },
+          ),
+          const SizedBox(height: 8),
+          // 3. BARRA CONTEXTUAL DO SPLIT DE HOJE (Padrão Mr. Coach AI 3.0)
+          InkWell(
+            onTap: _showTodayWorkoutCard,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: MetaColors.card(context),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: MetaColors.emerald.withValues(alpha: 0.28),
+                  width: 0.9,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: MetaColors.emerald.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'HOJE',
+                      style: TextStyle(
+                        color: MetaColors.emerald,
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _todaySplit != null
+                          ? 'Treino ${_todaySplit!.splitIdentifier} • ${_todaySplit!.splitName}'
+                          : 'Cockpit de Salão • Série Ativa',
+                      style: TextStyle(
+                        color: MetaColors.text(context),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                    decoration: BoxDecoration(
+                      color: _swappedExercises.isNotEmpty
+                          ? MetaColors.emerald.withValues(alpha: 0.16)
+                          : MetaColors.highlight(context),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _swappedExercises.isNotEmpty
+                          ? '${_swappedExercises.length} adaptado hoje'
+                          : '${_todaySplitExercises.isNotEmpty ? _todaySplitExercises.length : 4} exercícios',
+                      style: TextStyle(
+                        color: _swappedExercises.isNotEmpty
+                            ? MetaColors.emerald
+                            : MetaColors.subtext(context),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -2482,15 +2774,6 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
         final iconColor = useEditorialMode
             ? Colors.white
             : (isDark ? Colors.white70 : const Color(0xFF475569));
-        final chipBg = useEditorialMode
-            ? Colors.white.withValues(alpha: 0.18)
-            : (isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFF1F5F9));
-        final chipBorder = useEditorialMode
-            ? Colors.white.withValues(alpha: 0.3)
-            : (isDark ? Colors.white.withValues(alpha: 0.16) : const Color(0xFFCBD5E1));
-        final chipTextColor = useEditorialMode
-            ? Colors.white
-            : (isDark ? Colors.white : const Color(0xFF0F172A));
 
         return Container(
           width: double.infinity,
@@ -2657,125 +2940,168 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                         height: 1.4,
                       ),
                     ),
-                    if (widget.isStudentView && (_todaySplitExercises.isNotEmpty || _studentExercises.isNotEmpty)) ...[
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: (_todaySplitExercises.isNotEmpty
-                                ? _todaySplitExercises.map((e) => e.name).toList()
-                                : _studentExercises)
-                            .take(4)
-                            .map((ex) {
-                          final isSwapped = _swappedExercises.containsKey(ex);
-                          final adaptedName = _swappedExercises[ex];
+                    if (widget.isStudentView) ...[
+                      const SizedBox(height: 14),
+                      Builder(
+                        builder: (context) {
+                          final List<Map<String, String>> cockpitItems;
+                          if (_todaySplitExercises.isNotEmpty) {
+                            cockpitItems = _todaySplitExercises.take(4).map((e) {
+                              return {
+                                'name': e.name,
+                                'meta': '${e.sets}x${e.reps} • ${e.restSeconds}s desc.',
+                              };
+                            }).toList();
+                          } else if (_studentExercises.isNotEmpty) {
+                            cockpitItems = _studentExercises.take(4).map((name) {
+                              return {
+                                'name': name,
+                                'meta': 'Série prescrita • RIR 1-2',
+                              };
+                            }).toList();
+                          } else {
+                            cockpitItems = const [
+                              {'name': 'Supino Reto Barra', 'meta': '4x10 • Peitoral Médio'},
+                              {'name': 'Supino Inclinado Halter', 'meta': '4x12 • Peitoral Superior'},
+                              {'name': 'Desenvolvimento Halteres', 'meta': '3x10 • Deltoides'},
+                              {'name': 'Tríceps Corda Polia', 'meta': '4x12 • Tríceps Braquial'},
+                            ];
+                          }
 
-                          return InkWell(
-                            onTap: () {
-                              OneUiGlassSheet.show(
-                                context,
-                                header: Row(
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: List.generate(cockpitItems.length, (idx) {
+                              final item = cockpitItems[idx];
+                              final ex = item['name']!;
+                              final meta = item['meta']!;
+                              final isSwapped = _swappedExercises.containsKey(ex);
+                              final adaptedName = _swappedExercises[ex];
+
+                              return Container(
+                                margin: EdgeInsets.only(bottom: idx == cockpitItems.length - 1 ? 0 : 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: useEditorialMode
+                                      ? Colors.black.withValues(alpha: 0.28)
+                                      : (isDark
+                                          ? const Color(0xFF090E1A).withValues(alpha: 0.85)
+                                          : Colors.white.withValues(alpha: 0.92)),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: isSwapped
+                                        ? MetaColors.emerald.withValues(alpha: 0.65)
+                                        : (useEditorialMode
+                                            ? Colors.white.withValues(alpha: 0.16)
+                                            : MetaColors.cardBorder(context)),
+                                  ),
+                                ),
+                                child: Row(
                                   children: [
-                                    const Icon(Icons.fitness_center_rounded, color: MetaColors.emerald, size: 22),
-                                    const SizedBox(width: 10),
+                                    Container(
+                                      width: 22,
+                                      height: 22,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: MetaColors.emerald.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(7),
+                                      ),
+                                      child: Text(
+                                        '${idx + 1}',
+                                        style: TextStyle(
+                                          color: useEditorialMode ? Colors.white : MetaColors.emerald,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            ex,
+                                            isSwapped ? '$adaptedName ✅' : ex,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
-                                              color: MetaColors.text(context),
-                                              fontSize: 16,
+                                              color: useEditorialMode ? Colors.white : titleColor,
+                                              fontSize: 12,
                                               fontWeight: FontWeight.w800,
                                             ),
                                           ),
                                           Text(
-                                            isSwapped ? 'Adaptado hoje para $adaptedName' : 'Exercício da sua série atual',
+                                            isSwapped ? 'Adaptado hoje (era $ex)' : meta,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
-                                              color: MetaColors.subtext(context),
-                                              fontSize: 12,
+                                              color: isSwapped
+                                                  ? MetaColors.emerald
+                                                  : (useEditorialMode
+                                                      ? Colors.white.withValues(alpha: 0.78)
+                                                      : subtitleColor),
+                                              fontSize: 10.5,
+                                              fontWeight: isSwapped ? FontWeight.w700 : FontWeight.w500,
                                             ),
                                           ),
                                         ],
                                       ),
                                     ),
-                                  ],
-                                ),
-                                actions: [
-                                  GlassAction(
-                                    icon: Icons.play_circle_fill_rounded,
-                                    color: MetaColors.emerald,
-                                    label: 'Ver Execução 3D & Checklist',
-                                    subtitle: 'Postura, escápulas e cadência recomendada',
-                                    onTap: () {
-                                      Navigator.of(context, rootNavigator: true).pop();
-                                      ExerciseMediaSheet.show(
-                                        context,
-                                        exerciseName: isSwapped ? adaptedName! : ex,
-                                      );
-                                    },
-                                  ),
-                                  GlassAction(
-                                    icon: Icons.swap_horiz_rounded,
-                                    color: const Color(0xFFF59E0B),
-                                    label: 'Aparelho Ocupado? Trocar Agora',
-                                    subtitle: 'Sugere 2 variações biomecânicas livres de fila',
-                                    onTap: () {
-                                      Navigator.of(context, rootNavigator: true).pop();
-                                      _triggerExerciseSwapFlow(ex);
-                                    },
-                                  ),
-                                ],
-                              );
-                            },
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 9,
-                                vertical: 5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isSwapped
-                                    ? MetaColors.emerald.withValues(alpha: 0.22)
-                                    : chipBg,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: isSwapped
-                                      ? MetaColors.emerald.withValues(alpha: 0.5)
-                                      : chipBorder,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    isSwapped ? Icons.check_circle_rounded : Icons.fitness_center_rounded,
-                                    size: 11.5,
-                                    color: isSwapped
-                                        ? MetaColors.emerald
-                                        : (useEditorialMode ? Colors.white : MetaColors.emerald),
-                                  ),
-                                  const SizedBox(width: 5),
-                                  Flexible(
-                                    child: Text(
-                                      isSwapped ? '$ex → $adaptedName' : ex,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: isSwapped
-                                            ? (isDark ? Colors.white : MetaColors.emerald)
-                                            : chipTextColor,
-                                        fontSize: 11,
-                                        fontWeight: isSwapped ? FontWeight.w800 : FontWeight.w600,
+                                    const SizedBox(width: 6),
+                                    InkWell(
+                                      onTap: () => _triggerBiomechMicroCard(isSwapped ? adaptedName! : ex),
+                                      borderRadius: BorderRadius.circular(9),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                        decoration: BoxDecoration(
+                                          color: MetaColors.emerald.withValues(alpha: 0.18),
+                                          borderRadius: BorderRadius.circular(9),
+                                          border: Border.all(
+                                            color: MetaColors.emerald.withValues(alpha: 0.45),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '🧬 3D',
+                                          style: TextStyle(
+                                            color: useEditorialMode
+                                                ? Colors.white
+                                                : (isDark ? MetaColors.emerald : const Color(0xFF047857)),
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                                    const SizedBox(width: 5),
+                                    InkWell(
+                                      onTap: () => _triggerExerciseSwapFlow(ex),
+                                      borderRadius: BorderRadius.circular(9),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF59E0B).withValues(alpha: 0.18),
+                                          borderRadius: BorderRadius.circular(9),
+                                          border: Border.all(
+                                            color: const Color(0xFFF59E0B).withValues(alpha: 0.45),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '🔄 Trocar',
+                                          style: TextStyle(
+                                            color: useEditorialMode
+                                                ? const Color(0xFFFDE68A)
+                                                : (isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309)),
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
                           );
-                        }).toList(),
+                        },
                       ),
                     ],
                     const SizedBox(height: 16),
@@ -2853,16 +3179,14 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
       actions = [
         _ActionItem(
           title: 'Aparelho Ocupado?',
-          subtitle: 'Troca por halter ou polia livre',
+          subtitle: 'Adaptar só na sessão de hoje',
           icon: Icons.swap_horiz_rounded,
           color: const Color(0xFFF59E0B), // Âmbar
-          onTap: () => _sendPrompt(
-            'O aparelho que eu ia usar agora está ocupado na academia. Quais as melhores variações livres ou na polia mantendo o mesmo estímulo muscular?',
-          ),
+          onTap: _showBusyMachineModal,
         ),
         _ActionItem(
           title: 'Senti Dor / Fisgada',
-          subtitle: 'Ajustar pegada ou troca segura',
+          subtitle: 'Pausa segura + Avisar Prof',
           icon: Icons.healing_rounded,
           color: const Color(0xFFEF4444), // Coral/Vermelho
           onTap: () => _sendPrompt(
@@ -2871,21 +3195,17 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
         ),
         _ActionItem(
           title: 'Execução em 3 Passos',
-          subtitle: 'Banco, escápulas e trajetória',
+          subtitle: 'Loop 3D, escápulas e RIR em 5s',
           icon: Icons.checklist_rounded,
           color: MetaColors.accentBlue,
-          onTap: () => _sendPrompt(
-            'Me dê um checklist direto em 3 passos para executar meu exercício com máxima eficiência e segurança: ajuste de banco, escápulas/core e amplitude.',
-          ),
+          onTap: _showBiomechSelectorModal,
         ),
         _ActionItem(
           title: 'Carga & Repetições',
           subtitle: 'Tá leve ou pesado? RIR e descanso',
           icon: Icons.fitness_center_rounded,
           color: MetaColors.emerald,
-          onTap: () => _sendPrompt(
-            'Como saber se a carga está leve ou pesada demais? Qual a regra prática de repetições em reserva (RIR) e tempo de descanso para hipertrofia?',
-          ),
+          onTap: _triggerLoadAndRirGuide,
         ),
       ];
     } else {
@@ -3132,6 +3452,51 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
           child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (widget.isStudentView && !_isTrainerPro)
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0EA5E9).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF0EA5E9).withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.shield_rounded, size: 14, color: Color(0xFF38BDF8)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Modo Essencial: Guia 3D & Troca Local ativos',
+                        style: TextStyle(
+                          color: MetaColors.text(context),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    InkWell(
+                      onTap: _requestTrainerProUpgrade,
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        child: Text(
+                          'Pedir IA 24h',
+                          style: TextStyle(
+                            color: Color(0xFF38BDF8),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             if (widget.isStudentView) ...[
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,

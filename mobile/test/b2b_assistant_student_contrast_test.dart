@@ -199,5 +199,44 @@ void main() {
       expect(find.text('Espelho Omnichannel WhatsApp'), findsOneWidget);
       expect(find.text('Falar com o Robô Oficial no WhatsApp'), findsOneWidget);
     });
+
+    testWidgets('Cockpit Contextual 3.0: renders live exercise rows with 1-tap 3D and Trocar pills', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.dark(),
+          home: const Scaffold(
+            body: B2BAssistantScreen(
+              key: ValueKey('cockpit_3_0_test'),
+              isStudentView: true,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 1. Barra contextual HOJE + Linhas interativas do Cockpit com botões 🧬 3D e 🔄 Trocar
+      expect(find.text('HOJE'), findsOneWidget);
+      expect(find.text('Supino Reto Barra'), findsOneWidget);
+      expect(find.text('🧬 3D'), findsWidgets);
+      expect(find.text('🔄 Trocar'), findsWidgets);
+
+      // 2. Toca no card 2x2 "Aparelho Ocupado?" e valida abertura do seletor em 1 toque
+      await tester.tap(find.text('Aparelho Ocupado?'));
+      await tester.pumpAndSettle();
+      expect(find.text('Qual exercício você precisa adaptar só hoje?'), findsOneWidget);
+
+      // Fecha modal clicando fora ou voltando e testa botão 🧬 3D direto na linha do Cockpit
+      Navigator.of(tester.element(find.text('Qual exercício você precisa adaptar só hoje?'))).pop();
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('🧬 3D').first);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Raio-X Biomecânico em 5 Segundos'), findsOneWidget);
+      expect(find.text('Abrir Loop 3D em Tela Cheia'), findsOneWidget);
+    });
   });
 }

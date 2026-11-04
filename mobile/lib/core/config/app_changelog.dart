@@ -40,6 +40,71 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     // ==========================================
+    // v1.13.0 - MR. COACH AI 3.0 (COPILOTO DO ALUNO) & BIO-HUB 3.0
+    // ==========================================
+    VersionRelease(
+      version: '1.13.0',
+      buildNumber: 2026110406,
+      date: '4 de Novembro, 2026',
+      summary:
+          'Versão 1.13.0: Mr. Coach AI 3.0 na aba do Aluno com Cockpit Contextual de Salão, Swap em 1 Toque (adaptation_logs), Micro-Card Biomecânico 3D em 5s, Guardrail Clínico Zero-Token, Espelho Omnichannel WhatsApp e Bio-Hub 3.0 com Top PRs Compactos.',
+      highlights: [
+        // --- ALUNO & TREINO ---
+        ChangelogItem(
+          icon: Icons.swap_horiz_rounded,
+          title: 'Mr. Coach AI 3.0 — Cockpit de Salão & Swap em 1 Toque',
+          description:
+              'Veja os exercícios da sua série logo ao abrir a aba, consulte execução 3D em 5 segundos ou troque aparelhos ocupados em 1 toque sem alterar sua ficha oficial.',
+          badge: 'NOVO',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.biotech_rounded,
+          title: 'Bio-Hub 3.0 — Bio-Battery & Sobrecarga Compacta com Top PRs',
+          description:
+              'Prontidão diária em 1 toque e histórico de sobrecarga reorganizado com filtros rápidos, Top 2 recordes em destaque e linhas compactas sem rolagem excessiva.',
+          badge: 'DESIGN',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.health_and_safety_rounded,
+          title: 'Guardrail Clínico Instantâneo & Espelho Omnichannel WhatsApp',
+          description:
+              'Proteção articular imediata ao relatar dor ou fisgada e sincronização em tempo real das adaptações do dia entre o App e o Robô do WhatsApp.',
+          badge: 'SEGURANÇA',
+          targetRoles: ['student'],
+        ),
+
+        // --- PROFESSOR / TREINADOR ---
+        ChangelogItem(
+          icon: Icons.workspace_premium_rounded,
+          title: 'Governança Inteligente por Plano B2B no Copiloto do Aluno',
+          description:
+              'Modo Copiloto IA 24/7 para planos Pro/Elite/Studio e Modo Essencial Determinístico (\$0 tokens) para o plano Starter com gatilho de upgrade integrado.',
+          badge: 'FINOPS',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.radar_rounded,
+          title: 'Rastreamento de Adaptações de Salão no Radar',
+          description:
+              'Toda substituição de aparelho ocupado feita pelo aluno no App ou no WhatsApp é gravada em adaptation_logs mantendo o mesociclo original intacto.',
+          badge: 'RETENÇÃO',
+          targetRoles: ['trainer'],
+        ),
+
+        // --- ADMIN / INFRAESTRUTURA ---
+        ChangelogItem(
+          icon: Icons.verified_rounded,
+          title: 'Build Stamp Monotônico PWA & Suíte Interativa de Testes',
+          description:
+              'Correção definitiva do incremento sequencial de builds diários no deploy web para invalidação imediata de Service Worker em iOS, Android e Desktop.',
+          badge: 'ESTABILIDADE',
+          targetRoles: ['admin'],
+        ),
+      ],
+    ),
+    // ==========================================
     // v1.11.3 - ABA SOCIAL & COMUNIDADE 2.0 (ROBÔ WA IN-APP)
     // ==========================================
     VersionRelease(
