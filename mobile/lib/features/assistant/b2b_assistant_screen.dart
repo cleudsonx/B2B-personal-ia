@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/meta_components.dart';
 import '../../core/widgets/biomechanical_analysis_sheet.dart';
@@ -16,6 +17,8 @@ import '../../core/widgets/whats_new_modal.dart';
 import '../../core/widgets/thematic_editorial_card.dart';
 import '../../core/widgets/thematic_watermarks.dart';
 import '../../models/workout_plan_model.dart';
+import '../../models/split_model.dart';
+import '../../models/exercise_model.dart';
 import '../../services/student_notification_service.dart';
 import '../../core/widgets/ai_action_card.dart';
 import '../client/student_profile_screen.dart';
@@ -35,11 +38,17 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
   final TextEditingController _promptCtrl = TextEditingController();
   final List<_ChatMessage> _messages = [];
   bool _isLoading = false;
-  String _selectedModelId = 'gemini-3.1-pro-preview';
+  String _selectedModelId = 'gemini-2.5-flash';
 
   String _selectedPillar = 'Todos';
   List<String> _studentExercises = [];
   WorkoutPlanModel? _cachedActivePlan;
+  SplitModel? _todaySplit;
+  List<ExerciseModel> _todaySplitExercises = [];
+  final Map<String, String> _swappedExercises = {};
+  String? _lastSelectedExerciseForSwap;
+  bool _isTrainerPro = true;
+
   String? _trainerName;
   String? _trainerCref;
   String? _trainerPhotoUrl;
@@ -53,6 +62,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
     if (widget.isStudentView) {
       _loadStudentExercises();
       _loadTrainer();
+      _loadTodayAdaptations();
       StudentNotificationService.instance.refreshNotifications();
     }
   }
@@ -62,6 +72,10 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
       final activePlan = await WorkoutService.getActiveWorkoutForClient();
       if (activePlan != null && mounted) {
         final exercises = <String>{};
+        SplitModel? todaySplit;
+        if (activePlan.splits.isNotEmpty) {
+          todaySplit = activePlan.splits.first;
+        }
         for (final split in activePlan.splits) {
           for (final ex in split.exercises) {
             final name = ex.name.trim();
@@ -75,6 +89,8 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
             _cachedActivePlan = activePlan;
             _workoutPlanTitle = activePlan.workoutPlanTitle;
             _totalSplitsCount = activePlan.splits.length;
+            _todaySplit = todaySplit;
+            _todaySplitExercises = todaySplit?.exercises ?? [];
             if (exercises.isNotEmpty) {
               _studentExercises = exercises.take(6).toList();
             }
@@ -83,6 +99,40 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
       }
     } catch (e) {
       debugPrint('Aviso ao carregar exercícios do aluno: $e');
+    }
+  }
+
+  Future<void> _loadTodayAdaptations() async {
+    try {
+      final user = AuthService.currentUser;
+      if (user != null) {
+        final client = Supabase.instance.client;
+        final now = DateTime.now();
+        final todayStart = DateTime(now.year, now.month, now.day).toIso8601String();
+        final res = await client
+            .from('adaptation_logs')
+            .select('original_exercise, adapted_exercise, reason, created_at')
+            .eq('client_id', user.id)
+            .gte('created_at', todayStart)
+            .order('created_at', ascending: false);
+        if (res is List && res.isNotEmpty) {
+          final map = <String, String>{};
+          for (final row in res) {
+            final orig = (row['original_exercise'] ?? '').toString().trim();
+            final adapt = (row['adapted_exercise'] ?? '').toString().trim();
+            if (orig.isNotEmpty && adapt.isNotEmpty && !map.containsKey(orig)) {
+              map[orig] = adapt;
+            }
+          }
+          if (mounted && map.isNotEmpty) {
+            setState(() {
+              _swappedExercises.addAll(map);
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Aviso ao carregar adaptações de hoje: $e');
     }
   }
 
@@ -240,17 +290,53 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
           _messages.add(
             _ChatMessage(
               text: '💪 **Olá! Eu sou o seu Copiloto de Treino no Mr. Coach.**\n\n'
-                  'Posso te ajudar em tempo real com seu treino e sua rotina:\n'
-                  '• Digite **1** ou **Treino** para ver sua ficha ativa e os exercícios de hoje\n'
-                  '• Digite **2** ou **Streak** para consultar seus dias de ofensiva 🔥\n'
-                  '• Digite **Água** para ver seu consumo ou registrar hidratação 💧\n'
-                  '• Digite o nome de um exercício para ver postura e ativação 3D\n'
-                  '• Digite **Ocupado** se o aparelho na academia estiver cheio!',
+                  'Aqui você adapta aparelhos ocupados, confere a execução 3D da sua série e registra sua rotina sem parar seu treino.\n\n'
+                  'Toque em uma das opções abaixo para começar:',
               isUser: false,
+              actionCardTitle: 'Ações Rápidas de Salão',
+              actionCardIcon: Icons.fitness_center_rounded,
+              actionItems: [
+                AiActionCardItem(
+                  label: '📋 Ficha Ativa de Hoje',
+                  icon: Icons.assignment_rounded,
+                  isPrimary: true,
+                  onTap: () => _sendPrompt('1'),
+                ),
+                AiActionCardItem(
+                  label: '⚠️ Aparelho Ocupado?',
+                  icon: Icons.swap_horiz_rounded,
+                  color: const Color(0xFFF59E0B),
+                  onTap: _showBusyMachineModal,
+                ),
+                AiActionCardItem(
+                  label: '🔥 Minha Ofensiva',
+                  icon: Icons.local_fire_department_rounded,
+                  color: const Color(0xFFF97316),
+                  onTap: () => _sendPrompt('2'),
+                ),
+                AiActionCardItem(
+                  label: '💧 Registrar Água (+250ml)',
+                  icon: Icons.water_drop_rounded,
+                  color: const Color(0xFF38BDF8),
+                  onTap: () => _sendPrompt('+250ml'),
+                ),
+                AiActionCardItem(
+                  label: '💬 Falar no WhatsApp',
+                  icon: Icons.chat_rounded,
+                  color: MetaColors.emerald,
+                  onTap: () => _openTrainerWhatsApp(),
+                ),
+              ],
             ),
           );
           _isLoading = false;
         });
+        return;
+      }
+
+      // 1.1 ATALHO RÁPIDO PARA APARELHO OCUPADO
+      if (normalized == 'ocupado' || normalized == 'aparelho ocupado' || normalized.contains('trocar aparelho')) {
+        _showBusyMachineModal();
         return;
       }
       
@@ -526,6 +612,45 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
         studentContext = buffer.toString();
       }
 
+      if (widget.isStudentView && !_isTrainerPro) {
+        // Modo Essencial (Starter): Zero custo de LLM
+        final fallbackExercise = detectedExercise;
+        final String fallbackText;
+        if (fallbackExercise != null) {
+          fallbackText = _generateBiomechanicsFallback(fallbackExercise);
+        } else {
+          fallbackText = 'O seu professor ($_trainerName) prescreveu sua ficha com metodologia individualizada. '
+              'Para dúvidas pontuais de postura e substituição, use as ações rápidas ou envie uma mensagem direta para ele no WhatsApp!';
+        }
+        setState(() {
+          _messages.add(
+            _ChatMessage(
+              text: fallbackText,
+              isUser: false,
+              detectedExercise: fallbackExercise,
+              actionCardTitle: 'Suporte do Treinador',
+              actionCardIcon: Icons.chat_rounded,
+              actionItems: [
+                AiActionCardItem(
+                  label: 'Falar com $_trainerName no WhatsApp',
+                  icon: Icons.chat_rounded,
+                  color: MetaColors.emerald,
+                  isPrimary: true,
+                  onTap: () => _openTrainerWhatsApp(),
+                ),
+                AiActionCardItem(
+                  label: 'Pedir Copiloto IA 24h ao Professor',
+                  icon: Icons.rocket_launch_rounded,
+                  color: const Color(0xFF8B5CF6),
+                  onTap: _requestTrainerProUpgrade,
+                ),
+              ],
+            ),
+          );
+        });
+        return;
+      }
+
       final promptWithContext =
           widget.isStudentView
               ? 'Você é o Copiloto de Salão do Mr. Coach. O aluno está treinando na academia agora.\n'
@@ -537,13 +662,14 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                 'Dúvida do Aluno: $text'
               : text;
 
+      final modelToUse = widget.isStudentView ? 'gemini-2.5-flash' : _selectedModelId;
       final reply = await GeminiService.askB2BAssistant(
         prompt: promptWithContext,
         systemInstruction:
             widget.isStudentView
                 ? AiPrompts.expertStudentPersona
                 : AiPrompts.expertTrainerPersona,
-        model: _selectedModelId,
+        model: modelToUse,
       );
       if (!mounted) return;
       final replyExercise = detectedExercise ?? _detectExerciseInText(reply);
@@ -657,14 +783,615 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
     try {
       final trainer = await AuthService.getTrainerForStudent();
       if (trainer != null && mounted) {
+        final trainerId = trainer['id'] as String?;
         setState(() {
           _trainerName = (trainer['trainer_name'] ?? trainer['full_name']) as String?;
           _trainerCref = (trainer['cref_or_registry'] ?? trainer['cref'] ?? trainer['professional_document']) as String?;
           _trainerPhotoUrl = trainer['trainer_photo_url'] as String?;
           _trainerPhone = (trainer['phone'] ?? trainer['whatsapp']) as String?;
         });
+
+        if (trainerId != null && trainerId.isNotEmpty) {
+          try {
+            final client = Supabase.instance.client;
+            final sub = await client
+                .from('subscriptions')
+                .select('plan_id, status')
+                .eq('trainer_id', trainerId)
+                .maybeSingle();
+            if (sub != null && mounted) {
+              final planId = (sub['plan_id'] ?? '').toString().toLowerCase();
+              final status = (sub['status'] ?? '').toString().toLowerCase();
+              final isPro = (status == 'active' || status == 'trial') &&
+                  (planId.contains('pro') || planId.contains('elite') || planId.contains('studio'));
+              setState(() {
+                _isTrainerPro = isPro;
+              });
+            }
+          } catch (e) {
+            debugPrint('Aviso ao consultar plano do treinador: $e');
+          }
+        }
       }
     } catch (_) {}
+  }
+
+  void _showTodayWorkoutCard() {
+    _sendPrompt('1');
+  }
+
+  Future<void> _applySessionAdaptation({
+    required String originalExercise,
+    required String adaptedExercise,
+    String? reason,
+  }) async {
+    final effectiveReason = reason ?? 'Adaptação da Sessão de Hoje (Mr. Coach AI Copiloto)';
+    
+    // 1. Registra no banco via WorkoutService (adaptation_logs + student_pulse_events)
+    await WorkoutService.logAdaptation(
+      originalExercise: originalExercise,
+      adaptedExercise: adaptedExercise,
+      reason: effectiveReason,
+      details: {
+        'source': 'app_copilot',
+        'session_adaptation': true,
+        'exercise': adaptedExercise,
+        'timestamp': DateTime.now().toIso8601String(),
+      },
+    );
+
+    // 2. Atualiza estado em tempo real no app
+    if (mounted) {
+      setState(() {
+        _swappedExercises[originalExercise] = adaptedExercise;
+        _messages.add(
+          _ChatMessage(
+            text: '✅ **Adaptação Registrada para a Sessão de Hoje!**\n\n'
+                '• Original: ~~$originalExercise~~\n'
+                '• Substituto hoje: **$adaptedExercise**\n\n'
+                'O seu professor ($_trainerName) foi notificado no radar do Mr. Coach. '
+                'Sua ficha oficial do mesociclo segue 100% intacta. Excelente treino! 💪',
+            isUser: false,
+            detectedExercise: adaptedExercise,
+            actionCardTitle: 'Ações de Execução',
+            actionCardIcon: Icons.playlist_add_check_rounded,
+            actionItems: [
+              AiActionCardItem(
+                label: 'Execução 3D de $adaptedExercise',
+                icon: Icons.play_circle_fill_rounded,
+                isPrimary: true,
+                onTap: () => ExerciseMediaSheet.show(
+                  context,
+                  exerciseName: adaptedExercise,
+                ),
+              ),
+              AiActionCardItem(
+                label: 'Abrir Treino de Hoje',
+                icon: Icons.fitness_center_rounded,
+                color: MetaColors.emerald,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ActiveWorkoutScreen()),
+                ),
+              ),
+            ],
+          ),
+        );
+      });
+
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: MetaColors.emerald,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Adaptação "$adaptedExercise" gravada só para o treino de hoje!',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+  }
+
+  List<Map<String, String>> _getEquivalenceOptions(String exName) {
+    final lower = exName.toLowerCase();
+    if (lower.contains('supino') && (lower.contains('inclinado') || lower.contains('45'))) {
+      return [
+        {
+          'name': 'Crucifixo Inclinado no Cabo (Polia Baixa)',
+          'reason': 'Tensão contínua no feixe clavicular sem depender de banco livre.',
+          'match': '98% Match',
+        },
+        {
+          'name': 'Supino Inclinado com Halteres',
+          'reason': 'Controle de trajetória articular sem sobrecarregar manguito.',
+          'match': '96% Match',
+        },
+      ];
+    } else if (lower.contains('supino')) {
+      return [
+        {
+          'name': 'Supino Reto com Halteres',
+          'reason': 'Mesmo vetor horizontal, maior amplitude e livre de fila na barra.',
+          'match': '98% Match',
+        },
+        {
+          'name': 'Supino Máquina Convergente',
+          'reason': 'Estabilidade guiada e tensão constante no peitoral médio.',
+          'match': '94% Match',
+        },
+      ];
+    } else if (lower.contains('leg press') || lower.contains('legpress')) {
+      return [
+        {
+          'name': 'Agachamento Búlgaro com Halteres',
+          'reason': 'Alta sobrecarga unilateral em quadríceps e glúteo sem fila de máquina.',
+          'match': '96% Match',
+        },
+        {
+          'name': 'Agachamento Goblet com Halter',
+          'reason': 'Padrão de movimento seguro com tronco verticalizado.',
+          'match': '92% Match',
+        },
+      ];
+    } else if (lower.contains('puxada') || lower.contains('lat pulldown') || lower.contains('pulldown')) {
+      return [
+        {
+          'name': 'Remada Unilateral com Halter (Serrote)',
+          'reason': 'Grande alongamento e recrutamento do dorsal sem depender de cabo.',
+          'match': '97% Match',
+        },
+        {
+          'name': 'Barra Fixa Assistida ou Graviton',
+          'reason': 'Puxada vertical fechada com ativação dorsal idêntica.',
+          'match': '95% Match',
+        },
+      ];
+    } else if (lower.contains('remada')) {
+      return [
+        {
+          'name': 'Remada Curvada com Halteres',
+          'reason': 'Pegada neutra ou pronada sem esperar banco na academia.',
+          'match': '96% Match',
+        },
+        {
+          'name': 'Remada Baixa no Cabo Triângulo',
+          'reason': 'Tensão mecânica contínua em trapézio e romboides.',
+          'match': '93% Match',
+        },
+      ];
+    } else if (lower.contains('elevação lateral') || lower.contains('elevacao lateral')) {
+      return [
+        {
+          'name': 'Elevação Lateral na Polia Baixa',
+          'reason': 'Curva de resistência uniforme desde o início do movimento.',
+          'match': '98% Match',
+        },
+        {
+          'name': 'Elevação Lateral com Halteres Sentado',
+          'reason': 'Elimina o roubo do tronco e foca 100% no deltoide lateral.',
+          'match': '95% Match',
+        },
+      ];
+    } else if (lower.contains('tríceps') || lower.contains('triceps')) {
+      return [
+        {
+          'name': 'Tríceps Francês Unilateral com Halter',
+          'reason': 'Excelente alongamento da cabeça longa usando apenas 1 halter.',
+          'match': '97% Match',
+        },
+        {
+          'name': 'Tríceps Testa com Halteres no Banco',
+          'reason': 'Isolamento seguro de tríceps sem depender do crossover.',
+          'match': '94% Match',
+        },
+      ];
+    } else if (lower.contains('rosca') || lower.contains('bíceps') || lower.contains('biceps')) {
+      return [
+        {
+          'name': 'Rosca Martelo com Halteres',
+          'reason': 'Foco em braquial e braquiorradial sem sobrecarregar o punho.',
+          'match': '96% Match',
+        },
+        {
+          'name': 'Rosca Inclinada 45° com Halteres',
+          'reason': 'Maior tensão na cabeça longa do bíceps.',
+          'match': '95% Match',
+        },
+      ];
+    }
+
+    return [
+      {
+        'name': '$exName com Halteres Livres',
+        'reason': 'Variação livre com carga equivalente mantendo o grupo muscular.',
+        'match': '94% Match',
+      },
+      {
+        'name': '$exName na Polia Regulável',
+        'reason': 'Tensão contínua sem depender do aparelho específico ocupado.',
+        'match': '91% Match',
+      },
+    ];
+  }
+
+  void _triggerExerciseSwapFlow(String exName) {
+    _lastSelectedExerciseForSwap = exName;
+    final options = _getEquivalenceOptions(exName);
+    final opt1 = options[0];
+    final opt2 = options.length > 1 ? options[1] : options[0];
+
+    setState(() {
+      _messages.add(
+        _ChatMessage(
+          text: 'O aparelho de **$exName** está ocupado agora na academia. Qual a melhor substituição mantendo o estímulo?',
+          isUser: true,
+        ),
+      );
+
+      if (_isTrainerPro) {
+        _messages.add(
+          _ChatMessage(
+            text: '⚡ **Equivalência Biomecânica IA para $exName**\n\n'
+                'Identifiquei as 2 melhores variações livres de fila na academia para o seu treino de hoje.\n'
+                'Ao tocar em uma opção, a adaptação é registrada exclusivamente na sua sessão de hoje e seu professor ($_trainerName) recebe um alerta no Radar:',
+            isUser: false,
+            detectedExercise: opt1['name'],
+            actionCardTitle: 'Opções de Substituição em 1 Toque',
+            actionCardIcon: Icons.swap_horiz_rounded,
+            actionItems: [
+              AiActionCardItem(
+                label: '1. ${opt1['name']} (${opt1['match']})',
+                icon: Icons.check_circle_outline_rounded,
+                isPrimary: true,
+                onTap: () => _applySessionAdaptation(
+                  originalExercise: exName,
+                  adaptedExercise: opt1['name']!,
+                  reason: opt1['reason'],
+                ),
+              ),
+              AiActionCardItem(
+                label: '2. ${opt2['name']} (${opt2['match']})',
+                icon: Icons.check_circle_outline_rounded,
+                color: const Color(0xFF6366F1),
+                onTap: () => _applySessionAdaptation(
+                  originalExercise: exName,
+                  adaptedExercise: opt2['name']!,
+                  reason: opt2['reason'],
+                ),
+              ),
+              AiActionCardItem(
+                label: 'Ver Execução 3D de ${opt1['name']}',
+                icon: Icons.play_circle_fill_rounded,
+                color: MetaColors.emerald,
+                onTap: () => ExerciseMediaSheet.show(
+                  context,
+                  exerciseName: opt1['name']!,
+                ),
+              ),
+            ],
+          ),
+        );
+      } else {
+        // Starter Plan
+        _messages.add(
+          _ChatMessage(
+            text: '🛡️ **Sugestão Padrão da Biblioteca (\$0 Tokens)**\n\n'
+                '• Variação recomendada: **${opt1['name']}** (${opt1['match']})\n'
+                '• Biomecânica: ${opt1['reason']}\n\n'
+                'Seu professor ($_trainerName) está no plano Essencial. Você pode registrar essa troca gratuitamente:',
+            isUser: false,
+            detectedExercise: opt1['name'],
+            actionCardTitle: 'Substituição Essencial',
+            actionCardIcon: Icons.fitness_center_rounded,
+            actionItems: [
+              AiActionCardItem(
+                label: 'Adaptar Só Hoje: ${opt1['name']}',
+                icon: Icons.check_circle_outline_rounded,
+                isPrimary: true,
+                onTap: () => _applySessionAdaptation(
+                  originalExercise: exName,
+                  adaptedExercise: opt1['name']!,
+                  reason: opt1['reason'],
+                ),
+              ),
+              AiActionCardItem(
+                label: 'Pedir Copiloto IA 24h ao Professor',
+                icon: Icons.rocket_launch_rounded,
+                color: const Color(0xFF8B5CF6),
+                onTap: _requestTrainerProUpgrade,
+              ),
+            ],
+          ),
+        );
+      }
+    });
+  }
+
+  void _showBusyMachineModal() {
+    final exercises = _todaySplitExercises.isNotEmpty
+        ? _todaySplitExercises.map((e) => e.name).toList()
+        : (_studentExercises.isNotEmpty
+            ? _studentExercises
+            : [
+                'Supino Reto com Barra',
+                'Puxada Alta (Lat Pulldown)',
+                'Leg Press 45°',
+                'Desenvolvimento com Halteres',
+                'Tríceps Corda Polia',
+                'Elevação Lateral',
+              ]);
+
+    OneUiGlassSheet.show(
+      context,
+      header: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.18),
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+            ),
+            child: const Icon(Icons.swap_horiz_rounded, color: Color(0xFFF59E0B), size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Aparelho Ocupado?',
+                  style: TextStyle(
+                    color: MetaColors.text(context),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Qual exercício você precisa adaptar só hoje?',
+                  style: TextStyle(
+                    color: MetaColors.subtext(context),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: exercises.map((exName) {
+        final isSwapped = _swappedExercises.containsKey(exName);
+        final currentAdapted = _swappedExercises[exName];
+        return GlassAction(
+          icon: isSwapped ? Icons.check_circle_rounded : Icons.fitness_center_rounded,
+          color: isSwapped ? MetaColors.emerald : const Color(0xFFF59E0B),
+          label: exName,
+          subtitle: isSwapped
+              ? 'Já adaptado hoje para: $currentAdapted'
+              : 'Toque para ver 2 opções equivalentes livres de fila',
+          onTap: () {
+            Navigator.of(context, rootNavigator: true).pop();
+            _triggerExerciseSwapFlow(exName);
+          },
+        );
+      }).toList(),
+    );
+  }
+
+  void _openWhatsAppSyncSheet() {
+    OneUiGlassSheet.show(
+      context,
+      header: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: MetaColors.emerald.withValues(alpha: 0.18),
+              shape: BoxShape.circle,
+              border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.4)),
+            ),
+            child: const Icon(Icons.chat_rounded, color: MetaColors.emerald, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Espelho Omnichannel WhatsApp',
+                  style: TextStyle(
+                    color: MetaColors.text(context),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Sincronia em tempo real entre o App e o Robô',
+                  style: TextStyle(
+                    color: MetaColors.subtext(context),
+                    fontSize: 11.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        GlassAction(
+          icon: Icons.sync_rounded,
+          color: MetaColors.emerald,
+          label: _swappedExercises.isNotEmpty
+              ? '${_swappedExercises.length} Exercício(s) Adaptado(s) Hoje'
+              : 'Ficha Sincronizada com o Robô WhatsApp',
+          subtitle: _swappedExercises.isNotEmpty
+              ? _swappedExercises.entries.map((e) => '${e.key} → ${e.value}').join(', ')
+              : 'Nenhuma adaptação necessária até o momento.',
+          onTap: () => Navigator.of(context, rootNavigator: true).pop(),
+        ),
+        GlassAction(
+          icon: Icons.chat_bubble_rounded,
+          color: MetaColors.emerald,
+          label: 'Falar com o Robô Oficial no WhatsApp',
+          subtitle: 'Troque exercícios, registre RPE e consulte ficha pelo WhatsApp',
+          onTap: () {
+            Navigator.of(context, rootNavigator: true).pop();
+            _openTrainerWhatsApp(customMessage: 'Oi Mr. Coach! Gostaria de consultar meu treino de hoje.');
+          },
+        ),
+      ],
+    );
+  }
+
+  void _showVoiceInputDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: MetaColors.bg(context),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF8B5CF6).withValues(alpha: 0.18),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.mic_rounded, color: Color(0xFF8B5CF6), size: 22),
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Dúvidas Rápidas de Salão',
+                          style: TextStyle(
+                            color: MetaColors.text(context),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Text(
+                          'Toque para perguntar sem precisar digitar suado:',
+                          style: TextStyle(
+                            color: MetaColors.subtext(context),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ActionChip(
+                      backgroundColor: MetaColors.card(context),
+                      side: BorderSide(color: MetaColors.cardBorder(context)),
+                      label: const Text('🔄 Aparelho ocupado, como substituo?'),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _showBusyMachineModal();
+                      },
+                    ),
+                    ActionChip(
+                      backgroundColor: MetaColors.card(context),
+                      side: BorderSide(color: MetaColors.cardBorder(context)),
+                      label: const Text('📐 Qual ângulo protege o ombro?'),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _sendPrompt('Qual o melhor ângulo do banco para proteger os ombros no supino inclinado?');
+                      },
+                    ),
+                    ActionChip(
+                      backgroundColor: MetaColors.card(context),
+                      side: BorderSide(color: MetaColors.cardBorder(context)),
+                      label: const Text('⚖️ Como saber se a carga está leve?'),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _sendPrompt('Como saber se a carga está correta ou leve demais? Explique repetições na reserva (RIR).');
+                      },
+                    ),
+                    ActionChip(
+                      backgroundColor: MetaColors.card(context),
+                      side: BorderSide(color: MetaColors.cardBorder(context)),
+                      label: const Text('🚨 Sinto a lombar no agachamento'),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _sendPrompt('Sinto desconforto na lombar no agachamento: o que corrigir na postura agora?');
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _requestTrainerProUpgrade() async {
+    final user = AuthService.currentUser;
+    if (user != null && _trainerName != null) {
+      try {
+        final client = Supabase.instance.client;
+        final profile = await AuthService.getCurrentProfile();
+        final studentName = profile?['full_name'] as String? ?? 'Seu aluno';
+        final trainerId = profile?['trainer_id'] as String?;
+        if (trainerId != null) {
+          await client.from('trainer_notifications').insert({
+            'trainer_id': trainerId,
+            'title': 'Solicitação de Copiloto IA',
+            'message': '$studentName solicitou a liberação do Copiloto IA 24h para substituição de aparelhos na academia.',
+            'created_at': DateTime.now().toIso8601String(),
+            'is_read': false,
+          });
+        }
+      } catch (e) {
+        debugPrint('Aviso ao registrar solicitação de upgrade: $e');
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _messages.add(
+          _ChatMessage(
+            text: '🚀 **Solicitação Enviada ao Prof. $_trainerName!**\n\n'
+                'Avisamos seu treinador que você gostaria de usar o Copiloto IA para adaptações automáticas de aparelhos ocupados.\n\n'
+                'Enquanto isso, você pode continuar usando as trocas padrão da biblioteca e o Raio-X Biomecânico 3D normalmente!',
+            isUser: false,
+          ),
+        );
+      });
+    }
   }
 
   void _openCoachSheet() {
@@ -1006,7 +1733,9 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                             child: Text(
                               topNotification != null
                                   ? topNotification.title
-                                  : 'Mr. Coach Copiloto Ativo • IA Pronta',
+                                  : (_isTrainerPro
+                                      ? 'Mr. Coach Copiloto Pro • IA 24h Ativa'
+                                      : 'Mr. Coach Essencial • Guia Biomecânico'),
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
@@ -1042,29 +1771,39 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                   ),
                   const SizedBox(width: 8),
 
-                  // B. Pílula Discreta de Novidades da Versão (What's New)
+                  // B. Pílula de Sincronia Omnichannel WhatsApp
                   InkWell(
-                    onTap: () => WhatsNewModal.show(context),
+                    onTap: _openWhatsAppSyncSheet,
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                       decoration: BoxDecoration(
-                        color: MetaColors.emerald.withValues(alpha: 0.12),
+                        color: _swappedExercises.isNotEmpty
+                            ? MetaColors.emerald.withValues(alpha: 0.16)
+                            : MetaColors.highlight(context),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: MetaColors.emerald.withValues(alpha: 0.3),
+                          color: _swappedExercises.isNotEmpty
+                              ? MetaColors.emerald.withValues(alpha: 0.4)
+                              : MetaColors.cardBorder(context),
                           width: 0.8,
                         ),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.auto_awesome_rounded, size: 14, color: MetaColors.emerald),
-                          SizedBox(width: 5),
+                          Icon(
+                            Icons.chat_rounded,
+                            size: 13,
+                            color: _swappedExercises.isNotEmpty ? MetaColors.emerald : MetaColors.subtext(context),
+                          ),
+                          const SizedBox(width: 5),
                           Text(
-                            'Novidades',
+                            _swappedExercises.isNotEmpty
+                                ? '${_swappedExercises.length} adaptado(s)'
+                                : 'Sync Zap',
                             style: TextStyle(
-                              color: MetaColors.emerald,
+                              color: _swappedExercises.isNotEmpty ? MetaColors.emerald : MetaColors.subtext(context),
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
                             ),
@@ -1569,45 +2308,11 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                                             width: double.infinity,
                                             child: FilledButton.tonalIcon(
                                               onPressed: () {
-                                                ScaffoldMessenger.of(context)
-                                                    .hideCurrentSnackBar();
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  SnackBar(
-                                                    behavior:
-                                                        SnackBarBehavior.floating,
-                                                    backgroundColor:
-                                                        MetaColors.emerald,
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                        12,
-                                                      ),
-                                                    ),
-                                                    content: Row(
-                                                      children: [
-                                                        const Icon(
-                                                          Icons
-                                                              .check_circle_rounded,
-                                                          color: Colors.white,
-                                                          size: 18,
-                                                        ),
-                                                        const SizedBox(width: 8),
-                                                        Expanded(
-                                                          child: Text(
-                                                            'Adaptação "${msg.detectedExercise!}" aplicada ao treino de hoje!',
-                                                            style:
-                                                                const TextStyle(
-                                                              color: Colors.white,
-                                                              fontWeight:
-                                                                  FontWeight.w700,
-                                                              fontSize: 12.5,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
+                                                _applySessionAdaptation(
+                                                  originalExercise: _lastSelectedExerciseForSwap ??
+                                                      (_studentExercises.isNotEmpty ? _studentExercises.first : 'Exercício Anterior'),
+                                                  adaptedExercise: msg.detectedExercise!,
+                                                  reason: 'Adaptação da Sessão de Hoje (Mr. Coach AI Copiloto)',
                                                 );
                                               },
                                               icon: const Icon(
@@ -1615,7 +2320,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                                                 size: 16,
                                               ),
                                               label: const Text(
-                                                'Aplicar ao treino',
+                                                'Adaptar Só no Treino de Hoje',
                                                 style: TextStyle(
                                                   fontWeight: FontWeight.w700,
                                                   fontSize: 12,
@@ -1901,7 +2606,9 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                               ),
                               const SizedBox(width: 5),
                               Text(
-                                widget.isStudentView ? 'COPILOTO DE SALÃO • TEMPO REAL' : 'MR. COACH ENTERPRISE',
+                                widget.isStudentView
+                                    ? (_isTrainerPro ? 'COPILOTO DE SALÃO • PRO 24/7' : 'MODO ESSENCIAL • GUIA DE SALÃO')
+                                    : 'MR. COACH ENTERPRISE',
                                 style: TextStyle(
                                   color: useEditorialMode ? Colors.white : MetaColors.emerald,
                                   fontSize: 10,
@@ -1929,7 +2636,9 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                     const SizedBox(height: 14),
                     Text(
                       widget.isStudentView
-                          ? 'Qual a dúvida da sua série agora?'
+                          ? (_todaySplit != null
+                              ? 'Treino ${_todaySplit!.splitIdentifier} • ${_todaySplit!.splitName}'
+                              : 'Qual a dúvida da sua série agora?')
                           : 'Inteligência Estratégica & Prescrição',
                       style: TextStyle(
                         color: titleColor,
@@ -1941,7 +2650,9 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                     const SizedBox(height: 6),
                     Text(
                       widget.isStudentView
-                          ? 'Aparelho ocupado, ajuste de postura para evitar dor ou dúvida de carga na série. Resposta direta em 5 segundos.'
+                          ? (_todaySplit != null
+                              ? '${_todaySplitExercises.length} exercícios na série. Aparelho ocupado ou dúvida biomecânica? Resposta direta em 5 segundos.'
+                              : 'Aparelho ocupado, ajuste de postura para evitar dor ou dúvida de carga na série. Resposta direta em 5 segundos.')
                           : 'Periodização de força, fisiologia de hipertrofia, precificação de planos e engajamento no WhatsApp.',
                       style: TextStyle(
                         color: subtitleColor,
@@ -1949,16 +2660,78 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                         height: 1.4,
                       ),
                     ),
-                    if (widget.isStudentView && _studentExercises.isNotEmpty) ...[
+                    if (widget.isStudentView && (_todaySplitExercises.isNotEmpty || _studentExercises.isNotEmpty)) ...[
                       const SizedBox(height: 12),
                       Wrap(
                         spacing: 6,
                         runSpacing: 6,
-                        children: _studentExercises.take(3).map((ex) {
+                        children: (_todaySplitExercises.isNotEmpty
+                                ? _todaySplitExercises.map((e) => e.name).toList()
+                                : _studentExercises)
+                            .take(4)
+                            .map((ex) {
+                          final isSwapped = _swappedExercises.containsKey(ex);
+                          final adaptedName = _swappedExercises[ex];
+
                           return InkWell(
-                            onTap: () => _sendPrompt(
-                              'Como executar $ex com postura perfeita e qual alternativa se estiver ocupado?',
-                            ),
+                            onTap: () {
+                              OneUiGlassSheet.show(
+                                context,
+                                header: Row(
+                                  children: [
+                                    const Icon(Icons.fitness_center_rounded, color: MetaColors.emerald, size: 22),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            ex,
+                                            style: TextStyle(
+                                              color: MetaColors.text(context),
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                          Text(
+                                            isSwapped ? 'Adaptado hoje para $adaptedName' : 'Exercício da sua série atual',
+                                            style: TextStyle(
+                                              color: MetaColors.subtext(context),
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                actions: [
+                                  GlassAction(
+                                    icon: Icons.play_circle_fill_rounded,
+                                    color: MetaColors.emerald,
+                                    label: 'Ver Execução 3D & Checklist',
+                                    subtitle: 'Postura, escápulas e cadência recomendada',
+                                    onTap: () {
+                                      Navigator.of(context, rootNavigator: true).pop();
+                                      ExerciseMediaSheet.show(
+                                        context,
+                                        exerciseName: isSwapped ? adaptedName! : ex,
+                                      );
+                                    },
+                                  ),
+                                  GlassAction(
+                                    icon: Icons.swap_horiz_rounded,
+                                    color: const Color(0xFFF59E0B),
+                                    label: 'Aparelho Ocupado? Trocar Agora',
+                                    subtitle: 'Sugere 2 variações biomecânicas livres de fila',
+                                    onTap: () {
+                                      Navigator.of(context, rootNavigator: true).pop();
+                                      _triggerExerciseSwapFlow(ex);
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
                             borderRadius: BorderRadius.circular(10),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
@@ -1966,30 +2739,38 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                                 vertical: 5,
                               ),
                               decoration: BoxDecoration(
-                                color: chipBg,
+                                color: isSwapped
+                                    ? MetaColors.emerald.withValues(alpha: 0.22)
+                                    : chipBg,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: chipBorder,
+                                  color: isSwapped
+                                      ? MetaColors.emerald.withValues(alpha: 0.5)
+                                      : chipBorder,
                                 ),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
-                                    Icons.fitness_center_rounded,
+                                    isSwapped ? Icons.check_circle_rounded : Icons.fitness_center_rounded,
                                     size: 11.5,
-                                    color: useEditorialMode ? Colors.white : MetaColors.emerald,
+                                    color: isSwapped
+                                        ? MetaColors.emerald
+                                        : (useEditorialMode ? Colors.white : MetaColors.emerald),
                                   ),
                                   const SizedBox(width: 5),
                                   Flexible(
                                     child: Text(
-                                      ex,
+                                      isSwapped ? '$ex → $adaptedName' : ex,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
-                                        color: chipTextColor,
+                                        color: isSwapped
+                                            ? (isDark ? Colors.white : MetaColors.emerald)
+                                            : chipTextColor,
                                         fontSize: 11,
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight: isSwapped ? FontWeight.w800 : FontWeight.w600,
                                       ),
                                     ),
                                   ),
@@ -2001,13 +2782,11 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                       ),
                     ],
                     const SizedBox(height: 16),
-                    // Botão Funcional Útil de Salão (sem redundância de 3D)
+                    // Botão Funcional Útil de Salão
                     InkWell(
                       onTap: () {
                         if (widget.isStudentView) {
-                          _sendPrompt(
-                            'O aparelho que eu ia usar agora está ocupado na academia. Quais as melhores alternativas com halteres ou polia mantendo o mesmo estímulo muscular?',
-                          );
+                          _showBusyMachineModal();
                         } else {
                           _sendPrompt(
                             'Crie um script de WhatsApp humanizado e persuasivo para reengajar alunos ausentes há mais de 10 dias.',
@@ -2366,32 +3145,40 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                     _buildShortcutPill(
                       context,
                       icon: Icons.assignment_rounded,
-                      label: '📋 Ficha Ativa',
-                      onTap: () => _sendPrompt('1'),
-                    ),
-                    const SizedBox(width: 8),
-                    _buildShortcutPill(
-                      context,
-                      icon: Icons.local_fire_department_rounded,
-                      label: '🔥 Ofensiva',
-                      color: const Color(0xFFF59E0B),
-                      onTap: () => _sendPrompt('2'),
+                      label: '📋 Ficha de Hoje',
+                      onTap: _showTodayWorkoutCard,
                     ),
                     const SizedBox(width: 8),
                     _buildShortcutPill(
                       context,
                       icon: Icons.swap_horiz_rounded,
                       label: '⚠️ Aparelho Ocupado',
-                      color: MetaColors.accentBlue,
-                      onTap: () => _sendPrompt('O aparelho que eu ia usar agora está ocupado na academia. Qual a melhor substituição?'),
+                      color: const Color(0xFFF59E0B),
+                      onTap: _showBusyMachineModal,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildShortcutPill(
+                      context,
+                      icon: Icons.local_fire_department_rounded,
+                      label: '🔥 Ofensiva',
+                      color: const Color(0xFFF97316),
+                      onTap: () => _sendPrompt('2'),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildShortcutPill(
+                      context,
+                      icon: Icons.water_drop_rounded,
+                      label: '💧 +250ml Água',
+                      color: const Color(0xFF38BDF8),
+                      onTap: () => _sendPrompt('+250ml'),
                     ),
                     const SizedBox(width: 8),
                     _buildShortcutPill(
                       context,
                       icon: Icons.chat_rounded,
-                      label: '💬 Comandos WhatsApp',
+                      label: '💬 Zap Sync',
                       color: MetaColors.emerald,
-                      onTap: () => _sendPrompt('menu'),
+                      onTap: _openWhatsAppSyncSheet,
                     ),
                   ],
                 ),
@@ -2399,6 +3186,13 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
             ],
             Row(
               children: [
+                if (widget.isStudentView) ...[
+                  IconButton(
+                    icon: const Icon(Icons.mic_rounded, color: Color(0xFF8B5CF6), size: 22),
+                    tooltip: 'Dúvidas Rápidas de Salão',
+                    onPressed: _showVoiceInputDialog,
+                  ),
+                ],
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
