@@ -212,6 +212,22 @@ MENU_STREAK = {"2", "streak", "ofensiva", "foguinho", "minha ofensiva"}
 MENU_APP = {"3", "app", "link", "aplicativo", "acesso"}
 MENU_TRAINER_NOTE = {"4", "recado", "falar com professor", "deixar recado", "avisar professor"}
 MENU_BIOHUB = {"5", "bio", "biohub", "bio-hub", "peso", "imc", "meu peso", "meu imc", "medidas", "minhas medidas"}
+MENU_FINANCIAL = {
+    "6",
+    "pix",
+    "cartao",
+    "cartao de credito",
+    "cartão",
+    "cartão de crédito",
+    "pagar",
+    "pagamento",
+    "fatura",
+    "mensalidade",
+    "renovar",
+    "link de pagamento",
+    "pagar com cartao",
+    "pagar c cartao",
+}
 
 PHASE2_ALLOWED_PLANS = {
     "pro",
@@ -346,6 +362,17 @@ async def handle_deterministic_button(
                 f"Para a sua sessão de hoje, você realizará *{exercise_name}*.\n\n"
                 f"O seu professor foi avisado no radar do Mr. Coach. Sua ficha oficial do mesociclo segue intacta. "
                 f"Excelente treino! 💪"
+            ),
+            "cost_type": "free",
+            "tokens_used": 0,
+        }
+
+    # 1.1 Manter Prescrição Original (keep_original)
+    if action_type == "keep_original":
+        return {
+            "reply": (
+                f"💪 *Prescrição Mantida, {nome}!* Sem problemas! Vamos manter o exercício original conforme a ficha "
+                f"prescrita pelo seu treinador. Concentre-se na técnica, respire fundo e faça uma ótima série! 🔥"
             ),
             "cost_type": "free",
             "tokens_used": 0,
@@ -725,6 +752,65 @@ async def process_whatsapp_question(
             "cost_type": "free",
             "tokens_used": 0,
         }
+
+    # 6.6 Opção 6: Informações de Pagamento / Fatura / Pix / Cartão - Custo Zero (0 Tokens)
+    if cmd in MENU_FINANCIAL or any(k in cmd for k in ("pagar", "pagamento", "fatura", "mensalidade", "chave pix", "pagar c/ cartao")):
+        inv_data = None
+        client = await supabase_service.get_client()
+        if client:
+            try:
+                inv_res = await client.table("student_invoices").select("*").eq("student_id", student["id"]).order("due_date", desc=True).limit(1).execute()
+                if inv_res and inv_res.data:
+                    inv_data = inv_res.data[0]
+            except Exception as e_fin:
+                logger.debug(f"[WhatsAppAI] Falha ao buscar fatura do aluno: {e_fin}")
+
+        if inv_data:
+            pix = inv_data.get("pix_copy_paste") or inv_data.get("pix_code")
+            card_url = inv_data.get("invoice_url") or inv_data.get("payment_url") or APP_URL
+            amount = inv_data.get("amount")
+            val_txt = f" de R$ {float(amount):.2f}" if amount else ""
+            status = str(inv_data.get("status") or "").lower()
+
+            if status in ("paid", "received", "confirmed"):
+                return {
+                    "reply": (
+                        f"✅ *Mensalidade em Dia, {nome}!*\n\n"
+                        f"Identificamos que a sua última mensalidade{val_txt} já está quitada com sucesso.\n\n"
+                        f"Seus treinos e acompanhamento seguem 100% liberados! Acesse o app: {APP_URL} 💪"
+                    ),
+                    "cost_type": "free",
+                    "tokens_used": 0,
+                }
+
+            pix_block = f"\n\n💠 *Pix Copia e Cola:*\n```{pix}```" if pix else ""
+            return {
+                "reply": (
+                    f"💳 *Informações de Pagamento — {nome}*\n\n"
+                    f"Sua mensalidade{val_txt} está disponível para quitação:{pix_block}\n\n"
+                    f"🔗 *Cartão de Crédito ou Boleto:* {card_url}\n\n"
+                    f"Após o pagamento, a liberação é imediata no sistema! ⚡"
+                ),
+                "interaction_type": "reply_buttons",
+                "buttons": [
+                    {"id": f"fin_pix|{inv_data.get('id', '')}", "title": "💠 Gerar Pix"},
+                    {"id": f"fin_link|{inv_data.get('id', '')}", "title": "💳 Pagar c/ Cartão"},
+                    {"id": f"fin_paid|{inv_data.get('id', '')}", "title": "✅ Já paguei"},
+                ],
+                "cost_type": "free",
+                "tokens_used": 0,
+            }
+        else:
+            return {
+                "reply": (
+                    f"💳 *Informações Financeiras — Mr. Coach*\n\n"
+                    f"{nome}, você pode gerenciar suas mensalidades, emitir Pix ou pagar no cartão diretamente pelo app:\n"
+                    f"{APP_URL}\n\n"
+                    f"Qualquer dúvida sobre valores ou planos, seu professor está à disposição! 💪"
+                ),
+                "cost_type": "free",
+                "tokens_used": 0,
+            }
 
     # 7. Safety Guardrail: Alerta de dor aguda / lesão
     if _is_acute_pain(cmd):

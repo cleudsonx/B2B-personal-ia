@@ -169,6 +169,20 @@ async def test_deterministic_handler_confirm_swap():
 
 
 @pytest.mark.asyncio
+async def test_deterministic_handler_keep_original():
+    """Valida manutenção da prescrição original (keep_original)."""
+    res = await handle_deterministic_button(
+        digits="5511999998888",
+        button_id="keep_original|wk_104",
+    )
+    assert "Prescrição Mantida" in res["reply"]
+    assert "exercício original" in res["reply"]
+    assert "Treino de Hoje" not in res["reply"]
+    assert res["cost_type"] == "free"
+    assert res["tokens_used"] == 0
+
+
+@pytest.mark.asyncio
 async def test_deterministic_handler_rpe_log():
     """Valida registro instantâneo de RPE."""
     res = await handle_deterministic_button(

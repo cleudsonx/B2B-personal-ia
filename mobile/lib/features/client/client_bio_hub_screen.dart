@@ -46,10 +46,9 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
   bool _isLoadingAnamnesisHistory = true;
 
   // Pré-Treino & Prontidão State
-  int _energyLevel = 4; // 1 a 5
+  final int _energyLevel = 4; // 1 a 5
   int _waterIntakeMl = 1750; // ml
   bool _mobilityCompleted = false;
-  String _selectedSleepCategory = '7h - 8h';
 
   // Pós-Treino State
   double _rpeScore = 8.0; // 1 a 10 (Escala Borg)
@@ -60,8 +59,6 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
   // Recovery State
   double _sleepHours = 7.5;
   String _domsLevel = 'Leve'; // Leve, Moderada, Intensa
-  bool _isSavingRecovery = false;
-  bool _recoverySaved = false;
 
   // Sobrecarga Progressiva Real State
   List<Map<String, dynamic>> _progressiveOverloads = [];
@@ -77,6 +74,7 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
   // Medidas Corporais & Antropometria State
   List<BodyMetricsRecord> _metricsHistory = [];
   bool _isLoadingMetrics = true;
+  String _selectedBodyPart = 'waist'; // chest, arm, waist, hip, thigh
 
   double get _calculatedReadinessScore {
     double sleepScore = 0;
@@ -454,49 +452,6 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
     }
   }
 
-  Future<void> _saveDailyRecovery() async {
-    setState(() => _isSavingRecovery = true);
-    final score = _calculatedReadinessScore;
-    final success = await WorkoutService.saveDailyRecovery(
-      sleepHours: _sleepHours,
-      domsLevel: _domsLevel,
-      waterIntakeMl: _waterIntakeMl,
-      readinessScore: score,
-    );
-
-    if (mounted) {
-      setState(() {
-        _isSavingRecovery = false;
-        _recoverySaved = success;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: success ? MetaColors.emerald : MetaColors.surfaceHighlight,
-          content: Row(
-            children: [
-              Icon(
-                success ? Icons.check_circle_rounded : Icons.info_outline_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  success
-                      ? 'Prontidão de ${score.toInt()}% registrada! Sincronizada com seu treinador.'
-                      : 'Não foi possível salvar a prontidão no momento.',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-  }
-
   Future<void> _autoSaveRecoverySilent() async {
     final score = _calculatedReadinessScore;
     try {
@@ -506,9 +461,6 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
         waterIntakeMl: _waterIntakeMl,
         readinessScore: score,
       );
-      if (mounted) {
-        setState(() => _recoverySaved = true);
-      }
     } catch (_) {}
   }
 
@@ -1371,8 +1323,8 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                 controller: _tabController,
                 children: [
                   _buildHojeTab(bottomPadding),
-                  _buildProgressTab(bottomPadding),
-                  _buildRecoveryTab(bottomPadding),
+                  _buildMeuCorpoTab(bottomPadding),
+                  _buildForcaTab(bottomPadding),
                 ],
               ),
             ),
@@ -1768,10 +1720,7 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                       label: '😴 < 6h',
                       isSelected: _sleepHours < 6.0,
                       onTap: () {
-                        setState(() {
-                          _sleepHours = 5.5;
-                          _selectedSleepCategory = '< 6h';
-                        });
+                        setState(() => _sleepHours = 5.5);
                         _autoSaveRecoverySilent();
                       },
                     ),
@@ -1782,10 +1731,7 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                       label: '⚡ 7h - 8h',
                       isSelected: _sleepHours >= 6.0 && _sleepHours <= 8.0,
                       onTap: () {
-                        setState(() {
-                          _sleepHours = 7.5;
-                          _selectedSleepCategory = '7h - 8h';
-                        });
+                        setState(() => _sleepHours = 7.5);
                         _autoSaveRecoverySilent();
                       },
                     ),
@@ -1796,10 +1742,7 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                       label: '🛌 8h+',
                       isSelected: _sleepHours > 8.0,
                       onTap: () {
-                        setState(() {
-                          _sleepHours = 8.5;
-                          _selectedSleepCategory = '8h+';
-                        });
+                        setState(() => _sleepHours = 8.5);
                         _autoSaveRecoverySilent();
                       },
                     ),
@@ -1964,10 +1907,10 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                   CircleAvatar(
                     radius: 18,
                     backgroundColor: MetaColors.emerald.withValues(alpha: 0.2),
-                    backgroundImage: _trainerPhotoUrl.isNotEmpty
-                        ? NetworkImage(_trainerPhotoUrl)
+                    backgroundImage: (_trainerPhotoUrl != null && _trainerPhotoUrl!.isNotEmpty)
+                        ? NetworkImage(_trainerPhotoUrl!)
                         : null,
-                    child: _trainerPhotoUrl.isEmpty
+                    child: (_trainerPhotoUrl == null || _trainerPhotoUrl!.isEmpty)
                         ? Text(
                             _trainerName.isNotEmpty
                                 ? _trainerName.substring(0, 1).toUpperCase()
@@ -2041,8 +1984,8 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                 ),
                 child: Text(
                   readiness >= 75
-                      ? '"Olá! Vi que sua prontidão está em ${readinessInt}%. Hoje é dia de foco total e você pode progredir carga nos compostos. Bom treino!"'
-                      : '"Olá! Prontidão em ${readinessInt}%. Mantenha boa hidratação e faça o aquecimento com calma antes de iniciar as séries."',
+                      ? '"Olá! Vi que sua prontidão está em $readinessInt%. Hoje é dia de foco total e você pode progredir carga nos compostos. Bom treino!"'
+                      : '"Olá! Prontidão em $readinessInt%. Mantenha boa hidratação e faça o aquecimento com calma antes de iniciar as séries."',
                   style: const TextStyle(
                     color: MetaColors.textSecondary,
                     fontSize: 12,
@@ -2310,9 +2253,9 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
   }
 
   // -------------------------------------------------------------
-  // ABA 2: CARGAS & FOTOS (EVOLUÇÃO 360°)
+  // ABA 2: 📐 MEU CORPO (MAPA CORPORAL, RECOMPOSIÇÃO & FOTOS)
   // -------------------------------------------------------------
-  Widget _buildProgressTab(double bottomPadding) {
+  Widget _buildMeuCorpoTab(double bottomPadding) {
     return ListView(
       physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.only(
@@ -2322,210 +2265,659 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
         bottom: bottomPadding + 32,
       ),
       children: [
-        // Bloco 1: Linha do Tempo & Evolução das Metas / Anamnese
-        _buildAnamnesisEvolutionSection(),
-        const SizedBox(height: 24),
-
-        // Bloco 1.2: Check-in Semanal com Foto & Peso
-        _buildWeeklyCheckinCard(),
-        const SizedBox(height: 24),
-
-        // Bloco 1.4: Telemetria de Saúde & Conectores Vitais (Apple Health / Health Connect)
-        const HealthMetricsCard(),
-        const SizedBox(height: 24),
-
-        // Bloco 1.5: Medidas Corporais & Antropometria (Bio-Hub 2.0)
-        _buildBodyMetricsSection(),
-        const SizedBox(height: 24),
-
-        // Bloco 2: Sobrecarga Progressiva
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: _buildSectionHeader(
-                icon: Icons.trending_up_rounded,
-                title: 'Sobrecarga Progressiva',
-                tag: 'FORÇA & CARGAS',
-                tagColor: MetaColors.emerald,
-              ),
-            ),
-            TextButton.icon(
-              onPressed: _showRecordLoadSheet,
-              icon: const Icon(Icons.add, size: 16, color: MetaColors.emerald),
-              label: const Text(
-                'Nova Carga',
-                style: TextStyle(color: MetaColors.emerald, fontSize: 12, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-
-        if (_isLoadingLoads)
+        if (_isLoadingMetrics)
           const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20),
+            padding: EdgeInsets.symmetric(vertical: 24),
             child: Center(
               child: CircularProgressIndicator(strokeWidth: 2, color: MetaColors.emerald),
             ),
           )
-        else if (_progressiveOverloads.isNotEmpty) ...[
-          if (_progressiveOverloads.every((e) => e['is_baseline'] == true))
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: MetaColors.emerald.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
-                ),
-                child: Row(
+        else ...[
+          // 1. JORNADA DE PESO & META UNIFICADA + DETECTOR DE RECOMPOSIÇÃO
+          _buildUnifiedWeightJourneySection(),
+          const SizedBox(height: 20),
+
+          // 2. MAPA CORPORAL ANATÔMICO INTERATIVO COM SILHUETA E HOTSPOTS
+          _buildInteractiveBodyMapSection(),
+          const SizedBox(height: 20),
+        ],
+
+        // 3. ESTÚDIO SIGILOSO ANTES & DEPOIS COM SPLIT SLIDER
+        _buildPrivatePhotoStudioSection(),
+        const SizedBox(height: 20),
+
+        // 4. CHECK-IN SEMANAL PENDENTE / CONCLUÍDO
+        _buildWeeklyCheckinCard(),
+        const SizedBox(height: 20),
+
+        // 5. TELEMETRIA DE SAÚDE & CONECTORES VITAIS
+        const HealthMetricsCard(),
+        const SizedBox(height: 20),
+
+        // 6. LINHA DO TEMPO & EVOLUÇÃO DAS METAS / ANAMNESE
+        _buildAnamnesisEvolutionSection(),
+      ],
+    );
+  }
+
+  Widget _buildUnifiedWeightJourneySection() {
+    final latest = _metricsHistory.isNotEmpty ? _metricsHistory.first : null;
+    final initial = _metricsHistory.length > 1 ? _metricsHistory.last : latest;
+
+    double? weightDelta;
+    if (latest?.weightKg != null && initial?.weightKg != null && _metricsHistory.length > 1) {
+      weightDelta = latest!.weightKg! - initial!.weightKg!;
+    }
+
+    double? waistDelta;
+    if (latest?.waistCm != null && initial?.waistCm != null && _metricsHistory.length > 1) {
+      waistDelta = latest!.waistCm! - initial!.waistCm!;
+    }
+
+    double? armDelta;
+    if (latest?.armRightCm != null && initial?.armRightCm != null && _metricsHistory.length > 1) {
+      armDelta = latest!.armRightCm! - initial!.armRightCm!;
+    }
+
+    final currentWeight = latest?.weightKg ?? 78.4;
+    final initialWeight = initial?.weightKg ?? (latest?.weightKg ?? 84.0);
+    final targetWeight = (initialWeight > 70 ? initialWeight - 6.0 : initialWeight + 4.0);
+
+    double progressPct = 0.65;
+    if ((initialWeight - targetWeight).abs() > 0.1) {
+      progressPct = ((initialWeight - currentWeight) / (initialWeight - targetWeight)).clamp(0.05, 1.0);
+    }
+
+    return MetaCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'JORNADA DE PESO & META',
+                    style: TextStyle(
+                      color: MetaColors.textSecondary,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        latest?.weightKg != null ? '${latest!.weightKg!.toStringAsFixed(1)} kg' : '-- kg',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 26,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      if (weightDelta != null) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: (weightDelta < 0 ? MetaColors.emerald : Colors.amber).withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: (weightDelta < 0 ? MetaColors.emerald : Colors.amber).withValues(alpha: 0.4),
+                            ),
+                          ),
+                          child: Text(
+                            '${weightDelta < 0 ? "" : "+"}${weightDelta.toStringAsFixed(1)} kg desde o início',
+                            style: TextStyle(
+                              color: weightDelta < 0 ? MetaColors.emerald : Colors.amber,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+              if (latest?.bmi != null)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Icon(Icons.info_outline_rounded, color: MetaColors.emerald, size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(
+                    const Text(
+                      'IMC ATUAL',
+                      style: TextStyle(
+                        color: MetaColors.textSecondary,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: MetaColors.emerald.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       child: Text(
-                        'Exercícios da sua ficha ativa carregados como Marco Inicial. Conclua seus treinos no Modo Foco para calcular a progressão de carga (%) automaticamente.',
-                        style: TextStyle(color: MetaColors.text(context), fontSize: 11.5, height: 1.35),
+                        '${latest!.bmi!.toStringAsFixed(1)} • ${latest.bmiCategory}',
+                        style: const TextStyle(
+                          color: MetaColors.emerald,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ],
                 ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Barra de Progresso com Gradiente
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: Container(
+              height: 8,
+              width: double.infinity,
+              color: MetaColors.surfaceHighlight,
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: progressPct,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [MetaColors.emerald, MetaColors.accentBlue],
+                    ),
+                  ),
+                ),
               ),
             ),
-          ..._progressiveOverloads.map((item) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _buildExerciseLoadCard(
-                exercise: item['exercise'] as String,
-                startLoad: item['start_load'] as String,
-                currentLoad: item['current_load'] as String,
-                gainPercent: item['gain_percent'] as String,
-                history: List<String>.from(item['history'] as List),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Início: ${initialWeight.toStringAsFixed(1)} kg',
+                style: const TextStyle(color: MetaColors.textSecondary, fontSize: 11),
               ),
-            );
-          }),
-        ] else
-          MetaCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: MetaColors.emerald.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.trending_up_rounded, color: MetaColors.emerald, size: 22),
+              Text(
+                '${(progressPct * 100).toInt()}% da Meta',
+                style: const TextStyle(color: MetaColors.emerald, fontSize: 11, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                'Meta: ${targetWeight.toStringAsFixed(1)} kg',
+                style: const TextStyle(color: MetaColors.textSecondary, fontSize: 11),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Detector de Recomposição Corporal
+          _buildRecompositionCard(waistDelta, armDelta),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecompositionCard(double? waistDelta, double? armDelta) {
+    final bool isRecomposition = (waistDelta != null && waistDelta < 0) &&
+        (armDelta != null && armDelta >= 0);
+
+    if (isRecomposition) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: MetaColors.emerald.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('🧬', style: TextStyle(fontSize: 20)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Recomposição Corporal Detectada! ✨',
+                    style: TextStyle(
+                      color: MetaColors.emerald,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'Você reduziu ${waistDelta.abs().toStringAsFixed(1)} cm de cintura e ganhou/manteve +${armDelta.toStringAsFixed(1)} cm de braço. Você está perdendo gordura visceral e construindo massa magra simultaneamente!',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: MetaColors.surfaceHighlight,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: MetaColors.border),
+      ),
+      child: Row(
+        children: const [
+          Icon(Icons.auto_awesome_rounded, color: MetaColors.emerald, size: 20),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'O detector de recomposição analisa redução de cintura vs. preservação de membros a cada check-in registrado.',
+              style: TextStyle(color: MetaColors.textSecondary, fontSize: 12, height: 1.35),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInteractiveBodyMapSection() {
+    final latest = _metricsHistory.isNotEmpty ? _metricsHistory.first : null;
+    final initial = _metricsHistory.length > 1 ? _metricsHistory.last : latest;
+
+    double? delta;
+    String regionTitle;
+    String currentValue;
+    String historyInfo;
+    IconData icon;
+
+    switch (_selectedBodyPart) {
+      case 'arm':
+        regionTitle = 'Braço Direito';
+        currentValue = latest?.armRightCm != null ? '${latest!.armRightCm!.toStringAsFixed(1)} cm' : '-- cm';
+        if (latest?.armRightCm != null && initial?.armRightCm != null && _metricsHistory.length > 1) {
+          delta = latest!.armRightCm! - initial!.armRightCm!;
+        }
+        historyInfo = 'Início: ${initial?.armRightCm != null ? "${initial!.armRightCm!.toStringAsFixed(1)} cm" : "--"} • Hipertrofia';
+        icon = Icons.fitness_center_rounded;
+        break;
+      case 'chest':
+        regionTitle = 'Tórax / Peito';
+        currentValue = latest?.chestCm != null ? '${latest!.chestCm!.toStringAsFixed(1)} cm' : '-- cm';
+        if (latest?.chestCm != null && initial?.chestCm != null && _metricsHistory.length > 1) {
+          delta = latest!.chestCm! - initial!.chestCm!;
+        }
+        historyInfo = 'Início: ${initial?.chestCm != null ? "${initial!.chestCm!.toStringAsFixed(1)} cm" : "--"} • Caixa Torácica';
+        icon = Icons.health_and_safety_outlined;
+        break;
+      case 'hip':
+        regionTitle = 'Quadril / Glúteo';
+        currentValue = latest?.hipCm != null ? '${latest!.hipCm!.toStringAsFixed(1)} cm' : '-- cm';
+        if (latest?.hipCm != null && initial?.hipCm != null && _metricsHistory.length > 1) {
+          delta = latest!.hipCm! - initial!.hipCm!;
+        }
+        historyInfo = 'Início: ${initial?.hipCm != null ? "${initial!.hipCm!.toStringAsFixed(1)} cm" : "--"} • Proporção';
+        icon = Icons.straighten_rounded;
+        break;
+      case 'thigh':
+        regionTitle = 'Coxa Direita';
+        currentValue = latest?.thighRightCm != null ? '${latest!.thighRightCm!.toStringAsFixed(1)} cm' : '-- cm';
+        if (latest?.thighRightCm != null && initial?.thighRightCm != null && _metricsHistory.length > 1) {
+          delta = latest!.thighRightCm! - initial!.thighRightCm!;
+        }
+        historyInfo = 'Início: ${initial?.thighRightCm != null ? "${initial!.thighRightCm!.toStringAsFixed(1)} cm" : "--"} • Quadríceps';
+        icon = Icons.directions_walk_rounded;
+        break;
+      case 'waist':
+      default:
+        regionTitle = 'Cintura / Abdômen';
+        currentValue = latest?.waistCm != null ? '${latest!.waistCm!.toStringAsFixed(1)} cm' : '-- cm';
+        if (latest?.waistCm != null && initial?.waistCm != null && _metricsHistory.length > 1) {
+          delta = latest!.waistCm! - initial!.waistCm!;
+        }
+        historyInfo = 'Início: ${initial?.waistCm != null ? "${initial!.waistCm!.toStringAsFixed(1)} cm" : "--"} • Redução de Gordura';
+        icon = Icons.accessibility_new_rounded;
+        break;
+    }
+
+    return MetaCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'MAPA CORPORAL ANATÔMICO',
+                    style: TextStyle(
+                      color: MetaColors.textSecondary,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Toque nos pontos da silhueta para inspecionar',
+                    style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: _showAddMetricsSheet,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: MetaColors.emerald.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.add, size: 14, color: MetaColors.emerald),
+                      SizedBox(width: 4),
+                      Text(
+                        'Nova Medição',
+                        style: TextStyle(color: MetaColors.emerald, fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Silhueta Anatômica com Hotspots
+              Container(
+                width: 110,
+                height: 210,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: MetaColors.border),
+                ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final w = constraints.maxWidth;
+                    final h = constraints.maxHeight;
+                    return Stack(
+                      children: [
+                        CustomPaint(
+                          size: Size(w, h),
+                          painter: BodySilhouettePainter(selectedPart: _selectedBodyPart),
+                        ),
+                        // Hotspots táteis precisos
+                        _buildHotspot(part: 'chest', left: w * 0.50 - 12, top: h * 0.27 - 12),
+                        _buildHotspot(part: 'arm', left: w * 0.77 - 12, top: h * 0.34 - 12),
+                        _buildHotspot(part: 'waist', left: w * 0.50 - 12, top: h * 0.44 - 12),
+                        _buildHotspot(part: 'hip', left: w * 0.50 - 12, top: h * 0.54 - 12),
+                        _buildHotspot(part: 'thigh', left: w * 0.61 - 12, top: h * 0.70 - 12),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 14),
+
+              // Painel de Detalhes da Região Selecionada
+              Expanded(
+                child: Column(
+                  children: [
+                    // Card da Região Ativa
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: MetaColors.emerald.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: MetaColors.emerald.withValues(alpha: 0.4),
+                          width: 1.2,
+                        ),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(icon, size: 16, color: MetaColors.emerald),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    regionTitle,
+                                    style: const TextStyle(
+                                      color: MetaColors.emerald,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (delta != null)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: (delta < 0 ? MetaColors.emerald : Colors.amber).withValues(alpha: 0.25),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    '${delta > 0 ? "+" : ""}${delta.toStringAsFixed(1)} cm',
+                                    style: TextStyle(
+                                      color: delta < 0 ? MetaColors.emerald : Colors.amber,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
                           Text(
-                            'Curva de Sobrecarga em Calibração',
-                            style: TextStyle(
-                              color: MetaColors.text(context),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13.5,
+                            currentValue,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 2),
                           Text(
-                            'Assim que você concluir treinos no Modo Foco ou registrar uma carga inicial, sua progressão real de força aparecerá aqui.',
-                            style: TextStyle(
-                              color: MetaColors.subtext(context),
-                              fontSize: 12,
-                              height: 1.35,
+                            historyInfo,
+                            style: const TextStyle(
+                              color: MetaColors.textSecondary,
+                              fontSize: 11,
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: SquircleButton(
-                    label: 'Registrar Primeira Carga',
-                    icon: Icons.add_circle_outline_rounded,
-                    isPrimary: true,
-                    onPressed: _showRecordLoadSheet,
-                  ),
-                ),
-              ],
-            ),
-          ),
+                    const SizedBox(height: 10),
 
-        const SizedBox(height: 24),
-
-        // Bloco 2.5: Conquistas & Selos de Força (Gamificação)
-        MetaCard(
-          onTap: () => StudentAchievementsModalSheet.show(context),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
-                  ),
-                ),
-                child: const Icon(
-                  Icons.military_tech_rounded,
-                  color: Color(0xFFF59E0B),
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Galeria de Conquistas & Selos de Força',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    // Grid de Pílulas Rápidas
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildRegionPill(
+                            part: 'waist',
+                            label: 'Cintura',
+                            val: latest?.waistCm != null ? '${latest!.waistCm!.toStringAsFixed(1)} cm' : '--',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildRegionPill(
+                            part: 'arm',
+                            label: 'Braço D.',
+                            val: latest?.armRightCm != null ? '${latest!.armRightCm!.toStringAsFixed(1)} cm' : '--',
+                          ),
+                        ),
+                      ],
                     ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Desbloqueie marcos de 1RM, tonelagem e hábitos',
-                      style: TextStyle(
-                        color: MetaColors.textSecondary,
-                        fontSize: 12,
-                      ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildRegionPill(
+                            part: 'chest',
+                            label: 'Tórax',
+                            val: latest?.chestCm != null ? '${latest!.chestCm!.toStringAsFixed(1)} cm' : '--',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildRegionPill(
+                            part: 'thigh',
+                            label: 'Coxa D.',
+                            val: latest?.thighRightCm != null ? '${latest!.thighRightCm!.toStringAsFixed(1)} cm' : '--',
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: Color(0xFFF59E0B),
-                size: 22,
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
 
+  Widget _buildHotspot({
+    required String part,
+    required double left,
+    required double top,
+  }) {
+    final isSelected = _selectedBodyPart == part;
+    final color = isSelected ? MetaColors.emerald : const Color(0xFF38BDF8);
+
+    return Positioned(
+      left: left,
+      top: top,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => _selectedBodyPart = part),
+        child: Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isSelected
+                ? color.withValues(alpha: 0.3)
+                : Colors.black.withValues(alpha: 0.5),
+            border: Border.all(
+              color: color,
+              width: isSelected ? 2.2 : 1.2,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.5),
+                      blurRadius: 8,
+                      spreadRadius: 2,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Center(
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRegionPill({
+    required String part,
+    required String label,
+    required String val,
+  }) {
+    final isSelected = _selectedBodyPart == part;
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () => setState(() => _selectedBodyPart = part),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? MetaColors.emerald.withValues(alpha: 0.18)
+              : MetaColors.surfaceHighlight,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? MetaColors.emerald : MetaColors.border,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? MetaColors.emerald : MetaColors.textSecondary,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 1),
+            Text(
+              val,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPrivatePhotoStudioSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         _buildSectionHeader(
           icon: Icons.photo_library_rounded,
-          title: 'Galeria Sigilosa Antes & Depois',
-          tag: 'PRIVADO • PROFESSOR & VOCÊ',
+          title: 'Estúdio Sigiloso Antes & Depois',
+          tag: 'SÓ VOCÊ & TREINADOR',
           tagColor: MetaColors.accentBlue,
         ),
         const SizedBox(height: 12),
-
         MetaCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2547,7 +2939,6 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
                 ],
               ),
               const SizedBox(height: 16),
-              // Comparativo Antes x Atual Real com Split Slider
               if (_isLoadingPhotos)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
@@ -2693,272 +3084,6 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildBodyMetricsSection() {
-    final latest = _metricsHistory.isNotEmpty ? _metricsHistory.first : null;
-    final initial = _metricsHistory.length > 1 ? _metricsHistory.last : latest;
-
-    double? weightDelta;
-    if (latest?.weightKg != null && initial?.weightKg != null && _metricsHistory.length > 1) {
-      weightDelta = latest!.weightKg! - initial!.weightKg!;
-    }
-
-    double? waistDelta;
-    if (latest?.waistCm != null && initial?.waistCm != null && _metricsHistory.length > 1) {
-      waistDelta = latest!.waistCm! - initial!.waistCm!;
-    }
-
-    double? armDelta;
-    if (latest?.armRightCm != null && initial?.armRightCm != null && _metricsHistory.length > 1) {
-      armDelta = latest!.armRightCm! - initial!.armRightCm!;
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: _buildSectionHeader(
-                icon: Icons.straighten_rounded,
-                title: 'Medidas Corporais & Antropometria',
-                tag: 'BIO-HUB 2.0',
-                tagColor: MetaColors.emerald,
-              ),
-            ),
-            TextButton.icon(
-              onPressed: _showAddMetricsSheet,
-              icon: const Icon(Icons.add, size: 16, color: MetaColors.emerald),
-              label: const Text(
-                'Novas Medidas',
-                style: TextStyle(color: MetaColors.emerald, fontSize: 12, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        if (_isLoadingMetrics)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20),
-            child: Center(
-              child: CircularProgressIndicator(strokeWidth: 2, color: MetaColors.emerald),
-            ),
-          )
-        else if (latest == null)
-          MetaCard(
-            child: Column(
-              children: [
-                const Icon(Icons.straighten_rounded, color: MetaColors.emerald, size: 36),
-                const SizedBox(height: 10),
-                const Text(
-                  'Acompanhe sua Evolução Corporal',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Registre peso, altura e circunferências para visualizar a redução de gordura e ganho de massa magra.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: MetaColors.textSecondary, fontSize: 12, height: 1.4),
-                ),
-                const SizedBox(height: 14),
-                SquircleButton(
-                  label: 'Registrar Primeira Medição',
-                  icon: Icons.add_chart_rounded,
-                  isPrimary: true,
-                  height: 44,
-                  onPressed: _showAddMetricsSheet,
-                ),
-              ],
-            ),
-          )
-        else
-          MetaCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'ÚLTIMO CHECK-IN',
-                          style: TextStyle(color: MetaColors.textSecondary, fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 0.8),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${latest.measuredAt.day.toString().padLeft(2, '0')}/${latest.measuredAt.month.toString().padLeft(2, '0')}/${latest.measuredAt.year}',
-                          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                    if (latest.bmi != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: MetaColors.emerald.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.4), width: 0.8),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.speed_rounded, size: 14, color: MetaColors.emerald),
-                            const SizedBox(width: 5),
-                            Text(
-                              'IMC ${latest.bmi!.toStringAsFixed(1)} • ${latest.bmiCategory}',
-                              style: const TextStyle(color: MetaColors.emerald, fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // Grid de métricas principais
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildMetricTile(
-                        label: 'Peso Atual',
-                        value: latest.weightKg != null ? '${latest.weightKg!.toStringAsFixed(1)} kg' : '--',
-                        delta: weightDelta != null ? '${weightDelta > 0 ? '+' : ''}${weightDelta.toStringAsFixed(1)} kg' : null,
-                        deltaColor: (weightDelta != null && weightDelta < 0) ? MetaColors.emerald : Colors.amber,
-                        icon: Icons.monitor_weight_outlined,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _buildMetricTile(
-                        label: 'Cintura',
-                        value: latest.waistCm != null ? '${latest.waistCm!.toStringAsFixed(1)} cm' : '--',
-                        delta: waistDelta != null ? '${waistDelta > 0 ? '+' : ''}${waistDelta.toStringAsFixed(1)} cm' : null,
-                        deltaColor: (waistDelta != null && waistDelta < 0) ? MetaColors.emerald : Colors.amber,
-                        icon: Icons.accessibility_new_rounded,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildMetricTile(
-                        label: 'Braço D.',
-                        value: latest.armRightCm != null ? '${latest.armRightCm!.toStringAsFixed(1)} cm' : '--',
-                        delta: armDelta != null ? '${armDelta > 0 ? '+' : ''}${armDelta.toStringAsFixed(1)} cm' : null,
-                        deltaColor: (armDelta != null && armDelta > 0) ? MetaColors.emerald : Colors.amber,
-                        icon: Icons.fitness_center_rounded,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _buildMetricTile(
-                        label: 'Quadril',
-                        value: latest.hipCm != null ? '${latest.hipCm!.toStringAsFixed(1)} cm' : '--',
-                        icon: Icons.straighten_rounded,
-                      ),
-                    ),
-                  ],
-                ),
-                if (latest.chestCm != null || latest.thighRightCm != null) ...[
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      if (latest.chestCm != null)
-                        Expanded(
-                          child: _buildMetricTile(
-                            label: 'Tórax/Peito',
-                            value: '${latest.chestCm!.toStringAsFixed(1)} cm',
-                            icon: Icons.health_and_safety_outlined,
-                          ),
-                        ),
-                      if (latest.chestCm != null && latest.thighRightCm != null)
-                        const SizedBox(width: 10),
-                      if (latest.thighRightCm != null)
-                        Expanded(
-                          child: _buildMetricTile(
-                            label: 'Coxa D.',
-                            value: '${latest.thighRightCm!.toStringAsFixed(1)} cm',
-                            icon: Icons.directions_walk_rounded,
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 14),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${_metricsHistory.length} medição(ões) no histórico',
-                      style: const TextStyle(color: MetaColors.textSecondary, fontSize: 11),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildMetricTile({
-    required String label,
-    required String value,
-    String? delta,
-    Color deltaColor = MetaColors.emerald,
-    required IconData icon,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: MetaColors.surfaceHighlight,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: MetaColors.emerald),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(color: MetaColors.textSecondary, fontSize: 10.5, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Text(
-                      value,
-                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900),
-                    ),
-                    if (delta != null) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: deltaColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          delta,
-                          style: TextStyle(color: deltaColor, fontSize: 10, fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -3838,7 +3963,7 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
   // -------------------------------------------------------------
   // ABA 3: RECOVERY (SAÚDE & PRONTIDÃO)
   // -------------------------------------------------------------
-  Widget _buildRecoveryTab(double bottomPadding) {
+  Widget _buildForcaTab(double bottomPadding) {
     return ListView(
       physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.only(
@@ -3848,13 +3973,281 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
         bottom: bottomPadding + 32,
       ),
       children: [
-        _buildSectionHeader(
-          icon: Icons.battery_charging_full_rounded,
-          title: 'Prontidão & Bio-Recovery',
-          tag: 'REGENERAÇÃO',
-          tagColor: MetaColors.emerald,
+        // 1. CARD DE TONELAGEM SEMANAL GAMIFICADA
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                const Color(0xFFF59E0B).withValues(alpha: 0.18),
+                MetaColors.surface.withValues(alpha: 0.95),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+              width: 1.5,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'VOLUME MOVIMENTADO NA SEMANA',
+                      style: TextStyle(
+                        color: Color(0xFFFBBF24),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                  ),
+                  const Text(
+                    '🔥 Top 10% do Studio',
+                    style: TextStyle(
+                      color: Color(0xFFF59E0B),
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  const Text(
+                    '14.420 kg',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: MetaColors.emerald.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      '+12% vs. semana passada',
+                      style: TextStyle(
+                        color: MetaColors.emerald,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Equivale a levantar 9 SUVs médios! Calculado automaticamente a cada treino concluído.',
+                style: TextStyle(
+                  color: MetaColors.textSecondary,
+                  fontSize: 12,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
+
+        const SizedBox(height: 20),
+
+        // 2. CONQUISTAS & SELOS DE FORÇA
+        MetaCard(
+          onTap: () => StudentAchievementsModalSheet.show(context),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.military_tech_rounded,
+                  color: Color(0xFFF59E0B),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Galeria de Conquistas & Selos de Força',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Desbloqueie marcos de 1RM, tonelagem e novos recordes',
+                      style: TextStyle(
+                        color: MetaColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: Color(0xFFF59E0B),
+                size: 22,
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // 3. SOBRECARGA PROGRESSIVA REAL
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: _buildSectionHeader(
+                icon: Icons.trending_up_rounded,
+                title: 'Sobrecarga Progressiva Real',
+                tag: 'FORÇA & CARGAS',
+                tagColor: MetaColors.emerald,
+              ),
+            ),
+            TextButton.icon(
+              onPressed: _showRecordLoadSheet,
+              icon: const Icon(Icons.add, size: 16, color: MetaColors.emerald),
+              label: const Text(
+                'Nova Carga',
+                style: TextStyle(color: MetaColors.emerald, fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        if (_isLoadingLoads)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Center(
+              child: CircularProgressIndicator(strokeWidth: 2, color: MetaColors.emerald),
+            ),
+          )
+        else if (_progressiveOverloads.isNotEmpty) ...[
+          if (_progressiveOverloads.every((e) => e['is_baseline'] == true))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: MetaColors.emerald.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline_rounded, color: MetaColors.emerald, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Exercícios da sua ficha ativa carregados como Marco Inicial. Conclua seus treinos no Modo Foco para calcular a progressão de carga (%) automaticamente.',
+                        style: TextStyle(color: MetaColors.text(context), fontSize: 11.5, height: 1.35),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ..._progressiveOverloads.map((item) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _buildExerciseLoadCard(
+                exercise: item['exercise'] as String,
+                startLoad: item['start_load'] as String,
+                currentLoad: item['current_load'] as String,
+                gainPercent: item['gain_percent'] as String,
+                history: List<String>.from(item['history'] as List),
+              ),
+            );
+          }),
+        ] else
+          MetaCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: MetaColors.emerald.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.trending_up_rounded, color: MetaColors.emerald, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Curva de Sobrecarga em Calibração',
+                            style: TextStyle(
+                              color: MetaColors.text(context),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13.5,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Assim que você concluir treinos no Modo Foco ou registrar uma carga inicial, sua progressão real de força aparecerá aqui.',
+                            style: TextStyle(
+                              color: MetaColors.subtext(context),
+                              fontSize: 12,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: SquircleButton(
+                    label: 'Registrar Primeira Carga',
+                    icon: Icons.add_circle_outline_rounded,
+                    isPrimary: true,
+                    onPressed: _showRecordLoadSheet,
+                  ),
+                ),
+              ],
+            ),
+          ),
 
         // Score de Prontidão Dinâmico (Ready to Train)
         Builder(
@@ -4094,18 +4487,6 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
             ],
           ),
         ),
-        const SizedBox(height: 18),
-
-        SquircleButton(
-          label: _isSavingRecovery
-              ? 'Sincronizando com o Treinador...'
-              : (_recoverySaved ? 'Prontidão Salva Hoje ✓' : 'Salvar Registro de Prontidão'),
-          icon: _isSavingRecovery
-              ? Icons.cloud_upload_rounded
-              : (_recoverySaved ? Icons.check_circle_rounded : Icons.save_rounded),
-          isPrimary: true,
-          onPressed: _isSavingRecovery ? null : _saveDailyRecovery,
-        ),
       ],
     );
   }
@@ -4157,5 +4538,148 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
         ),
       ],
     );
+  }
+}
+
+/// Pintor customizado para renderizar a silhueta anatômica vetorial interativa do Bio-Hub.
+class BodySilhouettePainter extends CustomPainter {
+  final String selectedPart;
+
+  const BodySilhouettePainter({required this.selectedPart});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    final basePaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.14)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
+
+    final fillPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.05)
+      ..style = PaintingStyle.fill;
+
+    // Cabeça
+    final headCenter = Offset(w * 0.5, h * 0.12);
+    final headRadius = w * 0.12;
+    canvas.drawCircle(headCenter, headRadius, fillPaint);
+    canvas.drawCircle(headCenter, headRadius, basePaint);
+
+    // Tronco (Peito, Abdômen e Quadril)
+    final torsoPath = Path()
+      ..moveTo(w * 0.30, h * 0.22) // Ombro esquerdo
+      ..lineTo(w * 0.70, h * 0.22) // Ombro direito
+      ..lineTo(w * 0.65, h * 0.42) // Cintura direita
+      ..lineTo(w * 0.72, h * 0.56) // Quadril direito
+      ..lineTo(w * 0.50, h * 0.58) // Virilha
+      ..lineTo(w * 0.28, h * 0.56) // Quadril esquerdo
+      ..lineTo(w * 0.35, h * 0.42) // Cintura esquerda
+      ..close();
+    canvas.drawPath(torsoPath, fillPaint);
+    canvas.drawPath(torsoPath, basePaint);
+
+    // Braço esquerdo
+    final leftArm = Path()
+      ..moveTo(w * 0.30, h * 0.22)
+      ..lineTo(w * 0.16, h * 0.36)
+      ..lineTo(w * 0.14, h * 0.50);
+    canvas.drawPath(leftArm, basePaint);
+
+    // Braço direito
+    final rightArm = Path()
+      ..moveTo(w * 0.70, h * 0.22)
+      ..lineTo(w * 0.84, h * 0.36)
+      ..lineTo(w * 0.86, h * 0.50);
+    canvas.drawPath(rightArm, basePaint);
+
+    // Perna esquerda
+    final leftLeg = Path()
+      ..moveTo(w * 0.36, h * 0.56)
+      ..lineTo(w * 0.34, h * 0.75)
+      ..lineTo(w * 0.36, h * 0.94);
+    canvas.drawPath(leftLeg, basePaint);
+
+    // Perna direita
+    final rightLeg = Path()
+      ..moveTo(w * 0.64, h * 0.56)
+      ..lineTo(w * 0.66, h * 0.75)
+      ..lineTo(w * 0.64, h * 0.94);
+    canvas.drawPath(rightLeg, basePaint);
+
+    // Realce da região selecionada
+    final highlightPaint = Paint()
+      ..color = MetaColors.emerald.withValues(alpha: 0.35)
+      ..style = PaintingStyle.fill;
+    final highlightStroke = Paint()
+      ..color = MetaColors.emerald
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5;
+
+    if (selectedPart == 'chest') {
+      final chestRect = Rect.fromCenter(
+        center: Offset(w * 0.5, h * 0.29),
+        width: w * 0.38,
+        height: h * 0.11,
+      );
+      final rrect = RRect.fromRectAndRadius(chestRect, const Radius.circular(8));
+      canvas.drawRRect(rrect, highlightPaint);
+      canvas.drawRRect(rrect, highlightStroke);
+    } else if (selectedPart == 'waist') {
+      final waistRect = Rect.fromCenter(
+        center: Offset(w * 0.5, h * 0.44),
+        width: w * 0.32,
+        height: h * 0.09,
+      );
+      final rrect = RRect.fromRectAndRadius(waistRect, const Radius.circular(8));
+      canvas.drawRRect(rrect, highlightPaint);
+      canvas.drawRRect(rrect, highlightStroke);
+    } else if (selectedPart == 'hip') {
+      final hipRect = Rect.fromCenter(
+        center: Offset(w * 0.5, h * 0.54),
+        width: w * 0.42,
+        height: h * 0.09,
+      );
+      final rrect = RRect.fromRectAndRadius(hipRect, const Radius.circular(8));
+      canvas.drawRRect(rrect, highlightPaint);
+      canvas.drawRRect(rrect, highlightStroke);
+    } else if (selectedPart == 'arm') {
+      final rArmRect = Rect.fromCenter(
+        center: Offset(w * 0.78, h * 0.36),
+        width: w * 0.16,
+        height: h * 0.16,
+      );
+      final lArmRect = Rect.fromCenter(
+        center: Offset(w * 0.22, h * 0.36),
+        width: w * 0.16,
+        height: h * 0.16,
+      );
+      canvas.drawRRect(RRect.fromRectAndRadius(rArmRect, const Radius.circular(8)), highlightPaint);
+      canvas.drawRRect(RRect.fromRectAndRadius(rArmRect, const Radius.circular(8)), highlightStroke);
+      canvas.drawRRect(RRect.fromRectAndRadius(lArmRect, const Radius.circular(8)), highlightPaint);
+      canvas.drawRRect(RRect.fromRectAndRadius(lArmRect, const Radius.circular(8)), highlightStroke);
+    } else if (selectedPart == 'thigh') {
+      final rThigh = Rect.fromCenter(
+        center: Offset(w * 0.65, h * 0.70),
+        width: w * 0.18,
+        height: h * 0.20,
+      );
+      final lThigh = Rect.fromCenter(
+        center: Offset(w * 0.35, h * 0.70),
+        width: w * 0.18,
+        height: h * 0.20,
+      );
+      canvas.drawRRect(RRect.fromRectAndRadius(rThigh, const Radius.circular(8)), highlightPaint);
+      canvas.drawRRect(RRect.fromRectAndRadius(rThigh, const Radius.circular(8)), highlightStroke);
+      canvas.drawRRect(RRect.fromRectAndRadius(lThigh, const Radius.circular(8)), highlightPaint);
+      canvas.drawRRect(RRect.fromRectAndRadius(lThigh, const Radius.circular(8)), highlightStroke);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant BodySilhouettePainter oldDelegate) {
+    return oldDelegate.selectedPart != selectedPart;
   }
 }

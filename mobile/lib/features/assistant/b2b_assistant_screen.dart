@@ -13,7 +13,6 @@ import '../../services/auth_service.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../core/widgets/one_ui_glass_components.dart';
 import '../../core/widgets/workout_guide_modal.dart';
-import '../../core/widgets/whats_new_modal.dart';
 import '../../core/widgets/thematic_editorial_card.dart';
 import '../../core/widgets/thematic_watermarks.dart';
 import '../../models/workout_plan_model.dart';
@@ -115,7 +114,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
             .eq('client_id', user.id)
             .gte('created_at', todayStart)
             .order('created_at', ascending: false);
-        if (res is List && res.isNotEmpty) {
+        if (res.isNotEmpty) {
           final map = <String, String>{};
           for (final row in res) {
             final orig = (row['original_exercise'] ?? '').toString().trim();
@@ -2607,7 +2606,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                               const SizedBox(width: 5),
                               Text(
                                 widget.isStudentView
-                                    ? (_isTrainerPro ? 'COPILOTO DE SALÃO • PRO 24/7' : 'MODO ESSENCIAL • GUIA DE SALÃO')
+                                    ? 'COPILOTO DE SALÃO • TEMPO REAL'
                                     : 'MR. COACH ENTERPRISE',
                                 style: TextStyle(
                                   color: useEditorialMode ? Colors.white : MetaColors.emerald,
@@ -3145,7 +3144,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                     _buildShortcutPill(
                       context,
                       icon: Icons.assignment_rounded,
-                      label: '📋 Ficha de Hoje',
+                      label: '📋 Ficha Ativa',
                       onTap: _showTodayWorkoutCard,
                     ),
                     const SizedBox(width: 8),
@@ -3176,7 +3175,7 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
                     _buildShortcutPill(
                       context,
                       icon: Icons.chat_rounded,
-                      label: '💬 Zap Sync',
+                      label: '💬 Comandos WhatsApp',
                       color: MetaColors.emerald,
                       onTap: _openWhatsAppSyncSheet,
                     ),
