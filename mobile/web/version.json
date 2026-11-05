@@ -1,8 +1,8 @@
 {
-  "version": "1.13.4",
-  "build": 2026110502,
-  "updated_at": "2026-11-05T19:30:00.000000Z",
-  "notes": "Versão 1.13.4: Correção do vazamento de banner no retorno do Modo Espelho/Admin para o painel do professor, eliminação de toasts redundantes em trocas de aba no modo degustação e refinamento dos estados vazios.",
+  "version": "1.13.5",
+  "build": 2026110503,
+  "updated_at": "2026-11-05T22:40:00.000000Z",
+  "notes": "Versão 1.13.5: Melhoria no fluxo de recuperação de acesso com atalho 'Já recebi o código de 6 dígitos' e aumento do tempo de resposta para 40s contra falsos timeouts no envio de WhatsApp.",
   "changelog": {
     "student": [
       {

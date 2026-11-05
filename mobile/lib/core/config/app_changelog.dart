@@ -40,6 +40,59 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     // ==========================================
+    // v1.13.5 - RESILIÊNCIA DE RECUPERAÇÃO DE ACESSO & OTP WHATSAPP
+    // ==========================================
+    VersionRelease(
+      version: '1.13.5',
+      buildNumber: 2026110503,
+      date: '5 de Novembro, 2026',
+      summary:
+          'Versão 1.13.5: Melhoria no fluxo de recuperação de acesso com atalho "Já recebi o código de 6 dígitos" e aumento do tempo de resposta para 40s contra falsos timeouts no envio de WhatsApp.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.key_rounded,
+          title: 'Atalho Direto para Digitar o Código OTP',
+          description:
+              'Caso o código do WhatsApp chegue com leve atraso ou você já possua os 6 dígitos, toque no atalho "Já recebi o código" para digitar e redefinir sua senha sem precisar reenviar.',
+          badge: 'NOVO',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.timer_outlined,
+          title: 'Tolerância Estendida de Envio WhatsApp no Aluno',
+          description:
+              'Eliminação de erros de timeout causados pelo tempo de processamento assíncrono da API de mensagens no acesso de alunos.',
+          badge: 'ESTABILIDADE',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.mark_chat_read_rounded,
+          title: 'Resiliência de Recuperação para Treinadores',
+          description:
+              'Fluxo de recuperação por WhatsApp otimizado com tempo de resposta estendido para conexões com instabilidade.',
+          badge: 'ESTABILIDADE',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.security_rounded,
+          title: 'Segurança e Confirmação de OTP do Personal',
+          description:
+              'Redefinição protegida por chave temporária com validação automática de credencial ativa.',
+          badge: 'SEGURANÇA',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.admin_panel_settings_rounded,
+          title: 'Blindagem de Timeouts em Rotas MFA e Recovery',
+          description:
+              'Timeouts unificados para 40 segundos em todas as rotas de verificação em duas etapas e recuperação de senha.',
+          badge: 'INFRA',
+          targetRoles: ['admin'],
+        ),
+      ],
+    ),
+
+    // ==========================================
     // v1.13.4 - ISOLAMENTO MODO ESPELHO & FIM DE REDUNDÂNCIAS EM DEGUSTAÇÃO
     // ==========================================
     VersionRelease(

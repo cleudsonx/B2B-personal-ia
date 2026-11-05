@@ -878,7 +878,7 @@ class AuthService {
           'Authorization': 'Bearer $token',
         },
         body: jsonEncode({'trusted_device_token': trustedToken}),
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(const Duration(seconds: 40));
       if (res.statusCode == 200) {
         _cachedProfile = null; // força releitura de mfa_verified_at
         return true;
@@ -909,7 +909,7 @@ class AuthService {
         'channel': channel,
         if (phoneOrEmail != null && phoneOrEmail.isNotEmpty) 'phone_or_email': phoneOrEmail.trim(),
       }),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 40));
 
     if (res.statusCode == 200) {
       return jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
@@ -943,7 +943,7 @@ class AuthService {
         if (phoneOrEmail != null && phoneOrEmail.isNotEmpty) 'phone_or_email': phoneOrEmail.trim(),
         'remember_device': rememberDevice,
       }),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 40));
 
     if (res.statusCode == 200) {
       final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
@@ -984,7 +984,7 @@ class AuthService {
         'channel': channel,
         if (phoneOrEmail != null && phoneOrEmail.isNotEmpty) 'phone_or_email': phoneOrEmail.trim(),
       }),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 40));
 
     if (res.statusCode == 200) {
       return jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
@@ -1036,7 +1036,7 @@ class AuthService {
         if (phoneOrEmail != null && phoneOrEmail.isNotEmpty) 'phone_or_email': phoneOrEmail.trim(),
         'remember_device': rememberDevice,
       }),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 40));
 
     if (res.statusCode == 200) {
       final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
@@ -1079,7 +1079,7 @@ class AuthService {
         'validation_code': validationCode.trim(),
         'validation_channel': validationChannel,
       }),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 40));
 
     if (res.statusCode == 200) {
       return jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
@@ -1212,7 +1212,7 @@ class AuthService {
         'phone_or_email': identifier.trim(),
         'channel': channel,
       }),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 40));
 
     if (response.statusCode != 200) {
       String msg = 'Erro ao solicitar recuperação (${response.statusCode})';
@@ -1239,7 +1239,7 @@ class AuthService {
         'otp_code': otpCode.trim(),
         'new_password': newPassword,
       }),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(const Duration(seconds: 40));
 
     if (response.statusCode != 200) {
       String msg = 'Erro ao verificar código (${response.statusCode})';
