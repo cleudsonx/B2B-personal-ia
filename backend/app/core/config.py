@@ -66,17 +66,39 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> List[str]:
         production_origins = [
             "https://shaipados.com",
+            "https://www.shaipados.com",
             "https://shaipados-labs.web.app",
+            "https://shaipados-labs.firebaseapp.com",
             "https://mrcoach.shaipados.com",
             "https://mrcoach.app",
             "https://app.shaipados.com",
+            "https://shapelab.ia.br",
+            "https://www.shapelab.ia.br",
+            "https://app.shapelab.ia.br",
+            "https://mrcoach.shapelab.ia.br",
         ]
+        shapelab_domains = [
+            "https://shapelab.ia.br",
+            "https://www.shapelab.ia.br",
+            "https://app.shapelab.ia.br",
+            "https://mrcoach.shapelab.ia.br",
+            "https://shaipados-labs.firebaseapp.com",
+        ]
+
+        def _enrich_production_origins(origins: List[str]) -> List[str]:
+            """Garante suporte Dual-Domain (shaipados.com + shapelab.ia.br) em produção."""
+            if self.ENVIRONMENT.lower() == "production" and "https://shaipados.com" in origins:
+                for domain in shapelab_domains:
+                    if domain not in origins:
+                        origins.append(domain)
+            return origins
+
         val = self.CORS_ORIGINS
         if isinstance(val, list):
             origins = [str(item) for item in val]
             if "*" in origins and self.ENVIRONMENT.lower() == "production":
                 return production_origins
-            return origins
+            return _enrich_production_origins(origins)
         if isinstance(val, str):
             v_clean = val.strip()
             if not v_clean or v_clean == "*":
@@ -90,13 +112,13 @@ class Settings(BaseSettings):
                         origins = [str(item) for item in parsed]
                         if "*" in origins and self.ENVIRONMENT.lower() == "production":
                             return production_origins
-                        return origins
+                        return _enrich_production_origins(origins)
                 except Exception:
                     pass
             origins = [i.strip() for i in v_clean.split(",") if i.strip()]
             if "*" in origins and self.ENVIRONMENT.lower() == "production":
                 return production_origins
-            return origins
+            return _enrich_production_origins(origins)
         return ["*"]
 
     model_config = SettingsConfigDict(

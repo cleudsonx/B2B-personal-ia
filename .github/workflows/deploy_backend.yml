@@ -1,4 +1,4 @@
-name: Deploy Backend (Docker & Cloud)
+name: Deploy Backend Dual-Stack (Render + Google Cloud Run)
 
 on:
   push:
@@ -10,9 +10,14 @@ on:
       - 'railway.toml'
   workflow_dispatch:
 
+env:
+  GCP_PROJECT_ID: shaipados-labs
+  GCP_REGION: southamerica-east1
+  CLOUD_RUN_SERVICE: b2b-personal-ia-backend
+
 jobs:
   docker-build:
-    name: Build & Validação Docker Container
+    name: Build & Validação Docker + Render Hook
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Código
@@ -31,7 +36,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Notificar Deploy Hook Render (Opcional)
+      - name: Notificar Deploy Hook Render (Dual-Stack Legado Ativo)
         run: |
           if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
             echo "Disparando Deploy Hook no Render..."
@@ -40,3 +45,62 @@ jobs:
           else
             echo "RENDER_DEPLOY_HOOK_URL não configurado nos Secrets. Deploy gerenciado nativamente pelo Render via GitHub App/AutoDeploy."
           fi
+
+  deploy-cloud-run:
+    name: Deploy Automático Google Cloud Run (São Paulo)
+    needs: docker-build
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout Código
+        uses: actions/checkout@v4
+
+      - name: Verificar Credencial GCP (GCP_SA_KEY ou FIREBASE_SERVICE_ACCOUNT)
+        id: check_gcp
+        env:
+          GCP_CREDS: ${{ secrets.GCP_SA_KEY || secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -n "$GCP_CREDS" ]; then
+            echo "has_creds=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_creds=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Credencial GCP_SA_KEY não encontrada. Pulando deploy no Cloud Run e mantendo apenas Render ativo."
+          fi
+
+      - name: Autenticar no Google Cloud
+        if: steps.check_gcp.outputs.has_creds == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY || secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Setup Google Cloud SDK
+        if: steps.check_gcp.outputs.has_creds == 'true'
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy Container no Cloud Run (southamerica-east1)
+        if: steps.check_gcp.outputs.has_creds == 'true'
+        run: |
+          gcloud run deploy "${CLOUD_RUN_SERVICE}" \
+            --source ./backend \
+            --project "${GCP_PROJECT_ID}" \
+            --region "${GCP_REGION}" \
+            --platform managed \
+            --allow-unauthenticated \
+            --port 8080 \
+            --cpu 1 \
+            --memory 512Mi \
+            --min-instances "${{ vars.CLOUD_RUN_MIN_INSTANCES || '0' }}" \
+            --max-instances 15 \
+            --concurrency 80 \
+            --timeout 120s \
+            --cpu-boost \
+            --quiet
+
+      - name: Smoke Test Automático (/health) no Cloud Run
+        if: steps.check_gcp.outputs.has_creds == 'true'
+        run: |
+          SERVICE_URL=$(gcloud run services describe "${CLOUD_RUN_SERVICE}" --project "${GCP_PROJECT_ID}" --region "${GCP_REGION}" --format 'value(status.url)')
+          echo "Cloud Run URL: ${SERVICE_URL}"
+          curl -f -s "${SERVICE_URL}/health" | tee health_output.json
+          echo ""
+          echo "Smoke test /health validado com sucesso em ${SERVICE_URL}!"
