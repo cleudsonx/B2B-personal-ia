@@ -1186,23 +1186,46 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                Center(
-                  child: TextButton.icon(
-                    onPressed: isSubmitting
-                        ? null
-                        : () {
-                            final textVal = inputCtrl.text.trim();
-                            Navigator.pop(ctx);
-                            _showVerifyOtpDialog(textVal.isNotEmpty ? textVal : _emailCtrl.text.trim());
-                          },
-                    icon: const Icon(Icons.key_rounded, size: 16, color: MetaColors.emerald),
-                    label: const Text(
-                      'Já recebi o código de 6 dígitos',
-                      style: TextStyle(
-                        color: MetaColors.emerald,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12.5,
+                const SizedBox(height: 14),
+                // Botão destacado para quem já recebeu o código no WhatsApp
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: MetaColors.emerald.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: MetaColors.emerald.withValues(alpha: 0.45),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: isSubmitting
+                          ? null
+                          : () {
+                              final textVal = inputCtrl.text.trim();
+                              Navigator.pop(ctx);
+                              _showVerifyOtpDialog(textVal.isNotEmpty ? textVal : _emailCtrl.text.trim());
+                            },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 14),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.pin_rounded, size: 18, color: MetaColors.emerald),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Já recebi o código (Digitar agora)',
+                              style: TextStyle(
+                                color: MetaColors.text(context),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -1254,28 +1277,35 @@ class _LoginScreenState extends State<LoginScreen> {
                   } catch (e) {
                     setDialogState(() => isSubmitting = false);
                     if (mounted) {
-                      final isTimeout = e.toString().toLowerCase().contains('timeout');
+                      final errStr = e.toString().toLowerCase();
+                      final isConnectionIssue = errStr.contains('timeout') ||
+                          errStr.contains('clientload') ||
+                          errStr.contains('load failed') ||
+                          errStr.contains('xmlhttprequest') ||
+                          errStr.contains('clientexception') ||
+                          errStr.contains('socketexception') ||
+                          errStr.contains('network') ||
+                          errStr.contains('failed to load');
+
                       messenger.showSnackBar(
                         SnackBar(
                           behavior: SnackBarBehavior.floating, 
-                          backgroundColor: isTimeout ? const Color(0xFF1E293B) : Colors.red.shade800,
-                          duration: const Duration(seconds: 10),
+                          backgroundColor: isConnectionIssue ? const Color(0xFF1E293B) : Colors.red.shade800,
+                          duration: const Duration(seconds: 12),
                           content: Text(
-                            isTimeout
-                                ? 'O envio pode levar alguns instantes. Se o código já chegou no WhatsApp, toque para digitá-lo.'
+                            isConnectionIssue
+                                ? 'Lentidão ou falha de conexão com o servidor. Se o código já chegou no seu WhatsApp, toque em "Digitar Código".'
                                 : e.toString().replaceAll('Exception: ', ''),
                             style: const TextStyle(color: Colors.white),
                           ),
-                          action: isTimeout
-                              ? SnackBarAction(
-                                  label: 'Digitar Código',
-                                  textColor: MetaColors.emerald,
-                                  onPressed: () {
-                                    if (Navigator.canPop(ctx)) Navigator.pop(ctx);
-                                    _showVerifyOtpDialog(textVal);
-                                  },
-                                )
-                              : null,
+                          action: SnackBarAction(
+                            label: 'Digitar Código',
+                            textColor: MetaColors.emerald,
+                            onPressed: () {
+                              if (Navigator.canPop(ctx)) Navigator.pop(ctx);
+                              _showVerifyOtpDialog(textVal);
+                            },
+                          ),
                         ),
                       );
                     }
