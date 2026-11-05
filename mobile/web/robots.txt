@@ -6,5 +6,6 @@ Allow: /#/coaches
 Allow: /#/professor/cadastro
 Allow: /#/aluno/entrar
 
+# Sitemaps Oficiais - Transição Dual-Domain (Shaipados Labs / Mr. Coach)
+Sitemap: https://shapelab.ia.br/sitemap.xml
 Sitemap: https://shaipados.com/sitemap.xml
-
