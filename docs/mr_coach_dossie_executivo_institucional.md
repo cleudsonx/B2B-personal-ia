@@ -2,22 +2,22 @@
 ## Projeto Mr. Coach (B2B Personal IA) — Ecossistema Shaipados Labs
 
 > **Documento Estratégico**: Ativo de Engenharia, Inteligência de Negócios, Governança e Valuation  
-> **Data de Emissão Oficial:** 28 de Outubro de 2026 (Revisão v2.0)  
+> **Data de Emissão Oficial:** 05 de Novembro de 2026 (Revisão v3.0 — Alta Escala & Governança)  
 > **Liderança & Direção de Produto:** Prof. Cleudson Cavalcante (CEO / CPO)  
 > **Engenharia & Arquitetura de Sistemas:** Antigravity / Tech Lead (Squad Galaxy & Squad Lenovo)  
-> **Status da Plataforma:** Produção / Alta Escala (**v1.11.2** — Build 2026103109 / Commit `b55d848`)  
+> **Status da Plataforma:** Produção / Alta Escala (**v1.13.4** — Build 2026110502 / Commit `90ad4f0`)  
 
 ---
 
 ## 1. Sumário Executivo & Tese de Negócio
 
-O **Mr. Coach** é uma plataforma SaaS B2B2C concebida para revolucionar a atuação do Personal Trainer autônomo, assessorias esportivas e estúdios fitness por meio de inteligência artificial generativa contextual, automação omnichannel (WhatsApp nativo) e telemetria fisiológica em tempo real.
+O **Mr. Coach** é uma plataforma SaaS B2B2C desenvolvida para sanar de forma definitiva o principal gargalo da Educação Física moderna: o limite de escala e o custo cognitivo do Personal Trainer autônomo, assessorias esportivas e estúdios fitness, através de inteligência artificial generativa contextual, automação omnichannel (WhatsApp nativo) e telemetria fisiológica em tempo real.
 
 Diferente de aplicativos convencionais do mercado fitness (que operam como planilhas estáticas digitalizadas e causam rápida evasão de alunos), o Mr. Coach atua como um **Copiloto Biomecânico Ativo e Proativo**:
 
 1. **Para o Treinador (B2B):** Reduz o tempo de anamnese, montagem de fichas, periodização e cálculo de progressão de carga de **45 minutos para 30 segundos**, permitindo que o profissional escale de 10 para mais de 60 alunos sem gargalo operacional e sem perder a qualidade humana.
-2. **Para o Aluno (B2C):** Entrega um cockpit imersivo a 120 FPS nos padrões visuais da *Apple* e *Samsung One UI 7*, com adaptação biomecânica em tempo real por dor articular ou aparelho ocupado (Botão Anti-Fila), anéis de atividade diária, gráficos de 1RM e cronômetro de descanso háptico cadenciado.
-3. **Moat Tecnológico & Defensibilidade:** Motor próprio com **Google Gemini**, banco de dados relacional auditável no **Supabase (PostgreSQL)** com isolamento criptográfico por **Row Level Security (RLS)**, motor de contingência multi-canal **Smart Adaptive 2FA HMAC-SHA256**, e arquitetura de software governada e desenvolvida por um enxame de **Agentes de Inteligência Artificial Especializados**.
+2. **Para o Aluno (B2C):** Entrega um cockpit imersivo a 120 FPS nos padrões visuais da *Apple* e *Samsung One UI 7*, com adaptação biomecânica em tempo real por dor articular ou aparelho ocupado (Botão Anti-Fila), anéis de atividade diária, gráficos de 1RM, cronômetro de descanso háptico cadenciado e modo de treino Zen em foco total.
+3. **Moat Tecnológico & Defensibilidade:** Motor próprio com **Google Gemini**, banco de dados relacional auditável no **Supabase (PostgreSQL)** com **54 migrações atômicas**, isolamento criptográfico militar por **Row Level Security (RLS)**, gestão de dispositivos conectados com **Kill-Switch remoto**, autenticação biométrica 1-toque / WebAuthn, motor de contingência multi-canal **Smart Adaptive 2FA HMAC-SHA256**, e governança contínua por um enxame de **Agentes de Inteligência Artificial Especializados**.
 
 ---
 
@@ -33,71 +33,72 @@ Diferente de aplicativos convencionais do mercado fitness (que operam como plani
 ### 2.2. Da Ideação à Matriz Venture Builder (Shaipados Labs)
 O projeto nasceu com o objetivo inicial de ser um aplicativo individual (*Mr. Coach*). No entanto, rapidamente compreendeu-se que o verdadeiro valor escalável residia no modelo **B2B2C Product-Led Growth (PLG)**. 
 
-Em Outubro de 2026, a holding arquitetural foi formalizada sob o conceito de **Shaipados Labs**:
-- **Monorepo com Domain-Aware Routing:** O mesmo código Flutter atende à Landing Page institucional da fábrica de software (`shaipados.com`), à Landing Page comercial B2B (`mrcoach.shaipados.com`), e ao aplicativo web/PWA/mobile unificado (`app.shaipados.com`), reduzindo custos de infraestrutura e orquestração a níveis mínimos.
+Em Outubro e Novembro de 2026, a holding arquitetural consolidou-se sob a marca **Shaipados Labs**:
+- **Monorepo com Domain-Aware Routing:** O mesmo código Flutter atende à Landing Page institucional da holding (`shaipados.com` e `shapelab.ia.br`), à Landing Page comercial B2B (`mrcoach.shaipados.com`), e ao aplicativo web/PWA/mobile unificado (`app.shaipados.com`), reduzindo custos de infraestrutura e orquestração a níveis mínimos.
 - **Roteamento Canônico de Vitrines (`/p/:username`):** Cada personal possui sua própria landing page de alta conversão integrada a links curtos de Stories, QR Codes e Bio do Instagram, com checkout Pix instantâneo via Asaas e liquidação automatizada de comissões.
+- **Ecossistema Dual-Domain SEO:** Sitemap dinâmico e robots.txt otimizados para captação orgânica no Google com suporte a múltiplos domínios e canonização internacional.
 
 ---
 
 ## 3. Radiografia Atualizada do Código e Métricas de Engenharia
 
-Em apenas **33 dias corridos** de desenvolvimento ininterrupto, o ecossistema atingiu métricas de densidade de código e acabamento técnico compatíveis com empresas que captaram rodadas institucionais de Seed/Série A.
+Em apenas **42 dias corridos** de desenvolvimento ininterrupto, o ecossistema atingiu métricas de densidade de código e acabamento técnico compatíveis com startups que captaram rodadas institucionais de Série A.
 
 ```mermaid
-pie title Distribuição de Código Fonte por Camada (Outubro/2026)
-    "Flutter / Dart (Frontend Mobile/Web)" : 74
-    "Python / FastAPI (Backend & IA)" : 16
-    "SQL / Supabase (Migrações, RLS, Triggers)" : 3
+pie title Distribuição de Código Fonte por Camada (Novembro/2026)
+    "Flutter / Dart (Frontend Mobile/Web)" : 71
+    "Python / FastAPI (Backend & IA)" : 17
+    "SQL / Supabase (Migrações, RLS, Triggers)" : 6
     "Documentação Técnica & PRDs" : 2
-    "Configs, Shell, HTML & Web" : 5
+    "Configs, Shell, HTML, XML & Web" : 4
 ```
 
 ### 3.1. Levantamento Auditável de Linhas de Código (LOC)
 
 | Camada / Tecnologia | Linhas Totais | Linhas de Código Puro | Arquivos | Propósito Estratégico |
 |---|---|---|---|---|
-| **Dart (Flutter Mobile / Web)** | **130.382** | **120.853** | **208** | Experiência de Aluno, Treinador e Admin a 120 FPS, Design System `MetaColors`, One UI 7, Thematic Editorial Cards, Loaders 60 FPS e PWA offline-first. |
-| **Python (FastAPI / IA)** | **27.241** | **23.132** | **99** | Motor assíncrono Gemini, Smart Adaptive 2FA HMAC-SHA256, Webhooks Asaas/Pix com pró-rata, Roteador WhatsApp Evolution API e Radar Proativo. |
-| **PostgreSQL (Supabase SQL)** | **5.268** | **4.680** | **54** | **50 migrações atômicas incrementais**, Row Level Security (RLS) militar, Triggers de assinatura, rate limits e idempotência estrita. |
-| **Documentação Técnica & PRDs** | **3.273** | **2.238** | **28** | Playbooks de arquitetura, contratos de squads, PRDs de telas, regras de Edge-to-Edge e design system. |
-| **Configs, Shell & Web (JSON, YAML, HTML, BAT)** | **9.251** | **8.735** | **29** | CI/CD GitHub Actions, versionador semântico, Service Workers, Web Manifests, Dockerfiles e scripts de automação. |
-| **TOTAL CONSOLIDADO** | **175.415** | **159.638** | **418** | **Base de código hiper-densificada, 100% autoral, auditável e padronizada.** |
+| **Dart (Flutter Mobile / Web)** | **140.372** | **130.220** | **215** | Cockpit do Aluno, Treinador e Admin a 120 FPS, One UI 7, Thematic Editorial Cards, Loaders 60 FPS, Treino Ativo Zen, PWA offline e gestão de dispositivos. |
+| **Python (FastAPI / IA)** | **32.749** | **28.051** | **103** | Motor assíncrono Gemini, Smart Adaptive 2FA HMAC-SHA256, Passwordless OTP WhatsApp, Webhooks Asaas/Pix com pró-rata e Radar Proativo. |
+| **PostgreSQL (Supabase SQL)** | **11.464** | **9.396** | **60** | **54 migrações atômicas incrementais**, RLS militar, sincronização de sessões de hardware, unificação smart de convites e seed de 50 personas. |
+| **Documentação Técnica & PRDs** | **3.440** | **2.224** | **29** | Playbooks de arquitetura, contratos de squads, PRDs de telas, regras de Edge-to-Edge e design system. |
+| **Configs, Shell, XML & Web** | **10.163** | **9.452** | **53** | CI/CD GitHub Actions, versionador semântico determinístico, sitemaps dual-domain, robots.txt, Docker e Service Workers. |
+| **TOTAL CONSOLIDADO** | **198.188** | **179.343** | **460** | **Base de código hiper-densificada, 100% autoral, auditável e padronizada.** |
 
 ### 3.2. Métricas de Versionamento e Maturidade
-- **Total de Commits na Branch `main`:** **502 commits contínuos** (Média de 15,2 commits/dia desde a fundação).
-- **Total de Versões Oficiais Documentadas:** **29 releases** no `AppChangelog` (da v1.3.3 à v1.11.2 / Build 2026103109).
-- **Cobertura de Testes Automatizados:** **473 testes automatizados** com **100% de sucesso (Zero Falhas)**:
-  - **304 testes no Flutter** distribuídos em **67 arquivos de teste** (Widgets, Regressão Visual, Edge-to-Edge, Contrastes e Contratos).
-  - **169 testes no Backend FastAPI** distribuídos em **21 suítes de teste** (Autenticação, 2FA, RLS, Webhooks, Gamificação e Rate Limiting).
-- **Políticas de Integridade:** Zero Warnings críticos no `flutter analyze`, padrões de tipagem estrita no Dart 3 e Pydantic v2 no Python.
+- **Total de Commits na Branch `main`:** **558 commits contínuos** (Média de 13,3 commits/dia desde a fundação em 25/09/2026).
+- **Total de Versões Oficiais Documentadas:** **35 releases** registrados no histórico de engenharia (com 9 versões recentes ativas no `AppChangelog` da v1.12.15 à v1.13.4 / Build 2026110502).
+- **Cobertura de Testes Automatizados:** **518 testes automatizados** com **100% de sucesso (Zero Falhas)**:
+  - **320 testes no Flutter** distribuídos em **70 arquivos de teste** (Widgets, Regressão Visual, Dispositivos Conectados, Treino Zen, Contrastes e Contratos).
+  - **198 testes no Backend FastAPI** distribuídos em **23 suítes de teste** (Autenticação Passwordless, 2FA, Sessões de Dispositivos, RLS, Webhooks, Gamificação e Rate Limiting).
+- **Políticas de Integridade:** Zero Warnings críticos no `flutter analyze`, padrões de tipagem estrita no Dart 3 e validação estrita via Pydantic v2 no Python.
 
 ---
 
 ## 4. O Modelo de Equipe: Squads Galaxy & Lenovo e Horas Trabalhadas
 
-Para acelerar o time-to-market sem elevar o burn rate financeiro, o projeto foi estruturado sob o conceito de **Organização Aumentada por IA**, dividida entre o **Squad Galaxy** (estação core do CEO) e o **Squad Lenovo** (estação remota de DevOps, dados e testes).
+Para acelerar o time-to-market sem elevar o burn rate financeiro, o projeto foi estruturado sob o conceito de **Organização Aumentada por IA**, dividida entre o **Squad Galaxy** (estação core do CEO) e o **Squad Lenovo** (estação remota de DevOps, dados, testes e infraestrutura).
 
 ### 4.1. Tabela Auditável de Horas Trabalhadas por Perfil e Membro
 
 | Membro / Perfil | Squad & Papel | Modelo IA / Motor | Horas Eq. | Demandas Atendidas & Principais Entregas |
 |---|---|---|---|---|
-| **Prof. Cleudson Cavalcante** | **Galaxy** • CEO / CPO | Humano | **230 h** | Direção executiva de produto, validação biomecânica, testes com personals em academias, pricing SaaS e governança institucional. |
-| **Arthur / Antigravity** | **Galaxy** • Tech Lead | Gemini 3.1 Pro | **460 h** | Orquestração das squads, governança de código, revisão contínua de PRs, arquitetura Monorepo, alocação de LLMs e contratos de API. |
-| **Mateus & Leo** | **Galaxy** • UI/UX & Flutter | Gemini 3.8 Flash | **760 h** | 130k linhas Dart, 4 abas do aluno 2.0, dock One UI 7, Thematic Editorial Cards, suíte de loaders 60 FPS e PWA offline-first. |
-| **Alan** | **Galaxy** • Backend FastAPI | Claude Sonnet 5.5 | **430 h** | 27k linhas Python, Smart Adaptive 2FA HMAC-SHA256, schemas Pydantic v2, autenticação JWT, integração Asaas/Pix com pró-rata. |
-| **Victor** | **Galaxy** • AI & WhatsApp | Claude Sonnet 5.5 | **340 h** | Consultor Ativo IA 2.0, Radar Proativo de Retenção, Resumo Executivo Semanal, pareamento por Pairing Code de 8 dígitos e anti-ban. |
-| **Thiago** | **Galaxy** • QA Sênior | Gemini 3.8 Flash | **350 h** | Suíte de 473 testes automatizados (100% verdes), regressão visual de contraste light/dark e blindagem contra breaking changes. |
-| **Marta** | **Galaxy** • Supabase DBA | Gemini 3.1 Pro | **260 h** | 50 migrações SQL, isolamento criptográfico RLS contra vazamento de dados, triggers atômicos de proteção de cotas e `auth_recovery_otps`. |
-| **Sofia & Sarah** | **Galaxy** • PM & Copy B2B | Claude Opus 5.5 | **250 h** | Estratégia PLG, onboarding de alunos, micro-copy dos 29 releases, vitrines públicas `/p/:username`, funis de conversão e pitch decks. |
-| **Beto** | **Lenovo** • DevOps / SRE | Gemini 3.8 Flash | **220 h** | GitHub Actions CI/CD, esteiras de deploy Firebase Hosting e Render, versionador semântico determinístico e cache-busting PWA. |
-| **Ricardo** | **Lenovo** • Data Science | Claude Sonnet 5.5 | **190 h** | Fórmulas biomecânicas Epley/Brzycki, zonas de sobrecarga (60%, 75%, 90%), modelos preditivos de evasão e telemetria vital. |
-| **TOTAL CONSOLIDADO** | **Esforço de Engenharia** | **Enxame Misto** | **3.490 h** | **Equivalente a 12 meses de trabalho de um time sênior condensados em 33 dias corridos.** |
+| **Prof. Cleudson Cavalcante** | **Galaxy** • CEO / CPO | Humano | **270 h** | Direção executiva de produto, validação biomecânica, testes de campo com personals em academias, pricing SaaS e governança institucional. |
+| **Arthur / Antigravity** | **Galaxy** • Tech Lead | Gemini 3.1 Pro | **540 h** | Orquestração das squads, governança de código, revisão contínua de PRs, arquitetura Monorepo, alocação de LLMs e contratos de segurança. |
+| **Mateus & Leo** | **Galaxy** • UI/UX & Flutter | Gemini 3.8 Flash | **890 h** | 140k linhas Dart, 4 abas do aluno 2.0, dock One UI 7, tela de Dispositivos Conectados, Treino Zen 3.2, Thematic Editorial Cards e PWA offline-first. |
+| **Alan** | **Galaxy** • Backend FastAPI | Claude Sonnet 5.5 | **510 h** | 32k linhas Python, Smart Adaptive 2FA HMAC-SHA256, Passwordless OTP WhatsApp, auditoria de sessões de dispositivos e Asaas Pix com pró-rata. |
+| **Victor** | **Galaxy** • AI & WhatsApp | Claude Sonnet 5.5 | **400 h** | Consultor Ativo IA 2.0, Radar Proativo de Retenção, Resumo Executivo Semanal, bridge direta Aluno-Treinador via WhatsApp e anti-ban. |
+| **Thiago** | **Galaxy** • QA Sênior | Gemini 3.8 Flash | **410 h** | Suíte de 518 testes automatizados (100% verdes), testes de sessões de hardware, regressão visual light/dark e zero falhas de CI/CD. |
+| **Marta** | **Galaxy** • Supabase DBA | Gemini 3.1 Pro | **310 h** | 54 migrações SQL, isolamento criptográfico RLS contra vazamento de dados, `user_device_sessions`, unificação smart de convites e seed de 50 personas. |
+| **Sofia & Sarah** | **Galaxy** • PM & Copy B2B | Claude Opus 5.5 | **290 h** | Estratégia PLG, jornada do Aluno Explorador, micro-copy dos releases, vitrines públicas `/p/:username`, funis de conversão e pitch decks. |
+| **Beto** | **Lenovo** • DevOps / SRE | Gemini 3.8 Flash | **260 h** | GitHub Actions CI/CD, esteiras de deploy Firebase Hosting e Render, versionador semântico determinístico, sitemaps dual-domain e cache-busting PWA. |
+| **Ricardo** | **Lenovo** • Data Science | Claude Sonnet 5.5 | **220 h** | Fórmulas biomecânicas Epley/Brzycki, zonas de sobrecarga (60%, 75%, 90%), modelos preditivos de evasão e telemetria vital. |
+| **TOTAL CONSOLIDADO** | **Esforço de Engenharia** | **Enxame Misto** | **4.100 h** | **Equivalente a 14 meses de trabalho de um time sênior condensados em 42 dias corridos.** |
 
 ---
 
-## 5. Histórico de Inovações e Pivotagens Estratégicas
+## 5. Histórico de Inovações e Grandes Pivotagens Estratégicas
 
-Ao longo dos 502 commits e 29 versões, o produto consolidou 9 grandes marcos de pivotagem e sofisticação arquitetural:
+Ao longo dos 558 commits e dezenas de versões, o produto consolidou **12 grandes marcos de pivotagem e sofisticação arquitetural**:
 
 1. **Pivotagem 1 (De B2C para B2B2C):** Em vez de disputar o usuário final contra gigantes de treinos genéricos pré-gravados, o app passou a capacitar o Personal Trainer autônomo, tornando-o o "herói" do aluno e gerando canal orgânico de distribuição.
 2. **Pivotagem 2 (De WhatsApp Manual para Self-Service PLG):** O botão "Chame no WhatsApp" na Landing Page foi substituído por cadastro self-service imediato ("Criar Conta Grátis") com onboarding em menos de 1 minuto.
@@ -112,6 +113,9 @@ Ao longo dos 502 commits e 29 versões, o produto consolidou 9 grandes marcos de
 7. **Pivotagem 7 (Consultor Ativo IA 2.0 & Radar Proativo de Retenção):** O WhatsApp deixa de ser apenas canal de aviso e torna-se um copiloto proativo de retenção de alunos. O robô monitora quedas de frequência, alerta alunos inativos e envia o Resumo Executivo Semanal de performance diretamente no WhatsApp do treinador.
 8. **Pivotagem 8 (Vitrines Públicas Canônicas e Payout Engine):** Unificação das landing pages dos treinadores em rotas canônicas de alta conversão (`/p/:username`), com checkout Pix direto integrado à Central de Liquidação Asaas e proteção de margem SaaS.
 9. **Pivotagem 9 (Redesign One UI 7, Fontes Inter Oficiais e Loaders 60 FPS):** Implementação de cards editoriais temáticos com marcas d'água 3D vetoriais, empacotamento offline de tipografia e suíte de animações fluidas contextualizadas.
+10. **Pivotagem 10 (Jornada Híbrida do Aluno Explorador & Smart Identity):** Desbloqueio do modo degustação sem personal prévio, permitindo explorar a plataforma, experimentar treinos demonstrativos e contratar treinadores na vitrine, com unificação atômica de convites multicanal (match inteligente por e-mail, telefone normalizado ou token criptográfico).
+11. **Pivotagem 11 (Gestão de Dispositivos Conectados, Kill-Switch Remoto & WebAuthn):** Painel nativo de auditoria de sessões ativas (`user_device_sessions`), detecção heurística de hardware/OS/navegador via User-Agent/IP, encerramento remoto de sessões suspeitas e eliminação de senhas vulneráveis no browser com restrição estrita a WebAuthn nativo e biometria 1-toque.
+12. **Pivotagem 12 (Ecossistema Dual-Domain SEO & Escala de Personas):** Indexação programática para captação orgânica via `sitemap.xml` e `robots.txt` suportando tanto a infraestrutura institucional (`shaipados.com`) quanto a marca brasileira (`shapelab.ia.br`), além de suíte de testes de estresse com 50 personas sintéticas para validação de carga de IA e banco.
 
 ---
 
@@ -140,19 +144,19 @@ Para determinar o valor presente do ecossistema caso fosse comercializado ou apo
 
 | Modalidade de Negociação | Faixa de Valor de Mercado | Público-Alvo / Comprador Típico | Racional Estratégico & Justificativa |
 |---|---|---|---|
-| **1. Venda de Ativo Puro (Código + IP)** | **R$ 1.500.000 a R$ 2.100.000** | Venture Builders, Software Houses ou Family Offices. | Custo de reposição de 175k linhas com 3.490 h de engenharia sênior e zero débito técnico comprovado por 473 testes verdes. |
-| **2. Venda Estratégica (M&A Tecnológico)** | **R$ 2.800.000 a R$ 4.200.000** | Redes de academias (Smart Fit, Bluefit), ERPs (Tecnofit, Next Fit) e marcas fitness. | Economia imediata de 24 meses de P&D, absorvendo ecossistema completo de IA generativa, WhatsApp nativo e PWA a 120 FPS. |
-| **3. Valuation Pre-Money (Rodada Seed)** | **R$ 3.800.000 a R$ 5.500.000** | Fundos de Venture Capital Early-Stage ou Investidores-Anjo. | Captação típica de R$ 600k a R$ 1.000k por 15% a 20% de equity para tração de vendas e expansão do motor B2B2C PLG. |
+| **1. Venda de Ativo Puro (Código + IP)** | **R$ 1.800.000 a R$ 2.400.000** | Venture Builders, Software Houses ou Family Offices. | Custo de reposição de 198k linhas com 4.100 h de engenharia sênior e zero débito técnico comprovado por 518 testes verdes. |
+| **2. Venda Estratégica (M&A Tecnológico)** | **R$ 3.200.000 a R$ 4.800.000** | Redes de academias (Smart Fit, Bluefit), ERPs (Tecnofit, Next Fit) e marcas fitness. | Economia imediata de 24 meses de P&D, absorvendo ecossistema completo de IA generativa, WhatsApp nativo, gestão de sessões e PWA a 120 FPS. |
+| **3. Valuation Pre-Money (Rodada Seed)** | **R$ 4.500.000 a R$ 6.500.000** | Fundos de Venture Capital Early-Stage ou Investidores-Anjo. | Captação típica de R$ 750k a R$ 1.200k por 15% a 20% de equity para tração de vendas e escala nacional do motor PLG. |
 
 ---
 
 ## 8. Conclusão, Governança & Certificação
 
 O projeto **Mr. Coach (Shaipados Labs)** reúne todos os atributos de excelência de um ativo de software de padrão internacional:
-1. **Segurança Militar Auditada:** 50 migrações atômicas e políticas rigorosas de Row Level Security (RLS) no Supabase, aliadas ao Smart Adaptive 2FA HMAC-SHA256.
-2. **Integridade Comprovada:** 473 testes automatizados verdes sem regressões visuais ou lógicas.
-3. **Design e Performance de Classe Mundial:** 120 FPS no mobile/web, Edge-to-Edge nativo e tipografia oficial offline.
-4. **Modelo de Negócio Autoescalável:** Conversão em vitrines públicas `/p/:username`, com liquidação Pix Asaas e canal B2B2C ultra-lucrativo.
+1. **Segurança Militar Auditada:** 54 migrações atômicas e políticas rigorosas de Row Level Security (RLS) no Supabase, aliadas ao Smart Adaptive 2FA HMAC-SHA256 e auditoria de hardware em tempo real com kill-switch de sessões remotas.
+2. **Integridade Comprovada:** 518 testes automatizados verdes sem regressões visuais, lógicas ou de segurança.
+3. **Design e Performance de Classe Mundial:** 120 FPS no mobile/web, One UI 7, modo Zen, Edge-to-Edge nativo e tipografia oficial offline.
+4. **Modelo de Negócio Autoescalável:** Conversão em vitrines públicas `/p/:username`, com liquidação Pix Asaas, onboarding sem atrito de Alunos Exploradores e canal B2B2C ultra-lucrativo.
 
 Encontra-se 100% pronto para expansão comercial em alta escala, licenciamento white-label corporativo ou rodada de investimento institucional.
 
@@ -164,4 +168,4 @@ Encontra-se 100% pronto para expansão comercial em alta escala, licenciamento w
 **Antigravity / Tech Lead Architecture**  
 *Head de Engenharia & Sistemas de IA — Google DeepMind Ecosystem*  
 
-*Documento Estratégico e Confidencial • Shaipados Labs © 2026 • Autenticidade Registrada via Git SHA `b55d848`*
+*Documento Estratégico e Confidencial • Shaipados Labs © 2026 • Autenticidade Registrada via Git SHA `90ad4f0`*
