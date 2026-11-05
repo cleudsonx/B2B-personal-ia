@@ -5,6 +5,11 @@
 *.env
 *.pem
 *.key
+*sa-key*.json
+gcp-sa-key.json
+extracted_render_env.json
+*.cloudrun.json
+*.cloudrun.yaml
 
 # Python
 __pycache__/
