@@ -10,9 +10,9 @@ import '../../services/auth_service.dart';
 import '../../services/body_metrics_service.dart';
 import '../../services/evolution_photo_service.dart';
 import '../../services/workout_service.dart';
+import '../../services/whatsapp_direct_service.dart';
 import 'welcome_onboarding_screen.dart';
 import 'widgets/warmup_sheet.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../core/widgets/one_ui_glass_components.dart';
 import '../../core/widgets/workout_guide_modal.dart';
 import '../../core/widgets/thematic_editorial_card.dart';
@@ -197,34 +197,16 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
   }
 
   Future<void> _contactTrainerWhatsApp() async {
-    Navigator.of(context, rootNavigator: true).pop();
-    final cleanPhone = _trainerPhone.replaceAll(RegExp(r'[^0-9]'), '');
-    if (cleanPhone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: MetaColors.surfaceHighlight,
-          content: Text('Seu treinador ($_trainerName) ainda não cadastrou o WhatsApp profissional.'),
-        ),
-      );
-      return;
-    }
-    final uri = Uri.parse(
-      'https://wa.me/$cleanPhone?text=${Uri.encodeComponent('Olá professor(a) $_trainerName! Gostaria de falar sobre meu Bio-Hub e prontidão no Mr. Coach.')}',
+    if (!mounted) return;
+    await WhatsAppDirectService.openStudentTrainerBridge(
+      context: context,
+      trainerName: _trainerName.isNotEmpty ? _trainerName : 'Seu Treinador',
+      trainerPhone: _trainerPhone,
+      initialMessage:
+          'Olá professor(a) $_trainerName! Gostaria de falar sobre meu Bio-Hub e prontidão no Mr. Coach.',
+      category: 'student_biohub_bridge',
+      fallbackToPlatformMaster: true,
     );
-    try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.redAccent,
-            content: Text('Não foi possível abrir o WhatsApp.'),
-          ),
-        );
-      }
-    }
   }
 
   void _openMoreMenu() {

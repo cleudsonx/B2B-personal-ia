@@ -21,10 +21,10 @@ import '../../models/workout_plan_model.dart';
 import '../../models/split_model.dart';
 import '../../models/exercise_model.dart';
 import '../../services/student_notification_service.dart';
+import '../../services/whatsapp_direct_service.dart';
 import '../../core/widgets/ai_action_card.dart';
 import '../client/student_profile_screen.dart';
 import '../client/active_workout_screen.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class B2BAssistantScreen extends StatefulWidget {
   final bool isStudentView;
@@ -1702,41 +1702,23 @@ class _B2BAssistantScreenState extends State<B2BAssistantScreen> {
   }
 
   Future<void> _openTrainerWhatsApp({String? customMessage}) async {
-    final cleanPhone = (_trainerPhone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
-    if (cleanPhone.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: MetaColors.isDark(context) ? const Color(0xFF1E293B) : const Color(0xFF0F172A),
-            content: Text('Seu treinador ($_trainerName) ainda não cadastrou o WhatsApp profissional.'),
-          ),
-        );
-      }
-      return;
-    }
+    if (!mounted) return;
+    final displayTrainer = (_trainerName != null && _trainerName!.trim().isNotEmpty)
+        ? _trainerName!.trim()
+        : 'Mr. Coach';
     final message = customMessage ??
-        'Olá professor(a) $_trainerName! Sou seu aluno no Mr. Coach e gostaria de tirar uma dúvida biomecânica.';
-    final uri = Uri.parse(
-      'https://wa.me/$cleanPhone?text=${Uri.encodeComponent(message)}',
+        'Olá professor(a) $displayTrainer! Sou seu aluno no Mr. Coach e gostaria de tirar uma dúvida biomecânica.';
+    await WhatsAppDirectService.openStudentTrainerBridge(
+      context: context,
+      trainerName: displayTrainer,
+      trainerPhone: _trainerPhone,
+      initialMessage: message,
+      category: 'student_coach_bridge',
+      fallbackToPlatformMaster: true,
     );
-    try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.redAccent,
-            content: Text('Não foi possível abrir o WhatsApp.'),
-          ),
-        );
-      }
-    }
   }
 
   Future<void> _contactTrainerWhatsApp() async {
-    Navigator.of(context, rootNavigator: true).pop();
     await _openTrainerWhatsApp();
   }
 

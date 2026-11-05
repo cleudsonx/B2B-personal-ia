@@ -2,7 +2,6 @@ import '../../core/widgets/connect_trainer_sheet.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../core/widgets/avatar_selector_sheet.dart';
@@ -16,6 +15,7 @@ import '../../services/body_metrics_service.dart';
 import '../../services/referral_service.dart';
 import '../../services/student_profile_service.dart';
 import '../../services/workout_service.dart';
+import '../../services/whatsapp_direct_service.dart';
 import '../auth/teacher_mfa_screen.dart';
 import 'welcome_onboarding_screen.dart';
 import '../../core/widgets/one_ui_glass_components.dart';
@@ -151,30 +151,19 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
   }
 
   Future<void> _contactTrainerWhatsApp() async {
-    final rawPhone = _trainerPhone;
-    if (rawPhone == null || rawPhone.trim().isEmpty) {
-      _snack(
-        'Seu treinador ainda não cadastrou o WhatsApp profissional.',
-        color: Colors.orange.shade800,
-      );
-      return;
-    }
-    final digits = rawPhone.replaceAll(RegExp(r'\D'), '');
-    final phone = digits.startsWith('55') ? digits : '55$digits';
-    final msg = Uri.encodeComponent(
-      'Olá professor(a) ${_trainerName ?? ""}! Sou aluno no Mr. Coach e gostaria de tirar uma dúvida.',
+    if (!mounted) return;
+    final displayTrainer = (_trainerName != null && _trainerName!.trim().isNotEmpty)
+        ? _trainerName!.trim()
+        : 'Seu Treinador';
+    await WhatsAppDirectService.openStudentTrainerBridge(
+      context: context,
+      trainerName: displayTrainer,
+      trainerPhone: _trainerPhone,
+      initialMessage:
+          'Olá professor(a) $displayTrainer! Sou aluno no Mr. Coach e gostaria de tirar uma dúvida.',
+      category: 'student_profile_bridge',
+      fallbackToPlatformMaster: true,
     );
-    final uri =
-        Uri.parse('https://api.whatsapp.com/send?phone=$phone&text=$msg');
-    try {
-      final launched =
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!launched) {
-        await launchUrl(uri, mode: LaunchMode.platformDefault);
-      }
-    } catch (_) {
-      _snack('Não foi possível abrir o WhatsApp.', color: Colors.redAccent);
-    }
   }
 
   void _snack(

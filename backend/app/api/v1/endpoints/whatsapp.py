@@ -452,20 +452,21 @@ class SendDirectMessageRequest(BaseModel):
     message: str
     student_id: Optional[str] = None
     student_name: Optional[str] = "Aluno"
+    trainer_id: Optional[str] = None
     category: Optional[str] = "trainer_one_click"
 
 
 @router.post("/send-direct")
 async def send_direct_whatsapp_message(
     req: SendDirectMessageRequest,
-    user: Dict[str, Any] = Depends(get_current_trainer),
+    user: Dict[str, Any] = Depends(get_current_user),
 ):
     """
-    Disparo direto in-app com 1 clique (parabenizar ofensiva, incentivar aluno,
-    responder alerta do Live Student Pulse 3.0 ou lembrar convite) via WhatsApp API
-    sem precisar abrir o aplicativo externo do WhatsApp.
+    Disparo direto in-app com 1 clique (Professor -> Aluno ou Aluno -> Professor)
+    via WhatsApp API sem precisar abrir o aplicativo externo do WhatsApp.
     """
-    trainer_id = _trainer_id(user)
+    caller_id = _trainer_id(user)
+    trainer_id = req.trainer_id or caller_id
     target_phone = (req.phone or "").strip()
     student_name = (req.student_name or "Aluno").strip()
 

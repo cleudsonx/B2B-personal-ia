@@ -10,7 +10,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'student_profile_screen.dart';
 import 'client_focus_workout_screen.dart';
 import 'widgets/warmup_sheet.dart';
@@ -36,6 +35,7 @@ import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
 import '../../services/workout_session_service.dart';
+import '../../services/whatsapp_direct_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ActiveWorkoutScreen extends StatefulWidget {
@@ -702,51 +702,16 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   }
 
   Future<void> _contactTrainerWhatsApp() async {
-    final rawPhone = _trainerPhone;
-    if (rawPhone == null || rawPhone.trim().isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Seu treinador ($_trainerName) ainda não cadastrou o WhatsApp profissional.',
-            style: const TextStyle(color: Colors.white, fontSize: 13),
-          ),
-          backgroundColor: const Color(0xFF1E293B),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
-      return;
-    }
-
-    final digits = rawPhone.replaceAll(RegExp(r'\D'), '•');
-    final phone = digits.startsWith('55')
-        ? digits
-        : (digits.length >= 10 && digits.length <= 11 ? '55$digits' : digits);
-    final msg = Uri.encodeComponent(
-      'Olá professor(a) $_trainerName! Sou aluno no Mr. Coach e gostaria de tirar uma dúvida sobre meu treino.',
+    if (!mounted) return;
+    await WhatsAppDirectService.openStudentTrainerBridge(
+      context: context,
+      trainerName: _trainerName,
+      trainerPhone: _trainerPhone,
+      initialMessage:
+          'Olá professor(a) $_trainerName! Sou aluno no Mr. Coach e gostaria de tirar uma dúvida sobre meu treino.',
+      category: 'student_workout_doubt',
+      fallbackToPlatformMaster: !_hasTrainerLinked,
     );
-    final uri = Uri.parse('https://api.whatsapp.com/send?phone=$phone&text=$msg');
-
-    try {
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!launched) {
-        await launchUrl(uri, mode: LaunchMode.platformDefault);
-      }
-    } catch (e) {
-      debugPrint('Erro ao abrir WhatsApp do treinador: $e');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Não foi possível abrir o WhatsApp automaticamente.',
-            style: TextStyle(color: Colors.white, fontSize: 13),
-          ),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
   }
 
   void _showAdaptationModal(int exerciseIndex) {

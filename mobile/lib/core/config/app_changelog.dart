@@ -40,6 +40,51 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     // ==========================================
+    // v1.13.3 - PONTE DIRETA WHATSAPP ALUNO ↔ PERSONAL & CORREÇÃO iOS PWA
+    // ==========================================
+    VersionRelease(
+      version: '1.13.3',
+      buildNumber: 2026110501,
+      date: '5 de Novembro, 2026',
+      summary:
+          'Versão 1.13.3: Nova Central de Contato Rápido Aluno ↔ Personal com envio direto em 1 toque de dentro do app (sem sair do treino), atalhos inteligentes de assunto e abertura nativa do WhatsApp no iOS/Android PWA sem tela branca.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.send_rounded,
+          title: 'Ponte Direta WhatsApp — Envie sem sair do App',
+          description:
+              'Toque em "Falar no WhatsApp (24h)" em qualquer aba (Treino, Mr. Coach AI, Bio-Hub ou Perfil) para disparar sua mensagem direto para o WhatsApp do seu professor em 1 toque, sem precisar sair do treino.',
+          badge: 'NOVO',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.phone_iphone_rounded,
+          title: 'Abertura Nativa Instantânea no iPhone (iOS PWA)',
+          description:
+              'Eliminada a tela branca ("OK") ao abrir o app do WhatsApp no iPhone: agora o protocolo nativo aciona o aplicativo instalado diretamente ou oferece cópia em 1 toque.',
+          badge: 'CORREÇÃO',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.bolt_rounded,
+          title: 'Recebimento Integrado no WhatsApp & Live Student Pulse',
+          description:
+              'Mensagens enviadas pelos alunos pela Ponte Direta chegam instantaneamente no seu WhatsApp formatadas com o contexto do treino e ficam registradas no pulso ao vivo do aluno.',
+          badge: 'CONSULTORIA',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.security_rounded,
+          title: 'Blindagem Multi-Domínio (shaipados.com & shapelab.ia.br)',
+          description:
+              'Autenticação biométrica WebAuthn e rota bidirecional WhatsApp Direct habilitadas para alunos e treinadores com CORS dinâmico.',
+          badge: 'INFRA',
+          targetRoles: ['admin'],
+        ),
+      ],
+    ),
+
+    // ==========================================
     // v1.13.2 - ABA TREINO & FOCUS COCKPIT 3.2 (ALUNO)
     // ==========================================
     VersionRelease(

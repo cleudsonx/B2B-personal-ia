@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/widgets/meta_components.dart';
 import '../../services/auth_service.dart';
+import '../../services/whatsapp_direct_service.dart';
 import '../auth/login_screen.dart';
 
 class StudentSuspendedScreen extends StatefulWidget {
@@ -47,42 +47,20 @@ class _StudentSuspendedScreenState extends State<StudentSuspendedScreen> {
   }
 
   Future<void> _contactTrainerWhatsapp() async {
+    final trainerName = _trainerProfile?['full_name'] as String? ?? 'Professor';
     final rawNumber = _trainerProfile?['public_whatsapp']?.toString() ??
         _trainerProfile?['phone']?.toString() ??
-        _trainerProfile?['whatsapp']?.toString() ??
-        '';
-    var number = rawNumber.replaceAll(RegExp(r'\D'), '');
-    if (number.length == 10 || number.length == 11) {
-      number = '55$number';
-    }
+        _trainerProfile?['whatsapp']?.toString();
 
-    if (number.length != 12 && number.length != 13) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Seu treinador ainda não cadastrou o WhatsApp profissional.'),
-        ),
-      );
-      return;
-    }
-
-    final trainerName = _trainerProfile?['full_name'] as String? ?? 'Professor';
-    final uri = Uri.https('wa.me', '/$number', {
-      'text': 'Olá, $trainerName! Sou ${widget.studentName} e gostaria de regularizar o acesso aos meus treinos.',
-    });
-
-    try {
-      if (!await canLaunchUrl(uri) ||
-          !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-        throw StateError('Não foi possível abrir o WhatsApp.');
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Não foi possível abrir o WhatsApp automaticamente.')),
-        );
-      }
-    }
+    await WhatsAppDirectService.openStudentTrainerBridge(
+      context: context,
+      trainerPhone: rawNumber,
+      trainerName: trainerName,
+      trainerId: (_trainerProfile?['id'] ?? widget.trainerId)?.toString(),
+      initialMessage:
+          'Olá, $trainerName! Sou ${widget.studentName} e gostaria de regularizar o acesso aos meus treinos.',
+      category: 'student_to_trainer',
+    );
   }
 
   Future<void> _handleSignOut() async {
