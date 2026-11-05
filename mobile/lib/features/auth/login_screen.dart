@@ -406,9 +406,38 @@ class _LoginScreenState extends State<LoginScreen> {
       // 2. Se temos a credencial de 1 toque salva neste aparelho:
       final savedSecret = await AuthService.getOneTouchSecret(targetEmail);
       if (savedSecret != null && savedSecret.isNotEmpty) {
-        _passwordCtrl.text = savedSecret;
         _emailCtrl.text = targetEmail;
-        await _handleSignIn();
+        try {
+          await AuthService.signIn(
+            email: targetEmail,
+            password: savedSecret.trim(),
+          );
+        } catch (e) {
+          final msg = e.toString().toLowerCase();
+          final invalidCreds = msg.contains('incorretos') ||
+              msg.contains('invalid login') ||
+              msg.contains('invalid_credentials');
+          if (invalidCreds) {
+            // Senha salva ficou obsoleta (ex.: senha redefinida): descarta e pede a senha atual
+            await AuthService.clearOneTouchSecret(targetEmail);
+            _passwordCtrl.clear();
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  behavior: SnackBarBehavior.floating,
+                  backgroundColor: MetaColors.highlight(context),
+                  content: Text(
+                    'Sua senha foi alterada desde o último acesso. Digite a senha atual uma vez para reativar a biometria.',
+                    style: TextStyle(color: MetaColors.text(context)),
+                  ),
+                ),
+              );
+            }
+            return;
+          }
+          rethrow;
+        }
+        await _continueAfterAuthentication();
         return;
       }
 
@@ -431,14 +460,18 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
+        final raw = e.toString().replaceAll('Exception: ', '');
+        final isAuthFailure = raw.startsWith('Falha ao autenticar');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             behavior: SnackBarBehavior.floating,
             backgroundColor: MetaColors.highlight(context),
             content: Text(
-              'Falha no leitor biométrico. Por favor, use sua senha ou WhatsApp.',
+              isAuthFailure
+                  ? raw
+                  : 'Falha no leitor biométrico. Por favor, use sua senha ou WhatsApp.',
               style: TextStyle(color: MetaColors.text(context)),
             ),
           ),
