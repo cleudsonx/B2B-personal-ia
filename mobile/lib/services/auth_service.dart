@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -646,35 +647,52 @@ class AuthService {
   }
 
   static const String _keyOneTouchPrefix = 'one_touch_token_';
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
-  /// Salva a credencial de re-entrada de 1 toque no dispositivo local
+  static String _oneTouchKey(String email) =>
+      '$_keyOneTouchPrefix${email.trim().toLowerCase()}';
+
+  /// Salva a credencial de re-entrada de 1 toque no armazenamento seguro do aparelho
+  /// (Keychain no iOS, Keystore no Android) e remove qualquer cópia legada em base64.
   static Future<void> saveOneTouchSecret(String email, String secret) async {
     try {
+      await _secureStorage.write(key: _oneTouchKey(email), value: secret);
       final prefs = await SharedPreferences.getInstance();
-      final key = '$_keyOneTouchPrefix${email.trim().toLowerCase()}';
-      final encoded = base64Encode(utf8.encode(secret));
-      await prefs.setString(key, encoded);
-    } catch (_) {}
+      await prefs.remove(_oneTouchKey(email));
+    } catch (e) {
+      debugPrint('[AuthService] Falha ao salvar credencial segura: $e');
+    }
   }
 
-  /// Recupera a credencial de 1 toque se cadastrada no dispositivo
+  /// Recupera a credencial de 1 toque; migra automaticamente cópias legadas (base64).
   static Future<String?> getOneTouchSecret(String email) async {
+    final key = _oneTouchKey(email);
+    try {
+      final secure = await _secureStorage.read(key: key);
+      if (secure != null && secure.isNotEmpty) return secure;
+    } catch (e) {
+      debugPrint('[AuthService] Falha ao ler credencial segura: $e');
+    }
     try {
       final prefs = await SharedPreferences.getInstance();
-      final key = '$_keyOneTouchPrefix${email.trim().toLowerCase()}';
-      final encoded = prefs.getString(key);
-      if (encoded == null || encoded.isEmpty) return null;
-      return utf8.decode(base64Decode(encoded));
+      final legacy = prefs.getString(key);
+      if (legacy == null || legacy.isEmpty) return null;
+      final decoded = utf8.decode(base64Decode(legacy));
+      await saveOneTouchSecret(email, decoded); // migra e apaga o legado
+      return decoded;
     } catch (_) {
       return null;
     }
   }
 
-  /// Remove a credencial de 1 toque
+  /// Remove a credencial de 1 toque (seguro + legado)
   static Future<void> clearOneTouchSecret(String email) async {
+    final key = _oneTouchKey(email);
+    try {
+      await _secureStorage.delete(key: key);
+    } catch (_) {}
     try {
       final prefs = await SharedPreferences.getInstance();
-      final key = '$_keyOneTouchPrefix${email.trim().toLowerCase()}';
       await prefs.remove(key);
     } catch (_) {}
   }
