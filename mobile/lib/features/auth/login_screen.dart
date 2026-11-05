@@ -454,7 +454,9 @@ class _LoginScreenState extends State<LoginScreen> {
             behavior: SnackBarBehavior.floating,
             backgroundColor: MetaColors.highlight(context),
             content: Text(
-              'Biometria confirmada! Entre com sua senha ou via WhatsApp uma vez para ativar o retorno com 1 toque.',
+              kIsWeb
+                  ? 'Biometria confirmada, mas sua sessão expirou. Entre com a senha ou via WhatsApp; a biometria voltará a liberar o acesso enquanto a sessão estiver ativa.'
+                  : 'Biometria confirmada! Entre com sua senha ou via WhatsApp uma vez para ativar o retorno com 1 toque.',
               style: TextStyle(color: MetaColors.text(context)),
             ),
           ),
