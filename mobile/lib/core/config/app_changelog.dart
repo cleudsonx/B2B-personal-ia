@@ -74,6 +74,14 @@ class AppChangelog {
           targetRoles: ['trainer'],
         ),
         ChangelogItem(
+          icon: Icons.mark_chat_read_rounded,
+          title: 'Notificação Direta e Contextualizada da Célula de Treino',
+          description:
+              'Identifique instantaneamente qual exercício ou dor motivou o contato do aluno, agilizando orientações e respostas em menos de 1 minuto.',
+          badge: 'RETENÇÃO',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
           icon: Icons.security_rounded,
           title: 'Blindagem Multi-Domínio (shaipados.com & shapelab.ia.br)',
           description:
