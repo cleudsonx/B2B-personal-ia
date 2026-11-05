@@ -134,6 +134,7 @@ class _AuthGateState extends State<AuthGate> {
               MaterialPageRoute(
                 builder: (adminCtx) => AdminShellScreen(
                   onExitAdmin: () async {
+                    ScaffoldMessenger.of(adminCtx).clearSnackBars();
                     await AuthService.setActiveRole('trainer');
                     if (adminCtx.mounted) {
                       Navigator.pushReplacementNamed(adminCtx, '/');

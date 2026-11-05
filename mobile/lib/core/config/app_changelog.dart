@@ -40,6 +40,59 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     // ==========================================
+    // v1.13.4 - ISOLAMENTO MODO ESPELHO & FIM DE REDUNDÂNCIAS EM DEGUSTAÇÃO
+    // ==========================================
+    VersionRelease(
+      version: '1.13.4',
+      buildNumber: 2026110502,
+      date: '5 de Novembro, 2026',
+      summary:
+          'Versão 1.13.4: Correção do vazamento de banner no retorno do Modo Espelho/Admin para o painel do professor, eliminação de toasts redundantes em trocas de aba no modo degustação e refinamento dos estados vazios.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.cleaning_services_rounded,
+          title: 'Fim das Notificações Redundantes em Degustação',
+          description:
+              'Eliminação de avisos flutuantes invasivos a cada troca de aba. A vinculação ao personal agora é exibida de forma elegante e contextual na ficha e no perfil.',
+          badge: 'MELHORIA',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.fitness_center_rounded,
+          title: 'Experiência Fluida de Ficha Vazia',
+          description:
+              'Eliminada a duplicação de banners e botões de conexão na tela inicial de treino sem ficha atribuída.',
+          badge: 'MELHORIA',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.admin_panel_settings_rounded,
+          title: 'Isolamento Estrito do Modo Espelho / Admin',
+          description:
+              'Ao retornar do Modo Espelho ou do Painel Admin para o painel do personal, a tela carrega limpa sem retenção de avisos ou badges de degustação de aluno.',
+          badge: 'CORREÇÃO',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.verified_user_rounded,
+          title: 'Reconhecimento Nativo de Perfil do Professor',
+          description:
+              'Identificação imediata de contas de treinadores e diretores para blindar o ambiente contra falsos alertas de ausência de personal.',
+          badge: 'SEGURANÇA',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.layers_clear_rounded,
+          title: 'Limpeza de Overlays Órfãos em Trocas de Contexto',
+          description:
+              'Descarte automático de notificações temporárias globais ao transitar entre visões executivas e operacionais.',
+          badge: 'INFRA',
+          targetRoles: ['admin'],
+        ),
+      ],
+    ),
+
+    // ==========================================
     // v1.13.3 - PONTE DIRETA WHATSAPP ALUNO ↔ PERSONAL & CORREÇÃO iOS PWA
     // ==========================================
     VersionRelease(

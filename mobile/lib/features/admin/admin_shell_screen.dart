@@ -129,6 +129,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
       onOpenDatabaseExplorer: () => AdminDatabaseExplorerModal.show(context),
       onOpenWebhookReprocess: () => AdminWebhookReprocessModal.show(context),
       onViewAsRole: (role) {
+        ScaffoldMessenger.of(context).clearSnackBars();
         setState(() => _mirrorRole = role);
       },
     );
@@ -192,7 +193,10 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
                         ),
                       ),
                       ElevatedButton.icon(
-                        onPressed: () => setState(() => _mirrorRole = null),
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).clearSnackBars();
+                          setState(() => _mirrorRole = null);
+                        },
                         icon: const Icon(Icons.close_rounded, size: 16, color: Colors.white),
                         label: const Text(
                           'Voltar ao Admin',

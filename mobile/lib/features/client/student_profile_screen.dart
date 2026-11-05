@@ -128,6 +128,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
 
   Future<void> _loadTrainerInfo() async {
     try {
+      final isTrainerOrAdmin = AuthService.isCurrentUserTrainerOrAdminSync();
       final trainer = await AuthService.getTrainerForStudent();
       if (!mounted) return;
       if (trainer != null) {
@@ -143,7 +144,13 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
           _isLoadingTrainer = false;
         });
       } else {
-        setState(() => _isLoadingTrainer = false);
+        setState(() {
+          if (isTrainerOrAdmin) {
+            _trainerName = 'Você é Personal / Admin';
+            _trainerCref = 'Modo Espelho';
+          }
+          _isLoadingTrainer = false;
+        });
       }
     } catch (_) {
       if (mounted) setState(() => _isLoadingTrainer = false);

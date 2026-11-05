@@ -349,6 +349,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     }
 
     try {
+      final isTrainerOrAdmin = AuthService.isCurrentUserTrainerOrAdminSync();
       final trainer = await AuthService.getTrainerForStudent();
       if (trainer != null && mounted) {
         setState(() {
@@ -371,7 +372,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         });
       } else if (mounted) {
         setState(() {
-          _hasTrainerLinked = false;
+          // Se o usuário autenticado for Treinador ou Admin navegando no modo espelho ou treino presencial,
+          // não exibe banner de vincular treinador para si mesmo
+          _hasTrainerLinked = isTrainerOrAdmin;
           _trainerName = 'Seu Personal Trainer';
           _trainerCref = 'CREF Ativo';
         });
@@ -1426,12 +1429,6 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       ),
                     ),
                     const Spacer(),
-                    if (!_hasTrainerLinked) ...[
-                      ExplorerTrialBanner(
-                        onLinked: _loadActiveWorkout,
-                      ),
-                      const SizedBox(height: 12),
-                    ],
                     Icon(
                       Icons.fitness_center_rounded,
                       size: 56,

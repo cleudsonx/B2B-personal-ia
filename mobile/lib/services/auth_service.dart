@@ -479,6 +479,22 @@ class AuthService {
     return false;
   }
 
+  static bool isCurrentUserTrainerOrAdminSync() {
+    final user = currentUser;
+    if (_isCleudsonProfile(_cachedProfile, user)) return true;
+    if (user == null) return false;
+    if (isCurrentUserAdminSync()) return true;
+    if (_cachedProfile != null) {
+      final roles = availableRoles(_cachedProfile);
+      return roles.contains('trainer') || roles.contains('admin');
+    }
+    return false;
+  }
+
+  static bool isCurrentAccountOwner(Map<String, dynamic>? profile) {
+    return _isCleudsonProfile(profile, currentUser);
+  }
+
   static Future<bool> isCurrentUserAdmin() async {
     try {
       final user = currentUser;

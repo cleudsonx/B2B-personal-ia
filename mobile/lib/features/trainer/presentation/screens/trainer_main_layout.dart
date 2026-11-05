@@ -48,6 +48,7 @@ class _TrainerMainLayoutState extends State<TrainerMainLayout> {
     _restoreNavigationState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
         AppVersionFooter.checkAndShowAutoModal(context);
       }
     });

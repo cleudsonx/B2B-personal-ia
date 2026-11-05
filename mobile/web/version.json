@@ -1,8 +1,8 @@
 {
-  "version": "1.13.3",
-  "build": 2026110501,
-  "updated_at": "2026-11-05T04:40:00.000000Z",
-  "notes": "Versão 1.13.3: Nova Central de Contato Rápido Aluno ↔ Personal com envio direto em 1 toque de dentro do app (sem sair do treino), atalhos inteligentes de assunto e abertura nativa do WhatsApp no iOS/Android PWA sem tela branca.",
+  "version": "1.13.4",
+  "build": 2026110502,
+  "updated_at": "2026-11-05T19:30:00.000000Z",
+  "notes": "Versão 1.13.4: Correção do vazamento de banner no retorno do Modo Espelho/Admin para o painel do professor, eliminação de toasts redundantes em trocas de aba no modo degustação e refinamento dos estados vazios.",
   "changelog": {
     "student": [
       {
