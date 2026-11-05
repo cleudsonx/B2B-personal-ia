@@ -40,6 +40,59 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     // ==========================================
+    // v1.13.6 - BIOMETRIA 1 TOQUE NO PWA & DEFINIÇÃO DE SENHA DIRETA
+    // ==========================================
+    VersionRelease(
+      version: '1.13.6',
+      buildNumber: 2026110504,
+      date: '5 de Novembro, 2026',
+      summary:
+          'Versão 1.13.6: Restauração da credencial de biometria (1 toque) em PWAs no iOS/Android após login via WhatsApp e nova funcionalidade de Definir / Trocar Senha no Perfil do Aluno.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.fingerprint_rounded,
+          title: 'Retorno com Biometria Ativo no PWA',
+          description:
+              'Acesso instantâneo em 1 toque (Face ID / Touch ID) agora preservado mesmo após login por WhatsApp no navegador ou PWA.',
+          badge: 'NOVO',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.lock_reset_rounded,
+          title: 'Definição Direta de Senha no Perfil',
+          description:
+              'Alunos agora podem criar uma senha fixa diretamente nas configurações de perfil para entrar sem depender de códigos no WhatsApp.',
+          badge: 'NOVO',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.badge_rounded,
+          title: 'Autenticação Rápida de Treinador sem Código',
+          description:
+              'Sessões de treinadores utilizam credenciais seguras locais para entrada instantânea na consultoria.',
+          badge: 'ESTABILIDADE',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.security_rounded,
+          title: 'Blindagem de Senhas Fixas de Treinadores',
+          description:
+              'Proteção da senha permanente do personal contra sobrescritas temporárias em sessões simultâneas.',
+          badge: 'SEGURANÇA',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.admin_panel_settings_rounded,
+          title: 'Persistência WebCrypto de Credenciais PWA',
+          description:
+              'Armazenamento seguro de sessão via WebCrypto isolado por sandbox contra perdas de contexto de reentrada.',
+          badge: 'INFRA',
+          targetRoles: ['admin'],
+        ),
+      ],
+    ),
+
+    // ==========================================
     // v1.13.5 - RESILIÊNCIA DE RECUPERAÇÃO DE ACESSO & OTP WHATSAPP
     // ==========================================
     VersionRelease(

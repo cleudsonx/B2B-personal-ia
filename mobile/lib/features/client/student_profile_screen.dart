@@ -465,6 +465,137 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     }
   }
 
+  Future<void> _showChangePasswordDialog() async {
+    final passwordCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+    bool isSaving = false;
+    bool obscure = true;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: MetaColors.card(ctx),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(color: MetaColors.cardBorder(ctx)),
+            ),
+            title: Row(
+              children: [
+                const Icon(Icons.lock_reset_rounded, color: MetaColors.emerald, size: 22),
+                const SizedBox(width: 8),
+                Text(
+                  'Definir Senha de Acesso',
+                  style: TextStyle(
+                    color: MetaColors.text(context),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 17,
+                  ),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Crie uma senha fixa para entrar no aplicativo com senha ou biometria sem precisar receber código no WhatsApp.',
+                    style: TextStyle(
+                      color: MetaColors.subtext(context),
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: passwordCtrl,
+                    obscureText: obscure,
+                    style: TextStyle(color: MetaColors.text(context)),
+                    decoration: InputDecoration(
+                      labelText: 'Nova Senha (mín. 6 caracteres)',
+                      labelStyle: TextStyle(color: MetaColors.subtext(context)),
+                      filled: true,
+                      fillColor: MetaColors.highlight(context),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                          color: MetaColors.subtext(context),
+                          size: 20,
+                        ),
+                        onPressed: () => setDialogState(() => obscure = !obscure),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: confirmCtrl,
+                    obscureText: obscure,
+                    style: TextStyle(color: MetaColors.text(context)),
+                    decoration: InputDecoration(
+                      labelText: 'Confirmar Nova Senha',
+                      labelStyle: TextStyle(color: MetaColors.subtext(context)),
+                      filled: true,
+                      fillColor: MetaColors.highlight(context),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSaving ? null : () => Navigator.pop(ctx),
+                child: Text('Cancelar', style: TextStyle(color: MetaColors.subtext(context))),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: MetaColors.emerald,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: isSaving
+                    ? null
+                    : () async {
+                        final pwd = passwordCtrl.text.trim();
+                        final conf = confirmCtrl.text.trim();
+                        if (pwd.length < 6) {
+                          _snack('A senha deve ter no mínimo 6 caracteres.', color: Colors.orange);
+                          return;
+                        }
+                        if (pwd != conf) {
+                          _snack('As senhas não coincidem.', color: Colors.red);
+                          return;
+                        }
+
+                        setDialogState(() => isSaving = true);
+                        try {
+                          await AuthService.updatePassword(pwd);
+                          final email = AuthService.currentUser?.email;
+                          if (email != null && email.isNotEmpty) {
+                            await AuthService.saveOneTouchSecret(email, pwd);
+                          }
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          _snack('Senha salva com sucesso! Agora você pode entrar com sua senha ou com biometria.');
+                        } catch (e) {
+                          setDialogState(() => isSaving = false);
+                          _snack(e.toString().replaceAll('Exception: ', ''), color: Colors.red);
+                        }
+                      },
+                child: Text(
+                  isSaving ? 'Salvando...' : 'Salvar Senha',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildIdentityHeroCard() {
     final d = _original;
     final emerald = AppColors.emerald(context);
@@ -1289,6 +1420,13 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                     _load();
                   },
                 ),
+              SettingsTile(
+                icon: Icons.lock_reset_rounded,
+                iconColor: MetaColors.emerald,
+                title: 'Definir / Trocar Senha',
+                subtitle: 'Crie uma senha para entrar sem precisar de código WhatsApp',
+                onTap: _showChangePasswordDialog,
+              ),
               SettingsTile(
                 icon: Icons.logout_rounded,
                 title: 'Sair neste aparelho',

@@ -1,53 +1,38 @@
 {
-  "version": "1.13.5",
-  "build": 2026110503,
-  "updated_at": "2026-11-05T22:40:00.000000Z",
-  "notes": "Versão 1.13.5: Melhoria no fluxo de recuperação de acesso com atalho 'Já recebi o código de 6 dígitos' e aumento do tempo de resposta para 40s contra falsos timeouts no envio de WhatsApp.",
+  "version": "1.13.6",
+  "build": 2026110504,
+  "updated_at": "2026-11-05T23:55:00.000000Z",
+  "notes": "Versão 1.13.6: Restauração da credencial de biometria (1 toque) em PWAs no iOS/Android após login via WhatsApp e nova funcionalidade de Definir / Trocar Senha no Perfil do Aluno.",
   "changelog": {
     "student": [
       {
-        "title": "Mr. Coach AI Zen 3.1 — Rolagem Fluida & Auto-Hide Imersivo",
-        "description": "Ao rolar a tela do treino, o menu inferior e barras secundárias se recolhem suavemente em um Mini-Composer e Dynamic Island, reaparecendo instantaneamente ao rolar para cima ou tocar para digitar.",
+        "title": "Retorno com Biometria Ativo no PWA",
+        "description": "Acesso instantâneo em 1 toque (Face ID / Touch ID) agora preservado mesmo após login por WhatsApp no navegador ou PWA.",
         "badge": "NOVO"
       },
       {
-        "title": "Fim das Redundâncias & Cápsulas Slim 2-em-1",
-        "description": "Aposentamos a grade 2x2 e botões duplicados da versão anterior. Agora você tem acesso direto a \"Senti Dor\" e \"Carga & RIR\" em cápsulas compactas de alta precisão.",
-        "badge": "MELHORIA"
-      },
-      {
-        "title": "Cockpit de Salão com Acordeão Inteligente & Swap em 1 Toque",
-        "description": "Veja os exercícios da sua série logo ao abrir a aba, consulte execução 3D em 5 segundos ou troque aparelhos ocupados em 1 toque sem alterar sua ficha oficial.",
+        "title": "Definição Direta de Senha no Perfil",
+        "description": "Alunos agora podem criar uma senha fixa diretamente nas configurações de perfil para entrar sem depender de códigos no WhatsApp.",
         "badge": "NOVO"
-      },
-      {
-        "title": "Bio-Hub 3.0 — Bio-Battery & Sobrecarga Compacta com Top PRs",
-        "description": "Prontidão diária em 1 toque e histórico de sobrecarga reorganizado com filtros rápidos, Top 2 recordes em destaque e linhas compactas sem rolagem excessiva.",
-        "badge": "DESIGN"
-      },
-      {
-        "title": "Guardrail Clínico Instantâneo & Espelho Omnichannel WhatsApp",
-        "description": "Proteção articular imediata ao relatar dor ou fisgada e sincronização em tempo real das adaptações do dia entre o App e o Robô do WhatsApp.",
-        "badge": "SEGURANÇA"
       }
     ],
     "trainer": [
       {
-        "title": "Governança Inteligente por Plano B2B no Copiloto do Aluno",
-        "description": "Modo Copiloto IA 24/7 para planos Pro/Elite/Studio e Modo Essencial Determinístico ($0 tokens) para o plano Starter com gatilho de upgrade integrado.",
-        "badge": "FINOPS"
+        "title": "Autenticação Rápida de Treinador sem Código",
+        "description": "Sessões de treinadores utilizam credenciais seguras locais para entrada instantânea na consultoria.",
+        "badge": "ESTABILIDADE"
       },
       {
-        "title": "Rastreamento de Adaptações de Salão no Radar",
-        "description": "Toda substituição de aparelho ocupado feita pelo aluno no App ou no WhatsApp é gravada em adaptation_logs mantendo o mesociclo original intacto.",
-        "badge": "RETENÇÃO"
+        "title": "Blindagem de Senhas Fixas de Treinadores",
+        "description": "Proteção da senha permanente do personal contra sobrescritas temporárias em sessões simultâneas.",
+        "badge": "SEGURANÇA"
       }
     ],
     "admin": [
       {
-        "title": "Build Stamp Monotônico PWA & Suíte Interativa de Testes",
-        "description": "Correção definitiva do incremento sequencial de builds diários no deploy web para invalidação imediata de Service Worker em iOS, Android e Desktop.",
-        "badge": "ESTABILIDADE"
+        "title": "Persistência WebCrypto de Credenciais PWA",
+        "description": "Armazenamento seguro de sessão via WebCrypto isolado por sandbox contra perdas de contexto de reentrada.",
+        "badge": "INFRA"
       }
     ]
   }

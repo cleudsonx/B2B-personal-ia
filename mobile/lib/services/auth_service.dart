@@ -669,13 +669,8 @@ class AuthService {
       '$_keyOneTouchPrefix${email.trim().toLowerCase()}';
 
   /// Salva a credencial de re-entrada de 1 toque no armazenamento seguro do aparelho
-  /// (Keychain no iOS, Keystore no Android) e remove qualquer cópia legada em base64.
+  /// (Keychain no iOS, Keystore no Android, WebCrypto/IndexedDB no Web/PWA)
   static Future<void> saveOneTouchSecret(String email, String secret) async {
-    if (kIsWeb) {
-      // Na web não persistimos senha: o retorno rápido usa só a sessão + WebAuthn.
-      await clearOneTouchSecret(email);
-      return;
-    }
     try {
       await _secureStorage.write(key: _oneTouchKey(email), value: secret);
       final prefs = await SharedPreferences.getInstance();
@@ -687,11 +682,6 @@ class AuthService {
 
   /// Recupera a credencial de 1 toque; migra automaticamente cópias legadas (base64).
   static Future<String?> getOneTouchSecret(String email) async {
-    if (kIsWeb) {
-      // Remove qualquer senha legada deixada por versões anteriores do PWA.
-      await clearOneTouchSecret(email);
-      return null;
-    }
     final key = _oneTouchKey(email);
     try {
       final secure = await _secureStorage.read(key: key);
@@ -1368,6 +1358,9 @@ class AuthService {
     }
     final email = data['email'] as String;
     final token = data['auth_token'] as String;
-    return await signIn(email: email, password: token);
+    final authRes = await signIn(email: email, password: token);
+    // Salva a credencial para re-entrada automática com biometria (1 toque)
+    await saveOneTouchSecret(email, token);
+    return authRes;
   }
 }
