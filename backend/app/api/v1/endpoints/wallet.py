@@ -12,6 +12,7 @@ from app.schemas.wallet import (
     StudentInvoiceResponse,
     WithdrawalRequest,
     WithdrawalResponse,
+    WalletSplitsCockpitResponse,
 )
 from app.services.wallet_service import wallet_service
 
@@ -27,6 +28,20 @@ async def get_wallet_summary(
     """Retorna saldo disponível, pendente, faturado no mês e dados Pix do Personal Trainer."""
     trainer_id = current_user.get("sub") or current_user.get("id") or "current-trainer"
     return await wallet_service.get_summary(trainer_id)
+
+
+@router.get("/splits", response_model=WalletSplitsCockpitResponse)
+async def get_splits_cockpit(
+    current_user: Dict[str, Any] = Depends(get_current_trainer),
+):
+    """
+    Retorna visão unificada do Cockpit Financeiro do Treinador:
+    - KPIs analíticos de Split 95/5 (total bruto, líquido 95%, taxa retida 5%, saldo pendente vs liberado).
+    - Status de conformidade bancária Asaas e Resolução BCB nº 4.893 (JWS).
+    - Extrato cronológico detalhado de faturas e splits.
+    """
+    trainer_id = current_user.get("sub") or current_user.get("id") or "current-trainer"
+    return await wallet_service.get_splits_cockpit(trainer_id)
 
 
 @router.put("/pix-key", response_model=WalletSummaryResponse)

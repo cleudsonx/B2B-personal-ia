@@ -16,6 +16,15 @@ class WalletSummaryResponse(BaseModel):
     asaas_account_id: Optional[str] = Field(default=None, description="ID da subconta no Asaas")
     asaas_wallet_id: Optional[str] = Field(default=None, description="Wallet ID da subconta Asaas para split direto")
     asaas_account_status: Optional[str] = Field(default="unlinked", description="Status da conta no Asaas (active, pending, unlinked)")
+    # Métricas analíticas do Cockpit de Splits (Resolução BCB nº 4.893 & Asaas 95/5)
+    total_splits_count: int = Field(default=0, description="Total de transações de split geradas")
+    settled_splits_count: int = Field(default=0, description="Transações de split liquidadas com sucesso")
+    pending_splits_count: int = Field(default=0, description="Transações de split aguardando compensação")
+    settled_gross_cents: int = Field(default=0, description="Total bruto liquidado de planos (100%) em centavos")
+    settled_net_cents: int = Field(default=0, description="Total líquido liquidado do treinador (95%) em centavos")
+    settled_fee_cents: int = Field(default=0, description="Total de taxa operacional retida pelo SaaS (5%) em centavos")
+    pending_gross_cents: int = Field(default=0, description="Total bruto aguardando pagamento em centavos")
+    pending_net_cents: int = Field(default=0, description="Total líquido pendente do treinador (95%) em centavos")
 
 
 class SetPixKeyRequest(BaseModel):
@@ -73,4 +82,10 @@ class WithdrawalResponse(BaseModel):
     status: str
     created_at: str
     message: str
+
+
+class WalletSplitsCockpitResponse(BaseModel):
+    summary: WalletSummaryResponse
+    items: List[StudentInvoiceResponse]
+
 
