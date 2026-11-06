@@ -40,6 +40,43 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     // ==========================================
+    // v1.13.8 - COCKPIT FINANCEIRO DO TREINADOR & EXTRATO DE SPLITS EM TEMPO REAL
+    // ==========================================
+    VersionRelease(
+      version: '1.13.8',
+      buildNumber: 2026110602,
+      date: '6 de Novembro, 2026',
+      summary:
+          'Versão 1.13.8: Cockpit Financeiro do Treinador com Extrato de Splits Asaas em Tempo Real, filtros analíticos (Liquidados 95%, Compensação, Estornos), comprovação fiscal de não bitributação e auditoria digital de assinaturas JWS (Resolução BCB nº 4.893).',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.dashboard_customize_rounded,
+          title: 'Cockpit Financeiro de Splits em Tempo Real',
+          description:
+              'Visualização consolidada de saldos liberados vs. em compensação, faturamento mensal 95% líquido e extrato transparente de cada transação de aluno.',
+          badge: 'NOVO',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.receipt_long_rounded,
+          title: 'Comprovante Fiscal de Split & Auditoria JWS',
+          description:
+              'Modal institucional detalhando o repasse de 95%, retenção operacional de 5%, ID da conciliação bancária Asaas e assinatura digital RFC 7515.',
+          badge: 'SEGURANÇA',
+          targetRoles: ['trainer', 'admin'],
+        ),
+        ChangelogItem(
+          icon: Icons.filter_alt_rounded,
+          title: 'Filtros Rápidos de Extrato Bancário',
+          description:
+              'Abas dinâmicas para consultar rapidamente transações liquidadas, repasses pendentes e estornos.',
+          badge: 'MELHORIA',
+          targetRoles: ['trainer'],
+        ),
+      ],
+    ),
+
+    // ==========================================
     // v1.13.7 - MOTOR FINTECH: SPLIT ASAAS (95/5) & CONFORMIDADE BCB 4.893
     // ==========================================
     VersionRelease(
