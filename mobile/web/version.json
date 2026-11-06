@@ -1,37 +1,32 @@
 {
-  "version": "1.13.6",
-  "build": 2026110504,
-  "updated_at": "2026-11-05T23:55:00.000000Z",
-  "notes": "Versão 1.13.6: Restauração da credencial de biometria (1 toque) em PWAs no iOS/Android após login via WhatsApp e nova funcionalidade de Definir / Trocar Senha no Perfil do Aluno.",
+  "version": "1.13.7",
+  "build": 2026110601,
+  "updated_at": "2026-11-06T23:15:00.000000Z",
+  "notes": "Versão 1.13.7: Implementação do Motor Fintech de Split Payment Asaas (95% para o Personal / 5% da Plataforma) e Conformidade Estrita com a Resolução BCB nº 4.893 com assinaturas digitais JWS (RFC 7515), mTLS readiness e Trilha de Auditoria Criptográfica Imutável.",
   "changelog": {
-    "student": [
-      {
-        "title": "Retorno com Biometria Ativo no PWA",
-        "description": "Acesso instantâneo em 1 toque (Face ID / Touch ID) agora preservado mesmo após login por WhatsApp no navegador ou PWA.",
-        "badge": "NOVO"
-      },
-      {
-        "title": "Definição Direta de Senha no Perfil",
-        "description": "Alunos agora podem criar uma senha fixa diretamente nas configurações de perfil para entrar sem depender de códigos no WhatsApp.",
-        "badge": "NOVO"
-      }
-    ],
     "trainer": [
       {
-        "title": "Autenticação Rápida de Treinador sem Código",
-        "description": "Sessões de treinadores utilizam credenciais seguras locais para entrada instantânea na consultoria.",
-        "badge": "ESTABILIDADE"
+        "title": "Split de Pagamento Asaas Automatizado (95% Líquido)",
+        "description": "Contratações na vitrine pública são liquidadas com divisão automática: 95% creditados na subconta do personal e 5% na plataforma.",
+        "badge": "NOVO"
       },
       {
-        "title": "Blindagem de Senhas Fixas de Treinadores",
-        "description": "Proteção da senha permanente do personal contra sobrescritas temporárias em sessões simultâneas.",
+        "title": "Blindagem Fiscal & Segregação Bancária",
+        "description": "Eliminação da bitributação: os valores dos alunos não transitam pela conta da holding, protegendo o personal e o SaaS.",
         "badge": "SEGURANÇA"
+      }
+    ],
+    "student": [
+      {
+        "title": "Checkout Pix Transparente com QR Code Regulado",
+        "description": "Geração instantânea de Pix Copia e Cola no padrão EMV do Banco Central com confirmação e liberação em tempo real.",
+        "badge": "MELHORIA"
       }
     ],
     "admin": [
       {
-        "title": "Persistência WebCrypto de Credenciais PWA",
-        "description": "Armazenamento seguro de sessão via WebCrypto isolado por sandbox contra perdas de contexto de reentrada.",
+        "title": "Assinatura JWS (RFC 7515) & Trilha BCB nº 4.893",
+        "description": "Comandos de split protegidos com autenticidade matemática inquebrável, encadeamento de hashes SHA-256 e suporte mTLS.",
         "badge": "INFRA"
       }
     ]

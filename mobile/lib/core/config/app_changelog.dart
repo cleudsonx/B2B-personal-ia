@@ -40,6 +40,51 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     // ==========================================
+    // v1.13.7 - MOTOR FINTECH: SPLIT ASAAS (95/5) & CONFORMIDADE BCB 4.893
+    // ==========================================
+    VersionRelease(
+      version: '1.13.7',
+      buildNumber: 2026110601,
+      date: '6 de Novembro, 2026',
+      summary:
+          'Versão 1.13.7: Implementação do Motor Fintech de Split Payment Asaas (95% para o Personal Trainer / 5% da Plataforma) e Conformidade Estrita com a Resolução BCB nº 4.893 com assinaturas digitais JWS (RFC 7515), mTLS readiness e Trilha de Auditoria Criptográfica Imutável.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.payments_rounded,
+          title: 'Split de Pagamento Asaas Automatizado (95% Líquido)',
+          description:
+              'Contratações na vitrine pública são liquidadas com divisão automática: 95% creditados na subconta do personal e 5% na plataforma.',
+          badge: 'NOVO',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.shield_rounded,
+          title: 'Blindagem Fiscal & Segregação Bancária',
+          description:
+              'Eliminação da bitributação: os valores dos alunos não transitam pela conta da holding, protegendo o personal e o SaaS.',
+          badge: 'SEGURANÇA',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.qr_code_2_rounded,
+          title: 'Checkout Pix Transparente com QR Code Regulado',
+          description:
+              'Geração instantânea de Pix Copia e Cola no padrão EMV do Banco Central com confirmação e liberação em tempo real.',
+          badge: 'MELHORIA',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.verified_user_rounded,
+          title: 'Assinatura JWS (RFC 7515) & Trilha BCB nº 4.893',
+          description:
+              'Comandos de split protegidos com autenticidade matemática inquebrável, encadeamento de hashes SHA-256 e suporte mTLS.',
+          badge: 'INFRA',
+          targetRoles: ['admin'],
+        ),
+      ],
+    ),
+
+    // ==========================================
     // v1.13.6 - BIOMETRIA 1 TOQUE NO PWA & DEFINIÇÃO DE SENHA DIRETA
     // ==========================================
     VersionRelease(

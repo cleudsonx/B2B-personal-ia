@@ -5,7 +5,7 @@
 > **Data de Emissão Oficial:** 05 de Novembro de 2026 (Revisão v3.0 — Alta Escala & Governança)  
 > **Liderança & Direção de Produto:** Prof. Cleudson Cavalcante (CEO / CPO)  
 > **Engenharia & Arquitetura de Sistemas:** Antigravity / Tech Lead (Squad Galaxy & Squad Lenovo)  
-> **Status da Plataforma:** Produção / Alta Escala (**v1.13.4** — Build 2026110502 / Commit `90ad4f0`)  
+> **Status da Plataforma:** Produção / Alta Escala (**v1.13.7** — Build 2026110601 / Fintech BCB nº 4.893)  
 
 ---
 
@@ -65,11 +65,11 @@ pie title Distribuição de Código Fonte por Camada (Novembro/2026)
 | **TOTAL CONSOLIDADO** | **198.188** | **179.343** | **460** | **Base de código hiper-densificada, 100% autoral, auditável e padronizada.** |
 
 ### 3.2. Métricas de Versionamento e Maturidade
-- **Total de Commits na Branch `main`:** **558 commits contínuos** (Média de 13,3 commits/dia desde a fundação em 25/09/2026).
-- **Total de Versões Oficiais Documentadas:** **35 releases** registrados no histórico de engenharia (com 9 versões recentes ativas no `AppChangelog` da v1.12.15 à v1.13.4 / Build 2026110502).
-- **Cobertura de Testes Automatizados:** **518 testes automatizados** com **100% de sucesso (Zero Falhas)**:
+- **Total de Commits na Branch `main`:** **565 commits contínuos** (Média de 13,3 commits/dia desde a fundação em 25/09/2026).
+- **Total de Versões Oficiais Documentadas:** **36 releases** registrados no histórico de engenharia (com 10 versões recentes ativas no `AppChangelog` da v1.12.15 à v1.13.7 / Build 2026110601).
+- **Cobertura de Testes Automatizados:** **530 testes automatizados** com **100% de sucesso (Zero Falhas)**:
   - **320 testes no Flutter** distribuídos em **70 arquivos de teste** (Widgets, Regressão Visual, Dispositivos Conectados, Treino Zen, Contrastes e Contratos).
-  - **198 testes no Backend FastAPI** distribuídos em **23 suítes de teste** (Autenticação Passwordless, 2FA, Sessões de Dispositivos, RLS, Webhooks, Gamificação e Rate Limiting).
+  - **210 testes no Backend FastAPI** distribuídos em **27 suítes de teste** (Segurança Cibernética BCB 4.893, Assinatura JWS, Split Asaas, Autenticação Passwordless, 2FA, Sessões de Dispositivos, RLS, Webhooks, Gamificação e Rate Limiting).
 - **Políticas de Integridade:** Zero Warnings críticos no `flutter analyze`, padrões de tipagem estrita no Dart 3 e validação estrita via Pydantic v2 no Python.
 
 ---
@@ -116,6 +116,7 @@ Ao longo dos 558 commits e dezenas de versões, o produto consolidou **12 grande
 10. **Pivotagem 10 (Jornada Híbrida do Aluno Explorador & Smart Identity):** Desbloqueio do modo degustação sem personal prévio, permitindo explorar a plataforma, experimentar treinos demonstrativos e contratar treinadores na vitrine, com unificação atômica de convites multicanal (match inteligente por e-mail, telefone normalizado ou token criptográfico).
 11. **Pivotagem 11 (Gestão de Dispositivos Conectados, Kill-Switch Remoto & WebAuthn):** Painel nativo de auditoria de sessões ativas (`user_device_sessions`), detecção heurística de hardware/OS/navegador via User-Agent/IP, encerramento remoto de sessões suspeitas e eliminação de senhas vulneráveis no browser com restrição estrita a WebAuthn nativo e biometria 1-toque.
 12. **Pivotagem 12 (Ecossistema Dual-Domain SEO & Escala de Personas):** Indexação programática para captação orgânica via `sitemap.xml` e `robots.txt` suportando tanto a infraestrutura institucional (`shaipados.com`) quanto a marca brasileira (`shapelab.ia.br`), além de suíte de testes de estresse com 50 personas sintéticas para validação de carga de IA e banco.
+13. **Pivotagem 13 (Motor Fintech de Split Asaas 95/5 & Conformidade Resolução BCB nº 4.893):** Segregação bancária automatizada onde 95% do valor da consultoria vai direto para a subconta Asaas do personal e 5% para a holding, eliminando a bitributação. Comandos de split assinados digitalmente com JWS (RFC 7515 / FAPI), trilha de auditoria criptográfica imutável encadeada via hashes SHA-256 e mTLS readiness para arranjos de pagamento regulados.
 
 ---
 
