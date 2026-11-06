@@ -10,6 +10,17 @@ class WalletSummary {
   final String? pixKey;
   final String pixKeyType;
   final String? bankName;
+  final String? asaasAccountId;
+  final String? asaasWalletId;
+  final String asaasAccountStatus;
+  final int totalSplitsCount;
+  final int settledSplitsCount;
+  final int pendingSplitsCount;
+  final int settledGrossCents;
+  final int settledNetCents;
+  final int settledFeeCents;
+  final int pendingGrossCents;
+  final int pendingNetCents;
 
   WalletSummary({
     required this.balanceCents,
@@ -18,6 +29,17 @@ class WalletSummary {
     this.pixKey,
     this.pixKeyType = 'cpf',
     this.bankName,
+    this.asaasAccountId,
+    this.asaasWalletId,
+    this.asaasAccountStatus = 'unlinked',
+    this.totalSplitsCount = 0,
+    this.settledSplitsCount = 0,
+    this.pendingSplitsCount = 0,
+    this.settledGrossCents = 0,
+    this.settledNetCents = 0,
+    this.settledFeeCents = 0,
+    this.pendingGrossCents = 0,
+    this.pendingNetCents = 0,
   });
 
   factory WalletSummary.fromJson(Map<String, dynamic> json) {
@@ -28,12 +50,29 @@ class WalletSummary {
       pixKey: json['pix_key'] as String?,
       pixKeyType: json['pix_key_type'] as String? ?? 'cpf',
       bankName: json['bank_name'] as String?,
+      asaasAccountId: json['asaas_account_id'] as String?,
+      asaasWalletId: json['asaas_wallet_id'] as String?,
+      asaasAccountStatus: json['asaas_account_status'] as String? ?? 'unlinked',
+      totalSplitsCount: json['total_splits_count'] as int? ?? 0,
+      settledSplitsCount: json['settled_splits_count'] as int? ?? 0,
+      pendingSplitsCount: json['pending_splits_count'] as int? ?? 0,
+      settledGrossCents: json['settled_gross_cents'] as int? ?? 0,
+      settledNetCents: json['settled_net_cents'] as int? ?? 0,
+      settledFeeCents: json['settled_fee_cents'] as int? ?? 0,
+      pendingGrossCents: json['pending_gross_cents'] as int? ?? 0,
+      pendingNetCents: json['pending_net_cents'] as int? ?? 0,
     );
   }
 
   double get balance => balanceCents / 100.0;
   double get pendingBalance => pendingBalanceCents / 100.0;
   double get totalBilledMonth => totalBilledMonthCents / 100.0;
+  double get settledGross => settledGrossCents / 100.0;
+  double get settledNet => settledNetCents / 100.0;
+  double get settledFee => settledFeeCents / 100.0;
+  double get pendingGross => pendingGrossCents / 100.0;
+  double get pendingNet => pendingNetCents / 100.0;
+  bool get isAsaasActive => asaasAccountStatus == 'active' || (asaasWalletId != null && asaasWalletId!.isNotEmpty);
 }
 
 class StudentInvoice {
@@ -53,6 +92,11 @@ class StudentInvoice {
   final String? paidAt;
   final String? paymentLink;
   final String? pixCopyPaste;
+  final String? paymentMethod;
+  final String? asaasPaymentId;
+  final String? asaasWalletId;
+  final String? jwsSplitToken;
+  final String splitStatus; // 'pending', 'settled', 'reversed'
   final String createdAt;
 
   StudentInvoice({
@@ -72,13 +116,18 @@ class StudentInvoice {
     this.paidAt,
     this.paymentLink,
     this.pixCopyPaste,
+    this.paymentMethod = 'pix',
+    this.asaasPaymentId,
+    this.asaasWalletId,
+    this.jwsSplitToken,
+    this.splitStatus = 'pending',
     required this.createdAt,
   });
 
   factory StudentInvoice.fromJson(Map<String, dynamic> json) {
     return StudentInvoice(
-      id: json['id'] as String,
-      trainerId: json['trainer_id'] as String,
+      id: json['id'] as String? ?? '',
+      trainerId: json['trainer_id'] as String? ?? '',
       studentId: json['student_id'] as String?,
       studentName: json['student_name'] as String? ?? 'Aluno',
       studentPhone: json['student_phone'] as String?,
@@ -93,13 +142,41 @@ class StudentInvoice {
       paidAt: json['paid_at'] as String?,
       paymentLink: json['payment_link'] as String?,
       pixCopyPaste: json['pix_copy_paste'] as String?,
+      paymentMethod: json['payment_method'] as String? ?? 'pix',
+      asaasPaymentId: json['asaas_payment_id'] as String?,
+      asaasWalletId: json['asaas_wallet_id'] as String?,
+      jwsSplitToken: json['jws_split_token'] as String?,
+      splitStatus: json['split_status'] as String? ?? 'pending',
       createdAt: json['created_at'] as String? ?? '',
     );
   }
 
   double get amount => amountCents / 100.0;
   double get netAmount => netAmountCents / 100.0;
+  double get platformFee => platformFeeCents / 100.0;
   bool get isPaid => status == 'paid';
+  bool get isSettled => splitStatus == 'settled' || status == 'paid';
+  bool get isReversed => splitStatus == 'reversed' || status == 'canceled';
+  bool get hasJwsAudit => jwsSplitToken != null && jwsSplitToken!.isNotEmpty;
+}
+
+class WalletSplitsCockpitData {
+  final WalletSummary summary;
+  final List<StudentInvoice> items;
+
+  WalletSplitsCockpitData({
+    required this.summary,
+    required this.items,
+  });
+
+  factory WalletSplitsCockpitData.fromJson(Map<String, dynamic> json) {
+    return WalletSplitsCockpitData(
+      summary: WalletSummary.fromJson(json['summary'] as Map<String, dynamic>? ?? {}),
+      items: (json['items'] as List<dynamic>? ?? [])
+          .map((e) => StudentInvoice.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
 }
 
 class WalletService {
@@ -158,6 +235,23 @@ class WalletService {
       }
     } catch (_) {}
     return [];
+  }
+
+  static Future<WalletSplitsCockpitData> getSplitsCockpit() async {
+    try {
+      final res = await http.get(
+        Uri.parse('${AppConfig.apiBaseUrl}/wallet/splits'),
+        headers: await _headers(),
+      );
+      if (res.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        return WalletSplitsCockpitData.fromJson(data);
+      }
+    } catch (_) {}
+    // Fallback unificado combinando resumo e faturas
+    final summary = await getSummary();
+    final items = await getInvoices();
+    return WalletSplitsCockpitData(summary: summary, items: items);
   }
 
   static Future<StudentInvoice?> createInvoice({
