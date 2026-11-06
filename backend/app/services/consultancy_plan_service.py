@@ -16,6 +16,10 @@ from app.services.payment_service import (
     normalize_cpf_cnpj,
     normalize_br_phone,
 )
+from app.core.financial_security import (
+    JwsSplitCommandService,
+    FinancialAuditTrail,
+)
 from app.schemas.consultancy_plan import (
     ConsultancyPlanCreate,
     ConsultancyPlanUpdate,
@@ -346,7 +350,57 @@ class ConsultancyPlanService:
         invoice_id = str(uuid.uuid4())
         due_date_str = (datetime.now(timezone.utc) + timedelta(days=2)).strftime("%Y-%m-%d")
 
-        # 3. Integração com Gateway Asaas (Pix transparente com QR Code)
+        # 3. Resolução da Carteira / Subconta Asaas do Treinador (Split BCB nº 4.893)
+        trainer_email = trainer.get("email") or f"{clean_user}@shaipados.com"
+        trainer_phone = trainer.get("phone") or trainer.get("public_whatsapp")
+        trainer_doc = trainer.get("cpf") or trainer.get("professional_document") or ""
+
+        wallet_data = await PaymentProviderService.get_or_create_trainer_asaas_wallet(
+            trainer_id=str(trainer_id),
+            trainer_name=trainer_name,
+            trainer_email=trainer_email,
+            cpf_cnpj=trainer_doc,
+            phone=trainer_phone,
+        )
+        trainer_wallet_id = wallet_data.get("asaas_wallet_id")
+
+        # 4. Assinatura Criptográfica JWS do Comando de Split (Resolução BCB nº 4.893)
+        split_command_data = {
+            "invoice_id": invoice_id,
+            "trainer_id": str(trainer_id),
+            "trainer_wallet_id": trainer_wallet_id,
+            "gross_amount_cents": amount_cents,
+            "platform_fee_percent": round(PLATFORM_FEE_PERCENT * 100.0, 2),
+            "platform_fee_cents": fee_cents,
+            "trainer_net_cents": net_cents,
+            "payment_method": req.payment_method,
+            "currency": "BRL",
+            "compliance_standard": "BCB_4893_CYBERSECURITY_V1",
+        }
+        jws_split_token = JwsSplitCommandService.sign_split_command(split_command_data)
+
+        # Trilha de Auditoria Criptográfica Imutável (Audit Trail BCB 4.893)
+        if getattr(settings, "FINANCIAL_AUDIT_ENABLED", True):
+            FinancialAuditTrail.record_event(
+                event_type="SPLIT_COMMAND_CREATED",
+                invoice_id=invoice_id,
+                trainer_id=str(trainer_id),
+                gross_amount_cents=amount_cents,
+                platform_fee_cents=fee_cents,
+                trainer_net_cents=net_cents,
+                jws_token=jws_split_token,
+            )
+
+        # Regra de Split Asaas: 95% direto para a subconta do personal, 5% retido na conta master
+        asaas_split_rules = []
+        if trainer_wallet_id:
+            asaas_split_rules.append({
+                "walletId": trainer_wallet_id,
+                "percentualValue": 95.0,
+                "description": f"Repasse líquido consultoria {plan.name}",
+            })
+
+        # 5. Integração com Gateway Asaas (Pix transparente com QR Code e Split)
         asaas_key = getattr(settings, "ASAAS_API_KEY", "")
         is_production = getattr(settings, "ENVIRONMENT", "").lower() == "production"
         pix_code = None
@@ -375,7 +429,7 @@ class ConsultancyPlanService:
                             cpf_cnpj=clean_student_cpf,
                             phone=normalize_br_phone(req.student_phone),
                         )
-                        # Gera cobrança Pix
+                        # Gera cobrança Pix com Split Asaas
                         pay_payload = {
                             "customer": cust_id,
                             "billingType": "PIX",
@@ -384,6 +438,8 @@ class ConsultancyPlanService:
                             "description": f"Consultoria {plan.name} - {trainer_name}",
                             "externalReference": invoice_id,
                         }
+                        if asaas_split_rules:
+                            pay_payload["split"] = asaas_split_rules
                         pay_res = http_client.post(f"{base_url}/payments", headers=headers, json=pay_payload)
                         if pay_res.status_code in (200, 201):
                             p_data = pay_res.json()
@@ -475,6 +531,8 @@ class ConsultancyPlanService:
                                 "phone": normalize_br_phone(req.student_phone),
                             }
                         }
+                        if asaas_split_rules:
+                            card_payload["split"] = asaas_split_rules
                         card_res = http_client.post(f"{base_url}/payments", headers=headers, json=card_payload)
                         if card_res.status_code in (200, 201):
                             c_data = card_res.json()
@@ -525,6 +583,10 @@ class ConsultancyPlanService:
             "paid_at": None,
             "payment_link": checkout_url,
             "pix_copy_paste": pix_code,
+            "asaas_payment_id": asaas_payment_id,
+            "asaas_wallet_id": trainer_wallet_id,
+            "jws_split_token": jws_split_token,
+            "split_status": "settled" if status_result == "paid" else "pending",
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
         if client:
@@ -536,6 +598,8 @@ class ConsultancyPlanService:
         mem_record = dict(inv_record)
         if asaas_payment_id:
             mem_record["asaas_id"] = asaas_payment_id
+        mem_record["jws_split_token"] = jws_split_token
+        mem_record["asaas_wallet_id"] = trainer_wallet_id
         cls._mem_invoices[invoice_id] = mem_record
 
         # Se o pagamento foi aprovado instantaneamente (Cartão de Crédito),
@@ -568,6 +632,8 @@ class ConsultancyPlanService:
             auth_email=auth_info.get("auth_email"),
             auth_token=auth_info.get("auth_token"),
             access_url=auth_info.get("access_url"),
+            jws_split_token=jws_split_token,
+            trainer_wallet_id=trainer_wallet_id,
         )
 
     @classmethod
@@ -630,6 +696,7 @@ class ConsultancyPlanService:
         invoice["paid_at"] = paid_at_iso
         invoice["processed_at"] = now_iso
         invoice["payment_method"] = payment_method.lower()
+        invoice["split_status"] = "settled"
         if provider_payment_id:
             invoice["asaas_id"] = provider_payment_id
         cls._mem_invoices[invoice_id] = invoice
@@ -640,9 +707,22 @@ class ConsultancyPlanService:
                     "status": "paid",
                     "paid_at": paid_at_iso,
                     "payment_method": payment_method.lower(),
+                    "split_status": "settled",
                 }).eq("id", invoice_id).execute()
             except Exception as e:
                 logger.error(f"[PaymentConfirmation] Erro ao atualizar status da fatura {invoice_id}: {e}")
+
+        # Registro de liquidação de split na Trilha de Auditoria Criptográfica (BCB 4.893)
+        if getattr(settings, "FINANCIAL_AUDIT_ENABLED", True):
+            FinancialAuditTrail.record_event(
+                event_type="SPLIT_SETTLED",
+                invoice_id=invoice_id,
+                trainer_id=str(trainer_id),
+                gross_amount_cents=amount_cents,
+                platform_fee_cents=amount_cents - net_cents,
+                trainer_net_cents=net_cents,
+                jws_token=invoice.get("jws_split_token") or "settlement_direct",
+            )
 
         # 4. Credita o valor líquido na carteira do treinador
         if client and is_valid_uuid(trainer_id):
