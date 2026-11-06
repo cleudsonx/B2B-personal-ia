@@ -20,6 +20,18 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
   bool _isLoading = true;
   WalletSummary? _summary;
   List<StudentInvoice> _invoices = [];
+  String _selectedFilter = 'all';
+
+  List<StudentInvoice> get _filteredInvoices {
+    if (_selectedFilter == 'settled') {
+      return _invoices.where((i) => i.isSettled).toList();
+    } else if (_selectedFilter == 'pending') {
+      return _invoices.where((i) => !i.isSettled && !i.isReversed).toList();
+    } else if (_selectedFilter == 'reversed') {
+      return _invoices.where((i) => i.isReversed).toList();
+    }
+    return _invoices;
+  }
 
   @override
   void initState() {
@@ -501,6 +513,306 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
     );
   }
 
+  void _showSplitAuditModal(StudentInvoice inv) {
+    final isSettled = inv.isSettled;
+    final isReversed = inv.isReversed;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: MetaColors.card(context),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 28,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: MetaColors.cardBorder(ctx),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isSettled
+                        ? MetaColors.emerald.withValues(alpha: 0.2)
+                        : (isReversed
+                            ? Colors.redAccent.withValues(alpha: 0.2)
+                            : Colors.amber.withValues(alpha: 0.2)),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isSettled
+                        ? Icons.verified_user_rounded
+                        : (isReversed ? Icons.replay_rounded : Icons.hourglass_top_rounded),
+                    color: isSettled
+                        ? MetaColors.emerald
+                        : (isReversed ? Colors.redAccent : Colors.amber),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Comprovante Fiscal de Split',
+                        style: TextStyle(
+                          color: MetaColors.text(ctx),
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Conformidade Resolução BCB nº 4.893',
+                        style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+
+            // Card com resumo financeiro
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: MetaColors.highlight(ctx),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: MetaColors.cardBorder(ctx)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Aluno:', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 13)),
+                      Text(inv.studentName, style: TextStyle(color: MetaColors.text(ctx), fontWeight: FontWeight.bold, fontSize: 13)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Plano / Descrição:', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 13)),
+                      Flexible(
+                        child: Text(
+                          inv.title,
+                          style: TextStyle(color: MetaColors.text(ctx), fontSize: 13),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Método de Pagamento:', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 13)),
+                      Text(
+                        inv.paymentMethod == 'credit_card' ? 'Cartão de Crédito' : 'Pix EMV (Banco Central)',
+                        style: TextStyle(color: MetaColors.text(ctx), fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Valor Bruto Pago:', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 13)),
+                      Text(
+                        'R\$ ${inv.amount.toStringAsFixed(2)}',
+                        style: TextStyle(color: MetaColors.text(ctx), fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Repasse do Treinador (95% Líquido):',
+                        style: TextStyle(color: MetaColors.emerald, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      Text(
+                        'R\$ ${inv.netAmount.toStringAsFixed(2)}',
+                        style: const TextStyle(color: MetaColors.emerald, fontWeight: FontWeight.w900, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Taxa Operacional SaaS (5%):', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 13)),
+                      Text('R\$ ${inv.platformFee.toStringAsFixed(2)}', style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 13)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // Trilha de Auditoria Bancária
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: MetaColors.highlight(ctx),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: MetaColors.cardBorder(ctx)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.account_balance_outlined, size: 14, color: MetaColors.emerald),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Conciliação Bancária Asaas',
+                        style: TextStyle(color: MetaColors.text(ctx), fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Subconta Destino: ${inv.asaasWalletId ?? _summary?.asaasWalletId ?? "wlt_regulado_asaas"}',
+                    style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 11),
+                  ),
+                  if (inv.asaasPaymentId != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'ID Asaas: ${inv.asaasPaymentId}',
+                      style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 11),
+                    ),
+                  ],
+                  if (inv.hasJwsAudit) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: MetaColors.card(ctx),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: MetaColors.emerald.withValues(alpha: 0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(Icons.key_rounded, size: 12, color: MetaColors.emerald),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Assinatura JWS (RFC 7515)',
+                                    style: TextStyle(color: MetaColors.emerald, fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                              InkWell(
+                                onTap: () {
+                                  Clipboard.setData(ClipboardData(text: inv.jwsSplitToken!));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Assinatura digital JWS copiada para auditoria!'),
+                                      backgroundColor: MetaColors.emerald,
+                                    ),
+                                  );
+                                },
+                                child: const Text(
+                                  'Copiar',
+                                  style: TextStyle(color: MetaColors.accentBlue, fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${inv.jwsSplitToken!.substring(0, inv.jwsSplitToken!.length > 40 ? 40 : inv.jwsSplitToken!.length)}...',
+                            style: TextStyle(color: MetaColors.subtext(ctx), fontSize: 10, fontFamily: 'monospace'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+
+            SquircleButton(
+              label: 'Fechar Comprovante',
+              isPrimary: true,
+              height: 44,
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChips(BuildContext context) {
+    final filters = [
+      {'key': 'all', 'label': 'Todos', 'count': _invoices.length},
+      {'key': 'settled', 'label': 'Liquidados 95%', 'count': _invoices.where((i) => i.isSettled).length},
+      {'key': 'pending', 'label': 'Em Compensação', 'count': _invoices.where((i) => !i.isSettled && !i.isReversed).length},
+      {'key': 'reversed', 'label': 'Estornos', 'count': _invoices.where((i) => i.isReversed).length},
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: filters.map((f) {
+          final isSelected = _selectedFilter == f['key'];
+          final count = f['count'] as int;
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text('${f['label']} ($count)'),
+              selected: isSelected,
+              selectedColor: MetaColors.emerald.withValues(alpha: 0.2),
+              backgroundColor: MetaColors.highlight(context),
+              labelStyle: TextStyle(
+                color: isSelected ? MetaColors.emerald : MetaColors.subtext(context),
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 12,
+              ),
+              side: BorderSide(
+                color: isSelected ? MetaColors.emerald : MetaColors.cardBorder(context),
+              ),
+              onSelected: (val) {
+                if (val) setState(() => _selectedFilter = f['key'] as String);
+              },
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   Widget _buildAsaasRegulationBanner(BuildContext context) {
     final isLinked = _summary?.isAsaasActive ?? false;
     final walletId = _summary?.asaasWalletId;
@@ -907,13 +1219,22 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Cobranças de Alunos',
-                          style: TextStyle(
-                            color: MetaColors.text(context),
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Cobranças de Alunos & Splits',
+                              style: TextStyle(
+                                color: MetaColors.text(context),
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Extrato em tempo real com conciliação automática',
+                              style: TextStyle(color: MetaColors.subtext(context), fontSize: 11),
+                            ),
+                          ],
                         ),
                         TextButton.icon(
                           onPressed: _showNewInvoiceModal,
@@ -925,10 +1246,12 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
+                    _buildFilterChips(context),
+                    const SizedBox(height: 12),
 
-                    // Lista de Cobranças
-                    if (_invoices.isEmpty)
+                    // Lista de Cobranças Filtradas
+                    if (_filteredInvoices.isEmpty)
                       MetaCard(
                         padding: const EdgeInsets.all(32),
                         child: Column(
@@ -936,23 +1259,29 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                             Icon(Icons.receipt_long_rounded, size: 40, color: MetaColors.subtext(context)),
                             const SizedBox(height: 12),
                             Text(
-                              'Nenhuma cobrança emitida ainda',
+                              _invoices.isEmpty
+                                  ? 'Nenhuma cobrança emitida ainda'
+                                  : 'Nenhuma cobrança encontrada neste filtro',
                               style: TextStyle(color: MetaColors.text(context), fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Gere cobranças Pix para seus alunos e receba mensalidades com split transparente.',
+                              _invoices.isEmpty
+                                  ? 'Gere cobranças Pix para seus alunos e receba mensalidades com split transparente.'
+                                  : 'Alterne os filtros acima para visualizar todas as transações ou pendências.',
                               textAlign: TextAlign.center,
                               style: TextStyle(color: MetaColors.subtext(context), fontSize: 12),
                             ),
-                            const SizedBox(height: 16),
-                            SquircleButton(
-                              label: 'Criar Primeira Cobrança',
-                              icon: Icons.add_rounded,
-                              isPrimary: true,
-                              height: 44,
-                              onPressed: _showNewInvoiceModal,
-                            ),
+                            if (_invoices.isEmpty) ...[
+                              const SizedBox(height: 16),
+                              SquircleButton(
+                                label: 'Criar Primeira Cobrança',
+                                icon: Icons.add_rounded,
+                                isPrimary: true,
+                                height: 44,
+                                onPressed: _showNewInvoiceModal,
+                              ),
+                            ],
                           ],
                         ),
                       )
@@ -960,120 +1289,195 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                       ListView.separated(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _invoices.length,
+                        itemCount: _filteredInvoices.length,
                         separatorBuilder: (_, _) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
-                          final inv = _invoices[index];
+                          final inv = _filteredInvoices[index];
                           final isPaid = inv.isPaid;
+                          final isSettled = inv.isSettled;
+                          final isReversed = inv.isReversed;
 
-                          return MetaCard(
-                            padding: const EdgeInsets.all(14),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 18,
-                                      backgroundColor: isPaid
-                                          ? MetaColors.emerald.withValues(alpha: 0.15)
-                                          : Colors.amber.withValues(alpha: 0.15),
-                                      child: Icon(
-                                        isPaid ? Icons.check_circle_rounded : Icons.pending_rounded,
-                                        size: 18,
-                                        color: isPaid ? MetaColors.emerald : Colors.amber,
+                          return InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () => _showSplitAuditModal(inv),
+                            child: MetaCard(
+                              padding: const EdgeInsets.all(14),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 18,
+                                        backgroundColor: isSettled
+                                            ? MetaColors.emerald.withValues(alpha: 0.15)
+                                            : (isReversed
+                                                ? Colors.redAccent.withValues(alpha: 0.15)
+                                                : Colors.amber.withValues(alpha: 0.15)),
+                                        child: Icon(
+                                          isSettled
+                                              ? Icons.check_circle_rounded
+                                              : (isReversed ? Icons.replay_rounded : Icons.pending_rounded),
+                                          size: 18,
+                                          color: isSettled
+                                              ? MetaColors.emerald
+                                              : (isReversed ? Colors.redAccent : Colors.amber),
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              inv.studentName,
+                                              style: TextStyle(
+                                                color: MetaColors.text(context),
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                            Text(
+                                              inv.title,
+                                              style: TextStyle(color: MetaColors.subtext(context), fontSize: 12),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
                                         children: [
                                           Text(
-                                            inv.studentName,
+                                            'R\$ ${inv.amount.toStringAsFixed(2)}',
                                             style: TextStyle(
                                               color: MetaColors.text(context),
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 15,
                                             ),
                                           ),
                                           Text(
-                                            inv.title,
-                                            style: TextStyle(color: MetaColors.subtext(context), fontSize: 12),
+                                            isSettled
+                                                ? 'LIQUIDADO (95%)'
+                                                : (isReversed ? 'ESTORNADO' : 'PENDENTE'),
+                                            style: TextStyle(
+                                              color: isSettled
+                                                  ? MetaColors.emerald
+                                                  : (isReversed ? Colors.redAccent : Colors.amberAccent),
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
                                         ],
                                       ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+
+                                  // Detalhamento do Split 95/5
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: MetaColors.highlight(context),
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                    child: Row(
                                       children: [
                                         Text(
-                                          'R\$ ${inv.amount.toStringAsFixed(2)}',
-                                          style: TextStyle(
-                                            color: MetaColors.text(context),
-                                            fontWeight: FontWeight.w900,
-                                            fontSize: 15,
-                                          ),
-                                        ),
-                                        Text(
-                                          isPaid ? 'PAGO' : 'PENDENTE',
-                                          style: TextStyle(
-                                            color: isPaid ? MetaColors.emerald : Colors.amberAccent,
-                                            fontSize: 10,
+                                          '95% Líquido: R\$ ${inv.netAmount.toStringAsFixed(2)}',
+                                          style: const TextStyle(
+                                            color: MetaColors.emerald,
                                             fontWeight: FontWeight.bold,
+                                            fontSize: 11,
                                           ),
                                         ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '•  5% SaaS: R\$ ${inv.platformFee.toStringAsFixed(2)}',
+                                          style: TextStyle(color: MetaColors.subtext(context), fontSize: 11),
+                                        ),
+                                        const Spacer(),
+                                        if (inv.hasJwsAudit) ...[
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                            decoration: BoxDecoration(
+                                              color: MetaColors.emerald.withValues(alpha: 0.15),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: const Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.verified_user_rounded, size: 10, color: MetaColors.emerald),
+                                                SizedBox(width: 3),
+                                                Text(
+                                                  'BCB 4.893',
+                                                  style: TextStyle(color: MetaColors.emerald, fontSize: 9, fontWeight: FontWeight.bold),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
                                       ],
                                     ),
-                                  ],
-                                ),
-                                if (!isPaid) ...[
-                                  const SizedBox(height: 12),
+                                  ),
+
+                                  const SizedBox(height: 10),
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.end,
                                     children: [
-                                      if (inv.pixCopyPaste != null)
-                                        TextButton.icon(
-                                          onPressed: () {
-                                            Clipboard.setData(ClipboardData(text: inv.pixCopyPaste!));
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(
-                                                content: Text('Código Pix Copia e Cola copiado!'),
-                                                backgroundColor: MetaColors.emerald,
-                                              ),
-                                            );
-                                          },
-                                          icon: const Icon(Icons.copy_rounded, size: 14, color: MetaColors.accentBlue),
-                                          label: const Text(
-                                            'Copiar Pix',
-                                            style: TextStyle(color: MetaColors.accentBlue, fontSize: 12),
-                                          ),
-                                        ),
-                                      const SizedBox(width: 6),
                                       TextButton.icon(
-                                        onPressed: () async {
-                                          final messenger = ScaffoldMessenger.of(context);
-                                          final updated = await WalletService.markPaid(inv.id);
-                                          if (updated != null && mounted) {
-                                            messenger.showSnackBar(
-                                              const SnackBar(
-                                                content: Text('Pagamento registrado com sucesso! Saldo creditado.'),
-                                                backgroundColor: MetaColors.emerald,
-                                              ),
-                                            );
-                                            _loadData();
-                                          }
-                                        },
-                                        icon: const Icon(Icons.check_rounded, size: 14, color: MetaColors.emerald),
+                                        onPressed: () => _showSplitAuditModal(inv),
+                                        icon: const Icon(Icons.receipt_outlined, size: 14, color: MetaColors.accentBlue),
                                         label: const Text(
-                                          'Registrar Pago',
-                                          style: TextStyle(color: MetaColors.emerald, fontSize: 12),
+                                          'Auditoria Fiscal',
+                                          style: TextStyle(color: MetaColors.accentBlue, fontSize: 12),
                                         ),
                                       ),
+                                      if (!isPaid) ...[
+                                        if (inv.pixCopyPaste != null) ...[
+                                          const SizedBox(width: 4),
+                                          TextButton.icon(
+                                            onPressed: () {
+                                              Clipboard.setData(ClipboardData(text: inv.pixCopyPaste!));
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text('Código Pix Copia e Cola copiado!'),
+                                                  backgroundColor: MetaColors.emerald,
+                                                ),
+                                              );
+                                            },
+                                            icon: const Icon(Icons.copy_rounded, size: 14, color: MetaColors.accentBlue),
+                                            label: const Text(
+                                              'Copiar Pix',
+                                              style: TextStyle(color: MetaColors.accentBlue, fontSize: 12),
+                                            ),
+                                          ),
+                                        ],
+                                        const SizedBox(width: 4),
+                                        TextButton.icon(
+                                          onPressed: () async {
+                                            final messenger = ScaffoldMessenger.of(context);
+                                            final updated = await WalletService.markPaid(inv.id);
+                                            if (updated != null && mounted) {
+                                              messenger.showSnackBar(
+                                                const SnackBar(
+                                                  content: Text('Pagamento registrado com sucesso! Saldo creditado.'),
+                                                  backgroundColor: MetaColors.emerald,
+                                                ),
+                                              );
+                                              _loadData();
+                                            }
+                                          },
+                                          icon: const Icon(Icons.check_rounded, size: 14, color: MetaColors.emerald),
+                                          label: const Text(
+                                            'Registrar Pago',
+                                            style: TextStyle(color: MetaColors.emerald, fontSize: 12),
+                                          ),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ],
-                              ],
+                              ),
                             ),
                           );
                         },
