@@ -79,6 +79,8 @@ class PublicCheckoutResponse(BaseModel):
     auth_email: Optional[str] = None
     auth_token: Optional[str] = None
     access_url: Optional[str] = None
+    jws_split_token: Optional[str] = None
+    trainer_wallet_id: Optional[str] = None
 
 class InvoiceStatusResponse(BaseModel):
     invoice_id: str
@@ -92,4 +94,24 @@ class InvoiceStatusResponse(BaseModel):
     auth_email: Optional[str] = None
     auth_token: Optional[str] = None
     access_url: Optional[str] = None
+    split_status: Optional[str] = "pending"
+
+
+class TrainerFinancialSettingsResponse(BaseModel):
+    trainer_id: str
+    balance_cents: int = 0
+    pending_balance_cents: int = 0
+    pix_key: Optional[str] = None
+    pix_key_type: Optional[str] = "cpf"
+    bank_name: Optional[str] = None
+    asaas_account_id: Optional[str] = None
+    asaas_wallet_id: Optional[str] = None
+    asaas_account_status: str = "unlinked"
+
+
+class TrainerFinancialSettingsUpdate(BaseModel):
+    pix_key: str = Field(..., min_length=3, max_length=100, description="Chave Pix para recebimento")
+    pix_key_type: Literal["cpf", "cnpj", "email", "phone", "random"] = Field("cpf", description="Tipo de chave Pix")
+    bank_name: Optional[str] = Field(None, max_length=100, description="Nome da instituição financeira")
+    asaas_wallet_id: Optional[str] = Field(None, max_length=100, description="ID da carteira Asaas (opcional)")
 

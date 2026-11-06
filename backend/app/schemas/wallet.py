@@ -13,6 +13,9 @@ class WalletSummaryResponse(BaseModel):
     pix_key: Optional[str] = Field(default=None, description="Chave Pix cadastrada para repasse")
     pix_key_type: Optional[str] = Field(default="cpf", description="Tipo de chave Pix")
     bank_name: Optional[str] = Field(default=None, description="Instituição bancária do treinador")
+    asaas_account_id: Optional[str] = Field(default=None, description="ID da subconta no Asaas")
+    asaas_wallet_id: Optional[str] = Field(default=None, description="Wallet ID da subconta Asaas para split direto")
+    asaas_account_status: Optional[str] = Field(default="unlinked", description="Status da conta no Asaas (active, pending, unlinked)")
 
 
 class SetPixKeyRequest(BaseModel):
@@ -51,6 +54,10 @@ class StudentInvoiceResponse(BaseModel):
     payment_method: str = "pix"
     payment_link: Optional[str] = None
     pix_copy_paste: Optional[str] = None
+    asaas_payment_id: Optional[str] = None
+    asaas_wallet_id: Optional[str] = None
+    jws_split_token: Optional[str] = None
+    split_status: Optional[str] = "pending"
     created_at: str
 
 

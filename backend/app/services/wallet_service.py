@@ -77,6 +77,9 @@ class WalletService:
                     pix_key=wallet_data.get("pix_key"),
                     pix_key_type=wallet_data.get("pix_key_type") or "cpf",
                     bank_name=wallet_data.get("bank_name"),
+                    asaas_account_id=wallet_data.get("asaas_account_id"),
+                    asaas_wallet_id=wallet_data.get("asaas_wallet_id"),
+                    asaas_account_status=wallet_data.get("asaas_account_status") or "unlinked",
                 )
             except Exception as e:
                 logger.error(f"[WalletService] Erro ao consultar carteira no Supabase: {e}")
@@ -100,6 +103,9 @@ class WalletService:
             pix_key=w.get("pix_key"),
             pix_key_type=w.get("pix_key_type", "cpf"),
             bank_name=w.get("bank_name"),
+            asaas_account_id=w.get("asaas_account_id"),
+            asaas_wallet_id=w.get("asaas_wallet_id"),
+            asaas_account_status=w.get("asaas_account_status", "unlinked"),
         )
 
     @classmethod
