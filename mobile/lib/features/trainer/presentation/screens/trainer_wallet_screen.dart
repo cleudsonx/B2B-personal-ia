@@ -29,12 +29,11 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    final summary = await WalletService.getSummary();
-    final invoices = await WalletService.getInvoices();
+    final cockpit = await WalletService.getSplitsCockpit();
     if (mounted) {
       setState(() {
-        _summary = summary;
-        _invoices = invoices;
+        _summary = cockpit.summary;
+        _invoices = cockpit.items;
         _isLoading = false;
       });
     }
@@ -502,6 +501,174 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
     );
   }
 
+  Widget _buildAsaasRegulationBanner(BuildContext context) {
+    final isLinked = _summary?.isAsaasActive ?? false;
+    final walletId = _summary?.asaasWalletId;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isLinked
+            ? MetaColors.emerald.withValues(alpha: 0.1)
+            : MetaColors.highlight(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isLinked
+              ? MetaColors.emerald.withValues(alpha: 0.3)
+              : MetaColors.cardBorder(context),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isLinked ? MetaColors.emerald : MetaColors.cardBorder(context),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isLinked ? Icons.verified_user_rounded : Icons.account_balance_wallet_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        isLinked
+                            ? 'Subconta Asaas Vinculada'
+                            : 'Split 95/5 Automático Habilitado',
+                        style: TextStyle(
+                          color: MetaColors.text(context),
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isLinked
+                            ? MetaColors.emerald.withValues(alpha: 0.2)
+                            : Colors.blueAccent.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        isLinked ? 'BCB 4.893' : 'SPLIT ATIVO',
+                        style: TextStyle(
+                          color: isLinked ? MetaColors.emerald : Colors.blueAccent,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  isLinked
+                      ? 'Wallet: ${walletId ?? "Ativa"} • Liquidação direta sem bitributação'
+                      : '95% líquido vai direto para você no checkout da vitrine',
+                  style: TextStyle(color: MetaColors.subtext(context), fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFiscalBreakdown(BuildContext context) {
+    if ((_summary?.totalSplitsCount ?? 0) == 0 && (_summary?.balance ?? 0) == 0) {
+      return const SizedBox.shrink();
+    }
+
+    final gross = _summary?.settledGross ?? 0.0;
+    final net = _summary?.settledNet ?? 0.0;
+    final fee = _summary?.settledFee ?? 0.0;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: MetaColors.highlight(context),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: MetaColors.cardBorder(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.shield_outlined, size: 14, color: MetaColors.emerald),
+              const SizedBox(width: 6),
+              Text(
+                'Transparência Fiscal & Segregação Bancária',
+                style: TextStyle(
+                  color: MetaColors.text(context),
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Bruto Total:',
+                style: TextStyle(color: MetaColors.subtext(context), fontSize: 11.5),
+              ),
+              Text(
+                'R\$ ${gross.toStringAsFixed(2)}',
+                style: TextStyle(color: MetaColors.text(context), fontSize: 11.5, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Repasse Líquido Personal (95%):',
+                style: TextStyle(color: MetaColors.emerald, fontSize: 11.5, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                'R\$ ${net.toStringAsFixed(2)}',
+                style: const TextStyle(color: MetaColors.emerald, fontSize: 11.5, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Taxa Operacional SaaS (5%):',
+                style: TextStyle(color: MetaColors.subtext(context), fontSize: 11.5),
+              ),
+              Text(
+                'R\$ ${fee.toStringAsFixed(2)}',
+                style: TextStyle(color: MetaColors.subtext(context), fontSize: 11.5),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -535,6 +702,8 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    _buildAsaasRegulationBanner(context),
+
                     // Card Principal: Saldo Disponível (One UI 7 Health / Samsung Health Editorial)
                     ThematicEditorialCard(
                       category: 'CARTEIRA B2B • REPASSE AUTOMÁTICO',
@@ -656,22 +825,36 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                       children: [
                         Expanded(
                           child: MetaCard(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(14),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  'A Receber (Pendente)',
-                                  style: TextStyle(color: MetaColors.subtext(context), fontSize: 11),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.hourglass_top_rounded, size: 13, color: Colors.amberAccent),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        'Em Compensação',
+                                        style: TextStyle(color: MetaColors.subtext(context), fontSize: 11),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  'R\$ ${(_summary?.pendingBalance ?? 0.0).toStringAsFixed(2)}',
-                                  style: TextStyle(
+                                  'R\$ ${((_summary?.pendingNet ?? _summary?.pendingBalance) ?? 0.0).toStringAsFixed(2)}',
+                                  style: const TextStyle(
                                     color: Colors.amberAccent,
-                                    fontSize: 18,
+                                    fontSize: 17,
                                     fontWeight: FontWeight.bold,
                                   ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${_summary?.pendingSplitsCount ?? 0} split(s) a liberar',
+                                  style: TextStyle(color: MetaColors.subtext(context), fontSize: 10),
                                 ),
                               ],
                             ),
@@ -680,22 +863,36 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: MetaCard(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(14),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  'Faturado no Mês',
-                                  style: TextStyle(color: MetaColors.subtext(context), fontSize: 11),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.trending_up_rounded, size: 13, color: MetaColors.emerald),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        'Líquido no Mês',
+                                        style: TextStyle(color: MetaColors.subtext(context), fontSize: 11),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
                                   'R\$ ${(_summary?.totalBilledMonth ?? 0.0).toStringAsFixed(2)}',
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     color: MetaColors.emerald,
-                                    fontSize: 18,
+                                    fontSize: 17,
                                     fontWeight: FontWeight.bold,
                                   ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '95% direto na subconta',
+                                  style: TextStyle(color: MetaColors.subtext(context), fontSize: 10),
                                 ),
                               ],
                             ),
@@ -703,6 +900,7 @@ class _TrainerWalletScreenState extends State<TrainerWalletScreen> {
                         ),
                       ],
                     ),
+                    _buildFiscalBreakdown(context),
                     const SizedBox(height: 24),
 
                     // Cabeçalho da Lista de Cobranças
