@@ -41,6 +41,14 @@ class Settings(BaseSettings):
     MERCADOPAGO_WEBHOOK_SECRET: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
 
+    # Segurança Cibernética & Split Payment (Resolução BCB nº 4.893)
+    FINANCIAL_SIGNING_SECRET: str = ""
+    FINANCIAL_JWS_ISSUER: str = "shapelab-financial-core"
+    MTLS_CLIENT_CERT_PATH: str = ""
+    MTLS_CLIENT_KEY_PATH: str = ""
+    MTLS_CA_CERT_PATH: str = ""
+    FINANCIAL_AUDIT_ENABLED: bool = True
+
     # WhatsApp / Evolution API (sem valor padrão — configurar como secret no Render)
     WHATSAPP_PROVIDER: str = "evolution"
     EVOLUTION_API_KEY: str = ""
