@@ -191,10 +191,12 @@ async def asaas_webhook(request: Request, background_tasks: BackgroundTasks):
         if event in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED", "PAYMENT_RECEIVED_IN_CASH", "PAYMENT_DUNNING_RECEIVED"):
             billing_type = payment_obj.get("billingType") or "PIX"
             payment_id = payment_obj.get("id")
+            reported_split = payment_obj.get("split")
             result = await ConsultancyPlanService.process_student_payment_confirmation(
                 invoice_id=ext_ref,
                 payment_method=billing_type,
                 provider_payment_id=payment_id,
+                reported_split_rules=reported_split,
             )
             return {
                 "processed": True,

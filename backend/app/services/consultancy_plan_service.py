@@ -642,18 +642,20 @@ class ConsultancyPlanService:
         invoice_id: str,
         payment_method: str = "pix",
         provider_payment_id: Optional[str] = None,
+        reported_split_rules: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """
         Confirma o pagamento de uma consultoria (via Webhook Asaas ou aprovação de Cartão):
         1. Localiza a fatura em `student_invoices`.
         2. Idempotência estrita: se já paga, retorna imediatamente sem duplicar saldos ou mensagens.
-        3. Marca fatura como 'paid' com timestamp de pagamento.
-        4. Credita o valor líquido (net_amount_cents) na carteira do treinador (trainer_wallets).
-        5. Vincula ou gera convite de ativação para o aluno:
+        3. Valida a assinatura digital JWS do split (Resolução BCB nº 4.893).
+        4. Marca fatura como 'paid' e split_status='settled' com timestamp de pagamento.
+        5. Credita o valor líquido (net_amount_cents) na carteira do treinador (trainer_wallets).
+        6. Vincula ou gera convite de ativação para o aluno:
            - Se aluno já possui conta em `profiles`: vincula ao treinador e ativa status.
            - Se aluno novo: cria registro em `invite_tokens` com link seguro de onboarding.
-        6. Envia mensagem de boas-vindas no WhatsApp do aluno com link direto para PWA/anamnese.
-        7. Notifica o treinador no WhatsApp com o valor creditado e novo aluno a bordo.
+        7. Envia mensagem de boas-vindas no WhatsApp do aluno com link direto para PWA/anamnese.
+        8. Notifica o treinador no WhatsApp com o valor creditado e novo aluno a bordo.
         """
         now_utc = datetime.now(timezone.utc)
         now_iso = now_utc.isoformat()
@@ -675,6 +677,29 @@ class ConsultancyPlanService:
         if not invoice:
             logger.warning(f"[PaymentConfirmation] Fatura {invoice_id} não encontrada.")
             return {"status": "not_found", "invoice_id": invoice_id}
+
+        # 1.1 Conciliação e Verificação de Integridade JWS (Resolução BCB nº 4.893)
+        jws_token = invoice.get("jws_split_token")
+        if jws_token:
+            try:
+                verified_cmd = JwsSplitCommandService.verify_split_command(jws_token, enforce_expiration=False)
+                logger.info(
+                    f"[BCB-4893 Split] Fatura {invoice_id} conciliada com sucesso via JWS. "
+                    f"Trainer: {verified_cmd.get('trainer_id')} | Gross: {verified_cmd.get('gross_amount_cents')} | "
+                    f"Net: {verified_cmd.get('trainer_net_cents')}"
+                )
+            except Exception as jws_err:
+                logger.error(f"[BCB-4893 Split] ALERTA DE SEGURANÇA: Violação JWS na fatura {invoice_id}: {jws_err}")
+                if getattr(settings, "FINANCIAL_AUDIT_ENABLED", True):
+                    FinancialAuditTrail.record_event(
+                        event_type="SPLIT_TAMPER_DETECTED",
+                        invoice_id=invoice_id,
+                        trainer_id=str(invoice.get("trainer_id", "")),
+                        gross_amount_cents=invoice.get("amount_cents", 0),
+                        platform_fee_cents=invoice.get("platform_fee_cents", 0),
+                        trainer_net_cents=invoice.get("net_amount_cents", 0),
+                        jws_token=jws_token,
+                    )
 
         # 2. Idempotência estrita (tanto em memória quanto no Supabase onde status='paid')
         mem_inv = cls._mem_invoices.get(invoice_id)
@@ -933,11 +958,15 @@ class ConsultancyPlanService:
 
         if invoice:
             invoice["status"] = "canceled"
+            invoice["split_status"] = "reversed"
             cls._mem_invoices[invoice_id] = invoice
 
         if client and is_valid_uuid(invoice_id):
             try:
-                await client.table("student_invoices").update({"status": "canceled"}).eq("id", invoice_id).execute()
+                await client.table("student_invoices").update({
+                    "status": "canceled",
+                    "split_status": "reversed",
+                }).eq("id", invoice_id).execute()
             except Exception as e:
                 logger.error(f"[PaymentRefund] Erro ao cancelar fatura {invoice_id} no Supabase: {e}")
 
@@ -948,6 +977,18 @@ class ConsultancyPlanService:
             amount_cents = invoice.get("amount_cents", 0)
             net_cents = invoice.get("net_amount_cents") or int(round(amount_cents * 0.95))
             reversed_cents = net_cents
+
+            # Auditoria Criptográfica do Estorno de Split (BCB 4.893)
+            if getattr(settings, "FINANCIAL_AUDIT_ENABLED", True):
+                FinancialAuditTrail.record_event(
+                    event_type="SPLIT_REFUNDED" if event == "PAYMENT_REFUNDED" else "SPLIT_CHARGEBACK",
+                    invoice_id=invoice_id,
+                    trainer_id=str(trainer_id),
+                    gross_amount_cents=amount_cents,
+                    platform_fee_cents=amount_cents - net_cents,
+                    trainer_net_cents=net_cents,
+                    jws_token=invoice.get("jws_split_token") or "refund_direct",
+                )
             if client and is_valid_uuid(trainer_id):
                 try:
                     w_res = await client.table("trainer_wallets").select("balance_cents").eq("trainer_id", trainer_id).maybe_single().execute()
