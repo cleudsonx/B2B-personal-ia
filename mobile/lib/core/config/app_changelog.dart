@@ -44,7 +44,7 @@ class AppChangelog {
     // ==========================================
     VersionRelease(
       version: '1.15.0',
-      buildNumber: 2026110701,
+      buildNumber: 2026110702,
       date: '7 de Novembro, 2026',
       summary:
           'Versão 1.15.0: Hub de Anamnese Clínica & Inteligência de Lesões (Matriz articular interativa de 7 regiões, motor cinesiológico O(1) com detecção determinística de contraindicações e substituições protetoras de 1 toque no app).',

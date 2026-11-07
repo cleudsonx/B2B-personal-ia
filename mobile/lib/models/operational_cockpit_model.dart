@@ -1,4 +1,5 @@
 /// Modelos para o Cockpit Operacional do Treinador Zen & Radar Proativo de Evasão (UX B2B).
+library;
 
 class InactiveStudentCard {
   final String id;

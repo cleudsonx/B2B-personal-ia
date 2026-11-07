@@ -450,7 +450,7 @@ class _ClinicalJointMatrixSelectorState
                             final isChipSelected =
                                 restriction.conditions.contains(chipText);
                             return InkWell(
-                              onTap: () => _toggleCondition(jointId, chipText as String),
+                              onTap: () => _toggleCondition(jointId, chipText),
                               borderRadius: BorderRadius.circular(8),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(

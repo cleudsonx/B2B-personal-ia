@@ -250,7 +250,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
       // Carrega perfil clínico cinesiológico do aluno
       try {
         final profile = await _apiService.getStudentClinicalProfile(studentId);
-        if (mounted && _selectedIndividualStudentId == studentId && profile != null) {
+        if (mounted && _selectedIndividualStudentId == studentId && profile.hasRestrictions) {
           setState(() {
             _clinicalRestrictions = profile.restrictions;
             if (_clinicalRestrictions.isNotEmpty && _restrictionsCtrl.text.isEmpty) {
@@ -1108,7 +1108,6 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
         ),
       ],
     );
-  }
   }
 
   Widget _buildStudentAnamnesisXRayCard() {
@@ -2280,11 +2279,13 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
         if (_clinicalRestrictions.isNotEmpty) {
           try {
             await _apiService.saveStudentClinicalProfile(
-              studentId: studentId,
-              restrictions: _clinicalRestrictions,
-              generalClinicalNotes: _restrictionsCtrl.text.isNotEmpty
-                  ? _restrictionsCtrl.text.trim()
-                  : null,
+              StudentClinicalProfileModel(
+                studentId: studentId,
+                restrictions: _clinicalRestrictions,
+                generalClinicalNotes: _restrictionsCtrl.text.isNotEmpty
+                    ? _restrictionsCtrl.text.trim()
+                    : null,
+              ),
             );
           } catch (_) {}
         }
@@ -2343,19 +2344,12 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
 
     setState(() => _isEvaluatingSafety = true);
     try {
-      final exercises = <String>[];
-      for (final split in targetPlan.splits) {
-        for (final ex in split.exercises) {
-          exercises.add(ex.name);
-        }
-      }
-
       final report = await _apiService.checkBiomechanicalSafety(
         restrictions: _clinicalRestrictions,
-        freeTextRestrictions: _restrictionsCtrl.text.trim().isNotEmpty
+        rawRestrictionsText: _restrictionsCtrl.text.trim().isNotEmpty
             ? _restrictionsCtrl.text.trim()
             : null,
-        exercises: exercises,
+        workoutPlan: targetPlan.toJson(),
       );
 
       if (mounted) {
@@ -2439,6 +2433,34 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
   }
 
   Widget _buildSafetyAlertBanner() {
+    if (_isEvaluatingSafety) {
+      return Container(
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: _cardBg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _border),
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.emerald(context),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Avaliando segurança biomecânica...',
+              style: TextStyle(fontSize: 11.5, color: _textSecondary),
+            ),
+          ],
+        ),
+      );
+    }
     if (_safetyReport == null) return const SizedBox.shrink();
 
     final isDark = _isDark;

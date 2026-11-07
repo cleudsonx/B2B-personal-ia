@@ -97,7 +97,7 @@ class TrainerRetentionRadar extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
               itemCount: inactiveStudents.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              separatorBuilder: (context, index) => const SizedBox(width: 10),
               itemBuilder: (context, index) {
                 final student = inactiveStudents[index];
                 final isContacted = student.recentlyContacted48h;

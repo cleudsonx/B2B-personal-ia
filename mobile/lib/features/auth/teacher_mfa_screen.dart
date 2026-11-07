@@ -560,7 +560,6 @@ class _TeacherMfaScreenState extends State<TeacherMfaScreen> {
     bool codeSent = false;
     String? maskedTarget;
     String? resetError;
-    final messenger = ScaffoldMessenger.of(context);
 
     showDialog(
       context: context,
