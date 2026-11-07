@@ -65,14 +65,22 @@ def _extract_text(data: Dict[str, Any]) -> Optional[str]:
 
 
 def _extract_media_info(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """Detecta se a mensagem recebida é um áudio ou nota de voz (PTT)."""
+    """Detecta se a mensagem recebida é um áudio ou nota de voz (PTT), seja Evolution ou Meta."""
     msg = data.get("message") or {}
-    if "audioMessage" in msg:
-        audio = msg["audioMessage"]
+    audio = msg.get("audioMessage") or msg.get("voiceMessage")
+    if audio:
         return {
             "type": "audio",
             "mimetype": audio.get("mimetype") or "audio/ogg; codecs=opus",
             "seconds": audio.get("seconds", 0),
+        }
+    if data.get("type") == "audio" and "audio" in data:
+        meta_audio = data["audio"]
+        return {
+            "type": "audio",
+            "mimetype": meta_audio.get("mime_type") or "audio/ogg",
+            "id": meta_audio.get("id"),
+            "seconds": 0,
         }
     return None
 
@@ -363,6 +371,45 @@ def parse_workout_feedback(text: str) -> Dict[str, Any]:
         "pain_severity": pain_severity,
         "pain_description": text[:200] if is_pain else None,
     }
+
+
+BIOMECHANICAL_EQUIVALENTS: Dict[str, List[str]] = {
+    "leg press": ["Agachamento Búlgaro", "Hack Squat", "Passada Halteres"],
+    "agachamento": ["Leg Press 45", "Agachamento Hack", "Agachamento Goblet"],
+    "extensora": ["Agachamento Búlgaro", "Afundo c/ Halteres", "Sissy Squat"],
+    "flexora": ["Stiff c/ Halteres", "Elevação Pélvica", "Flexora em Pé"],
+    "supino": ["Supino Halteres", "Supino Máquina", "Flexão de Braço"],
+    "supino reto": ["Supino Halteres", "Supino Articulado", "Flexão Solo"],
+    "supino inclinado": ["Supino Inc Halteres", "Supino Inc Máquina", "Crucifixo Inclinado"],
+    "crossover": ["Crucifixo Halteres", "Peck Deck", "Crucifixo no Banco"],
+    "peck deck": ["Crucifixo Halteres", "Crossover Polia", "Supino Halteres"],
+    "puxada": ["Puxada Triângulo", "Barra Fixa Assistida", "Pulldown Cabo"],
+    "remada": ["Remada Halteres", "Remada Baixa Cabo", "Remada Cavalinho"],
+    "elevacao lateral": ["Elevação Lateral Cabo", "Elevação Halteres", "Face Pull"],
+    "desenvolvimento": ["Desenvolvimento Halteres", "Desenvolvimento Máquina", "Arnold Press"],
+    "triceps": ["Tríceps Corda", "Tríceps Francês", "Tríceps Testa"],
+    "biceps": ["Rosca Halteres", "Rosca Martelo", "Rosca Scott"],
+    "panturrilha": ["Panturrilha em Pé", "Panturrilha Leg", "Panturrilha Sentado"],
+}
+
+
+def find_exercise_swap_candidates(cmd: str, plan_text: str = "") -> List[str]:
+    """
+    Identifica qual exercício/máquina o aluno precisa substituir (a partir da mensagem ou da ficha ativa)
+    e retorna até 2 sugestões biomecânicas equivalentes para botões interativos de 1 toque.
+    """
+    # Ordena chaves por comprimento decrescente para priorizar termos compostos (ex: 'supino inclinado' antes de 'supino')
+    for key in sorted(BIOMECHANICAL_EQUIVALENTS.keys(), key=len, reverse=True):
+        if key in cmd:
+            return BIOMECHANICAL_EQUIVALENTS[key][:2]
+
+    if plan_text:
+        plan_lower = plan_text.lower()
+        for key in sorted(BIOMECHANICAL_EQUIVALENTS.keys(), key=len, reverse=True):
+            if key in plan_lower:
+                return BIOMECHANICAL_EQUIVALENTS[key][:2]
+
+    return ["Halteres", "Articulado"]
 
 
 def is_phase2_ai_allowed(sub: Any) -> bool:
@@ -1117,13 +1164,17 @@ async def process_whatsapp_question(
     )
     reply_text = response.text.strip()
     
-    # Se a pergunta for sobre substituição de exercício, gera botões de confirmação em 1 toque
-    swap_triggers = ("trocar", "substitu", "ocupad", "outro exercicio", "outra opcao", "alternativa")
+    # Se a pergunta for sobre substituição de exercício ou áudio na academia, gera botões de confirmação em 1 toque
+    swap_triggers = ("trocar", "substitu", "ocupad", "lotad", "cheio", "quebrad", "outro exercicio", "outra opcao", "alternativa", "tem outro")
     buttons = None
-    if any(t in cmd for t in swap_triggers):
+    if any(t in cmd for t in swap_triggers) or audio_bytes:
+        candidates = find_exercise_swap_candidates(cmd, _plan_summary(plan) if plan else "")
+        btn1_title = f"Trocar: {candidates[0]}"[:20]
+        btn2_title = f"Trocar: {candidates[1]}"[:20] if len(candidates) > 1 else "Trocar p/ Halteres"
         buttons = [
-            {"id": "confirm_swap|active|Halteres", "title": "Trocar p/ Halteres"},
-            {"id": "confirm_swap|active|Articulado", "title": "Trocar p/ Articulado"},
+            {"id": f"confirm_swap|active|{candidates[0]}", "title": btn1_title},
+            {"id": f"confirm_swap|active|{candidates[1] if len(candidates) > 1 else 'Halteres'}", "title": btn2_title},
+            {"id": "keep_original|active", "title": "Manter Original"},
         ]
 
     res_dict: Dict[str, Any] = {
