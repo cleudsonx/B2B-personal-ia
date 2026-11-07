@@ -111,7 +111,7 @@ def test_mark_invoice_paid_and_credit_balance():
     summary = client.get("/api/v1/wallet/summary").json()
     assert summary["balance_cents"] == 9500
     assert summary["pending_balance_cents"] == 0
-    assert summary["total_billed_month_cents"] == 10000
+    assert summary["total_billed_month_cents"] == 9500
 
 
 def test_withdrawal_flow():

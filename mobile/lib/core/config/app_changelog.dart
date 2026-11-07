@@ -53,9 +53,9 @@ class AppChangelog {
           icon: Icons.chat_rounded,
           title: 'Motor WhatsApp AI 3.0 & Check-in Ativo',
           description:
-              'Check-in automático disparado no WhatsApp do aluno ao concluir a sessão de treino, com botões interativos de RPE e triagem de dor articular.',
+              'Automação de check-in pós-treino no WhatsApp com cálculo imediato de PSE/RPE e alertas instantâneos de dor para o treinador.',
           badge: 'IA 3.0',
-          targetRoles: ['trainer', 'student'],
+          targetRoles: ['trainer'],
         ),
         ChangelogItem(
           icon: Icons.emoji_events_rounded,
@@ -71,7 +71,23 @@ class AppChangelog {
           description:
               'Suporte a mensagens de texto ou áudios na academia com recomendação biomecânica inteligente de aparelhos equivalentes e confirmação em 1 toque.',
           badge: 'BIOMECÂNICA',
-          targetRoles: ['trainer', 'student'],
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.mark_chat_read_rounded,
+          title: 'Interação Pós-Treino Direto no WhatsApp',
+          description:
+              'Questionário interativo e ágil enviado ao encerrar o treino para registrar percepção de esforço e recuperar feedback sem atrito.',
+          badge: 'NOVO',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.hub_rounded,
+          title: 'Webhook WhatsApp Cloud API & Worker Resiliente',
+          description:
+              'Infraestrutura em nuvem resiliente com processamento assíncrono de mensagens, idempotência de eventos Meta e monitoramento de entrega.',
+          badge: 'INFRA',
+          targetRoles: ['admin'],
         ),
       ],
     ),
