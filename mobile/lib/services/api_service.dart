@@ -7,6 +7,7 @@ import '../models/adaptation_model.dart';
 import '../models/split_model.dart';
 import '../models/exercise_model.dart';
 import '../models/clinical_profile_model.dart';
+import '../models/biohub_model.dart';
 import 'auth_service.dart';
 
 class ApiService {
@@ -636,5 +637,157 @@ class ApiService {
       debugPrint('[ApiService] Erro ao salvar perfil clínico: $e');
     }
     return profile;
+  }
+
+  // =========================================================================
+  // BIO-HUB 3.0 & TELEMETRIA FISIOLÓGICA
+  // =========================================================================
+
+  /// Recupera o Readiness Score (0-100) e diretriz técnica para o aluno
+  Future<ReadinessScoreModel> getStudentReadiness(
+    String studentId, {
+    String? authToken,
+  }) async {
+    try {
+      final response = await _client.get(
+        Uri.parse('$baseUrl/biohub/students/$studentId/readiness'),
+        headers: _buildHeaders(token: authToken),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return ReadinessScoreModel.fromJson(data);
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Erro ao buscar prontidão: $e');
+    }
+    return const ReadinessScoreModel(
+      score: 85,
+      level: 'high',
+      headline: 'Prontidão Neuromuscular Máxima',
+      recommendation: 'Sistema neuromuscular pronto para o treino.',
+    );
+  }
+
+  /// Salva log diário de sono, dor e estresse do aluno
+  Future<DailyBiometricLogModel> saveStudentDailyLog(
+    String studentId,
+    DailyBiometricLogModel log, {
+    String? authToken,
+  }) async {
+    try {
+      final response = await _client.post(
+        Uri.parse('$baseUrl/biohub/students/$studentId/daily-log'),
+        headers: _buildHeaders(token: authToken),
+        body: jsonEncode(log.toJson()),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return DailyBiometricLogModel.fromJson(data);
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Erro ao salvar log diário: $e');
+    }
+    return log;
+  }
+
+  /// Obtém o mapa de recomposição miofibrilar de 6 grupamentos
+  Future<MuscleRecoveryReportModel> getStudentMuscleRecovery(
+    String studentId, {
+    String? authToken,
+  }) async {
+    try {
+      final response = await _client.get(
+        Uri.parse('$baseUrl/biohub/students/$studentId/muscle-recovery'),
+        headers: _buildHeaders(token: authToken),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return MuscleRecoveryReportModel.fromJson(data);
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Erro ao buscar recuperação muscular: $e');
+    }
+    return const MuscleRecoveryReportModel(
+      overallRecoveryPercentage: 100,
+      readyMusclesCount: 6,
+      fatiguedMusclesCount: 0,
+      summary: 'Todos os grupamentos musculares recuperados.',
+    );
+  }
+
+  /// Obtém a evolução de 1RM e volume load progressivo
+  Future<StrengthEvolutionReportModel> getStudentStrengthEvolution(
+    String studentId, {
+    String? authToken,
+  }) async {
+    try {
+      final response = await _client.get(
+        Uri.parse('$baseUrl/biohub/students/$studentId/strength-evolution'),
+        headers: _buildHeaders(token: authToken),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return StrengthEvolutionReportModel.fromJson(data);
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Erro ao buscar evolução de força: $e');
+    }
+    return StrengthEvolutionReportModel(
+      studentId: studentId,
+      totalVolume7dKg: 0,
+      prsCount: 0,
+    );
+  }
+
+  /// Registra carga de exercício executado
+  Future<bool> recordExerciseLoad(
+    String studentId, {
+    required String exerciseName,
+    required double loadKg,
+    int reps = 1,
+    String? authToken,
+  }) async {
+    try {
+      final response = await _client.post(
+        Uri.parse('$baseUrl/biohub/students/$studentId/record-load'),
+        headers: _buildHeaders(token: authToken),
+        body: jsonEncode({
+          'exercise_name': exerciseName,
+          'load_kg': loadKg,
+          'reps': reps,
+        }),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('[ApiService] Erro ao registrar carga: $e');
+      return false;
+    }
+  }
+
+  /// Obtém o radar consolidado de fadiga dos alunos do personal
+  Future<TrainerFatigueRadarModel> getTrainerFatigueRadar(
+    String trainerId, {
+    String? authToken,
+  }) async {
+    try {
+      final response = await _client.get(
+        Uri.parse('$baseUrl/biohub/trainers/$trainerId/fatigue-radar'),
+        headers: _buildHeaders(token: authToken),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return TrainerFatigueRadarModel.fromJson(data);
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Erro ao buscar radar de fadiga do personal: $e');
+    }
+    return TrainerFatigueRadarModel(
+      trainerId: trainerId,
+      totalStudents: 0,
+      highReadinessCount: 0,
+      moderateReadinessCount: 0,
+      lowReadinessCount: 0,
+      criticalReadinessCount: 0,
+    );
   }
 }
