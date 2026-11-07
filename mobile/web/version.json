@@ -1,37 +1,37 @@
 {
-  "version": "1.13.8",
-  "build": 2026110602,
-  "updated_at": "2026-11-06T23:55:00.000000Z",
-  "notes": "Versão 1.13.8: Cockpit Financeiro do Treinador com Extrato de Splits Asaas em Tempo Real, filtros analíticos (Liquidados 95%, Compensação, Estornos), comprovação fiscal de não bitributação e auditoria digital de assinaturas JWS (Resolução BCB nº 4.893).",
+  "version": "1.13.9",
+  "build": 2026110603,
+  "updated_at": "2026-11-06T23:59:00.000000Z",
+  "notes": "Versão 1.13.9: Cockpit Operacional do Treinador Zen (Resumo 24h, séries concluídas pelos alunos e alertas articulares em tempo real) & Radar Anti-Evasão com reengajamento 1-toque WhatsApp e trava anti-spam de 48h.",
   "changelog": {
     "trainer": [
       {
-        "title": "Cockpit Financeiro de Splits em Tempo Real",
-        "description": "Visualização consolidada de saldos liberados vs. em compensação, faturamento mensal 95% líquido e extrato transparente de cada transação de aluno.",
+        "title": "Cockpit Operacional · Últimas 24h",
+        "description": "Card executivo no topo da lista com telemetria em tempo real de séries concluídas pelos alunos e taxa de presença semanal da carteira.",
         "badge": "NOVO"
       },
       {
-        "title": "Comprovante Fiscal de Split & Auditoria JWS",
-        "description": "Modal institucional detalhando o repasse de 95%, retenção operacional de 5%, ID da conciliação bancária Asaas e assinatura digital RFC 7515.",
-        "badge": "SEGURANÇA"
+        "title": "Alertas Articulares em Tempo Real",
+        "description": "Desconfortos e adaptações biomecânicas reportados na academia em destaque imediato com navegação em 1-toque para ver adaptação.",
+        "badge": "SAÚDE"
       },
       {
-        "title": "Filtros Rápidos de Extrato Bancário",
-        "description": "Abas dinâmicas para consultar rapidamente transações liquidadas, repasses pendentes e estornos.",
-        "badge": "MELHORIA"
+        "title": "Radar Anti-Evasão 1-Toque WhatsApp",
+        "description": "Detecção de alunos ausentes (>4 dias sem treino) com reengajamento proativo personalizado por IA e respeito à trava anti-spam de 48h.",
+        "badge": "RETENÇÃO"
       }
     ],
     "student": [
       {
-        "title": "Recibos Transparentes com Segregação Bancária",
-        "description": "Histórico de contratações com emissão direta para a subconta do treinador responsável.",
+        "title": "Acompanhamento Biomecânico Ativo",
+        "description": "Seus alertas de dor e substituições de aparelho na academia são notificados imediatamente ao seu personal trainer.",
         "badge": "MELHORIA"
       }
     ],
     "admin": [
       {
-        "title": "Endpoint Consolidado /wallet/splits",
-        "description": "Agregação atômica de métricas de split 95/5 e stream de faturas reduzindo a latência de rede no app.",
+        "title": "Endpoint Consolidado /pulse/trainer/:id/cockpit",
+        "description": "Agregação atômica de telemetria operacional 24h e radar de evasão em rota unificada de alta performance.",
         "badge": "INFRA"
       }
     ]

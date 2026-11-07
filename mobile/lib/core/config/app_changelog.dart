@@ -40,6 +40,43 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     // ==========================================
+    // v1.13.9 - COCKPIT OPERACIONAL DO TREINADOR ZEN & RADAR ANTI-EVASÃO (UX B2B)
+    // ==========================================
+    VersionRelease(
+      version: '1.13.9',
+      buildNumber: 2026110603,
+      date: '6 de Novembro, 2026',
+      summary:
+          'Versão 1.13.9: Cockpit Operacional do Treinador Zen (Resumo 24h, séries concluídas pelos alunos e alertas articulares em tempo real) & Radar Anti-Evasão com reengajamento 1-toque WhatsApp e trava anti-spam de 48h.',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.bolt_rounded,
+          title: 'Cockpit Operacional · Últimas 24h',
+          description:
+              'Card executivo no topo da lista de alunos com telemetria em tempo real de séries concluídas e taxa de presença semanal da consultoria.',
+          badge: 'NOVO',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.health_and_safety_rounded,
+          title: 'Alertas Articulares em Tempo Real',
+          description:
+              'Desconfortos e adaptações biomecânicas reportados na academia em destaque com acesso em 1-toque aos detalhes da substituição de exercício.',
+          badge: 'SAÚDE',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.radar_rounded,
+          title: 'Radar Anti-Evasão 1-Toque WhatsApp',
+          description:
+              'Detecção proativa de alunos ausentes (>4 dias sem treinar) com envio de mensagem de incentivo contextualizada por IA e trava anti-spam de 48h.',
+          badge: 'RETENÇÃO',
+          targetRoles: ['trainer'],
+        ),
+      ],
+    ),
+
+    // ==========================================
     // v1.13.8 - COCKPIT FINANCEIRO DO TREINADOR & EXTRATO DE SPLITS EM TEMPO REAL
     // ==========================================
     VersionRelease(
