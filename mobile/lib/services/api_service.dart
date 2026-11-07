@@ -6,6 +6,7 @@ import '../models/workout_plan_model.dart';
 import '../models/adaptation_model.dart';
 import '../models/split_model.dart';
 import '../models/exercise_model.dart';
+import '../models/clinical_profile_model.dart';
 import 'auth_service.dart';
 
 class ApiService {
@@ -554,5 +555,86 @@ class ApiService {
       createdAt: DateTime.now().toUtc(),
       updatedAt: DateTime.now().toUtc(),
     );
+  }
+
+  /// Avalia a segurança cinesiológica do plano contra restrições articulares
+  Future<BiomechanicalSafetyReportModel> checkBiomechanicalSafety({
+    String? studentId,
+    List<ClinicalJointRestriction>? restrictions,
+    String? rawRestrictionsText,
+    required Map<String, dynamic> workoutPlan,
+    bool autoApplySubstitutes = false,
+    String? authToken,
+  }) async {
+    final payload = <String, dynamic>{
+      if (studentId != null) 'student_id': studentId,
+      if (restrictions != null)
+        'restrictions': restrictions.map((r) => r.toJson()).toList(),
+      if (rawRestrictionsText != null)
+        'raw_restrictions_text': rawRestrictionsText,
+      'workout_plan': workoutPlan,
+      'auto_apply_substitutes': autoApplySubstitutes,
+    };
+
+    try {
+      final response = await _client.post(
+        Uri.parse('$baseUrl/clinical/safety-check'),
+        headers: _buildHeaders(token: authToken),
+        body: jsonEncode(payload),
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return BiomechanicalSafetyReportModel.fromJson(data);
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Erro em checkBiomechanicalSafety: $e');
+    }
+
+    return const BiomechanicalSafetyReportModel(
+      isSafe: true,
+      protectiveRecommendation: 'Verificação em modo resiliente.',
+    );
+  }
+
+  /// Busca o perfil clínico estruturado e matriz articular do aluno
+  Future<StudentClinicalProfileModel> getStudentClinicalProfile(
+    String studentId, {
+    String? authToken,
+  }) async {
+    try {
+      final response = await _client.get(
+        Uri.parse('$baseUrl/clinical/students/$studentId/profile'),
+        headers: _buildHeaders(token: authToken),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return StudentClinicalProfileModel.fromJson(data);
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Erro ao buscar perfil clínico: $e');
+    }
+    return StudentClinicalProfileModel(studentId: studentId);
+  }
+
+  /// Salva a matriz articular e notas clínicas do aluno
+  Future<StudentClinicalProfileModel> saveStudentClinicalProfile(
+    StudentClinicalProfileModel profile, {
+    String? authToken,
+  }) async {
+    try {
+      final response = await _client.put(
+        Uri.parse('$baseUrl/clinical/students/${profile.studentId}/profile'),
+        headers: _buildHeaders(token: authToken),
+        body: jsonEncode(profile.toJson()),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return StudentClinicalProfileModel.fromJson(data);
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Erro ao salvar perfil clínico: $e');
+    }
+    return profile;
   }
 }

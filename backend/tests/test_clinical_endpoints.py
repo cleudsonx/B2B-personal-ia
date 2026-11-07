@@ -6,6 +6,7 @@ from app.core.config import settings
 from app.services.supabase_service import supabase_service
 from app.schemas.clinical import JointRegion, JointSeverity, JointRestriction, StudentClinicalProfile
 
+settings.ENVIRONMENT = "development"
 client = TestClient(app)
 
 TRAINER_ID = "dev-user-0000-0000-000000000001"

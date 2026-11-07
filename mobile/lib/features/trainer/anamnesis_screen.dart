@@ -15,6 +15,8 @@ import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/workout_service.dart';
 import '../../services/whatsapp_direct_service.dart';
+import '../../models/clinical_profile_model.dart';
+import 'widgets/clinical_joint_matrix_selector.dart';
 
 enum StudentDispatchMode { individual, multiple }
 
@@ -62,6 +64,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
   bool _isSavingPlan = false;
   bool _isClinicalNotesExpanded = false;
   WorkoutPlanModel? _generatedPlan;
+  List<ClinicalJointRestriction> _clinicalRestrictions = [];
+  BiomechanicalSafetyReportModel? _safetyReport;
+  bool _isEvaluatingSafety = false;
 
   List<Map<String, dynamic>> _students = [];
   StudentDispatchMode _dispatchMode = StudentDispatchMode.individual;
@@ -130,6 +135,8 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
 
   void _onSelectIndividualStudent(String studentId) {
     _selectedIndividualStudentId = studentId;
+    _clinicalRestrictions = [];
+    _safetyReport = null;
     if (!_selectedMultipleStudentIds.contains(studentId)) {
       _selectedMultipleStudentIds.add(studentId);
     }
@@ -239,6 +246,21 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           }
         });
       }
+
+      // Carrega perfil clínico cinesiológico do aluno
+      try {
+        final profile = await _apiService.getStudentClinicalProfile(studentId);
+        if (mounted && _selectedIndividualStudentId == studentId && profile != null) {
+          setState(() {
+            _clinicalRestrictions = profile.restrictions;
+            if (_clinicalRestrictions.isNotEmpty && _restrictionsCtrl.text.isEmpty) {
+              _restrictionsCtrl.text = _clinicalRestrictions
+                  .map((r) => '${r.jointLabel} (${r.severityLabel})')
+                  .join(', ');
+            }
+          });
+        }
+      } catch (_) {}
     } catch (e) {
       if (mounted) setState(() => _isLoadingAnamnesis = false);
     }
@@ -412,6 +434,9 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
       setState(() {
         _generatedPlan = plan;
       });
+
+      // Avalia a segurança biomecânica em relação às restrições articulares
+      await _evaluateSafety(plan);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1043,106 +1068,47 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
   }
 
   Widget _buildRestrictionsSection() {
-    const quickRestrictions = [
-      'Ombro',
-      'Coluna Lombar',
-      'Joelho',
-      'Punho',
-      'Cervical',
-      'Sem Restrições',
-    ];
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('BLINDAGEM ARTICULAR', 'Dores, Lesões ou Limitações'),
+        _buildSectionHeader('BLINDAGEM ARTICULAR', 'Matriz de Lesões & Limitações Cinesiológicas'),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: quickRestrictions.map((tag) {
-            final isNone = tag == 'Sem Restrições';
-            final text = _restrictionsCtrl.text.toLowerCase();
-            final isSelected = isNone
-                ? (text.isEmpty || text.contains('sem restriç') || text.contains('nenhum'))
-                : text.contains(tag.toLowerCase());
-
-            return InkWell(
-              onTap: () {
-                setState(() {
-                  if (isNone) {
-                    _restrictionsCtrl.clear();
-                  } else {
-                    final current = _restrictionsCtrl.text.trim();
-                    if (isSelected) {
-                      _restrictionsCtrl.text = current
-                          .replaceAll(RegExp(tag, caseSensitive: false), '')
-                          .replaceAll(RegExp(r',\s*,|\s*,\s*$|^\s*,\s*'), '')
-                          .trim();
-                    } else {
-                      _restrictionsCtrl.text = current.isEmpty ? tag : '$current, $tag';
-                    }
-                  }
-                });
-              },
-              borderRadius: BorderRadius.circular(20),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? (isNone
-                          ? MetaColors.emerald.withValues(alpha: 0.15)
-                          : Colors.amber.shade900.withValues(alpha: 0.2))
-                      : _cardBg,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isSelected
-                        ? (isNone ? MetaColors.emerald : Colors.amber)
-                        : _border,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isSelected ? Icons.check_circle_rounded : Icons.add_circle_outline_rounded,
-                      size: 13,
-                      color: isSelected
-                          ? (isNone ? MetaColors.emerald : Colors.amber)
-                          : _textSecondary,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      tag,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                        color: isSelected
-                            ? (isNone ? MetaColors.emerald : Colors.amber)
-                            : _textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
+        ClinicalJointMatrixSelector(
+          initialRestrictions: _clinicalRestrictions,
+          onChanged: (restrictions) {
+            setState(() {
+              _clinicalRestrictions = restrictions;
+              if (restrictions.isEmpty) {
+                _restrictionsCtrl.clear();
+              } else {
+                _restrictionsCtrl.text = restrictions
+                    .map((r) => '${r.jointLabel} (${r.severityLabel})')
+                    .join(', ');
+              }
+            });
+          },
+          onClearAll: () {
+            setState(() {
+              _clinicalRestrictions = [];
+              _restrictionsCtrl.clear();
+            });
+          },
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         TextFormField(
           controller: _restrictionsCtrl,
           maxLines: 2,
           style: TextStyle(color: _textPrimary),
           decoration: _inputDecoration(
             context,
-            'Detalhes das Restrições (Opcional)',
+            'Observações Adicionais / Dores Específicas',
             prefixIcon: Icons.health_and_safety_outlined,
-            hint: 'Ex: Evitar supino reto livre devido a impacto no ombro',
+            hint: 'Ex: Evitar supino reto livre devido a impacto no ombro direito',
           ),
         ),
       ],
     );
+  }
   }
 
   Widget _buildStudentAnamnesisXRayCard() {
@@ -2311,6 +2277,17 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
           plan: _generatedPlan!,
           clientId: studentId,
         );
+        if (_clinicalRestrictions.isNotEmpty) {
+          try {
+            await _apiService.saveStudentClinicalProfile(
+              studentId: studentId,
+              restrictions: _clinicalRestrictions,
+              generalClinicalNotes: _restrictionsCtrl.text.isNotEmpty
+                  ? _restrictionsCtrl.text.trim()
+                  : null,
+            );
+          } catch (_) {}
+        }
         successCount++;
       }
 
@@ -2348,6 +2325,352 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
     } finally {
       if (mounted) setState(() => _isSavingPlan = false);
     }
+  }
+
+  Future<void> _evaluateSafety([WorkoutPlanModel? planToEval]) async {
+    final targetPlan = planToEval ?? _generatedPlan;
+    if (targetPlan == null) return;
+
+    if (_clinicalRestrictions.isEmpty && _restrictionsCtrl.text.trim().isEmpty) {
+      if (mounted) {
+        setState(() {
+          _safetyReport = null;
+          _isEvaluatingSafety = false;
+        });
+      }
+      return;
+    }
+
+    setState(() => _isEvaluatingSafety = true);
+    try {
+      final exercises = <String>[];
+      for (final split in targetPlan.splits) {
+        for (final ex in split.exercises) {
+          exercises.add(ex.name);
+        }
+      }
+
+      final report = await _apiService.checkBiomechanicalSafety(
+        restrictions: _clinicalRestrictions,
+        freeTextRestrictions: _restrictionsCtrl.text.trim().isNotEmpty
+            ? _restrictionsCtrl.text.trim()
+            : null,
+        exercises: exercises,
+      );
+
+      if (mounted) {
+        setState(() {
+          _safetyReport = report;
+          _isEvaluatingSafety = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isEvaluatingSafety = false);
+      }
+    }
+  }
+
+  void _applyProtectiveSubstitutes() {
+    if (_generatedPlan == null || _safetyReport == null) return;
+    final dangerous = _safetyReport!.dangerousExercises;
+    if (dangerous.isEmpty) return;
+
+    final replacements = <String, ContraindicatedExerciseModel>{};
+    for (final d in dangerous) {
+      replacements[d.exerciseName.toLowerCase().trim()] = d;
+    }
+
+    int appliedCount = 0;
+    final updatedSplits = _generatedPlan!.splits.map((split) {
+      final updatedExercises = split.exercises.map((ex) {
+        final exLower = ex.name.toLowerCase().trim();
+        ContraindicatedExerciseModel? match;
+        for (final entry in replacements.entries) {
+          if (exLower.contains(entry.key) || entry.key.contains(exLower)) {
+            match = entry.value;
+            break;
+          }
+        }
+
+        if (match != null && match.safeSubstitute.isNotEmpty) {
+          appliedCount++;
+          return ex.copyWith(
+            name: match.safeSubstitute,
+            notes: ex.notes.isEmpty
+                ? 'Substituição protetora (Blindagem Cinesiológica - ${match.joint}): ${match.reason}'
+                : '${ex.notes} [Proteção: ${match.safeSubstitute} aplicado devido a ${match.reason}]',
+          );
+        }
+        return ex;
+      }).toList();
+
+      return split.copyWith(exercises: updatedExercises);
+    }).toList();
+
+    final newPlan = _generatedPlan!.copyWith(splits: updatedSplits);
+    setState(() {
+      _generatedPlan = newPlan;
+    });
+
+    _evaluateSafety(newPlan);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.emerald(context),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Row(
+            children: [
+              const Icon(Icons.shield_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '$appliedCount substituição(ões) protetora(s) aplicada(s) com sucesso!',
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+  }
+
+  Widget _buildSafetyAlertBanner() {
+    if (_safetyReport == null) return const SizedBox.shrink();
+
+    final isDark = _isDark;
+
+    if (_safetyReport!.isSafe) {
+      return Container(
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.emeraldBg(context),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppColors.emerald(context).withValues(alpha: 0.5),
+            width: 1.2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.emerald(context).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.verified_user_rounded,
+                color: AppColors.emerald(context),
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Blindagem Cinesiológica 100% Ativa',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.emerald(context),
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    'Nenhuma contraindicação biomecânica detectada para o perfil do aluno.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: _textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final dangerList = _safetyReport!.dangerousExercises;
+    final count = _safetyReport!.contraindicationsCount;
+
+    return Container(
+      key: const Key('clinical_safety_alert_banner'),
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF2A1515) : const Color(0xFFFFF1F0),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFFE53935),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFE53935).withValues(alpha: 0.12),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE53935).withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Color(0xFFE53935),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Alerta Biomecânico: $count Contraindicação(ões)',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFE53935),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Exercício(s) com risco potencial para as articulações registradas.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: _textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ...dangerList.map((danger) => Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1F1B1B) : Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: const Color(0xFFE53935).withValues(alpha: 0.3),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.cancel_outlined,
+                      size: 14,
+                      color: Color(0xFFE53935),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        danger.exerciseName,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFE53935),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE53935).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        danger.joint.toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFFE53935),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Motivo: ${danger.reason}',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    color: _textSecondary,
+                  ),
+                ),
+                if (danger.safeSubstitute.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle_rounded,
+                        size: 13,
+                        color: AppColors.emerald(context),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'Substituto sugerido: ${danger.safeSubstitute}',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.emerald(context),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          )),
+          const SizedBox(height: 4),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              key: const Key('btn_apply_protective_substitutes'),
+              icon: const Icon(Icons.auto_fix_high_rounded, size: 15),
+              label: const Text(
+                'Aplicar Substituições Seguras (1-Toque)',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.emerald(context),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: _applyProtectiveSubstitutes,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildPlanReviewer(WorkoutPlanModel plan) {
@@ -2550,6 +2873,7 @@ class _TrainerAnamnesisScreenState extends State<TrainerAnamnesisScreen> {
                     ],
                   ),
                 ),
+                _buildSafetyAlertBanner(),
               ],
             ),
           ),
