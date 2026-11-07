@@ -8,6 +8,7 @@ import '../models/split_model.dart';
 import '../models/exercise_model.dart';
 import '../models/clinical_profile_model.dart';
 import '../models/biohub_model.dart';
+import '../models/public_showcase_model.dart';
 import 'auth_service.dart';
 
 class ApiService {
@@ -789,5 +790,38 @@ class ApiService {
       lowReadinessCount: 0,
       criticalReadinessCount: 0,
     );
+  }
+
+  /// Vitrine Pública & Lead Magnet
+  Future<PublicTrainerProfile?> getPublicTrainerProfile(String username) async {
+    try {
+      final response = await _client.get(
+        Uri.parse('$baseUrl/public/trainers/${Uri.encodeComponent(username)}'),
+        headers: _buildHeaders(),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return PublicTrainerProfile.fromJson(data);
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Falha ao carregar perfil público do treinador $username: $e');
+    }
+    return null;
+  }
+
+  Future<LeadScreeningResponse> submitLeadScreening(
+    String username,
+    LeadScreeningRequest request,
+  ) async {
+    final response = await _client.post(
+      Uri.parse('$baseUrl/public/trainers/${Uri.encodeComponent(username)}/lead-screening'),
+      headers: _buildHeaders(),
+      body: jsonEncode(request.toJson()),
+    );
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return LeadScreeningResponse.fromJson(data);
+    }
+    throw Exception('Falha ao enviar triagem: HTTP ${response.statusCode}');
   }
 }
