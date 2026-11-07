@@ -88,6 +88,8 @@ class SupabaseService:
         self._mem_checkout_sessions: Dict[str, Dict[str, Any]] = {}
         self._mem_pulse_events: Dict[str, Dict[str, Any]] = {}
         self._mem_clinical_profiles: Dict[str, Dict[str, Any]] = {}
+        self._mem_student_biometrics: Dict[str, List[Dict[str, Any]]] = {}
+        self._mem_exercise_loads: List[Dict[str, Any]] = []
 
     @staticmethod
     def _extract_rpc_row(res_data: Any) -> tuple[Dict[str, Any], Any]:
@@ -3440,6 +3442,334 @@ class SupabaseService:
                 logger.debug(f"[record_exercise_load] Inserção em DB ignorada: {e}")
 
         return entry
+
+    # =========================================================================
+    # BIO-HUB 3.0 & TELEMETRIA FISIOLÓGICA (READINESS, 1RM, RECUPERAÇÃO)
+    # =========================================================================
+
+    async def save_student_biometrics(
+        self, student_id: str, log: Any
+    ) -> Any:
+        """Salva o log biométrico diário do aluno (sono, dor, estresse) no Supabase e em memória."""
+        from app.schemas.biohub import DailyBiometricLog
+        s_uuid = to_valid_uuid_str(student_id)
+        now_iso = datetime.now(timezone.utc).isoformat()
+        today_date = now_iso[:10]
+
+        log_obj = log if isinstance(log, DailyBiometricLog) else DailyBiometricLog(**log)
+        log_dict = log_obj.model_dump()
+        log_dict["student_id"] = student_id
+        log_dict["log_date"] = today_date
+        log_dict["created_at"] = now_iso
+
+        if student_id not in self._mem_student_biometrics:
+            self._mem_student_biometrics[student_id] = []
+        self._mem_student_biometrics[student_id] = [
+            b for b in self._mem_student_biometrics[student_id] if b.get("log_date") != today_date
+        ]
+        self._mem_student_biometrics[student_id].insert(0, log_dict)
+
+        client = await self.get_client()
+        if client and is_valid_uuid(s_uuid):
+            try:
+                await client.table("student_daily_biometrics").upsert({
+                    "student_id": s_uuid,
+                    "log_date": today_date,
+                    "sleep_hours": log_obj.sleep_hours,
+                    "sleep_quality": log_obj.sleep_quality,
+                    "perceived_stress": log_obj.perceived_stress,
+                    "soreness_level": log_obj.soreness_level,
+                    "has_joint_pain": log_obj.has_joint_pain,
+                    "notes": log_obj.notes,
+                    "created_at": now_iso,
+                }, on_conflict="student_id,log_date").execute()
+            except Exception as e:
+                logger.debug(f"[save_student_biometrics] DB upsert ignorado: {e}")
+
+        return log_obj
+
+    async def get_student_biometrics(
+        self, student_id: str, limit: int = 7
+    ) -> List[Any]:
+        """Recupera o histórico recente de biometrias diárias do aluno."""
+        from app.schemas.biohub import DailyBiometricLog
+        s_uuid = to_valid_uuid_str(student_id)
+        client = await self.get_client()
+        if client and is_valid_uuid(s_uuid):
+            try:
+                res = await client.table("student_daily_biometrics")\
+                    .select("*")\
+                    .eq("student_id", s_uuid)\
+                    .order("log_date", desc=True)\
+                    .limit(limit)\
+                    .execute()
+                if res and res.data:
+                    return [DailyBiometricLog(**row) for row in res.data]
+            except Exception as e:
+                logger.debug(f"[get_student_biometrics] DB query ignorada: {e}")
+
+        mem_logs = self._mem_student_biometrics.get(student_id, [])
+        return [DailyBiometricLog(**item) for item in mem_logs[:limit]]
+
+    async def get_student_readiness(self, student_id: str) -> Any:
+        """Calcula o Readiness Score atual do aluno combinando sono, estresse, dor articular e carga recente."""
+        from app.services.biohub_engine import biohub_engine
+        
+        biometrics_list = await self.get_student_biometrics(student_id, limit=1)
+        latest_bio = biometrics_list[0] if biometrics_list else None
+
+        has_joint_pain = latest_bio.has_joint_pain if latest_bio else False
+        if not has_joint_pain:
+            try:
+                profile = await self.get_student_clinical_profile(student_id)
+                if profile and profile.risk_level == "high":
+                    has_joint_pain = True
+            except Exception:
+                pass
+
+        streak = 0
+        now = datetime.now(timezone.utc)
+        recent_rpes: List[float] = []
+        client = await self.get_client()
+        s_uuid = to_valid_uuid_str(student_id)
+        if client and is_valid_uuid(s_uuid):
+            try:
+                cutoff = (now - timedelta(days=7)).isoformat()
+                ws_res = await client.table("workout_sessions")\
+                    .select("completed_at, rpe")\
+                    .eq("client_id", s_uuid)\
+                    .gte("completed_at", cutoff)\
+                    .order("completed_at", desc=True)\
+                    .execute()
+                if ws_res and ws_res.data:
+                    for row in ws_res.data:
+                        if row.get("rpe") is not None:
+                            recent_rpes.append(float(row["rpe"]))
+            except Exception as e:
+                logger.debug(f"[get_student_readiness] workout_sessions query ignorada: {e}")
+
+        if not recent_rpes and hasattr(self, "_mem_pulse_events"):
+            for ev in self._mem_pulse_events.values():
+                if ev.get("client_id") in (student_id, s_uuid) and ev.get("event_type") == "workout_completed":
+                    meta = ev.get("metadata") or {}
+                    if "rpe" in meta:
+                        try:
+                            recent_rpes.append(float(meta["rpe"]))
+                        except (ValueError, TypeError):
+                            pass
+
+        avg_rpe = sum(recent_rpes) / len(recent_rpes) if recent_rpes else None
+
+        return biohub_engine.calculate_readiness_score(
+            biometrics=latest_bio,
+            avg_recent_rpe=avg_rpe,
+            consecutive_training_days=streak,
+            has_joint_pain=has_joint_pain,
+        )
+
+    async def get_student_muscle_recovery(self, student_id: str) -> Any:
+        """Determina a taxa de regeneração muscular de 6 grupamentos anatômicos."""
+        from app.services.biohub_engine import biohub_engine, MuscleGroup
+        s_uuid = to_valid_uuid_str(student_id)
+        now = datetime.now(timezone.utc)
+
+        last_trained_map: Dict[MuscleGroup, float] = {}
+
+        client = await self.get_client()
+        records: List[Dict[str, Any]] = []
+        if client and is_valid_uuid(s_uuid):
+            try:
+                res = await client.table("student_exercise_loads")\
+                    .select("exercise_name, recorded_at")\
+                    .eq("client_id", s_uuid)\
+                    .order("recorded_at", desc=True)\
+                    .limit(50)\
+                    .execute()
+                if res and res.data:
+                    records.extend(res.data)
+            except Exception as e:
+                logger.debug(f"[get_student_muscle_recovery] DB query ignorada: {e}")
+
+        mem_loads = getattr(self, "_mem_exercise_loads", [])
+        for entry in mem_loads:
+            if entry.get("client_id") in (student_id, s_uuid):
+                records.append(entry)
+
+        for rec in records:
+            ex_name = rec.get("exercise_name") or ""
+            group = biohub_engine.map_exercise_to_muscle_group(ex_name)
+            if not group or group in last_trained_map:
+                continue
+
+            rec_at_str = rec.get("recorded_at")
+            if rec_at_str:
+                try:
+                    dt = datetime.fromisoformat(str(rec_at_str).replace("Z", "+00:00"))
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    hours_ago = max(0.0, (now - dt).total_seconds() / 3600.0)
+                    last_trained_map[group] = hours_ago
+                except Exception:
+                    pass
+
+        return biohub_engine.calculate_muscle_recovery(last_trained_map)
+
+    async def get_student_strength_evolution(self, student_id: str) -> Any:
+        """Consolida os recordes pessoais (PRs) e o volume load acumulado do aluno."""
+        from app.services.biohub_engine import biohub_engine
+        from app.schemas.biohub import StrengthPrItem, StrengthEvolutionReport
+        s_uuid = to_valid_uuid_str(student_id)
+        now = datetime.now(timezone.utc)
+        cutoff_7d = now - timedelta(days=7)
+
+        records: List[Dict[str, Any]] = []
+        client = await self.get_client()
+        if client and is_valid_uuid(s_uuid):
+            try:
+                res = await client.table("student_exercise_loads")\
+                    .select("*")\
+                    .eq("client_id", s_uuid)\
+                    .order("recorded_at", asc=True)\
+                    .execute()
+                if res and res.data:
+                    records.extend(res.data)
+            except Exception as e:
+                logger.debug(f"[get_student_strength_evolution] DB query ignorada: {e}")
+
+        mem_loads = getattr(self, "_mem_exercise_loads", [])
+        for entry in mem_loads:
+            if entry.get("client_id") in (student_id, s_uuid):
+                if not any(r.get("id") == entry.get("id") for r in records):
+                    records.append(entry)
+
+        def _parse_date(item):
+            raw = item.get("recorded_at")
+            if not raw:
+                return datetime.min.replace(tzinfo=timezone.utc)
+            try:
+                d = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+                return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+            except Exception:
+                return datetime.min.replace(tzinfo=timezone.utc)
+
+        records.sort(key=_parse_date)
+
+        total_volume_7d = 0.0
+        prs_by_exercise: Dict[str, StrengthPrItem] = {}
+        all_prs: List[StrengthPrItem] = []
+
+        for row in records:
+            ex_name = (row.get("exercise_name") or "Exercício").strip()
+            load_kg = float(row.get("load_kg") or 0.0)
+            reps = int(row.get("reps") or 1)
+            rec_date = _parse_date(row)
+            rec_iso = rec_date.isoformat()
+
+            est_1rm, formula = biohub_engine.calculate_1rm(load_kg, reps)
+            vol = biohub_engine.calculate_volume_load(load_kg, reps, 1)
+
+            if rec_date >= cutoff_7d:
+                total_volume_7d += vol
+
+            ex_key = ex_name.lower()
+            prev_pr = prs_by_exercise.get(ex_key)
+            if prev_pr is None or est_1rm > prev_pr.estimated_1rm:
+                gain = None
+                if prev_pr and prev_pr.estimated_1rm > 0:
+                    gain = round(((est_1rm - prev_pr.estimated_1rm) / prev_pr.estimated_1rm) * 100, 1)
+
+                item = StrengthPrItem(
+                    exercise_name=ex_name,
+                    weight_kg=load_kg,
+                    reps=reps,
+                    estimated_1rm=est_1rm,
+                    formula_used=formula,
+                    volume_load_kg=vol,
+                    achieved_at=rec_iso,
+                    previous_1rm=prev_pr.estimated_1rm if prev_pr else None,
+                    gain_percent=gain,
+                )
+                prs_by_exercise[ex_key] = item
+                all_prs.append(item)
+
+        key_lift_keys = ["supino", "agachamento", "terra", "desenvolvimento", "remada"]
+        key_lifts: Dict[str, StrengthPrItem] = {}
+        for ex_key, pr_item in prs_by_exercise.items():
+            for kl in key_lift_keys:
+                if kl in ex_key and kl not in key_lifts:
+                    key_lifts[kl] = pr_item
+
+        return StrengthEvolutionReport(
+            student_id=student_id,
+            total_volume_7d_kg=round(total_volume_7d, 1),
+            prs_count=len(all_prs),
+            recent_prs=list(reversed(all_prs))[:10],
+            key_lifts=key_lifts,
+        )
+
+    async def get_trainer_fatigue_radar(self, trainer_id: str) -> Dict[str, Any]:
+        """Gera o radar fisiológico consolidado de fadiga e risco de sobrecarga de todos os alunos do personal."""
+        from app.services.biohub_engine import biohub_engine
+        from app.schemas.biohub import ReadinessLevel
+        t_uuid = to_valid_uuid_str(trainer_id)
+        students = await self.list_students(trainer_id)
+
+        total = len(students)
+        high_count = 0
+        moderate_count = 0
+        low_count = 0
+        critical_count = 0
+
+        needing_deload = []
+        students_summary = []
+
+        for s in students:
+            s_id = s.id
+            s_name = getattr(s, "full_name", None) or getattr(s, "name", "Aluno")
+            readiness = await self.get_student_readiness(s_id)
+            
+            if readiness.level == ReadinessLevel.HIGH:
+                high_count += 1
+            elif readiness.level == ReadinessLevel.MODERATE:
+                moderate_count += 1
+            elif readiness.level == ReadinessLevel.LOW:
+                low_count += 1
+            elif readiness.level == ReadinessLevel.CRITICAL:
+                critical_count += 1
+
+            deload = biohub_engine.evaluate_deload_need(
+                recent_rpe_list=[],
+                consecutive_low_readiness_days=3 if readiness.score < 50 else 0,
+            )
+
+            if deload.should_deload or readiness.level in (ReadinessLevel.LOW, ReadinessLevel.CRITICAL):
+                needing_deload.append({
+                    "student_id": s_id,
+                    "student_name": s_name,
+                    "readiness_score": readiness.score,
+                    "readiness_level": readiness.level.value,
+                    "urgency": deload.urgency if deload.should_deload else "moderate",
+                    "reasons": deload.reasons if deload.reasons else [readiness.headline],
+                })
+
+            students_summary.append({
+                "student_id": s_id,
+                "student_name": s_name,
+                "readiness_score": readiness.score,
+                "readiness_level": readiness.level.value,
+                "should_deload": deload.should_deload,
+            })
+
+        return {
+            "trainer_id": trainer_id,
+            "total_students": total,
+            "high_readiness_count": high_count,
+            "moderate_readiness_count": moderate_count,
+            "low_readiness_count": low_count,
+            "critical_readiness_count": critical_count,
+            "students_needing_deload": needing_deload,
+            "students_summary": students_summary,
+        }
 
 supabase_service = SupabaseService()
 

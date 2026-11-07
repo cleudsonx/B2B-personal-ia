@@ -3,7 +3,7 @@ from app.api.v1.endpoints import (
     workouts, adaptations, assistant, subscriptions, validators,
     auth, webhooks, public, whatsapp, whatsapp_ai, invites,
     exercises, wallet, consultancy_plans, student_pulse, notifications,
-    clinical
+    clinical, biohub
 )
 
 api_router = APIRouter()
@@ -27,3 +27,4 @@ api_router.include_router(wallet.router, prefix="/wallet", tags=["Wallet"])
 api_router.include_router(consultancy_plans.router, tags=["Consultancy Plans"])
 api_router.include_router(clinical.router, prefix="/clinical", tags=["Clinical Anamnesis"])
 api_router.include_router(clinical.router, prefix="/workouts/clinical", tags=["Clinical Anamnesis"])
+api_router.include_router(biohub.router, prefix="/biohub", tags=["Bio-Hub 3.0"])

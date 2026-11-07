@@ -39,6 +39,39 @@ class BioHubEngine:
         MuscleGroup.ARMS_CORE: "Braços & Core",
     }
 
+    @classmethod
+    def map_exercise_to_muscle_group(cls, exercise_name: str) -> Optional[MuscleGroup]:
+        """Classifica heuristicamente o grupamento muscular predominante pelo nome do exercício."""
+        name = (exercise_name or "").lower().strip()
+        if not name:
+            return None
+
+        # Peitoral
+        if any(k in name for k in ["supino", "crucifixo", "peitoral", "crossover", "peck deck", "chest press", "flexao", "flexão"]):
+            return MuscleGroup.CHEST
+
+        # Costas / Dorsais
+        if any(k in name for k in ["puxad", "remada", "barra fixa", "pulldown", "dorsal", "pullover", "low row", "cavalinho"]):
+            return MuscleGroup.BACK
+
+        # Quadríceps
+        if any(k in name for k in ["agachamento", "leg press", "extensor", "afundo", "hack", "bulgaro", "búlgaro", "passada"]):
+            return MuscleGroup.QUADRICEPS
+
+        # Posterior & Glúteos
+        if any(k in name for k in ["stiff", "flexor", "levantamento terra", "terra", "elevacao pelvica", "elevação pélvica", "gluteo", "glúteo", "rdl", "good morning", "hip thrust"]):
+            return MuscleGroup.HAMSTRINGS_GLUTES
+
+        # Ombros / Deltoides
+        if any(k in name for k in ["desenvolvimento", "elevacao lateral", "elevação lateral", "elevacao frontal", "elevação frontal", "deltoide", "face pull", "militar"]):
+            return MuscleGroup.SHOULDERS
+
+        # Braços & Core
+        if any(k in name for k in ["rosca", "triceps", "tríceps", "biceps", "bíceps", "abdominal", "prancha", "antebraco", "antebraço", "paralela", "martelo", "frances"]):
+            return MuscleGroup.ARMS_CORE
+
+        return None
+
     # =========================================================================
     # 1. CÁLCULO DE 1RM & VOLUME LOAD
     # =========================================================================
