@@ -1150,6 +1150,60 @@ class WorkoutService {
     return false;
   }
 
+  /// Dispara o check-in proativo pós-treino no WhatsApp do aluno solicitando RPE (1-10) e triagem de dor.
+  static Future<bool> triggerPostWorkoutWhatsAppCheckin({
+    required String studentId,
+    String? workoutTitle,
+    String? workoutSessionId,
+    String? studentPhone,
+    String? studentName,
+    String? trainerId,
+  }) async {
+    try {
+      final uri = Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/checkin/post-workout');
+      final res = await http
+          .post(
+            uri,
+            headers: _apiHeaders,
+            body: jsonEncode({
+              'student_id': studentId,
+              if (workoutTitle != null) 'workout_title': workoutTitle,
+              if (workoutSessionId != null) 'workout_session_id': workoutSessionId,
+              if (studentPhone != null) 'student_phone': studentPhone,
+              if (studentName != null) 'student_name': studentName,
+              if (trainerId != null) 'trainer_id': trainerId,
+            }),
+          )
+          .timeout(const Duration(seconds: 5));
+      return res.statusCode == 200;
+    } catch (e) {
+      debugPrint('[WorkoutService] Aviso ao disparar check-in pós-treino via WhatsApp: $e');
+      return false;
+    }
+  }
+
+  /// Dispara o envio do Resumo Executivo Semanal com PRs e Retenção para o WhatsApp do próprio Personal.
+  static Future<Map<String, dynamic>?> sendWeeklyDigestToTrainer({String? trainerPhone}) async {
+    try {
+      final uri = Uri.parse('${AppConfig.apiBaseUrl}/whatsapp/send-weekly-digest');
+      final res = await http
+          .post(
+            uri,
+            headers: _apiHeaders,
+            body: jsonEncode({
+              if (trainerPhone != null) 'trainer_phone': trainerPhone,
+            }),
+          )
+          .timeout(const Duration(seconds: 6));
+      if (res.statusCode == 200) {
+        return jsonDecode(res.body) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      debugPrint('[WorkoutService] Aviso ao enviar resumo semanal via WhatsApp: $e');
+    }
+    return null;
+  }
+
   /// Atualiza os dados de um aluno (nome, email, telefone, objetivo, restrições)
   static Future<bool> updateStudent({
     required String studentId,

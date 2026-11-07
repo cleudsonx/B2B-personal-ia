@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'workout_service.dart';
 
 /// Sessão de treino concluída pelo aluno.
 class WorkoutSessionRecord {
@@ -188,6 +189,14 @@ class WorkoutSessionService {
   Future<SessionSaveStatus> complete(WorkoutSessionRecord record) async {
     try {
       await _push(record);
+      // Dispara check-in proativo pós-treino no WhatsApp do aluno em segundo plano
+      try {
+        WorkoutService.triggerPostWorkoutWhatsAppCheckin(
+          studentId: record.clientId,
+          workoutTitle: record.splitName ?? record.splitIdentifier ?? 'Treino do Dia',
+          workoutSessionId: record.id,
+        );
+      } catch (_) {}
       return SessionSaveStatus.synced;
     } catch (_) {
       final list = await pending(record.clientId);

@@ -2441,6 +2441,46 @@ class _TrainerAiAssistantScreenState extends State<TrainerAiAssistantScreen> {
               }).toList(),
             ),
           ],
+          if (((digest['personal_records'] as List?) ?? []).isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              '⚡ Recordes de Carga Batidos (PRs da Semana):',
+              style: TextStyle(
+                color: MetaColors.subtext(context),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: ((digest['personal_records'] as List?) ?? []).take(4).map((raw) {
+                final item = Map<String, dynamic>.from(raw as Map);
+                final name = (item['student_name'] ?? 'Aluno').toString().split(' ').first;
+                final ex = (item['exercise_name'] ?? 'Exercício').toString();
+                final load = item['load_kg'] ?? 0;
+                final inc = item['increase_kg'];
+                final incTxt = inc != null ? ' (+${inc}kg)' : '';
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: MetaColors.highlight(context),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.4)),
+                  ),
+                  child: Text(
+                    '🚀 $name: $ex ($load kg$incTxt)',
+                    style: TextStyle(
+                      color: MetaColors.text(context),
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
           const SizedBox(height: 14),
           ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 52),
