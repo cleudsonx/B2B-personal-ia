@@ -11,6 +11,7 @@ modelo barato (flash-lite). Pensado para custo mínimo e segurança:
 import base64
 import hmac
 import logging
+import re
 import time
 from collections import defaultdict
 from typing import Any, Dict, List, Optional
@@ -262,6 +263,108 @@ def _is_acute_pain(cmd: str) -> bool:
     return any(p in cmd for p in pain_triggers)
 
 
+ANATOMICAL_LOCATIONS = {
+    "joelho": "Joelho",
+    "joelhos": "Joelho",
+    "ombro": "Ombro",
+    "ombros": "Ombro",
+    "lombar": "Lombar",
+    "coluna": "Coluna / Lombar",
+    "costas": "Costas",
+    "cotovelo": "Cotovelo",
+    "cotovelos": "Cotovelo",
+    "punho": "Punho",
+    "punhos": "Punho",
+    "pulso": "Punho",
+    "pulsos": "Punho",
+    "quadril": "Quadril",
+    "gluteo": "Glúteo",
+    "tornozelo": "Tornozelo",
+    "tornozelos": "Tornozelo",
+    "pescoco": "Pescoço / Cervical",
+    "cervical": "Pescoço / Cervical",
+    "trapezio": "Trapézio",
+}
+
+PAIN_KEYWORDS = (
+    "dor", "dores", "doendo", "doer", "fisgada", "pontada", "estalo", "estalando",
+    "lesao", "machuquei", "machucou", "incomodo", "desconforto"
+)
+
+PAIN_NEGATIONS = (
+    "sem dor", "sem dores", "nenhuma dor", "zero dor", "zero dores",
+    "sem desconforto", "nao senti dor", "nao senti nada", "sem lesao", "100%", "tudo bem", "tudo certo"
+)
+
+
+def parse_workout_feedback(text: str) -> Dict[str, Any]:
+    """
+    Analisa a mensagem do aluno e extrai com custo zero de tokens:
+    - rpe: int (1 a 10) ou None
+    - is_pain: bool
+    - pain_location: str ou None (ex: 'Joelho', 'Ombro', 'Lombar')
+    - pain_severity: str ('Moderada' ou 'Alta')
+    - pain_description: str ou None
+    """
+    cmd = _normalize_command(text)
+
+    # 1. Extração de RPE / PSE / Esforço
+    rpe_val: Optional[int] = None
+    m1 = re.search(r'\b(?:rpe|pse|esforco|nota|intensidade|percepcao)\s*[:=]?\s*(\d{1,2})\b', cmd)
+    if m1:
+        val = int(m1.group(1))
+        if 1 <= val <= 10:
+            rpe_val = val
+
+    if rpe_val is None:
+        m2 = re.search(r'\b(\d{1,2})\s*(?:/|de)\s*10\b', cmd)
+        if m2:
+            val = int(m2.group(1))
+            if 1 <= val <= 10:
+                rpe_val = val
+
+    if rpe_val is None:
+        if cmd.isdigit() and 1 <= int(cmd) <= 10:
+            rpe_val = int(cmd)
+        else:
+            m3 = re.match(r'^rpe\s*(\d{1,2})$', cmd)
+            if m3:
+                val = int(m3.group(1))
+                if 1 <= val <= 10:
+                    rpe_val = val
+
+    # 2. Extração de Alerta de Desconforto / Dor Articular
+    is_pain = False
+    pain_location: Optional[str] = None
+    pain_severity = "Moderada"
+
+    has_negation = any(neg in cmd for neg in PAIN_NEGATIONS)
+    has_pain_kw = any(kw in cmd for kw in PAIN_KEYWORDS)
+
+    if has_pain_kw:
+        is_negated = has_negation and not any(k in cmd for k in ("mas dor", "mas senti", "porem senti", "porem dor", "so no ", "so na "))
+        if not is_negated:
+            for term, canonical in ANATOMICAL_LOCATIONS.items():
+                if re.search(r'\b' + re.escape(term) + r'\b', cmd):
+                    pain_location = canonical
+                    is_pain = True
+                    break
+            if not pain_location:
+                is_pain = True
+                pain_location = "Articular Geral"
+
+            if _is_acute_pain(cmd) or any(w in cmd for w in ("muita dor", "dor forte", "aguda", "travou", "insuportavel")):
+                pain_severity = "Alta"
+
+    return {
+        "rpe": rpe_val,
+        "is_pain": is_pain,
+        "pain_location": pain_location,
+        "pain_severity": pain_severity,
+        "pain_description": text[:200] if is_pain else None,
+    }
+
+
 def is_phase2_ai_allowed(sub: Any) -> bool:
     """Verifica se o treinador possui plano com IA 24h liberada (Pro, Elite Coach e Studio)."""
     if not sub:
@@ -384,21 +487,26 @@ async def handle_deterministic_button(
         rpe_val = parts[2] if len(parts) > 2 else "8"
 
         if student:
-            client = await supabase_service.get_client()
-            if client:
-                try:
-                    await client.table("student_pulse_events").insert({
-                        "student_id": student["id"],
-                        "trainer_id": trainer_id or student.get("trainer_id"),
-                        "event_type": "rpe_feedback",
-                        "event_data": {
+            try:
+                from app.schemas.student_pulse import StudentPulseEventCreate
+                await supabase_service.create_student_pulse_event(
+                    StudentPulseEventCreate(
+                        student_id=student["id"],
+                        student_name=student.get("full_name") or nome,
+                        trainer_id=trainer_id or student.get("trainer_id") or "trainer",
+                        event_type="rpe_feedback",
+                        severity="info",
+                        title=f"RPE {rpe_val}/10 Registrado ({nome})",
+                        description=f"Aluno confirmou percepção de esforço RPE {rpe_val}/10 via botão WhatsApp.",
+                        metadata={
                             "workout_id": workout_id,
                             "rpe": rpe_val,
                             "source": "whatsapp_button",
                         },
-                    }).execute()
-                except Exception as e_pulse:
-                    logger.debug("[WhatsApp Button] Erro ao registrar RPE em pulse: %s", e_pulse)
+                    )
+                )
+            except Exception as e_pulse:
+                logger.debug("[WhatsApp Button] Erro ao registrar RPE em pulse: %s", e_pulse)
 
         return {
             "reply": (
@@ -408,6 +516,7 @@ async def handle_deterministic_button(
             ),
             "cost_type": "free",
             "tokens_used": 0,
+            "rpe": rpe_val,
         }
 
     # 3. Fluxo Financeiro: Código Pix Instantâneo (fin_pix)
@@ -810,6 +919,100 @@ async def process_whatsapp_question(
                 ),
                 "cost_type": "free",
                 "tokens_used": 0,
+            }
+
+    # 6.7. Check-in Pós-Treino, RPE e Desconforto Articular (Frente 2 — Custo Zero / 0 Tokens)
+    feedback = parse_workout_feedback(question)
+    if feedback.get("rpe") is not None or feedback.get("is_pain"):
+        rpe_num = feedback.get("rpe")
+        is_pain = bool(feedback.get("is_pain"))
+        loc = feedback.get("pain_location") or "Articular"
+        sev = feedback.get("pain_severity") or "Moderada"
+
+        # 1. Se informou RPE, registra no barramento de eventos (Student Pulse)
+        if rpe_num is not None:
+            try:
+                from app.schemas.student_pulse import StudentPulseEventCreate
+                await supabase_service.create_student_pulse_event(
+                    StudentPulseEventCreate(
+                        student_id=student["id"],
+                        student_name=student.get("full_name") or nome,
+                        trainer_id=trainer_id,
+                        event_type="rpe_feedback",
+                        severity="info",
+                        title=f"RPE {rpe_num}/10 Registrado ({nome})",
+                        description=f"Aluno relatou percepção de esforço RPE {rpe_num}/10 via WhatsApp.",
+                        metadata={
+                            "rpe": rpe_num,
+                            "source": "whatsapp_text",
+                            "text": question[:120],
+                        },
+                    )
+                )
+            except Exception as e_rpe:
+                logger.debug(f"[WhatsAppAI] Falha ao registrar RPE em pulse: {e_rpe}")
+
+        # 2. Se informou desconforto articular, registra alerta biomecânico no radar
+        if is_pain:
+            try:
+                from app.schemas.workout import BiomechanicalAlertCreate
+                await supabase_service.create_biomechanical_alert(
+                    BiomechanicalAlertCreate(
+                        student_id=student["id"],
+                        student_name=student.get("full_name") or nome,
+                        trainer_id=trainer_id,
+                        original_exercise="Sessão de Treino",
+                        adapted_exercise="Adaptação Biomecânica Solicitada",
+                        reason=f"Aluno relatou desconforto via WhatsApp: {question[:150]}",
+                        pain_location=loc,
+                        severity=sev,
+                        status="active",
+                    )
+                )
+            except Exception as e_pain:
+                logger.debug(f"[WhatsAppAI] Falha ao registrar alerta biomecânico: {e_pain}")
+
+        # 3. Retorno empático e seguro ao aluno
+        if rpe_num is not None and is_pain:
+            reply = (
+                f"🔥 *RPE {rpe_num}/10 Computado com Sucesso, {nome}!*\n\n"
+                f"⚠️ *Alerta Articular ({loc}):* Já registrei seu relato de desconforto diretamente no radar do seu treinador.\n\n"
+                f"Por segurança, evite sobrecarregar essa articulação hoje, aplique compressa fria se necessário e descanse. "
+                f"O seu professor foi notificado e avaliará os próximos treinos! 💪"
+            )
+            return {
+                "reply": reply,
+                "cost_type": "free",
+                "tokens_used": 0,
+                "is_alert": True,
+                "rpe": rpe_num,
+                "pain_location": loc,
+            }
+        elif rpe_num is not None:
+            reply = (
+                f"🔥 *Esforço Registrado (RPE {rpe_num}/10), {nome}!* Sensacional!\n\n"
+                f"Sua percepção de esforço foi computada no radar do seu treinador.\n\n"
+                f"Agora hidrate-se bem, alimente-se e tenha uma excelente recuperação muscular! 💪"
+            )
+            return {
+                "reply": reply,
+                "cost_type": "free",
+                "tokens_used": 0,
+                "rpe": rpe_num,
+            }
+        else:
+            reply = (
+                f"⚠️ *Atenção, {nome}! Relato de Desconforto Registrado*\n\n"
+                f"Acabei de avisar o seu treinador sobre o incômodo no *{loc}* no painel do Mr. Coach.\n\n"
+                f"Recomendação imediata: evite exercícios que forcem a região e descanse a articulação. "
+                f"Se a dor for aguda ou persistir, procure orientação médica. Cuide-se! 💪"
+            )
+            return {
+                "reply": reply,
+                "cost_type": "free",
+                "tokens_used": 0,
+                "is_alert": True,
+                "pain_location": loc,
             }
 
     # 7. Safety Guardrail: Alerta de dor aguda / lesão

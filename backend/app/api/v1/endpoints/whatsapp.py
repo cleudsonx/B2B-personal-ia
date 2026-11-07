@@ -644,6 +644,107 @@ async def trigger_proactive_checkin(
     }
 
 
+class PostWorkoutCheckinRequest(BaseModel):
+    student_id: str
+    workout_title: Optional[str] = "Treino do Dia"
+    workout_session_id: Optional[str] = None
+    student_phone: Optional[str] = None
+    student_name: Optional[str] = None
+    trainer_id: Optional[str] = None
+
+
+@router.post("/checkin/post-workout")
+async def trigger_post_workout_checkin(
+    req: PostWorkoutCheckinRequest,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Frente 2 (WhatsApp AI 3.0):
+    Dispara check-in proativo pós-treino imediatamente ou após a conclusão de uma sessão de treino.
+    Envia mensagem interativa com botões de RPE e triagem de desconforto articular.
+    Pode ser disparado pelo app do aluno ao concluir a sessão ou pelo treinador/sistema.
+    """
+    caller_id = _trainer_id(user)
+    trainer_id = req.trainer_id or caller_id
+    student_name = req.student_name
+    student_phone = req.student_phone
+    trainer_name = "Seu Treinador"
+
+    client = await supabase_service.get_client()
+
+    # 1. Recupera dados do aluno se ausentes
+    if not student_phone or not student_name:
+        if client:
+            try:
+                st = await client.table("profiles").select("full_name, name, phone, whatsapp, trainer_id").eq("id", req.student_id).maybe_single().execute()
+                if st and st.data:
+                    student_name = student_name or st.data.get("full_name") or st.data.get("name") or "Aluno"
+                    student_phone = student_phone or st.data.get("phone") or st.data.get("whatsapp")
+                    trainer_id = req.trainer_id or st.data.get("trainer_id") or trainer_id
+            except Exception as e:
+                logger.warning("[PostWorkoutCheckin] Falha ao consultar aluno no banco: %s", e)
+
+        # Fallback memória
+        if not student_phone and not supabase_service._is_production():
+            mem_st = supabase_service._mem_students.get(req.student_id)
+            if mem_st:
+                student_name = student_name or mem_st.get("full_name") or mem_st.get("name") or "Aluno"
+                student_phone = student_phone or mem_st.get("phone")
+                trainer_id = req.trainer_id or mem_st.get("trainer_id") or trainer_id
+
+    # 2. Recupera nome do treinador se possível
+    if trainer_id and client:
+        try:
+            tr = await client.table("profiles").select("full_name, name").eq("id", trainer_id).maybe_single().execute()
+            if tr and tr.data:
+                trainer_name = tr.data.get("full_name") or tr.data.get("name") or trainer_name
+        except Exception:
+            pass
+
+    clean_phone = whatsapp_service._format_phone(student_phone or "")
+    if not clean_phone:
+        return {
+            "status": "skipped",
+            "reason": "missing_phone",
+            "student_id": req.student_id,
+            "message": "Aluno não possui telefone cadastrado para WhatsApp.",
+        }
+
+    res = await whatsapp_service.notify_post_workout_checkin(
+        trainer_id=trainer_id,
+        student_name=student_name or "Aluno",
+        student_phone=clean_phone,
+        workout_title=req.workout_title or "Treino do Dia",
+        workout_session_id=req.workout_session_id,
+        trainer_name=trainer_name,
+    )
+
+    try:
+        await supabase_service.log_whatsapp_interaction(
+            trainer_id=trainer_id,
+            student_id=req.student_id,
+            student_name=student_name or "Aluno",
+            student_phone=clean_phone,
+            channel="whatsapp_post_workout",
+            message_in=f"[Check-in Pós-Treino: {req.workout_title or 'Treino'}]",
+            message_out=f"Check-in pós-treino disparado com botões RPE para {student_name}",
+            cost_type="free",
+            tokens_used=0,
+        )
+    except Exception as e:
+        logger.debug("[PostWorkoutCheckin] Erro ao gravar log: %s", e)
+
+    return {
+        "status": res.get("status") or "sent",
+        "student_id": req.student_id,
+        "student_name": student_name,
+        "phone": clean_phone,
+        "workout_title": req.workout_title or "Treino do Dia",
+        "workout_session_id": req.workout_session_id,
+        "provider_result": res,
+    }
+
+
 class SendWeeklyDigestRequest(BaseModel):
     trainer_phone: Optional[str] = None
 

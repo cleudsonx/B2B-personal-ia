@@ -673,6 +673,47 @@ class WhatsAppService:
         )
         return await self.send_text_with_fallback(number=number, text=text, trainer_id=trainer_id)
 
+    async def notify_post_workout_checkin(
+        self,
+        trainer_id: str,
+        student_name: str,
+        student_phone: str,
+        workout_title: str,
+        workout_session_id: Optional[str] = None,
+        trainer_name: str = "Seu Treinador",
+    ) -> dict:
+        """
+        Check-in Pós-Treino Ativo (Frente 2 — WhatsApp AI 3.0):
+        Dispara mensagem interativa com botões de RPE (Percepção Subjetiva de Esforço)
+        e pergunta ativa sobre desconforto articular para triagem imediata.
+        """
+        first_name = (student_name or "Aluno").split()[0]
+        number = self._format_phone(student_phone)
+        if not number:
+            logger.warning("[WhatsApp] Telefone inválido ao enviar check-in pós-treino para %s.", student_name)
+            return {"status": "skipped", "reason": "invalid_phone"}
+
+        sess_id = workout_session_id or "active"
+        text = (
+            f"🔥 *Treino Finalizado, {first_name}! Parabéns pela dedicação!* 💪\n\n"
+            f"*{trainer_name}* gostaria de saber como foi sua sessão de hoje (*{workout_title}*).\n"
+            f"Como você avalia o esforço do treino de 1 a 10 (RPE / Intensidade)?\n\n"
+            f"Sentiu algum desconforto articular ou dor em algum exercício? "
+            f"(Se sim, responda com o músculo/articulação para seu treinador ajustar no radar!)."
+        )
+        buttons = [
+            {"id": f"rpe_log|{sess_id}|7", "title": "RPE 7 (Moderado)"},
+            {"id": f"rpe_log|{sess_id}|8", "title": "RPE 8 (Pesado)"},
+            {"id": f"rpe_log|{sess_id}|9", "title": "RPE 9 (Máximo)"},
+        ]
+        return await self.send_interactive_with_fallback(
+            number=number,
+            text=text,
+            buttons=buttons,
+            trainer_id=trainer_id,
+            footer_text="Ou digite o número do RPE (ex: RPE 8) e se sentiu dor.",
+        )
+
     async def send_weekly_digest_to_trainer(
         self,
         trainer_id: str,
