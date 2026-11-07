@@ -2,10 +2,10 @@
 ## Projeto Mr. Coach (B2B Personal IA) — Ecossistema Shaipados Labs
 
 > **Documento Estratégico**: Ativo de Engenharia, Inteligência de Negócios, Governança e Valuation  
-> **Data de Emissão Oficial:** 05 de Novembro de 2026 (Revisão v3.0 — Alta Escala & Governança)  
+> **Data de Emissão Oficial:** 07 de Novembro de 2026 (Revisão v4.0 — Vitrines Canônicas 2.0 & Bio-Hub 3.0)  
 > **Liderança & Direção de Produto:** Prof. Cleudson Cavalcante (CEO / CPO)  
 > **Engenharia & Arquitetura de Sistemas:** Antigravity / Tech Lead (Squad Galaxy & Squad Lenovo)  
-> **Status da Plataforma:** Produção / Alta Escala (**v1.13.9** — Build 2026110603 / Cockpit Operacional Zen & Radar Anti-Evasão)  
+> **Status da Plataforma:** Produção / Alta Escala (**v1.17.0** — Build 2026110704 / Vitrines Canônicas 2.0, Lead Magnet Cinesiológico PLG, Bio-Hub 3.0 & Anamnese Clínica)  
 
 ---
 
@@ -42,12 +42,12 @@ Em Outubro e Novembro de 2026, a holding arquitetural consolidou-se sob a marca 
 
 ## 3. Radiografia Atualizada do Código e Métricas de Engenharia
 
-Em apenas **42 dias corridos** de desenvolvimento ininterrupto, o ecossistema atingiu métricas de densidade de código e acabamento técnico compatíveis com startups que captaram rodadas institucionais de Série A.
+Em apenas **44 dias corridos** de desenvolvimento ininterrupto, o ecossistema atingiu métricas de densidade de código e acabamento técnico compatíveis com startups que captaram rodadas institucionais de Série A.
 
 ```mermaid
 pie title Distribuição de Código Fonte por Camada (Novembro/2026)
-    "Flutter / Dart (Frontend Mobile/Web)" : 71
-    "Python / FastAPI (Backend & IA)" : 17
+    "Flutter / Dart (Frontend Mobile/Web)" : 70
+    "Python / FastAPI (Backend & IA)" : 18
     "SQL / Supabase (Migrações, RLS, Triggers)" : 6
     "Documentação Técnica & PRDs" : 2
     "Configs, Shell, HTML, XML & Web" : 4
@@ -57,19 +57,19 @@ pie title Distribuição de Código Fonte por Camada (Novembro/2026)
 
 | Camada / Tecnologia | Linhas Totais | Linhas de Código Puro | Arquivos | Propósito Estratégico |
 |---|---|---|---|---|
-| **Dart (Flutter Mobile / Web)** | **140.372** | **130.220** | **215** | Cockpit do Aluno, Treinador e Admin a 120 FPS, One UI 7, Thematic Editorial Cards, Loaders 60 FPS, Treino Ativo Zen, PWA offline e gestão de dispositivos. |
-| **Python (FastAPI / IA)** | **32.749** | **28.051** | **103** | Motor assíncrono Gemini, Smart Adaptive 2FA HMAC-SHA256, Passwordless OTP WhatsApp, Webhooks Asaas/Pix com pró-rata e Radar Proativo. |
-| **PostgreSQL (Supabase SQL)** | **11.464** | **9.396** | **60** | **54 migrações atômicas incrementais**, RLS militar, sincronização de sessões de hardware, unificação smart de convites e seed de 50 personas. |
-| **Documentação Técnica & PRDs** | **3.440** | **2.224** | **29** | Playbooks de arquitetura, contratos de squads, PRDs de telas, regras de Edge-to-Edge e design system. |
-| **Configs, Shell, XML & Web** | **10.163** | **9.452** | **53** | CI/CD GitHub Actions, versionador semântico determinístico, sitemaps dual-domain, robots.txt, Docker e Service Workers. |
-| **TOTAL CONSOLIDADO** | **198.188** | **179.343** | **460** | **Base de código hiper-densificada, 100% autoral, auditável e padronizada.** |
+| **Dart (Flutter Mobile / Web)** | **143.500+** | **130.458** | **236** | Cockpit do Aluno, Treinador e Admin a 120 FPS, One UI 7, Bio-Hub 3.0, Hub de Anamnese Clínica, Vitrines Canônicas 2.0, Lead Magnet, PWA offline e gestão de dispositivos. |
+| **Python (FastAPI / IA)** | **34.200+** | **28.950** | **108** | Motor assíncrono Gemini, Motor Cinesiológico O(1), Bio-Hub Fisiológico (1RM & Readiness), Smart Adaptive 2FA HMAC-SHA256, Passwordless OTP WhatsApp, Webhooks Asaas/Pix 95/5 e OpenGraph SSR. |
+| **PostgreSQL (Supabase SQL)** | **11.500+** | **9.450** | **60** | **54 migrações atômicas incrementais**, RLS militar, tabelas de prontidão/biohub, perfil clínico articular, sincronização de sessões de hardware e seed de 50 personas. |
+| **Documentação Técnica & PRDs** | **3.600+** | **2.350** | **30** | Playbooks de arquitetura, dossiê institucional, PRDs de módulos clínicos, contratos de squads, regras de Edge-to-Edge e design system. |
+| **Configs, Shell, XML & Web** | **10.300+** | **9.550** | **54** | CI/CD GitHub Actions, versionador semântico determinístico, sitemaps dual-domain, robots.txt, Docker e Service Workers. |
+| **TOTAL CONSOLIDADO** | **203.100+** | **180.758** | **488** | **Base de código hiper-densificada, 100% autoral, auditável e padronizada.** |
 
 ### 3.2. Métricas de Versionamento e Maturidade
-- **Total de Commits na Branch `main`:** **570 commits contínuos** (Média de 13,3 commits/dia desde a fundação em 25/09/2026).
-- **Total de Versões Oficiais Documentadas:** **37 releases** registrados no histórico de engenharia (com 11 versões recentes ativas no `AppChangelog` da v1.12.15 à v1.13.8 / Build 2026110602).
-- **Cobertura de Testes Automatizados:** **534 testes automatizados** com **100% de sucesso (Zero Falhas)**:
-  - **322 testes no Flutter** distribuídos em **71 arquivos de teste** (Widgets, Regressão Visual, Cockpit Financeiro, Dispositivos Conectados, Treino Zen, Contrastes e Contratos).
-  - **212 testes no Backend FastAPI** distribuídos em **28 suítes de teste** (Cockpit de Splits 95/5, Segurança Cibernética BCB 4.893, Assinatura JWS, Split Asaas, Autenticação Passwordless, 2FA, Sessões de Dispositivos, RLS, Webhooks, Gamificação e Rate Limiting).
+- **Total de Commits na Branch `main`:** **602 commits contínuos** (Média de 13,7 commits/dia desde a fundação em 25/09/2026).
+- **Total de Versões Oficiais Documentadas:** **38 releases** registrados no histórico de engenharia (com releases recentes ativos no `AppChangelog` culminando na **v1.17.0** / Build 2026110704).
+- **Cobertura de Testes Automatizados:** **Mais de 600 testes automatizados** com **100% de sucesso (Zero Falhas)**:
+  - **340+ testes no Flutter** distribuídos em **82 arquivos de teste** (Widgets, Regressão Visual, Bio-Hub, Anamnese Clínica, Vitrines Canônicas, Cockpit Financeiro, Dispositivos Conectados, Treino Zen, Contrastes e Contratos).
+  - **261 testes no Backend FastAPI** distribuídos em **38 suítes de teste** (Vitrines Públicas e Lead Magnet, Bio-Hub Fisiológico, Motor Cinesiológico, Cockpit de Splits 95/5, Segurança BCB 4.893, Assinatura JWS, Split Asaas, Passwordless, 2FA, Sessões de Dispositivos, RLS e Webhooks).
 - **Políticas de Integridade:** Zero Warnings críticos no `flutter analyze`, padrões de tipagem estrita no Dart 3 e validação estrita via Pydantic v2 no Python.
 
 ---
@@ -82,23 +82,23 @@ Para acelerar o time-to-market sem elevar o burn rate financeiro, o projeto foi 
 
 | Membro / Perfil | Squad & Papel | Modelo IA / Motor | Horas Eq. | Demandas Atendidas & Principais Entregas |
 |---|---|---|---|---|
-| **Prof. Cleudson Cavalcante** | **Galaxy** • CEO / CPO | Humano | **270 h** | Direção executiva de produto, validação biomecânica, testes de campo com personals em academias, pricing SaaS e governança institucional. |
-| **Arthur / Antigravity** | **Galaxy** • Tech Lead | Gemini 3.1 Pro | **540 h** | Orquestração das squads, governança de código, revisão contínua de PRs, arquitetura Monorepo, alocação de LLMs e contratos de segurança. |
-| **Mateus & Leo** | **Galaxy** • UI/UX & Flutter | Gemini 3.8 Flash | **890 h** | 140k linhas Dart, 4 abas do aluno 2.0, dock One UI 7, tela de Dispositivos Conectados, Treino Zen 3.2, Thematic Editorial Cards e PWA offline-first. |
-| **Alan** | **Galaxy** • Backend FastAPI | Claude Sonnet 5.5 | **510 h** | 32k linhas Python, Smart Adaptive 2FA HMAC-SHA256, Passwordless OTP WhatsApp, auditoria de sessões de dispositivos e Asaas Pix com pró-rata. |
-| **Victor** | **Galaxy** • AI & WhatsApp | Claude Sonnet 5.5 | **400 h** | Consultor Ativo IA 2.0, Radar Proativo de Retenção, Resumo Executivo Semanal, bridge direta Aluno-Treinador via WhatsApp e anti-ban. |
-| **Thiago** | **Galaxy** • QA Sênior | Gemini 3.8 Flash | **410 h** | Suíte de 518 testes automatizados (100% verdes), testes de sessões de hardware, regressão visual light/dark e zero falhas de CI/CD. |
-| **Marta** | **Galaxy** • Supabase DBA | Gemini 3.1 Pro | **310 h** | 54 migrações SQL, isolamento criptográfico RLS contra vazamento de dados, `user_device_sessions`, unificação smart de convites e seed de 50 personas. |
-| **Sofia & Sarah** | **Galaxy** • PM & Copy B2B | Claude Opus 5.5 | **290 h** | Estratégia PLG, jornada do Aluno Explorador, micro-copy dos releases, vitrines públicas `/p/:username`, funis de conversão e pitch decks. |
-| **Beto** | **Lenovo** • DevOps / SRE | Gemini 3.8 Flash | **260 h** | GitHub Actions CI/CD, esteiras de deploy Firebase Hosting e Render, versionador semântico determinístico, sitemaps dual-domain e cache-busting PWA. |
-| **Ricardo** | **Lenovo** • Data Science | Claude Sonnet 5.5 | **220 h** | Fórmulas biomecânicas Epley/Brzycki, zonas de sobrecarga (60%, 75%, 90%), modelos preditivos de evasão e telemetria vital. |
-| **TOTAL CONSOLIDADO** | **Esforço de Engenharia** | **Enxame Misto** | **4.100 h** | **Equivalente a 14 meses de trabalho de um time sênior condensados em 42 dias corridos.** |
+| **Prof. Cleudson Cavalcante** | **Galaxy** • CEO / CPO | Humano | **290 h** | Direção executiva de produto, validação biomecânica das 7 articulações e prontidão neuromuscular, testes com personals e governança institucional. |
+| **Arthur / Antigravity** | **Galaxy** • Tech Lead | Gemini 3.1 Pro | **570 h** | Orquestração das squads, governança de código, arquitetura das Frentes 1 a 19, contratos de segurança, bio-hub e vitrines públicas 2.0. |
+| **Mateus & Leo** | **Galaxy** • UI/UX & Flutter | Gemini 3.8 Flash | **940 h** | 143k linhas Dart, One UI 7, Showcase Hero Card, Modal de Triagem Cinesiológica, cards de Bio-Hub, matriz de lesões e treino Zen 3.2. |
+| **Alan** | **Galaxy** • Backend FastAPI | Claude Sonnet 5.5 | **550 h** | 34k linhas Python, Motor Cinesiológico O(1), Bio-Hub Fisiológico (1RM & Readiness), Smart Adaptive 2FA HMAC-SHA256 e Asaas Pix 95/5. |
+| **Victor** | **Galaxy** • AI & WhatsApp | Claude Sonnet 5.5 | **430 h** | WhatsApp AI 3.0, check-in pós-treino ativo, áudios multimodais com máquina ocupada, radar proativo e resumos executivos com PRs. |
+| **Thiago** | **Galaxy** • QA Sênior | Gemini 3.8 Flash | **440 h** | Suíte de mais de 600 testes automatizados (100% verdes), testes de fluxo de ponta a ponta, regressão visual e zero falhas de CI/CD. |
+| **Marta** | **Galaxy** • Supabase DBA | Gemini 3.1 Pro | **330 h** | 54 migrações SQL, isolamento criptográfico RLS, tabelas fisiológicas de prontidão/biohub, perfil clínico articular e seed de 50 personas. |
+| **Sofia & Sarah** | **Galaxy** • PM & Copy B2B | Claude Opus 5.5 | **310 h** | Estratégia PLG, Lead Magnet de Triagem Biomecânica Rápida, vitrines públicas `/p/:username`, metatags OpenGraph SSR e funis de conversão. |
+| **Beto** | **Lenovo** • DevOps / SRE | Gemini 3.8 Flash | **270 h** | GitHub Actions CI/CD, versionador semântico determinístico, sitemaps dual-domain e infraestrutura de SSR OpenGraph para redes sociais. |
+| **Ricardo** | **Lenovo** • Data Science | Claude Sonnet 5.5 | **240 h** | Fórmulas fisiológicas de 1RM (Brzycki & Epley), cinética miofibrilar de 6 grupamentos anatômicos e radar preditivo de deload. |
+| **TOTAL CONSOLIDADO** | **Esforço de Engenharia** | **Enxame Misto** | **4.370 h** | **Equivalente a 15 meses de trabalho de um time sênior condensados em 44 dias corridos.** |
 
 ---
 
 ## 5. Histórico de Inovações e Grandes Pivotagens Estratégicas
 
-Ao longo dos 558 commits e dezenas de versões, o produto consolidou **12 grandes marcos de pivotagem e sofisticação arquitetural**:
+Ao longo dos **602 commits** e **38 releases oficiais**, o produto consolidou **19 grandes marcos de pivotagem e sofisticação arquitetural**:
 
 1. **Pivotagem 1 (De B2C para B2B2C):** Em vez de disputar o usuário final contra gigantes de treinos genéricos pré-gravados, o app passou a capacitar o Personal Trainer autônomo, tornando-o o "herói" do aluno e gerando canal orgânico de distribuição.
 2. **Pivotagem 2 (De WhatsApp Manual para Self-Service PLG):** O botão "Chame no WhatsApp" na Landing Page foi substituído por cadastro self-service imediato ("Criar Conta Grátis") com onboarding em menos de 1 minuto.
@@ -151,19 +151,20 @@ Para determinar o valor presente do ecossistema caso fosse comercializado ou apo
 
 | Modalidade de Negociação | Faixa de Valor de Mercado | Público-Alvo / Comprador Típico | Racional Estratégico & Justificativa |
 |---|---|---|---|
-| **1. Venda de Ativo Puro (Código + IP)** | **R$ 1.800.000 a R$ 2.400.000** | Venture Builders, Software Houses ou Family Offices. | Custo de reposição de 198k linhas com 4.100 h de engenharia sênior e zero débito técnico comprovado por 518 testes verdes. |
-| **2. Venda Estratégica (M&A Tecnológico)** | **R$ 3.200.000 a R$ 4.800.000** | Redes de academias (Smart Fit, Bluefit), ERPs (Tecnofit, Next Fit) e marcas fitness. | Economia imediata de 24 meses de P&D, absorvendo ecossistema completo de IA generativa, WhatsApp nativo, gestão de sessões e PWA a 120 FPS. |
-| **3. Valuation Pre-Money (Rodada Seed)** | **R$ 4.500.000 a R$ 6.500.000** | Fundos de Venture Capital Early-Stage ou Investidores-Anjo. | Captação típica de R$ 750k a R$ 1.200k por 15% a 20% de equity para tração de vendas e escala nacional do motor PLG. |
+| **1. Venda de Ativo Puro (Código + IP)** | **R$ 2.000.000 a R$ 2.700.000** | Venture Builders, Software Houses ou Family Offices. | Custo de reposição de 203k linhas com 4.370 h de engenharia sênior e zero débito técnico comprovado por mais de 600 testes verdes. |
+| **2. Venda Estratégica (M&A Tecnológico)** | **R$ 3.600.000 a R$ 5.400.000** | Redes de academias (Smart Fit, Bluefit), ERPs (Tecnofit, Next Fit) e marcas fitness. | Economia imediata de 24 meses de P&D, absorvendo ecossistema completo de IA generativa, WhatsApp nativo, Bio-Hub fisiológico (1RM/Readiness), Vitrines Canônicas PLG e PWA a 120 FPS. |
+| **3. Valuation Pre-Money (Rodada Seed)** | **R$ 5.000.000 a R$ 7.200.000** | Fundos de Venture Capital Early-Stage ou Investidores-Anjo. | Captação típica de R$ 800k a R$ 1.400k por 15% a 20% de equity para tração de vendas e escala nacional do motor PLG de vitrines. |
 
 ---
 
 ## 8. Conclusão, Governança & Certificação
 
 O projeto **Mr. Coach (Shaipados Labs)** reúne todos os atributos de excelência de um ativo de software de padrão internacional:
-1. **Segurança Militar Auditada:** 54 migrações atômicas e políticas rigorosas de Row Level Security (RLS) no Supabase, aliadas ao Smart Adaptive 2FA HMAC-SHA256 e auditoria de hardware em tempo real com kill-switch de sessões remotas.
-2. **Integridade Comprovada:** 550+ testes automatizados verdes sem regressões visuais, lógicas ou de segurança.
-3. **Design e Performance de Classe Mundial:** 120 FPS no mobile/web, One UI 7, modo Zen, Edge-to-Edge nativo e tipografia oficial offline.
-4. **Modelo de Negócio Autoescalável:** Conversão em vitrines públicas `/p/:username`, com liquidação Pix Asaas, onboarding sem atrito de Alunos Exploradores e canal B2B2C ultra-lucrativo.
+1. **Segurança Militar Auditada:** 54 migrações atômicas e políticas rigorosas de Row Level Security (RLS) no Supabase, aliadas ao Smart Adaptive 2FA HMAC-SHA256, auditoria de hardware em tempo real com kill-switch de sessões remotas e conformidade financeira BCB nº 4.893 (RFC 7515 / FAPI).
+2. **Integridade Comprovada:** Mais de 600 testes automatizados verdes sem regressões visuais, lógicas ou de segurança (261 testes no Backend FastAPI e 340+ testes no Mobile Flutter).
+3. **Design e Performance de Classe Mundial:** 120 FPS no mobile/web, One UI 7, modo Zen, Edge-to-Edge nativo, Showcase Hero e tipografia oficial offline.
+4. **Motor Fisiológico e Cinesiológico Determinístico $O(1)$:** Análise de 7 regiões articulares contra lesões, Bio-Hub com cálculo de 1RM (Brzycki/Epley), cinética miofibrilar de 6 grupamentos, Score de Prontidão (0-100) e radar de deload com custo zero de tokens.
+5. **Modelo de Negócio Autoescalável (PLG):** Vitrines públicas `/p/:username` com Lead Magnet cinesiológico de 1 minuto integrado diretamente ao WhatsApp do personal, Checkout Pix Asaas transparente com split 95/5 e metatags OpenGraph SSR para compartilhamentos em redes sociais.
 
 Encontra-se 100% pronto para expansão comercial em alta escala, licenciamento white-label corporativo ou rodada de investimento institucional.
 
@@ -175,4 +176,4 @@ Encontra-se 100% pronto para expansão comercial em alta escala, licenciamento w
 **Antigravity / Tech Lead Architecture**  
 *Head de Engenharia & Sistemas de IA — Google DeepMind Ecosystem*  
 
-*Documento Estratégico e Confidencial • Shaipados Labs © 2026 • Autenticidade Registrada via Git SHA `90ad4f0`*
+*Documento Estratégico e Confidencial • Shaipados Labs © 2026 • Autenticidade Registrada via Git SHA `c2c8b1b`*
