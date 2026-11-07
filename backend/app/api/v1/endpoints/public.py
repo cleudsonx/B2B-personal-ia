@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi.responses import HTMLResponse
 import logging
 from pydantic import BaseModel
 from typing import List, Optional, Any
@@ -455,5 +456,75 @@ async def submit_public_lead_screening(username: str, req: LeadScreeningRequest)
         trainer_phone=trainer_data.get("public_whatsapp"),
         req=req,
     )
+
+
+@router.get(
+    "/trainers/{username}/og-preview",
+    response_class=HTMLResponse,
+    summary="Preview OpenGraph HTML para crawlers de redes sociais (WhatsApp/Instagram)",
+    description="Retorna metatags OpenGraph renderizadas no servidor para links compartilhados da vitrine pública.",
+)
+async def get_trainer_og_preview(username: str):
+    clean_user = username.strip().lower()
+    client = await supabase_service.get_client()
+
+    trainer_data = None
+    if client:
+        try:
+            res = await client.table("profiles")\
+                .select("id, full_name, bio, photo_url, avatar_url, username, professional_document")\
+                .ilike("username", clean_user)\
+                .eq("role", "trainer")\
+                .maybe_single()\
+                .execute()
+            if res and res.data:
+                trainer_data = res.data
+        except Exception as e:
+            logger.debug(f"[OGPreview] Falha ao buscar treinador {clean_user}: {e}")
+
+    if not trainer_data:
+        if clean_user in ("mrcoach", "dev-trainer"):
+            trainer_data = {
+                "id": "6f645308-f1b2-4d73-ac45-9890c27e20d4",
+                "full_name": "Prof. Cleudson Cavalcante",
+                "username": clean_user,
+                "bio": "Especialista em biomecânica aplicada e hipertrofia segura.",
+                "photo_url": "https://shaipados.com/assets/assets/images/app_icon.png",
+                "professional_document": "CREF 012345-G/DF",
+            }
+        else:
+            raise HTTPException(status_code=404, detail="Treinador não encontrado.")
+
+    name = trainer_data.get("full_name") or "Personal Trainer"
+    bio = trainer_data.get("bio") or "Consultoria esportiva de musculação com inteligência biomecânica."
+    photo = trainer_data.get("photo_url") or trainer_data.get("avatar_url") or "https://shaipados.com/assets/assets/images/app_icon.png"
+    cref = trainer_data.get("professional_document") or "CREF Verificado"
+    target_url = f"https://shaipados.com/p/{clean_user}"
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>{name} — Personal Trainer ({cref}) | Mr. Coach</title>
+  <meta name="description" content="{bio}">
+  <meta property="og:type" content="profile">
+  <meta property="og:site_name" content="Mr. Coach by Shaipados Labs">
+  <meta property="og:title" content="{name} — Personal Trainer ({cref})">
+  <meta property="og:description" content="{bio}">
+  <meta property="og:image" content="{photo}">
+  <meta property="og:url" content="{target_url}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{name} — Personal Trainer ({cref})">
+  <meta name="twitter:description" content="{bio}">
+  <meta name="twitter:image" content="{photo}">
+  <meta http-equiv="refresh" content="0; url={target_url}">
+</head>
+<body>
+  <p>Redirecionando para a vitrine oficial de {name}...</p>
+  <script>window.location.href = "{target_url}";</script>
+</body>
+</html>"""
+    return HTMLResponse(content=html_content)
+
 
 

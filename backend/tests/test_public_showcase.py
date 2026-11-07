@@ -168,3 +168,43 @@ async def test_public_trainer_profile_has_enriched_social_proof_metrics():
     assert profile.rating_count > 0
     assert len(profile.showcase_badges) >= 3
     assert "CREF Verificado" in profile.showcase_badges
+
+
+@pytest.mark.asyncio
+async def test_trainer_og_preview_returns_rich_social_metatags():
+    from app.api.v1.endpoints.public import get_trainer_og_preview
+
+    query = MagicMock()
+    query.select.return_value = query
+    query.ilike.return_value = query
+    query.eq.return_value = query
+    query.maybe_single.return_value = query
+    query.execute = AsyncMock(
+        return_value=SimpleNamespace(
+            data={
+                "id": "trainer-og-1",
+                "role": "trainer",
+                "full_name": "Prof. Lucas Ribeiro",
+                "username": "lucas-ribeiro",
+                "bio": "Biomecânica e hipertrofia de alto rendimento.",
+                "photo_url": "https://example.com/lucas.jpg",
+                "professional_document": "CREF 99887-G/SP",
+            }
+        )
+    )
+    client = MagicMock()
+    client.table.return_value = query
+
+    with patch(
+        "app.api.v1.endpoints.public.supabase_service.get_client",
+        new=AsyncMock(return_value=client),
+    ):
+        response = await get_trainer_og_preview("lucas-ribeiro")
+
+    assert response.status_code == 200
+    html = response.body.decode("utf-8")
+    assert '<meta property="og:title" content="Prof. Lucas Ribeiro — Personal Trainer (CREF 99887-G/SP)">' in html
+    assert '<meta property="og:image" content="https://example.com/lucas.jpg">' in html
+    assert 'https://shaipados.com/p/lucas-ribeiro' in html
+    assert 'twitter:card' in html
+
