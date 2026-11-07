@@ -4,6 +4,7 @@ import logging
 import urllib.parse
 import re
 from datetime import datetime, timezone, timedelta
+from collections import defaultdict
 from typing import Dict, Any, List, Optional
 from supabase import AsyncClient, create_async_client
 from app.core.config import settings
@@ -3067,18 +3068,94 @@ class SupabaseService:
         if pending_alerts_count == 0 and not self._is_production() and self._mem_alerts:
             pending_alerts_count = sum(1 for a in self._mem_alerts.values() if not a.get("acknowledged"))
 
+        client_ids = [p["id"] for p in active_profiles if p.get("id")]
+        seven_days_ago_dt = now - timedelta(days=7)
+        seven_days_ago = seven_days_ago_dt.isoformat()
+
+        if client and client_ids:
             try:
-                client_ids = [p["id"] for p in active_profiles if p.get("id")]
-                if client_ids:
-                    seven_days_ago = (now - timedelta(days=7)).isoformat()
-                    ws_res = await client.table("workout_sessions")\
-                        .select("id, client_id, completed_at")\
-                        .in_("client_id", client_ids)\
-                        .gte("completed_at", seven_days_ago)\
-                        .execute()
-                    weekly_workouts_completed = len(ws_res.data or [])
+                ws_res = await client.table("workout_sessions")\
+                    .select("id, client_id, completed_at")\
+                    .in_("client_id", client_ids)\
+                    .gte("completed_at", seven_days_ago)\
+                    .execute()
+                weekly_workouts_completed = len(ws_res.data or [])
             except Exception:
                 pass
+
+        # 3.1. Cálculo de Recordes de Carga Batidos na Semana (PRs da Consultoria)
+        pr_milestones: List[Dict[str, Any]] = []
+        all_loads: List[Dict[str, Any]] = []
+
+        if client and client_ids:
+            try:
+                loads_res = await client.table("student_exercise_loads")\
+                    .select("client_id, exercise_name, load_kg, reps, recorded_at")\
+                    .in_("client_id", client_ids)\
+                    .order("recorded_at", desc=False)\
+                    .execute()
+                all_loads.extend(loads_res.data or [])
+            except Exception as e_loads:
+                logger.debug(f"[ProactiveRadar] Falha ao consultar student_exercise_loads: {e_loads}")
+
+        if not self._is_production():
+            mem_loads = getattr(self, "_mem_exercise_loads", [])
+            for l in mem_loads:
+                if l.get("client_id") in client_ids:
+                    all_loads.append(l)
+
+        # Agrupa cargas por (aluno, exercício)
+        loads_by_student_exercise: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        student_names_map = {p["id"]: p.get("full_name") or "Aluno" for p in active_profiles}
+
+        for entry in all_loads:
+            cid = entry.get("client_id")
+            ex_name = (entry.get("exercise_name") or "").strip()
+            if cid and ex_name:
+                key = f"{cid}::{ex_name.lower()}"
+                loads_by_student_exercise[key].append(entry)
+
+        for key, records in loads_by_student_exercise.items():
+            cid, ex_norm = key.split("::", 1)
+            student_name = student_names_map.get(cid, "Aluno")
+
+            recent_loads: List[float] = []
+            prior_loads: List[float] = []
+            exercise_display_name = records[-1].get("exercise_name") or ex_norm.title()
+
+            for r in records:
+                l_kg = float(r.get("load_kg") or 0.0)
+                rec_raw = r.get("recorded_at")
+                is_recent = False
+                if rec_raw:
+                    try:
+                        r_dt = datetime.fromisoformat(str(rec_raw).replace("Z", "+00:00"))
+                        if r_dt.tzinfo is None:
+                            r_dt = r_dt.replace(tzinfo=timezone.utc)
+                        if r_dt >= seven_days_ago_dt:
+                            is_recent = True
+                    except Exception:
+                        pass
+                if is_recent:
+                    recent_loads.append(l_kg)
+                else:
+                    prior_loads.append(l_kg)
+
+            if recent_loads:
+                new_max = max(recent_loads)
+                prior_max = max(prior_loads, default=0.0)
+                if new_max > prior_max and new_max > 0:
+                    inc = round(new_max - prior_max, 1) if prior_max > 0 else None
+                    pr_milestones.append({
+                        "student_id": cid,
+                        "student_name": student_name,
+                        "exercise_name": exercise_display_name,
+                        "load_kg": new_max,
+                        "previous_max_kg": prior_max if prior_max > 0 else None,
+                        "increase_kg": inc,
+                    })
+
+        pr_milestones.sort(key=lambda x: (x.get("increase_kg") or 0.0, x.get("load_kg") or 0.0), reverse=True)
 
         inactive_students: List[Dict[str, Any]] = []
         active_this_week = 0
@@ -3163,6 +3240,12 @@ class SupabaseService:
         retention_rate = round(((total_students - len(inactive_students)) / total_students) * 100) if total_students > 0 else 0
 
         # Monta o texto executivo formatado para WhatsApp
+        pr_lines = "\n".join(
+            f"  🚀 {item['student_name']}: {item['exercise_name']} ({item['load_kg']} kg" +
+            (f" • +{item['increase_kg']} kg! 🔥)" if item.get('increase_kg') else " ⚡)")
+            for item in pr_milestones[:5]
+        ) if pr_milestones else "  • Nenhuma quebra de recorde registrada nesta semana"
+
         top_lines = "\n".join(
             f"  🏆 {idx + 1}º {item['full_name']} ({item['streak_days']} dias 🔥)"
             for idx, item in enumerate(top_streaks)
@@ -3180,6 +3263,7 @@ class SupabaseService:
             f"🏋️ *Treinos na Semana:* {weekly_workouts_completed} sessões\n"
             f"🛡️ *Taxa de Presença:* {retention_rate}%\n"
             f"🩺 *Alertas Biomecânicos Pendentes:* {pending_alerts_count}\n\n"
+            f"⚡ *Recordes de Carga (PRs da Semana):*\n{pr_lines}\n\n"
             f"🔥 *Top Consistência (Streaks):*\n{top_lines}\n\n"
             f"🚨 *Radar de Retenção (>4 dias sem treino):*\n{risk_lines}\n\n"
             f"📲 Gerencie e dispare check-ins em 1 toque no painel:\nhttps://shaipados-labs.web.app"
@@ -3194,11 +3278,43 @@ class SupabaseService:
                 "retention_rate": retention_rate,
                 "inactive_count": len(inactive_students),
                 "pending_alerts_count": pending_alerts_count,
+                "personal_records_count": len(pr_milestones),
+                "personal_records": pr_milestones,
                 "top_streaks": top_streaks,
                 "trainer_phone": trainer_phone,
                 "digest_message": digest_message,
             },
         }
+
+    async def record_exercise_load(
+        self,
+        client_id: str,
+        exercise_name: str,
+        load_kg: float,
+        reps: Optional[int] = None,
+        recorded_at: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Registra a carga de um exercício para histórico e cálculo de PRs (Sobrecarga Progressiva)."""
+        entry = {
+            "id": str(uuid.uuid4()),
+            "client_id": to_valid_uuid_str(client_id),
+            "exercise_name": exercise_name.strip(),
+            "load_kg": float(load_kg),
+            "reps": reps,
+            "recorded_at": recorded_at or datetime.now(timezone.utc).isoformat(),
+        }
+        if not hasattr(self, "_mem_exercise_loads"):
+            self._mem_exercise_loads = []
+        self._mem_exercise_loads.append(entry)
+
+        client = await self.get_client()
+        if client and is_valid_uuid(entry["client_id"]):
+            try:
+                await client.table("student_exercise_loads").insert(entry).execute()
+            except Exception as e:
+                logger.debug(f"[record_exercise_load] Inserção em DB ignorada: {e}")
+
+        return entry
 
 supabase_service = SupabaseService()
 
