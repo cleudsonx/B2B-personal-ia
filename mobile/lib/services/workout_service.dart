@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/config/app_config.dart';
 import '../models/workout_plan_model.dart';
+import '../models/operational_cockpit_model.dart';
 import 'auth_service.dart';
 import 'subscription_service.dart';
 import 'exercise_media_service.dart';
@@ -1098,6 +1099,55 @@ class WorkoutService {
       _localStudentsCache[idx]['alert_message'] = null;
     }
     return true;
+  }
+
+  /// Recupera os dados consolidados do Cockpit Operacional 24h & Radar Anti-Evasão
+  static Future<TrainerOperationalCockpitData?> getOperationalCockpit({
+    String? trainerId,
+  }) async {
+    final tid = trainerId ?? AuthService.currentUser?.id ?? 'current-trainer';
+    try {
+      final uri = Uri.parse('${AppConfig.apiBaseUrl}/pulse/trainer/$tid/cockpit');
+      final res = await http
+          .get(uri, headers: _apiHeaders)
+          .timeout(const Duration(seconds: 5));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        return TrainerOperationalCockpitData.fromJson(data);
+      }
+    } catch (e) {
+      debugPrint('Aviso backend getOperationalCockpit: $e');
+    }
+    return null;
+  }
+
+  /// Registra contato de reengajamento com o aluno para ativar a trava anti-spam de 48h
+  static Future<bool> markStudentContacted(String studentId) async {
+    try {
+      final uri = Uri.parse('${AppConfig.apiBaseUrl}/pulse/students/$studentId/contacted');
+      final res = await http
+          .post(uri, headers: _apiHeaders)
+          .timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200) {
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Aviso backend markStudentContacted: $e');
+    }
+    // Fallback no Supabase direto se disponível
+    try {
+      if (studentId.isNotEmpty) {
+        final nowIso = DateTime.now().toUtc().toIso8601String();
+        await _client
+            .from('profiles')
+            .update({'last_contacted_at': nowIso})
+            .eq('id', studentId);
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Aviso fallback markStudentContacted no Supabase: $e');
+    }
+    return false;
   }
 
   /// Atualiza os dados de um aluno (nome, email, telefone, objetivo, restrições)
