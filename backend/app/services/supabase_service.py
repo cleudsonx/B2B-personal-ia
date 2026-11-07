@@ -22,6 +22,9 @@ from app.schemas.student_pulse import (
     StudentPulseEventCreate,
     StudentPulseEventResponse,
     StudentPulseSummaryResponse,
+    TrainerOperationalCockpitResponse,
+    InactiveStudentCard,
+    OperationalPainAlertItem,
 )
 
 logger = logging.getLogger(__name__)
@@ -2138,6 +2141,139 @@ class SupabaseService:
             recent_events=events[:10],
         )
 
+    async def get_trainer_operational_cockpit(self, trainer_id: str) -> TrainerOperationalCockpitResponse:
+        """
+        Consolida a UX B2B da Frente 1: Cockpit Operacional do Treinador Zen & Radar Proativo de Evasão.
+        - Séries/sessões concluídas nas últimas 24h pelos alunos da carteira
+        - Alertas articulares/biomecânicos em tempo real com detalhes
+        - Alunos 'Em Risco' (>4 dias ausentes) com mensagens sugeridas de reengajamento WhatsApp e trava de 48h
+        - Taxa de retenção e KPIs da carteira
+        """
+        valid_tid = to_valid_uuid_str(trainer_id)
+        now = datetime.now(timezone.utc)
+        cutoff_24h = now - timedelta(hours=24)
+        client = await self.get_client()
+
+        # 1. Obter radar de evasão e digest
+        radar_data = await self.get_proactive_radar_and_weekly_digest(trainer_id, min_inactive_days=4)
+        weekly_digest = radar_data.get("weekly_digest") or {}
+        raw_inactive = radar_data.get("inactive_students") or []
+
+        inactive_cards: List[InactiveStudentCard] = []
+        for item in raw_inactive:
+            first_name = (item.get("full_name") or "Aluno").strip().split()[0]
+            days = int(item.get("days_inactive") or 4)
+            suggested_msg = (
+                f"Fala {first_name}! 💪 Notei aqui no app que faz {days} dias que você não treina. "
+                f"Aconteceu algum imprevisto ou a rotina apertou? Bora ajustar os treinos dessa semana pra não perder o ritmo! 🚀"
+            )
+            phone = item.get("phone") or ""
+            clean_phone = re.sub(r"\D", "", phone)
+            contact_url = None
+            if clean_phone:
+                if not clean_phone.startswith("55") and len(clean_phone) in (10, 11):
+                    clean_phone = "55" + clean_phone
+                contact_url = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(suggested_msg)}"
+
+            inactive_cards.append(InactiveStudentCard(
+                id=item.get("id") or "",
+                full_name=item.get("full_name") or "Aluno",
+                phone=phone,
+                days_inactive=days,
+                streak_days=int(item.get("streak_days") or 0),
+                last_contacted_at=item.get("last_contacted_at"),
+                recently_contacted_48h=bool(item.get("recently_contacted_48h")),
+                suggested_whatsapp_message=suggested_msg,
+                contact_whatsapp_url=contact_url,
+            ))
+
+        # 2. Métricas de treino das últimas 24h
+        sessions_24h = 0
+        exercises_24h = 0
+
+        if client and is_valid_uuid(valid_tid):
+            try:
+                st_res = await client.table("profiles")\
+                    .select("id")\
+                    .eq("trainer_id", valid_tid)\
+                    .eq("role", "client")\
+                    .execute()
+                c_ids = [r["id"] for r in (st_res.data or []) if r.get("id")]
+                if c_ids:
+                    ws_res = await client.table("workout_sessions")\
+                        .select("id, completed_exercises, total_exercises, completed_at")\
+                        .in_("client_id", c_ids)\
+                        .gte("completed_at", cutoff_24h.isoformat())\
+                        .execute()
+                    for s in (ws_res.data or []):
+                        sessions_24h += 1
+                        comp = s.get("completed_exercises") or s.get("total_exercises") or 0
+                        try:
+                            exercises_24h += int(comp)
+                        except (ValueError, TypeError):
+                            exercises_24h += 6
+            except Exception as e:
+                logger.warning(f"[OperationalCockpit] Erro ao buscar sessões 24h: {e}")
+
+        # Fallback local/testes: buscar eventos de treino nas últimas 24h em _mem_pulse_events
+        if not self._is_production():
+            for ev in self._mem_pulse_events.values():
+                if ev.get("trainer_id") in (trainer_id, valid_tid, "current-trainer") and ev.get("event_type") == "workout_completed":
+                    created_at_raw = ev.get("created_at")
+                    is_recent = True
+                    if created_at_raw:
+                        try:
+                            dt = datetime.fromisoformat(str(created_at_raw).replace("Z", "+00:00"))
+                            if dt.tzinfo is None:
+                                dt = dt.replace(tzinfo=timezone.utc)
+                            if dt < cutoff_24h:
+                                is_recent = False
+                        except Exception:
+                            pass
+                    if is_recent:
+                        sessions_24h += 1
+                        meta = ev.get("metadata") or {}
+                        exercises_24h += int(meta.get("completed_exercises") or meta.get("exercises") or 6)
+
+        if sessions_24h > 0 and exercises_24h == 0:
+            exercises_24h = sessions_24h * 6
+        estimated_sets_24h = exercises_24h * 3
+
+        # 3. Alertas de dor / biomecânicos
+        all_alerts = await self.list_trainer_alerts(trainer_id)
+        pending_alerts = [a for a in all_alerts if not a.acknowledged]
+
+        recent_pain_alerts: List[OperationalPainAlertItem] = []
+        for a in (pending_alerts if pending_alerts else all_alerts)[:5]:
+            recent_pain_alerts.append(OperationalPainAlertItem(
+                id=a.id,
+                student_id=a.student_id,
+                student_name=a.student_name,
+                original_exercise=a.original_exercise,
+                adapted_exercise=a.adapted_exercise,
+                pain_location=a.pain_location or a.reason,
+                severity=a.severity or "Moderada",
+                created_at=a.created_at,
+            ))
+
+        total_students = int(weekly_digest.get("total_students") or len(inactive_cards))
+        active_this_week = int(weekly_digest.get("active_this_week") or 0)
+        retention_rate = int(weekly_digest.get("retention_rate") or (100 if total_students == 0 else max(0, int(((total_students - len(inactive_cards)) / max(1, total_students)) * 100))))
+
+        return TrainerOperationalCockpitResponse(
+            sessions_completed_24h=sessions_24h,
+            exercises_completed_24h=exercises_24h,
+            estimated_sets_24h=estimated_sets_24h,
+            pending_pain_alerts_count=len(pending_alerts),
+            recent_pain_alerts=recent_pain_alerts,
+            inactive_students_count=len(inactive_cards),
+            inactive_students=inactive_cards,
+            total_students=total_students,
+            active_students_this_week=active_this_week,
+            retention_rate=retention_rate,
+        )
+
+
     # =========================================================================
     # ASSINATURAS SAAS (SUBSCRIPTIONS + PLANS)
     # =========================================================================
@@ -2839,6 +2975,9 @@ class SupabaseService:
                 return True
             except Exception as e:
                 logger.debug(f"[mark_student_contacted] Falha ignorada: {e}")
+        if not self._is_production() and student_id in self._mem_students:
+            self._mem_students[student_id]["last_contacted_at"] = now_iso
+            return True
         return False
 
     async def get_proactive_radar_and_weekly_digest(self, trainer_id: str, min_inactive_days: int = 4) -> Dict[str, Any]:
@@ -2908,6 +3047,25 @@ class SupabaseService:
 
             if al_res and not isinstance(al_res, Exception) and hasattr(al_res, "data") and al_res.data:
                 pending_alerts_count = len(al_res.data)
+
+        if not active_profiles and not self._is_production() and self._mem_students:
+            for s in self._mem_students.values():
+                if s.get("trainer_id") in (trainer_id, valid_tid, "current-trainer") or trainer_id in ("current-trainer", DEFAULT_DEMO_TRAINER_ID):
+                    sub_st = str(s.get("subscription_status") or "active").lower()
+                    if sub_st not in ("canceled", "arquivado", "suspended", "inativo"):
+                        active_profiles.append({
+                            "id": s.get("id"),
+                            "full_name": s.get("full_name") or s.get("name") or "Aluno",
+                            "phone": s.get("phone", ""),
+                            "subscription_status": sub_st,
+                            "streak_days": int(s.get("streak_days") or 0),
+                            "last_checkin_date": s.get("last_checkin_date") or s.get("last_session"),
+                            "last_contacted_at": s.get("last_contacted_at"),
+                            "created_at": s.get("created_at"),
+                        })
+
+        if pending_alerts_count == 0 and not self._is_production() and self._mem_alerts:
+            pending_alerts_count = sum(1 for a in self._mem_alerts.values() if not a.get("acknowledged"))
 
             try:
                 client_ids = [p["id"] for p in active_profiles if p.get("id")]

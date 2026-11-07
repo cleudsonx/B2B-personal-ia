@@ -5,6 +5,7 @@ from app.schemas.student_pulse import (
     StudentPulseEventResponse,
     StudentPulseAcknowledgeRequest,
     StudentPulseSummaryResponse,
+    TrainerOperationalCockpitResponse,
 )
 from app.services.supabase_service import supabase_service
 from app.api.deps import get_current_user, get_current_trainer
@@ -117,4 +118,47 @@ async def mark_pulse_event_viewed(
             detail="Evento não encontrado ou já reconhecido.",
         )
     return {"id": event_id, "viewed_by_trainer": True, "action_taken": req.action_taken}
+
+
+@router.get(
+    "/trainer/{trainer_id}/cockpit",
+    response_model=TrainerOperationalCockpitResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Cockpit Operacional 24h & Radar Anti-Evasão do Treinador",
+    description="Retorna métricas em tempo real das últimas 24h (séries concluídas, alertas articulares de dor) e lista de alunos ausentes com mensagem de reengajamento WhatsApp.",
+)
+async def get_trainer_operational_cockpit(
+    trainer_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_trainer),
+) -> TrainerOperationalCockpitResponse:
+    authenticated_id = current_user.get("sub")
+    if trainer_id != authenticated_id and authenticated_id != "current-trainer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso negado ao cockpit deste treinador.",
+        )
+    return await supabase_service.get_trainer_operational_cockpit(
+        trainer_id=authenticated_id or trainer_id
+    )
+
+
+@router.post(
+    "/students/{student_id}/contacted",
+    response_model=Dict[str, Any],
+    status_code=status.HTTP_200_OK,
+    summary="Registrar Contato de Reengajamento com Aluno",
+    description="Atualiza last_contacted_at do aluno para ativar a trava anti-spam de 48h.",
+)
+async def mark_student_contacted(
+    student_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_trainer),
+) -> Dict[str, Any]:
+    success = await supabase_service.mark_student_contacted(student_id)
+    return {
+        "success": True,
+        "student_id": student_id,
+        "contacted": success,
+        "message": "Trava anti-spam de 48h ativada com sucesso.",
+    }
+
 

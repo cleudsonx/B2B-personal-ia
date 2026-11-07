@@ -15,6 +15,7 @@ api_router.include_router(exercises.router, prefix="/exercises", tags=["Exercise
 api_router.include_router(adaptations.router, prefix="/adaptations", tags=["Adaptations"])
 api_router.include_router(assistant.router, prefix="/assistant", tags=["Assistant"])
 api_router.include_router(student_pulse.router, prefix="/pulse", tags=["Student Pulse"])
+api_router.include_router(student_pulse.router, prefix="/student-pulse", tags=["Student Pulse"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
 api_router.include_router(subscriptions.router, prefix="/subscriptions", tags=["Subscriptions"])
 api_router.include_router(validators.router, prefix="/validators", tags=["Validators"])

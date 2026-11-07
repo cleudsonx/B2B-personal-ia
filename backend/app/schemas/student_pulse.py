@@ -52,3 +52,40 @@ class StudentPulseSummaryResponse(BaseModel):
     high_risk_inactivity_count: int
     recent_events: List[StudentPulseEventResponse]
 
+
+class InactiveStudentCard(BaseModel):
+    id: str
+    full_name: str
+    phone: str = ""
+    days_inactive: int
+    streak_days: int = 0
+    last_contacted_at: Optional[str] = None
+    recently_contacted_48h: bool = False
+    suggested_whatsapp_message: str = ""
+    contact_whatsapp_url: Optional[str] = None
+
+
+class OperationalPainAlertItem(BaseModel):
+    id: str
+    student_id: str
+    student_name: str
+    original_exercise: str
+    adapted_exercise: str
+    pain_location: Optional[str] = None
+    severity: str = "Moderada"
+    created_at: str
+
+
+class TrainerOperationalCockpitResponse(BaseModel):
+    sessions_completed_24h: int
+    exercises_completed_24h: int
+    estimated_sets_24h: int
+    pending_pain_alerts_count: int
+    recent_pain_alerts: List[OperationalPainAlertItem] = Field(default_factory=list)
+    inactive_students_count: int
+    inactive_students: List[InactiveStudentCard] = Field(default_factory=list)
+    total_students: int
+    active_students_this_week: int
+    retention_rate: int
+
+
