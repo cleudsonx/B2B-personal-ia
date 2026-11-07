@@ -1,43 +1,38 @@
 {
-  "version": "1.15.0",
-  "build": 2026110702,
-  "updated_at": "2026-11-07T12:00:00.000000Z",
-  "notes": "Versão 1.15.0: Hub de Anamnese Clínica & Inteligência de Lesões (Matriz articular interativa de 7 regiões, motor determinístico cinesiológico O(1) de contraindicações e substituição protetora em 1 toque no app).",
+  "version": "1.16.0",
+  "build": 2026110703,
+  "updated_at": "2026-11-07T14:30:00.000000Z",
+  "notes": "Versão 1.16.0: Bio-Hub 3.0 & Telemetria Fisiológica (Score Diário de Prontidão 0-100, Fórmulas de 1RM Brzycki & Epley, Mapa Cinético de Recuperação Miofibrilar de 6 Grupamentos e Radar de Deload para o Personal Trainer).",
   "changelog": {
     "trainer": [
       {
-        "title": "Matriz Articular & Blindagem Cinesiológica",
-        "description": "Seletor visual de 7 regiões articulares com severidade clínica (Leve, Moderada, Grave) e chips de condições patológicas comuns.",
-        "badge": "CLÍNICO"
+        "title": "Radar de Fadiga & Deload Inteligente",
+        "description": "Visão consolidada em tempo real de quais alunos necessitam de semana regenerativa ou apresentam queda crítica de prontidão neuromuscular.",
+        "badge": "FISIOLOGIA"
       },
       {
-        "title": "Detecção de Contraindicações & 1-Toque Protetor",
-        "description": "Cruzamento biomecânico automático das fichas com sugestão e substituição instantânea de exercícios de risco por alternativas seguras.",
-        "badge": "SEGURANÇA"
-      },
-      {
-        "title": "Perfil Clínico Persistente do Aluno",
-        "description": "Histórico estruturado de lesões e limitações articulares por aluno com sincronização automática e retrocompatibilidade com anamneses legadas.",
-        "badge": "PRONTUÁRIO"
+        "title": "Sobrecarga Progressiva & Recordes (1RM)",
+        "description": "Cálculo determinístico de 1RM estimado (Brzycki & Epley) e evolução de volume load semanal acumulado por exercício.",
+        "badge": "PERFORMANCE"
       }
     ],
     "student": [
       {
-        "title": "Treinos 100% Blindados Contra Lesões",
-        "description": "Fichas de periodização adaptadas cinesiologicamente para respeitar suas dores e limitações articulares sem sobrecarga axial ou impacto.",
-        "badge": "PROTEÇÃO"
+        "title": "Score Diário de Prontidão (Readiness 0-100)",
+        "description": "Indicador dinâmico de prontidão cruzando horas e qualidade de sono, fadiga RPE de treinos recentes e integridade articular.",
+        "badge": "BIO-HUB"
       },
       {
-        "title": "Orientações e Substitutos Claros",
-        "description": "Notas protetoras detalhadas em cada exercício com vetores poupadores para treinar com máxima segurança na academia.",
-        "badge": "BEM-ESTAR"
+        "title": "Recuperação Miofibrilar por Grupamento",
+        "description": "Cinética anatômica em tempo real de 6 grupos musculares informando se o grupo está 100% pronto ou em processo de reparo.",
+        "badge": "RECUPERAÇÃO"
       }
     ],
     "admin": [
       {
-        "title": "Motor Cinesiológico Determinístico O(1)",
-        "description": "Base de regras cinesiológicas determinísticas com zero custo de LLM, parser semântico de linguagem natural e auditoria de segurança biomecânica.",
-        "badge": "MOTOR 4.0"
+        "title": "Motor Fisiológico Determinístico O(1)",
+        "description": "Computação instantânea de readiness, cinéticas de síntese proteica e 1RM sem sobrecarga de tokens LLM e alta escalabilidade.",
+        "badge": "CORE"
       }
     ]
   }

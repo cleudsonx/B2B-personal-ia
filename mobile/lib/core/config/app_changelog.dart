@@ -40,6 +40,58 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     // ==========================================
+    // v1.16.0 - BIO-HUB 3.0 & TELEMETRIA FISIOLÓGICA
+    // ==========================================
+    VersionRelease(
+      version: '1.16.0',
+      buildNumber: 2026110703,
+      date: '7 de Novembro, 2026',
+      summary:
+          'Versão 1.16.0: Bio-Hub 3.0 & Telemetria Fisiológica (Score Diário de Prontidão 0-100, Fórmulas de 1RM Brzycki & Epley, Mapa Cinético de Recuperação Miofibrilar de 6 Grupamentos e Radar de Deload para o Personal Trainer).',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.bolt_rounded,
+          title: 'Score Diário de Prontidão (Readiness 0-100)',
+          description:
+              'Indicador visual dinâmico que cruza sono, esforço de treinos anteriores e estresse articular com diretrizes técnicas diárias.',
+          badge: 'BIO-HUB',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.battery_charging_full_rounded,
+          title: 'Recuperação Miofibrilar por Grupamento',
+          description:
+              'Acompanhamento anatômico em tempo real de 6 grupos musculares informando se o grupamento está 100% pronto ou em processo de reparo.',
+          badge: 'RECUPERAÇÃO',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.warning_amber_rounded,
+          title: 'Radar de Fadiga & Deload Inteligente',
+          description:
+              'Alerta preditivo consolidado no cockpit do personal para prevenir overtraining e sugerir redução de volume regenerativo (-35%).',
+          badge: 'DELOAD',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.fitness_center_rounded,
+          title: 'Sobrecarga Progressiva & 1RM Brzycki/Epley',
+          description:
+              'Registro instantâneo de cargas e repetições com cálculo determinístico de 1RM estimado e volume load semanal acumulado.',
+          badge: 'PERFORMANCE',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.speed_rounded,
+          title: 'Motor Fisiológico Determinístico O(1)',
+          description:
+              'Arquitetura ultrarrápida sem consumo de LLM para cálculos matemáticos de prontidão e cinética biológica de reparo.',
+          badge: 'CORE',
+          targetRoles: ['admin'],
+        ),
+      ],
+    ),
+    // ==========================================
     // v1.15.0 - HUB DE ANAMNESE CLÍNICA & INTELIGÊNCIA DE LESÕES
     // ==========================================
     VersionRelease(
