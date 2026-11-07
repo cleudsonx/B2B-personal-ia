@@ -95,7 +95,7 @@ CINESIOLOGY_KNOWLEDGE_BASE: Dict[JointRegion, Dict[str, Any]] = {
         ],
         "contraindications": [
             {
-                "pattern": r"(cadeira extensora.*pesad|extensora.*amplitude completa)",
+                "pattern": r"(cadeira extensora|extensora)",
                 "exercise_name": "Cadeira Extensora em Amplitude Total",
                 "reason": "Pico de força de cisalhamento anterior e compressão patelofemoral nos últimos 30 graus de extensão em cadeia aberta.",
                 "avoid_vector": "Extensão terminal em cadeia aberta contra resistência externa",

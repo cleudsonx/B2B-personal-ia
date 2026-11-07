@@ -87,6 +87,7 @@ class SupabaseService:
         self._mem_processed_events: Dict[str, Dict[str, Any]] = {}
         self._mem_checkout_sessions: Dict[str, Dict[str, Any]] = {}
         self._mem_pulse_events: Dict[str, Dict[str, Any]] = {}
+        self._mem_clinical_profiles: Dict[str, Dict[str, Any]] = {}
 
     @staticmethod
     def _extract_rpc_row(res_data: Any) -> tuple[Dict[str, Any], Any]:
@@ -1580,6 +1581,130 @@ class SupabaseService:
                 "training_level": "Intermediário",
             }
         return None
+
+    # =========================================================================
+    # PERFIL CLÍNICO E MATRIZ ARTICULAR (FRENTE 4)
+    # =========================================================================
+
+    async def get_student_clinical_profile(self, student_id: str):
+        """Busca o perfil clínico e matriz articular estruturada do aluno."""
+        from app.schemas.clinical import StudentClinicalProfile, JointRestriction, JointSeverity
+        from app.services.cinesiology_engine import cinesiology_engine
+
+        s_uuid = to_valid_uuid_str(student_id)
+        client = await self.get_client()
+
+        # 1. Tenta buscar da tabela dedicada student_clinical_profiles se supabase disponível
+        if client and is_valid_uuid(s_uuid):
+            try:
+                res = await client.table("student_clinical_profiles")\
+                    .select("*")\
+                    .eq("student_id", s_uuid)\
+                    .maybe_single()\
+                    .execute()
+                if res and res.data:
+                    data = res.data
+                    return StudentClinicalProfile(
+                        student_id=student_id,
+                        restrictions=[JointRestriction(**r) for r in (data.get("restrictions") or [])],
+                        general_clinical_notes=data.get("general_clinical_notes"),
+                        risk_level=data.get("risk_level") or "low",
+                        last_assessment_date=data.get("last_assessment_date"),
+                        updated_at=data.get("updated_at"),
+                    )
+            except Exception as e:
+                logger.debug(f"[get_student_clinical_profile] Tabela não disponível ou erro: {e}")
+
+        # 2. Fallback de memória
+        if student_id in self._mem_clinical_profiles:
+            data = self._mem_clinical_profiles[student_id]
+            return StudentClinicalProfile(**data)
+
+        # 3. Fallback retrocompatível: se o aluno existe com 'injuries_or_restrictions'
+        student_obj = await self.get_student_by_id(student_id)
+        raw_text = student_obj.injuries_or_restrictions if student_obj else None
+        if not raw_text and student_id in self._mem_students:
+            raw_text = self._mem_students[student_id].get("injuries_or_restrictions")
+
+        if raw_text and raw_text.strip() and raw_text.lower() != "nenhuma" and raw_text.lower() != "nenhuma restrição":
+            parsed_restrictions = cinesiology_engine.parse_natural_language_restrictions(raw_text)
+            has_severe = any(r.severity == JointSeverity.SEVERE for r in parsed_restrictions)
+            risk = "high" if has_severe else ("medium" if parsed_restrictions else "low")
+            now_iso = datetime.now(timezone.utc).isoformat()
+            profile = StudentClinicalProfile(
+                student_id=student_id,
+                restrictions=parsed_restrictions,
+                general_clinical_notes=raw_text,
+                risk_level=risk,
+                last_assessment_date=now_iso,
+                updated_at=now_iso,
+            )
+            self._mem_clinical_profiles[student_id] = profile.model_dump()
+            return profile
+
+        # Retorna perfil vazio padrão
+        now_iso = datetime.now(timezone.utc).isoformat()
+        return StudentClinicalProfile(
+            student_id=student_id,
+            restrictions=[],
+            general_clinical_notes=None,
+            risk_level="low",
+            last_assessment_date=now_iso,
+            updated_at=now_iso,
+        )
+
+    async def save_student_clinical_profile(
+        self, profile, trainer_id: Optional[str] = None
+    ):
+        """Salva a matriz articular e notas clínicas do aluno no Supabase e memória."""
+        from app.schemas.clinical import JointSeverity, StudentClinicalProfile
+        s_uuid = to_valid_uuid_str(profile.student_id)
+        now_iso = datetime.now(timezone.utc).isoformat()
+
+        # Recalcula risk_level
+        has_severe = any(r.severity == JointSeverity.SEVERE for r in profile.restrictions)
+        risk = "high" if has_severe else ("medium" if profile.restrictions else "low")
+
+        profile_dict = profile.model_dump()
+        profile_dict["risk_level"] = risk
+        profile_dict["updated_at"] = now_iso
+        if not profile_dict.get("last_assessment_date"):
+            profile_dict["last_assessment_date"] = now_iso
+
+        self._mem_clinical_profiles[profile.student_id] = profile_dict
+
+        # Gera resumo textual para injuries_or_restrictions (compatibilidade retroativa)
+        summary_items = []
+        for r in profile.restrictions:
+            conds = f" ({', '.join(r.conditions)})" if r.conditions else ""
+            summary_items.append(f"{r.joint.value.replace('_', ' ').title()}{conds}")
+        summary_text = ", ".join(summary_items) if summary_items else "Nenhuma restrição articular ou dor relatada."
+
+        # Atualiza student na memória se existir
+        if profile.student_id in self._mem_students:
+            self._mem_students[profile.student_id]["injuries_or_restrictions"] = summary_text
+
+        client = await self.get_client()
+        if client and is_valid_uuid(s_uuid):
+            try:
+                # 1. Upsert em student_clinical_profiles
+                await client.table("student_clinical_profiles").upsert({
+                    "student_id": s_uuid,
+                    "restrictions": [r.model_dump() for r in profile.restrictions],
+                    "general_clinical_notes": profile.general_clinical_notes,
+                    "risk_level": risk,
+                    "last_assessment_date": profile_dict["last_assessment_date"],
+                    "updated_at": now_iso,
+                }).execute()
+
+                # 2. Atualiza resumo na tabela students/profiles
+                await client.table("students").update({
+                    "injuries_or_restrictions": summary_text
+                }).eq("id", s_uuid).execute()
+            except Exception as e:
+                logger.warning(f"[save_student_clinical_profile] Erro ao persistir no Supabase: {e}")
+
+        return StudentClinicalProfile(**profile_dict)
 
     # =========================================================================
     # PRESCRIÇÕES E FICHAS DE TREINO (WORKOUTS)

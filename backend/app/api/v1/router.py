@@ -2,7 +2,8 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     workouts, adaptations, assistant, subscriptions, validators,
     auth, webhooks, public, whatsapp, whatsapp_ai, invites,
-    exercises, wallet, consultancy_plans, student_pulse, notifications
+    exercises, wallet, consultancy_plans, student_pulse, notifications,
+    clinical
 )
 
 api_router = APIRouter()
@@ -24,3 +25,5 @@ api_router.include_router(whatsapp_ai.router, prefix="/whatsapp", tags=["WhatsAp
 api_router.include_router(whatsapp.router, prefix="/whatsapp", tags=["WhatsApp"])
 api_router.include_router(wallet.router, prefix="/wallet", tags=["Wallet"])
 api_router.include_router(consultancy_plans.router, tags=["Consultancy Plans"])
+api_router.include_router(clinical.router, prefix="/clinical", tags=["Clinical Anamnesis"])
+api_router.include_router(clinical.router, prefix="/workouts/clinical", tags=["Clinical Anamnesis"])
