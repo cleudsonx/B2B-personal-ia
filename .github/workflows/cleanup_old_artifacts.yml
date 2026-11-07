@@ -1,0 +1,65 @@
+name: Cleanup Old Artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      days_to_keep:
+        description: 'Dias de retenção (artefatos mais antigos serão excluídos)'
+        required: true
+        default: '3'
+  schedule:
+    - cron: '0 3 * * *' # Executa diariamente às 03:00 UTC (00:00 BRT)
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cleanup-artifacts:
+    name: Excluir Artefatos Antigos (Liberar Quota 500MB)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Limpar Artefatos Antigos via GitHub API
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const daysToKeep = parseInt('${{ github.event.inputs.days_to_keep || '3' }}', 10);
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+            console.log(`Buscando artefatos criados antes de: ${cutoffDate.toISOString()}`);
+
+            let totalDeleted = 0;
+            let page = 1;
+            while (true) {
+              const res = await github.rest.actions.listArtifactsForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100,
+                page: page,
+              });
+
+              const artifacts = res.data.artifacts;
+              if (!artifacts || artifacts.length === 0) break;
+
+              for (const artifact of artifacts) {
+                const createdAt = new Date(artifact.created_at);
+                if (createdAt < cutoffDate) {
+                  const sizeMb = (artifact.size_in_bytes / (1024 * 1024)).toFixed(2);
+                  console.log(`Excluindo artefato: ${artifact.name} (ID: ${artifact.id}, Criado: ${artifact.created_at}, Tamanho: ${sizeMb} MB)`);
+                  try {
+                    await github.rest.actions.deleteArtifact({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      artifact_id: artifact.id,
+                    });
+                    totalDeleted++;
+                  } catch (err) {
+                    console.error(`Falha ao excluir artefato ${artifact.id}: ${err.message}`);
+                  }
+                }
+              }
+
+              if (artifacts.length < 100) break;
+              page++;
+            }
+            console.log(`Limpeza concluída! Total de artefatos excluídos: ${totalDeleted}`);
