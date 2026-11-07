@@ -40,6 +40,43 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     // ==========================================
+    // v1.14.0 - MOTOR WHATSAPP AI 3.0 & COPILOTO CONVERSACIONAL ATIVO
+    // ==========================================
+    VersionRelease(
+      version: '1.14.0',
+      buildNumber: 2026110604,
+      date: '7 de Novembro, 2026',
+      summary:
+          'Versão 1.14.0: Motor WhatsApp AI 3.0 & Copiloto Conversacional Ativo (Check-in pós-treino com RPE 1-10 e triagem articular em tempo real, Resumo Semanal Executivo com Recordes de Carga (PRs) e Triagem Multimodal de Aparelho Ocupado).',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.chat_rounded,
+          title: 'Motor WhatsApp AI 3.0 & Check-in Ativo',
+          description:
+              'Check-in automático disparado no WhatsApp do aluno ao concluir a sessão de treino, com botões interativos de RPE e triagem de dor articular.',
+          badge: 'IA 3.0',
+          targetRoles: ['trainer', 'student'],
+        ),
+        ChangelogItem(
+          icon: Icons.emoji_events_rounded,
+          title: 'Resumo Executivo com Recordes (PRs)',
+          description:
+              'Cálculo e notificação de recordes pessoais de carga batidos na semana pelos alunos enviados diretamente para o WhatsApp do personal.',
+          badge: 'DESTAQUE',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.swap_horiz_rounded,
+          title: 'Triagem Multimodal & Troca de Aparelho',
+          description:
+              'Suporte a mensagens de texto ou áudios na academia com recomendação biomecânica inteligente de aparelhos equivalentes e confirmação em 1 toque.',
+          badge: 'BIOMECÂNICA',
+          targetRoles: ['trainer', 'student'],
+        ),
+      ],
+    ),
+
+    // ==========================================
     // v1.13.9 - COCKPIT OPERACIONAL DO TREINADOR ZEN & RADAR ANTI-EVASÃO (UX B2B)
     // ==========================================
     VersionRelease(

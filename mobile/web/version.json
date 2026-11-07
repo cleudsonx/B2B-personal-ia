@@ -1,37 +1,42 @@
 {
-  "version": "1.13.9",
-  "build": 2026110603,
-  "updated_at": "2026-11-06T23:59:00.000000Z",
-  "notes": "Versão 1.13.9: Cockpit Operacional do Treinador Zen (Resumo 24h, séries concluídas pelos alunos e alertas articulares em tempo real) & Radar Anti-Evasão com reengajamento 1-toque WhatsApp e trava anti-spam de 48h.",
+  "version": "1.14.0",
+  "build": 2026110604,
+  "updated_at": "2026-11-07T00:10:00.000000Z",
+  "notes": "Versão 1.14.0: Motor WhatsApp AI 3.0 & Copiloto Conversacional Ativo (Check-in pós-treino ativo com RPE e triagem articular, Resumo Semanal com Recordes de Carga (PRs) e Triagem Multimodal de Aparelho Ocupado).",
   "changelog": {
     "trainer": [
       {
-        "title": "Cockpit Operacional · Últimas 24h",
-        "description": "Card executivo no topo da lista com telemetria em tempo real de séries concluídas pelos alunos e taxa de presença semanal da carteira.",
-        "badge": "NOVO"
+        "title": "Motor WhatsApp AI 3.0",
+        "description": "Copiloto conversacional ativo com triagem inteligente, check-in pós-treino com RPE e detecção automática de dor articular.",
+        "badge": "IA 3.0"
       },
       {
-        "title": "Alertas Articulares em Tempo Real",
-        "description": "Desconfortos e adaptações biomecânicas reportados na academia em destaque imediato com navegação em 1-toque para ver adaptação.",
-        "badge": "SAÚDE"
+        "title": "Resumo Executivo com Recordes (PRs)",
+        "description": "Balanço semanal com evolução e quebra de recordes de carga (PRs) dos alunos enviado direto para o WhatsApp do personal.",
+        "badge": "DESTAQUE"
       },
       {
-        "title": "Radar Anti-Evasão 1-Toque WhatsApp",
-        "description": "Detecção de alunos ausentes (>4 dias sem treino) com reengajamento proativo personalizado por IA e respeito à trava anti-spam de 48h.",
-        "badge": "RETENÇÃO"
+        "title": "Triagem Multimodal & Substituição",
+        "description": "Suporte a notas de voz na academia e sugestão instantânea de aparelhos equivalentes com botões interativos de 1 toque.",
+        "badge": "BIOMECÂNICA"
       }
     ],
     "student": [
       {
-        "title": "Acompanhamento Biomecânico Ativo",
-        "description": "Seus alertas de dor e substituições de aparelho na academia são notificados imediatamente ao seu personal trainer.",
-        "badge": "MELHORIA"
+        "title": "Check-in Pós-Treino no WhatsApp",
+        "description": "Avaliação instantânea de intensidade (RPE 1-10) e relato de desconfortos com registro automático no radar do seu treinador.",
+        "badge": "FEEDBACK"
+      },
+      {
+        "title": "Substituição Rápida de Aparelho Ocupado",
+        "description": "Peça sugestões biomecânicas por texto ou áudio no WhatsApp quando um aparelho estiver cheio e adapte a sessão em 1 toque.",
+        "badge": "PRATICIDADE"
       }
     ],
     "admin": [
       {
-        "title": "Endpoint Consolidado /pulse/trainer/:id/cockpit",
-        "description": "Agregação atômica de telemetria operacional 24h e radar de evasão em rota unificada de alta performance.",
+        "title": "Roteador Multimodal e Parser O(1) de RPE",
+        "description": "Mecanismo de parsing com custo zero de tokens para RPE e quebra de recordes pessoais (PRs) semanais.",
         "badge": "INFRA"
       }
     ]
