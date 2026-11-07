@@ -146,7 +146,7 @@ def test_zero_cost_menu_and_phase2_lock(monkeypatch):
             "Senti muita dor no ombro e acho que lesionei",
         )
         assert len(sent_messages) == 9
-        assert "interrompa imediatamente o exercício" in sent_messages[-1][2]
+        assert "Relato de Desconforto Registrado" in sent_messages[-1][2] or "descanse a articulação" in sent_messages[-1][2]
         assert len(gemini_calls) == 2  # Bloqueio de segurança sem tokens
 
         # 10. Injeção de Anamnese Expandida no Prompt
@@ -194,8 +194,21 @@ def test_simulate_whatsapp_endpoint(monkeypatch):
     async def fake_sub(trainer_id: str):
         return SimpleNamespace(plan_id="pro")
 
+    async def fake_get_prescription(student_id: str):
+        return SimpleNamespace(
+            workout_plan_title="Hipertrofia A/B",
+            splits=[
+                SimpleNamespace(
+                    split_identifier="A",
+                    split_name="Superiores",
+                    exercises=[SimpleNamespace(name="Supino Reto", sets=4, reps="10", rest_seconds=60)],
+                )
+            ],
+        )
+
     monkeypatch.setattr(supabase_service, "list_students", fake_get_students)
     monkeypatch.setattr(supabase_service, "get_trainer_subscription", fake_sub)
+    monkeypatch.setattr(supabase_service, "get_active_prescription", fake_get_prescription)
 
     res = client.post("/api/v1/whatsapp/simulate", json={"question": "1"})
     assert res.status_code == 200

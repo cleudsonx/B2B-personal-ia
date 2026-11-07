@@ -34,7 +34,7 @@ def _is_synthetic_provisioned_email(email: str) -> bool:
 
 
 async def get_current_user(payload: Dict[str, Any] = Depends(get_current_user_payload)) -> Dict[str, Any]:
-    user_id = payload.get("sub")
+    user_id = str(payload.get("sub") or "").strip()
     if settings.ENVIRONMENT.lower() != "production" and user_id == "dev-user-0000-0000-000000000001":
         payload["aal"] = "aal2"
         payload["profile"] = {
