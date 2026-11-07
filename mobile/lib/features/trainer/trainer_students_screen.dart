@@ -18,6 +18,9 @@ import '../subscription/subscription_screen.dart';
 import '../landing/public_trainer_directory_screen.dart';
 import 'anamnesis_screen.dart';
 import 'presentation/screens/trainer_profile_setup_screen.dart';
+import 'presentation/widgets/trainer_operational_cockpit_card.dart';
+import 'presentation/widgets/trainer_retention_radar.dart';
+import '../../models/operational_cockpit_model.dart';
 
 enum _StudentRiskFilter { all, onTrack, attention, atRisk }
 
@@ -41,6 +44,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
   List<Map<String, dynamic>> _students = [];
   bool _hasError = false;
   String _errorMessage = '';
+  TrainerOperationalCockpitData? _cockpitData;
 
   @override
   void initState() {
@@ -75,6 +79,15 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
       if (AuthService.currentUser != null) {
         SubscriptionService.refreshMySubscription().then((_) {}).catchError((e) {
           debugPrint('Aviso ao sincronizar plano do treinador: $e');
+        });
+        WorkoutService.getOperationalCockpit().then((cockpit) {
+          if (mounted && cockpit != null) {
+            setState(() {
+              _cockpitData = cockpit;
+            });
+          }
+        }).catchError((e) {
+          debugPrint('Aviso ao sincronizar cockpit operacional: $e');
         });
       }
 
@@ -245,6 +258,129 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
         ),
       );
     }
+  }
+
+  void _onOperationalPainAlertTap(OperationalPainAlertItem alert) {
+    final student = _students.firstWhere(
+      (s) =>
+          s['id'] == alert.studentId ||
+          (s['full_name'] as String? ?? '').toLowerCase() ==
+              alert.studentName.toLowerCase(),
+      orElse: () => <String, dynamic>{
+        'id': alert.studentId,
+        'full_name': alert.studentName,
+        'has_alert': true,
+        'alert_message':
+            'Trocou ${alert.originalExercise} por ${alert.adaptedExercise}',
+        'alert_data': {
+          'id': alert.id,
+          'student_id': alert.studentId,
+          'student_name': alert.studentName,
+          'original_exercise': alert.originalExercise,
+          'adapted_exercise': alert.adaptedExercise,
+          'pain_location': alert.painLocation,
+          'severity': alert.severity,
+          'reason': 'Alerta biomecânico registrado no treino',
+        },
+      },
+    );
+    _showBiomechanicsAlertModal(student);
+  }
+
+  Future<void> _onContactInactiveStudent(InactiveStudentCard student) async {
+    HapticFeedback.lightImpact();
+    // 1. Abre WhatsApp com mensagem contextualizada
+    final studentMap = _students.firstWhere(
+      (s) => s['id'] == student.id,
+      orElse: () => {
+        'id': student.id,
+        'full_name': student.fullName,
+        'phone': student.phone,
+      },
+    );
+    await _openWhatsApp(studentMap,
+        customMessage: student.suggestedWhatsappMessage);
+
+    // 2. Registra contato e ativa trava anti-spam de 48h
+    WorkoutService.markStudentContacted(student.id);
+
+    // 3. Atualiza estado reativo local
+    if (mounted && _cockpitData != null) {
+      final updatedList = _cockpitData!.inactiveStudents.map((s) {
+        if (s.id == student.id) {
+          return s.copyWith(
+            recentlyContacted48h: true,
+            lastContactedAt: DateTime.now().toUtc().toIso8601String(),
+          );
+        }
+        return s;
+      }).toList();
+      setState(() {
+        _cockpitData = _cockpitData!.copyWith(inactiveStudents: updatedList);
+      });
+    }
+  }
+
+  TrainerOperationalCockpitData _getEffectiveCockpitData(
+    int onTrackCount,
+    int attentionCount,
+    int atRiskCount,
+  ) {
+    if (_cockpitData != null) {
+      return _cockpitData!;
+    }
+    final atRiskStudents = _students
+        .where((st) => _classifyStudent(st) == _StudentRiskFilter.atRisk)
+        .map((st) {
+      final name = st['full_name'] as String? ?? 'Aluno';
+      final firstName = name.split(' ').first;
+      final phone = st['phone'] as String? ?? '';
+      return InactiveStudentCard(
+        id: st['id'] as String? ?? '',
+        fullName: name,
+        phone: phone,
+        daysInactive: 5,
+        streakDays: 0,
+        recentlyContacted48h: false,
+        suggestedWhatsappMessage:
+            'Fala $firstName! 💪 Notei aqui no app que faz alguns dias que você não treina. Aconteceu algum imprevisto ou a rotina apertou? Bora ajustar os treinos dessa semana pra não perder o ritmo! 🚀',
+      );
+    }).toList();
+
+    final alertItems = _students
+        .where((st) => st['has_alert'] == true)
+        .map((st) {
+      final dt = (st['alert_data'] as Map<String, dynamic>?) ?? {};
+      return OperationalPainAlertItem(
+        id: dt['id']?.toString() ?? 'alt-${st['id']}',
+        studentId: st['id'] as String? ?? '',
+        studentName: st['full_name'] as String? ?? 'Aluno',
+        originalExercise: dt['original_exercise'] as String? ?? 'Exercício Original',
+        adaptedExercise: dt['adapted_exercise'] as String? ?? 'Exercício Adaptado',
+        painLocation: dt['pain_location'] as String?,
+        severity: dt['severity'] as String? ?? 'Moderada',
+        createdAt: dt['created_at'] as String? ??
+            DateTime.now().toUtc().toIso8601String(),
+      );
+    }).toList();
+
+    final total = _students.length;
+    final retention = total > 0
+        ? (((total - atRiskCount) / total) * 100).round()
+        : 100;
+
+    return TrainerOperationalCockpitData(
+      sessionsCompleted24h: onTrackCount,
+      exercisesCompleted24h: onTrackCount * 6,
+      estimatedSets24h: onTrackCount * 18,
+      pendingPainAlertsCount: alertItems.length,
+      recentPainAlerts: alertItems,
+      inactiveStudentsCount: atRiskStudents.length,
+      inactiveStudents: atRiskStudents,
+      totalStudents: total,
+      activeStudentsThisWeek: onTrackCount,
+      retentionRate: retention,
+    );
   }
 
   void _showBiomechanicsAlertModal(Map<String, dynamic> student) {
@@ -1574,6 +1710,15 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
       }
     }
 
+    final effectiveCockpit = _getEffectiveCockpitData(
+      onTrackCount,
+      attentionCount,
+      atRiskCount,
+    );
+    final showCockpitWidgets =
+        _searchQuery.isEmpty && _selectedRiskFilter == _StudentRiskFilter.all;
+    final int headerCount = showCockpitWidgets ? 2 : 0;
+
     final filteredStudents = _students.where((st) {
       final name = (st['full_name'] as String? ?? '').toLowerCase();
       final status = (st['recent_status'] as String? ?? '').toLowerCase();
@@ -2080,10 +2225,30 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                             left: 14,
                             right: 14,
                           ),
-                          itemCount: filteredStudents.length,
+                          itemCount: headerCount + filteredStudents.length,
                           separatorBuilder: (_, _) => const SizedBox(height: 12),
                           itemBuilder: (context, index) {
-                            final student = filteredStudents[index];
+                            if (showCockpitWidgets) {
+                              if (index == 0) {
+                                return TrainerOperationalCockpitCard(
+                                  data: effectiveCockpit,
+                                  onAlertTap: _onOperationalPainAlertTap,
+                                  onViewAllAlerts: () {
+                                    setState(() => _selectedRiskFilter =
+                                        _StudentRiskFilter.attention);
+                                  },
+                                );
+                              }
+                              if (index == 1) {
+                                return TrainerRetentionRadar(
+                                  inactiveStudents:
+                                      effectiveCockpit.inactiveStudents,
+                                  onContactStudent: _onContactInactiveStudent,
+                                );
+                              }
+                            }
+                            final studentIndex = index - headerCount;
+                            final student = filteredStudents[studentIndex];
                             final fullName =
                                 student['full_name'] as String? ?? 'Aluno';
                             final recentStatus =
