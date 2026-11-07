@@ -40,6 +40,59 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     // ==========================================
+    // v1.15.0 - HUB DE ANAMNESE CLÍNICA & INTELIGÊNCIA DE LESÕES
+    // ==========================================
+    VersionRelease(
+      version: '1.15.0',
+      buildNumber: 2026110701,
+      date: '7 de Novembro, 2026',
+      summary:
+          'Versão 1.15.0: Hub de Anamnese Clínica & Inteligência de Lesões (Matriz articular interativa de 7 regiões, motor cinesiológico O(1) com detecção determinística de contraindicações e substituições protetoras de 1 toque no app).',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.accessibility_new_rounded,
+          title: 'Matriz Articular & Blindagem Cinesiológica',
+          description:
+              'Mapeamento visual e intuitivo de 7 regiões articulares com severidade clínica graduada e patologias comuns na prescrição.',
+          badge: 'NOVO',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.shield_rounded,
+          title: 'Detecção de Contraindicações & 1-Toque Protetor',
+          description:
+              'Cruzamento automático de exercícios prescritos com a integridade biomecânica do aluno e substituição de risco com um único toque.',
+          badge: 'SEGURANÇA',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.verified_user_rounded,
+          title: 'Fichas 100% Protegidas Contra Lesões',
+          description:
+              'Periodizações biomecanicamente blindadas com respeito absoluto às dores articulares e orientações cinesiológicas claras.',
+          badge: 'BIOMECÂNICA',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.fitness_center_rounded,
+          title: 'Orientações Cinesiológicas & Alavancas Seguras',
+          description:
+              'Detalhamento de vetores de proteção articular nos exercícios para executar séries com máxima segurança e sem impacto.',
+          badge: 'BEM-ESTAR',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.biotech_rounded,
+          title: 'Motor Cinesiológico Determinístico O(1)',
+          description:
+              'Base de conhecimento cinesiológico de alta performance com custo zero de tokens e auditoria permanente de segurança biomecânica.',
+          badge: 'MOTOR 4.0',
+          targetRoles: ['admin'],
+        ),
+      ],
+    ),
+
+    // ==========================================
     // v1.14.0 - MOTOR WHATSAPP AI 3.0 & COPILOTO CONVERSACIONAL ATIVO
     // ==========================================
     VersionRelease(
