@@ -108,7 +108,7 @@ void main() {
 
     // 1. Header / Bio / Authority Stats
     expect(find.text('PROF. CLEUDSON CAVALCANTE'), findsOneWidget);
-    expect(find.textContaining('012345-G/DF'), findsOneWidget);
+    expect(find.textContaining('012345-G/DF'), findsWidgets);
     expect(find.textContaining('VERIFICADO'), findsOneWidget);
     expect(find.text('10+'), findsOneWidget);
     expect(find.text('+500'), findsOneWidget);
@@ -128,10 +128,12 @@ void main() {
     expect(find.text('A Experiência no App Mr. Coach'), findsOneWidget);
     expect(find.text('Substituição por IA em 5 Segundos'), findsOneWidget);
 
-    // 6. Planos
+    // 6. Planos & Lead Magnet
     expect(find.text('Planos de Consultoria'), findsOneWidget);
     expect(find.text('Consultoria Mensal Pro'), findsOneWidget);
     expect(find.text('Plano Trimestral Evolução'), findsOneWidget);
+    expect(find.text('Dúvida de qual plano escolher?'), findsOneWidget);
+    expect(find.byKey(const Key('btn_open_screening_banner')), findsOneWidget);
 
     // 7. Pós-Compra & FAQ
     expect(find.text('Como funciona após a matrícula?'), findsOneWidget);

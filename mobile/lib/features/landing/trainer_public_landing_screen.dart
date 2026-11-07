@@ -15,6 +15,9 @@ import '../../services/consultancy_plan_service.dart';
 import '../../services/auth_service.dart';
 import '../auth/login_screen.dart';
 import '../client/welcome_onboarding_screen.dart';
+import '../../models/public_showcase_model.dart';
+import 'widgets/showcase_hero_card.dart';
+import 'widgets/quick_screening_modal.dart';
 
 class TrainerPublicLandingScreen extends StatefulWidget {
   final String username;
@@ -126,6 +129,17 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
         trainerName: _trainerData?['full_name'] as String? ?? 'Personal Trainer',
         trainerWhatsapp: _trainerData?['public_whatsapp'] as String?,
       ),
+    );
+  }
+
+  void _openQuickScreeningModal() {
+    final name = _trainerData?['full_name'] as String? ?? 'Treinador';
+    final phone = _trainerData?['public_whatsapp'] as String?;
+    QuickScreeningModal.show(
+      context,
+      username: widget.username,
+      trainerName: name,
+      trainerPhone: phone,
     );
   }
 
@@ -493,7 +507,15 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
 
                   // 5. A EXPERIÊNCIA COM O APP MR. COACH
                   _buildAppExperienceSection(),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 36),
+
+                  // CARD HERO DE CONVERSÃO & PROVA SOCIAL
+                  ShowcaseHeroCard(
+                    profile: PublicTrainerProfile.fromJson(_trainerData!),
+                    onStartScreening: _openQuickScreeningModal,
+                    onDirectWhatsApp: _openTrainerWhatsapp,
+                  ),
+                  const SizedBox(height: 36),
 
                   // 6. PLANOS DE CONSULTORIA & CHECKOUT PIX
                   _buildPlansSection(),
@@ -1236,7 +1258,7 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
               child: CircularProgressIndicator(color: MetaColors.emerald),
             ),
           )
-        else if (_plans.isEmpty)
+        else if (_plans.isEmpty) ...[
           MetaCard(
             padding: const EdgeInsets.all(20),
             child: const Column(
@@ -1255,10 +1277,94 @@ class _TrainerPublicLandingScreenState extends State<TrainerPublicLandingScreen>
                 ),
               ],
             ),
-          )
-        else
+          ),
+          _buildLeadMagnetScreeningBanner(),
+        ] else ...[
           ..._plans.map((plan) => _buildPublicPlanCard(plan)),
+          _buildLeadMagnetScreeningBanner(),
+        ],
       ],
+    );
+  }
+
+  Widget _buildLeadMagnetScreeningBanner() {
+    final isDark = MetaColors.isDark(context);
+    const primaryColor = MetaColors.emerald;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 24, bottom: 8),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF161E2E) : const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: primaryColor.withValues(alpha: 0.35),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: primaryColor.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.biotech_rounded, color: MetaColors.emerald, size: 24),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Dúvida de qual plano escolher?',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Faça a Triagem Biomecânica Rápida (100% Gratuita)',
+                      style: TextStyle(fontSize: 12, color: MetaColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Informe seus objetivos e queixas articulares (coluna, ombro, joelho). Nossa IA gera uma diretriz cinesiológica preliminar para você alinhar direto com o treinador no WhatsApp!',
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.4,
+              color: isDark ? Colors.grey[300] : Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: ElevatedButton.icon(
+              key: const Key('btn_open_screening_banner'),
+              onPressed: _openQuickScreeningModal,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              icon: const Icon(Icons.flash_on_rounded, color: Colors.black, size: 18),
+              label: const Text(
+                'Iniciar Triagem Gratuita de 1 Minuto',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
