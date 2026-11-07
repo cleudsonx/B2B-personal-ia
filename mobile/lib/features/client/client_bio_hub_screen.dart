@@ -18,6 +18,10 @@ import '../../core/widgets/workout_guide_modal.dart';
 import '../../core/widgets/thematic_editorial_card.dart';
 import '../../core/widgets/thematic_watermarks.dart';
 import 'student_profile_screen.dart';
+import '../../models/biohub_model.dart';
+import '../../services/api_service.dart';
+import 'widgets/readiness_gauge_card.dart';
+import 'widgets/muscle_recovery_heatmap_widget.dart';
 
 /// Aba 4 do Aluno: 🧬 Bio-Hub
 /// Central integrada de Performance (Pré e Pós-Treino), Cargas & Fotos, e Bio-Recovery.
@@ -59,6 +63,10 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
   // Recovery State
   double _sleepHours = 7.5;
   String _domsLevel = 'Leve'; // Leve, Moderada, Intensa
+
+  // Bio-Hub 3.0 Telemetria Fisiológica State
+  ReadinessScoreModel? _biohubReadiness;
+  MuscleRecoveryReportModel? _biohubRecovery;
 
   // Sobrecarga Progressiva Real State
   List<Map<String, dynamic>> _progressiveOverloads = [];
@@ -434,6 +442,39 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
     } catch (_) {
       if (mounted) setState(() => _isLoadingLoads = false);
     }
+
+    try {
+      final readiness = await ApiService().getStudentReadiness(user.id);
+      final recovery = await ApiService().getStudentMuscleRecovery(user.id);
+      if (mounted) {
+        setState(() {
+          _biohubReadiness = readiness;
+          _biohubRecovery = recovery;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _handleLogBiometrics(DailyBiometricLogModel log) async {
+    final user = AuthService.currentUser;
+    if (user == null) return;
+    try {
+      await ApiService().saveStudentDailyLog(user.id, log);
+      final updated = await ApiService().getStudentReadiness(user.id);
+      if (mounted) {
+        setState(() {
+          _biohubReadiness = updated;
+          if (log.sleepHours != null) _sleepHours = log.sleepHours!;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Prontidão calibrada com sucesso!'),
+            backgroundColor: Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (_) {}
   }
 
   Future<void> _autoSaveRecoverySilent() async {
@@ -1518,6 +1559,32 @@ class _ClientBioHubScreenState extends State<ClientBioHubScreen> with SingleTick
         bottom: bottomPadding + 32,
       ),
       children: [
+        // 0. BIO-HUB 3.0 READINESS GAUGE CARD
+        ReadinessGaugeCard(
+          readiness: _biohubReadiness ??
+              ReadinessScoreModel(
+                score: readinessInt,
+                level: readiness >= 75
+                    ? 'high'
+                    : (readiness >= 50 ? 'moderate' : 'low'),
+                headline: readinessTitle,
+                recommendation: readinessDesc,
+                sleepFactor: _sleepHours >= 8.0
+                    ? 5.0
+                    : (_sleepHours >= 7.0 ? 2.0 : -10.0),
+              ),
+          onRefresh: _loadRecoveryAndLoads,
+          onLogBiometrics: _handleLogBiometrics,
+        ),
+        const SizedBox(height: 16),
+        if (_biohubRecovery != null) ...[
+          MuscleRecoveryHeatmapWidget(
+            report: _biohubRecovery!,
+            onRefresh: _loadRecoveryAndLoads,
+          ),
+          const SizedBox(height: 16),
+        ],
+
         // 1. HERO BIO-BATTERY ORB
         Container(
           padding: const EdgeInsets.all(18),

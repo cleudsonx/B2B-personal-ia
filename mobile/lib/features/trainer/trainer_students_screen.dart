@@ -21,6 +21,9 @@ import 'presentation/screens/trainer_profile_setup_screen.dart';
 import 'presentation/widgets/trainer_operational_cockpit_card.dart';
 import 'presentation/widgets/trainer_retention_radar.dart';
 import '../../models/operational_cockpit_model.dart';
+import '../../models/biohub_model.dart';
+import '../../services/api_service.dart';
+import 'widgets/deload_radar_banner.dart';
 
 enum _StudentRiskFilter { all, onTrack, attention, atRisk }
 
@@ -45,6 +48,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
   bool _hasError = false;
   String _errorMessage = '';
   TrainerOperationalCockpitData? _cockpitData;
+  TrainerFatigueRadarModel? _fatigueRadar;
 
   @override
   void initState() {
@@ -88,6 +92,16 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
           }
         }).catchError((e) {
           debugPrint('Aviso ao sincronizar cockpit operacional: $e');
+        });
+        final trainerId = AuthService.currentUser?.id ?? 'current-trainer';
+        ApiService().getTrainerFatigueRadar(trainerId).then((radar) {
+          if (mounted) {
+            setState(() {
+              _fatigueRadar = radar;
+            });
+          }
+        }).catchError((e) {
+          debugPrint('Aviso ao sincronizar radar de fadiga: $e');
         });
       }
 
@@ -1717,7 +1731,10 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
     );
     final showCockpitWidgets =
         _searchQuery.isEmpty && _selectedRiskFilter == _StudentRiskFilter.all;
-    final int headerCount = showCockpitWidgets ? 2 : 0;
+    final bool showDeloadBanner = showCockpitWidgets &&
+        _fatigueRadar != null &&
+        _fatigueRadar!.studentsNeedingDeload.isNotEmpty;
+    final int headerCount = showCockpitWidgets ? (2 + (showDeloadBanner ? 1 : 0)) : 0;
 
     final filteredStudents = _students.where((st) {
       final name = (st['full_name'] as String? ?? '').toLowerCase();
@@ -2229,7 +2246,24 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                           separatorBuilder: (_, _) => const SizedBox(height: 12),
                           itemBuilder: (context, index) {
                             if (showCockpitWidgets) {
-                              if (index == 0) {
+                              if (showDeloadBanner) {
+                                if (index == 0) {
+                                  return DeloadRadarBanner(
+                                    radar: _fatigueRadar!,
+                                    onSelectStudent: (studentId) {
+                                      final student = _students.firstWhere(
+                                        (s) => s['id'] == studentId,
+                                        orElse: () => <String, dynamic>{},
+                                      );
+                                      if (student.isNotEmpty) {
+                                        _showStudentDetails(student);
+                                      }
+                                    },
+                                  );
+                                }
+                              }
+                              final adjustedIndex = showDeloadBanner ? index - 1 : index;
+                              if (adjustedIndex == 0) {
                                 return TrainerOperationalCockpitCard(
                                   data: effectiveCockpit,
                                   onAlertTap: _onOperationalPainAlertTap,
@@ -2239,7 +2273,7 @@ class _TrainerStudentsScreenState extends State<TrainerStudentsScreen> {
                                   },
                                 );
                               }
-                              if (index == 1) {
+                              if (adjustedIndex == 1) {
                                 return TrainerRetentionRadar(
                                   inactiveStudents:
                                       effectiveCockpit.inactiveStudents,
