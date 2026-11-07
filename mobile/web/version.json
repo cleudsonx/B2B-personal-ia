@@ -1,38 +1,38 @@
 {
-  "version": "1.16.0",
-  "build": 2026110703,
-  "updated_at": "2026-11-07T14:30:00.000000Z",
-  "notes": "Versão 1.16.0: Bio-Hub 3.0 & Telemetria Fisiológica (Score Diário de Prontidão 0-100, Fórmulas de 1RM Brzycki & Epley, Mapa Cinético de Recuperação Miofibrilar de 6 Grupamentos e Radar de Deload para o Personal Trainer).",
+  "version": "1.17.0",
+  "build": 2026110704,
+  "updated_at": "2026-11-07T15:15:00.000000Z",
+  "notes": "Versão 1.17.0: Vitrines Públicas Canônicas 2.0 & Motor de Lead Magnet Cinesiológico (Showcase Hero One UI 7 com Selo CREF Verificado, Triagem Biomecânica Rápida de 1 Minuto para Captação de Novos Alunos e OpenGraph SSR para WhatsApp/Instagram).",
   "changelog": {
     "trainer": [
       {
-        "title": "Radar de Fadiga & Deload Inteligente",
-        "description": "Visão consolidada em tempo real de quais alunos necessitam de semana regenerativa ou apresentam queda crítica de prontidão neuromuscular.",
-        "badge": "FISIOLOGIA"
+        "title": "Vitrines Públicas Canônicas 2.0 (PLG)",
+        "description": "Página pública /p/:username moderna com credenciamento CREF verificado, contadores de prova social e integração direta com WhatsApp.",
+        "badge": "AQUISIÇÃO"
       },
       {
-        "title": "Sobrecarga Progressiva & Recordes (1RM)",
-        "description": "Cálculo determinístico de 1RM estimado (Brzycki & Epley) e evolução de volume load semanal acumulado por exercício.",
-        "badge": "PERFORMANCE"
+        "title": "Lead Magnet Cinesiológico Automatizado",
+        "description": "Receba leads qualificados diretamente no seu WhatsApp com triagem biomecânica de dores articulares e preferências de treino geradas pela IA.",
+        "badge": "LEADS"
       }
     ],
     "student": [
       {
-        "title": "Score Diário de Prontidão (Readiness 0-100)",
-        "description": "Indicador dinâmico de prontidão cruzando horas e qualidade de sono, fadiga RPE de treinos recentes e integridade articular.",
-        "badge": "BIO-HUB"
+        "title": "Triagem Biomecânica Rápida Gratuita",
+        "description": "Avaliação cinesiológica expressa para alinhar objetivos e restrições articulares diretamente com o personal trainer antes da contratação.",
+        "badge": "DIAGNÓSTICO"
       },
       {
-        "title": "Recuperação Miofibrilar por Grupamento",
-        "description": "Cinética anatômica em tempo real de 6 grupos musculares informando se o grupo está 100% pronto ou em processo de reparo.",
-        "badge": "RECUPERAÇÃO"
+        "title": "Checkout Pix Transparente 1-Toque",
+        "description": "Assinatura instantânea de consultorias com QR Code Pix, Copia e Cola e confirmação em tempo real.",
+        "badge": "CHECKOUT"
       }
     ],
     "admin": [
       {
-        "title": "Motor Fisiológico Determinístico O(1)",
-        "description": "Computação instantânea de readiness, cinéticas de síntese proteica e 1RM sem sobrecarga de tokens LLM e alta escalabilidade.",
-        "badge": "CORE"
+        "title": "Metatags OpenGraph SSR para Redes Sociais",
+        "description": "Preview dinâmico em cards de alta conversão ao compartilhar links /p/:username no WhatsApp, Instagram e Twitter.",
+        "badge": "VIRALIDADE"
       }
     ]
   }

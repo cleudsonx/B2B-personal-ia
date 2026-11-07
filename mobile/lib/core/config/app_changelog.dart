@@ -40,6 +40,58 @@ class VersionRelease {
 class AppChangelog {
   static const List<VersionRelease> history = [
     // ==========================================
+    // v1.17.0 - VITRINES PÚBLICAS 2.0 & MOTOR DE LEAD MAGNET (PLG)
+    // ==========================================
+    VersionRelease(
+      version: '1.17.0',
+      buildNumber: 2026110704,
+      date: '7 de Novembro, 2026',
+      summary:
+          'Versão 1.17.0: Vitrines Públicas Canônicas 2.0 & Motor de Lead Magnet Cinesiológico (Showcase Hero One UI 7 com Selo CREF Verificado, Triagem Biomecânica Rápida de 1 Minuto para Captação de Novos Alunos e OpenGraph SSR para WhatsApp/Instagram).',
+      highlights: [
+        ChangelogItem(
+          icon: Icons.biotech_rounded,
+          title: 'Triagem Biomecânica Rápida Gratuita',
+          description:
+              'Avaliação cinesiológica expressa para alinhar objetivos e restrições articulares diretamente com o personal trainer antes da contratação.',
+          badge: 'DIAGNÓSTICO',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.pix_rounded,
+          title: 'Checkout Pix Transparente 1-Toque',
+          description:
+              'Assinatura instantânea de consultorias com QR Code Pix, Copia e Cola e confirmação em tempo real.',
+          badge: 'CHECKOUT',
+          targetRoles: ['student'],
+        ),
+        ChangelogItem(
+          icon: Icons.storefront_rounded,
+          title: 'Vitrines Públicas Canônicas 2.0 (PLG)',
+          description:
+              'Página pública /p/:username moderna com credenciamento CREF verificado, contadores de prova social e integração direta com WhatsApp.',
+          badge: 'AQUISIÇÃO',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.contact_phone_rounded,
+          title: 'Lead Magnet Cinesiológico Automatizado',
+          description:
+              'Receba leads qualificados diretamente no seu WhatsApp com triagem biomecânica de dores articulares e preferências de treino geradas pela IA.',
+          badge: 'LEADS',
+          targetRoles: ['trainer'],
+        ),
+        ChangelogItem(
+          icon: Icons.share_rounded,
+          title: 'Metatags OpenGraph SSR para Redes Sociais',
+          description:
+              'Preview dinâmico em cards de alta conversão ao compartilhar links /p/:username no WhatsApp, Instagram e Twitter.',
+          badge: 'VIRALIDADE',
+          targetRoles: ['admin'],
+        ),
+      ],
+    ),
+    // ==========================================
     // v1.16.0 - BIO-HUB 3.0 & TELEMETRIA FISIOLÓGICA
     // ==========================================
     VersionRelease(
