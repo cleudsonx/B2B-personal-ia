@@ -4,11 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       days_to_keep:
-        description: 'Dias de retenção (artefatos mais antigos serão excluídos)'
+        description: 'Dias de retencao (artefatos mais antigos serao excluidos; 0 = excluir todos exceto keep_latest)'
+        required: true
+        default: '3'
+      keep_latest:
+        description: 'Quantidade maxima de artefatos recentes a preservar (teto anti-estouro de 500MB)'
         required: true
         default: '3'
   schedule:
-    - cron: '0 3 * * *' # Executa diariamente às 03:00 UTC (00:00 BRT)
+    - cron: '0 3 * * *' # Executa diariamente as 03:00 UTC (00:00 BRT)
 
 permissions:
   actions: write
@@ -19,16 +23,17 @@ jobs:
     name: Excluir Artefatos Antigos (Liberar Quota 500MB)
     runs-on: ubuntu-latest
     steps:
-      - name: Limpar Artefatos Antigos via GitHub API
+      - name: Limpar Artefatos Antigos e Excedentes via GitHub API
         uses: actions/github-script@v7
         with:
           script: |
             const daysToKeep = parseInt('${{ github.event.inputs.days_to_keep || '3' }}', 10);
+            const keepLatest = parseInt('${{ github.event.inputs.keep_latest || '3' }}', 10);
             const cutoffDate = new Date();
             cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
-            console.log(`Buscando artefatos criados antes de: ${cutoffDate.toISOString()}`);
+            console.log(`Corte temporal: < ${cutoffDate.toISOString()} | Teto maximo de artefatos ativos: ${keepLatest}`);
 
-            let totalDeleted = 0;
+            let allActive = [];
             let page = 1;
             while (true) {
               const res = await github.rest.actions.listArtifactsForRepo({
@@ -37,29 +42,35 @@ jobs:
                 per_page: 100,
                 page: page,
               });
-
-              const artifacts = res.data.artifacts;
-              if (!artifacts || artifacts.length === 0) break;
-
-              for (const artifact of artifacts) {
-                const createdAt = new Date(artifact.created_at);
-                if (createdAt < cutoffDate) {
-                  const sizeMb = (artifact.size_in_bytes / (1024 * 1024)).toFixed(2);
-                  console.log(`Excluindo artefato: ${artifact.name} (ID: ${artifact.id}, Criado: ${artifact.created_at}, Tamanho: ${sizeMb} MB)`);
-                  try {
-                    await github.rest.actions.deleteArtifact({
-                      owner: context.repo.owner,
-                      repo: context.repo.repo,
-                      artifact_id: artifact.id,
-                    });
-                    totalDeleted++;
-                  } catch (err) {
-                    console.error(`Falha ao excluir artefato ${artifact.id}: ${err.message}`);
-                  }
-                }
-              }
-
-              if (artifacts.length < 100) break;
+              const batch = res.data.artifacts || [];
+              if (batch.length === 0) break;
+              allActive.push(...batch.filter(a => !a.expired));
+              if (batch.length < 100) break;
               page++;
             }
-            console.log(`Limpeza concluída! Total de artefatos excluídos: ${totalDeleted}`);
+
+            allActive.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            let totalDeleted = 0;
+            for (let i = 0; i < allActive.length; i++) {
+              const artifact = allActive[i];
+              const createdAt = new Date(artifact.created_at);
+              const exceedsCap = i >= keepLatest;
+              const exceedsAge = createdAt < cutoffDate;
+
+              if (exceedsCap || exceedsAge) {
+                const sizeMb = (artifact.size_in_bytes / (1024 * 1024)).toFixed(2);
+                console.log(`Excluindo: ${artifact.name} (ID: ${artifact.id}, Criado: ${artifact.created_at}, ${sizeMb} MB)`);
+                try {
+                  await github.rest.actions.deleteArtifact({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    artifact_id: artifact.id,
+                  });
+                  totalDeleted++;
+                } catch (err) {
+                  console.error(`Falha ao excluir artefato ${artifact.id}: ${err.message}`);
+                }
+              }
+            }
+            console.log(`Limpeza concluida! Total de artefatos excluidos: ${totalDeleted}`);

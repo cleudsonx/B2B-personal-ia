@@ -10,6 +10,14 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-apk:
     name: Gerar APK de Produção
@@ -49,6 +57,29 @@ jobs:
         run: |
           cd mobile
           flutter build apk --release --dart-define=API_BASE_URL="${{ vars.API_BASE_URL || 'https://b2b-personal-ia-backend.onrender.com/api/v1' }}"
+
+      - name: Rotacionar Artefatos Antigos (Teto Maximo de 3 APKs)
+        uses: actions/github-script@v7
+        continue-on-error: true
+        with:
+          script: |
+            const res = await github.rest.actions.listArtifactsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'b2b-personal-ia-release-apk',
+              per_page: 100,
+            });
+            const active = (res.data.artifacts || [])
+              .filter(a => !a.expired)
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            for (const old of active.slice(2)) {
+              console.log(`Removendo APK antigo ID=${old.id} (${old.created_at}) para preservar cota de 500MB`);
+              await github.rest.actions.deleteArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: old.id,
+              });
+            }
 
       - name: Upload Artifact APK
         uses: actions/upload-artifact@v4
